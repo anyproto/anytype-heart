@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
@@ -38,7 +37,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.NotEmpty(t, pbtypes.Get(mockSpaceView.Details(), bundle.RelationKeySpaceOrder.String()))
+		assert.NotEmpty(t, mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder))
 	})
 	t.Run("move view at the beginning", func(t *testing.T) {
 		// given
@@ -56,7 +55,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.NotEmpty(t, pbtypes.Get(mockSpaceView.Details(), bundle.RelationKeySpaceOrder.String()))
+		assert.NotEmpty(t, mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder))
 	})
 
 	t.Run("move view at the beginning, order exists", func(t *testing.T) {
@@ -77,9 +76,9 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.NotEmpty(t, pbtypes.Get(mockSpaceView.Details(), bundle.RelationKeySpaceOrder.String()))
+		assert.NotEmpty(t, mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder))
 
-		view1Order := pbtypes.GetString(mockSpaceView.Details(), bundle.RelationKeySpaceOrder.String())
+		view1Order := mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder)
 		assert.True(t, view1Order < view2Order)
 	})
 
@@ -101,11 +100,11 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, pbtypes.Get(mockSpaceView3.Details(), bundle.RelationKeySpaceOrder.String()))
+		assert.NotEmpty(t, mockSpaceView3.Details().GetString(bundle.RelationKeySpaceOrder))
 
-		view1Order := pbtypes.GetString(mockSpaceView.Details(), bundle.RelationKeySpaceOrder.String())
-		view2Order := pbtypes.GetString(mockSpaceView2.Details(), bundle.RelationKeySpaceOrder.String())
-		view3Order := pbtypes.GetString(mockSpaceView3.Details(), bundle.RelationKeySpaceOrder.String())
+		view1Order := mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder)
+		view2Order := mockSpaceView2.Details().GetString(bundle.RelationKeySpaceOrder)
+		view3Order := mockSpaceView3.Details().GetString(bundle.RelationKeySpaceOrder)
 		assert.True(t, view1Order < view2Order)
 		assert.True(t, view2Order < view3Order)
 	})
@@ -130,7 +129,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		view3Order := pbtypes.GetString(mockSpaceView3.Details(), bundle.RelationKeySpaceOrder.String())
+		view3Order := mockSpaceView3.Details().GetString(bundle.RelationKeySpaceOrder)
 		assert.True(t, view2Order < view3Order)
 	})
 	t.Run("set view between: no order", func(t *testing.T) {
@@ -150,9 +149,9 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		view1Order := pbtypes.GetString(mockSpaceView.Details(), bundle.RelationKeySpaceOrder.String())
-		view2Order := pbtypes.GetString(mockSpaceView2.Details(), bundle.RelationKeySpaceOrder.String())
-		view3Order := pbtypes.GetString(mockSpaceView3.Details(), bundle.RelationKeySpaceOrder.String())
+		view1Order := mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder)
+		view2Order := mockSpaceView2.Details().GetString(bundle.RelationKeySpaceOrder)
+		view3Order := mockSpaceView3.Details().GetString(bundle.RelationKeySpaceOrder)
 
 		assert.True(t, view1Order < view3Order)
 		assert.Empty(t, view2Order)
@@ -178,8 +177,8 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		view3Order := pbtypes.GetString(mockSpaceView3.Details(), bundle.RelationKeySpaceOrder.String())
-		view2Order := pbtypes.GetString(mockSpaceView2.Details(), bundle.RelationKeySpaceOrder.String())
+		view3Order := mockSpaceView3.Details().GetString(bundle.RelationKeySpaceOrder)
+		view2Order := mockSpaceView2.Details().GetString(bundle.RelationKeySpaceOrder)
 		assert.True(t, view1Order < view3Order)
 		assert.Empty(t, view2Order)
 	})
@@ -205,7 +204,7 @@ func TestOrderSetter_SetSpaceViewOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		view3Order := pbtypes.GetString(mockSpaceView3.Details(), bundle.RelationKeySpaceOrder.String())
+		view3Order := mockSpaceView3.Details().GetString(bundle.RelationKeySpaceOrder)
 		assert.True(t, view1Order < view3Order)
 		assert.True(t, view3Order < view2Order)
 	})
@@ -227,7 +226,7 @@ func TestOrderSetter_UnsetOrder(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		view1Order = pbtypes.GetString(mockSpaceView.Details(), bundle.RelationKeySpaceOrder.String())
+		view1Order = mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder)
 		assert.Empty(t, view1Order)
 	})
 }

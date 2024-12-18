@@ -192,7 +192,7 @@ func TestApplyState(t *testing.T) {
 		s.InsertTo("4", model.Block_Bottom, "5")
 		s.changeId = "4"
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, hist.Add, 2)
 		assert.Len(t, hist.Change, 1)
@@ -206,11 +206,9 @@ func TestApplyState(t *testing.T) {
 			})
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
-			s.SetDetails(&types.Struct{
-				Fields: map[string]*types.Value{
-					"name": pbtypes.String("new name"),
-				},
-			})
+			s.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"name": domain.String("new name"),
+			}))
 			s.Add(text.NewDetails(&model.Block{
 				Id: "title",
 				Content: &model.BlockContentOfText{
@@ -225,7 +223,7 @@ func TestApplyState(t *testing.T) {
 				Text:    "name",
 				Checked: "done",
 			}))
-			_, _, err := ApplyState(s, true)
+			_, _, err := ApplyState("", s, true)
 			assert.Equal(t, "new name", s.Pick("title").Model().GetText().Text)
 			require.NoError(t, err)
 		})
@@ -248,12 +246,10 @@ func TestApplyState(t *testing.T) {
 			})
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
-			s.SetDetails(&types.Struct{
-				Fields: map[string]*types.Value{
-					"name": pbtypes.String("new name"),
-				},
-			})
-			msgs, _, err := ApplyState(s, true)
+			s.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"name": domain.String("new name"),
+			}))
+			msgs, _, err := ApplyState("", s, true)
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
 		})
@@ -274,15 +270,13 @@ func TestApplyState(t *testing.T) {
 					Checked: "done",
 				}),
 			})
-			d.(*State).SetDetail("done", pbtypes.Bool(true))
+			d.(*State).SetDetail("done", domain.Bool(true))
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
-			s.SetDetails(&types.Struct{
-				Fields: map[string]*types.Value{
-					"done": pbtypes.Bool(false),
-				},
-			})
-			msgs, _, err := ApplyState(s, true)
+			s.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"done": domain.Bool(false),
+			}))
+			msgs, _, err := ApplyState("", s, true)
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
 		})
@@ -303,11 +297,11 @@ func TestApplyState(t *testing.T) {
 					Checked: "done",
 				}),
 			})
-			d.(*State).SetDetail("done", pbtypes.Bool(true))
+			d.(*State).SetDetail("done", domain.Bool(true))
 			d.BlocksInit(d.(simple.DetailsService))
 			s := d.NewState()
 			s.Get("2").(text.Block).SetChecked(false)
-			msgs, _, err := ApplyState(s, true)
+			msgs, _, err := ApplyState("", s, true)
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
 		})
@@ -2101,7 +2095,7 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, "changed value", st.Details().GetFields()["relationKey"].GetStringValue())
+		assert.Equal(t, "changed value", st.Details().GetString("relationKey"))
 	})
 
 	t.Run("apply DetailsSet change: update existing relation", func(t *testing.T) {
@@ -2117,7 +2111,7 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, "value", st.Details().GetFields()["relationKey"].GetStringValue())
+		assert.Equal(t, "value", st.Details().GetString("relationKey"))
 	})
 
 	t.Run("apply DetailsSet change: set relation value to nil", func(t *testing.T) {
@@ -2133,7 +2127,7 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Nil(t, st.Details().GetFields()["relationKey"])
+		assert.False(t, st.Details().Has("relationKey"))
 	})
 }
 
@@ -2156,12 +2150,12 @@ func TestState_ApplyChangeIgnoreErrDetailsUnset(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Nil(t, st.Details().GetFields()["relationKey"])
+		assert.False(t, st.Details().Has("relationKey"))
 	})
 
 	t.Run("apply DetailsUnset change: remove existing relation", func(t *testing.T) {
 		// given
-		st.SetDetail("relationKey", pbtypes.String("value"))
+		st.SetDetail("relationKey", domain.String("value"))
 		change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfDetailsUnset{
 			DetailsUnset: &pb.ChangeDetailsUnset{
 				Key: "relationKey",
@@ -2172,7 +2166,7 @@ func TestState_ApplyChangeIgnoreErrDetailsUnset(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// when
-		assert.Nil(t, st.Details().GetFields()["relationKey"])
+		assert.False(t, st.Details().Has("relationKey"))
 	})
 }
 
@@ -2590,7 +2584,7 @@ func TestState_RootId(t *testing.T) {
 //		detail := pbtypes.StringList([]string{"hello", "world", strings.Repeat("a", detailSizeLimit-9)})
 //
 //		//when
-//		s.SetDetail(bundle.RelationKeyType.String(), pbtypes.CopyVal(detail))
+//		s.SetDetail(bundle.RelationKeyType, pbtypes.CopyVal(detail))
 //
 //		//then
 //		assert.Greater(t, detail.Size(), detailSizeLimit)
@@ -2845,7 +2839,7 @@ func TestState_FileRelationKeys(t *testing.T) {
 		keys := s.FileRelationKeys()
 
 		// then
-		expectedKeys := []string{"fileKey1", "fileKey2"}
+		expectedKeys := []domain.RelationKey{"fileKey1", "fileKey2"}
 		assert.ElementsMatch(t, keys, expectedKeys)
 	})
 	t.Run("duplicated file relations", func(t *testing.T) {
@@ -2861,7 +2855,7 @@ func TestState_FileRelationKeys(t *testing.T) {
 		keys := s.FileRelationKeys()
 
 		// then
-		expectedKeys := []string{"fileKey1"}
+		expectedKeys := []domain.RelationKey{"fileKey1"}
 		assert.ElementsMatch(t, keys, expectedKeys)
 	})
 	t.Run("coverId relation", func(t *testing.T) {
@@ -2870,17 +2864,16 @@ func TestState_FileRelationKeys(t *testing.T) {
 			relationLinks: pbtypes.RelationLinks{
 				{Key: bundle.RelationKeyCoverId.String()},
 			},
-			details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyCoverType.String(): pbtypes.Int64(1),
-			},
-			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(1),
+			}),
 		}
 
 		// when
 		keys := s.FileRelationKeys()
 
 		// then
-		expectedKeys := []string{bundle.RelationKeyCoverId.String()}
+		expectedKeys := []domain.RelationKey{bundle.RelationKeyCoverId}
 		assert.ElementsMatch(t, keys, expectedKeys)
 	})
 	t.Run("skip coverId relation", func(t *testing.T) {
@@ -2889,10 +2882,9 @@ func TestState_FileRelationKeys(t *testing.T) {
 			relationLinks: pbtypes.RelationLinks{
 				{Key: bundle.RelationKeyCoverId.String()},
 			},
-			details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyCoverType.String(): pbtypes.Int64(2),
-			},
-			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(2),
+			}),
 		}
 
 		// when
@@ -2907,10 +2899,9 @@ func TestState_FileRelationKeys(t *testing.T) {
 			relationLinks: pbtypes.RelationLinks{
 				{Key: bundle.RelationKeyCoverId.String()},
 			},
-			details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyCoverType.String(): pbtypes.Int64(3),
-			},
-			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(3),
+			}),
 		}
 
 		// when
@@ -2926,17 +2917,16 @@ func TestState_FileRelationKeys(t *testing.T) {
 				{Format: model.RelationFormat_file, Key: "fileKey1"},
 				{Key: bundle.RelationKeyCoverId.String()},
 			},
-			details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyCoverType.String(): pbtypes.Int64(4),
-			},
-			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(4),
+			}),
 		}
 
 		// when
 		keys := s.FileRelationKeys()
 
 		// then
-		expectedKeys := []string{"fileKey1", bundle.RelationKeyCoverId.String()}
+		expectedKeys := []domain.RelationKey{"fileKey1", bundle.RelationKeyCoverId}
 		assert.ElementsMatch(t, keys, expectedKeys, "Expected both file keys and cover ID")
 	})
 	t.Run("coverType not in details", func(t *testing.T) {

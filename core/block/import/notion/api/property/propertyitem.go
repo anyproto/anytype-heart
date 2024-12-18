@@ -7,14 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ConfigType string
@@ -64,7 +63,7 @@ const (
 )
 
 type DetailSetter interface {
-	SetDetail(key string, details map[string]*types.Value)
+	SetDetail(key string, details *domain.Details)
 }
 
 type TitleItem struct {
@@ -85,8 +84,8 @@ func (t *TitleItem) GetTitle() string {
 	return richText.String()
 }
 
-func (t *TitleItem) SetDetail(key string, details map[string]*types.Value) {
-	details[bundle.RelationKeyName.String()] = pbtypes.String(t.GetTitle())
+func (t *TitleItem) SetDetail(key string, details *domain.Details) {
+	details.SetString(bundle.RelationKeyName, t.GetTitle())
 }
 
 func (t *TitleItem) GetPropertyType() ConfigType {
@@ -112,7 +111,7 @@ func (rt *RichTextItem) IsEmpty() bool {
 	return len(rt.RichText) == 0
 }
 
-func (rt *RichTextItem) SetDetail(key string, details map[string]*types.Value) {
+func (rt *RichTextItem) SetDetail(key string, details *domain.Details) {
 	var richText strings.Builder
 	for i, r := range rt.RichText {
 		richText.WriteString(r.PlainText)
@@ -120,7 +119,7 @@ func (rt *RichTextItem) SetDetail(key string, details map[string]*types.Value) {
 			richText.WriteString("\n")
 		}
 	}
-	details[key] = pbtypes.String(richText.String())
+	details.SetString(domain.RelationKey(key), richText.String())
 }
 
 func (rt *RichTextItem) GetPropertyType() ConfigType {
@@ -142,9 +141,9 @@ type NumberItem struct {
 	Number *float64 `json:"number"`
 }
 
-func (np *NumberItem) SetDetail(key string, details map[string]*types.Value) {
+func (np *NumberItem) SetDetail(key string, details *domain.Details) {
 	if np.Number != nil {
-		details[key] = pbtypes.Float64(*np.Number)
+		details.SetFloat64(domain.RelationKey(key), *np.Number)
 	}
 }
 
@@ -173,8 +172,8 @@ type SelectOption struct {
 	Color string `json:"color"`
 }
 
-func (sp *SelectItem) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.StringList([]string{sp.Select.ID})
+func (sp *SelectItem) SetDetail(key string, details *domain.Details) {
+	details.SetStringList(domain.RelationKey(key), []string{sp.Select.ID})
 }
 
 func (sp *SelectItem) GetPropertyType() ConfigType {
@@ -196,12 +195,12 @@ type MultiSelectItem struct {
 	MultiSelect []*SelectOption `json:"multi_select"`
 }
 
-func (ms *MultiSelectItem) SetDetail(key string, details map[string]*types.Value) {
+func (ms *MultiSelectItem) SetDetail(key string, details *domain.Details) {
 	msList := make([]string, 0)
 	for _, so := range ms.MultiSelect {
 		msList = append(msList, so.ID)
 	}
-	details[key] = pbtypes.StringList(msList)
+	details.SetStringList(domain.RelationKey(key), msList)
 }
 
 func (ms *MultiSelectItem) GetPropertyType() ConfigType {
@@ -223,10 +222,10 @@ type DateItem struct {
 	Date   *api.DateObject `json:"date"`
 }
 
-func (dp *DateItem) SetDetail(key string, details map[string]*types.Value) {
+func (dp *DateItem) SetDetail(key string, details *domain.Details) {
 	if dp.Date != nil {
 		date := common.ConvertStringToTime(dp.Date.Start)
-		details[key] = pbtypes.Int64(date)
+		details.SetInt64(domain.RelationKey(key), date)
 	}
 }
 
@@ -256,24 +255,24 @@ type FormulaItem struct {
 	Formula map[string]interface{} `json:"formula"`
 }
 
-func (f *FormulaItem) SetDetail(key string, details map[string]*types.Value) {
+func (f *FormulaItem) SetDetail(key string, details *domain.Details) {
 	if f.Formula == nil {
 		return
 	}
 	switch f.Formula["type"].(string) {
 	case StringFormula:
 		if f.Formula["string"] != nil {
-			details[key] = pbtypes.String(f.Formula["string"].(string))
+			details.SetString(domain.RelationKey(key), f.Formula["string"].(string))
 		}
 	case NumberFormula:
 		if f.Formula["number"] != nil {
 			stringNumber := strconv.FormatFloat(f.Formula["number"].(float64), 'f', 6, 64)
-			details[key] = pbtypes.String(stringNumber)
+			details.SetString(domain.RelationKey(key), stringNumber)
 		}
 	case BooleanFormula:
 		if f.Formula["boolean"] != nil {
 			stringBool := strconv.FormatBool(f.Formula["boolean"].(bool))
-			details[key] = pbtypes.String(stringBool)
+			details.SetString(domain.RelationKey(key), stringBool)
 		}
 	default:
 		return
@@ -304,12 +303,12 @@ type Relation struct {
 	ID string `json:"id"`
 }
 
-func (rp *RelationItem) SetDetail(key string, details map[string]*types.Value) {
+func (rp *RelationItem) SetDetail(key string, details *domain.Details) {
 	relation := make([]string, 0, len(rp.Relation))
 	for _, rel := range rp.Relation {
 		relation = append(relation, rel.ID)
 	}
-	details[key] = pbtypes.StringList(relation)
+	details.SetStringList(domain.RelationKey(key), relation)
 }
 
 func (rp *RelationItem) GetPropertyType() ConfigType {
@@ -335,12 +334,12 @@ func (p *PeopleItem) IsEmpty() bool {
 	return len(p.People) == 0
 }
 
-func (p *PeopleItem) SetDetail(key string, details map[string]*types.Value) {
+func (p *PeopleItem) SetDetail(key string, details *domain.Details) {
 	peopleList := make([]string, 0, len(p.People))
 	for _, people := range p.People {
 		peopleList = append(peopleList, people.ID)
 	}
-	details[key] = pbtypes.StringList(peopleList)
+	details.SetStringList(domain.RelationKey(key), peopleList)
 }
 
 func (p *PeopleItem) GetPropertyType() ConfigType {
@@ -374,7 +373,7 @@ func (f *FileItem) GetFormat() model.RelationFormat {
 	return model.RelationFormat_file
 }
 
-func (f *FileItem) SetDetail(key string, details map[string]*types.Value) {
+func (f *FileItem) SetDetail(key string, details *domain.Details) {
 	fileList := make([]string, len(f.File))
 	for i, fo := range f.File {
 		if fo.External.URL != "" {
@@ -383,7 +382,7 @@ func (f *FileItem) SetDetail(key string, details map[string]*types.Value) {
 			fileList[i] = fo.File.URL
 		}
 	}
-	details[key] = pbtypes.StringList(fileList)
+	details.SetStringList(domain.RelationKey(key), fileList)
 }
 
 type CheckboxItem struct {
@@ -393,8 +392,8 @@ type CheckboxItem struct {
 	Checkbox bool   `json:"checkbox"`
 }
 
-func (c *CheckboxItem) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.Bool(c.Checkbox)
+func (c *CheckboxItem) SetDetail(key string, details *domain.Details) {
+	details.SetBool(domain.RelationKey(key), c.Checkbox)
 }
 
 func (c *CheckboxItem) GetPropertyType() ConfigType {
@@ -416,9 +415,9 @@ type URLItem struct {
 	URL    *string `json:"url"`
 }
 
-func (u *URLItem) SetDetail(key string, details map[string]*types.Value) {
+func (u *URLItem) SetDetail(key string, details *domain.Details) {
 	if u.URL != nil {
-		details[key] = pbtypes.String(*u.URL)
+		details.SetString(domain.RelationKey(key), *u.URL)
 	}
 }
 
@@ -441,9 +440,9 @@ type EmailItem struct {
 	Email  *string `json:"email"`
 }
 
-func (e *EmailItem) SetDetail(key string, details map[string]*types.Value) {
+func (e *EmailItem) SetDetail(key string, details *domain.Details) {
 	if e.Email != nil {
-		details[key] = pbtypes.String(*e.Email)
+		details.SetString(domain.RelationKey(key), *e.Email)
 	}
 }
 
@@ -466,9 +465,9 @@ type PhoneItem struct {
 	Phone  *string `json:"phone_number"`
 }
 
-func (p *PhoneItem) SetDetail(key string, details map[string]*types.Value) {
+func (p *PhoneItem) SetDetail(key string, details *domain.Details) {
 	if p.Phone != nil {
-		details[key] = pbtypes.String(*p.Phone)
+		details.SetString(domain.RelationKey(key), *p.Phone)
 	}
 }
 
@@ -491,13 +490,13 @@ type CreatedTimeItem struct {
 	CreatedTime string `json:"created_time"`
 }
 
-func (ct *CreatedTimeItem) SetDetail(key string, details map[string]*types.Value) {
+func (ct *CreatedTimeItem) SetDetail(key string, details *domain.Details) {
 	t, err := time.Parse(time.RFC3339, ct.CreatedTime)
 	if err != nil {
 		log.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
 		return
 	}
-	details[key] = pbtypes.Int64(t.Unix())
+	details.SetInt64(domain.RelationKey(key), t.Unix())
 }
 
 func (ct *CreatedTimeItem) GetPropertyType() ConfigType {
@@ -519,8 +518,8 @@ type CreatedByItem struct {
 	CreatedBy api.User `json:"created_by"`
 }
 
-func (cb *CreatedByItem) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(cb.CreatedBy.Name)
+func (cb *CreatedByItem) SetDetail(key string, details *domain.Details) {
+	details.SetString(domain.RelationKey(key), cb.CreatedBy.Name)
 }
 
 func (cb *CreatedByItem) GetPropertyType() ConfigType {
@@ -542,13 +541,13 @@ type LastEditedTimeItem struct {
 	LastEditedTime string `json:"last_edited_time"`
 }
 
-func (le *LastEditedTimeItem) SetDetail(key string, details map[string]*types.Value) {
+func (le *LastEditedTimeItem) SetDetail(key string, details *domain.Details) {
 	t, err := time.Parse(time.RFC3339, le.LastEditedTime)
 	if err != nil {
 		log.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
 		return
 	}
-	details[key] = pbtypes.Int64(t.Unix())
+	details.SetInt64(domain.RelationKey(key), t.Unix())
 }
 
 func (le *LastEditedTimeItem) GetPropertyType() ConfigType {
@@ -570,8 +569,8 @@ type LastEditedByItem struct {
 	LastEditedBy api.User `json:"last_edited_by"`
 }
 
-func (lb *LastEditedByItem) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String(lb.LastEditedBy.Name)
+func (lb *LastEditedByItem) SetDetail(key string, details *domain.Details) {
+	details.SetString(domain.RelationKey(key), lb.LastEditedBy.Name)
 }
 
 func (lb *LastEditedByItem) GetPropertyType() ConfigType {
@@ -598,11 +597,11 @@ type Status struct {
 	Color string `json:"color,omitempty"`
 }
 
-func (sp *StatusItem) SetDetail(key string, details map[string]*types.Value) {
+func (sp *StatusItem) SetDetail(key string, details *domain.Details) {
 	if sp.Status != nil {
-		details[key] = pbtypes.StringList([]string{sp.Status.ID})
+		details.SetStringList(domain.RelationKey(key), []string{sp.Status.ID})
 	} else {
-		details[key] = pbtypes.StringList([]string{})
+		details.SetStringList(domain.RelationKey(key), []string{})
 	}
 }
 
@@ -640,10 +639,10 @@ type RollupObject struct {
 	Array  propertyObjects `json:"array"`
 }
 
-func (r *RollupItem) SetDetail(key string, details map[string]*types.Value) {
+func (r *RollupItem) SetDetail(key string, details *domain.Details) {
 	switch r.Rollup.Type {
 	case rollupNumber:
-		details[key] = pbtypes.Float64(r.Rollup.Number)
+		details.SetFloat64(domain.RelationKey(key), r.Rollup.Number)
 	case rollupDate:
 		di := DateItem{Date: r.Rollup.Date}
 		di.SetDetail(key, details)
@@ -652,10 +651,10 @@ func (r *RollupItem) SetDetail(key string, details map[string]*types.Value) {
 	}
 }
 
-func (r *RollupItem) handleArrayType(key string, details map[string]*types.Value) {
+func (r *RollupItem) handleArrayType(key string, details *domain.Details) {
 	result := make([]string, 0)
 	for _, pr := range r.Rollup.Array {
-		tempDetails := make(map[string]*types.Value, 0)
+		tempDetails := domain.NewDetails()
 		object := getPropertyObject(pr)
 		if object == nil {
 			continue
@@ -664,24 +663,19 @@ func (r *RollupItem) handleArrayType(key string, details map[string]*types.Value
 			ds.SetDetail(key, tempDetails)
 		}
 		if _, ok := object.(*TitleItem); ok {
-			name := tempDetails[bundle.RelationKeyName.String()]
-			result = append(result, name.GetStringValue())
+			name := tempDetails.GetString(bundle.RelationKeyName)
+			result = append(result, name)
 		}
-		if value, ok := tempDetails[key]; ok && value != nil {
-			switch value.GetKind().(type) {
-			case *types.Value_StringValue:
-				res := value.GetStringValue()
-				result = append(result, res)
-			case *types.Value_BoolValue:
-				res := value.GetBoolValue()
-				result = append(result, strconv.FormatBool(res))
-			case *types.Value_NumberValue:
-				res := value.GetNumberValue()
-				result = append(result, strconv.FormatFloat(res, 'f', 0, 64))
-			}
+
+		if v, ok := tempDetails.TryString(domain.RelationKey(key)); ok {
+			result = append(result, v)
+		} else if v, ok := tempDetails.TryBool(domain.RelationKey(key)); ok {
+			result = append(result, strconv.FormatBool(v))
+		} else if v, ok := tempDetails.TryFloat64(domain.RelationKey(key)); ok {
+			result = append(result, strconv.FormatFloat(v, 'f', 0, 64))
 		}
 	}
-	details[key] = pbtypes.StringList(result)
+	details.SetStringList(domain.RelationKey(key), result)
 }
 
 func (r *RollupItem) GetPropertyType() ConfigType {
@@ -710,7 +704,7 @@ type VerificationItem struct {
 	Verification struct{} `json:"verification"`
 }
 
-func (v VerificationItem) SetDetail(_ string, _ map[string]*types.Value) {}
+func (v VerificationItem) SetDetail(_ string, _ *domain.Details) {}
 
 func (v VerificationItem) GetPropertyType() ConfigType {
 	return PropertyConfigVerification
@@ -735,12 +729,12 @@ type UniqueID struct {
 	Prefix string `json:"prefix"`
 }
 
-func (u UniqueIDItem) SetDetail(key string, details map[string]*types.Value) {
+func (u UniqueIDItem) SetDetail(key string, details *domain.Details) {
 	id := strconv.FormatInt(u.UniqueID.Number, 10)
 	if u.UniqueID.Prefix != "" {
 		id = u.UniqueID.Prefix + "-" + id
 	}
-	details[key] = pbtypes.String(id)
+	details.SetString(domain.RelationKey(key), id)
 }
 
 func (u UniqueIDItem) GetPropertyType() ConfigType {

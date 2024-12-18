@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 )
 
@@ -21,7 +21,7 @@ type DataObject struct {
 }
 
 type Result struct {
-	Details *types.Struct
+	Details *domain.Details
 	NewID   string
 	Err     error
 }

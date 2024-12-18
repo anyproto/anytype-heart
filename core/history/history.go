@@ -92,13 +92,13 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		return
 	}
 
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id.ObjectID))
-	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(id.SpaceID))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id.ObjectID))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
 	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
 	if err != nil {
 		return nil, nil, fmt.Errorf("get type id by key: %w", err)
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeId))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeId))
 
 	details, err := h.buildDetails(s, space)
 	if err != nil {
@@ -241,7 +241,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	}
 
 	currState.SetParent(previousState)
-	msg, _, err := state.ApplyState(currState, false)
+	msg, _, err := state.ApplyState(req.SpaceId, currState, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get history events for versions %s, %s: %w", req.CurrentVersion, req.PreviousVersion, err)
 	}
@@ -270,8 +270,8 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details []*model.ObjectViewDetailsSet, resultErr error) {
 	rootDetails := s.CombinedDetails()
 	details = []*model.ObjectViewDetailsSet{{
-		Id:      pbtypes.GetString(rootDetails, bundle.RelationKeyId.String()),
-		Details: rootDetails,
+		Id:      rootDetails.GetString(bundle.RelationKeyId),
+		Details: rootDetails.ToProto(),
 	}}
 
 	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, objectlink.Flags{
@@ -292,8 +292,8 @@ func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details [
 
 		for _, record := range records {
 			details = append(details, &model.ObjectViewDetailsSet{
-				Id:      pbtypes.GetString(record.Details, bundle.RelationKeyId.String()),
-				Details: record.Details,
+				Id:      record.Details.GetString(bundle.RelationKeyId),
+				Details: record.Details.ToProto(),
 			})
 		}
 	}
@@ -349,7 +349,7 @@ func filterLocalAndDerivedRelationsByKey(removedRelations *pb.EventObjectRelatio
 	}
 	var relKeysWithoutLocal []string
 	for _, key := range removedRelations.RelationKeys {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
 			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
 		}
 	}
@@ -362,7 +362,7 @@ func filterLocalAndDerivedRelations(addedRelations *pb.EventObjectRelationsAmend
 	}
 	var relLinksWithoutLocal pbtypes.RelationLinks
 	for _, link := range addedRelations.RelationLinks {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(link.Key)) {
 			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
 		}
 	}
@@ -560,7 +560,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	if err != nil {
 		return
 	}
-	if _, _, err = state.ApplyStateFast(st); err != nil {
+	if _, _, err = state.ApplyStateFast(id.SpaceID, st); err != nil {
 		return
 	}
 

@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer/mock_treesyncer"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -21,10 +20,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ctx = context.Background()
@@ -54,7 +53,7 @@ func TestTechSpace_Run(t *testing.T) {
 
 type spaceViewStub struct {
 	*smarttest.SmartTest
-	data *types.Struct
+	data *domain.Details
 }
 
 var _ SpaceView = (*spaceViewStub)(nil)
@@ -103,7 +102,7 @@ func (s *spaceViewStub) GetExistingInviteInfo() (fileCid string, fileKey string)
 	return
 }
 
-func (s *spaceViewStub) SetSpaceData(details *types.Struct) error {
+func (s *spaceViewStub) SetSpaceData(details *domain.Details) error {
 	s.data = details
 	return nil
 }
@@ -201,8 +200,8 @@ func TestTechSpace_SpaceViewSetData(t *testing.T) {
 		fx.expectDeriveTreePayload(viewId)
 		fx.objectCache.EXPECT().GetObject(mock.Anything, viewId).Return(view, nil)
 
-		details := pbtypes.ToStruct(map[string]interface{}{
-			"key": "value",
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"key": domain.String("value"),
 		})
 		err := fx.SpaceViewSetData(ctx, spaceId, details)
 		require.NoError(t, err)
