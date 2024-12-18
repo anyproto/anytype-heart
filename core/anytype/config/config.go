@@ -462,7 +462,7 @@ func (c *Config) GetPublishServer() publishclient.Config {
 		Addrs: []publishclient.PublishServerAddr{
 			{
 				PeerId: "12D3KooWR8Ci1XidFCCXoZppGrUmiy4D1Mjoux9xK6QoZrpbQC3J",
-				Addrs:  []string{"yamux://192.168.103.201:4940"},
+				Addrs:  []string{"yamux://stage1-anytype-publish-server1.toolpad.org:4940"},
 			},
 		},
 	}
