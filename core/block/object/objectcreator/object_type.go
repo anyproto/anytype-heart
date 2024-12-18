@@ -35,6 +35,10 @@ var (
 		bundle.RelationKeyLinks,
 	}
 
+	relationsToExclude = []domain.RelationKey{
+		bundle.RelationKeyDescription,
+	}
+
 	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
 )
 
@@ -133,6 +137,11 @@ func getRelationKeysFromDetails(details *types.Struct) ([]domain.RelationKey, er
 		for i, id := range bundledRelationIds {
 			key, err := bundle.RelationKeyFromID(id)
 			if err == nil {
+				// use Contains when we have more relations to exclude
+				// if slices.Contains(relationsToExclude, key) {
+				if key == bundle.RelationKeyDescription {
+					continue
+				}
 				keys = append(keys, key)
 				continue
 			}
