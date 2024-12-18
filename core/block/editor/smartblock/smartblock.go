@@ -580,10 +580,6 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 			},
 		}))
 	}
-	sb.lastDepDetails[id] = &pb.EventObjectDetailsSet{
-		Id:      id,
-		Details: details,
-	}
 	sb.lastDepDetails[id] = details
 
 	if len(msgs) == 0 {
