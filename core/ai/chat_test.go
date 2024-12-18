@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/ai/mock_ai"
+	"github.com/anyproto/anytype-heart/core/ai/parsing"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -30,12 +31,11 @@ func newFixture(t *testing.T) *fixture {
 			Model:    "test-model",
 			Endpoint: "http://example.com",
 		},
-		writingToolsPromptConfig: &WritingToolsPromptConfig{
+		promptConfig: &PromptConfig{
 			SystemPrompt: "system",
 			UserPrompt:   "user",
 			Temperature:  0.1,
 			JSONMode:     false,
-			Mode:         pb.RpcAIWritingToolsRequest_SUMMARIZE,
 		},
 	}
 
@@ -102,8 +102,9 @@ data: {"id":"test3","content":"Final line"}
 func TestCreateChatRequest(t *testing.T) {
 	t.Run("no json mode", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
 
-		data, err := fx.createChatRequest()
+		data, err := fx.createChatRequest(int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 		require.NoError(t, err)
 
 		var req ChatRequest
@@ -121,10 +122,10 @@ func TestCreateChatRequest(t *testing.T) {
 
 	t.Run("json mode", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
+		fx.promptConfig.JSONMode = true
 
-		fx.writingToolsPromptConfig.JSONMode = true
-
-		data, err := fx.createChatRequest()
+		data, err := fx.createChatRequest(int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 		require.NoError(t, err)
 
 		var req ChatRequest
@@ -151,9 +152,10 @@ func TestCreateChatRequest(t *testing.T) {
 func TestChat(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
 
-		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"}}]}
-data: {"id":"test1","object":"chat","created":12346,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":" world!"}}]}
+		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"},"finish_reason":null}]}
+data: {"id":"test1","object":"chat","created":12346,"model":"test-model","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":" world!"},"finish_reason":"stop"}]}
 data: [DONE]
 `
 		resp := &http.Response{
@@ -162,7 +164,7 @@ data: [DONE]
 		}
 		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-		result, err := fx.chat(context.Background())
+		result, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 		require.NoError(t, err)
 		require.Equal(t, "Hello world!", result)
 		fx.mockHttpClient.AssertExpectations(t)
@@ -170,6 +172,7 @@ data: [DONE]
 
 	t.Run("not found", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
 
 		resp := &http.Response{
 			StatusCode: 404,
@@ -177,7 +180,7 @@ data: [DONE]
 		}
 		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-		_, err := fx.chat(context.Background())
+		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "model not found")
 		fx.mockHttpClient.AssertExpectations(t)
@@ -185,6 +188,7 @@ data: [DONE]
 
 	t.Run("unauthorized", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
 
 		resp := &http.Response{
 			StatusCode: 401,
@@ -192,19 +196,36 @@ data: [DONE]
 		}
 		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-		_, err := fx.chat(context.Background())
+		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid for endpoint")
+		fx.mockHttpClient.AssertExpectations(t)
+	})
+
+	t.Run("rate limit exceeded", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
+
+		resp := &http.Response{
+			StatusCode: 429,
+			Body:       io.NopCloser(strings.NewReader("rate limit exceeded")),
+		}
+		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
+
+		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "rate limit exceeded")
 		fx.mockHttpClient.AssertExpectations(t)
 	})
 }
 
 func TestParseChatResponse(t *testing.T) {
-	t.Run("valid response", func(t *testing.T) {
+	t.Run("valid writingToolsResponse", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
 
-		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello!"}}]}
-data: {"id":"test2","object":"chat","created":12346,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"How are you?"}}]}
+		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello!"},"finish_reason":null}]}
+data: {"id":"test2","object":"chat","created":12346,"model":"test-model","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"How are you?"},"finish_reason":"stop"}]}
 data: [DONE]
 `
 		responses, err := fx.parseChatResponse(strings.NewReader(responseData))
@@ -216,10 +237,11 @@ data: [DONE]
 		require.Equal(t, "How are you?", (*responses)[1].Choices[0].Delta.Content)
 	})
 
-	t.Run("invalid response", func(t *testing.T) {
+	t.Run("invalid writingToolsResponse", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
 
-		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello!"}}]}
+		responseData := `data: {"id":"test1","object":"chat","created":12345,"model":"test-model","system_fingerprint":"fp_ollama","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello!"},"finish_reason":null}]}
 data: {"id":"test2"  -- invalid json --
 data: [DONE]
 `
@@ -230,35 +252,52 @@ data: [DONE]
 }
 
 func TestExtractAnswerByMode(t *testing.T) {
-	t.Run("valid mode", func(t *testing.T) {
+	t.Run("valid writingtools mode", func(t *testing.T) {
 		fx := newFixture(t)
-
-		fx.writingToolsPromptConfig.Mode = pb.RpcAIWritingToolsRequest_SUMMARIZE
+		fx.responseParser = parsing.NewWritingToolsParser()
 
 		jsonData := `{"summary":"This is a summary"}`
-		result, err := fx.extractAnswerByMode(jsonData, "writingTools")
+		result, err := fx.extractAnswerByMode(jsonData, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 		require.NoError(t, err)
 		require.Equal(t, "This is a summary", result)
 	})
 
-	t.Run("empty response", func(t *testing.T) {
+	t.Run("valid autofill mode", func(t *testing.T) {
 		fx := newFixture(t)
+		fx.responseParser = parsing.NewAutofillParser()
 
-		fx.writingToolsPromptConfig.Mode = pb.RpcAIWritingToolsRequest_SUMMARIZE
+		jsonData := `{"tag":"tag1"}`
+		result, err := fx.extractAnswerByMode(jsonData, int(pb.RpcAIAutofillRequest_TAG))
+		require.NoError(t, err)
+		require.Equal(t, "tag1", result)
+	})
+
+	t.Run("empty writingtools response", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.responseParser = parsing.NewWritingToolsParser()
 
 		jsonData := `{"summary":""}`
-		_, err := fx.extractAnswerByMode(jsonData, "writingTools")
+		_, err := fx.extractAnswerByMode(jsonData, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "empty")
+	})
+
+	t.Run("empty autofill response", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.responseParser = parsing.NewAutofillParser()
+
+		jsonData := `{"tag":""}`
+		_, err := fx.extractAnswerByMode(jsonData, int(pb.RpcAIAutofillRequest_TAG))
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "empty")
 	})
 
 	t.Run("unknown mode", func(t *testing.T) {
 		fx := newFixture(t)
-
-		fx.writingToolsPromptConfig.Mode = pb.RpcAIWritingToolsRequestWritingMode(-1)
+		fx.responseParser = parsing.NewWritingToolsParser()
 
 		jsonData := `{}`
-		_, err := fx.extractAnswerByMode(jsonData, "writingTools")
+		_, err := fx.extractAnswerByMode(jsonData, -1)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unknown mode")
 	})

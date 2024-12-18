@@ -37,37 +37,6 @@ type ChatResponse struct {
 	} `json:"choices"`
 }
 
-// ContentResponse represents the structure of the content response for different modes.
-type ContentResponse struct {
-	Summary                string `json:"summary,omitempty"`
-	Corrected              string `json:"corrected,omitempty"`
-	Shortened              string `json:"shortened,omitempty"`
-	Expanded               string `json:"expanded,omitempty"`
-	Bullet                 string `json:"bullet,omitempty"`
-	ContentAsTable         string `json:"content_as_table,omitempty"`
-	Translation            string `json:"translation,omitempty"`
-	CasualContent          string `json:"casual_content,omitempty"`
-	FunnyContent           string `json:"funny_content,omitempty"`
-	ConfidentContent       string `json:"confident_content,omitempty"`
-	StraightforwardContent string `json:"straightforward_content,omitempty"`
-	ProfessionalContent    string `json:"professional_content,omitempty"`
-}
-
-var modeToJSONKey = map[int]string{
-	1:  "summary",
-	2:  "corrected",
-	3:  "shortened",
-	4:  "expanded",
-	5:  "bullet",
-	6:  "content_as_table",
-	7:  "casual_content",
-	8:  "funny_content",
-	9:  "confident_content",
-	10: "straightforward_content",
-	11: "professional_content",
-	12: "translation",
-}
-
 // prefixStrippingReader is a custom reader that strips a specific prefix from each line.
 type prefixStrippingReader struct {
 	reader *bufio.Reader
@@ -95,27 +64,27 @@ func (psr *prefixStrippingReader) Read(p []byte) (int, error) {
 }
 
 // createChatRequest creates the JSON payload for the chat API request.
-func (ai *AIService) createChatRequest() ([]byte, error) {
+func (ai *AIService) createChatRequest(mode int) ([]byte, error) {
 	payload := ChatRequest{
 		Model: ai.apiConfig.Model,
 		Messages: []map[string]string{
 			{
 				"role":    "system",
-				"content": ai.writingToolsPromptConfig.SystemPrompt,
+				"content": ai.promptConfig.SystemPrompt,
 			},
 			{
 				"role":    "user",
-				"content": ai.writingToolsPromptConfig.UserPrompt,
+				"content": ai.promptConfig.UserPrompt,
 			},
 		},
-		Temperature: ai.writingToolsPromptConfig.Temperature,
+		Temperature: ai.promptConfig.Temperature,
 		Stream:      true,
 	}
 
-	if ai.writingToolsPromptConfig.JSONMode {
-		key, exists := modeToJSONKey[int(ai.writingToolsPromptConfig.Mode)]
+	if ai.promptConfig.JSONMode {
+		key, exists := ai.responseParser.ModeToField()[mode]
 		if !exists {
-			return nil, fmt.Errorf("unknown mode: %d", ai.writingToolsPromptConfig.Mode)
+			return nil, fmt.Errorf("unknown mode: %d", mode)
 		}
 
 		payload.ResponseFormat = map[string]interface{}{
@@ -179,8 +148,8 @@ func (ai *AIService) parseChatResponse(body io.Reader) (*[]ChatResponse, error) 
 }
 
 // chat sends a chat request and returns the parsed chat response as a string.
-func (ai *AIService) chat(ctx context.Context) (string, error) {
-	jsonData, err := ai.createChatRequest()
+func (ai *AIService) chat(ctx context.Context, mode int) (string, error) {
+	jsonData, err := ai.createChatRequest(mode)
 	if err != nil {
 		return "", fmt.Errorf("error creating the payload: %w", err)
 	}
@@ -201,6 +170,8 @@ func (ai *AIService) chat(ctx context.Context) (string, error) {
 			return "", fmt.Errorf("%s %w: %s", ai.apiConfig.Model, ErrModelNotFound, ai.apiConfig.Endpoint)
 		} else if resp.StatusCode == http.StatusUnauthorized {
 			return "", fmt.Errorf("%w %s", ErrAuthRequired, ai.apiConfig.Endpoint)
+		} else if resp.StatusCode == http.StatusTooManyRequests {
+			return "", fmt.Errorf("%w %s", ErrRateLimitExceeded, ai.apiConfig.Endpoint)
 		} else {
 			return "", fmt.Errorf("error: received non-200 status code %d: %s", resp.StatusCode, bodyString)
 		}
@@ -224,40 +195,13 @@ func (ai *AIService) chat(ctx context.Context) (string, error) {
 }
 
 // extractAnswerByMode extracts the relevant content from the JSON response based on the mode.
-func (ai *AIService) extractAnswerByMode(jsonData string, request string) (string, error) {
-	var response ContentResponse
-	err := json.Unmarshal([]byte(jsonData), &response)
+func (ai *AIService) extractAnswerByMode(jsonData string, mode int) (string, error) {
+	respStruct := ai.responseParser.NewResponseStruct()
+
+	err := json.Unmarshal([]byte(jsonData), &respStruct)
 	if err != nil {
 		return "", fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
 	}
 
-	modeToContent := map[string]map[int]string{
-		"writingTools": {
-			1:  response.Summary,
-			2:  response.Corrected,
-			3:  response.Shortened,
-			4:  response.Expanded,
-			5:  response.Bullet,
-			6:  response.ContentAsTable,
-			7:  response.CasualContent,
-			8:  response.FunnyContent,
-			9:  response.ConfidentContent,
-			10: response.StraightforwardContent,
-			11: response.ProfessionalContent,
-			12: response.Translation,
-		},
-		"autofill": {
-			// TODO: add options and adjust usage below
-		},
-	}
-
-	content, exists := modeToContent[request][int(ai.writingToolsPromptConfig.Mode)]
-	if !exists {
-		return "", fmt.Errorf("unknown mode: %d", ai.writingToolsPromptConfig.Mode)
-	}
-	if content == "" {
-		return "", fmt.Errorf("response content is empty")
-	}
-
-	return content, nil
+	return ai.responseParser.ExtractContent(mode, respStruct)
 }

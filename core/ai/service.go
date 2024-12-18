@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/pemistahl/lingua-go"
 
+	"github.com/anyproto/anytype-heart/core/ai/parsing"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -32,17 +33,17 @@ var (
 )
 
 type AI interface {
-	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (Result, error)
-	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (Result, error)
+	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error)
+	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error)
 	app.ComponentRunnable
 }
 
 type AIService struct {
-	mu                       sync.Mutex
-	apiConfig                *APIConfig
-	writingToolsPromptConfig *WritingToolsPromptConfig
-	autofillPromptConfig     *AutofillPromptConfig
-	httpClient               HttpClient
+	mu             sync.Mutex
+	apiConfig      *APIConfig
+	promptConfig   *PromptConfig
+	httpClient     HttpClient
+	responseParser parsing.ResponseParser
 }
 
 type APIConfig struct {
@@ -53,30 +54,22 @@ type APIConfig struct {
 	AuthToken    string
 }
 
-type WritingToolsPromptConfig struct {
-	Mode         pb.RpcAIWritingToolsRequestWritingMode
+type PromptConfig struct {
 	SystemPrompt string
 	UserPrompt   string
 	Temperature  float32
 	JSONMode     bool
-}
-
-type AutofillPromptConfig struct {
-	Mode         pb.RpcAIAutofillRequestAutofillMode
-	SystemPrompt string
-	UserPrompt   string
-	Temperature  float32
-	JSONMode     bool
-	Options      []string
-	Context      []string
 }
 
 type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-type Result struct {
-	Answer  string
+type WritingToolsResult struct {
+	Answer string
+}
+
+type AutofillResult struct {
 	Choices []string
 }
 
@@ -102,11 +95,11 @@ func (ai *AIService) Close(_ context.Context) (err error) {
 	return nil
 }
 
-func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (Result, error) {
+func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error) {
 	ai.mu.Lock()
 	defer ai.mu.Unlock()
 
-	log.Infof("received request with text: %s", strings.ReplaceAll(params.Text, "\n", "\\n"))
+	log.Infof("received writing tools request with text: %s", strings.ReplaceAll(params.Text, "\n", "\\n"))
 	text := strings.ToLower(strings.TrimSpace(params.Text))
 
 	// check supported languages for llama models
@@ -119,61 +112,68 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 
 		if language, exists := detector.DetectLanguageOf(text); !exists {
 			log.Errorf("unsupported language detected: %s", language)
-			return Result{}, fmt.Errorf("%w: %s", ErrUnsupportedLanguage, language)
+			return WritingToolsResult{}, fmt.Errorf("%w: %s", ErrUnsupportedLanguage, language)
 		}
 	}
 
 	ai.setAPIConfig(params.Config)
-	ai.writingToolsPromptConfig = &WritingToolsPromptConfig{
-		Mode:         params.Mode,
-		SystemPrompt: writingToolsSystemPrompts[params.Mode],
-		UserPrompt:   fmt.Sprintf(writingToolsUserPrompts[params.Mode], text),
+	ai.promptConfig = &PromptConfig{
+		SystemPrompt: writingToolsPrompts[params.Mode].System,
+		UserPrompt:   fmt.Sprintf(writingToolsPrompts[params.Mode].User, text),
 		Temperature:  params.Config.Temperature,
 		JSONMode:     params.Mode != 0, // use json mode for all modes except default
 	}
+	ai.responseParser = parsing.NewWritingToolsParser()
 
-	answer, err := ai.chat(ctx)
+	answer, err := ai.chat(ctx, int(params.Mode))
 	if err != nil {
-		return Result{}, err
+		return WritingToolsResult{}, err
 	}
 
 	// extract answer value from json response, except for default mode
 	if params.Mode != 0 {
-		extractedAnswer, err := ai.extractAnswerByMode(answer, "writingTools")
+		extractedAnswer, err := ai.extractAnswerByMode(answer, int(params.Mode))
 		if err != nil {
-			return Result{}, err
+			return WritingToolsResult{}, err
 		}
 
 		// fix lmstudio newline issue for table responses
 		extractedAnswer = strings.ReplaceAll(extractedAnswer, "\\\\n", "\n")
-		return Result{Answer: extractedAnswer}, nil
+		return WritingToolsResult{Answer: extractedAnswer}, nil
 	}
 
-	return Result{Answer: answer}, nil
+	return WritingToolsResult{Answer: answer}, nil
 }
 
-func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (Result, error) {
+func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error) {
 	ai.mu.Lock()
 	defer ai.mu.Unlock()
 
+	optionsStr := strings.Join(params.Options, ", ")
+	contextStr := strings.Join(params.Context, " ")
+	log.Infof("received autofill request with options: %s and context: %s", params.Options, params.Context)
+
 	ai.setAPIConfig(params.Config)
-	ai.autofillPromptConfig = &AutofillPromptConfig{
-		Mode:         params.Mode,
-		SystemPrompt: autofillSystemPrompts[params.Mode],
+	ai.promptConfig = &PromptConfig{
+		SystemPrompt: autofillPrompts[params.Mode].System,
 		// TODO: create prompt with options and context
-		UserPrompt:  fmt.Sprintf(autofillUserPrompts[params.Mode], params.Options, params.Context),
+		UserPrompt:  fmt.Sprintf(autofillPrompts[params.Mode].User, optionsStr, contextStr),
 		Temperature: params.Config.Temperature,
 		JSONMode:    true,
-		Options:     params.Options,
-		Context:     params.Context,
 	}
+	ai.responseParser = parsing.NewAutofillParser()
 
-	answer, err := ai.chat(ctx)
+	answer, err := ai.chat(ctx, int(params.Mode))
 	if err != nil {
-		return Result{}, err
+		return AutofillResult{}, err
 	}
 
-	return Result{Choices: []string{"not implemented yet", answer}}, nil
+	extractedAnswer, err := ai.extractAnswerByMode(answer, int(params.Mode))
+	if err != nil {
+		return AutofillResult{}, err
+	}
+
+	return AutofillResult{Choices: []string{extractedAnswer}}, nil
 }
 
 func (ai *AIService) setAPIConfig(params *pb.RpcAIProviderConfig) {

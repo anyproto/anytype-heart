@@ -224,6 +224,30 @@ func TestAutofill(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:     "OpenAI",
+			provider: pb.RpcAI_OPENAI,
+			autofillBaseParams: pb.RpcAIAutofillRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_OPENAI,
+					Endpoint:    "https://api.openai.com/v1/chat/completions",
+					Model:       "gpt-4o-mini",
+					Token:       openaiAPIKey,
+					Temperature: 0,
+				},
+				Mode:    0,
+				Options: []string{"book", "movie", "song"},
+				Context: []string{"I am reading a"},
+			},
+			skipInputLanguageTest: true,
+			skipAuthTest:          false,
+			models: []modelTestConfig{
+				{
+					modelName: "gpt-4o-mini",
+					// TODO: refactor types
+				},
+			},
+		},
 	}
 
 	for _, cfg := range testConfigs {
@@ -284,6 +308,7 @@ func runWritingToolsTests(t *testing.T, service AI, cfg providerTestConfig, mode
 	if !cfg.skipAuthTest {
 		t.Run("UnauthorizedAccess", func(t *testing.T) {
 			params := cfg.writingToolsBaseParams
+			params.Config = copyProviderConfig(params.Config)
 			params.Config.Model = modelCfg.modelName
 			params.Config.Token = "invalid-token"
 			params.Text = "Test unauthorized access"
@@ -339,15 +364,25 @@ func runWritingToolsTests(t *testing.T, service AI, cfg providerTestConfig, mode
 }
 
 func runAutofillTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg modelTestConfig) {
-	t.Run("Tag Suggestions", func(t *testing.T) {
+	t.Run("tag suggest book", func(t *testing.T) {
 		params := cfg.autofillBaseParams
 		params.Config.Model = modelCfg.modelName
 		params.Context = []string{"I am reading a"}
 		result, err := service.Autofill(context.Background(), &params)
 		assert.NoError(t, err)
-		assert.Empty(t, result.Answer)
 		assert.NotEmpty(t, result.Choices)
-		assert.Equal(t, 3, len(result.Choices))
+		assert.Equal(t, 1, len(result.Choices))
 		assert.Equal(t, "book", result.Choices[0])
+	})
+
+	t.Run("tag suggest movie", func(t *testing.T) {
+		params := cfg.autofillBaseParams
+		params.Config.Model = modelCfg.modelName
+		params.Context = []string{"Titanic was published in 1997."}
+		result, err := service.Autofill(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Choices)
+		assert.Equal(t, 1, len(result.Choices))
+		assert.Equal(t, "movie", result.Choices[0])
 	})
 }
