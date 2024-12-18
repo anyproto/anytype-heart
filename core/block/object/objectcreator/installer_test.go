@@ -1,6 +1,7 @@
 package objectcreator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -11,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -27,7 +29,6 @@ type objKey interface {
 func TestInstaller_queryDeletedObjects(t *testing.T) {
 	// given
 	var (
-		spaceId         = "spaceId"
 		sourceObjectIds = []string{}
 		validObjectIds  = []string{}
 	)
@@ -67,10 +68,10 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 	spc := mock_clientspace.NewMockSpace(t)
 	spc.EXPECT().Id().Return(spaceId)
 
-	s := service{objectStore: store}
+	i := service{objectStore: store}
 
 	// when
-	records, err := s.queryDeletedObjects(spc, sourceObjectIds)
+	records, err := i.queryDeletedObjects(spc, sourceObjectIds)
 
 	// then
 	assert.NoError(t, err)
@@ -84,9 +85,10 @@ func TestInstaller_reinstallObject(t *testing.T) {
 	t.Run("reinstall archived object", func(t *testing.T) {
 		// given
 		sourceDetails := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():      pbtypes.String(bundle.TypeKeyProject.BundledURL()),
-			bundle.RelationKeySpaceId.String(): pbtypes.String(addr.AnytypeMarketplaceWorkspace),
-			bundle.RelationKeyName.String():    pbtypes.String(bundle.TypeKeyProject.String()),
+			bundle.RelationKeyId.String():        pbtypes.String(bundle.TypeKeyProject.BundledURL()),
+			bundle.RelationKeySpaceId.String():   pbtypes.String(addr.AnytypeMarketplaceWorkspace),
+			bundle.RelationKeyName.String():      pbtypes.String(bundle.TypeKeyProject.String()),
+			bundle.RelationKeyUniqueKey.String(): pbtypes.String(bundle.TypeKeyProject.URL()),
 		}}
 
 		sourceObject := smarttest.New(bundle.TypeKeyProject.BundledURL())
@@ -121,6 +123,10 @@ func TestInstaller_reinstallObject(t *testing.T) {
 			assert.Equal(t, id, bundle.TypeKeyProject.URL())
 			return apply(archivedObject)
 		})
+		spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.UniqueKey) (string, error) {
+			return domain.RelationKey(key.InternalKey()).URL(), nil
+		})
+		spc.EXPECT().IsReadOnly().Return(true)
 
 		archiver := mock_detailservice.NewMockService(t)
 		archiver.EXPECT().SetIsArchived(mock.Anything, mock.Anything).RunAndReturn(func(id string, isArchived bool) error {
@@ -129,10 +135,10 @@ func TestInstaller_reinstallObject(t *testing.T) {
 			return nil
 		})
 
-		s := service{archiver: archiver}
+		i := service{archiver: archiver}
 
 		// when
-		id, _, newDetails, err := s.reinstallObject(nil, market, spc, oldDetails)
+		id, _, newDetails, err := i.reinstallObject(nil, market, spc, oldDetails)
 
 		// then
 		assert.NoError(t, err)

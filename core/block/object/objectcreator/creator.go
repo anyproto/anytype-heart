@@ -42,7 +42,7 @@ type (
 
 const CName = "objectCreator"
 
-var log = logging.Logger("object-service")
+var log = logging.Logger(CName)
 
 type Service interface {
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
