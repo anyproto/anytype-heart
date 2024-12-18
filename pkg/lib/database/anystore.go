@@ -52,7 +52,7 @@ func (s dateOnlySort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tupl
 	}
 
 	if s.reverse {
-		return tuple.Append(s.arena.NewNumberFloat64(float64(ts)))
+		return tuple.AppendInverted(s.arena.NewNumberFloat64(float64(ts)))
 	} else {
 		return tuple.Append(s.arena.NewNumberFloat64(float64(ts)))
 	}

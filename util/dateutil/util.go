@@ -10,8 +10,8 @@ import (
 const (
 	shortDateIdLayout   = "2006-01-02"
 	dateIdLayout        = "2006-01-02-15-04-05Z-0700"
-	shortDateNameLayout = "Mon, Jan 02, 2006"
-	dateNameLayout      = "Mon, Jan 02, 2006 3:04 PM"
+	shortDateNameLayout = "Mon, Jan 2, 2006"
+	dateNameLayout      = "Mon, Jan 2, 2006 3:04 PM"
 )
 
 type DateObject interface {

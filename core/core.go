@@ -76,10 +76,19 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 	return f(app.MustComponent[*collection.Service](a))
 }
 
-func getService[T any](mw *Middleware) T {
+func mustService[T any](mw *Middleware) T {
 	a := mw.applicationService.GetApp()
 	requireApp(a)
 	return app.MustComponent[T](a)
+}
+
+func getService[T any](mw *Middleware) (T, error) {
+	var empty T
+	a := mw.applicationService.GetApp()
+	if a == nil {
+		return empty, ErrNotLoggedIn
+	}
+	return app.GetComponent[T](a)
 }
 
 func requireApp(a *app.App) {

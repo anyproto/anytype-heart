@@ -10,6 +10,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -32,18 +33,18 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/metricsid"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logger.NewNamedSugared("common.editor.accountobject")
 
 const (
-	collectionName        = "account"
-	accountDocumentId     = "accountObject"
-	idKey                 = "id"
-	analyticsKey          = "analyticsId"
-	iconMigrationKey      = "iconMigration"
-	privateAnalyticsIdKey = "privateAnalyticsId"
+	collectionName    = "account"
+	accountDocumentId = "accountObject"
+	idKey             = "id"
+	analyticsKey      = "analyticsId"
+	iconMigrationKey  = "iconMigration"
 )
 
 type ProfileDetails struct {
@@ -63,7 +64,6 @@ type AccountObject interface {
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
 	GetAnalyticsId() (string, error)
-	GetPrivateAnalyticsId() string
 }
 
 type StoreDbProvider interface {
@@ -75,6 +75,7 @@ var _ AccountObject = (*accountObject)(nil)
 type accountObject struct {
 	anystoredebug.AnystoreDebug
 	smartblock.SmartBlock
+	keys        *accountdata.AccountKeys
 	bs          basic.DetailsSettable
 	state       *storestate.StoreState
 	storeSource source.Store
@@ -95,6 +96,7 @@ func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details
 
 func New(
 	sb smartblock.SmartBlock,
+	keys *accountdata.AccountKeys,
 	spaceObjects spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
@@ -103,6 +105,7 @@ func New(
 	cfg *config.Config) AccountObject {
 	return &accountObject{
 		crdtDb:     crdtDb,
+		keys:       keys,
 		bs:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService, lastUsedUpdater),
 		SmartBlock: sb,
 		cfg:        cfg,
@@ -127,7 +130,6 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	a.state = stateStore
 
 	a.AnystoreDebug = anystoredebug.New(a.SmartBlock, stateStore)
-
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
 		return fmt.Errorf("source is not a store")
@@ -148,12 +150,21 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("find id: %w", err)
 	}
 	if errors.Is(err, anystore.ErrDocNotFound) {
-		var docToInsert string
-		docToInsert, err = a.genInitialDoc(true)
-		if err != nil {
-			return fmt.Errorf("generate initial doc: %w", err)
+		var builder *storestate.Builder
+		if a.cfg.IsNewAccount() {
+			builder, err = a.genInitialDoc()
+			if err != nil {
+				return fmt.Errorf("generate initial doc: %w", err)
+			}
+			_, err = a.storeSource.PushStoreChange(ctx.Ctx, source.PushStoreChangeParams{
+				Changes: builder.ChangeSet,
+				State:   a.state,
+				Time:    time.Now(),
+			})
+		} else {
+			docToInsert := fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocumentId)
+			err = coll.Insert(ctx.Ctx, anyenc.MustParseJson(docToInsert))
 		}
-		err = coll.Insert(ctx.Ctx, anyenc.MustParseJson(docToInsert))
 		if err != nil {
 			return fmt.Errorf("insert account document: %w", err)
 		}
@@ -170,30 +181,25 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
 }
 
-// GetPrivateAnalyticsId returns the private analytics id of the account object, should not be used directly
-// only when hashing it with other data, e.g. hash(privateAnalyticsId + someData)
-func (a *accountObject) GetPrivateAnalyticsId() string {
-	val, err := a.getValue()
+func (a *accountObject) genInitialDoc() (builder *storestate.Builder, err error) {
+	builder = &storestate.Builder{}
+	analyticsId, err := metricsid.DeriveMetricsId(a.keys.SignKey)
 	if err != nil {
-		return ""
+		return
 	}
-	return string(val.GetStringBytes(privateAnalyticsIdKey))
-}
-
-func (a *accountObject) genInitialDoc(isNewAccount bool) (docToInsert string, err error) {
-	privateAnalytics, err := generatePrivateAnalyticsId()
-	if err != nil {
-		err = fmt.Errorf("generate private analytics id: %w", err)
+	newDocument := map[string]any{
+		idKey:            accountDocumentId,
+		analyticsKey:     analyticsId,
+		iconMigrationKey: "true",
 	}
-	if isNewAccount {
-		docToInsert = fmt.Sprintf(
-			`{"%s":"%s","%s":"%s","%s":"true","%s":"%s"}`,
-			idKey, accountDocumentId,
-			analyticsKey, a.cfg.AnalyticsId,
-			iconMigrationKey,
-			privateAnalyticsIdKey, privateAnalytics)
-	} else {
-		docToInsert = fmt.Sprintf(`{"%s":"%s"}`, idKey, accountDocumentId)
+	for key, val := range newDocument {
+		if str, ok := val.(string); ok {
+			val = fmt.Sprintf(`"%s"`, str)
+		}
+		err = builder.Modify(collectionName, accountDocumentId, []string{key}, pb.ModifyOp_Set, val)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -259,14 +265,6 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 func (a *accountObject) SetAnalyticsId(id string) error {
 	builder := &storestate.Builder{}
 	err := builder.Modify(collectionName, accountDocumentId, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
-	if err != nil {
-		return nil
-	}
-	privateAnalyticsId, err := generatePrivateAnalyticsId()
-	if err != nil {
-		return fmt.Errorf("generate private analytics id: %w", err)
-	}
-	err = builder.Modify(collectionName, accountDocumentId, []string{privateAnalyticsIdKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, privateAnalyticsId))
 	if err != nil {
 		return nil
 	}
@@ -381,7 +379,8 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	obj, err := coll.FindId(ctx, accountDocumentId)
+	accId := accountDocumentId
+	obj, err := coll.FindId(ctx, accId)
 	if err != nil {
 		return fmt.Errorf("find id: %w", err)
 	}

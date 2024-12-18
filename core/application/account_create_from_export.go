@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/dashboardinjector"
+	"github.com/anyproto/anytype-heart/util/metricsid"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -104,7 +105,10 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 	if profile.AnalyticsId != "" {
 		cfg.AnalyticsId = profile.AnalyticsId
 	} else {
-		cfg.AnalyticsId = metrics.GenerateAnalyticsId()
+		cfg.AnalyticsId, err = metricsid.DeriveMetricsId(res.Identity)
+		if err != nil {
+			return RecoverFromLegacyResponse{}, err
+		}
 	}
 
 	err = s.startApp(cfg, res)

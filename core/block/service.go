@@ -59,6 +59,10 @@ import (
 
 const CName = "block-service"
 
+type withVirtualBlocks interface {
+	InjectVirtualBlocks(objectId string, view *model.ObjectView)
+}
+
 var ErrUnknownObjectType = fmt.Errorf("unknown object type")
 
 var log = logging.Logger("anytype-mw-service")
@@ -195,6 +199,10 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 			log.Errorf("failed to watch status for object %s: %s", id, err)
 		}
 
+		if v, ok := ob.(withVirtualBlocks); ok {
+			v.InjectVirtualBlocks(id.ObjectID, obj)
+		}
+
 		afterHashesTime := time.Now()
 		metrics.Service.Send(&metrics.OpenBlockEvent{
 			ObjectId:       id.ObjectID,
@@ -243,7 +251,15 @@ func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects
 			b.EnabledRelationAsDependentObjects()
 		}
 		obj, err = b.Show()
-		return err
+		if err != nil {
+			return err
+		}
+
+		if v, ok := b.(withVirtualBlocks); ok {
+			v.InjectVirtualBlocks(id.ObjectID, obj)
+		}
+
+		return nil
 	})
 	return obj, err
 }
