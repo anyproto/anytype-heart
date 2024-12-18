@@ -119,21 +119,15 @@ func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 		return
 	}
 
-	m.sendOnRemoveEvent(treeId)
+	m.sendOnRemoveEvent(spaceId, []string{treeId})
 	err = spc.Remove(ctx, treeId)
 	return
 }
 
-func (m *treeManager) sendOnRemoveEvent(ids ...string) {
-	m.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectRemove{
-					ObjectRemove: &pb.EventObjectRemove{
-						Ids: ids,
-					},
-				},
-			},
+func (m *treeManager) sendOnRemoveEvent(spaceId string, ids []string) {
+	m.eventSender.Broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfObjectRemove{
+		ObjectRemove: &pb.EventObjectRemove{
+			Ids: ids,
 		},
-	})
+	}))
 }

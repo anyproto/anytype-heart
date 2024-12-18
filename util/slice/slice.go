@@ -238,6 +238,34 @@ func FilterCID(cids []string) []string {
 	})
 }
 
+func StringsInto[T ~string](from []string) []T {
+	to := make([]T, len(from))
+	for i, v := range from {
+		to[i] = T(v)
+	}
+	return to
+}
+
+func IntoStrings[T ~string](from []T) []string {
+	to := make([]string, len(from))
+	for i, v := range from {
+		to[i] = string(v)
+	}
+	return to
+}
+
+type numeric interface {
+	constraints.Integer | constraints.Float
+}
+
+func FloatsInto[T numeric](from []float64) []T {
+	to := make([]T, len(from))
+	for i, v := range from {
+		to[i] = T(v)
+	}
+	return to
+}
+
 // MergeUniqBy merges two slices with comparator. Resulting slice saves values' order and uniqueness.
 // Input slices MUST contain only unique values
 func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []T) {

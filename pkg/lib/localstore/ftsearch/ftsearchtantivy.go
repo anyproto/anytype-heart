@@ -438,8 +438,8 @@ func (f *ftSearchTantivy) buildObjectQuery(qb *tantivy.QueryBuilder, query strin
 func (f *ftSearchTantivy) buildDetailedQuery(qb *tantivy.QueryBuilder, query string) {
 	if containsChineseCharacters(query) {
 		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
-			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhrasePrefixQuery, 10.0).
-			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhraseQuery, 10.0).
+			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhrasePrefixQuery, 20.0).
+			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhraseQuery, 20.0).
 			Query(tantivy.Should, fieldTitleZh, query, tantivy.EveryTermQuery, 0.75).
 			Query(tantivy.Should, fieldTitleZh, query, tantivy.OneOfTermQuery, 0.5).
 			Query(tantivy.Should, fieldTextZh, query, tantivy.PhrasePrefixQuery, 1.0).
@@ -450,8 +450,8 @@ func (f *ftSearchTantivy) buildDetailedQuery(qb *tantivy.QueryBuilder, query str
 		)
 	} else {
 		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
-			Query(tantivy.Should, fieldTitle, query, tantivy.PhrasePrefixQuery, 10.0).
-			Query(tantivy.Should, fieldTitle, query, tantivy.PhraseQuery, 10.0).
+			Query(tantivy.Should, fieldTitle, query, tantivy.PhrasePrefixQuery, 20.0).
+			Query(tantivy.Should, fieldTitle, query, tantivy.PhraseQuery, 20.0).
 			Query(tantivy.Should, fieldTitle, query, tantivy.EveryTermQuery, 0.75).
 			Query(tantivy.Should, fieldTitle, query, tantivy.OneOfTermQuery, 0.5).
 			Query(tantivy.Should, fieldText, query, tantivy.PhrasePrefixQuery, 1.0).
