@@ -349,7 +349,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 
 	// TODO: check if we can use apply fast one
-	if _, _, err = state.ApplyState(st, false); err != nil {
+	if _, _, err = state.ApplyState(s.spaceID, st, false); err != nil {
 		return
 	}
 	return st, nil
@@ -623,7 +623,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		return
 	}
 	if applyState {
-		_, _, err = state.ApplyStateFastOne(st)
+		_, _, err = state.ApplyStateFastOne(spaceId, st)
 		if err != nil {
 			return
 		}

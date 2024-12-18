@@ -379,14 +379,12 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
 	sb.sendEvent(&pb.Event{
 		ContextId: sb.Id(),
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectClose{
+		Messages: []*pb.EventMessage{
+			event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectClose{
 				ObjectClose: &pb.EventObjectClose{
 					Id: sb.Id(),
-				},
-			},
-		}},
-	})
+				}}),
+		}})
 	return nil
 }
 
@@ -397,7 +395,11 @@ func (sb *smartBlock) updateRestrictions() {
 		return
 	}
 	sb.restrictions = r
-	sb.SendEvent([]*pb.EventMessage{{Value: &pb.EventMessageValueOfObjectRestrictionsSet{ObjectRestrictionsSet: &pb.EventObjectRestrictionsSet{Id: sb.Id(), Restrictions: r.Proto()}}}})
+	sb.SendEvent([]*pb.EventMessage{
+		event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectRestrictionsSet{
+			ObjectRestrictionsSet: &pb.EventObjectRestrictionsSet{Id: sb.Id(), Restrictions: r.Proto()},
+		}),
+	})
 }
 
 func (sb *smartBlock) SetIsDeleted() {
@@ -562,7 +564,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 		return
 	}
 	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	msgs := []*pb.EventMessage{}
+	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff := pbtypes.StructDiff(v.Details, details)
 		if id == sb.Id() {
@@ -570,16 +572,14 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
 		}
 
-		msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)
+		msgs = append(msgs, state.StructDiffIntoEvents(sb.SpaceID(), id, diff)...)
 	} else {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsSet{
-				ObjectDetailsSet: &pb.EventObjectDetailsSet{
-					Id:      id,
-					Details: details,
-				},
+		msgs = append(msgs, event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      id,
+				Details: details,
 			},
-		})
+		}))
 	}
 	sb.lastDepDetails[id] = &pb.EventObjectDetailsSet{
 		Id:      id,
@@ -709,7 +709,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
 
-	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, !sb.disableLayouts)
 	if err != nil {
 		return
 	}
@@ -1071,7 +1071,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
-	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, !sb.disableLayouts)
 	if err != nil {
 		return err
 	}
@@ -1106,7 +1106,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
-	msgs, _, err := state.ApplyState(d.(*state.State), !sb.disableLayouts)
+	msgs, _, err := state.ApplyState(sb.SpaceID(), d.(*state.State), !sb.disableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
 		// can't make diff - reopen doc

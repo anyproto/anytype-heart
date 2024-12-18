@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -411,25 +412,25 @@ func (s *State) SearchText() string {
 	return builder.String()
 }
 
-func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
-	return s.apply(false, false, withLayouts)
+func ApplyState(spaceId string, s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
+	return s.apply(spaceId, false, false, withLayouts)
 }
 
-func ApplyStateFast(s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
-	return s.apply(true, false, false)
+func ApplyStateFast(spaceId string, s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
+	return s.apply(spaceId, true, false, false)
 }
 
-func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
-	return s.apply(true, true, false)
+func ApplyStateFastOne(spaceId string, s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
+	return s.apply(spaceId, true, true, false)
 }
 
-func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
+func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
 			return
 		}
-		return s.parent.apply(fast, one, withLayouts)
+		return s.parent.apply("", fast, one, withLayouts)
 	}
 	if fast {
 		return
@@ -485,13 +486,13 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	flushNewBlocks := func() {
 		if len(newBlocks) > 0 {
-			msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockAdd{
+			msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId,
+				&pb.EventMessageValueOfBlockAdd{
 					BlockAdd: &pb.EventBlockAdd{
 						Blocks: newBlocks,
 					},
-				},
-			}})
+				}),
+			})
 		}
 		newBlocks = nil
 	}
@@ -515,7 +516,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 					db.DetailsInit(s)
 				}
 			}
-			diff, err := orig.Diff(b)
+			diff, err := orig.Diff(spaceId, b)
 			if err != nil {
 				return nil, undo.Action{}, err
 			}
@@ -551,11 +552,9 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 	if len(toRemove) > 0 {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
-			Value: &pb.EventMessageValueOfBlockDelete{
-				BlockDelete: &pb.EventBlockDelete{BlockIds: toRemove},
-			},
-		}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(s.SpaceID(), &pb.EventMessageValueOfBlockDelete{
+			BlockDelete: &pb.EventBlockDelete{BlockIds: toRemove},
+		})})
 	}
 
 	if s.parent != nil && s.relationLinks != nil {
@@ -570,26 +569,24 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 
 		if len(removed) > 0 {
 			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfObjectRelationsRemove{
-						ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
-							Id:           s.RootId(),
-							RelationKeys: removed,
-						},
+				event.NewMessage(s.SpaceID(), &pb.EventMessageValueOfObjectRelationsRemove{
+					ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
+						Id:           s.RootId(),
+						RelationKeys: removed,
 					},
 				},
+				),
 			})...)
 		}
 		if len(added) > 0 {
 			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfObjectRelationsAmend{
-						ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
-							Id:            s.RootId(),
-							RelationLinks: added,
-						},
+				event.NewMessage(s.SpaceID(), &pb.EventMessageValueOfObjectRelationsAmend{
+					ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
+						Id:            s.RootId(),
+						RelationLinks: added,
 					},
 				},
+				),
 			})...)
 		}
 	}
@@ -623,7 +620,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		prev := s.parent.Details()
 		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
 			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev, false), After: pbtypes.CopyStruct(s.details, false)}
-			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
+			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.SpaceID(), s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
 			s.parent.details = s.details
@@ -653,7 +650,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
 		if diff := pbtypes.StructDiff(prev, s.localDetails); diff != nil {
-			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(s.RootId(), diff))...)
+			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(spaceId, s.RootId(), diff))...)
 			s.parent.localDetails = s.localDetails
 		} else if !s.localDetails.Equal(s.parent.localDetails) {
 			s.parent.localDetails = s.localDetails
@@ -1211,7 +1208,8 @@ func (s *State) CheckRestrictions() (err error) {
 		}
 		if rest.Edit {
 			if ob := s.parent.Pick(id); ob != nil {
-				if msgs, _ := ob.Diff(b); len(msgs) > 0 {
+				// SpaceId is empty because only the fact that there is any diff matters here
+				if msgs, _ := ob.Diff("", b); len(msgs) > 0 {
 					return ErrRestricted
 				}
 			}

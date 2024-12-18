@@ -136,17 +136,11 @@ func (p *Profile) SetDetails(ctx session.Context, details []*model.Detail, showE
 		return
 	}
 
-	p.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfAccountDetails{
-					AccountDetails: &pb.EventAccountDetails{
-						ProfileId: p.Id(),
-						Details:   p.Details(),
-					},
-				},
-			},
+	p.eventSender.Broadcast(event.NewEventSingleMessage(p.SpaceID(), &pb.EventMessageValueOfAccountDetails{
+		AccountDetails: &pb.EventAccountDetails{
+			ProfileId: p.Id(),
+			Details:   p.Details(),
 		},
-	})
+	}))
 	return
 }

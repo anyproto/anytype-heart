@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
@@ -329,65 +330,55 @@ func TestUnsubscribe(t *testing.T) {
 }
 
 func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectDetailsSet{
-			ObjectDetailsSet: &pb.EventObjectDetailsSet{
-				Id: pbtypes.GetString(details, bundle.RelationKeyId.String()),
-				SubIds: []string{
-					subId,
-				},
-				Details: details,
+	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsSet{
+		ObjectDetailsSet: &pb.EventObjectDetailsSet{
+			Id: pbtypes.GetString(details, bundle.RelationKeyId.String()),
+			SubIds: []string{
+				subId,
 			},
+			Details: details,
 		},
-	}
+	})
 }
 
 func makeDetailsAmendEvent(subId string, id string, details []*pb.EventObjectDetailsAmendKeyValue) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectDetailsAmend{
-			ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-				Id: id,
-				SubIds: []string{
-					subId,
-				},
-				Details: details,
+	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsAmend{
+		ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+			Id: id,
+			SubIds: []string{
+				subId,
 			},
+			Details: details,
 		},
-	}
+	})
 }
 
 func makeAddEvent(subId string, id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfSubscriptionAdd{
-			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
-				SubId:   subId,
-				Id:      id,
-				AfterId: "",
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionAdd{
+		SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+			SubId:   subId,
+			Id:      id,
+			AfterId: "",
 		},
-	}
+	})
 }
 
 func makeCountersEvent(subId string, total int) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfSubscriptionCounters{
-			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
-				SubId: subId,
-				Total: int64(total),
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionCounters{
+		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+			SubId: subId,
+			Total: int64(total),
 		},
-	}
+	})
 }
 
 func makeRemoveEvent(subId string, id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfSubscriptionRemove{
-			SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
-				SubId: subId,
-				Id:    id,
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionRemove{
+		SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+			SubId: subId,
+			Id:    id,
 		},
-	}
+	})
 }
 
 type dummyCollectionService struct{}

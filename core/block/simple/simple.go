@@ -26,7 +26,7 @@ func RegisterFallback(c BlockCreator) {
 type Block interface {
 	Model() *model.Block
 	ModelToSave() *model.Block
-	Diff(block Block) (msgs []EventMessage, err error)
+	Diff(spaceId string, block Block) (msgs []EventMessage, err error)
 	String() string
 	Copy() Block
 	Validate() error
