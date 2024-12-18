@@ -1,0 +1,10 @@
+{
+  "experiences": [
+    {
+      "title": "Get Started",
+      "name": "get_started",
+      "downloadLink": "http://127.0.0.1:37373/get_started.zip",
+      "hash": "hash1"
+    }
+  ]
+}
