@@ -38,7 +38,7 @@ var relationsSkipList = []domain.RelationKey{
 }
 
 type Service interface {
-	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error)
+	ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error)
 }
 
 type Builder struct {

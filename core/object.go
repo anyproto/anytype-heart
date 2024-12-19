@@ -367,7 +367,15 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		)
 	}
 
-	nodes, edges, err := mustService[objectgraph.Service](mw).ObjectGraph(req)
+	nodes, edges, err := mustService[objectgraph.Service](mw).ObjectGraph(objectgraph.ObjectGraphRequest{
+		Filters:          database.FiltersFromProto(req.Filters),
+		Limit:            req.Limit,
+		ObjectTypeFilter: req.ObjectTypeFilter,
+		Keys:             req.Keys,
+		SpaceId:          req.SpaceId,
+		CollectionId:     req.CollectionId,
+		SetSource:        req.SetSource,
+	})
 	if err != nil {
 		return unknownError(err)
 	}
