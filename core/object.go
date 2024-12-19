@@ -114,7 +114,11 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	var records2 = make([]*domain.Details, 0, len(records))
 	for _, rec := range records {
-		records2 = append(records2, rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
+		if len(req.Keys) == 0 {
+			records2 = append(records2, rec.Details)
+		} else {
+			records2 = append(records2, rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
+		}
 	}
 
 	protoRecords := lo.Map(records2, func(item *domain.Details, _ int) *types.Struct {
