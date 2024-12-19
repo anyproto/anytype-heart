@@ -223,7 +223,7 @@ definitions:
         example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
         type: string
       icon:
-        example: data:image/png;base64, <base64-encoded-image>
+        example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100
         type: string
       id:
         example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
@@ -265,7 +265,7 @@ definitions:
         example: john.any
         type: string
       icon:
-        example: data:image/png;base64, <base64-encoded-image>
+        example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100
         type: string
       id:
         example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
@@ -360,7 +360,7 @@ paths:
         type: string
       - description: The challenge ID
         in: query
-        name: challengeId
+        name: challenge_id
         required: true
         type: string
       produces:

@@ -75,7 +75,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "The challenge ID",
-                        "name": "challengeId",
+                        "name": "challenge_id",
                         "in": "query",
                         "required": true
                     }
@@ -1321,7 +1321,7 @@ const docTemplate = `{
                 },
                 "icon": {
                     "type": "string",
-                    "example": "data:image/png;base64, \u003cbase64-encoded-image\u003e"
+                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
                 },
                 "id": {
                     "type": "string",
@@ -1378,7 +1378,7 @@ const docTemplate = `{
                 },
                 "icon": {
                     "type": "string",
-                    "example": "data:image/png;base64, \u003cbase64-encoded-image\u003e"
+                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
                 },
                 "id": {
                     "type": "string",

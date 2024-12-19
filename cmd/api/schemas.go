@@ -1,5 +1,14 @@
 package api
 
+type AuthDisplayCodeResponse struct {
+	ChallengeId string `json:"challenge_id" example:"67647f5ecda913e9a2e11b26"`
+}
+
+type AuthTokenResponse struct {
+	SessionToken string `json:"session_token" example:""`
+	AppKey       string `json:"app_key" example:""`
+}
+
 type Space struct {
 	Type                   string `json:"type" example:"space"`
 	Id                     string `json:"id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"crypto/rand"
 	"math/big"
 	"net/http"
@@ -43,15 +42,13 @@ type AddMessageRequest struct {
 //	@Failure	502	{object}	ServerError	"Internal server error"
 //	@Router		/auth/displayCode [post]
 func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
-	// Call AccountLocalLinkNewChallenge to display code modal
-	ctx := context.Background()
-	resp := a.mw.AccountLocalLinkNewChallenge(ctx, &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: "api-test"})
+	resp := a.mw.AccountLocalLinkNewChallenge(c.Request.Context(), &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: "api-test"})
 
 	if resp.Error.Code != pb.RpcAccountLocalLinkNewChallengeResponseError_NULL {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate a new challenge."})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"challengeId": resp.ChallengeId})
+	c.JSON(http.StatusOK, AuthDisplayCodeResponse{ChallengeId: resp.ChallengeId})
 }
 
 // authTokenHandler retrieves an authentication token using a code and challenge ID
@@ -60,16 +57,16 @@ func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
-//	@Param		code		query		string				true	"The code retrieved from Anytype Desktop app"
-//	@Param		challengeId	query		string				true	"The challenge ID"
-//	@Success	200			{object}	map[string]string	"Access and refresh tokens"
-//	@Failure	400			{object}	ValidationError		"Invalid input"
-//	@Failure	502			{object}	ServerError			"Internal server error"
+//	@Param		code			query		string				true	"The code retrieved from Anytype Desktop app"
+//	@Param		challenge_id	query		string				true	"The challenge ID"
+//	@Success	200				{object}	map[string]string	"Access and refresh tokens"
+//	@Failure	400				{object}	ValidationError		"Invalid input"
+//	@Failure	502				{object}	ServerError			"Internal server error"
 //	@Router		/auth/token [get]
 func (a *ApiServer) authTokenHandler(c *gin.Context) {
 	// Call AccountLocalLinkSolveChallenge to retrieve session token and app key
-	resp := a.mw.AccountLocalLinkSolveChallenge(context.Background(), &pb.RpcAccountLocalLinkSolveChallengeRequest{
-		ChallengeId: c.Query("challengeId"),
+	resp := a.mw.AccountLocalLinkSolveChallenge(c.Request.Context(), &pb.RpcAccountLocalLinkSolveChallengeRequest{
+		ChallengeId: c.Query("challenge_id"),
 		Answer:      c.Query("code"),
 	})
 
@@ -78,9 +75,9 @@ func (a *ApiServer) authTokenHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"sessionToken": resp.SessionToken,
-		"appKey":       resp.AppKey,
+	c.JSON(http.StatusOK, AuthTokenResponse{
+		SessionToken: resp.SessionToken,
+		AppKey:       resp.AppKey,
 	})
 }
 
@@ -101,8 +98,8 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
 
-	// Call ObjectSearch for all objects of type spaceView with pagination
-	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	// Call ObjectSearch for all objects of type spaceView
+	resp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
 		SpaceId: a.accountInfo.TechSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -184,7 +181,7 @@ func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 	}
 
 	// Create new workspace with a random icon and import default use case
-	resp := a.mw.WorkspaceCreate(context.Background(), &pb.RpcWorkspaceCreateRequest{
+	resp := a.mw.WorkspaceCreate(c.Request.Context(), &pb.RpcWorkspaceCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				"iconOption": {Kind: &types.Value_NumberValue{NumberValue: float64(iconOption.Int64())}},
@@ -226,7 +223,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 	limit := c.GetInt("limit")
 
 	// Call ObjectSearch for all objects of type participant
-	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	resp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -300,7 +297,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
 
-	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	resp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -393,7 +390,7 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
 	objectId := c.Param("object_id")
 
-	resp := a.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+	resp := a.mw.ObjectShow(c.Request.Context(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
 	})
@@ -449,7 +446,7 @@ func (a *ApiServer) createObjectHandler(c *gin.Context) {
 		return
 	}
 
-	resp := a.mw.ObjectCreate(context.Background(), &pb.RpcObjectCreateRequest{
+	resp := a.mw.ObjectCreate(c.Request.Context(), &pb.RpcObjectCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				"name":      {Kind: &types.Value_StringValue{StringValue: request.Name}},
@@ -523,7 +520,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
 
-	resp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	resp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -594,7 +591,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	limit := c.GetInt("limit")
 
 	// First, determine the type ID of "ot-template" in the space
-	templateTypeIdResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	templateTypeIdResp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -619,7 +616,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	templateTypeId := templateTypeIdResp.Records[0].Fields["id"].GetStringValue()
 
 	// Then, search all objects of the template type and filter by the target object type
-	templateObjectsResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	templateObjectsResp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -653,7 +650,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	// Finally, open each template and populate the response
 	templates := make([]ObjectTemplate, 0, len(templateIds))
 	for _, templateId := range templateIds {
-		templateResp := a.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		templateResp := a.mw.ObjectShow(c.Request.Context(), &pb.RpcObjectShowRequest{
 			SpaceId:  spaceId,
 			ObjectId: templateId,
 		})
@@ -695,7 +692,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	limit := c.GetInt("limit")
 
 	// First, call ObjectSearch for all objects of type spaceView
-	spaceResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	spaceResp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
 		SpaceId: a.accountInfo.TechSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -770,7 +767,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	searchResults := make([]Object, 0)
 	for _, spaceRecord := range spaceResp.Records {
 		spaceId := spaceRecord.Fields["targetSpaceId"].GetStringValue()
-		objectResp := a.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		objectResp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
 			SpaceId: spaceId,
 			Filters: filters,
 			Sorts: []*model.BlockContentDataviewSort{{
@@ -864,7 +861,7 @@ func (a *ApiServer) getChatMessagesHandler(c *gin.Context) {
 		return
 	}
 
-	lastMessages := a.mw.ChatSubscribeLastMessages(context.Background(), &pb.RpcChatSubscribeLastMessagesRequest{
+	lastMessages := a.mw.ChatSubscribeLastMessages(c.Request.Context(), &pb.RpcChatSubscribeLastMessagesRequest{
 		ChatObjectId: chatId,
 		Limit:        int32(limit),
 	})
@@ -961,7 +958,7 @@ func (a *ApiServer) addChatMessageHandler(c *gin.Context) {
 		return
 	}
 
-	resp := a.mw.ChatAddMessage(context.Background(), &pb.RpcChatAddMessageRequest{
+	resp := a.mw.ChatAddMessage(c.Request.Context(), &pb.RpcChatAddMessageRequest{
 		ChatObjectId: chatId,
 		Message: &model.ChatMessage{
 			Id:               "",
