@@ -33,6 +33,10 @@ var (
 		bundle.RelationKeyLinks,
 	}
 
+	// relationsToExclude = []domain.RelationKey{
+	// 	bundle.RelationKeyDescription,
+	// }
+
 	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
 )
 
@@ -113,7 +117,6 @@ func fillRecommendedRelations(ctx context.Context, spc clientspace.Space, detail
 }
 
 func getRelationKeysFromDetails(details *domain.Details) ([]domain.RelationKey, error) {
-	var keys []domain.RelationKey
 	bundledRelationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)
 	if len(bundledRelationIds) == 0 {
 		rawRecommendedLayout := details.GetInt64(bundle.RelationKeyRecommendedLayout)
@@ -122,24 +125,29 @@ func getRelationKeysFromDetails(details *domain.Details) ([]domain.RelationKey, 
 		if err != nil {
 			return nil, fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
 		}
-		keys = make([]domain.RelationKey, 0, len(recommendedLayout.RequiredRelations))
+		keys := make([]domain.RelationKey, 0, len(recommendedLayout.RequiredRelations))
 		for _, rel := range recommendedLayout.RequiredRelations {
 			keys = append(keys, domain.RelationKey(rel.Key))
 		}
-	} else {
-		keys = make([]domain.RelationKey, 0, len(bundledRelationIds))
-		for i, id := range bundledRelationIds {
-			key, err := bundle.RelationKeyFromID(id)
-			if err == nil {
+		return keys, nil
+	}
+
+	keys := make([]domain.RelationKey, 0, len(bundledRelationIds))
+	for i, id := range bundledRelationIds {
+		key, err := bundle.RelationKeyFromID(id)
+		if err == nil {
+			// TODO: use Contains when we have more relations to exclude
+			// if !slices.Contains(relationsToExclude, key) {
+			if key != bundle.RelationKeyDescription {
 				keys = append(keys, key)
-				continue
 			}
-			if i == 0 {
-				// if we fail to parse 1st bundled relation id, details are already filled with correct ids
-				return nil, errRecommendedRelationsAlreadyFilled
-			}
-			return nil, fmt.Errorf("relation key from id: %w", err)
+			continue
 		}
+		if i == 0 {
+			// if we fail to parse 1st bundled relation id, details are already filled with correct ids
+			return nil, errRecommendedRelationsAlreadyFilled
+		}
+		return nil, fmt.Errorf("relation key from id: %w", err)
 	}
 	return keys, nil
 }

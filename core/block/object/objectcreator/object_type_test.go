@@ -57,6 +57,11 @@ func TestFillRecommendedRelations(t *testing.T) {
 			[]string{bundle.RelationKeyBacklinks.BundledURL(), bundle.RelationKeyAddedDate.BundledURL(), bundle.RelationKeyCreatedDate.BundledURL()},
 			lo.Uniq(append([]string{bundle.RelationKeyAddedDate.URL(), bundle.RelationKeyCreatedDate.URL()}, defaultRecRelIds...)),
 		},
+		{
+			"exclude description",
+			[]string{bundle.RelationKeyAssignee.BundledURL(), bundle.RelationKeyDescription.BundledURL()},
+			append([]string{bundle.RelationKeyAssignee.URL()}, defaultRecRelIds...),
+		},
 	} {
 		t.Run(fmt.Sprintf("from source: %s", tc.name), func(t *testing.T) {
 			// given
