@@ -2,23 +2,28 @@ package detailservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -91,6 +96,107 @@ func (s *service) objectTypeSetRelations(
 		st.SetDetailAndBundledRelation(relationToSet, pbtypes.StringList(relationList))
 		return b.Apply(st)
 	})
+}
+
+func (s *service) ObjectTypeSetLayout(objectTypeId string, layout int64) error {
+	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
+		return ErrBundledTypeIsReadonly
+	}
+
+	// 1. set layout to object type
+	err := cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedLayout, pbtypes.Int64(layout))
+		return b.Apply(st)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set recommended layout: %w", err)
+	}
+
+	spaceId, err := s.resolver.ResolveSpaceID(objectTypeId)
+	if err != nil {
+		return fmt.Errorf("failed to resolve space: %w", err)
+	}
+
+	// TODO: we should do operations below Async and with context, so separate service would be needed
+
+	// object types are not cross-space
+	index := s.store.SpaceIndex(spaceId)
+	records, err := index.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(objectTypeId),
+		},
+	}})
+	if err != nil {
+		return fmt.Errorf("failed to get objects of single type: %w", err)
+	}
+
+	spc, err := s.spaceService.Get(context.Background(), spaceId)
+	if err != nil {
+		return fmt.Errorf("failed to get space: %w", err)
+	}
+
+	var resultErr error
+	for _, record := range records {
+		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		if id == "" {
+			continue
+		}
+		if _, found := record.Details.Fields[bundle.RelationKeyLayout.String()]; found {
+			// we should delete layout from object, that's why we apply changes even if object is not in cache
+			err = cache.Do(s.objectGetter, id, func(b smartblock.SmartBlock) error {
+				st := b.NewState()
+				st.RemoveDetail(bundle.RelationKeyLayout.String())
+				st.SetDetail(bundle.RelationKeyResolvedLayout.String(), pbtypes.Int64(layout))
+				return b.Apply(st)
+			})
+			if err != nil {
+				resultErr = errors.Join(resultErr, err)
+			}
+			continue
+		}
+
+		err = spc.DoLockedIfNotExists(id, func() error {
+			return index.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+				if details == nil || details.Fields == nil {
+					return nil, false, nil
+				}
+				if pbtypes.GetInt64(details, bundle.RelationKeyResolvedLayout.String()) == layout {
+					return nil, false, nil
+				}
+				details.Fields[bundle.RelationKeyResolvedLayout.String()] = pbtypes.Int64(layout)
+				return details, true, nil
+			})
+		})
+
+		if err == nil {
+			continue
+		}
+
+		if !errors.Is(err, ocache.ErrExists) {
+			resultErr = errors.Join(resultErr, err)
+			continue
+		}
+
+		err = spc.Do(id, func(b smartblock.SmartBlock) error {
+			if cr, ok := b.(source.ChangeReceiver); ok {
+				return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
+					st := d.NewState()
+					st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(layout))
+					return st, nil, nil
+				})
+			}
+			// do no Apply. StateAppend sends the event and runs reindex
+			return nil
+		})
+		if err != nil {
+			resultErr = errors.Join(resultErr, err)
+		}
+	}
+
+	return resultErr
 }
 
 func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {

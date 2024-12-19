@@ -76,6 +76,20 @@ func (mw *Middleware) ObjectTypeRecommendedFeaturedRelationsSet(_ context.Contex
 	}
 }
 
+func (mw *Middleware) ObjectTypeRecommendedLayoutSet(_ context.Context, req *pb.RpcObjectTypeRecommendedLayoutSetRequest) *pb.RpcObjectTypeRecommendedLayoutSetResponse {
+	detailsService := getService[detailservice.Service](mw)
+	err := detailsService.ObjectTypeSetLayout(req.TypeObjectId, int64(req.Layout))
+	code := mapErrorCode(err,
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedLayoutSetResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeRecommendedLayoutSetResponse{
+		Error: &pb.RpcObjectTypeRecommendedLayoutSetResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
 	response := func(code pb.RpcRelationListRemoveOptionResponseErrorCode, err error) *pb.RpcRelationListRemoveOptionResponse {
 		if err != nil {

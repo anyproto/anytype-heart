@@ -131,8 +131,14 @@ func (s *service) createObjectInSpace(
 	case bundle.TypeKeyBookmark:
 		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
 	case bundle.TypeKeySet:
+		// TODO: this logic should be reviewed as:
+		// - set and collection are not the only types that could have set and collection layout
+		// - we should exclude layout relation prior to resolvedLayout
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
 	case bundle.TypeKeyCollection:
+		// TODO: this logic should be reviewed as:
+		// - set and collection are not the only types that could have set and collection layout
+		// - we should exclude layout relation prior to resolvedLayout
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)

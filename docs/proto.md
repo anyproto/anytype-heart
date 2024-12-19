@@ -1068,6 +1068,10 @@
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error)
+    - [Rpc.ObjectType.Recommended.LayoutSet](#anytype-Rpc-ObjectType-Recommended-LayoutSet)
+    - [Rpc.ObjectType.Recommended.LayoutSet.Request](#anytype-Rpc-ObjectType-Recommended-LayoutSet-Request)
+    - [Rpc.ObjectType.Recommended.LayoutSet.Response](#anytype-Rpc-ObjectType-Recommended-LayoutSet-Response)
+    - [Rpc.ObjectType.Recommended.LayoutSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-LayoutSet-Response-Error)
     - [Rpc.ObjectType.Recommended.RelationsSet](#anytype-Rpc-ObjectType-Recommended-RelationsSet)
     - [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request)
     - [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response)
@@ -1511,6 +1515,7 @@
     - [Rpc.ObjectRelation.ListAvailable.Response.Error.Code](#anytype-Rpc-ObjectRelation-ListAvailable-Response-Error-Code)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code)
+    - [Rpc.ObjectType.Recommended.LayoutSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-LayoutSet-Response-Error-Code)
     - [Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
@@ -2086,6 +2091,7 @@
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
 | ObjectTypeRecommendedRelationsSet | [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request) | [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response) |  |
 | ObjectTypeRecommendedFeaturedRelationsSet | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request) | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response) |  |
+| ObjectTypeRecommendedLayoutSet | [Rpc.ObjectType.Recommended.LayoutSet.Request](#anytype-Rpc-ObjectType-Recommended-LayoutSet-Request) | [Rpc.ObjectType.Recommended.LayoutSet.Response](#anytype-Rpc-ObjectType-Recommended-LayoutSet-Response) |  |
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
@@ -17762,6 +17768,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-ObjectType-Recommended-LayoutSet"></a>
+
+### Rpc.ObjectType.Recommended.LayoutSet
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-LayoutSet-Request"></a>
+
+### Rpc.ObjectType.Recommended.LayoutSet.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| typeObjectId | [string](#string) |  |  |
+| layout | [model.ObjectType.Layout](#anytype-model-ObjectType-Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-LayoutSet-Response"></a>
+
+### Rpc.ObjectType.Recommended.LayoutSet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Recommended.LayoutSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-LayoutSet-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-LayoutSet-Response-Error"></a>
+
+### Rpc.ObjectType.Recommended.LayoutSet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Recommended.LayoutSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-LayoutSet-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-ObjectType-Recommended-RelationsSet"></a>
 
 ### Rpc.ObjectType.Recommended.RelationsSet
@@ -23890,6 +23953,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| READONLY_OBJECT_TYPE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-LayoutSet-Response-Error-Code"></a>
+
+### Rpc.ObjectType.Recommended.LayoutSet.Response.Error.Code
 
 
 | Name | Number | Description |

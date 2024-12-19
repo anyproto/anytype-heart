@@ -3,6 +3,7 @@ package basic
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -26,6 +27,10 @@ import (
 )
 
 var log = logging.Logger("anytype-mw-editor-basic")
+
+var relationsProhibitedToUpdate = []domain.RelationKey{
+	bundle.RelationKeyRecommendedLayout,
+}
 
 type detailUpdate struct {
 	key   string
@@ -56,6 +61,13 @@ func (bs *basic) setDetails(ctx session.Context, details []*model.Detail, showEv
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
 	updates, updatedKeys := bs.collectDetailUpdates(details, s)
+
+	for _, rel := range relationsProhibitedToUpdate {
+		if slices.Contains(updatedKeys, rel) {
+			return nil, fmt.Errorf("it is prohibited to update %s detail via ObjectSetDetails", rel.String())
+		}
+	}
+
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
