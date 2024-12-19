@@ -127,6 +127,11 @@ func (s *Service) SaveLog(srcPath, destDir string) (string, error) {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}
 
+	err = os.Chmod(targetFile.Name(), 0664)
+	if err != nil {
+		return "", err
+	}
+
 	file, err := os.Open(srcPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open source file: %w", err)
