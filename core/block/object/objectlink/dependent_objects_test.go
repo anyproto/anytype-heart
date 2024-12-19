@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fakeConverter struct {
@@ -297,11 +296,11 @@ func buildStateWithLinks() *state.State {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", pbtypes.String("file"))
-	stateWithLinks.SetDetail("relation2", pbtypes.String("option1"))
-	stateWithLinks.SetDetail("relation3", pbtypes.String("option2"))
-	stateWithLinks.SetDetail("relation4", pbtypes.String("option3"))
-	stateWithLinks.SetDetail("relation5", pbtypes.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail("relation1", domain.StringList([]string{"file"}))
+	stateWithLinks.SetDetail("relation2", domain.StringList([]string{"option1"}))
+	stateWithLinks.SetDetail("relation3", domain.StringList([]string{"option2"}))
+	stateWithLinks.SetDetail("relation4", domain.StringList([]string{"option3"}))
+	stateWithLinks.SetDetail("relation5", domain.Int64(time.Now().Unix()))
 
 	return stateWithLinks
 }
@@ -347,10 +346,10 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", pbtypes.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String("creator"))
-	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String("lastModifiedBy"))
+	stateWithLinks.SetDetail("relation1", domain.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreator, domain.String("creator"))
+	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy, domain.String("lastModifiedBy"))
 	converter := &fakeConverter{}
 
 	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {

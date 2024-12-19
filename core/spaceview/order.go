@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "core.spaceview.ordersetter"
@@ -65,7 +64,7 @@ func (o *orderSetter) setInitOrder(spaceViewId string) error {
 func (o *orderSetter) UnsetOrder(spaceViewId string) error {
 	return cache.Do(o.objectGetter, spaceViewId, func(sb smartblock.SmartBlock) error {
 		state := sb.NewState()
-		state.RemoveDetail(bundle.RelationKeySpaceOrder.String())
+		state.RemoveDetail(bundle.RelationKeySpaceOrder)
 		return sb.Apply(state)
 	})
 }
@@ -76,7 +75,7 @@ func (o *orderSetter) setViewAtBeginning(spaceViewId, afterViewId string) error 
 		err         error
 	)
 	err = cache.Do[*editor.SpaceView](o.objectGetter, afterViewId, func(sv *editor.SpaceView) error {
-		nextOrderID = pbtypes.GetString(sv.Details(), bundle.RelationKeySpaceOrder.String())
+		nextOrderID = sv.Details().GetString(bundle.RelationKeySpaceOrder)
 		return nil
 	})
 	if err != nil {
@@ -95,7 +94,7 @@ func (o *orderSetter) setViewAtEnd(order []string, spaceViewId, afterSpaceView s
 	var lastOrderId string
 	// get the order for the previous view in the list.
 	cacheErr := cache.Do[*editor.SpaceView](o.objectGetter, afterSpaceView, func(sv *editor.SpaceView) error {
-		lastOrderId = pbtypes.GetString(sv.Details(), bundle.RelationKeySpaceOrder.String())
+		lastOrderId = sv.Details().GetString(bundle.RelationKeySpaceOrder)
 		return nil
 	})
 	if cacheErr != nil {
@@ -114,7 +113,7 @@ func (o *orderSetter) setBetween(order []string, spaceViewId string) error {
 	prevViewId, nextViewId := o.findNeighborViews(order, spaceViewId)
 	var prevOrderId, nextOrderId string
 	cacheErr := cache.Do[*editor.SpaceView](o.objectGetter, prevViewId, func(sv *editor.SpaceView) error {
-		prevOrderId = pbtypes.GetString(sv.Details(), bundle.RelationKeySpaceOrder.String())
+		prevOrderId = sv.Details().GetString(bundle.RelationKeySpaceOrder)
 		return nil
 	})
 	if cacheErr != nil {
@@ -124,7 +123,7 @@ func (o *orderSetter) setBetween(order []string, spaceViewId string) error {
 		return o.setOrderForPreviousViews(order, spaceViewId)
 	}
 	cacheErr = cache.Do[*editor.SpaceView](o.objectGetter, nextViewId, func(sv *editor.SpaceView) error {
-		nextOrderId = pbtypes.GetString(sv.Details(), bundle.RelationKeySpaceOrder.String())
+		nextOrderId = sv.Details().GetString(bundle.RelationKeySpaceOrder)
 		return nil
 	})
 	if cacheErr != nil {

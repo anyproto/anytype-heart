@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -38,8 +36,8 @@ var (
 	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
 )
 
-func (s *service) createObjectType(ctx context.Context, space clientspace.Space, details *types.Struct) (id string, newDetails *types.Struct, err error) {
-	if details == nil || details.Fields == nil {
+func (s *service) createObjectType(ctx context.Context, space clientspace.Space, details *domain.Details) (id string, newDetails *domain.Details, err error) {
+	if details == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
 
@@ -47,10 +45,10 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
-	object := pbtypes.CopyStruct(details, false)
+	object := details.Copy()
 
-	if _, ok := object.Fields[bundle.RelationKeyRecommendedLayout.String()]; !ok {
-		object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(model.ObjectType_basic))
+	if !object.Has(bundle.RelationKeyRecommendedLayout) {
+		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
 	}
 
 	keys, isAlreadyFilled, err := fillRecommendedRelations(ctx, space, object)
@@ -64,8 +62,8 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		}
 	}
 
-	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+	object.SetString(bundle.RelationKeyId, id)
+	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
@@ -84,7 +82,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 
 // fillRecommendedRelations fills recommendedRelations and recommendedFeaturedRelations based on object's details
 // If these relations are already filled with correct ids, isAlreadyFilled = true is returned
-func fillRecommendedRelations(ctx context.Context, spc clientspace.Space, details *types.Struct) (keys []domain.RelationKey, isAlreadyFilled bool, err error) {
+func fillRecommendedRelations(ctx context.Context, spc clientspace.Space, details *domain.Details) (keys []domain.RelationKey, isAlreadyFilled bool, err error) {
 	keys, err = getRelationKeysFromDetails(details)
 	if err != nil {
 		if errors.Is(err, errRecommendedRelationsAlreadyFilled) {
@@ -103,22 +101,22 @@ func fillRecommendedRelations(ctx context.Context, spc clientspace.Space, detail
 	if err != nil {
 		return nil, false, fmt.Errorf("prepare recommended relation ids: %w", err)
 	}
-	details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relationIds)
+	details.SetStringList(bundle.RelationKeyRecommendedRelations, relationIds)
 
 	featuredRelationIds, err := prepareRelationIds(ctx, spc, defaultRecommendedFeaturedRelationKeys)
 	if err != nil {
 		return nil, false, fmt.Errorf("prepare recommended featured relation ids: %w", err)
 	}
-	details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()] = pbtypes.StringList(featuredRelationIds)
+	details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, featuredRelationIds)
 
 	return append(keys, defaultRecommendedFeaturedRelationKeys...), false, nil
 }
 
-func getRelationKeysFromDetails(details *types.Struct) ([]domain.RelationKey, error) {
+func getRelationKeysFromDetails(details *domain.Details) ([]domain.RelationKey, error) {
 	var keys []domain.RelationKey
-	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
+	bundledRelationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)
 	if len(bundledRelationIds) == 0 {
-		rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
+		rawRecommendedLayout := details.GetInt64(bundle.RelationKeyRecommendedLayout)
 		// nolint: gosec
 		recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(rawRecommendedLayout))
 		if err != nil {
@@ -173,16 +171,16 @@ func (s *service) installRecommendedRelations(ctx context.Context, space clients
 
 func (s *service) createTemplatesForObjectType(spc clientspace.Space, typeKey domain.TypeKey) error {
 	bundledTemplates, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+				Value:       domain.String(bundle.TypeKeyTemplate.BundledURL()),
 			},
 			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				RelationKey: bundle.RelationKeyTargetObjectType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeKey.BundledURL()),
+				Value:       domain.String(typeKey.BundledURL()),
 			},
 		},
 	})
@@ -196,7 +194,7 @@ func (s *service) createTemplatesForObjectType(spc clientspace.Space, typeKey do
 	}
 
 	for _, record := range bundledTemplates {
-		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		id := record.Details.GetString(bundle.RelationKeyId)
 		if _, exists := installedTemplatesIDs[id]; exists {
 			continue
 		}
@@ -219,16 +217,16 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 		return nil, fmt.Errorf("get type id by key: %w", err)
 	}
 	alreadyInstalledTemplates, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(templateTypeID),
+				Value:       domain.String(templateTypeID),
 			},
 			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				RelationKey: bundle.RelationKeyTargetObjectType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(targetObjectTypeID),
+				Value:       domain.String(targetObjectTypeID),
 			},
 		},
 	})
@@ -237,7 +235,7 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 	}
 	existingTemplatesMap := map[string]struct{}{}
 	for _, rec := range alreadyInstalledTemplates {
-		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
+		sourceObject := rec.Details.GetString(bundle.RelationKeySourceObject)
 		if sourceObject != "" {
 			existingTemplatesMap[sourceObject] = struct{}{}
 		}

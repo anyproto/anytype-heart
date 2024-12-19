@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
@@ -18,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) BundledObjectsIdsToInstall(
@@ -42,7 +40,7 @@ func (s *service) BundledObjectsIdsToInstall(
 		}
 
 		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
-			uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeyUniqueKey.String()))
+			uk, err := domain.UnmarshalUniqueKey(b.CombinedDetails().GetString(bundle.RelationKeyUniqueKey))
 			if err != nil {
 				return err
 			}
@@ -68,7 +66,7 @@ func (s *service) InstallBundledObjects(
 	space clientspace.Space,
 	sourceObjectIds []string,
 	isNewSpace bool,
-) (ids []string, objects []*types.Struct, err error) {
+) (ids []string, objects []*domain.Details, err error) {
 	if space.IsReadOnly() {
 		return
 	}
@@ -108,8 +106,8 @@ func (s *service) InstallBundledObjects(
 	return
 }
 
-func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *types.Struct) (id string, newDetails *types.Struct, err error) {
-	uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(installingDetails, bundle.RelationKeyUniqueKey.String()))
+func (s *service) installObject(ctx context.Context, space clientspace.Space, installingDetails *domain.Details) (id string, newDetails *domain.Details, err error) {
+	uk, err := domain.UnmarshalUniqueKey(installingDetails.GetString(bundle.RelationKeyUniqueKey))
 	if err != nil {
 		return "", nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
@@ -135,26 +133,26 @@ func (s *service) installObject(ctx context.Context, space clientspace.Space, in
 	return id, newDetails, nil
 }
 
-func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*types.Struct, error) {
+func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds []string) (map[string]*domain.Details, error) {
 	existingObjects, err := s.objectStore.SpaceIndex(space.Id()).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySourceObject.String(),
+				RelationKey: bundle.RelationKeySourceObject,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIds),
+				Value:       domain.StringList(sourceObjectIds),
 			},
 			{
 				Operator: model.BlockContentDataviewFilter_Or,
-				NestedFilters: []*model.BlockContentDataviewFilter{
+				NestedFilters: []database.FilterRequest{
 					{
-						RelationKey: bundle.RelationKeyLayout.String(),
+						RelationKey: bundle.RelationKeyLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+						Value:       domain.Int64(model.ObjectType_objectType),
 					},
 					{
-						RelationKey: bundle.RelationKeyLayout.String(),
+						RelationKey: bundle.RelationKeyLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+						Value:       domain.Int64(model.ObjectType_relation),
 					},
 				},
 			},
@@ -163,16 +161,16 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 	if err != nil {
 		return nil, fmt.Errorf("query existing objects: %w", err)
 	}
-	existingObjectMap := make(map[string]*types.Struct, len(existingObjects))
+	existingObjectMap := make(map[string]*domain.Details, len(existingObjects))
 	for _, existingObject := range existingObjects {
-		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = existingObject.Details
+		existingObjectMap[existingObject.Details.GetString(bundle.RelationKeySourceObject)] = existingObject.Details
 	}
 	return existingObjectMap, nil
 }
 
 func (s *service) reinstallBundledObjects(
 	ctx context.Context, sourceSpace, space clientspace.Space, sourceObjectIDs []string,
-) (ids []string, objects []*types.Struct, err error) {
+) (ids []string, objects []*domain.Details, err error) {
 	deletedObjects, err := s.queryDeletedObjects(space, sourceObjectIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("query deleted objects: %w", err)
@@ -196,12 +194,12 @@ func (s *service) reinstallBundledObjects(
 }
 
 func (s *service) reinstallObject(
-	ctx context.Context, sourceSpace, space clientspace.Space, currentDetails *types.Struct,
-) (id string, key domain.TypeKey, details *types.Struct, err error) {
-	id = pbtypes.GetString(currentDetails, bundle.RelationKeyId.String())
+	ctx context.Context, sourceSpace, space clientspace.Space, currentDetails *domain.Details,
+) (id string, key domain.TypeKey, details *domain.Details, err error) {
+	id = currentDetails.GetString(bundle.RelationKeyId)
 	var (
-		sourceObjectId = pbtypes.GetString(currentDetails, bundle.RelationKeySourceObject.String())
-		isArchived     = pbtypes.GetBool(currentDetails, bundle.RelationKeyIsArchived.String())
+		sourceObjectId = currentDetails.GetString(bundle.RelationKeySourceObject)
+		isArchived     = currentDetails.GetBool(bundle.RelationKeyIsArchived)
 	)
 
 	installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, space, sourceObjectId, false)
@@ -212,8 +210,8 @@ func (s *service) reinstallObject(
 	err = space.Do(id, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		st.SetDetails(installingDetails)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(false))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(false))
 
 		key = domain.TypeKey(st.UniqueKeyInternal())
 		details = st.CombinedDetails()
@@ -239,8 +237,8 @@ func (s *service) prepareDetailsForInstallingObject(
 	sourceSpace, spc clientspace.Space,
 	sourceObjectId string,
 	isNewSpace bool,
-) (*types.Struct, error) {
-	var details *types.Struct
+) (*domain.Details, error) {
+	var details *domain.Details
 	err := sourceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
 		details = b.CombinedDetails()
 		return nil
@@ -250,19 +248,19 @@ func (s *service) prepareDetailsForInstallingObject(
 	}
 
 	spaceID := spc.Id()
-	sourceId := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
-	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
-	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+	sourceId := details.GetString(bundle.RelationKeyId)
+	details.SetString(bundle.RelationKeySpaceId, spaceID)
+	details.SetString(bundle.RelationKeySourceObject, sourceId)
+	details.SetBool(bundle.RelationKeyIsReadonly, false)
 
 	// we should delete old createdDate as it belongs to source object from marketplace
-	delete(details.Fields, bundle.RelationKeyCreatedDate.String())
+	details.Delete(bundle.RelationKeyCreatedDate)
 
 	if isNewSpace {
 		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
 
-	uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String()))
+	uk, err := domain.UnmarshalUniqueKey(details.GetString(bundle.RelationKeyUniqueKey))
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
@@ -294,35 +292,36 @@ func (s *service) prepareDetailsForInstallingObject(
 }
 
 func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs []string) ([]database.Record, error) {
-	sourceList, err := pbtypes.ValueListWrapper(pbtypes.StringList(sourceObjectIDs))
-	if err != nil {
-		return nil, err
+	sourceList := make([]domain.Value, 0, len(sourceObjectIDs))
+	for _, id := range sourceObjectIDs {
+		sourceList = append(sourceList, domain.String(id))
 	}
+
 	return s.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FiltersOr{
 			database.FilterEq{
-				Key:   bundle.RelationKeyLayout.String(),
-				Value: pbtypes.Int64(int64(model.ObjectType_objectType)),
+				Key:   bundle.RelationKeyLayout,
+				Value: domain.Int64(model.ObjectType_objectType),
 			},
 			database.FilterEq{
-				Key:   bundle.RelationKeyLayout.String(),
-				Value: pbtypes.Int64(int64(model.ObjectType_relation)),
+				Key:   bundle.RelationKeyLayout,
+				Value: domain.Int64(model.ObjectType_relation),
 			},
 		},
 		database.FilterIn{
-			Key:   bundle.RelationKeySourceObject.String(),
+			Key:   bundle.RelationKeySourceObject,
 			Value: sourceList,
 		},
 		database.FiltersOr{
 			database.FilterEq{
-				Key:   bundle.RelationKeyIsDeleted.String(),
+				Key:   bundle.RelationKeyIsDeleted,
 				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: pbtypes.Bool(true),
+				Value: domain.Bool(true),
 			},
 			database.FilterEq{
-				Key:   bundle.RelationKeyIsArchived.String(),
+				Key:   bundle.RelationKeyIsArchived,
 				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: pbtypes.Bool(true),
+				Value: domain.Bool(true),
 			},
 		},
 	}}, 0, 0)

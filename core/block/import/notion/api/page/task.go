@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -21,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type DataObject struct {
@@ -66,22 +64,26 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	sn := &common.Snapshot{
 		Id:       pageId,
 		FileName: pt.p.URL,
-		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
-		SbType:   smartblock.SmartBlockTypePage,
+		Snapshot: &common.SnapshotModel{
+			SbType: smartblock.SmartBlockTypePage,
+			Data:   snapshot,
+		},
 	}
 	resultSnapshots = append(resultSnapshots, sn)
 	for _, objectsSnapshot := range relationsAndOptionsSnapshots {
-		sbType := pt.getSmartBlockTypeAndID(objectsSnapshot)
+		sbType := pt.getRelationOrOptionType(objectsSnapshot)
 		resultSnapshots = append(resultSnapshots, &common.Snapshot{
-			Id:       pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String()),
-			SbType:   sbType,
-			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
+			Id: objectsSnapshot.Details.GetString(bundle.RelationKeyId),
+			Snapshot: &common.SnapshotModel{
+				SbType: sbType,
+				Data:   objectsSnapshot,
+			},
 		})
 	}
 	return &Result{snapshot: resultSnapshots, ce: allErrors}
 }
 
-func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
+func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.ConvertError) (*common.StateSnapshot, []*common.StateSnapshot) {
 	details, relationsAndOptionsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
@@ -155,7 +157,7 @@ func (pt *Task) uploadIconImage(block *model.Block, wg *sync.WaitGroup) (func(),
 	}, false
 }
 
-func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
+func (pt *Task) provideDetails(object *DataObject) (*domain.Details, []*common.StateSnapshot, []*model.RelationLink) {
 	details, relationLinks := pt.prepareDetails()
 	relationsSnapshots, notionRelationLinks := pt.handlePageProperties(object, details)
 	relationLinks = append(relationLinks, notionRelationLinks...)
@@ -163,20 +165,20 @@ func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*
 	return details, relationsSnapshots, relationLinks
 }
 
-func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]*types.Value, relationLinks []*model.RelationLink) *model.SmartBlockSnapshotBase {
-	snapshot := &model.SmartBlockSnapshotBase{
+func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details *domain.Details, relationLinks []*model.RelationLink) *common.StateSnapshot {
+	snapshot := &common.StateSnapshot{
 		Blocks:        notionBlocks,
-		Details:       &types.Struct{Fields: details},
+		Details:       details,
 		ObjectTypes:   []string{bundle.TypeKeyPage.String()},
 		RelationLinks: relationLinks,
 	}
 	return snapshot
 }
 
-func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink) {
-	details := make(map[string]*types.Value, 0)
+func (pt *Task) prepareDetails() (*domain.Details, []*model.RelationLink) {
+	details := domain.NewDetails()
 	var relationLinks []*model.RelationLink
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(pt.p.ID)
+	details.SetString(bundle.RelationKeySourceFilePath, pt.p.ID)
 	if pt.p.Icon != nil {
 		if iconRelationLink := api.SetIcon(details, pt.p.Icon); iconRelationLink != nil {
 			relationLinks = append(relationLinks, iconRelationLink)
@@ -190,20 +192,20 @@ func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink
 		})
 	}
 
-	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(pt.p.Archived)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
+	details.SetBool(bundle.RelationKeyIsArchived, pt.p.Archived)
+	details.SetBool(bundle.RelationKeyIsFavorite, false)
 	createdTime := common.ConvertStringToTime(pt.p.CreatedTime)
 	lastEditedTime := common.ConvertStringToTime(pt.p.LastEditedTime)
-	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastEditedTime))
-	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(createdTime))
-	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_basic))
+	details.SetInt64(bundle.RelationKeyLastModifiedDate, lastEditedTime)
+	details.SetInt64(bundle.RelationKeyCreatedDate, createdTime)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_basic))
 	return details, relationLinks
 }
 
 // handlePageProperties gets properties values by their ids from notion api
 // and transforms them to Details and RelationLinks
-func (pt *Task) handlePageProperties(object *DataObject, details map[string]*types.Value) ([]*model.SmartBlockSnapshotBase, []*model.RelationLink) {
-	relationsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
+func (pt *Task) handlePageProperties(object *DataObject, details *domain.Details) ([]*common.StateSnapshot, []*model.RelationLink) {
+	relationsSnapshots := make([]*common.StateSnapshot, 0)
 	relationsLinks := make([]*model.RelationLink, 0)
 	hasTag := isPageContainsTagProperty(pt.p.Properties)
 	var tagExist bool
@@ -222,7 +224,7 @@ func (pt *Task) handlePageProperties(object *DataObject, details map[string]*typ
 	return relationsSnapshots, relationsLinks
 }
 
-func (pt *Task) retrieveRelation(object *DataObject, key string, propObject property.Object, details map[string]*types.Value, hasTag bool, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
+func (pt *Task) retrieveRelation(object *DataObject, key string, propObject property.Object, details *domain.Details, hasTag bool, tagExist bool) ([]*common.StateSnapshot, *model.RelationLink, error) {
 	if err := pt.handlePagination(object.ctx, object.apiKey, propObject); err != nil {
 		return nil, nil, err
 	}
@@ -232,14 +234,14 @@ func (pt *Task) retrieveRelation(object *DataObject, key string, propObject prop
 
 func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	propObject property.Object,
-	details map[string]*types.Value,
+	details *domain.Details,
 	name string,
-	hasTag, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
+	hasTag, tagExist bool) ([]*common.StateSnapshot, *model.RelationLink, error) {
 	pt.relationCreateMutex.Lock()
 	defer pt.relationCreateMutex.Unlock()
 	snapshot, key, relationsAndOptionsSnapshots := pt.provideRelationSnapshot(relation, propObject, name, hasTag, tagExist)
 	if key == "" {
-		key = pbtypes.GetString(snapshot.GetDetails(), bundle.RelationKeyRelationKey.String())
+		key = snapshot.Details.GetString(bundle.RelationKeyRelationKey)
 	}
 	relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, pt.provideRelationOptionsSnapshots(key, propObject, relation)...)
 	if err := pt.setDetails(propObject, key, details); err != nil {
@@ -257,10 +259,10 @@ func (pt *Task) provideRelationSnapshot(
 	propObject property.Object,
 	name string,
 	hasTag, tagExist bool,
-) (*model.SmartBlockSnapshotBase, string, []*model.SmartBlockSnapshotBase) {
+) (*common.StateSnapshot, string, []*common.StateSnapshot) {
 	var (
 		key                          string
-		relationsAndOptionsSnapshots []*model.SmartBlockSnapshotBase
+		relationsAndOptionsSnapshots []*common.StateSnapshot
 	)
 	snapshot := relation.GetSnapshotByNameAndFormat(name, int64(propObject.GetFormat()))
 	if snapshot == nil {
@@ -276,7 +278,7 @@ func (pt *Task) provideRelationSnapshot(
 	return snapshot, key, relationsAndOptionsSnapshots
 }
 
-func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag, tagExist bool) (*model.SmartBlockSnapshotBase, string) {
+func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag, tagExist bool) (*common.StateSnapshot, string) {
 	key := bson.NewObjectId().Hex()
 	if propObject.GetPropertyType() == property.PropertyConfigTypeTitle {
 		return nil, bundle.RelationKeyName.String()
@@ -285,7 +287,7 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 		key = bundle.RelationKeyTag.String()
 	}
 	details := pt.getRelationDetails(key, name, propObject)
-	rel := &model.SmartBlockSnapshotBase{
+	rel := &common.StateSnapshot{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
 		Key:         key,
@@ -293,32 +295,32 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 	return rel, key
 }
 
-func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.Object, relation *property.PropertiesStore) []*model.SmartBlockSnapshotBase {
+func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.Object, relation *property.PropertiesStore) []*common.StateSnapshot {
 	pt.relationOptCreateMutex.Lock()
 	defer pt.relationOptCreateMutex.Unlock()
-	relationsAndOptionsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
+	relationsAndOptionsSnapshots := make([]*common.StateSnapshot, 0)
 	if isPropertyTag(propObject) {
 		relationsAndOptionsSnapshots = append(relationsAndOptionsSnapshots, getRelationOptions(propObject, id, relation)...)
 	}
 	return relationsAndOptionsSnapshots
 }
 
-func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
+func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *domain.Details {
 	if name == "" {
 		name = property.UntitledProperty
 	}
-	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(propObject.GetID())
+	details := domain.NewDetails()
+	details.SetInt64(bundle.RelationKeyRelationFormat, int64(propObject.GetFormat()))
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, key)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+	details.SetString(bundle.RelationKeySourceFilePath, propObject.GetID())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
 	return details
 }
 
@@ -381,7 +383,7 @@ func (pt *Task) handlePaginatedProperties(propObject property.Object, properties
 	}
 }
 
-func (pt *Task) setDetails(propObject property.Object, key string, details map[string]*types.Value) error {
+func (pt *Task) setDetails(propObject property.Object, key string, details *domain.Details) error {
 	var (
 		ds property.DetailSetter
 		ok bool
@@ -393,7 +395,7 @@ func (pt *Task) setDetails(propObject property.Object, key string, details map[s
 	return nil
 }
 
-func (pt *Task) getSmartBlockTypeAndID(objectSnapshot *model.SmartBlockSnapshotBase) smartblock.SmartBlockType {
+func (pt *Task) getRelationOrOptionType(objectSnapshot *common.StateSnapshot) smartblock.SmartBlockType {
 	if lo.Contains(objectSnapshot.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
 		return smartblock.SmartBlockTypeRelationOption
 	}
@@ -439,8 +441,8 @@ func isPropertyTag(pr property.Object) bool {
 		pr.GetPropertyType() == property.PropertyConfigTypePeople
 }
 
-func getRelationOptions(pr property.Object, rel string, relation *property.PropertiesStore) []*model.SmartBlockSnapshotBase {
-	var opts []*model.SmartBlockSnapshotBase
+func getRelationOptions(pr property.Object, rel string, relation *property.PropertiesStore) []*common.StateSnapshot {
+	var opts []*common.StateSnapshot
 	switch property := pr.(type) {
 	case *property.StatusItem:
 		options := statusItemOptions(property, rel, relation)
@@ -460,8 +462,8 @@ func getRelationOptions(pr property.Object, rel string, relation *property.Prope
 	return opts
 }
 
-func peopleItemOptions(property *property.PeopleItem, rel string, relation *property.PropertiesStore) []*model.SmartBlockSnapshotBase {
-	peopleOptions := make([]*model.SmartBlockSnapshotBase, 0, len(property.People))
+func peopleItemOptions(property *property.PeopleItem, rel string, relation *property.PropertiesStore) []*common.StateSnapshot {
+	peopleOptions := make([]*common.StateSnapshot, 0, len(property.People))
 	for _, po := range property.People {
 		if po.Name == "" {
 			continue
@@ -473,15 +475,15 @@ func peopleItemOptions(property *property.PeopleItem, rel string, relation *prop
 		}
 		details, optSnapshot := provideRelationOptionSnapshot(po.Name, "", rel)
 		peopleOptions = append(peopleOptions, optSnapshot)
-		optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+		optionID = details.GetString(bundle.RelationKeyId)
 		po.ID = optionID
 	}
 	relation.WriteToRelationsOptionsMap(rel, peopleOptions)
 	return peopleOptions
 }
 
-func multiselectItemOptions(property *property.MultiSelectItem, rel string, relation *property.PropertiesStore) []*model.SmartBlockSnapshotBase {
-	multiSelectOptions := make([]*model.SmartBlockSnapshotBase, 0, len(property.MultiSelect))
+func multiselectItemOptions(property *property.MultiSelectItem, rel string, relation *property.PropertiesStore) []*common.StateSnapshot {
+	multiSelectOptions := make([]*common.StateSnapshot, 0, len(property.MultiSelect))
 	for _, so := range property.MultiSelect {
 		if so.Name == "" {
 			continue
@@ -492,7 +494,7 @@ func multiselectItemOptions(property *property.MultiSelectItem, rel string, rela
 			continue
 		}
 		details, optSnapshot := provideRelationOptionSnapshot(so.Name, so.Color, rel)
-		optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+		optionID = details.GetString(bundle.RelationKeyId)
 		so.ID = optionID
 		multiSelectOptions = append(multiSelectOptions, optSnapshot)
 	}
@@ -500,7 +502,7 @@ func multiselectItemOptions(property *property.MultiSelectItem, rel string, rela
 	return multiSelectOptions
 }
 
-func selectItemOptions(property *property.SelectItem, rel string, relation *property.PropertiesStore) *model.SmartBlockSnapshotBase {
+func selectItemOptions(property *property.SelectItem, rel string, relation *property.PropertiesStore) *common.StateSnapshot {
 	if property.Select.Name == "" {
 		return nil
 	}
@@ -510,13 +512,13 @@ func selectItemOptions(property *property.SelectItem, rel string, relation *prop
 		return nil
 	}
 	details, optSnapshot := provideRelationOptionSnapshot(property.Select.Name, property.Select.Color, rel)
-	optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+	optionID = details.GetString(bundle.RelationKeyId)
 	property.Select.ID = optionID
-	relation.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
+	relation.WriteToRelationsOptionsMap(rel, []*common.StateSnapshot{optSnapshot})
 	return optSnapshot
 }
 
-func statusItemOptions(property *property.StatusItem, rel string, relation *property.PropertiesStore) *model.SmartBlockSnapshotBase {
+func statusItemOptions(property *property.StatusItem, rel string, relation *property.PropertiesStore) *common.StateSnapshot {
 	if property.Status == nil || property.Status.Name == "" {
 		return nil
 	}
@@ -526,17 +528,17 @@ func statusItemOptions(property *property.StatusItem, rel string, relation *prop
 		return nil
 	}
 	details, optSnapshot := provideRelationOptionSnapshot(property.Status.Name, property.Status.Color, rel)
-	optionID = pbtypes.GetString(details, bundle.RelationKeyId.String())
+	optionID = details.GetString(bundle.RelationKeyId)
 	property.Status.ID = optionID
-	relation.WriteToRelationsOptionsMap(rel, []*model.SmartBlockSnapshotBase{optSnapshot})
+	relation.WriteToRelationsOptionsMap(rel, []*common.StateSnapshot{optSnapshot})
 	return optSnapshot
 }
 
 func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStore) (bool, string) {
 	options := relation.ReadRelationsOptionsMap(rel)
 	for _, option := range options {
-		name := pbtypes.GetString(option.Details, bundle.RelationKeyName.String())
-		id := pbtypes.GetString(option.Details, bundle.RelationKeyId.String())
+		name := option.Details.GetString(bundle.RelationKeyName)
+		id := option.Details.GetString(bundle.RelationKeyId)
 		if optName == name {
 			return true, id
 		}
@@ -544,10 +546,10 @@ func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStor
 	return false, ""
 }
 
-func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *model.SmartBlockSnapshotBase) {
+func provideRelationOptionSnapshot(name, color, rel string) (*domain.Details, *common.StateSnapshot) {
 	id, details := getDetailsForRelationOption(name, rel)
-	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[color])
-	optSnapshot := &model.SmartBlockSnapshotBase{
+	details.SetString(bundle.RelationKeyRelationOptionColor, api.NotionColorToAnytype[color])
+	optSnapshot := &common.StateSnapshot{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
 		Key:         id,
@@ -555,19 +557,19 @@ func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *mod
 	return details, optSnapshot
 }
 
-func getDetailsForRelationOption(name, rel string) (string, *types.Struct) {
+func getDetailsForRelationOption(name, rel string) (string, *domain.Details) {
 	id := bson.NewObjectId().Hex()
-	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, rel)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
+	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
 	if err != nil {
 		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return id, details
 	}
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
 	return id, details
 }
 

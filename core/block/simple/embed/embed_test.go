@@ -22,7 +22,7 @@ func TestLatex_Diff(t *testing.T) {
 	t.Run("type error", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := base.NewBase(&model.Block{})
-		_, err := b1.Diff(b2)
+		_, err := b1.Diff("", b2)
 		assert.Error(t, err)
 	})
 	t.Run("no diff", func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestLatex_Diff(t *testing.T) {
 		b2 := testBlock()
 		b1.content.Text = "1"
 		b2.content.Text = "1"
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 0)
 	})
@@ -38,7 +38,7 @@ func TestLatex_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.Restrictions.Read = true
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 1)
 	})
@@ -47,7 +47,7 @@ func TestLatex_Diff(t *testing.T) {
 		b2 := testBlock()
 		b2.content.Text = "42"
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLatex{
@@ -62,7 +62,7 @@ func TestLatex_Diff(t *testing.T) {
 		b2 := testBlock()
 		b2.content.Processor = model.BlockContentLatex_Mermaid
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLatex{

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -14,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestFillRecommendedRelations(t *testing.T) {
@@ -62,9 +60,9 @@ func TestFillRecommendedRelations(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("from source: %s", tc.name), func(t *testing.T) {
 			// given
-			details := &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(tc.given),
-			}}
+			details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyRecommendedRelations: domain.StringList(tc.given),
+			})
 
 			// when
 			keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
@@ -72,19 +70,19 @@ func TestFillRecommendedRelations(t *testing.T) {
 			// then
 			assert.NoError(t, err)
 			assert.False(t, isAlreadyFilled)
-			assert.Equal(t, tc.expected, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()))
-			assert.Equal(t, defaultRecFeatRelIds, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedFeaturedRelations.String()))
+			assert.Equal(t, tc.expected, details.GetStringList(bundle.RelationKeyRecommendedRelations))
+			assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
 			assert.Len(t, keys, len(tc.expected)+3)
 		})
 	}
 
 	t.Run("recommendedRelations are already filled", func(t *testing.T) {
 		// given
-		details := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
 				"createdBy", "createdDate", "backlinks",
 			}),
-		}}
+		})
 
 		// when
 		keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
@@ -121,9 +119,9 @@ func TestFillRecommendedRelations(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("from layout: %s", tc.name), func(t *testing.T) {
 			// given
-			details := &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(tc.layout),
-			}}
+			details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyRecommendedLayout: domain.Int64(tc.layout),
+			})
 
 			// when
 			keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
@@ -131,8 +129,8 @@ func TestFillRecommendedRelations(t *testing.T) {
 			// then
 			assert.NoError(t, err)
 			assert.False(t, isAlreadyFilled)
-			assert.Equal(t, tc.expected, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()))
-			assert.Equal(t, defaultRecFeatRelIds, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedFeaturedRelations.String()))
+			assert.Equal(t, tc.expected, details.GetStringList(bundle.RelationKeyRecommendedRelations))
+			assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
 			assert.Len(t, keys, len(tc.expected)+3)
 		})
 	}

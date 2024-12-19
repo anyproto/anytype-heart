@@ -216,10 +216,15 @@ jobs:
       - name: Run perf tests
         run: |
           echo "Running perf tests in staging mode..."
-          $RUN_COUNT = ${{ github.event.inputs.perf-test }}
           if ($env:GITHUB_EVENT_NAME -eq "schedule") {
-            $RUN_COUNT = 10
+              $RUN_COUNT = 10
+          } elseif ("${{ github.event.inputs.perf-test }}" -ne "") {
+              $RUN_COUNT = "${{ github.event.inputs.perf-test }}"
+          } else {
+              $RUN_COUNT = 10  # default value
           }
+          echo "Current RUN_COUNT: $RUN_COUNT"
+          echo "Current Github event name: $env:GITHUB_EVENT_NAME"
           Set-Content -Path config.json -Value $env:PERF_CONFIG_STAGING
           (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
           Move-Item -Path .\.github\staging_fake.yml -Destination .\staging_fake.yml -Force
@@ -241,7 +246,6 @@ jobs:
           Set-Location ..\account_select
           go run main.go $PERF_CONFIG $RUN_COUNT
           echo "Perf test in local mode - done"
-
         env:
           PERF_CONFIG_STAGING: ${{ secrets.PERF_CONFIG_STAGING }}
           PERF_CONFIG_LOCAL: ${{ secrets.PERF_CONFIG_LOCAL }}

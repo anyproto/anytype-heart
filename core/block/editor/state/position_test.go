@@ -23,7 +23,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("", 0, "first", "second")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Add, 2)
@@ -42,7 +42,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Bottom, "first", "second")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Add, 2)
@@ -59,7 +59,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Top, "first", "second")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Add, 2)
@@ -76,7 +76,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Inner, "first", "second")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Add, 2)
@@ -95,7 +95,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Replace, "first", "second")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 3)
 		assert.Len(t, hist.Remove, 1)
@@ -106,7 +106,7 @@ func TestState_InsertTo(t *testing.T) {
 
 		s = r.NewState()
 		require.NoError(t, r.InsertTo("first", model.Block_Replace, "child"))
-		_, _, err = ApplyState(s, true)
+		_, _, err = ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"child", "second"}, r.Pick("root").Model().ChildrenIds)
 	})
@@ -123,7 +123,7 @@ func TestState_InsertTo(t *testing.T) {
 
 		// when
 		err := s.InsertTo("target", model.Block_Replace, "link")
-		_, _, err2 := ApplyState(s, true)
+		_, _, err2 := ApplyState("", s, true)
 
 		// then
 		assert.NoError(t, err)
@@ -142,7 +142,7 @@ func TestState_InsertTo(t *testing.T) {
 
 		// when
 		err := s.InsertTo("target", model.Block_Replace, "link")
-		_, _, err2 := ApplyState(s, true)
+		_, _, err2 := ApplyState("", s, true)
 
 		// then
 		assert.NoError(t, err)
@@ -174,7 +174,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", pos, "first", "second")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.NotEmpty(t, msgs)
 		assert.Len(t, hist.Remove, 0)
@@ -207,7 +207,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c1.Model().Id, model.Block_Left, "third")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Remove, 0)
@@ -220,7 +220,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c2.Model().Id, model.Block_Left, "third")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Remove, 0)
@@ -233,7 +233,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c2.Model().Id, model.Block_Right, "third")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Remove, 0)
@@ -250,7 +250,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"1"}}))
 		s.Get("root").Model().ChildrenIds = []string{"1"}
 
-		_, _, err := ApplyState(s, true)
+		_, _, err := ApplyState("", s, true)
 		assert.Error(t, err)
 	})
 

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestMigration_Run(t *testing.T) {
@@ -24,14 +22,14 @@ func TestMigration_Run(t *testing.T) {
 		store := objectstore.NewStoreFixture(t)
 		store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeySpaceId:        pbtypes.String("space1"),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyId:             pbtypes.String("id1"),
-				bundle.RelationKeyIsHidden:       pbtypes.Bool(true), // bundle = false
-				bundle.RelationKeyRevision:       pbtypes.Int64(1),   // bundle = 3
-				bundle.RelationKeyUniqueKey:      pbtypes.String(bundle.RelationKeyBacklinks.URL()),
-				bundle.RelationKeySourceObject:   pbtypes.String(bundle.RelationKeyBacklinks.BundledURL()),
+				bundle.RelationKeySpaceId:        domain.String("space1"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeyIsHidden:       domain.Bool(true), // bundle = false
+				bundle.RelationKeyRevision:       domain.Int64(1),   // bundle = 3
+				bundle.RelationKeyUniqueKey:      domain.String(bundle.RelationKeyBacklinks.URL()),
+				bundle.RelationKeySourceObject:   domain.String(bundle.RelationKeyBacklinks.BundledURL()),
 			},
 		})
 		fixer := &Migration{}
@@ -56,23 +54,23 @@ func TestMigration_Run(t *testing.T) {
 func TestReviseSystemObject(t *testing.T) {
 	ctx := context.Background()
 	log := logger.NewNamed("test")
-	marketObjects := map[string]*types.Struct{
-		"_otnote":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(3)}},
-		"_otpage":        {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(2)}},
-		"_otcontact":     {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(1)}},
-		"_brid":          {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(1)}},
-		"_brdescription": {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(2)}},
-		"_brlyrics":      {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(1)}},
-		"_brisReadonly":  {Fields: map[string]*types.Value{revisionKey: pbtypes.Int64(3)}},
+	marketObjects := map[string]*domain.Details{
+		"_otnote":        domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(3)}),
+		"_otpage":        domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(2)}),
+		"_otcontact":     domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(1)}),
+		"_brid":          domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(1)}),
+		"_brdescription": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(2)}),
+		"_brlyrics":      domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(1)}),
+		"_brisReadonly":  domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(3)}),
 	}
 
 	t.Run("system object type is updated if revision is higher", func(t *testing.T) {
 		// given
-		objectType := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(bundle.MustGetType(bundle.TypeKeyFile).Revision - 1),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_otfile"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-file"),
-		}}
+		objectType := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:     domain.Int64(bundle.MustGetType(bundle.TypeKeyFile).Revision - 1),
+			bundle.RelationKeySourceObject: domain.String("_otfile"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-file"),
+		})
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
@@ -90,10 +88,10 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("system object type is updated if no revision is set", func(t *testing.T) {
 		// given
-		objectType := &types.Struct{Fields: map[string]*types.Value{ // bundle Audio type revision = 1
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_otaudio"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-audio"),
-		}}
+		objectType := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{ // bundle Audio type revision = 1
+			bundle.RelationKeySourceObject: domain.String("_otaudio"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-audio"),
+		})
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
@@ -111,9 +109,9 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("custom object type is not updated", func(t *testing.T) {
 		// given
-		objectType := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-kitty"),
-		}}
+		objectType := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyUniqueKey: domain.String("ot-kitty"),
+		})
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
@@ -126,10 +124,10 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("non system object type is not updated", func(t *testing.T) {
 		// given
-		objectType := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_otcontact"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-contact"),
-		}}
+		objectType := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeySourceObject: domain.String("_otcontact"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-contact"),
+		})
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
@@ -142,11 +140,11 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("system object type with same revision is not updated", func(t *testing.T) {
 		// given
-		objectType := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(bundle.MustGetType(bundle.TypeKeyImage).Revision),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_otimage"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-image"),
-		}}
+		objectType := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:     domain.Int64(bundle.MustGetType(bundle.TypeKeyImage).Revision),
+			bundle.RelationKeySourceObject: domain.String("_otimage"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-image"),
+		})
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
@@ -159,11 +157,11 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("system relation is updated if revision is higher", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(bundle.MustGetRelation(bundle.RelationKeyGlobalName).Revision - 1),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_brglobalName"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-globalName"),
-		}}
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:     domain.Int64(bundle.MustGetRelation(bundle.RelationKeyGlobalName).Revision - 1),
+			bundle.RelationKeySourceObject: domain.String("_brglobalName"),
+			bundle.RelationKeyUniqueKey:    domain.String("rel-globalName"),
+		})
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
@@ -178,10 +176,10 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("system relation is updated if no revision is set", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{ // relationMaxCount revision = 1
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_brrelationMaxCount"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-relationMaxCount"),
-		}}
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{ // relationMaxCount revision = 1
+			bundle.RelationKeySourceObject: domain.String("_brrelationMaxCount"),
+			bundle.RelationKeyUniqueKey:    domain.String("rel-relationMaxCount"),
+		})
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
@@ -196,9 +194,9 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("custom relation is not updated", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyUniqueKey.String(): pbtypes.String("rel-custom"),
-		}}
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyUniqueKey: domain.String("rel-custom"),
+		})
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
@@ -211,11 +209,11 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("non system relation is not updated", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(1),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_brlyrics"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-lyrics"),
-		}}
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:     domain.Int64(1),
+			bundle.RelationKeySourceObject: domain.String("_brlyrics"),
+			bundle.RelationKeyUniqueKey:    domain.String("rel-lyrics"),
+		})
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
@@ -228,11 +226,11 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("system relation with same revision is not updated", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():     pbtypes.Int64(bundle.MustGetRelation(bundle.RelationKeyBacklinks).Revision),
-			bundle.RelationKeySourceObject.String(): pbtypes.String("_brbacklinks"),
-			bundle.RelationKeyUniqueKey.String():    pbtypes.String("rel-backlinks"),
-		}}
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:     domain.Int64(bundle.MustGetRelation(bundle.RelationKeyBacklinks).Revision),
+			bundle.RelationKeySourceObject: domain.String("_brbacklinks"),
+			bundle.RelationKeyUniqueKey:    domain.String("rel-backlinks"),
+		})
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
 		// when
@@ -245,12 +243,12 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("relation with absent maxCount is updated", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():         pbtypes.Int64(bundle.MustGetRelation(bundle.RelationKeyBacklinks).Revision - 1),
-			bundle.RelationKeySourceObject.String():     pbtypes.String("_brbacklinks"),
-			bundle.RelationKeyUniqueKey.String():        pbtypes.String("rel-backlinks"),
-			bundle.RelationKeyRelationMaxCount.String(): pbtypes.Int64(1), // maxCount of bundle backlinks = 0
-		}}
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:         domain.Int64(bundle.MustGetRelation(bundle.RelationKeyBacklinks).Revision - 1),
+			bundle.RelationKeySourceObject:     domain.String("_brbacklinks"),
+			bundle.RelationKeyUniqueKey:        domain.String("rel-backlinks"),
+			bundle.RelationKeyRelationMaxCount: domain.Int64(1), // maxCount of bundle backlinks = 0
+		})
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
@@ -265,12 +263,12 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("recommendedRelations list is updated", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():             pbtypes.Int64(bundle.MustGetType(bundle.TypeKeyImage).Revision - 1),
-			bundle.RelationKeySourceObject.String():         pbtypes.String("_otimage"),
-			bundle.RelationKeyUniqueKey.String():            pbtypes.String("ot-image"),
-			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{"rel-name"}),
-		}}
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:             domain.Int64(bundle.MustGetType(bundle.TypeKeyImage).Revision - 1),
+			bundle.RelationKeySourceObject:         domain.String("_otimage"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-image"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-name"}),
+		})
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
@@ -288,19 +286,19 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("recommendedRelations list is updated by not system relations", func(t *testing.T) {
 		// given
-		rel := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRevision.String():             pbtypes.Int64(2),
-			bundle.RelationKeySourceObject.String():         pbtypes.String("_otpage"),
-			bundle.RelationKeyUniqueKey.String():            pbtypes.String("ot-page"),
-			bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList([]string{"rel-name"}),
-		}}
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:             domain.Int64(2),
+			bundle.RelationKeySourceObject:         domain.String("_otpage"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-page"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-name"}),
+		})
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
 			return addr.ObjectTypeKeyToIdPrefix + key.InternalKey(), nil
 		}).Maybe()
 
 		// when
-		marketObjects["_otpage"].Fields["recommendedRelations"] = pbtypes.StringList([]string{"_brname", "_brtag"})
+		marketObjects["_otpage"].SetStringList("recommendedRelations", []string{"_brname", "_brtag"})
 		toRevise, err := reviseObject(ctx, log, space, rel)
 
 		// then

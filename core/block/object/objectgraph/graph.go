@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -14,11 +13,12 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.LoggerNotSugared("object-graph")
@@ -38,7 +38,7 @@ var relationsSkipList = []domain.RelationKey{
 }
 
 type Service interface {
-	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
+	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error)
 }
 
 type Builder struct {
@@ -66,7 +66,17 @@ func (gr *Builder) Name() (name string) {
 	return CName
 }
 
-func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
+type ObjectGraphRequest struct {
+	Filters          []database.FilterRequest
+	Limit            int32
+	ObjectTypeFilter []string
+	Keys             []string
+	SpaceId          string
+	CollectionId     string
+	SetSource        []string
+}
+
+func (gr *Builder) ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error) {
 	if req.SpaceId == "" {
 		return nil, nil, fmt.Errorf("spaceId is required")
 	}
@@ -101,7 +111,7 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 
 	nodes, edges := gr.buildGraph(
 		resp.Records,
-		make([]*types.Struct, 0, len(resp.Records)),
+		make([]*domain.Details, 0, len(resp.Records)),
 		req,
 		relations,
 		make([]*pb.RpcObjectGraphEdge, 0, len(resp.Records)*2),
@@ -114,41 +124,45 @@ func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation) bool {
 }
 
 func (gr *Builder) buildGraph(
-	records []*types.Struct,
-	nodes []*types.Struct,
-	req *pb.RpcObjectGraphRequest,
+	records []*domain.Details,
+	nodes []*domain.Details,
+	req ObjectGraphRequest,
 	relations relationutils.Relations,
 	edges []*pb.RpcObjectGraphEdge,
-) ([]*types.Struct, []*pb.RpcObjectGraphEdge) {
+) ([]*domain.Details, []*pb.RpcObjectGraphEdge) {
 	existedNodes := fillExistedNodes(records)
 	for _, rec := range records {
-		sourceId := pbtypes.GetString(rec, bundle.RelationKeyId.String())
+		sourceId := rec.GetString(bundle.RelationKeyId)
 
-		nodes = append(nodes, pbtypes.Map(rec, req.Keys...))
+		nodes = append(nodes, rec.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
-		var nodesToAdd []*types.Struct
+		var nodesToAdd []*domain.Details
 		nodesToAdd, edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
-		nodes = append(nodes, pbtypes.MapN(nodesToAdd, req.Keys...)...)
+
+		nodesToAdd = lo.Map(nodesToAdd, func(item *domain.Details, _ int) *domain.Details {
+			return item.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
+		})
+		nodes = append(nodes, nodesToAdd...)
 	}
 	return nodes, edges
 }
 
 func (gr *Builder) appendRelations(
-	rec *types.Struct,
+	rec *domain.Details,
 	relations relationutils.Relations,
 	edges []*pb.RpcObjectGraphEdge,
 	existedNodes map[string]struct{},
 	sourceId string,
 	outgoingRelationLink map[string]struct{},
 ) []*pb.RpcObjectGraphEdge {
-	for relKey, relValue := range rec.GetFields() {
-		rel := relations.GetByKey(relKey)
+	for relKey, relValue := range rec.Iterate() {
+		rel := relations.GetByKey(string(relKey))
 		if !isRelationShouldBeIncludedAsEdge(rel) {
 			continue
 		}
-		stringValues := pbtypes.GetStringListValue(relValue)
+		stringValues := relValue.StringList()
 		if len(stringValues) == 0 || isExcludedRelation(rel) {
 			continue
 		}
@@ -167,13 +181,14 @@ func (gr *Builder) appendRelations(
 			}
 		}
 	}
+
 	return edges
 }
 
-func fillExistedNodes(records []*types.Struct) map[string]struct{} {
+func fillExistedNodes(records []*domain.Details) map[string]struct{} {
 	existedNodes := make(map[string]struct{}, len(records))
 	for _, rec := range records {
-		id := pbtypes.GetString(rec, bundle.RelationKeyId.String())
+		id := rec.GetString(bundle.RelationKeyId)
 		existedNodes[id] = struct{}{}
 	}
 	return existedNodes
@@ -188,13 +203,13 @@ func isExcludedRelation(rel *relationutils.Relation) bool {
 
 func (gr *Builder) appendLinks(
 	spaceID string,
-	rec *types.Struct,
+	rec *domain.Details,
 	outgoingRelationLink map[string]struct{},
 	existedNodes map[string]struct{},
 	edges []*pb.RpcObjectGraphEdge,
 	id string,
-) (nodes []*types.Struct, resultEdges []*pb.RpcObjectGraphEdge) {
-	links := pbtypes.GetStringList(rec, bundle.RelationKeyLinks.String())
+) (nodes []*domain.Details, resultEdges []*pb.RpcObjectGraphEdge) {
+	links := rec.GetStringList(bundle.RelationKeyLinks)
 	for _, link := range links {
 		sbType, err := gr.sbtProvider.Type(spaceID, link)
 		if err != nil {
