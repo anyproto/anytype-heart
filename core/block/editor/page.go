@@ -174,7 +174,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			templates := []template.StateTransformer{
 				template.WithEmpty,
 				template.WithObjectTypesAndLayout(ctx.State.ObjectTypeKeys(), layout),
-				template.WithLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,
 				template.WithLinkFieldsMigration,

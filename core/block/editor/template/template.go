@@ -98,12 +98,13 @@ var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.Object
 			otypes = s.ObjectTypeKeys()
 		}
 
-		if !pbtypes.HasField(s.Details(), bundle.RelationKeyLayout.String()) {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(layout)))
+		if !pbtypes.HasField(s.Details(), bundle.RelationKeyResolvedLayout.String()) {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Float64(float64(layout)))
 		}
 	}
 }
 
+// deprecated?
 var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
 	return WithDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(layout)))
 }

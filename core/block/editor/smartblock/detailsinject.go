@@ -232,21 +232,34 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	}
 
 	typeObjectId := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyType.String())
+	if typeObjectId == "" {
+		if currentValue := s.LocalDetails().Fields[bundle.RelationKeyResolvedLayout.String()]; currentValue != nil {
+			return
+		}
+		log.Errorf("failed to find id of object type")
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+		return
+	}
+
+	if currentValue := s.LocalDetails().Fields[bundle.RelationKeyResolvedLayout.String()]; currentValue != nil {
+		return
+	}
 
 	typeDetails, found := sb.lastDepDetails[typeObjectId]
-	if !found {
-		sb.CheckSubscriptions()
-		typeDetails, found = sb.lastDepDetails[typeObjectId]
-		if !found {
-			log.Errorf("failed to find details of type in smartblock dependencies")
+	if found {
+		rawValue = typeDetails.Details.Fields[bundle.RelationKeyRecommendedLayout.String()]
+	} else {
+		records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
+		if err != nil || len(records) != 0 {
+			log.Errorf("failed to query object %s: %v", typeObjectId, err)
 			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
 			return
 		}
+		rawValue = records[0].Details.Fields[bundle.RelationKeyRecommendedLayout.String()]
 	}
 
-	rawValue = typeDetails.Details.Fields[bundle.RelationKeyRecommendedLayout.String()]
 	if rawValue == nil {
-		log.Errorf("failed to get recommended layout from details of type")
+		log.Errorf("failed to get recommended layout from details of type. Setting basic layout")
 		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
 		return
 	}
