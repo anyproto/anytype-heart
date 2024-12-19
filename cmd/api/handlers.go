@@ -127,6 +127,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
+		Keys:   []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
 		Offset: int32(offset),
 		Limit:  int32(limit),
 	})
@@ -245,6 +246,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
+		Keys:   []string{"id", "name", "iconEmoji", "iconImage", "identity", "globalName", "participantPermissions"},
 		Offset: int32(offset),
 		Limit:  int32(limit),
 	})
@@ -541,6 +543,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
+		Keys:   []string{"id", "uniqueKey", "name", "iconEmoji"},
 		Offset: int32(offset),
 		Limit:  int32(limit),
 	})
@@ -600,6 +603,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 				Value:       pbtypes.String("ot-template"),
 			},
 		},
+		Keys: []string{"id"},
 	})
 
 	if templateTypeIdResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -624,6 +628,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 				Value:       pbtypes.String(templateTypeId),
 			},
 		},
+		Keys:   []string{"id", "targetObjectType", "name", "iconEmoji"},
 		Offset: int32(offset),
 		Limit:  int32(limit),
 	})
@@ -709,6 +714,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 			},
 		},
+		Keys: []string{"targetSpaceId"},
 	})
 
 	if spaceResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
