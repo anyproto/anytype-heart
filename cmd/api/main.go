@@ -115,7 +115,7 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	// readWrite.Use(a.PermissionMiddleware("read-write"))
 	{
 		readWrite.POST("/spaces", a.createSpaceHandler)
-		readWrite.POST("/spaces/:space_id/objects/", a.createObjectHandler)
+		readWrite.POST("/spaces/:space_id/objects", a.createObjectHandler)
 		readWrite.PUT("/spaces/:space_id/objects/:object_id", a.updateObjectHandler)
 	}
 
