@@ -9,6 +9,15 @@ type AuthTokenResponse struct {
 	AppKey       string `json:"app_key" example:""`
 }
 
+type SpacesResponse struct {
+	Spaces []Space `json:"spaces"`
+}
+
+type CreateSpaceResponse struct {
+	SpaceId string `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`
+	Name    string `json:"name" example:"Space Name"`
+}
+
 type Space struct {
 	Type                   string `json:"type" example:"space"`
 	Id                     string `json:"id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`
@@ -28,8 +37,12 @@ type Space struct {
 	NetworkId              string `json:"network_id" example:"N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU"`
 }
 
-type SpaceMember struct {
-	Type       string `json:"type" example:"space_member"`
+type MembersResponse struct {
+	Members []Member `json:"members"`
+}
+
+type Member struct {
+	Type       string `json:"type" example:"member"`
 	Id         string `json:"id" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"`
 	Name       string `json:"name" example:"John Doe"`
 	Icon       string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"`

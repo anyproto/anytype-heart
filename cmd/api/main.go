@@ -101,7 +101,7 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	// readOnly.Use(a.PermissionMiddleware("read-only"))
 	{
 		readOnly.GET("/spaces", paginator, a.getSpacesHandler)
-		readOnly.GET("/spaces/:space_id/members", paginator, a.getSpaceMembersHandler)
+		readOnly.GET("/spaces/:space_id/members", paginator, a.getMembersHandler)
 		readOnly.GET("/spaces/:space_id/objects", paginator, a.getObjectsForSpaceHandler)
 		readOnly.GET("/spaces/:space_id/objects/:object_id", a.getObjectHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes", paginator, a.getObjectTypesHandler)

@@ -9,6 +9,21 @@ definitions:
         description: Type of attachment
         type: string
     type: object
+  api.AuthDisplayCodeResponse:
+    properties:
+      challenge_id:
+        example: 67647f5ecda913e9a2e11b26
+        type: string
+    type: object
+  api.AuthTokenResponse:
+    properties:
+      app_key:
+        example: ""
+        type: string
+      session_token:
+        example: ""
+        type: string
+    type: object
   api.Block:
     properties:
       align:
@@ -64,6 +79,15 @@ definitions:
         description: Identifier for the message being replied to
         type: string
     type: object
+  api.CreateSpaceResponse:
+    properties:
+      name:
+        example: Space Name
+        type: string
+      space_id:
+        example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
+        type: string
+    type: object
   api.Detail:
     properties:
       details:
@@ -105,6 +129,37 @@ definitions:
     properties:
       style:
         type: string
+    type: object
+  api.Member:
+    properties:
+      global_name:
+        example: john.any
+        type: string
+      icon:
+        example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100
+        type: string
+      id:
+        example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
+        type: string
+      identity:
+        example: AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ
+        type: string
+      name:
+        example: John Doe
+        type: string
+      role:
+        example: Owner
+        type: string
+      type:
+        example: member
+        type: string
+    type: object
+  api.MembersResponse:
+    properties:
+      members:
+        items:
+          $ref: '#/definitions/api.Member'
+        type: array
     type: object
   api.MessageContent:
     properties:
@@ -259,29 +314,12 @@ definitions:
         example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
         type: string
     type: object
-  api.SpaceMember:
+  api.SpacesResponse:
     properties:
-      global_name:
-        example: john.any
-        type: string
-      icon:
-        example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100
-        type: string
-      id:
-        example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
-        type: string
-      identity:
-        example: AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ
-        type: string
-      name:
-        example: John Doe
-        type: string
-      role:
-        example: Owner
-        type: string
-      type:
-        example: space_member
-        type: string
+      spaces:
+        items:
+          $ref: '#/definitions/api.Space'
+        type: array
     type: object
   api.Text:
     properties:
@@ -338,9 +376,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Success
+          description: Challenge ID
           schema:
-            type: string
+            $ref: '#/definitions/api.AuthDisplayCodeResponse'
         "502":
           description: Internal server error
           schema:
@@ -367,11 +405,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Access and refresh tokens
+          description: Authentication token
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.AuthTokenResponse'
         "400":
           description: Invalid input
           schema:
@@ -449,11 +485,7 @@ paths:
         "200":
           description: List of spaces
           schema:
-            additionalProperties:
-              items:
-                $ref: '#/definitions/api.Space'
-              type: array
-            type: object
+            $ref: '#/definitions/api.SpacesResponse'
         "403":
           description: Unauthorized
           schema:
@@ -485,7 +517,7 @@ paths:
         "200":
           description: Space created successfully
           schema:
-            $ref: '#/definitions/api.Space'
+            $ref: '#/definitions/api.CreateSpaceResponse'
         "403":
           description: Unauthorized
           schema:
@@ -523,11 +555,7 @@ paths:
         "200":
           description: List of members
           schema:
-            additionalProperties:
-              items:
-                $ref: '#/definitions/api.SpaceMember'
-              type: array
-            type: object
+            $ref: '#/definitions/api.MembersResponse'
         "403":
           description: Unauthorized
           schema:

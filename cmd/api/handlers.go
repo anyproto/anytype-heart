@@ -38,8 +38,8 @@ type AddMessageRequest struct {
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
-//	@Success	200	{string}	string		"Success"
-//	@Failure	502	{object}	ServerError	"Internal server error"
+//	@Success	200	{object}	AuthDisplayCodeResponse	"Challenge ID"
+//	@Failure	502	{object}	ServerError				"Internal server error"
 //	@Router		/auth/displayCode [post]
 func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 	resp := a.mw.AccountLocalLinkNewChallenge(c.Request.Context(), &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: "api-test"})
@@ -59,11 +59,16 @@ func (a *ApiServer) authDisplayCodeHandler(c *gin.Context) {
 //	@Produce	json
 //	@Param		code			query		string				true	"The code retrieved from Anytype Desktop app"
 //	@Param		challenge_id	query		string				true	"The challenge ID"
-//	@Success	200				{object}	map[string]string	"Access and refresh tokens"
+//	@Success	200				{object}	AuthTokenResponse	"Authentication token"
 //	@Failure	400				{object}	ValidationError		"Invalid input"
 //	@Failure	502				{object}	ServerError			"Internal server error"
 //	@Router		/auth/token [get]
 func (a *ApiServer) authTokenHandler(c *gin.Context) {
+	if c.Query("challenge_id") == "" || c.Query("code") == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
+		return
+	}
+
 	// Call AccountLocalLinkSolveChallenge to retrieve session token and app key
 	resp := a.mw.AccountLocalLinkSolveChallenge(c.Request.Context(), &pb.RpcAccountLocalLinkSolveChallengeRequest{
 		ChallengeId: c.Query("challenge_id"),
@@ -89,7 +94,7 @@ func (a *ApiServer) authTokenHandler(c *gin.Context) {
 //	@Produce	json
 //	@Param		offset	query		int					false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit	query		int					false	"The number of items to return"	default(100)
-//	@Success	200		{object}	map[string][]Space	"List of spaces"
+//	@Success	200		{object}	SpacesResponse		"List of spaces"
 //	@Failure	403		{object}	UnauthorizedError	"Unauthorized"
 //	@Failure	404		{object}	NotFoundError		"Resource not found"
 //	@Failure	502		{object}	ServerError			"Internal server error"
@@ -153,7 +158,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		spaces = append(spaces, workspace)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"spaces": spaces})
+	c.JSON(http.StatusOK, SpacesResponse{Spaces: spaces})
 }
 
 // createSpaceHandler creates a new space
@@ -163,7 +168,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 //	@Accept		json
 //	@Produce	json
 //	@Param		name	body		string				true	"Space Name"
-//	@Success	200		{object}	Space				"Space created successfully"
+//	@Success	200		{object}	CreateSpaceResponse	"Space created successfully"
 //	@Failure	403		{object}	UnauthorizedError	"Unauthorized"
 //	@Failure	502		{object}	ServerError			"Internal server error"
 //	@Router		/spaces [post]
@@ -200,24 +205,24 @@ func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"spaceId": resp.SpaceId, "name": name, "iconOption": iconOption})
+	c.JSON(http.StatusOK, CreateSpaceResponse{SpaceId: resp.SpaceId, Name: name})
 }
 
-// getSpaceMembersHandler retrieves a list of members for the specified space
+// getMembersHandler retrieves a list of members for the specified space
 //
 //	@Summary	Retrieve a list of members for the specified Space
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string						true	"The ID of the space"
-//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int							false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string][]SpaceMember	"List of members"
-//	@Failure	403			{object}	UnauthorizedError			"Unauthorized"
-//	@Failure	404			{object}	NotFoundError				"Resource not found"
-//	@Failure	502			{object}	ServerError					"Internal server error"
+//	@Param		space_id	path		string				true	"The ID of the space"
+//	@Param		offset		query		int					false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int					false	"The number of items to return"	default(100)
+//	@Success	200			{object}	MembersResponse		"List of members"
+//	@Failure	403			{object}	UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	NotFoundError		"Resource not found"
+//	@Failure	502			{object}	ServerError			"Internal server error"
 //	@Router		/spaces/{space_id}/members [get]
-func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
+func (a *ApiServer) getMembersHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
@@ -258,11 +263,11 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 		return
 	}
 
-	members := make([]SpaceMember, 0, len(resp.Records))
+	members := make([]Member, 0, len(resp.Records))
 	for _, record := range resp.Records {
 		icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 
-		member := SpaceMember{
+		member := Member{
 			Type:       "space_member",
 			Id:         record.Fields["id"].GetStringValue(),
 			Name:       record.Fields["name"].GetStringValue(),
@@ -275,7 +280,7 @@ func (a *ApiServer) getSpaceMembersHandler(c *gin.Context) {
 		members = append(members, member)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"members": members})
+	c.JSON(http.StatusOK, MembersResponse{Members: members})
 }
 
 // getObjectsForSpaceHandler retrieves objects in a specific space

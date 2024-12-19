@@ -2,8 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -18,8 +20,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/mock_core"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+const (
+	offset      = 0
+	limit       = 100
+	techSpaceId = "tech-space-id"
+	gatewayUrl  = "http://localhost:31006"
+	iconImage   = "bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"
 )
 
 type fixture struct {
@@ -51,7 +62,7 @@ func newFixture(t *testing.T) *fixture {
 	readOnly := apiServer.router.Group("/v1")
 	{
 		readOnly.GET("/spaces", paginator, apiServer.getSpacesHandler)
-		readOnly.GET("/spaces/:space_id/members", paginator, apiServer.getSpaceMembersHandler)
+		readOnly.GET("/spaces/:space_id/members", paginator, apiServer.getMembersHandler)
 		readOnly.GET("/spaces/:space_id/objects", paginator, apiServer.getObjectsForSpaceHandler)
 		readOnly.GET("/spaces/:space_id/objects/:object_id", apiServer.getObjectHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes", paginator, apiServer.getObjectTypesHandler)
@@ -153,6 +164,19 @@ func TestApiServer_AuthTokenHandler(t *testing.T) {
 		require.Equal(t, appKey, response.AppKey)
 	})
 
+	t.Run("bad request", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		req, _ := http.NewRequest("GET", "/v1/auth/token", nil)
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
 	t.Run("failed token retrieval", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
@@ -181,24 +205,52 @@ func TestApiServer_GetSpacesHandler(t *testing.T) {
 	t.Run("successful retrieval of spaces", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.accountInfo = &model.AccountInfo{TechSpaceId: "tech-space-id"}
+		fx.accountInfo = &model.AccountInfo{TechSpaceId: techSpaceId, GatewayUrl: gatewayUrl}
 
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: techSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+				},
+			},
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: "name",
+					Type:        model.BlockContentDataviewSort_Asc,
+				},
+			},
+			Keys:   []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
+			Offset: offset,
+			Limit:  limit,
+		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						"name":          pbtypes.String("Another Workspace"),
+						"targetSpaceId": pbtypes.String("another-space-id"),
+						"iconEmoji":     pbtypes.String(""),
+						"iconImage":     pbtypes.String(iconImage),
+					},
+				},
 				{
 					Fields: map[string]*types.Value{
 						"name":          pbtypes.String("My Workspace"),
 						"targetSpaceId": pbtypes.String("my-space-id"),
 						"iconEmoji":     pbtypes.String("🚀"),
 						"iconImage":     pbtypes.String(""),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						"name":          pbtypes.String("Another Workspace"),
-						"targetSpaceId": pbtypes.String("another-space-id"),
-						"iconEmoji":     pbtypes.String(""),
-						"iconImage":     pbtypes.String("bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"),
 					},
 				},
 			},
@@ -227,20 +279,29 @@ func TestApiServer_GetSpacesHandler(t *testing.T) {
 		}, nil).Twice()
 
 		// when
-		req, _ := http.NewRequest("GET", "/v1/spaces", nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/v1/spaces?offset=%d&limit=%d", offset, limit), nil)
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Contains(t, w.Body.String(), "My Workspace")
-		require.Contains(t, w.Body.String(), "Another Workspace")
+
+		var response SpacesResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		require.Len(t, response.Spaces, 2)
+		require.Equal(t, "Another Workspace", response.Spaces[0].Name)
+		require.Equal(t, "another-space-id", response.Spaces[0].Id)
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), response.Spaces[0].Icon, "Icon URL does not match")
+		require.Equal(t, "My Workspace", response.Spaces[1].Name)
+		require.Equal(t, "my-space-id", response.Spaces[1].Id)
+		require.Equal(t, "🚀", response.Spaces[1].Icon)
 	})
 
 	t.Run("no spaces found", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.accountInfo = &model.AccountInfo{TechSpaceId: "tech-space-id"}
+		fx.accountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
 
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{
@@ -249,12 +310,46 @@ func TestApiServer_GetSpacesHandler(t *testing.T) {
 			}).Once()
 
 		// when
-		req, _ := http.NewRequest("GET", "/v1/spaces", nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/v1/spaces?offset=%d&limit=%d", offset, limit), nil)
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
 		// then
 		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("failed workspace open", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.accountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
+			Return(&pb.RpcObjectSearchResponse{
+				Records: []*types.Struct{
+					{
+						Fields: map[string]*types.Value{
+							"name":          pbtypes.String("My Workspace"),
+							"targetSpaceId": pbtypes.String("my-space-id"),
+							"iconEmoji":     pbtypes.String("🚀"),
+							"iconImage":     pbtypes.String(""),
+						},
+					},
+				},
+				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			}).Once()
+
+		fx.mwMock.On("WorkspaceOpen", mock.Anything, mock.Anything).
+			Return(&pb.RpcWorkspaceOpenResponse{
+				Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR},
+			}, nil).Once()
+
+		// when
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/v1/spaces?offset=%d&limit=%d", offset, limit), nil)
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
 
@@ -312,19 +407,31 @@ func TestApiServer_CreateSpaceHandler(t *testing.T) {
 	})
 }
 
-func TestApiServer_GetSpaceMembersHandler(t *testing.T) {
-	t.Run("successfully get space members", func(t *testing.T) {
+func TestApiServer_GetMembersHandler(t *testing.T) {
+	t.Run("successfully get members", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		fx.accountInfo = &model.AccountInfo{TechSpaceId: techSpaceId, GatewayUrl: gatewayUrl}
 
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{
 				Records: []*types.Struct{
 					{
 						Fields: map[string]*types.Value{
-							"id":        pbtypes.String("member-1"),
-							"name":      pbtypes.String("John Doe"),
-							"iconEmoji": pbtypes.String("👤"),
+							"id":         pbtypes.String("member-1"),
+							"name":       pbtypes.String("John Doe"),
+							"iconEmoji":  pbtypes.String("👤"),
+							"identity":   pbtypes.String("AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"),
+							"globalName": pbtypes.String("john.any"),
+						},
+					},
+					{
+						Fields: map[string]*types.Value{
+							"id":         pbtypes.String("member-2"),
+							"name":       pbtypes.String("Jane Doe"),
+							"iconImage":  pbtypes.String(iconImage),
+							"identity":   pbtypes.String("AAjLbEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMD4"),
+							"globalName": pbtypes.String("jane.any"),
 						},
 					},
 				},
@@ -332,13 +439,25 @@ func TestApiServer_GetSpaceMembersHandler(t *testing.T) {
 			}).Once()
 
 		// when
-		req, _ := http.NewRequest("GET", "/v1/spaces/my-space/members", nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/v1/spaces/my-space/members?offset=%d&limit=%d", offset, limit), nil)
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Contains(t, w.Body.String(), "John Doe")
+
+		var response MembersResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		require.Len(t, response.Members, 2)
+		require.Equal(t, "member-1", response.Members[0].Id)
+		require.Equal(t, "John Doe", response.Members[0].Name)
+		require.Equal(t, "👤", response.Members[0].Icon)
+		require.Equal(t, "john.any", response.Members[0].GlobalName)
+		require.Equal(t, "member-2", response.Members[1].Id)
+		require.Equal(t, "Jane Doe", response.Members[1].Name)
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), response.Members[1].Icon, "Icon URL does not match")
+		require.Equal(t, "jane.any", response.Members[1].GlobalName)
 	})
 
 	t.Run("no members found", func(t *testing.T) {
@@ -352,7 +471,7 @@ func TestApiServer_GetSpaceMembersHandler(t *testing.T) {
 			}).Once()
 
 		// when
-		req, _ := http.NewRequest("GET", "/v1/spaces/empty-space/members", nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/v1/spaces/empty-space/members?offset=%d&limit=%d", offset, limit), nil)
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
@@ -712,7 +831,7 @@ func TestApiServer_GetObjectsHandler(t *testing.T) {
 		fx := newFixture(t)
 
 		// Mock retrieving spaces first
-		fx.accountInfo = &model.AccountInfo{TechSpaceId: "tech-space-id"}
+		fx.accountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
