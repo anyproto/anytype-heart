@@ -2,11 +2,13 @@ package userdataobject
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-sync/util/crypto"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -25,7 +27,7 @@ var log = logging.Logger("core.block.editor.userdata")
 type UserDataObject interface {
 	smartblock.SmartBlock
 
-	SaveContact(ctx context.Context, profile *model.IdentityProfile) error
+	SaveContact(ctx context.Context, profile *model.IdentityProfile, key crypto.SymKey) error
 	DeleteContact(ctx context.Context, identity string) error
 	UpdateContactByDetails(ctx context.Context, id string, details *domain.Details) error
 	UpdateContactByIdentity(ctx context.Context, profile *model.IdentityProfile) (err error)
@@ -88,12 +90,12 @@ func (u *userDataObject) onUpdate() {
 		return
 	}
 	for _, contact := range contacts {
-		u.createContactAndUpdateDetails(err, contact)
+		u.createContactAndUpdateDetails(contact)
 	}
 }
 
-func (u *userDataObject) createContactAndUpdateDetails(err error, contact *Contact) {
-	err = cache.DoContextFullID(u.objectCache, u.ctx, domain.FullID{
+func (u *userDataObject) createContactAndUpdateDetails(contact *Contact) {
+	err := cache.DoContextFullID(u.objectCache, u.ctx, domain.FullID{
 		ObjectID: domain.NewContactId(contact.identity),
 		SpaceID:  u.SpaceID(),
 	}, func(contactObject smartblock.SmartBlock) error {
@@ -145,20 +147,20 @@ func (u *userDataObject) Close() error {
 	return u.SmartBlock.Close()
 }
 
-func (u *userDataObject) SaveContact(ctx context.Context, profile *model.IdentityProfile) error {
+func (u *userDataObject) SaveContact(ctx context.Context, profile *model.IdentityProfile, symKey crypto.SymKey) error {
 	arena := u.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		u.arenaPool.Put(arena)
 	}()
-	return u.saveContactInStore(ctx, profile, arena)
-}
-
-func (u *userDataObject) saveContactInStore(ctx context.Context, profile *model.IdentityProfile, arena *anyenc.Arena) error {
-	contact := NewContact(profile.Identity, profile.Name, profile.Description, profile.IconCid)
-
+	rawKey, err := symKey.Raw()
+	if err != nil {
+		return fmt.Errorf("get raw sym key: %w", err)
+	}
+	encodedKey := base64.StdEncoding.EncodeToString(rawKey)
+	contact := NewContact(profile.Identity, profile.Name, profile.Description, profile.IconCid, encodedKey, profile.GlobalName)
 	builder := &storestate.Builder{}
-	err := builder.Create(ContactsCollection, domain.NewContactId(profile.Identity), contact.ToJson(arena))
+	err = builder.Create(ContactsCollection, domain.NewContactId(profile.Identity), contact.ToJson(arena))
 	if err != nil {
 		return fmt.Errorf("create chat: %w", err)
 	}
@@ -198,7 +200,6 @@ func (u *userDataObject) UpdateContactByIdentity(ctx context.Context, profile *m
 
 func (u *userDataObject) updateContactFields(profile *model.IdentityProfile, builder *storestate.Builder) error {
 	contactId := domain.NewContactId(profile.Identity)
-
 	err := builder.Modify(ContactsCollection, contactId, []string{bundle.RelationKeyName.String()}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.Name))
 	if err != nil {
 		return fmt.Errorf("modify contact: %w", err)
@@ -207,7 +208,7 @@ func (u *userDataObject) updateContactFields(profile *model.IdentityProfile, bui
 	if err != nil {
 		return fmt.Errorf("modify contact: %w", err)
 	}
-	err = builder.Modify(ContactsCollection, contactId, []string{bundle.RelationKeyDescription.String()}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.Description))
+	err = builder.Modify(ContactsCollection, contactId, []string{bundle.RelationKeyGlobalName.String()}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, profile.GlobalName))
 	if err != nil {
 		return fmt.Errorf("modify contact: %w", err)
 	}
@@ -216,7 +217,8 @@ func (u *userDataObject) updateContactFields(profile *model.IdentityProfile, bui
 
 func (u *userDataObject) DeleteContact(ctx context.Context, identity string) error {
 	builder := &storestate.Builder{}
-	builder.Delete(ContactsCollection, identity)
+	contactId := domain.NewContactId(identity)
+	builder.Delete(ContactsCollection, contactId)
 	_, err := u.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   u.state,
@@ -240,6 +242,9 @@ func (u *userDataObject) UpdateContactByDetails(ctx context.Context, contactId s
 	if err != nil {
 		return err
 	}
+	if builder.StoreChange == nil {
+		return nil
+	}
 	_, err = u.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes:        builder.ChangeSet,
 		State:          u.state,
@@ -254,7 +259,7 @@ func (u *userDataObject) UpdateContactByDetails(ctx context.Context, contactId s
 
 func (u *userDataObject) updateContactFieldsFromDetails(details *domain.Details, builder *storestate.Builder, contactId string) error {
 	for key, value := range details.Iterate() {
-		if !slices.Contains([]domain.RelationKey{bundle.RelationKeyName, bundle.RelationKeyDescription, bundle.RelationKeyIconImage}, key) {
+		if !slices.Contains(AllowedDetailsToChange, key) {
 			continue
 		}
 		err := builder.Modify(ContactsCollection, contactId, []string{key.String()}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, value.String()))

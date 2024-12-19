@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"encoding/base64"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -11,11 +12,13 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -95,7 +98,7 @@ func TestContactObject_Init(t *testing.T) {
 }
 
 func TestContactObject_SetDetails(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+	t.Run(" updated only description", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		err := fx.ContactObject.Init(&smartblock.InitContext{})
@@ -109,7 +112,8 @@ func TestContactObject_SetDetails(t *testing.T) {
 			collection = params.State
 			return storechanges.PushStoreChanges(ctx, params)
 		})
-		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{Identity: id})
+		aesKey := crypto.NewAES()
+		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{Identity: id}, aesKey)
 		require.NoError(t, err)
 
 		// when
@@ -129,20 +133,25 @@ func TestContactObject_SetDetails(t *testing.T) {
 		wg.Wait()
 		require.NoError(t, err)
 		details := fx.ContactObject.CombinedDetails()
-		assert.Equal(t, name, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "", details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
 
 		c, err := collection.Collection(context.Background(), "contacts")
 		require.NoError(t, err)
 		jsonContact, err := c.FindId(context.Background(), contactId)
 		require.NoError(t, err)
+
+		raw, err := aesKey.Raw()
+		require.NoError(t, err)
+		encodedKey := base64.StdEncoding.EncodeToString(raw)
 		contact := userdataobject.NewContactFromJson(jsonContact.Value())
-		assert.Equal(t, userdataobject.NewContact(id, name, description, ""), contact)
+		expected := userdataobject.NewContact(id, "", description, "", encodedKey, "")
+		assert.Equal(t, expected, contact)
 	})
 }
 
 func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+	t.Run("success updated only description", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		err := fx.ContactObject.Init(&smartblock.InitContext{})
@@ -156,7 +165,8 @@ func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
 			collection = params.State
 			return storechanges.PushStoreChanges(ctx, params)
 		})
-		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{Identity: id})
+		aesKey := crypto.NewAES()
+		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{Identity: id}, aesKey)
 		require.NoError(t, err)
 
 		// when
@@ -176,15 +186,20 @@ func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
 		wg.Wait()
 		require.NoError(t, err)
 		details := fx.ContactObject.CombinedDetails()
-		assert.Equal(t, name, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "", details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
 
 		c, err := collection.Collection(context.Background(), "contacts")
 		require.NoError(t, err)
 		jsonContact, err := c.FindId(context.Background(), contactId)
 		require.NoError(t, err)
+
+		raw, err := aesKey.Raw()
+		require.NoError(t, err)
+		encodedKey := base64.StdEncoding.EncodeToString(raw)
 		contact := userdataobject.NewContactFromJson(jsonContact.Value())
-		assert.Equal(t, userdataobject.NewContact(id, name, description, ""), contact)
+		expected := userdataobject.NewContact(id, "", description, "", encodedKey, "")
+		assert.Equal(t, expected, contact)
 	})
 }
 
@@ -203,7 +218,9 @@ func newFixture(t *testing.T) *fixture {
 
 	db, err := anystore.Open(context.Background(), filepath.Join(t.TempDir(), "crdt.db"), nil)
 	require.NoError(t, err)
-	userDataObject := userdataobject.New(smarttest.New(userDataObjectId), db, nil)
+	objectGetter := mock_cache.NewMockObjectGetter(t)
+	objectGetter.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+	userDataObject := userdataobject.New(smarttest.New(userDataObjectId), db, objectGetter)
 	source := mock_source.NewMockStore(t)
 	source.EXPECT().ReadStoreDoc(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	err = userDataObject.Init(&smartblock.InitContext{

@@ -2,6 +2,7 @@ package contact
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -27,8 +28,8 @@ type identityService interface {
 	app.Component
 	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
 	UnregisterIdentity(spaceId string, identity string)
-	AddObserver(spaceId, identity string, observer func(identity string, profile *model.IdentityProfile))
 	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+	GetIdentityKey(identity string) crypto.SymKey
 }
 
 type service struct {
@@ -40,10 +41,10 @@ type service struct {
 
 func (s *service) Run(ctx context.Context) (err error) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	return s.addObserversForExistingContacts(ctx)
+	return s.registerExistingContacts(ctx)
 }
 
-func (s *service) addObserversForExistingContacts(ctx context.Context) error {
+func (s *service) registerExistingContacts(ctx context.Context) error {
 	var (
 		contacts []*userdataobject.Contact
 		listErr  error
@@ -59,7 +60,15 @@ func (s *service) addObserversForExistingContacts(ctx context.Context) error {
 		return err
 	}
 	for _, contact := range contacts {
-		s.identityService.AddObserver(s.spaceService.TechSpaceId(), contact.Identity(), s.handleIdentityUpdate)
+		key, err := getAesKeyFromBase64(contact.Key())
+		if err != nil {
+			log.Errorf("failed to register contact identity %s", err)
+			continue
+		}
+		err = s.identityService.RegisterIdentity(s.spaceService.TechSpaceId(), contact.Identity(), key, s.handleIdentityUpdate)
+		if err != nil {
+			log.Errorf("failed to register contact identity %s", err)
+		}
 	}
 	return err
 }
@@ -86,33 +95,49 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) SaveContact(ctx context.Context, identity string, profileSymKey string) error {
-	err := s.registerIdentity(identity, profileSymKey)
+	symKey, err := s.getIdentityKey(identity, profileSymKey)
 	if err != nil {
 		return err
+	}
+	err = s.identityService.RegisterIdentity(s.spaceService.TechSpaceId(), identity, symKey, s.handleIdentityUpdate)
+	if err != nil {
+		return fmt.Errorf("register identity %s: %v", identity, err)
 	}
 	profile := s.identityService.WaitProfile(ctx, identity)
 	if profile == nil {
 		return fmt.Errorf("no profile for identity %s", identity)
 	}
 	return s.spaceService.TechSpace().DoUserDataObject(ctx, func(userDataObject userdataobject.UserDataObject) error {
-		return userDataObject.SaveContact(ctx, profile)
+		return userDataObject.SaveContact(ctx, profile, symKey)
 	})
 }
 
-func (s *service) registerIdentity(identity string, profileSymKey string) error {
+func (s *service) getIdentityKey(identity string, profileSymKey string) (crypto.SymKey, error) {
+	var (
+		symKey crypto.SymKey
+		err    error
+	)
 	if len(profileSymKey) == 0 {
-		s.identityService.AddObserver(s.spaceService.TechSpaceId(), identity, s.handleIdentityUpdate)
+		symKey = s.identityService.GetIdentityKey(identity)
 	} else {
-		key, err := getAesKey(profileSymKey)
+		symKey, err = getAesKey(profileSymKey)
 		if err != nil {
-			return fmt.Errorf("get aes key for identity %s: %w", identity, err)
-		}
-		err = s.identityService.RegisterIdentity(s.spaceService.TechSpaceId(), identity, key, s.handleIdentityUpdate)
-		if err != nil {
-			return fmt.Errorf("register identity %s: %v", identity, err)
+			return nil, fmt.Errorf("get aes key for identity %s: %w", identity, err)
 		}
 	}
-	return nil
+	return symKey, nil
+}
+
+func getAesKeyFromBase64(encodedProfileSymKey string) (*crypto.AESKey, error) {
+	profileSymKey, err := base64.StdEncoding.DecodeString(encodedProfileSymKey)
+	if err != nil {
+		return nil, err
+	}
+	key, err := crypto.UnmarshallAESKey(profileSymKey)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
 }
 
 func getAesKey(profileSymKey string) (*crypto.AESKey, error) {

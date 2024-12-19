@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -53,6 +54,9 @@ func (co *ContactObject) Init(ctx *smartblock.InitContext) error {
 func (co *ContactObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	state := co.NewStateCtx(ctx)
 	for _, detail := range details {
+		if !slices.Contains(userdataobject.AllowedDetailsToChange, detail.Key) {
+			continue
+		}
 		state.SetDetail(detail.Key, detail.Value)
 	}
 	err = co.Apply(state)

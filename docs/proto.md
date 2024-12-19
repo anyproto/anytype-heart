@@ -569,6 +569,10 @@
     - [Rpc.Contact.Create.Request](#anytype-Rpc-Contact-Create-Request)
     - [Rpc.Contact.Create.Response](#anytype-Rpc-Contact-Create-Response)
     - [Rpc.Contact.Create.Response.Error](#anytype-Rpc-Contact-Create-Response-Error)
+    - [Rpc.Contact.Delete](#anytype-Rpc-Contact-Delete)
+    - [Rpc.Contact.Delete.Request](#anytype-Rpc-Contact-Delete-Request)
+    - [Rpc.Contact.Delete.Response](#anytype-Rpc-Contact-Delete-Response)
+    - [Rpc.Contact.Delete.Response.Error](#anytype-Rpc-Contact-Delete-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.AccountSelectTrace](#anytype-Rpc-Debug-AccountSelectTrace)
     - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
@@ -1382,6 +1386,7 @@
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Contact.Create.Response.Error.Code](#anytype-Rpc-Contact-Create-Response-Error-Code)
+    - [Rpc.Contact.Delete.Response.Error.Code](#anytype-Rpc-Contact-Delete-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code)
@@ -2240,6 +2245,7 @@
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ContactCreate | [Rpc.Contact.Create.Request](#anytype-Rpc-Contact-Create-Request) | [Rpc.Contact.Create.Response](#anytype-Rpc-Contact-Create-Response) |  |
+| ContactDelete | [Rpc.Contact.Delete.Request](#anytype-Rpc-Contact-Delete-Request) | [Rpc.Contact.Delete.Response](#anytype-Rpc-Contact-Delete-Response) |  |
 
  
 
@@ -10474,6 +10480,62 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Contact.Create.Response.Error.Code](#anytype-Rpc-Contact-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Delete"></a>
+
+### Rpc.Contact.Delete
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Delete-Request"></a>
+
+### Rpc.Contact.Delete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Delete-Response"></a>
+
+### Rpc.Contact.Delete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Contact.Delete.Response.Error](#anytype-Rpc-Contact-Delete-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Delete-Response-Error"></a>
+
+### Rpc.Contact.Delete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Contact.Delete.Response.Error.Code](#anytype-Rpc-Contact-Delete-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22097,6 +22159,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Contact-Create-Response-Error-Code"></a>
 
 ### Rpc.Contact.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Contact-Delete-Response-Error-Code"></a>
+
+### Rpc.Contact.Delete.Response.Error.Code
 
 
 | Name | Number | Description |

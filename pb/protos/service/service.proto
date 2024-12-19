@@ -380,4 +380,5 @@ service ClientCommands {
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 
     rpc ContactCreate (anytype.Rpc.Contact.Create.Request) returns (anytype.Rpc.Contact.Create.Response);
+    rpc ContactDelete (anytype.Rpc.Contact.Delete.Request) returns (anytype.Rpc.Contact.Delete.Response);
 }

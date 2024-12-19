@@ -17,6 +17,7 @@ import (
 	"go.uber.org/mock/gomock"
 	"golang.org/x/net/context"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/userdataobject"
@@ -54,17 +55,18 @@ func TestService_Run(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, fx.Close(context.Background()))
 	})
-	t.Run("success - add observers", func(t *testing.T) {
+	t.Run("success - register identity", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.callTechSpace(t)
 		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(storechanges.PushStoreChanges)
+		aesKey := crypto.NewAES()
 		err := fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{
 			Identity: id,
-		})
+		}, aesKey)
 		require.NoError(t, err)
+		fx.identityService.EXPECT().RegisterIdentity(spaceId, id, aesKey, mock.Anything).Return(nil)
 		fx.spaceService.EXPECT().TechSpaceId().Return(spaceId)
-		fx.identityService.EXPECT().AddObserver(spaceId, id, mock.Anything).Return()
 
 		// when
 		err = fx.Run(context.Background())
@@ -82,14 +84,15 @@ func TestService_handleIdentityUpdate(t *testing.T) {
 		fx.callTechSpace(t)
 		err := fx.Run(context.Background())
 		require.NoError(t, err)
+		aesKey := crypto.NewAES()
 		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(storechanges.PushStoreChanges).Times(2)
 		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{
 			Identity: id,
-		})
+		}, aesKey)
 		require.NoError(t, err)
 
 		// when
-		fx.handleIdentityUpdate(id, &model.IdentityProfile{Identity: id, Name: name, Description: description})
+		fx.handleIdentityUpdate(id, &model.IdentityProfile{Identity: id, Name: name, Description: description, IconCid: cid})
 
 		// then
 		contacts, err := fx.userDataObject.ListContacts(context.Background())
@@ -97,7 +100,8 @@ func TestService_handleIdentityUpdate(t *testing.T) {
 		require.Len(t, contacts, 1)
 		assert.Equal(t, id, contacts[0].Identity())
 		assert.Equal(t, name, contacts[0].Name())
-		assert.Equal(t, description, contacts[0].Description())
+		assert.Equal(t, "", contacts[0].Description())
+		assert.Equal(t, cid, contacts[0].Icon())
 	})
 }
 
@@ -106,7 +110,10 @@ func TestService_SaveContact(t *testing.T) {
 		// given
 		fx := newFixture(t)
 
-		fx.identityService.EXPECT().AddObserver(spaceId, id, mock.Anything).Return()
+		aesKey := crypto.NewAES()
+		fx.identityService.EXPECT().RegisterIdentity(spaceId, id, aesKey, mock.Anything).Return(nil)
+		fx.identityService.EXPECT().GetIdentityKey(id).Return(aesKey)
+
 		fx.identityService.EXPECT().WaitProfile(context.Background(), id).Return(nil)
 		fx.spaceService.EXPECT().TechSpaceId().Return(spaceId)
 
@@ -120,7 +127,9 @@ func TestService_SaveContact(t *testing.T) {
 		// given
 		fx := newFixture(t)
 
-		fx.identityService.EXPECT().AddObserver(spaceId, id, mock.Anything).Return()
+		aesKey := crypto.NewAES()
+		fx.identityService.EXPECT().RegisterIdentity(spaceId, id, aesKey, mock.Anything).Return(nil)
+		fx.identityService.EXPECT().GetIdentityKey(id).Return(aesKey)
 		fx.identityService.EXPECT().WaitProfile(context.Background(), id).Return(&model.IdentityProfile{
 			Identity:    id,
 			Name:        name,
@@ -236,7 +245,9 @@ func (fx *fixture) callTechSpace(t *testing.T) {
 
 	db, err := anystore.Open(context.Background(), filepath.Join(t.TempDir(), "crdt.db"), nil)
 	require.NoError(t, err)
-	userDataObject := userdataobject.New(smarttest.New(userDataObjectId), db, nil)
+	objectGetter := mock_cache.NewMockObjectGetter(t)
+	objectGetter.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+	userDataObject := userdataobject.New(smarttest.New(userDataObjectId), db, objectGetter)
 	fx.userDataObject = userDataObject
 	fx.source.EXPECT().ReadStoreDoc(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	err = userDataObject.Init(&smartblock.InitContext{

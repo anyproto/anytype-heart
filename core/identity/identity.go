@@ -47,8 +47,8 @@ type Service interface {
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
 
-	AddObserver(spaceId, identity string, observer func(identity string, profile *model.IdentityProfile))
 	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+	GetIdentityKey(identity string) crypto.SymKey
 	app.ComponentRunnable
 }
 
@@ -182,20 +182,6 @@ func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {
 		return profile
 	}
 	return nil
-}
-
-func (s *service) AddObserver(spaceId, identity string, observerCallback func(identity string, profile *model.IdentityProfile)) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	observers := s.identityObservers[identity]
-	if observers == nil {
-		observers = make(map[string]*observer)
-		s.identityObservers[identity] = observers
-	}
-	s.identityObservers[identity][spaceId] = &observer{
-		callback:    observerCallback,
-		initialized: true,
-	}
 }
 
 func (s *service) observeIdentitiesLoop() {
@@ -534,4 +520,8 @@ func (s *service) UnregisterIdentitiesInSpace(spaceId string) {
 
 func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details) {
 	return s.ownProfileSubscription.getDetails(ctx)
+}
+
+func (s *service) GetIdentityKey(identity string) crypto.SymKey {
+	return s.identityEncryptionKeys[identity]
 }

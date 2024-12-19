@@ -27,37 +27,50 @@ func (_m *MockidentityService) EXPECT() *MockidentityService_Expecter {
 	return &MockidentityService_Expecter{mock: &_m.Mock}
 }
 
-// AddObserver provides a mock function with given fields: spaceId, identity, observer
-func (_m *MockidentityService) AddObserver(spaceId string, identity string, observer func(string, *model.IdentityProfile)) {
-	_m.Called(spaceId, identity, observer)
+// GetIdentityKey provides a mock function with given fields: identity
+func (_m *MockidentityService) GetIdentityKey(identity string) crypto.SymKey {
+	ret := _m.Called(identity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetIdentityKey")
+	}
+
+	var r0 crypto.SymKey
+	if rf, ok := ret.Get(0).(func(string) crypto.SymKey); ok {
+		r0 = rf(identity)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(crypto.SymKey)
+		}
+	}
+
+	return r0
 }
 
-// MockidentityService_AddObserver_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddObserver'
-type MockidentityService_AddObserver_Call struct {
+// MockidentityService_GetIdentityKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIdentityKey'
+type MockidentityService_GetIdentityKey_Call struct {
 	*mock.Call
 }
 
-// AddObserver is a helper method to define mock.On call
-//   - spaceId string
+// GetIdentityKey is a helper method to define mock.On call
 //   - identity string
-//   - observer func(string , *model.IdentityProfile)
-func (_e *MockidentityService_Expecter) AddObserver(spaceId interface{}, identity interface{}, observer interface{}) *MockidentityService_AddObserver_Call {
-	return &MockidentityService_AddObserver_Call{Call: _e.mock.On("AddObserver", spaceId, identity, observer)}
+func (_e *MockidentityService_Expecter) GetIdentityKey(identity interface{}) *MockidentityService_GetIdentityKey_Call {
+	return &MockidentityService_GetIdentityKey_Call{Call: _e.mock.On("GetIdentityKey", identity)}
 }
 
-func (_c *MockidentityService_AddObserver_Call) Run(run func(spaceId string, identity string, observer func(string, *model.IdentityProfile))) *MockidentityService_AddObserver_Call {
+func (_c *MockidentityService_GetIdentityKey_Call) Run(run func(identity string)) *MockidentityService_GetIdentityKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(func(string, *model.IdentityProfile)))
+		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *MockidentityService_AddObserver_Call) Return() *MockidentityService_AddObserver_Call {
-	_c.Call.Return()
+func (_c *MockidentityService_GetIdentityKey_Call) Return(_a0 crypto.SymKey) *MockidentityService_GetIdentityKey_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockidentityService_AddObserver_Call) RunAndReturn(run func(string, string, func(string, *model.IdentityProfile))) *MockidentityService_AddObserver_Call {
+func (_c *MockidentityService_GetIdentityKey_Call) RunAndReturn(run func(string) crypto.SymKey) *MockidentityService_GetIdentityKey_Call {
 	_c.Call.Return(run)
 	return _c
 }

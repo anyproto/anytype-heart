@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -60,6 +61,8 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 		name := "name"
 		iconCid := "cid"
 		description := "description"
+		globalName := "globalName"
+		aesKey := crypto.NewAES()
 
 		// when
 		err = fx.SaveContact(context.Background(), &model.IdentityProfile{
@@ -67,7 +70,8 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 			Name:        name,
 			IconCid:     iconCid,
 			Description: description,
-		})
+			GlobalName:  globalName,
+		}, aesKey)
 
 		// then
 		require.NoError(t, err)
@@ -76,6 +80,7 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
 		assert.Equal(t, identity, details.GetString(bundle.RelationKeyIdentity))
 		assert.Equal(t, iconCid, details.GetString(bundle.RelationKeyIconImage))
+		assert.Equal(t, globalName, details.GetString(bundle.RelationKeyGlobalName))
 	})
 	t.Run("contact exists", func(t *testing.T) {
 		// given
@@ -96,6 +101,7 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 		name := "name"
 		iconCid := "cid"
 		description := "description"
+		aesKey := crypto.NewAES()
 
 		// when
 		err = fx.SaveContact(context.Background(), &model.IdentityProfile{
@@ -103,13 +109,13 @@ func TestUserDataObject_SaveContact(t *testing.T) {
 			Name:        name,
 			IconCid:     iconCid,
 			Description: description,
-		})
+		}, aesKey)
 		err = fx.SaveContact(context.Background(), &model.IdentityProfile{
 			Identity:    identity,
 			Name:        name,
 			IconCid:     iconCid,
 			Description: description,
-		})
+		}, aesKey)
 
 		// then
 		require.NoError(t, err)
@@ -139,16 +145,18 @@ func TestUserDataObject_DeleteContact(t *testing.T) {
 		name := "name"
 		iconCid := "cid"
 		description := "description"
+		aesKey := crypto.NewAES()
+
 		err = fx.SaveContact(context.Background(), &model.IdentityProfile{
 			Identity:    identity,
 			Name:        name,
 			IconCid:     iconCid,
 			Description: description,
-		})
+		}, aesKey)
 		require.NoError(t, err)
 
 		// when
-		err = fx.DeleteContact(context.Background(), contactId)
+		err = fx.DeleteContact(context.Background(), identity)
 
 		// then
 		require.NoError(t, err)
@@ -169,10 +177,9 @@ func TestUserDataObject_DeleteContact(t *testing.T) {
 		})
 		require.NoError(t, err)
 		<-initChan
-		contactId := domain.NewContactId("identity")
 
 		// when
-		err = fx.DeleteContact(context.Background(), contactId)
+		err = fx.DeleteContact(context.Background(), "identity")
 
 		// then
 		require.Error(t, err)
@@ -200,21 +207,24 @@ func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 		name := "name"
 		iconCid := "cid"
 		description := "description"
+		globalName := "globalName"
+		aesKey := crypto.NewAES()
 		err = fx.SaveContact(context.Background(), &model.IdentityProfile{
 			Identity:    identity,
 			Name:        name,
 			IconCid:     iconCid,
 			Description: description,
-		})
+		}, aesKey)
 		require.NoError(t, err)
 
 		// when
 		newName := "newName"
 		newCid := "newCid"
 		err = fx.UpdateContactByIdentity(context.Background(), &model.IdentityProfile{
-			Identity: identity,
-			Name:     newName,
-			IconCid:  newCid,
+			Identity:   identity,
+			Name:       newName,
+			IconCid:    newCid,
+			GlobalName: globalName,
 		})
 
 		// then
@@ -222,6 +232,7 @@ func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 		details := test.CombinedDetails()
 		assert.Equal(t, newName, details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, newCid, details.GetString(bundle.RelationKeyIconImage))
+		assert.Equal(t, globalName, details.GetString(bundle.RelationKeyGlobalName))
 	})
 	t.Run("contact not exists", func(t *testing.T) {
 		// given
@@ -255,12 +266,12 @@ func TestUserDataObject_UpdateContactByIdentity(t *testing.T) {
 }
 
 func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+	t.Run("update name, icon - details remain the same", func(t *testing.T) {
 		// given
 		initChan := make(chan struct{})
 		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
-		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(2)
+		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(1)
 		err := fx.Init(&smartblock.InitContext{
 			Ctx:    context.Background(),
 			Source: fx.source,
@@ -274,12 +285,13 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 		name := "name"
 		iconCid := "cid"
 		description := "description"
+		aesKey := crypto.NewAES()
 		err = fx.SaveContact(context.Background(), &model.IdentityProfile{
 			Identity:    identity,
 			Name:        name,
 			IconCid:     iconCid,
 			Description: description,
-		})
+		}, aesKey)
 		require.NoError(t, err)
 
 		// when
@@ -294,8 +306,8 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 		require.NoError(t, err)
 		contacts, err := fx.ListContacts(context.Background())
 		assert.Len(t, contacts, 1)
-		assert.Equal(t, newName, contacts[0].name)
-		assert.Equal(t, newCid, contacts[0].icon)
+		assert.Equal(t, name, contacts[0].name)
+		assert.Equal(t, iconCid, contacts[0].icon)
 		assert.Equal(t, description, contacts[0].description)
 	})
 	t.Run("update description", func(t *testing.T) {
@@ -317,12 +329,13 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 		name := "name"
 		iconCid := "cid"
 		description := "description"
+		aesKey := crypto.NewAES()
 		err = fx.SaveContact(context.Background(), &model.IdentityProfile{
 			Identity:    identity,
 			Name:        name,
 			IconCid:     iconCid,
 			Description: description,
-		})
+		}, aesKey)
 		require.NoError(t, err)
 
 		// when
@@ -344,7 +357,6 @@ func TestUserDataObject_UpdateContactByDetails(t *testing.T) {
 		initChan := make(chan struct{})
 		fx := newFixture(t, initChan)
 		fx.source.EXPECT().ReadStoreDoc(context.Background(), mock.Anything, mock.Anything).Return(nil)
-		fx.source.EXPECT().PushStoreChange(context.Background(), mock.Anything).RunAndReturn(fx.pushStoreChanges).Times(1)
 		err := fx.Init(&smartblock.InitContext{
 			Ctx:    context.Background(),
 			Source: fx.source,
