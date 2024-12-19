@@ -50,6 +50,7 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 }
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+	panic("azaza")
 	account, err := mw.applicationService.AccountSelect(cctx, req)
 	code := mapErrorCode(err,
 		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountSelectResponseError_CONFIG_FILE_INVALID),
