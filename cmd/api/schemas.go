@@ -4,7 +4,7 @@ type Space struct {
 	Type                   string `json:"type" example:"space"`
 	Id                     string `json:"id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`
 	Name                   string `json:"name" example:"Space Name"`
-	Icon                   string `json:"icon" example:"data:image/png;base64, <base64-encoded-image>"`
+	Icon                   string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"`
 	HomeObjectId           string `json:"home_object_id" example:"bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"`
 	ArchiveObjectId        string `json:"archive_object_id" example:"bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"`
 	ProfileObjectId        string `json:"profile_object_id" example:"bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4"`
@@ -23,7 +23,7 @@ type SpaceMember struct {
 	Type       string `json:"type" example:"space_member"`
 	Id         string `json:"id" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"`
 	Name       string `json:"name" example:"John Doe"`
-	Icon       string `json:"icon" example:"data:image/png;base64, <base64-encoded-image>"`
+	Icon       string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"`
 	Identity   string `json:"identity" example:"AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"`
 	GlobalName string `json:"global_name" example:"john.any"`
 	Role       string `json:"role" enum:"Reader,Writer,Owner,NoPermission" example:"Owner"`
