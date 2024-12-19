@@ -101,7 +101,7 @@ func (s *service) SaveContact(ctx context.Context, identity string, profileSymKe
 	}
 	err = s.identityService.RegisterIdentity(s.spaceService.TechSpaceId(), identity, symKey, s.handleIdentityUpdate)
 	if err != nil {
-		return fmt.Errorf("register identity %s: %v", identity, err)
+		return fmt.Errorf("register identity %s: %w", identity, err)
 	}
 	profile := s.identityService.WaitProfile(ctx, identity)
 	if profile == nil {
