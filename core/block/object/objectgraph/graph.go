@@ -134,7 +134,11 @@ func (gr *Builder) buildGraph(
 	for _, rec := range records {
 		sourceId := rec.GetString(bundle.RelationKeyId)
 
-		nodes = append(nodes, rec.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
+		if len(req.Keys) == 0 {
+			nodes = append(nodes, rec)
+		} else {
+			nodes = append(nodes, rec.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
+		}
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
