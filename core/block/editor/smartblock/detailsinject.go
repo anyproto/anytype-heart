@@ -2,12 +2,20 @@ package smartblock
 
 import (
 	"context"
+	"errors"
+	"fmt"
+
+	"github.com/anyproto/any-sync/app/ocache"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -233,7 +241,7 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 		if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
 			return
 		}
-		log.Errorf("failed to find id of object type")
+		log.Errorf("failed to find id of object type. Falling back to basic layout")
 		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return
 	}
@@ -256,10 +264,116 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	}
 
 	if !rawValue.Ok() {
-		log.Errorf("failed to get recommended layout from details of type. Setting basic layout")
+		log.Errorf("failed to get recommended layout from details of type. Fallback to basic layout")
 		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return
 	}
 
 	s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+}
+
+// changeResolvedLayoutForObjects changes resolvedLayout for object of this type and deletes Layout relation
+func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage, deleteLayoutRelation bool) error {
+	if sb.Type() != smartblock.SmartBlockTypeObjectType {
+		return nil
+	}
+
+	layout, found := getLayoutFromMessages(msgs)
+	if !found {
+		// recommendedLayout was not changed
+		return nil
+	}
+
+	index := sb.objectStore.SpaceIndex(sb.SpaceID())
+	records, err := index.Query(database.Query{Filters: []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyType,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(sb.Id()),
+		},
+	}})
+	if err != nil {
+		return fmt.Errorf("failed to get objects of single type: %w", err)
+	}
+
+	var resultErr error
+	for _, record := range records {
+		id := record.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+		if deleteLayoutRelation && record.Details.Has(bundle.RelationKeyLayout) {
+			// we should delete layout from object, that's why we apply changes even if object is not in cache
+			err = sb.space.Do(id, func(b SmartBlock) error {
+				st := b.NewState()
+				st.RemoveDetail(bundle.RelationKeyLayout)
+				st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+				return b.Apply(st)
+			})
+			if err != nil {
+				resultErr = errors.Join(resultErr, err)
+			}
+			continue
+		}
+
+		if record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == layout {
+			// relevant layout is already set, skipping
+			continue
+		}
+
+		err = sb.space.DoLockedIfNotExists(id, func() error {
+			return index.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
+				if details == nil {
+					return nil, false, nil
+				}
+				if details.GetInt64(bundle.RelationKeyResolvedLayout) == layout {
+					return nil, false, nil
+				}
+				details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+				return details, true, nil
+			})
+		})
+
+		if err == nil {
+			continue
+		}
+
+		if !errors.Is(err, ocache.ErrExists) {
+			resultErr = errors.Join(resultErr, err)
+			continue
+		}
+
+		err = sb.space.Do(id, func(b SmartBlock) error {
+			if cr, ok := b.(source.ChangeReceiver); ok {
+				return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
+					st := d.NewState()
+					st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+					return st, nil, nil
+				})
+			}
+			// do not Apply. StateAppend sends the event and runs reindex
+			return nil
+		})
+		if err != nil {
+			resultErr = errors.Join(resultErr, err)
+		}
+	}
+
+	if resultErr != nil {
+		return fmt.Errorf("failed to change layout for objects: %v", resultErr)
+	}
+	return nil
+}
+
+func getLayoutFromMessages(msgs []simple.EventMessage) (layout int64, found bool) {
+	for _, ev := range msgs {
+		if amend := ev.Msg.GetObjectDetailsAmend(); amend != nil {
+			for _, detail := range amend.Details {
+				if detail.Key == bundle.RelationKeyRecommendedLayout.String() {
+					return int64(detail.Value.GetNumberValue()), true
+				}
+			}
+		}
+	}
+	return 0, false
 }

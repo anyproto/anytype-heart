@@ -709,6 +709,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return
 	}
 
+	if err = sb.changeResolvedLayoutForObjects(msgs, true); err != nil {
+		return
+	}
+
 	// we may have layout changed, so we need to update restrictions
 	sb.updateRestrictions()
 	sb.setRestrictionsDetail(s)
@@ -962,6 +966,11 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		return err
 	}
 	log.Infof("changes: stateAppend: %d events", len(msgs))
+
+	if err = sb.changeResolvedLayoutForObjects(msgs, true); err != nil {
+		return err
+	}
+
 	if len(msgs) > 0 {
 		sb.sendEvent(&pb.Event{
 			Messages:  msgsToEvents(msgs),
