@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -27,25 +28,25 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:     pbtypes.String("1"),
-				bundle.RelationKeyName:   pbtypes.String("one"),
-				bundle.RelationKeyAuthor: pbtypes.StringList([]string{"author1"}),
+				bundle.RelationKeyId:     domain.String("1"),
+				bundle.RelationKeyName:   domain.String("one"),
+				bundle.RelationKeyAuthor: domain.StringList([]string{"author1"}),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyAuthor.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel2"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyAuthor.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			// dep
 			{
-				bundle.RelationKeyId:   pbtypes.String("author1"),
-				bundle.RelationKeyName: pbtypes.String("author1"),
+				bundle.RelationKeyId:   domain.String("author1"),
+				bundle.RelationKeyName: domain.String("author1"),
 			},
 		})
 
@@ -69,12 +70,12 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("author2"),
-				bundle.RelationKeyName: pbtypes.String("author2"),
+				bundle.RelationKeyId:   domain.String("author2"),
+				bundle.RelationKeyName: domain.String("author2"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("author3"),
-				bundle.RelationKeyName: pbtypes.String("author3"),
+				bundle.RelationKeyId:   domain.String("author3"),
+				bundle.RelationKeyName: domain.String("author3"),
 			},
 		})
 
@@ -82,14 +83,14 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait enough time to flush pending updates to subscriptions handler
-		time.Sleep(batchTime + time.Millisecond)
+		time.Sleep(batchTime + 3*time.Millisecond)
 
 		spaceSub.onChange([]*entry{
-			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
-				"id":     pbtypes.String("1"),
-				"name":   pbtypes.String("one"),
-				"author": pbtypes.StringList([]string{"author2", "author3", "1"}),
-			}}},
+			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"id":     domain.String("1"),
+				"name":   domain.String("one"),
+				"author": domain.StringList([]string{"author2", "author3", "1"}),
+			})),
 		})
 
 		assert.Equal(t, []string{"test"}, spaceSub.cache.entries["1"].SubIds())
@@ -99,10 +100,10 @@ func TestService_Search(t *testing.T) {
 		fx.events = fx.events[:0]
 
 		spaceSub.onChange([]*entry{
-			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("1"),
-				"name": pbtypes.String("one"),
-			}}},
+			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"id":   domain.String("1"),
+				"name": domain.String("one"),
+			})),
 		})
 
 		assert.NoError(t, fx.Unsubscribe("test"))
@@ -113,7 +114,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 		source := "source"
-		relationKey := "key"
+		relationKey := domain.RelationKey("key")
 		option1 := "option1"
 		option2 := "option2"
 
@@ -123,12 +124,12 @@ func TestService_Search(t *testing.T) {
 		resp, err := fx.Search(SubscribeRequest{
 			SpaceId: testSpaceId,
 			Keys:    []string{bundle.RelationKeyId.String()},
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: relationKey,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(option1),
+					Value:       domain.String(option1),
 					Format:      model.RelationFormat_status,
 				},
 			},
@@ -137,7 +138,7 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Len(t, resp.Records, 1)
-		assert.Equal(t, "1", resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
 	})
 	t.Run("search with filters: linear structure with none filters", func(t *testing.T) {
 		fx := newFixtureWithRealObjectStore(t)
@@ -145,7 +146,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.ctrl.Finish()
 		source := "source"
 
-		relationKey := "key"
+		relationKey := domain.RelationKey("key")
 		option1 := "option1"
 		option2 := "option2"
 
@@ -155,19 +156,19 @@ func TestService_Search(t *testing.T) {
 		resp, err := fx.Search(SubscribeRequest{
 			SpaceId: testSpaceId,
 			Keys:    []string{bundle.RelationKeyId.String()},
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: relationKey,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(option1),
+					Value:       domain.String(option1),
 					Format:      model.RelationFormat_status,
 				},
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: relationKey,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(option2),
+					Value:       domain.String(option2),
 					Format:      model.RelationFormat_status,
 				},
 			},
@@ -182,7 +183,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.ctrl.Finish()
 		source := "source"
 
-		relationKey := "key"
+		relationKey := domain.RelationKey("key")
 		option1 := "option1"
 		option2 := "option2"
 
@@ -192,22 +193,22 @@ func TestService_Search(t *testing.T) {
 		resp, err := fx.Search(SubscribeRequest{
 			SpaceId: testSpaceId,
 			Keys:    []string{bundle.RelationKeyId.String()},
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					Operator: model.BlockContentDataviewFilter_And,
-					NestedFilters: []*model.BlockContentDataviewFilter{
+					NestedFilters: []database.FilterRequest{
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
 							RelationKey: relationKey,
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String(option2),
+							Value:       domain.String(option2),
 							Format:      model.RelationFormat_status,
 						},
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyName.String(),
+							RelationKey: bundle.RelationKeyName,
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String("Object 1"),
+							Value:       domain.String("Object 1"),
 							Format:      model.RelationFormat_shorttext,
 						},
 					},
@@ -224,7 +225,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.ctrl.Finish()
 		source := "source"
 
-		relationKey := "key"
+		relationKey := domain.RelationKey("key")
 		option1 := "option1"
 		option2 := "option2"
 
@@ -234,22 +235,22 @@ func TestService_Search(t *testing.T) {
 		resp, err := fx.Search(SubscribeRequest{
 			SpaceId: testSpaceId,
 			Keys:    []string{bundle.RelationKeyId.String()},
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					Operator: model.BlockContentDataviewFilter_Or,
-					NestedFilters: []*model.BlockContentDataviewFilter{
+					NestedFilters: []database.FilterRequest{
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
 							RelationKey: relationKey,
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String(option2),
+							Value:       domain.String(option2),
 							Format:      model.RelationFormat_status,
 						},
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyName.String(),
+							RelationKey: bundle.RelationKeyName,
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String("Object 1"),
+							Value:       domain.String("Object 1"),
 							Format:      model.RelationFormat_shorttext,
 						},
 					},
@@ -259,8 +260,8 @@ func TestService_Search(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Len(t, resp.Records, 2)
-		assert.Equal(t, "1", resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
-		assert.Equal(t, "2", resp.Records[1].Fields[bundle.RelationKeyId.String()].GetStringValue())
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
+		assert.Equal(t, "2", resp.Records[1].GetString(bundle.RelationKeyId))
 	})
 	t.Run("search with filters: tree structure with And filter in root and combined filters as NestedFilter", func(t *testing.T) {
 		fx := newFixtureWithRealObjectStore(t)
@@ -284,7 +285,7 @@ func TestService_Search(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Len(t, resp.Records, 1)
-		assert.Equal(t, "1", resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
 	})
 	t.Run("search with filters: tree structure with Or filter in root and combined filters as NestedFilter", func(t *testing.T) {
 		fx := newFixtureWithRealObjectStore(t)
@@ -308,9 +309,9 @@ func TestService_Search(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Len(t, resp.Records, 3)
-		assert.Equal(t, "1", resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue())
-		assert.Equal(t, "2", resp.Records[1].Fields[bundle.RelationKeyId.String()].GetStringValue())
-		assert.Equal(t, "3", resp.Records[2].Fields[bundle.RelationKeyId.String()].GetStringValue())
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
+		assert.Equal(t, "2", resp.Records[1].GetString(bundle.RelationKeyId))
+		assert.Equal(t, "3", resp.Records[2].GetString(bundle.RelationKeyId))
 	})
 	t.Run("cache ref counter", func(t *testing.T) {
 		fx := newFixture(t)
@@ -338,29 +339,29 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:     pbtypes.String("1"),
-				bundle.RelationKeyName:   pbtypes.String("one"),
-				bundle.RelationKeyAuthor: pbtypes.StringList([]string{"force1"}),
+				bundle.RelationKeyId:     domain.String("1"),
+				bundle.RelationKeyName:   domain.String("one"),
+				bundle.RelationKeyAuthor: domain.StringList([]string{"force1"}),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyAuthor.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel2"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyAuthor.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			// dep
 			{
-				bundle.RelationKeyId:   pbtypes.String("force1"),
-				bundle.RelationKeyName: pbtypes.String("force1"),
+				bundle.RelationKeyId:   domain.String("force1"),
+				bundle.RelationKeyName: domain.String("force1"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("force2"),
-				bundle.RelationKeyName: pbtypes.String("force2"),
+				bundle.RelationKeyId:   domain.String("force2"),
+				bundle.RelationKeyName: domain.String("force2"),
 			},
 		})
 
@@ -368,11 +369,11 @@ func TestService_Search(t *testing.T) {
 			SpaceId: testSpaceId,
 			SubId:   "subId",
 			Keys:    []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyAuthor.String(),
+					RelationKey: bundle.RelationKeyAuthor,
 					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       pbtypes.StringList([]string{"force1", "force2"}),
+					Value:       domain.StringList([]string{"force1", "force2"}),
 				},
 			},
 		})
@@ -389,28 +390,28 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("1"),
-				bundle.RelationKeyName: pbtypes.String("1"),
+				bundle.RelationKeyId:   domain.String("1"),
+				bundle.RelationKeyName: domain.String("1"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("2"),
-				bundle.RelationKeyName: pbtypes.String("2"),
+				bundle.RelationKeyId:   domain.String("2"),
+				bundle.RelationKeyName: domain.String("2"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("3"),
-				bundle.RelationKeyName: pbtypes.String("3"),
+				bundle.RelationKeyId:   domain.String("3"),
+				bundle.RelationKeyName: domain.String("3"),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 		})
 		resp, err := fx.Search(SubscribeRequest{
 			SpaceId: testSpaceId,
 			SubId:   "test",
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey: "name",
 					Type:        model.BlockContentDataviewSort_Desc,
@@ -422,17 +423,17 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 		// should be 3,2 (1)
 		require.Len(t, resp.Records, 2)
-		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], "id"))
-		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], "id"))
+		assert.Equal(t, "3", resp.Records[0].GetString("id"))
+		assert.Equal(t, "2", resp.Records[1].GetString("id"))
 
 		spaceSub, err := fx.getSpaceSubscriptions(testSpaceId)
 		require.NoError(t, err)
 
 		spaceSub.onChange([]*entry{
-			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("1"),
-				"name": pbtypes.String("4"),
-			}}},
+			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"id":   domain.String("1"),
+				"name": domain.String("4"),
+			})),
 		})
 		// should be 1,3 (2)
 		require.Len(t, fx.events[0].Messages, 3)
@@ -441,12 +442,11 @@ func TestService_Search(t *testing.T) {
 		assert.NotEmpty(t, fx.events[0].Messages[2].GetSubscriptionRemove())
 
 		spaceSub.onChange([]*entry{
-			{id: "2", data: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("2"),
-				"name": pbtypes.String("6"),
-			}}},
+			newEntry("2", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"id":   domain.String("2"),
+				"name": domain.String("6"),
+			})),
 		})
-
 		// should be 2,1 (3)
 		t.Log(pbtypes.Sprint(fx.events[1]))
 	})
@@ -458,29 +458,29 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("1"),
-				bundle.RelationKeyName: pbtypes.String("1"),
+				bundle.RelationKeyId:   domain.String("1"),
+				bundle.RelationKeyName: domain.String("1"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("2"),
-				bundle.RelationKeyName: pbtypes.String("2"),
+				bundle.RelationKeyId:   domain.String("2"),
+				bundle.RelationKeyName: domain.String("2"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("3"),
-				bundle.RelationKeyName: pbtypes.String("3"),
+				bundle.RelationKeyId:   domain.String("3"),
+				bundle.RelationKeyName: domain.String("3"),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 		})
 
 		resp, err := fx.Search(SubscribeRequest{
 			SpaceId: testSpaceId,
 			SubId:   "test",
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
 					RelationKey:    "name",
 					Type:           model.BlockContentDataviewSort_Asc,
@@ -493,8 +493,8 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 		// should be 1,2 (3)
 		require.Len(t, resp.Records, 2)
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], "id"))
-		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], "id"))
+		assert.Equal(t, "1", resp.Records[0].GetString("id"))
+		assert.Equal(t, "2", resp.Records[1].GetString("id"))
 
 		spaceSub, err := fx.getSpaceSubscriptions(testSpaceId)
 		require.NoError(t, err)
@@ -502,11 +502,10 @@ func TestService_Search(t *testing.T) {
 		spaceSub.onChange([]*entry{
 			{
 				id: "2",
-				data: &types.Struct{
-					Fields: map[string]*types.Value{
-						"id":        pbtypes.String("2"),
-						"isDeleted": pbtypes.Bool(true),
-					}}},
+				data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"id":        domain.String("2"),
+					"isDeleted": domain.Bool(true),
+				})},
 		})
 		// should be 1,3 (2)
 		require.Len(t, fx.events[0].Messages, 4)
@@ -568,23 +567,23 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("1"),
-				bundle.RelationKeyName: pbtypes.String("1"),
+				bundle.RelationKeyId:   domain.String("1"),
+				bundle.RelationKeyName: domain.String("1"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("2"),
-				bundle.RelationKeyName: pbtypes.String("2"),
+				bundle.RelationKeyId:   domain.String("2"),
+				bundle.RelationKeyName: domain.String("2"),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyId.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel2"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 		})
 		var resp, err = fx.Search(SubscribeRequest{
@@ -597,10 +596,10 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Len(t, resp.Records, 2)
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
-		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], bundle.RelationKeyName.String()))
-		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], bundle.RelationKeyId.String()))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
+		assert.Equal(t, "2", resp.Records[1].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "2", resp.Records[1].GetString(bundle.RelationKeyId))
 	})
 
 	t.Run("collection: collection has 3 objects, 1 is filtered - return 2 objects in response", func(t *testing.T) {
@@ -616,27 +615,27 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("1"),
-				bundle.RelationKeyName: pbtypes.String("1"),
+				bundle.RelationKeyId:   domain.String("1"),
+				bundle.RelationKeyName: domain.String("1"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("2"),
-				bundle.RelationKeyName: pbtypes.String("2"),
+				bundle.RelationKeyId:   domain.String("2"),
+				bundle.RelationKeyName: domain.String("2"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("3"),
-				bundle.RelationKeyName: pbtypes.String("3"),
+				bundle.RelationKeyId:   domain.String("3"),
+				bundle.RelationKeyName: domain.String("3"),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyId.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel2"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 		})
 		var resp, err = fx.Search(SubscribeRequest{
@@ -644,12 +643,12 @@ func TestService_Search(t *testing.T) {
 			SubId:        subscriptionID,
 			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
 			CollectionId: collectionID,
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
 					Id:          "1",
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.String("3"),
+					Value:       domain.String("3"),
 				},
 			},
 		})
@@ -657,10 +656,10 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Len(t, resp.Records, 2)
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
-		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], bundle.RelationKeyName.String()))
-		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], bundle.RelationKeyId.String()))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
+		assert.Equal(t, "2", resp.Records[1].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "2", resp.Records[1].GetString(bundle.RelationKeyId))
 	})
 	t.Run("collection: collection has 3 objects, offset = 2 - return 1 object after offset", func(t *testing.T) {
 		fx := newFixture(t)
@@ -675,27 +674,27 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("1"),
-				bundle.RelationKeyName: pbtypes.String("1"),
+				bundle.RelationKeyId:   domain.String("1"),
+				bundle.RelationKeyName: domain.String("1"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("2"),
-				bundle.RelationKeyName: pbtypes.String("2"),
+				bundle.RelationKeyId:   domain.String("2"),
+				bundle.RelationKeyName: domain.String("2"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("3"),
-				bundle.RelationKeyName: pbtypes.String("3"),
+				bundle.RelationKeyId:   domain.String("3"),
+				bundle.RelationKeyName: domain.String("3"),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyId.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel2"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 		})
 
@@ -710,8 +709,8 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Len(t, resp.Records, 1)
-		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
-		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+		assert.Equal(t, "3", resp.Records[0].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "3", resp.Records[0].GetString(bundle.RelationKeyId))
 	})
 	t.Run("collection: collection has object with dependency, no dependency flag is set - return objects without dependency", func(t *testing.T) {
 		fx := newFixture(t)
@@ -720,28 +719,28 @@ func TestService_Search(t *testing.T) {
 
 		collectionID := "id"
 		subscriptionID := "subId"
-		testRelationKey := "link_to_object"
+		testRelationKey := domain.RelationKey("link_to_object")
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1"}, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:                pbtypes.String("1"),
-				bundle.RelationKeyName:              pbtypes.String("1"),
-				domain.RelationKey(testRelationKey): pbtypes.String("2"),
+				bundle.RelationKeyId:                domain.String("1"),
+				bundle.RelationKeyName:              domain.String("1"),
+				domain.RelationKey(testRelationKey): domain.String("2"),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey:    pbtypes.String(testRelationKey),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel2"),
+				bundle.RelationKeyRelationKey:    domain.String(testRelationKey),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 		})
 
@@ -753,7 +752,7 @@ func TestService_Search(t *testing.T) {
 		resp, err := fx.Search(SubscribeRequest{
 			SpaceId:           testSpaceId,
 			SubId:             subscriptionID,
-			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey},
+			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey.String()},
 			CollectionId:      collectionID,
 			NoDepSubscription: true,
 		})
@@ -762,8 +761,8 @@ func TestService_Search(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.Len(t, resp.Records, 1)
 		assert.Len(t, resp.Dependencies, 0)
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
 	})
 	t.Run("collection: collection has object with dependency - return objects with dependency", func(t *testing.T) {
 		fx := newFixture(t)
@@ -772,33 +771,33 @@ func TestService_Search(t *testing.T) {
 
 		collectionID := "id"
 		subscriptionID := "subId"
-		testRelationKey := "link_to_object"
+		testRelationKey := domain.RelationKey("link_to_object")
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1"}, nil, nil)
 		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:                pbtypes.String("1"),
-				bundle.RelationKeyName:              pbtypes.String("1"),
-				domain.RelationKey(testRelationKey): pbtypes.StringList([]string{"2"}),
+				bundle.RelationKeyId:                domain.String("1"),
+				bundle.RelationKeyName:              domain.String("1"),
+				domain.RelationKey(testRelationKey): domain.StringList([]string{"2"}),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:             pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey:    pbtypes.String(testRelationKey),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyId:             domain.String("rel2"),
+				bundle.RelationKeyRelationKey:    domain.String(testRelationKey),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			// deps
 			{
-				bundle.RelationKeyId:   pbtypes.String("2"),
-				bundle.RelationKeyName: pbtypes.String("2"),
+				bundle.RelationKeyId:   domain.String("2"),
+				bundle.RelationKeyName: domain.String("2"),
 			},
 		})
 
@@ -809,7 +808,7 @@ func TestService_Search(t *testing.T) {
 		resp, err := fx.Search(SubscribeRequest{
 			SpaceId:           testSpaceId,
 			SubId:             subscriptionID,
-			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey},
+			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey.String()},
 			CollectionId:      collectionID,
 			NoDepSubscription: false,
 		})
@@ -818,10 +817,10 @@ func TestService_Search(t *testing.T) {
 		assert.NotNil(t, resp)
 		assert.Len(t, resp.Records, 1)
 		assert.Len(t, resp.Dependencies, 1)
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
-		assert.Equal(t, "2", pbtypes.GetString(resp.Dependencies[0], bundle.RelationKeyName.String()))
-		assert.Equal(t, "2", pbtypes.GetString(resp.Dependencies[0], bundle.RelationKeyId.String()))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
+		assert.Equal(t, "2", resp.Dependencies[0].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "2", resp.Dependencies[0].GetString(bundle.RelationKeyId))
 	})
 
 	t.Run("collection: collection has 3 objects, but limit = 2 - return 2 objects in response", func(t *testing.T) {
@@ -837,27 +836,27 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String("1"),
-				bundle.RelationKeyName: pbtypes.String("1"),
+				bundle.RelationKeyId:   domain.String("1"),
+				bundle.RelationKeyName: domain.String("1"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("2"),
-				bundle.RelationKeyName: pbtypes.String("2"),
+				bundle.RelationKeyId:   domain.String("2"),
+				bundle.RelationKeyName: domain.String("2"),
 			},
 			{
-				bundle.RelationKeyId:   pbtypes.String("3"),
-				bundle.RelationKeyName: pbtypes.String("3"),
+				bundle.RelationKeyId:   domain.String("3"),
+				bundle.RelationKeyName: domain.String("3"),
 			},
 			// relations
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel1"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel1"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("rel2"),
-				bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyId.String()),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:          domain.String("rel2"),
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
 			},
 		})
 
@@ -872,10 +871,36 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Len(t, resp.Records, 1)
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
-		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyName))
+		assert.Equal(t, "1", resp.Records[0].GetString(bundle.RelationKeyId))
 	})
+	t.Run("Search: call onChange for records", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
 
+		newSub(fx, "test")
+		newSub(fx, "test2")
+		spaceSub, err := fx.getSpaceSubscriptions(testSpaceId)
+		assert.NoError(t, err)
+		e := spaceSub.ctxBuf.c.Get("1")
+		e.subFullDetailsSent["test2"] = false
+
+		// when
+		spaceSub.onChange([]*entry{
+			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"id":     domain.String("1"),
+				"name":   domain.String("one"),
+				"author": domain.StringList([]string{"author2", "author3", "1"}),
+			})),
+		})
+
+		// then
+		assert.NotNil(t, spaceSub.ctxBuf.outputs[defaultOutput][0].GetObjectDetailsAmend())
+		assert.Contains(t, spaceSub.ctxBuf.outputs[defaultOutput][0].GetObjectDetailsAmend().GetSubIds(), "test")
+		assert.Contains(t, spaceSub.ctxBuf.outputs[defaultOutput][1].GetObjectDetailsSet().GetSubIds(), "test2")
+	})
 	t.Run("SubscribeGroup: tag group", func(t *testing.T) {
 		// given
 		fx := newFixtureWithRealObjectStore(t)
@@ -899,34 +924,34 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String(relationKey),
-				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
-				bundle.RelationKeySpaceId:        pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(source),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
-				bundle.RelationKeySpaceId:   pbtypes.String(testSpaceId),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String(source),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("1"),
-				bundle.RelationKeySpaceId:     pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyId:          domain.String("1"),
+				bundle.RelationKeySpaceId:     domain.String(testSpaceId),
+				bundle.RelationKeyRelationKey: domain.String(relationKey),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("2"),
-				bundle.RelationKeySpaceId:     pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyId:          domain.String("2"),
+				bundle.RelationKeySpaceId:     domain.String(testSpaceId),
+				bundle.RelationKeyRelationKey: domain.String(relationKey),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 			},
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(SubscribeGroupsRequest{
 			SpaceId:      testSpaceId,
 			RelationKey:  relationKey,
 			Source:       []string{source},
@@ -974,22 +999,22 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String(relationKey),
-				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
-				bundle.RelationKeySpaceId:        pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(source),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
-				bundle.RelationKeySpaceId:   pbtypes.String(testSpaceId),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String(source),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			},
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(SubscribeGroupsRequest{
 			SpaceId:      testSpaceId,
 			RelationKey:  relationKey,
 			Source:       []string{source},
@@ -1024,36 +1049,36 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String(relationKey),
-				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
-				bundle.RelationKeySpaceId:        pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(source),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
-				bundle.RelationKeySpaceId:   pbtypes.String(testSpaceId),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String(source),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("1"),
-				bundle.RelationKeySpaceId:     pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
-				bundle.RelationKeyName:        pbtypes.String("Done"),
+				bundle.RelationKeyId:          domain.String("1"),
+				bundle.RelationKeySpaceId:     domain.String(testSpaceId),
+				bundle.RelationKeyRelationKey: domain.String(relationKey),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyName:        domain.String("Done"),
 			},
 			{
-				bundle.RelationKeyId:          pbtypes.String("2"),
-				bundle.RelationKeySpaceId:     pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
-				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
-				bundle.RelationKeyName:        pbtypes.String("Not started"),
+				bundle.RelationKeyId:          domain.String("2"),
+				bundle.RelationKeySpaceId:     domain.String(testSpaceId),
+				bundle.RelationKeyRelationKey: domain.String(relationKey),
+				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyName:        domain.String("Not started"),
 			},
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(SubscribeGroupsRequest{
 			SpaceId:     testSpaceId,
 			RelationKey: relationKey,
 			Source:      []string{source},
@@ -1092,22 +1117,22 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String(relationKey),
-				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
-				bundle.RelationKeySpaceId:        pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(source),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
-				bundle.RelationKeySpaceId:   pbtypes.String(testSpaceId),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String(source),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			},
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(SubscribeGroupsRequest{
 			SpaceId:     testSpaceId,
 			RelationKey: relationKey,
 			Source:      []string{source},
@@ -1140,22 +1165,22 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String(relationKey),
-				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
-				bundle.RelationKeySpaceId:        pbtypes.String(testSpaceId),
-				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
-				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_checkbox)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
 			},
 			{
-				bundle.RelationKeyId:        pbtypes.String(source),
-				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
-				bundle.RelationKeySpaceId:   pbtypes.String(testSpaceId),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String(source),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			},
 		})
 
 		// when
-		groups, err := fx.SubscribeGroups(pb.RpcObjectGroupsSubscribeRequest{
+		groups, err := fx.SubscribeGroups(SubscribeGroupsRequest{
 			SpaceId:     testSpaceId,
 			RelationKey: relationKey,
 			Source:      []string{source},
@@ -1179,7 +1204,7 @@ func TestService_Search(t *testing.T) {
 		id := "id"
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{{bundle.RelationKeyId: pbtypes.String(id), bundle.RelationKeyName: pbtypes.String("name")}})
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{{bundle.RelationKeyId: domain.String(id), bundle.RelationKeyName: domain.String("name")}})
 
 		// when
 		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
@@ -1208,8 +1233,8 @@ func TestService_Search(t *testing.T) {
 
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:   pbtypes.String(id),
-				bundle.RelationKeyName: pbtypes.String(relationValue),
+				bundle.RelationKeyId:   domain.String(id),
+				bundle.RelationKeyName: domain.String(relationValue),
 			},
 		})
 
@@ -1250,25 +1275,25 @@ func TestService_Search(t *testing.T) {
 	})
 }
 
-func addTestObjects(t *testing.T, source, relationKey, option1, option2, testSpaceId string, fx *fixtureRealStore) error {
+func addTestObjects(t *testing.T, source string, relationKey domain.RelationKey, option1, option2, testSpaceId string, fx *fixtureRealStore) error {
 	objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
 	assert.Nil(t, err)
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:            pbtypes.String("1"),
-			bundle.RelationKeySpaceId:       pbtypes.String(testSpaceId),
-			domain.RelationKey(relationKey): pbtypes.String(option1),
-			bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeyName:          pbtypes.String("Object 1"),
-			bundle.RelationKeyType:          pbtypes.String(objectTypeKey.Marshal()),
+			bundle.RelationKeyId:      domain.String("1"),
+			bundle.RelationKeySpaceId: domain.String(testSpaceId),
+			relationKey:               domain.String(option1),
+			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    domain.String("Object 1"),
+			bundle.RelationKeyType:    domain.String(objectTypeKey.Marshal()),
 		},
 		{
-			bundle.RelationKeyId:            pbtypes.String("2"),
-			bundle.RelationKeySpaceId:       pbtypes.String(testSpaceId),
-			domain.RelationKey(relationKey): pbtypes.String(option2),
-			bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeyName:          pbtypes.String("Object 2"),
-			bundle.RelationKeyType:          pbtypes.String(objectTypeKey.Marshal()),
+			bundle.RelationKeyId:      domain.String("2"),
+			bundle.RelationKeySpaceId: domain.String(testSpaceId),
+			relationKey:               domain.String(option2),
+			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    domain.String("Object 2"),
+			bundle.RelationKeyType:    domain.String(objectTypeKey.Marshal()),
 		},
 	})
 	return err
@@ -1277,103 +1302,103 @@ func addTestObjects(t *testing.T, source, relationKey, option1, option2, testSpa
 func addTestObjectsForNestedFilters(t *testing.T, fx *fixtureRealStore, testSpaceId, option1, option2, option3, tag1, tag2 string) {
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:      pbtypes.String("1"),
-			bundle.RelationKeySpaceId: pbtypes.String(testSpaceId),
-			bundle.RelationKeyStatus:  pbtypes.String(option1),
-			bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeyName:    pbtypes.String("Object 1"),
-			bundle.RelationKeyType:    pbtypes.String(bundle.TypeKeyPage.String()),
-			bundle.RelationKeyTag:     pbtypes.StringList([]string{tag1}),
-			bundle.RelationKeyDueDate: pbtypes.Int64(1704070917),
+			bundle.RelationKeyId:      domain.String("1"),
+			bundle.RelationKeySpaceId: domain.String(testSpaceId),
+			bundle.RelationKeyStatus:  domain.String(option1),
+			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    domain.String("Object 1"),
+			bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage.String()),
+			bundle.RelationKeyTag:     domain.StringList([]string{tag1}),
+			bundle.RelationKeyDueDate: domain.Int64(1704070917),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("2"),
-			bundle.RelationKeySpaceId: pbtypes.String(testSpaceId),
-			bundle.RelationKeyStatus:  pbtypes.String(option3),
-			bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeyName:    pbtypes.String("Object 2"),
-			bundle.RelationKeyType:    pbtypes.String(bundle.TypeKeyPage.String()),
-			bundle.RelationKeyTag:     pbtypes.StringList([]string{tag2}),
-			bundle.RelationKeyDueDate: pbtypes.Int64(1709254917),
+			bundle.RelationKeyId:      domain.String("2"),
+			bundle.RelationKeySpaceId: domain.String(testSpaceId),
+			bundle.RelationKeyStatus:  domain.String(option3),
+			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    domain.String("Object 2"),
+			bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage.String()),
+			bundle.RelationKeyTag:     domain.StringList([]string{tag2}),
+			bundle.RelationKeyDueDate: domain.Int64(1709254917),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("3"),
-			bundle.RelationKeySpaceId: pbtypes.String(testSpaceId),
-			bundle.RelationKeyStatus:  pbtypes.String(option2),
-			bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeyName:    pbtypes.String("Object 3"),
-			bundle.RelationKeyType:    pbtypes.String(bundle.TypeKeyPage.String()),
-			bundle.RelationKeyTag:     pbtypes.StringList([]string{tag1, tag2}),
-			bundle.RelationKeyDueDate: pbtypes.Int64(1711933317),
+			bundle.RelationKeyId:      domain.String("3"),
+			bundle.RelationKeySpaceId: domain.String(testSpaceId),
+			bundle.RelationKeyStatus:  domain.String(option2),
+			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    domain.String("Object 3"),
+			bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage.String()),
+			bundle.RelationKeyTag:     domain.StringList([]string{tag1, tag2}),
+			bundle.RelationKeyDueDate: domain.Int64(1711933317),
 		},
 		{
-			bundle.RelationKeyId:      pbtypes.String("4"),
-			bundle.RelationKeySpaceId: pbtypes.String(testSpaceId),
-			bundle.RelationKeyStatus:  pbtypes.String(option1),
-			bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeyName:    pbtypes.String("Object 4"),
-			bundle.RelationKeyType:    pbtypes.String(bundle.TypeKeyPage.String()),
-			bundle.RelationKeyDueDate: pbtypes.Int64(1714525317),
+			bundle.RelationKeyId:      domain.String("4"),
+			bundle.RelationKeySpaceId: domain.String(testSpaceId),
+			bundle.RelationKeyStatus:  domain.String(option1),
+			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyName:    domain.String("Object 4"),
+			bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage.String()),
+			bundle.RelationKeyDueDate: domain.Int64(1714525317),
 		},
 	})
 }
 
-func prepareNestedFiltersWithOperator(operator model.BlockContentDataviewFilterOperator, option1 string, option2 string, tag1 string) []*model.BlockContentDataviewFilter {
-	return []*model.BlockContentDataviewFilter{
+func prepareNestedFiltersWithOperator(operator model.BlockContentDataviewFilterOperator, option1 string, option2 string, tag1 string) []database.FilterRequest {
+	return []database.FilterRequest{
 		{
 			Operator: operator,
-			NestedFilters: []*model.BlockContentDataviewFilter{
+			NestedFilters: []database.FilterRequest{
 				{
 					Operator: model.BlockContentDataviewFilter_Or,
-					NestedFilters: []*model.BlockContentDataviewFilter{
+					NestedFilters: []database.FilterRequest{
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyName.String(),
+							RelationKey: bundle.RelationKeyName,
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String("Object 1"),
+							Value:       domain.String("Object 1"),
 							Format:      model.RelationFormat_shorttext,
 						},
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyName.String(),
+							RelationKey: bundle.RelationKeyName,
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String("Object 2"),
+							Value:       domain.String("Object 2"),
 							Format:      model.RelationFormat_shorttext,
 						},
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyName.String(),
+							RelationKey: bundle.RelationKeyName,
 							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.String("Object 3"),
+							Value:       domain.String("Object 3"),
 							Format:      model.RelationFormat_shorttext,
 						},
 					},
 				},
 				{
 					Operator: model.BlockContentDataviewFilter_And,
-					NestedFilters: []*model.BlockContentDataviewFilter{
+					NestedFilters: []database.FilterRequest{
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyTag.String(),
+							RelationKey: bundle.RelationKeyTag,
 							Condition:   model.BlockContentDataviewFilter_In,
-							Value:       pbtypes.StringList([]string{tag1}),
+							Value:       domain.StringList([]string{tag1}),
 							Format:      model.RelationFormat_tag,
 						},
 						{
 							Operator: model.BlockContentDataviewFilter_Or,
-							NestedFilters: []*model.BlockContentDataviewFilter{
+							NestedFilters: []database.FilterRequest{
 								{
 									Operator:    model.BlockContentDataviewFilter_No,
-									RelationKey: bundle.RelationKeyStatus.String(),
+									RelationKey: bundle.RelationKeyStatus,
 									Condition:   model.BlockContentDataviewFilter_Equal,
-									Value:       pbtypes.String(option1),
+									Value:       domain.String(option1),
 									Format:      model.RelationFormat_shorttext,
 								},
 								{
 									Operator:    model.BlockContentDataviewFilter_No,
-									RelationKey: bundle.RelationKeyName.String(),
+									RelationKey: bundle.RelationKeyName,
 									Condition:   model.BlockContentDataviewFilter_Equal,
-									Value:       pbtypes.String(option2),
+									Value:       domain.String(option2),
 									Format:      model.RelationFormat_shorttext,
 								},
 							},
@@ -1382,9 +1407,9 @@ func prepareNestedFiltersWithOperator(operator model.BlockContentDataviewFilterO
 				},
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyDueDate.String(),
+					RelationKey: bundle.RelationKeyDueDate,
 					Condition:   model.BlockContentDataviewFilter_Less,
-					Value:       pbtypes.Int64(1709254917),
+					Value:       domain.Int64(1709254917),
 					Format:      model.RelationFormat_shorttext,
 				},
 			},
@@ -1396,12 +1421,10 @@ func xTestNestedSubscription(t *testing.T) {
 	t.Run("update nested object, so it's not satisfying filter anymore", func(t *testing.T) {
 		fx := testCreateSubscriptionWithNestedFilter(t)
 
-		err := fx.store.SpaceIndex(testSpaceId).UpdateObjectDetails(context.Background(), "assignee1", &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("assignee1"),
-				"name": pbtypes.String("John Doe"),
-			},
-		})
+		err := fx.store.SpaceIndex(testSpaceId).UpdateObjectDetails(context.Background(), "assignee1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"id":   domain.String("assignee1"),
+			"name": domain.String("John Doe"),
+		}))
 		require.NoError(t, err)
 
 		fx.waitEvents(t,
@@ -1434,12 +1457,10 @@ func xTestNestedSubscription(t *testing.T) {
 	t.Run("update parent object relation so no nested objects satisfy filter anymore", func(t *testing.T) {
 		fx := testCreateSubscriptionWithNestedFilter(t)
 
-		err := fx.store.SpaceIndex(testSpaceId).UpdateObjectDetails(context.Background(), "task1", &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":       pbtypes.String("task1"),
-				"assignee": pbtypes.String("assignee2"),
-			},
-		})
+		err := fx.store.SpaceIndex(testSpaceId).UpdateObjectDetails(context.Background(), "task1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"id":       domain.String("task1"),
+			"assignee": domain.String("assignee2"),
+		}))
 		require.NoError(t, err)
 	})
 }
@@ -1450,11 +1471,11 @@ func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 	resp, err := fx.Search(SubscribeRequest{
 		SpaceId: testSpaceId,
 		SubId:   "test",
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				RelationKey: "assignee.name",
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String("Joe Doe"),
+				Value:       domain.String("Joe Doe"),
 			},
 		},
 		Keys: []string{"id", "name"},
@@ -1466,8 +1487,8 @@ func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 	t.Run("add nested object", func(t *testing.T) {
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				"id":   pbtypes.String("assignee1"),
-				"name": pbtypes.String("Joe Doe"),
+				"id":   domain.String("assignee1"),
+				"name": domain.String("Joe Doe"),
 			},
 		})
 		fx.waitEvents(t,
@@ -1479,7 +1500,7 @@ func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 					},
 					Details: &types.Struct{
 						Fields: map[string]*types.Value{
-							"id": pbtypes.String("assignee1"),
+							"id": domain.String("assignee1").ToProto(),
 						},
 					},
 				},
@@ -1501,8 +1522,8 @@ func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 	t.Run("add object satisfying nested filter", func(t *testing.T) {
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				"id":       pbtypes.String("task1"),
-				"assignee": pbtypes.String("assignee1"),
+				"id":       domain.String("task1"),
+				"assignee": domain.String("assignee1"),
 			},
 		})
 		fx.waitEvents(t,
@@ -1514,7 +1535,7 @@ func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 					},
 					Details: &types.Struct{
 						Fields: map[string]*types.Value{
-							"id": pbtypes.String("task1"),
+							"id": domain.String("task1").ToProto(),
 						},
 					},
 				},

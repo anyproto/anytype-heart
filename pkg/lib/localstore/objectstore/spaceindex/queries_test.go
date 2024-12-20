@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
@@ -21,12 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func removeScoreFromRecords(records []database.Record) []database.Record {
 	for i := range records {
-		delete(records[i].Details.Fields, "_score")
+		records[i].Details.Delete("_score")
 	}
 	return records
 }
@@ -62,16 +60,16 @@ func TestQuery(t *testing.T) {
 	t.Run("no filters", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyName: pbtypes.String("name1"),
+			bundle.RelationKeyId:   domain.String("id1"),
+			bundle.RelationKeyName: domain.String("name1"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id2"),
-			bundle.RelationKeyName: pbtypes.String("name2"),
+			bundle.RelationKeyId:   domain.String("id2"),
+			bundle.RelationKeyName: domain.String("name2"),
 		}
 		obj3 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id3"),
-			bundle.RelationKeyName: pbtypes.String("name3"),
+			bundle.RelationKeyId:   domain.String("id3"),
+			bundle.RelationKeyName: domain.String("name3"),
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -88,25 +86,25 @@ func TestQuery(t *testing.T) {
 	t.Run("with filter", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyName: pbtypes.String("name1"),
+			bundle.RelationKeyId:   domain.String("id1"),
+			bundle.RelationKeyName: domain.String("name1"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id2"),
-			bundle.RelationKeyName: pbtypes.String("name2"),
+			bundle.RelationKeyId:   domain.String("id2"),
+			bundle.RelationKeyName: domain.String("name2"),
 		}
 		obj3 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id3"),
-			bundle.RelationKeyName: pbtypes.String("name3"),
+			bundle.RelationKeyId:   domain.String("id3"),
+			bundle.RelationKeyName: domain.String("name3"),
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		recs, err := s.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("name2"),
+					Value:       domain.String("name2"),
 				},
 			},
 		})
@@ -120,32 +118,32 @@ func TestQuery(t *testing.T) {
 	t.Run("with multiple filters", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyName: pbtypes.String("name"),
+			bundle.RelationKeyId:   domain.String("id1"),
+			bundle.RelationKeyName: domain.String("name"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id2"),
-			bundle.RelationKeyName:        pbtypes.String("name"),
-			bundle.RelationKeyDescription: pbtypes.String("description"),
+			bundle.RelationKeyId:          domain.String("id2"),
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
 		}
 		obj3 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id3"),
-			bundle.RelationKeyName:        pbtypes.String("name"),
-			bundle.RelationKeyDescription: pbtypes.String("description"),
+			bundle.RelationKeyId:          domain.String("id3"),
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		recs, err := s.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("name"),
+					Value:       domain.String("name"),
 				},
 				{
-					RelationKey: bundle.RelationKeyDescription.String(),
+					RelationKey: bundle.RelationKeyDescription,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("description"),
+					Value:       domain.String("description"),
 				},
 			},
 		})
@@ -160,19 +158,19 @@ func TestQuery(t *testing.T) {
 	t.Run("full text search", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id1"),
-			bundle.RelationKeyName:        pbtypes.String("name"),
-			bundle.RelationKeyDescription: pbtypes.String("foo"),
+			bundle.RelationKeyId:          domain.String("id1"),
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("foo"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id2"),
-			bundle.RelationKeyName:        pbtypes.String("some important note"),
-			bundle.RelationKeyDescription: pbtypes.String("foo"),
+			bundle.RelationKeyId:          domain.String("id2"),
+			bundle.RelationKeyName:        domain.String("some important note"),
+			bundle.RelationKeyDescription: domain.String("foo"),
 		}
 		obj3 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id3"),
-			bundle.RelationKeyName:        pbtypes.String(""),
-			bundle.RelationKeyDescription: pbtypes.String("bar"),
+			bundle.RelationKeyId:          domain.String("id3"),
+			bundle.RelationKeyName:        domain.String(""),
+			bundle.RelationKeyDescription: domain.String("bar"),
 		}
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -223,11 +221,11 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text and filter", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				TextQuery: "important",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
-						RelationKey: bundle.RelationKeyDescription.String(),
+						RelationKey: bundle.RelationKeyDescription,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("foo"),
+						Value:       domain.String("foo"),
 					},
 				},
 			})
@@ -243,103 +241,103 @@ func TestQuery(t *testing.T) {
 	t.Run("full text meta", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		obj1 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id1"),
-			domain.RelationKey("bsonid1"): pbtypes.String("relid1"),
-			bundle.RelationKeyDescription: pbtypes.String("this is the first object description"),
+			bundle.RelationKeyId:          domain.String("id1"),
+			domain.RelationKey("bsonid1"): domain.String("relid1"),
+			bundle.RelationKeyDescription: domain.String("this is the first object description"),
 		}
 		obj2 := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("id2"),
-			bundle.RelationKeyType:        pbtypes.String("typeid1"),
-			bundle.RelationKeyDescription: pbtypes.String("this is the second object description"),
+			bundle.RelationKeyId:          domain.String("id2"),
+			bundle.RelationKeyType:        domain.String("typeid1"),
+			bundle.RelationKeyDescription: domain.String("this is the second object description"),
 		}
 
 		obj3 := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id3"),
-			bundle.RelationKeyType: pbtypes.String("typeid1"),
+			bundle.RelationKeyId:   domain.String("id3"),
+			bundle.RelationKeyType: domain.String("typeid1"),
 		}
 
 		relObj := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("relid1"),
-			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
-			bundle.RelationKeyName:        pbtypes.String("relname"),
-			bundle.RelationKeyDescription: pbtypes.String("this is a relation's description"),
-			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyId:          domain.String("relid1"),
+			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
+			bundle.RelationKeyName:        domain.String("relname"),
+			bundle.RelationKeyDescription: domain.String("this is a relation's description"),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		relObjDeleted := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("relid2"),
-			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
-			bundle.RelationKeyName:        pbtypes.String("deletedtag"),
-			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
-			bundle.RelationKeyDescription: pbtypes.String("this is a deleted relation's description"),
-			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyId:          domain.String("relid2"),
+			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
+			bundle.RelationKeyName:        domain.String("deletedtag"),
+			bundle.RelationKeyIsDeleted:   domain.Bool(true),
+			bundle.RelationKeyDescription: domain.String("this is a deleted relation's description"),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		relObjArchived := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("relid3"),
-			bundle.RelationKeyRelationKey: pbtypes.String("bsonid1"),
-			bundle.RelationKeyName:        pbtypes.String("archived"),
-			bundle.RelationKeyIsDeleted:   pbtypes.Bool(true),
-			bundle.RelationKeyDescription: pbtypes.String("this is a archived relation's description"),
-			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyId:          domain.String("relid3"),
+			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
+			bundle.RelationKeyName:        domain.String("archived"),
+			bundle.RelationKeyIsDeleted:   domain.Bool(true),
+			bundle.RelationKeyDescription: domain.String("this is a archived relation's description"),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		typeObj := TestObject{
-			bundle.RelationKeyId:          pbtypes.String("typeid1"),
-			bundle.RelationKeyName:        pbtypes.String("typename"),
-			bundle.RelationKeyDescription: pbtypes.String("this is a type's description"),
-			bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyId:          domain.String("typeid1"),
+			bundle.RelationKeyName:        domain.String("typename"),
+			bundle.RelationKeyDescription: domain.String("this is a type's description"),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_objectType)),
 		}
 
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, relObj, relObjDeleted, relObjArchived, typeObj})
 		err := s.fts.Index(ftsearch.SearchDoc{
 			Id:   "id1/r/description",
-			Text: obj1[bundle.RelationKeyDescription].GetStringValue(),
+			Text: obj1[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "id2/r/description",
-			Text: obj2[bundle.RelationKeyDescription].GetStringValue(),
+			Text: obj2[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "relid1/r/description",
-			Text: relObj[bundle.RelationKeyDescription].GetStringValue(),
+			Text: relObj[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "relid1/r/name",
-			Title: relObj[bundle.RelationKeyName].GetStringValue(),
+			Title: relObj[bundle.RelationKeyName].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "relid2/r/description",
-			Text: relObjDeleted[bundle.RelationKeyDescription].GetStringValue(),
+			Text: relObjDeleted[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "relid2/r/name",
-			Title: relObjDeleted[bundle.RelationKeyName].GetStringValue(),
+			Title: relObjDeleted[bundle.RelationKeyName].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:   "relid3/r/description",
-			Text: relObjArchived[bundle.RelationKeyDescription].GetStringValue(),
+			Text: relObjArchived[bundle.RelationKeyDescription].String(),
 		})
 		require.NoError(t, err)
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "relid3/r/name",
-			Title: relObjArchived[bundle.RelationKeyName].GetStringValue(),
+			Title: relObjArchived[bundle.RelationKeyName].String(),
 		})
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "typeid1/r/name",
-			Title: typeObj[bundle.RelationKeyName].GetStringValue(),
+			Title: typeObj[bundle.RelationKeyName].String(),
 		})
 		require.NoError(t, err)
 
@@ -433,9 +431,9 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text block multi match", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				TextQuery: "block",
-				Sorts: []*model.BlockContentDataviewSort{
+				Sorts: []database.SortRequest{
 					{
-						RelationKey: bundle.RelationKeyId.String(),
+						RelationKey: bundle.RelationKeyId,
 						Type:        model.BlockContentDataviewSort_Asc,
 					},
 				},
@@ -534,12 +532,12 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text by tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				TextQuery: "relname",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
 					},
 				},
 			})
@@ -550,7 +548,7 @@ func TestQuery(t *testing.T) {
 					Details: makeDetails(obj1),
 					Meta: model.SearchMeta{
 						RelationKey:     "bsonid1",
-						RelationDetails: pbtypes.StructFilterKeys(makeDetails(relObj), []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyId.String(), bundle.RelationKeyName.String()}),
+						RelationDetails: makeDetails(relObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				}}, recs)
 		})
@@ -558,12 +556,12 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text by deleted tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				TextQuery: "deleted",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
 					},
 				},
 			})
@@ -575,12 +573,12 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text by archived tag", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				TextQuery: "archived",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       pbtypes.IntList(int(model.ObjectType_relationOption)),
+						Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
 					},
 				},
 			})
@@ -592,30 +590,30 @@ func TestQuery(t *testing.T) {
 		t.Run("full-text by type", func(t *testing.T) {
 			recs, err := s.Query(database.Query{
 				TextQuery: "typename",
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
 						RelationKey: "layout",
 						Condition:   model.BlockContentDataviewFilter_NotIn,
-						Value:       pbtypes.IntList(int(model.ObjectType_objectType)),
+						Value:       domain.Int64List([]int64{int64(model.ObjectType_objectType)}),
 					},
 				},
 			})
 			require.NoError(t, err)
 			removeScoreFromRecords(recs)
-			assert.ElementsMatch(t, []database.Record{
+			assert.Equal(t, []database.Record{
 				{
 					Details: makeDetails(obj2),
 					Meta: model.SearchMeta{
 						RelationKey:     "type",
-						RelationDetails: pbtypes.StructFilterKeys(makeDetails(typeObj), []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyId.String(), bundle.RelationKeyName.String()}),
+						RelationDetails: makeDetails(typeObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				},
 				{
 					Details: makeDetails(obj3),
 					Meta: model.SearchMeta{
 						RelationKey:     "type",
-						RelationDetails: pbtypes.StructFilterKeys(makeDetails(typeObj), []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyId.String(), bundle.RelationKeyName.String()}),
+						RelationDetails: makeDetails(typeObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				},
 			}, recs)
@@ -631,16 +629,16 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, obj4})
 
 		recs, err := s.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.String("ignore"),
+					Value:       domain.String("ignore"),
 				},
 			},
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -662,9 +660,9 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Desc,
 				},
 			},
@@ -687,13 +685,13 @@ func TestQuery(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, obj4})
 
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyDescription.String(),
+					RelationKey: bundle.RelationKeyDescription,
 					Type:        model.BlockContentDataviewSort_Desc,
 				},
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -719,9 +717,9 @@ func TestQuery(t *testing.T) {
 
 		// When
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Type:        model.BlockContentDataviewSort_Desc,
 				},
 			},
@@ -734,8 +732,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
-			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			idA := a.GetString(bundle.RelationKeyId)
+			idB := b.GetString(bundle.RelationKeyId)
 			// Desc order
 			return idA > idB
 		})
@@ -753,9 +751,9 @@ func TestQuery(t *testing.T) {
 
 		// When
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -768,8 +766,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
-			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			idA := a.GetString(bundle.RelationKeyId)
+			idB := b.GetString(bundle.RelationKeyId)
 			return idA < idB
 		})
 		assertRecordsEqual(t, want[:15], recs)
@@ -788,9 +786,9 @@ func TestQuery(t *testing.T) {
 		limit := 15
 		offset := 20
 		recs, err := s.Query(database.Query{
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -804,8 +802,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
-			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			idA := a.GetString(bundle.RelationKeyId)
+			idB := b.GetString(bundle.RelationKeyId)
 			return idA < idB
 		})
 		assertRecordsEqual(t, want[offset:offset+limit], recs)
@@ -832,16 +830,16 @@ func TestQuery(t *testing.T) {
 		limit := 60
 		offset := 20
 		recs, err := s.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyName.String(),
+					RelationKey: bundle.RelationKeyName,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("this name"),
+					Value:       domain.String("this name"),
 				},
 			},
-			Sorts: []*model.BlockContentDataviewSort{
+			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId.String(),
+					RelationKey: bundle.RelationKeyId,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -881,11 +879,11 @@ func TestQueryObjectIds(t *testing.T) {
 
 		// When
 		ids, _, err := s.QueryObjectIds(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyDescription.String(),
+					RelationKey: bundle.RelationKeyDescription,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("foo"),
+					Value:       domain.String("foo"),
 				},
 			},
 		})
@@ -938,11 +936,11 @@ func TestQueryRaw(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		flt, err := database.NewFilters(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyDescription.String(),
+					RelationKey: bundle.RelationKeyDescription,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("foo"),
+					Value:       domain.String("foo"),
 				},
 			},
 		}, s, arena, &collate.Buffer{})
@@ -957,23 +955,23 @@ func TestQueryRaw(t *testing.T) {
 		t.Run("equal", func(t *testing.T) {
 			s := NewStoreFixture(t)
 			obj1 := TestObject{
-				bundle.RelationKeyId:   pbtypes.String("id1"),
-				bundle.RelationKeyType: pbtypes.String("type1"),
+				bundle.RelationKeyId:   domain.String("id1"),
+				bundle.RelationKeyType: domain.String("type1"),
 			}
 			type1 := TestObject{
-				bundle.RelationKeyId:        pbtypes.String("type1"),
-				bundle.RelationKeyType:      pbtypes.String("objectType"),
-				bundle.RelationKeyUniqueKey: pbtypes.String("ot-note"),
+				bundle.RelationKeyId:        domain.String("type1"),
+				bundle.RelationKeyType:      domain.String("objectType"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-note"),
 			}
 
 			s.AddObjects(t, []TestObject{obj1, type1})
 
 			flt, err := database.NewFilters(database.Query{
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						RelationKey: "type.uniqueKey",
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String("ot-note"),
+						Value:       domain.String("ot-note"),
 					},
 				},
 			}, s, arena, &collate.Buffer{})
@@ -986,41 +984,41 @@ func TestQueryRaw(t *testing.T) {
 		t.Run("not equal", func(t *testing.T) {
 			s := NewStoreFixture(t)
 			obj1 := TestObject{
-				bundle.RelationKeyId:     pbtypes.String("id1"),
-				bundle.RelationKeyType:   pbtypes.String("type1"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:     domain.String("id1"),
+				bundle.RelationKeyType:   domain.String("type1"),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_basic)),
 			}
 			obj2 := TestObject{
-				bundle.RelationKeyId:     pbtypes.String("id2"),
-				bundle.RelationKeyType:   pbtypes.String("type2"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:     domain.String("id2"),
+				bundle.RelationKeyType:   domain.String("type2"),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_basic)),
 			}
 			type1 := TestObject{
-				bundle.RelationKeyId:        pbtypes.String("type1"),
-				bundle.RelationKeyType:      pbtypes.String("objectType"),
-				bundle.RelationKeyUniqueKey: pbtypes.String("ot-template"),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String("type1"),
+				bundle.RelationKeyType:      domain.String("objectType"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-template"),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			}
 			type2 := TestObject{
-				bundle.RelationKeyId:        pbtypes.String("type2"),
-				bundle.RelationKeyType:      pbtypes.String("objectType"),
-				bundle.RelationKeyUniqueKey: pbtypes.String("ot-page"),
-				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:        domain.String("type2"),
+				bundle.RelationKeyType:      domain.String("objectType"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-page"),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 			}
 
 			s.AddObjects(t, []TestObject{obj1, obj2, type1, type2})
 
 			flt, err := database.NewFilters(database.Query{
-				Filters: []*model.BlockContentDataviewFilter{
+				Filters: []database.FilterRequest{
 					{
 						RelationKey: "type.uniqueKey",
 						Condition:   model.BlockContentDataviewFilter_NotEqual,
-						Value:       pbtypes.String("ot-template"),
+						Value:       domain.String("ot-template"),
 					},
 					{
-						RelationKey: bundle.RelationKeyLayout.String(),
+						RelationKey: bundle.RelationKeyLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.Int64(int64(model.ObjectType_basic)),
+						Value:       domain.Int64(int64(model.ObjectType_basic)),
 					},
 				},
 			}, s, arena, &collate.Buffer{})
@@ -1038,7 +1036,7 @@ type dummySourceService struct {
 	objectToReturn TestObject
 }
 
-func (s dummySourceService) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
+func (s dummySourceService) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
 	return makeDetails(s.objectToReturn), nil
 }
 
@@ -1095,7 +1093,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 	obj3 := makeObjectWithName("id3", "name3")
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-	recordsCh := make(chan *types.Struct)
+	recordsCh := make(chan *domain.Details)
 	sub := database.NewSubscription(nil, recordsCh)
 
 	recs, closeSub, err := s.QueryByIdsAndSubscribeForChanges([]string{"id1", "id3"}, sub)
@@ -1125,7 +1123,7 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 		for {
 			select {
 			case rec := <-recordsCh:
-				name := pbtypes.GetString(rec, bundle.RelationKeyName.String())
+				name := rec.GetString(bundle.RelationKeyName)
 				num, err := strconv.Atoi(name)
 				require.NoError(t, err)
 				require.Equal(t, prev+1, num)
@@ -1143,26 +1141,26 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 func TestIndex(t *testing.T) {
 	s := NewStoreFixture(t)
 	obj1 := TestObject{
-		bundle.RelationKeyId:        pbtypes.String("id1"),
-		bundle.RelationKeyName:      pbtypes.String("name1"),
-		bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
+		bundle.RelationKeyId:        domain.String("id1"),
+		bundle.RelationKeyName:      domain.String("name1"),
+		bundle.RelationKeyIsDeleted: domain.Bool(true),
 	}
 	obj2 := TestObject{
-		bundle.RelationKeyId:   pbtypes.String("id2"),
-		bundle.RelationKeyName: pbtypes.String("name2"),
+		bundle.RelationKeyId:   domain.String("id2"),
+		bundle.RelationKeyName: domain.String("name2"),
 	}
 	obj3 := TestObject{
-		bundle.RelationKeyId:   pbtypes.String("id3"),
-		bundle.RelationKeyName: pbtypes.String("name3"),
+		bundle.RelationKeyId:   domain.String("id3"),
+		bundle.RelationKeyName: domain.String("name3"),
 	}
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 	recs, err := s.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				RelationKey: bundle.RelationKeyIsDeleted,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
+				Value:       domain.Bool(true),
 			},
 		},
 	})
@@ -1178,31 +1176,33 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 	s := NewStoreFixture(t)
 	s.AddObjects(t, []TestObject{
 		{
-			bundle.RelationKeyId:      pbtypes.String("id1"),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
-			bundle.RelationKeyName:    pbtypes.String("first"),
+			bundle.RelationKeyId:      domain.String("id1"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+			bundle.RelationKeyName:    domain.String("first"),
 		},
 		{
-			bundle.RelationKeyId:         pbtypes.String("id2"),
-			bundle.RelationKeySpaceId:    pbtypes.String(spaceId),
-			bundle.RelationKeyName:       pbtypes.String("favorite"),
-			bundle.RelationKeyIsFavorite: pbtypes.Bool(true),
+			bundle.RelationKeyId:         domain.String("id2"),
+			bundle.RelationKeySpaceId:    domain.String(spaceId),
+			bundle.RelationKeyName:       domain.String("favorite"),
+			bundle.RelationKeyIsFavorite: domain.Bool(true),
 		},
 		{
-			bundle.RelationKeyId:          pbtypes.String("id3"),
-			bundle.RelationKeySpaceId:     pbtypes.String(spaceId),
-			bundle.RelationKeyName:        pbtypes.String("hi!"),
-			bundle.RelationKeyDescription: pbtypes.String("hi!"),
+			bundle.RelationKeyId:          domain.String("id3"),
+			bundle.RelationKeySpaceId:     domain.String(spaceId),
+			bundle.RelationKeyName:        domain.String("hi!"),
+			bundle.RelationKeyDescription: domain.String("hi!"),
 		},
 	})
 
 	t.Run("counter", func(t *testing.T) {
 		var counter = 0
-		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		}}}, func(_ *types.Struct) {
+		err := s.QueryIterate(database.Query{Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeySpaceId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(spaceId),
+			},
+		}}, func(_ *domain.Details) {
 			counter++
 		})
 
@@ -1212,13 +1212,15 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 
 	t.Run("favorites collector", func(t *testing.T) {
 		favs := make([]string, 0)
-		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeySpaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		}}}, func(s *types.Struct) {
-			if pbtypes.GetBool(s, bundle.RelationKeyIsFavorite.String()) {
-				favs = append(favs, pbtypes.GetString(s, bundle.RelationKeyId.String()))
+		err := s.QueryIterate(database.Query{Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeySpaceId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(spaceId),
+			},
+		}}, func(s *domain.Details) {
+			if s.GetBool(bundle.RelationKeyIsFavorite) {
+				favs = append(favs, s.GetString(bundle.RelationKeyId))
 			}
 		})
 
@@ -1228,13 +1230,13 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 
 	t.Run("name and description analyzer", func(t *testing.T) {
 		ids := make([]string, 0)
-		err := s.QueryIterate(database.Query{Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeySpaceId.String(),
+		err := s.QueryIterate(database.Query{Filters: []database.FilterRequest{{
+			RelationKey: bundle.RelationKeySpaceId,
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(spaceId),
-		}}}, func(s *types.Struct) {
-			if pbtypes.GetString(s, bundle.RelationKeyName.String()) == pbtypes.GetString(s, bundle.RelationKeyDescription.String()) {
-				ids = append(ids, pbtypes.GetString(s, bundle.RelationKeyId.String()))
+			Value:       domain.String(spaceId),
+		}}}, func(s *domain.Details) {
+			if s.GetString(bundle.RelationKeyName) == s.GetString(bundle.RelationKeyDescription) {
+				ids = append(ids, s.GetString(bundle.RelationKeyId))
 			}
 		})
 

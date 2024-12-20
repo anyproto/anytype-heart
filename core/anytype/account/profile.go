@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 type Profile struct {
@@ -36,20 +37,9 @@ func (s *service) ProfileInfo() (Profile, error) {
 	if err != nil {
 		return profile, err
 	}
-
-	if profileDetails != nil && profileDetails.Details != nil && profileDetails.Details.Fields != nil {
-		for _, s := range []struct {
-			field    string
-			receiver *string
-		}{
-			{"name", &profile.Name},
-			{"iconImage", &profile.IconImage},
-			{"iconColor", &profile.IconColor},
-		} {
-			if value, ok := profileDetails.Details.Fields[s.field]; ok {
-				*s.receiver = value.GetStringValue()
-			}
-		}
+	if profileDetails != nil {
+		profile.Name = profileDetails.GetString(bundle.RelationKeyName)
+		profile.IconImage = profileDetails.GetString(bundle.RelationKeyIconImage)
 	}
 
 	return profile, nil

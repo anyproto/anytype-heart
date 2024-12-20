@@ -99,6 +99,11 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 		}
 	}
 
+	defer func() {
+		if repoWasMissing && err != nil {
+			os.RemoveAll(filepath.Join(s.rootPath, id))
+		}
+	}()
 	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true

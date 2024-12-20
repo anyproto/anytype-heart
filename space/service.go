@@ -15,10 +15,10 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -70,7 +70,6 @@ type Service interface {
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
-	WaitPersonalSpaceMigration(ctx context.Context) (err error)
 	app.ComponentRunnable
 }
 
@@ -241,25 +240,6 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 		if err != nil {
 			return fmt.Errorf("create tech space for old accounts: %w", err)
 		}
-	} else {
-		var id string
-		// have we migrated analytics id? we should have it in account object
-		err = s.techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
-			id, err = accountObject.GetAnalyticsId()
-			return err
-		})
-		// this error can arise only from database issues
-		if err != nil {
-			return fmt.Errorf("get analytics id: %w", err)
-		}
-		// we still didn't migrate analytics id, then there is a chance that space view was not created for old accounts
-		if id == "" {
-			// creating a space view under the hood
-			_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
-			if err != nil {
-				return fmt.Errorf("start personal space: %w", err)
-			}
-		}
 	}
 	s.techSpace.WakeUpViews()
 	// only persist networkId after successful space init
@@ -315,18 +295,6 @@ func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Spac
 	return waiter.waitSpace(ctx, spaceId)
 }
 
-func (s *service) WaitPersonalSpaceMigration(ctx context.Context) (err error) {
-	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
-	_, err = waiter.waitSpace(ctx, s.personalSpaceId)
-	if err != nil {
-		return fmt.Errorf("wait personal space: %w", err)
-	}
-	s.mu.Lock()
-	ctrl := s.spaceControllers[s.personalSpaceId]
-	s.mu.Unlock()
-	return ctrl.(personalspace.Personal).WaitMigrations(ctx)
-}
-
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	if spaceId == s.techSpaceId {
 		return s.getTechSpace(ctx)
@@ -371,7 +339,7 @@ func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 	}()
 }
 
-func (s *service) OnWorkspaceChanged(spaceId string, details *types.Struct) {
+func (s *service) OnWorkspaceChanged(spaceId string, details *domain.Details) {
 	go func() {
 		if err := s.techSpace.SpaceViewSetData(s.ctx, spaceId, details); err != nil {
 			log.Warn("OnWorkspaceChanged error", zap.Error(err))

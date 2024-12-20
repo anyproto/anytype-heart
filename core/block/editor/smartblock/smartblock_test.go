@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSmartBlock_Init(t *testing.T) {
@@ -116,7 +115,7 @@ func TestBasic_SetAlign(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, model.Block_AlignRight, st.Get("title").Model().Align)
-		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayoutAlign.String()))
+		assert.Equal(t, int64(model.Block_AlignRight), st.Details().GetInt64(bundle.RelationKeyLayoutAlign))
 	})
 
 }
@@ -125,13 +124,13 @@ func Test_removeInternalFlags(t *testing.T) {
 	t.Run("no flags - no changes", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", nil).(*state.State)
-		st.SetDetail(bundle.RelationKeyInternalFlags.String(), pbtypes.IntList())
+		st.SetDetail(bundle.RelationKeyInternalFlags, domain.Int64List([]int64{}))
 
 		// when
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 	t.Run("EmptyDelete flag is not removed when state is empty", func(t *testing.T) {
 		// given
@@ -143,14 +142,14 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Len(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()), 1)
+		assert.Len(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags), 1)
 	})
 	t.Run("all flags are removed when title is not empty", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", map[string]simple.Block{
 			"title": simple.New(&model.Block{Id: "title"}),
 		}).(*state.State)
-		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("some name"))
+		st.SetDetail(bundle.RelationKeyName, domain.String("some name"))
 		flags := defaultInternalFlags()
 		flags.AddToState(st)
 
@@ -158,7 +157,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 	t.Run("all flags are removed when state has non-empty text blocks", func(t *testing.T) {
 		// given
@@ -175,7 +174,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 }
 

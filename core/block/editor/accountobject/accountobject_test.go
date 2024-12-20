@@ -9,8 +9,8 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -22,8 +22,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/util/metricsid"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -40,7 +42,6 @@ type fixture struct {
 func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB)) *fixture {
 	ctx := context.Background()
 	cfg := config.New(config.WithNewAccount(isNewAccount))
-	cfg.AnalyticsId = "analyticsId"
 	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "crdt.db"), nil)
 	require.NoError(t, err)
 	if prepareDb != nil {
@@ -52,7 +53,9 @@ func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB))
 	})
 	sb := smarttest.New("accountId1")
 	indexStore := objectstore.NewStoreFixture(t).SpaceIndex("spaceId")
-	object := New(sb, indexStore, nil, nil, nil, db, cfg)
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+	object := New(sb, keys, indexStore, nil, nil, nil, db, cfg)
 	fx := &fixture{
 		storeFx:       objectstore.NewStoreFixture(t),
 		db:            db,
@@ -130,12 +133,14 @@ func (fx *fixture) assertStoreValue(t *testing.T, test any, extract func(val *an
 	require.Equal(t, test, extract(val))
 }
 
-func (fx *fixture) assertStateValue(t *testing.T, val any, extract func(str *types.Struct) any) {
+func (fx *fixture) assertStateValue(t *testing.T, val any, extract func(str *domain.Details) any) {
 	require.Equal(t, val, extract(fx.SmartBlock.NewState().CombinedDetails()))
 }
 
 func TestAccountNew(t *testing.T) {
 	fx := newFixture(t, true, nil)
+	expectedId, err := metricsid.DeriveMetricsId(fx.keys.SignKey)
+	require.NoError(t, err)
 	st := fx.SmartBlock.NewState()
 	assertBlock(t, st, "accountId1")
 	assertBlock(t, st, "title")
@@ -146,7 +151,8 @@ func TestAccountNew(t *testing.T) {
 	require.True(t, res)
 	id, err := fx.GetAnalyticsId()
 	require.NoError(t, err)
-	require.Equal(t, "analyticsId", id)
+	fmt.Println(id)
+	require.Equal(t, expectedId, id)
 }
 
 func TestAccountOldInitWithData(t *testing.T) {
@@ -169,11 +175,11 @@ func TestAccountOldInitWithData(t *testing.T) {
 	id, err := fx.GetAnalyticsId()
 	require.NoError(t, err)
 	require.Equal(t, "analyticsId", id)
-	fx.assertStateValue(t, "Anna", func(str *types.Struct) any {
-		return pbtypes.GetString(str, "name")
+	fx.assertStateValue(t, "Anna", func(str *domain.Details) any {
+		return str.GetString("name")
 	})
-	fx.assertStateValue(t, "Molly", func(str *types.Struct) any {
-		return pbtypes.GetString(str, "description")
+	fx.assertStateValue(t, "Molly", func(str *domain.Details) any {
+		return str.GetString("description")
 	})
 	require.NotNil(t, fx)
 }
@@ -183,11 +189,11 @@ func TestPushNewChanges(t *testing.T) {
 	fx := newFixture(t, true, nil)
 	_, err := fx.OnPushChange(makeStoreContent(map[string]any{"name": "Anna", "description": "Molly"}))
 	require.NoError(t, err)
-	fx.assertStateValue(t, "Anna", func(str *types.Struct) any {
-		return pbtypes.GetString(str, "name")
+	fx.assertStateValue(t, "Anna", func(str *domain.Details) any {
+		return str.GetString("name")
 	})
-	fx.assertStateValue(t, "Molly", func(str *types.Struct) any {
-		return pbtypes.GetString(str, "description")
+	fx.assertStateValue(t, "Molly", func(str *domain.Details) any {
+		return str.GetString("description")
 	})
 	require.NotNil(t, fx)
 }
@@ -207,21 +213,6 @@ func TestSetSharedSpacesLimit(t *testing.T) {
 	require.NoError(t, err)
 	res := fx.GetSharedSpacesLimit()
 	require.Equal(t, 10, res)
-}
-
-func TestAccountObject_GetPrivateAnalyticsId(t *testing.T) {
-	t.Run("new account", func(t *testing.T) {
-		fx := newFixture(t, true, nil)
-		res := fx.GetPrivateAnalyticsId()
-		require.NotEmpty(t, res)
-	})
-	t.Run("old account", func(t *testing.T) {
-		fx := newFixture(t, false, nil)
-		err := fx.SetAnalyticsId("analyticsId")
-		require.NoError(t, err)
-		res := fx.GetPrivateAnalyticsId()
-		require.NotEmpty(t, res)
-	})
 }
 
 func TestAnalyticsId(t *testing.T) {

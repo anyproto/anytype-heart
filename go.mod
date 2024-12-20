@@ -8,12 +8,13 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.3
-	github.com/anyproto/any-sync v0.5.20
+	github.com/anyproto/any-sync v0.5.23
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
+	github.com/anyproto/go-slip10 v1.0.0
 	github.com/anyproto/lexid v0.0.4
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
-	github.com/anyproto/tantivy-go v0.2.0
+	github.com/anyproto/tantivy-go v0.3.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/chai2010/webp v1.1.2-0.20240612091223-aa1b379218b7
@@ -28,7 +29,7 @@ require (
 	github.com/dsoprea/go-jpeg-image-structure/v2 v2.0.0-20221012074422-4f3f7e934102
 	github.com/ethereum/go-ethereum v1.13.15
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/go-chi/chi/v5 v5.1.0
+	github.com/go-chi/chi/v5 v5.2.0
 	github.com/go-shiori/go-readability v0.0.0-20241012063810-92284fa8a71f
 	github.com/goccy/go-graphviz v0.2.9
 	github.com/gogo/protobuf v1.3.2
@@ -63,7 +64,7 @@ require (
 	github.com/libp2p/go-libp2p v0.37.0
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/magiconair/properties v1.8.7
+	github.com/magiconair/properties v1.8.9
 	github.com/matishsiao/goInfo v0.0.0-20240924010139-10388a85396f
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
@@ -101,10 +102,10 @@ require (
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/image v0.23.0
 	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.33.0
 	golang.org/x/oauth2 v0.24.0
 	golang.org/x/text v0.21.0
-	google.golang.org/grpc v1.68.1
+	google.golang.org/grpc v1.69.2
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -122,7 +123,6 @@ require (
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
-	github.com/anyproto/go-slip10 v1.0.0 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -246,7 +246,7 @@ require (
 	go.opentelemetry.io/otel v1.32.0 // indirect
 	go.opentelemetry.io/otel/metric v1.32.0 // indirect
 	go.opentelemetry.io/otel/trace v1.32.0 // indirect
-	golang.org/x/crypto v0.30.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect

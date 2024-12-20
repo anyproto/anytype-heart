@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fileObject struct {
@@ -26,7 +25,7 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
 
-	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	filePath := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	if filePath != "" {
 		var encryptionKeys map[string]string
 		if sn.Snapshot.Data.FileInfo != nil {
@@ -35,8 +34,7 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 				encryptionKeys[key.Path] = key.Key
 			}
 		}
-		name := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyName.String())
-		fileObjectId, err := uploadFile(ctx, o.blockService, spaceId, name, filePath, origin, encryptionKeys)
+		fileObjectId, err := uploadFile(ctx, o.blockService, spaceId, filePath, origin, encryptionKeys, sn.Snapshot.Data.Details)
 		if err != nil {
 			log.Error("handling file object: upload file", zap.Error(err))
 			return id, payload, nil

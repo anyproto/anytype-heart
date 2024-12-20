@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -98,12 +99,12 @@ func (t *Text) Validate() error {
 	return nil
 }
 
-func (t *Text) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
+func (t *Text) Diff(spaceId string, b simple.Block) (msgs []simple.EventMessage, err error) {
 	text, ok := b.(*Text)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = t.Base.Diff(text); err != nil {
+	if msgs, err = t.Base.Diff(spaceId, text); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetText{
@@ -140,7 +141,7 @@ func (t *Text) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 		changes.IconEmoji = &pb.EventBlockSetTextIconEmoji{Value: text.content.IconEmoji}
 	}
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetText{BlockSetText: changes})})
 	}
 	return
 }

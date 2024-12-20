@@ -25,6 +25,7 @@ import (
 const (
 	collectionName = "chats"
 	descOrder      = "-_o.id"
+	ascOrder       = "_o.id"
 )
 
 type StoreObject interface {
@@ -32,13 +33,19 @@ type StoreObject interface {
 	anystoredebug.AnystoreDebug
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
-	GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error)
+	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe() error
+}
+
+type GetMessagesRequest struct {
+	AfterOrderId  string
+	BeforeOrderId string
+	Limit         int
 }
 
 type AccountService interface {
@@ -76,7 +83,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	s.subscription = newSubscription(s.Id(), s.eventSender)
+	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
 		subscription: s.subscription,
@@ -129,24 +136,22 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 	return messages, txn.Commit()
 }
 
-func (s *storeObject) GetMessages(ctx context.Context, beforeOrderId string, limit int) ([]*model.ChatMessage, error) {
+func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
-	var msgs []*model.ChatMessage
-	if beforeOrderId != "" {
-		qry := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)}).Sort(descOrder).Limit(uint(limit))
-		msgs, err = s.queryMessages(ctx, qry)
-		if err != nil {
-			return nil, fmt.Errorf("query messages: %w", err)
-		}
+	var qry anystore.Query
+	if req.AfterOrderId != "" {
+		qry = coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGt, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
+	} else if req.BeforeOrderId != "" {
+		qry = coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
 	} else {
-		qry := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
-		msgs, err = s.queryMessages(ctx, qry)
-		if err != nil {
-			return nil, fmt.Errorf("query messages: %w", err)
-		}
+		qry = coll.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
+	}
+	msgs, err := s.queryMessages(ctx, qry)
+	if err != nil {
+		return nil, fmt.Errorf("query messages: %w", err)
 	}
 	sort.Slice(msgs, func(i, j int) bool {
 		return msgs[i].OrderId < msgs[j].OrderId
@@ -317,11 +322,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 		return messages[i].OrderId < messages[j].OrderId
 	})
 
-	var firstOrderId string
-	if len(messages) > 0 {
-		firstOrderId = messages[0].OrderId
-	}
-	s.subscription.subscribe(firstOrderId)
+	s.subscription.enable()
 
 	return messages, 0, nil
 }

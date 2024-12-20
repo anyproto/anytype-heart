@@ -11,7 +11,7 @@ import (
 )
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
@@ -30,7 +30,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
@@ -49,7 +49,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 }
 
 func (mw *Middleware) ObjectTypeRecommendedRelationsSet(_ context.Context, req *pb.RpcObjectTypeRecommendedRelationsSetRequest) *pb.RpcObjectTypeRecommendedRelationsSetResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	err := detailsService.ObjectTypeSetRelations(req.TypeObjectId, req.RelationObjectIds)
 	code := mapErrorCode(err,
 		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedRelationsSetResponseError_READONLY_OBJECT_TYPE),
@@ -63,7 +63,7 @@ func (mw *Middleware) ObjectTypeRecommendedRelationsSet(_ context.Context, req *
 }
 
 func (mw *Middleware) ObjectTypeRecommendedFeaturedRelationsSet(_ context.Context, req *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest) *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	err := detailsService.ObjectTypeSetFeaturedRelations(req.TypeObjectId, req.RelationObjectIds)
 	code := mapErrorCode(err,
 		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponseError_READONLY_OBJECT_TYPE),
@@ -139,6 +139,6 @@ func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelati
 		return m
 	}
 
-	list, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
+	list, err := mustService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, domain.ValueFromProto(req.Value))
 	return response(list, err)
 }

@@ -10154,6 +10154,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  |  |
+| afterOrderId | [string](#string) |  | OrderId of the message after which to get messages |
 | beforeOrderId | [string](#string) |  | OrderId of the message before which to get messages |
 | limit | [int32](#int32) |  |  |
 
@@ -23418,7 +23419,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
-| EMPTY | 6 |  |
+| EMPTY | 2 |  |
 
 
 
@@ -27046,6 +27047,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | accountShow | [Event.Account.Show](#anytype-Event-Account-Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype-Event-Account-Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |

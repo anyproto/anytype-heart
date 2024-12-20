@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type WidgetObject struct {
@@ -55,7 +54,7 @@ func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migra
 			template.InitTemplate(st,
 				template.WithEmpty,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
-				template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
+				template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 			)
 		},
 	}

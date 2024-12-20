@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
@@ -39,7 +37,7 @@ func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId strin
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
+		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
 		for _, relKey := range relationKeys {
 			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
 			if err != nil {
@@ -49,7 +47,7 @@ func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId strin
 				list = append(list, relId)
 			}
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(list))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
 		return b.Apply(st)
 	})
 }
@@ -60,7 +58,7 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
+		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
 		for _, relKey := range relationKeys {
 			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
 			if err != nil {
@@ -68,7 +66,7 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 			}
 			list = slice.RemoveMut(list, relId)
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(list))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
 		return b.Apply(st)
 	})
 }
@@ -93,7 +91,7 @@ func (s *service) objectTypeSetRelations(
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		st.SetDetailAndBundledRelation(relationToSet, pbtypes.StringList(relationList))
+		st.SetDetailAndBundledRelation(relationToSet, domain.StringList(relationList))
 		return b.Apply(st)
 	})
 }
@@ -199,23 +197,25 @@ func (s *service) ObjectTypeSetLayout(objectTypeId string, layout int64) error {
 	return resultErr
 }
 
-func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
+func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {
 	var (
-		countersByKeys     = make(map[string]int64)
+		countersByKeys     = make(map[domain.RelationKey]int64)
 		detailHandlesValue = generateFilter(value)
 	)
 
-	err := s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: nil}, func(details *types.Struct) {
-		for key, valueToCheck := range details.Fields {
-			if detailHandlesValue(valueToCheck) {
-				if counter, ok := countersByKeys[key]; ok {
-					countersByKeys[key] = counter + 1
-				} else {
-					countersByKeys[key] = 1
+	err := s.store.SpaceIndex(spaceId).QueryIterate(
+		database.Query{Filters: nil},
+		func(details *domain.Details) {
+			for key, valueToCheck := range details.Iterate() {
+				if detailHandlesValue(valueToCheck) {
+					if counter, ok := countersByKeys[key]; ok {
+						countersByKeys[key] = counter + 1
+					} else {
+						countersByKeys[key] = 1
+					}
 				}
 			}
-		}
-	})
+		})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query objects: %w", err)
@@ -223,10 +223,10 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]
 
 	keys := maps.Keys(countersByKeys)
 	sort.Slice(keys, func(i, j int) bool {
-		if keys[i] == bundle.RelationKeyMentions.String() {
+		if keys[i] == bundle.RelationKeyMentions {
 			return true
 		}
-		if keys[j] == bundle.RelationKeyMentions.String() {
+		if keys[j] == bundle.RelationKeyMentions {
 			return false
 		}
 		return keys[i] < keys[j]
@@ -235,7 +235,7 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]
 	list := make([]*pb.RpcRelationListWithValueResponseResponseItem, len(keys))
 	for i, key := range keys {
 		list[i] = &pb.RpcRelationListWithValueResponseResponseItem{
-			RelationKey: key,
+			RelationKey: string(key),
 			Counter:     countersByKeys[key],
 		}
 	}
@@ -243,10 +243,10 @@ func (s *service) ListRelationsWithValue(spaceId string, value *types.Value) ([]
 	return list, nil
 }
 
-func generateFilter(value *types.Value) func(v *types.Value) bool {
-	equalOrHasFilter := func(v *types.Value) bool {
-		if list := v.GetListValue(); list != nil {
-			for _, element := range list.Values {
+func generateFilter(value domain.Value) func(v domain.Value) bool {
+	equalOrHasFilter := func(v domain.Value) bool {
+		if list, ok := v.TryListValues(); ok {
+			for _, element := range list {
 				if element.Equal(value) {
 					return true
 				}
@@ -255,7 +255,7 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 		return v.Equal(value)
 	}
 
-	stringValue := value.GetStringValue()
+	stringValue := value.String()
 	if stringValue == "" {
 		return equalOrHasFilter
 	}
@@ -289,22 +289,21 @@ func generateFilter(value *types.Value) func(v *types.Value) bool {
 	// - for relations with number format it checks timestamp value is between timestamps of this day midnights
 	// - for relations carrying string list it checks if some of the strings has day prefix, e.g.
 	// if _date_2023-12-12-08-30-50Z-0200 is queried, then all relations with prefix _date_2023-12-12 will be returned
-	return func(v *types.Value) bool {
-		numberValue := int64(v.GetNumberValue())
+	return func(v domain.Value) bool {
+		numberValue := v.Int64()
 		if numberValue >= startTimestamp && numberValue < endTimestamp {
 			return true
 		}
 
-		if list := v.GetListValue(); list != nil {
-			for _, element := range list.Values {
-				if element.Equal(value) {
-					return true
-				}
-				if strings.HasPrefix(element.GetStringValue(), shortId) {
-					return true
-				}
+		for _, element := range v.WrapToList() {
+			if element.Equal(value) {
+				return true
+			}
+			if strings.HasPrefix(element.String(), shortId) {
+				return true
 			}
 		}
+
 		return v.Equal(value)
 	}
 }

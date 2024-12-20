@@ -35,6 +35,11 @@ var (
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
+	}
+	objRestrictEditAndTemplate = ObjectRestrictions{
+		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 	}
 	sysTypesRestrictions = ObjectRestrictions{
@@ -61,8 +66,8 @@ var (
 		model.ObjectType_todo:       {},
 		model.ObjectType_set:        objRestrictEdit,
 		model.ObjectType_collection: objRestrictEdit,
-		model.ObjectType_objectType: objRestrictEdit,
-		model.ObjectType_relation:   objRestrictEdit,
+		model.ObjectType_objectType: objRestrictEditAndTemplate,
+		model.ObjectType_relation:   objRestrictEditAndTemplate,
 		model.ObjectType_file:       objRestrictEditAndDuplicate,
 		model.ObjectType_dashboard: {
 			model.Restrictions_Details,
@@ -80,14 +85,14 @@ var (
 		},
 
 		model.ObjectType_bookmark:       {},
-		model.ObjectType_relationOption: objRestrictEdit,
+		model.ObjectType_relationOption: objRestrictEditAndTemplate,
 		model.ObjectType_relationOptionsList: {
 			model.Restrictions_Template,
 		},
 		model.ObjectType_participant: objRestrictAll,
 		model.ObjectType_chat:        objRestrictEditAndDuplicate,
 		model.ObjectType_chatDerived: objRestrictEditAndDuplicate,
-		model.ObjectType_tag:         objRestrictEdit,
+		model.ObjectType_tag:         objRestrictEditAndTemplate,
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
@@ -120,9 +125,9 @@ var (
 		smartblock.SmartBlockTypeFileObject:        objRestrictEditAndDuplicate,
 		smartblock.SmartBlockTypeArchive:           objRestrictAll,
 		smartblock.SmartBlockTypeBundledRelation:   objRestrictAll,
-		smartblock.SmartBlockTypeSubObject:         objRestrictEdit,
-		smartblock.SmartBlockTypeObjectType:        objRestrictEdit,
-		smartblock.SmartBlockTypeRelation:          objRestrictEdit,
+		smartblock.SmartBlockTypeSubObject:         objRestrictEditAndTemplate,
+		smartblock.SmartBlockTypeObjectType:        objRestrictEditAndTemplate,
+		smartblock.SmartBlockTypeRelation:          objRestrictEditAndTemplate,
 		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
 		smartblock.SmartBlockTypeBundledTemplate:   objRestrictAll,
 		smartblock.SmartBlockTypeTemplate: {

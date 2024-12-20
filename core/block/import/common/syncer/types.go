@@ -3,8 +3,6 @@ package syncer
 import (
 	"context"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -16,7 +14,7 @@ import (
 type BlockService interface {
 	GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
 	GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
-	UploadFile(ctx context.Context, spaceId string, req block.FileUploadRequest) (objectId string, details *types.Struct, err error)
+	UploadFile(ctx context.Context, spaceId string, req block.FileUploadRequest) (objectId string, details *domain.Details, err error)
 	UploadBlockFile(ctx session.Context, req block.UploadRequest, groupID string, isSync bool) (fileObjectId string, err error)
 }
 

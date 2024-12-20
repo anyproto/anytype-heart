@@ -10,8 +10,8 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -32,18 +32,17 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/metricsid"
 )
 
 var log = logger.NewNamedSugared("common.editor.accountobject")
 
 const (
-	collectionName        = "account"
-	accountDocumentId     = "accountObject"
-	idKey                 = "id"
-	analyticsKey          = "analyticsId"
-	iconMigrationKey      = "iconMigration"
-	privateAnalyticsIdKey = "privateAnalyticsId"
+	collectionName    = "account"
+	accountDocumentId = "accountObject"
+	idKey             = "id"
+	analyticsKey      = "analyticsId"
+	iconMigrationKey  = "iconMigration"
 )
 
 type ProfileDetails struct {
@@ -58,12 +57,11 @@ type AccountObject interface {
 
 	basic.DetailsSettable
 	SetSharedSpacesLimit(limit int) (err error)
-	SetProfileDetails(details *types.Struct) (err error)
+	SetProfileDetails(details *domain.Details) (err error)
 	MigrateIconImage(image string) (err error)
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
 	GetAnalyticsId() (string, error)
-	GetPrivateAnalyticsId() string
 }
 
 type StoreDbProvider interface {
@@ -75,6 +73,7 @@ var _ AccountObject = (*accountObject)(nil)
 type accountObject struct {
 	anystoredebug.AnystoreDebug
 	smartblock.SmartBlock
+	keys        *accountdata.AccountKeys
 	bs          basic.DetailsSettable
 	state       *storestate.StoreState
 	storeSource source.Store
@@ -85,16 +84,17 @@ type accountObject struct {
 	crdtDb      anystore.DB
 }
 
-func (a *accountObject) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (a *accountObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	return a.bs.SetDetails(ctx, details, showEvent)
 }
 
-func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	return a.bs.SetDetailsAndUpdateLastUsed(ctx, details, showEvent)
 }
 
 func New(
 	sb smartblock.SmartBlock,
+	keys *accountdata.AccountKeys,
 	spaceObjects spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
@@ -103,6 +103,7 @@ func New(
 	cfg *config.Config) AccountObject {
 	return &accountObject{
 		crdtDb:     crdtDb,
+		keys:       keys,
 		bs:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService, lastUsedUpdater),
 		SmartBlock: sb,
 		cfg:        cfg,
@@ -127,7 +128,6 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	a.state = stateStore
 
 	a.AnystoreDebug = anystoredebug.New(a.SmartBlock, stateStore)
-
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
 		return fmt.Errorf("source is not a store")
@@ -179,27 +179,16 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
 }
 
-// GetPrivateAnalyticsId returns the private analytics id of the account object, should not be used directly
-// only when hashing it with other data, e.g. hash(privateAnalyticsId + someData)
-func (a *accountObject) GetPrivateAnalyticsId() string {
-	val, err := a.getValue()
-	if err != nil {
-		return ""
-	}
-	return string(val.GetStringBytes(privateAnalyticsIdKey))
-}
-
 func (a *accountObject) genInitialDoc() (builder *storestate.Builder, err error) {
 	builder = &storestate.Builder{}
-	privateAnalytics, err := generatePrivateAnalyticsId()
+	analyticsId, err := metricsid.DeriveMetricsId(a.keys.SignKey)
 	if err != nil {
-		err = fmt.Errorf("generate private analytics id: %w", err)
+		return
 	}
 	newDocument := map[string]any{
-		idKey:                 accountDocumentId,
-		analyticsKey:          a.cfg.AnalyticsId,
-		iconMigrationKey:      "true",
-		privateAnalyticsIdKey: privateAnalytics,
+		idKey:            accountDocumentId,
+		analyticsKey:     analyticsId,
+		iconMigrationKey: "true",
 	}
 	for key, val := range newDocument {
 		if str, ok := val.(string); ok {
@@ -217,8 +206,8 @@ func (a *accountObject) initState(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeyProfile}),
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_profile))),
-		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
+		template.WithForcedDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_profile)),
+		template.WithDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter)),
 	)
 	blockId := "identity"
 	st.Set(simple.New(&model.Block{
@@ -239,7 +228,7 @@ func (a *accountObject) initState(st *state.State) error {
 	if err != nil {
 		return fmt.Errorf("insert block: %w", err)
 	}
-	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
+	st.SetDetail(bundle.RelationKeyIsHidden, domain.Bool(true))
 	return nil
 }
 
@@ -274,14 +263,6 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 func (a *accountObject) SetAnalyticsId(id string) error {
 	builder := &storestate.Builder{}
 	err := builder.Modify(collectionName, accountDocumentId, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
-	if err != nil {
-		return nil
-	}
-	privateAnalyticsId, err := generatePrivateAnalyticsId()
-	if err != nil {
-		return fmt.Errorf("generate private analytics id: %w", err)
-	}
-	err = builder.Modify(collectionName, accountDocumentId, []string{privateAnalyticsIdKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, privateAnalyticsId))
 	if err != nil {
 		return nil
 	}
@@ -354,19 +335,19 @@ func (a *accountObject) Close() error {
 
 func (a *accountObject) SetSharedSpacesLimit(limit int) (err error) {
 	st := a.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, pbtypes.Int64(int64(limit)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return a.Apply(st)
 }
 
 func (a *accountObject) GetSharedSpacesLimit() (limit int) {
-	return int(pbtypes.GetInt64(a.CombinedDetails(), bundle.RelationKeySharedSpacesLimit.String()))
+	return int(a.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
 }
 
-func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
+func (a *accountObject) SetProfileDetails(details *domain.Details) (err error) {
 	st := a.NewState()
 	// we should set everything in local state, but not everything in the store (this should be filtered in OnPushChange)
-	for key, val := range details.Fields {
-		st.SetDetailAndBundledRelation(domain.RelationKey(key), val)
+	for key, value := range details.Iterate() {
+		st.SetDetailAndBundledRelation(key, value)
 	}
 	return a.Apply(st)
 }
@@ -374,7 +355,7 @@ func (a *accountObject) SetProfileDetails(details *types.Struct) (err error) {
 func (a *accountObject) MigrateIconImage(image string) (err error) {
 	if image != "" {
 		st := a.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(image))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(image))
 		err = a.Apply(st)
 		if err != nil {
 			return fmt.Errorf("set icon image: %w", err)

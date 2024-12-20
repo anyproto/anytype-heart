@@ -3,8 +3,6 @@ package smartblock
 import (
 	"context"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
@@ -26,7 +24,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	// so we don't need to traverse changes every time
 	keys := bundle.LocalAndDerivedRelationKeys
 
-	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
+	localDetailsFromStore := details.CopyOnlyKeys(keys...)
 
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
@@ -41,21 +39,21 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	return nil
 }
 
-func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
+func (sb *smartBlock) getDetailsFromStore() (*domain.Details, error) {
 	storedDetails, err := sb.spaceIndex.GetDetails(sb.Id())
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
-	return pbtypes.CopyStruct(storedDetails.GetDetails(), true), nil
+	return storedDetails.Copy(), nil
 }
 
-func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
+func (sb *smartBlock) appendPendingDetails(details *domain.Details) (resultDetails *domain.Details, hasPendingLocalDetails bool) {
 	// Consume pending details
-	err := sb.spaceIndex.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
-		if len(pending.GetFields()) > 0 {
+	err := sb.spaceIndex.UpdatePendingLocalDetails(sb.Id(), func(pending *domain.Details) (*domain.Details, error) {
+		if pending.Len() > 0 {
 			hasPendingLocalDetails = true
 		}
-		details = pbtypes.StructMerge(details, pending, false)
+		details = details.Merge(pending)
 		return nil, nil
 	})
 	if err != nil {
@@ -83,14 +81,14 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		}
 
 		if creatorIdentityObjectId != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(creatorIdentityObjectId))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, domain.String(creatorIdentityObjectId))
 		}
 	} else {
 		// make sure we don't have this relation for other objects
-		s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity.String())
+		s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity)
 	}
 
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) != "" && pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) != 0 {
+	if s.LocalDetails().GetString(bundle.RelationKeyCreator) != "" && s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate) != 0 {
 		return nil
 	}
 
@@ -100,24 +98,24 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 	}
 
 	if creatorIdentityObjectId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, domain.String(creatorIdentityObjectId))
 	} else {
 		// For derived objects we set current identity
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(sb.currentParticipantId))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, domain.String(sb.currentParticipantId))
 	}
 
 	if originalCreated := s.OriginalCreatedTimestamp(); originalCreated > 0 {
 		// means we have imported object, so we need to set original created date
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(originalCreated)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, domain.Int64(originalCreated))
 		// Only set AddedDate once because we have a side effect with treeCreatedDate:
 		// - When we import object, treeCreateDate is set to time.Now()
 		// - But after push it is changed to original modified date
 		// - So after account recovery we will get treeCreateDate = original modified date, which is not equal to AddedDate
-		if pbtypes.GetInt64(s.Details(), bundle.RelationKeyAddedDate.String()) == 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
+		if s.Details().GetInt64(bundle.RelationKeyAddedDate) == 0 {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, domain.Int64(treeCreatedDate))
 		}
 	} else {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(treeCreatedDate)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, domain.Int64(treeCreatedDate))
 	}
 
 	return nil
@@ -125,15 +123,16 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 
 // injectDerivedDetails injects the local data
 func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt smartblock.SmartBlockType) {
+	// TODO Pick from source
 	id := s.RootId()
 	if id != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id))
 	}
 
-	if v, ok := s.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		status := filesyncstatus.Status(v.GetNumberValue())
+	if v, ok := s.Details().TryInt64(bundle.RelationKeyFileBackupStatus); ok {
+		status := filesyncstatus.Status(v)
 		// Clients expect syncstatus constants in this relation
-		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, pbtypes.Int64(int64(status.ToSyncStatus())))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, domain.Int64(status.ToSyncStatus()))
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
@@ -147,9 +146,9 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if spaceID != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
+		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(spaceID))
 	} else {
-		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()))
+		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, s.LocalDetails().GetString(bundle.RelationKeySpaceId))
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
 		typeID, err := sb.space.GetTypeIdByKey(context.Background(), ot)
@@ -157,7 +156,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeID))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeID))
 	}
 
 	if uki := s.UniqueKeyInternal(); uki != "" {
@@ -172,7 +171,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		if err != nil {
 			log.Errorf("failed to get unique key for %s: %v", uki, err)
 		} else {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, domain.String(uk.Marshal()))
 		}
 	}
 
@@ -185,27 +184,25 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 
 	snippet := s.Snippet()
 	if snippet != "" || s.LocalDetails() != nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
+		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, domain.String(snippet))
 	}
 
 	// Set isDeleted relation only if isUninstalled is present in details
-	if isUninstalled := s.Details().GetFields()[bundle.RelationKeyIsUninstalled.String()]; isUninstalled != nil {
+	if isUninstalled, ok := s.Details().TryBool(bundle.RelationKeyIsUninstalled); ok {
 		var isDeleted bool
-		if isUninstalled.GetBoolValue() {
+		if isUninstalled {
 			isDeleted = true
 		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(isDeleted))
 	}
 
 	sb.injectLinksDetails(s)
 	sb.injectMentions(s)
 	sb.updateBackLinks(s)
-
-	sb.injectResolvedLayout(s)
 }
 
 func (sb *smartBlock) deriveChatId(s *state.State) error {
-	hasChat := pbtypes.GetBool(s.Details(), bundle.RelationKeyHasChat.String())
+	hasChat := s.Details().GetBool(bundle.RelationKeyHasChat)
 	if hasChat {
 		chatUk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, sb.Id())
 		if err != nil {
@@ -216,7 +213,7 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 		if err != nil {
 			return err
 		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, domain.String(chatId))
 	}
 	return nil
 }

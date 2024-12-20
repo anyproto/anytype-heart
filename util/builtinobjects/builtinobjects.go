@@ -24,6 +24,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/notifications"
@@ -39,7 +40,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -81,12 +81,13 @@ var (
 	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
 	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
 		pb.RpcObjectImportUseCaseRequest_EMPTY: {
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
+			{model.BlockContentWidget_Link, "bafyreiccjf5vbijsmr55ypsnnzltmcvl4n63g73twwxqnfkn5usoq2iqyi", "", true},
+			{model.BlockContentWidget_View, "bafyreifjgm3iy4o6o4zyf33ld3dnweo2grhvakvr7psn5twjge3xo3627m", "66f6775526909528d002c932", true},
+			{model.BlockContentWidget_View, "bafyreihrzztw2xcmxxz5uz5xodncby23xdacalcek2dtxxu77yn6wvzsq4", "6182a74fcae0300221f9f207", true},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecentOpen, "", false},
 		},
 	}
 )
@@ -350,10 +351,10 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
 	if err := b.detailsService.SetDetails(nil,
 		spc.DerivedIDs().Workspace,
-		[]*model.Detail{
+		[]domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.StringList([]string{id}),
 			},
 		},
 	); err != nil {
@@ -413,16 +414,11 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
 	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
-				Value:       pbtypes.String(oldID),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				RelationKey: bundle.RelationKeyOldAnytypeID,
+				Value:       domain.String(oldID),
 			},
 		},
 	}); err != nil {
