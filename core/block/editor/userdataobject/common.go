@@ -5,4 +5,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
-var AllowedDetailsToChange = []domain.RelationKey{bundle.RelationKeyDescription}
+var allowedDetailsToChange = []domain.RelationKey{bundle.RelationKeyDescription}
+
+func AllowedDetailsToChange() []domain.RelationKey {
+	return allowedDetailsToChange
+}

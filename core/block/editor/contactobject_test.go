@@ -145,7 +145,7 @@ func TestContactObject_SetDetails(t *testing.T) {
 		require.NoError(t, err)
 		encodedKey := base64.StdEncoding.EncodeToString(raw)
 		contact := userdataobject.NewContactFromJson(jsonContact.Value())
-		expected := userdataobject.NewContact(id, "", description, "", encodedKey, "")
+		expected := userdataobject.NewContact(id, "")
 		assert.Equal(t, expected, contact)
 	})
 }
@@ -198,7 +198,7 @@ func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
 		require.NoError(t, err)
 		encodedKey := base64.StdEncoding.EncodeToString(raw)
 		contact := userdataobject.NewContactFromJson(jsonContact.Value())
-		expected := userdataobject.NewContact(id, "", description, "", encodedKey, "")
+		expected := userdataobject.NewContact(id, "")
 		assert.Equal(t, expected, contact)
 	})
 }
