@@ -220,7 +220,7 @@ func (d *GenericMap[K]) GetMapValue(key K) ValueMap {
 
 func (d *GenericMap[K]) Copy() *GenericMap[K] {
 	if d == nil {
-		return nil
+		return NewGenericMap[K]()
 	}
 	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
@@ -231,7 +231,7 @@ func (d *GenericMap[K]) Copy() *GenericMap[K] {
 
 func (d *GenericMap[K]) CopyWithoutKeys(keys ...K) *GenericMap[K] {
 	if d == nil {
-		return nil
+		return NewGenericMap[K]()
 	}
 	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
@@ -244,7 +244,7 @@ func (d *GenericMap[K]) CopyWithoutKeys(keys ...K) *GenericMap[K] {
 
 func (d *GenericMap[K]) CopyOnlyKeys(keys ...K) *GenericMap[K] {
 	if d == nil {
-		return nil
+		return NewGenericMap[K]()
 	}
 	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
