@@ -283,14 +283,22 @@ func (v Value) StringList() []string {
 	return res
 }
 
-func (v Value) WrapToStringList() []string {
+func (v Value) TryWrapToStringList() ([]string, bool) {
 	res, ok := v.TryStringList()
 	if ok {
-		return res
+		return res, true
 	}
 	s, ok := v.TryString()
 	if ok {
-		return []string{s}
+		return []string{s}, true
+	}
+	return nil, false
+}
+
+func (v Value) WrapToStringList() []string {
+	res, ok := v.TryWrapToStringList()
+	if ok {
+		return res
 	}
 	return nil
 }
