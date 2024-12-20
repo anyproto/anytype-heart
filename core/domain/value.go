@@ -283,6 +283,18 @@ func (v Value) StringList() []string {
 	return res
 }
 
+func (v Value) WrapToStringList() []string {
+	res, ok := v.TryStringList()
+	if ok {
+		return res
+	}
+	s, ok := v.TryString()
+	if ok {
+		return []string{s}
+	}
+	return nil
+}
+
 func (v Value) IsInt64List() bool {
 	return v.IsFloat64List()
 }

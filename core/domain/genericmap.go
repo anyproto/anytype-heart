@@ -194,6 +194,10 @@ func (d *GenericMap[K]) GetStringList(key K) []string {
 	return d.Get(key).StringList()
 }
 
+func (d *GenericMap[K]) WrapToStringList(key K) []string {
+	return d.Get(key).WrapToStringList()
+}
+
 func (d *GenericMap[K]) TryFloat64List(key K) ([]float64, bool) {
 	return d.Get(key).TryFloat64List()
 }
