@@ -102,10 +102,10 @@ require (
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/image v0.23.0
 	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.33.0
 	golang.org/x/oauth2 v0.24.0
 	golang.org/x/text v0.21.0
-	google.golang.org/grpc v1.69.0
+	google.golang.org/grpc v1.69.2
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
