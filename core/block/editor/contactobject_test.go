@@ -50,10 +50,8 @@ type fixture struct {
 	*ContactObject
 	source         *mock_source.MockStore
 	storeFixture   *spaceindex.StoreFixture
-	objectCache    *mock_objectcache.MockCache
 	spaceService   *mock_space.MockService
 	techSpace      techspace.TechSpace
-	db             anystore.DB
 	userDataObject userdataobject.UserDataObject
 }
 
@@ -113,7 +111,10 @@ func TestContactObject_SetDetails(t *testing.T) {
 			return storechanges.PushStoreChanges(ctx, params)
 		})
 		aesKey := crypto.NewAES()
-		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{Identity: id}, aesKey)
+		raw, err := aesKey.Raw()
+		require.NoError(t, err)
+		encodedKey := base64.StdEncoding.EncodeToString(raw)
+		err = fx.userDataObject.SaveContact(context.Background(), userdataobject.NewContact(id, encodedKey))
 		require.NoError(t, err)
 
 		// when
@@ -136,17 +137,12 @@ func TestContactObject_SetDetails(t *testing.T) {
 		assert.Equal(t, "", details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
 
-		c, err := collection.Collection(context.Background(), "contacts")
+		c, err := collection.Collection(context.Background(), userdataobject.ContactsCollection)
 		require.NoError(t, err)
 		jsonContact, err := c.FindId(context.Background(), contactId)
 		require.NoError(t, err)
-
-		raw, err := aesKey.Raw()
-		require.NoError(t, err)
-		encodedKey := base64.StdEncoding.EncodeToString(raw)
 		contact := userdataobject.NewContactFromJson(jsonContact.Value())
-		expected := userdataobject.NewContact(id, "")
-		assert.Equal(t, expected, contact)
+		assert.Equal(t, description, contact.Description())
 	})
 }
 
@@ -166,7 +162,10 @@ func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
 			return storechanges.PushStoreChanges(ctx, params)
 		})
 		aesKey := crypto.NewAES()
-		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{Identity: id}, aesKey)
+		raw, err := aesKey.Raw()
+		require.NoError(t, err)
+		encodedKey := base64.StdEncoding.EncodeToString(raw)
+		err = fx.userDataObject.SaveContact(context.Background(), userdataobject.NewContact(id, encodedKey))
 		require.NoError(t, err)
 
 		// when
@@ -194,12 +193,8 @@ func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
 		jsonContact, err := c.FindId(context.Background(), contactId)
 		require.NoError(t, err)
 
-		raw, err := aesKey.Raw()
-		require.NoError(t, err)
-		encodedKey := base64.StdEncoding.EncodeToString(raw)
 		contact := userdataobject.NewContactFromJson(jsonContact.Value())
-		expected := userdataobject.NewContact(id, "")
-		assert.Equal(t, expected, contact)
+		assert.Equal(t, description, contact.Description())
 	})
 }
 
@@ -220,7 +215,7 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 	objectGetter := mock_cache.NewMockObjectGetter(t)
 	objectGetter.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
-	userDataObject := userdataobject.New(smarttest.New(userDataObjectId), db, objectGetter)
+	userDataObject := userdataobject.New(smarttest.New(userDataObjectId), db)
 	source := mock_source.NewMockStore(t)
 	source.EXPECT().ReadStoreDoc(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	err = userDataObject.Init(&smartblock.InitContext{
@@ -241,10 +236,8 @@ func newFixture(t *testing.T) *fixture {
 		ContactObject:  NewContactObject(sb, storeFixture, spaceService),
 		source:         source,
 		storeFixture:   storeFixture,
-		objectCache:    objectCache,
 		spaceService:   spaceService,
 		techSpace:      techSpace,
-		db:             db,
 		userDataObject: userDataObject,
 	}
 	return fx

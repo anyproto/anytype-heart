@@ -227,7 +227,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeAccountObject:
 		return accountobject.New(sb, f.accountService.Keys(), store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
 	case coresb.SmartBlockTypeUserDataObject:
-		return userdataobject.New(sb, f.objectStore.GetCrdtDb(space.Id()), f.picker), nil
+		return userdataobject.New(sb, f.objectStore.GetCrdtDb(space.Id())), nil
 	case coresb.SmartBlockTypeContactObject:
 		return NewContactObject(sb, store, f.spaceService), nil
 	default:

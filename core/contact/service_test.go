@@ -1,6 +1,7 @@
 package contact
 
 import (
+	"encoding/base64"
 	"path/filepath"
 	"testing"
 
@@ -24,7 +25,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
 	"github.com/anyproto/anytype-heart/core/contact/mock_contact"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -39,7 +43,9 @@ var (
 	spaceId          = "techSpace"
 	name             = "name"
 	description      = "description"
-	cid              = "iconCid"
+	iconCid          = "iconCid"
+	globalName       = "globalName"
+	contactId        = domain.NewContactId(id)
 )
 
 func TestService_Run(t *testing.T) {
@@ -61,12 +67,16 @@ func TestService_Run(t *testing.T) {
 		fx.callTechSpace(t)
 		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(storechanges.PushStoreChanges)
 		aesKey := crypto.NewAES()
-		err := fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{
-			Identity: id,
-		}, aesKey)
+		raw, err := aesKey.Raw()
+		require.NoError(t, err)
+		base64Key := base64.StdEncoding.EncodeToString(raw)
+		contact := userdataobject.NewContact(id, base64Key)
+		err = fx.userDataObject.SaveContact(context.Background(), contact)
 		require.NoError(t, err)
 		fx.identityService.EXPECT().RegisterIdentity(spaceId, id, aesKey, mock.Anything).Return(nil)
 		fx.spaceService.EXPECT().TechSpaceId().Return(spaceId)
+		test := smarttest.New(contactId)
+		fx.objectGetter.EXPECT().GetObjectByFullID(mock.Anything, domain.FullID{ObjectID: contactId, SpaceID: spaceId}).Return(test, nil).Times(1)
 
 		// when
 		err = fx.Run(context.Background())
@@ -84,38 +94,46 @@ func TestService_handleIdentityUpdate(t *testing.T) {
 		fx.callTechSpace(t)
 		err := fx.Run(context.Background())
 		require.NoError(t, err)
+		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(storechanges.PushStoreChanges).Times(1)
 		aesKey := crypto.NewAES()
-		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(storechanges.PushStoreChanges).Times(2)
-		err = fx.userDataObject.SaveContact(context.Background(), &model.IdentityProfile{
-			Identity: id,
-		}, aesKey)
+		raw, err := aesKey.Raw()
 		require.NoError(t, err)
+		base64Key := base64.StdEncoding.EncodeToString(raw)
+		contact := userdataobject.NewContact(id, base64Key)
+		err = fx.userDataObject.SaveContact(context.Background(), contact)
+		require.NoError(t, err)
+		fx.spaceService.EXPECT().TechSpaceId().Return(spaceId)
+		test := smarttest.New(contactId)
+		fx.objectGetter.EXPECT().GetObjectByFullID(mock.Anything, domain.FullID{ObjectID: contactId, SpaceID: spaceId}).Return(test, nil).Times(1)
 
 		// when
-		fx.handleIdentityUpdate(id, &model.IdentityProfile{Identity: id, Name: name, Description: description, IconCid: cid})
+		fx.handleIdentityUpdate(id, &model.IdentityProfile{Identity: id, Name: name, Description: description, IconCid: iconCid})
 
 		// then
-		contacts, err := fx.userDataObject.ListContacts(context.Background())
-		require.NoError(t, err)
-		require.Len(t, contacts, 1)
-		assert.Equal(t, id, contacts[0].Identity())
-		assert.Equal(t, name, contacts[0].Name())
-		assert.Equal(t, "", contacts[0].Description())
-		assert.Equal(t, cid, contacts[0].Icon())
+		details := test.CombinedDetails()
+		assert.Equal(t, name, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, iconCid, details.GetString(bundle.RelationKeyIconImage))
+		assert.Equal(t, id, details.GetString(bundle.RelationKeyIdentity))
+		assert.Equal(t, "", details.GetString(bundle.RelationKeyGlobalName))
+		assert.Equal(t, "", details.GetString(bundle.RelationKeyDescription))
 	})
 }
 
 func TestService_SaveContact(t *testing.T) {
-	t.Run("no identity", func(t *testing.T) {
+	t.Run("identity is not provided", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 
-		aesKey := crypto.NewAES()
-		fx.identityService.EXPECT().RegisterIdentity(spaceId, id, aesKey, mock.Anything).Return(nil)
-		fx.identityService.EXPECT().GetIdentityKey(id).Return(aesKey)
+		// when
+		err := fx.SaveContact(context.Background(), "", "")
 
-		fx.identityService.EXPECT().WaitProfile(context.Background(), id).Return(nil)
-		fx.spaceService.EXPECT().TechSpaceId().Return(spaceId)
+		// then
+		require.Error(t, err)
+	})
+	t.Run("key not exists", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.identityService.EXPECT().GetIdentityKey(id).Return(nil)
 
 		// when
 		err := fx.SaveContact(context.Background(), id, "")
@@ -130,12 +148,6 @@ func TestService_SaveContact(t *testing.T) {
 		aesKey := crypto.NewAES()
 		fx.identityService.EXPECT().RegisterIdentity(spaceId, id, aesKey, mock.Anything).Return(nil)
 		fx.identityService.EXPECT().GetIdentityKey(id).Return(aesKey)
-		fx.identityService.EXPECT().WaitProfile(context.Background(), id).Return(&model.IdentityProfile{
-			Identity:    id,
-			Name:        name,
-			IconCid:     cid,
-			Description: description,
-		})
 		fx.callTechSpace(t)
 		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).Return("changeId", nil)
 		fx.spaceService.EXPECT().TechSpaceId().Return(spaceId)
@@ -152,12 +164,6 @@ func TestService_SaveContact(t *testing.T) {
 
 		aesKey := crypto.NewAES()
 		fx.identityService.EXPECT().RegisterIdentity(spaceId, id, aesKey, mock.Anything).Return(nil)
-		fx.identityService.EXPECT().WaitProfile(context.Background(), id).Return(&model.IdentityProfile{
-			Identity:    id,
-			Name:        name,
-			IconCid:     cid,
-			Description: description,
-		})
 		fx.callTechSpace(t)
 		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).Return("changeId", nil)
 		fx.spaceService.EXPECT().TechSpaceId().Return(spaceId)
@@ -174,6 +180,15 @@ func TestService_DeleteContact(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:          domain.String(contactId),
+				bundle.RelationKeySpaceId:     domain.String(spaceId),
+				bundle.RelationKeyName:        domain.String(name),
+				bundle.RelationKeyDescription: domain.String(description),
+				bundle.RelationKeyIconImage:   domain.String(iconCid),
+			},
+		})
 		fx.identityService.EXPECT().UnregisterIdentity(spaceId, id).Return()
 		fx.callTechSpace(t)
 		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).Return("changeId", nil)
@@ -184,10 +199,16 @@ func TestService_DeleteContact(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		ids, err := fx.store.SpaceIndex(spaceId).QueryByIds([]string{contactId})
+		require.NoError(t, err)
+		assert.Len(t, ids, 0)
 	})
+
 	t.Run("no identity", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		fx.identityService.EXPECT().UnregisterIdentity(spaceId, id).Return()
+		fx.spaceService.EXPECT().TechSpaceId().Return(spaceId)
 		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).Return("", anystore.ErrDocNotFound)
 		fx.callTechSpace(t)
 
@@ -206,6 +227,8 @@ type fixture struct {
 	source          *mock_source.MockStore
 	spaceService    *mock_space.MockService
 	userDataObject  userdataobject.UserDataObject
+	objectGetter    *mock_cache.MockObjectGetterComponent
+	store           *objectstore.StoreFixture
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -213,10 +236,14 @@ func newFixture(t *testing.T) *fixture {
 	identityService := mock_contact.NewMockidentityService(t)
 	objectCache := mock_objectcache.NewMockCache(t)
 	source := mock_source.NewMockStore(t)
+	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
+	store := objectstore.NewStoreFixture(t)
 
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, spaceService))
 	a.Register(testutil.PrepareMock(context.Background(), a, identityService))
+	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter))
+	a.Register(store)
 
 	contactService := New()
 	err := contactService.Init(a)
@@ -227,6 +254,8 @@ func newFixture(t *testing.T) *fixture {
 		identityService: identityService,
 		objectCache:     objectCache,
 		source:          source,
+		objectGetter:    objectGetter,
+		store:           store,
 	}
 	return fx
 }
@@ -247,7 +276,7 @@ func (fx *fixture) callTechSpace(t *testing.T) {
 	require.NoError(t, err)
 	objectGetter := mock_cache.NewMockObjectGetter(t)
 	objectGetter.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
-	userDataObject := userdataobject.New(smarttest.New(userDataObjectId), db, objectGetter)
+	userDataObject := userdataobject.New(smarttest.New(userDataObjectId), db)
 	fx.userDataObject = userDataObject
 	fx.source.EXPECT().ReadStoreDoc(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	err = userDataObject.Init(&smartblock.InitContext{

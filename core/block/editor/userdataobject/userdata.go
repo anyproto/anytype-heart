@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -33,17 +32,15 @@ type userDataObject struct {
 	crdtDb      anystore.DB
 	arenaPool   *anyenc.ArenaPool
 
-	objectCache cache.ObjectGetter
-	ctx         context.Context
-	cancel      context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, crdtDb anystore.DB, objectCache cache.ObjectGetter) UserDataObject {
+func New(sb smartblock.SmartBlock, crdtDb anystore.DB) UserDataObject {
 	u := &userDataObject{
-		SmartBlock:  sb,
-		crdtDb:      crdtDb,
-		arenaPool:   &anyenc.ArenaPool{},
-		objectCache: objectCache,
+		SmartBlock: sb,
+		crdtDb:     crdtDb,
+		arenaPool:  &anyenc.ArenaPool{},
 	}
 	return u
 }
