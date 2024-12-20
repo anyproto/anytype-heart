@@ -31,9 +31,6 @@ type userDataObject struct {
 	storeSource source.Store
 	crdtDb      anystore.DB
 	arenaPool   *anyenc.ArenaPool
-
-	ctx    context.Context
-	cancel context.CancelFunc
 }
 
 func New(sb smartblock.SmartBlock, crdtDb anystore.DB) UserDataObject {
@@ -46,7 +43,6 @@ func New(sb smartblock.SmartBlock, crdtDb anystore.DB) UserDataObject {
 }
 
 func (u *userDataObject) Init(ctx *smartblock.InitContext) error {
-	u.ctx, u.cancel = context.WithCancel(context.Background())
 	err := u.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -67,11 +63,6 @@ func (u *userDataObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("read store doc: %w", err)
 	}
 	return nil
-}
-
-func (u *userDataObject) Close() error {
-	u.cancel()
-	return u.SmartBlock.Close()
 }
 
 func (u *userDataObject) SaveContact(ctx context.Context, contact *Contact) error {

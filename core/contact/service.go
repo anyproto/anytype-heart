@@ -91,11 +91,11 @@ func (s *service) Run(ctx context.Context) (err error) {
 func (s *service) registerContact(ctx context.Context, contact *userdataobject.Contact) error {
 	key, err := decodeAESKeyFromBase64(contact.Key())
 	if err != nil {
-		return fmt.Errorf("failed to register contact identity %s", err)
+		return fmt.Errorf("failed to register contact identity %w", err)
 	}
 	err = s.identityService.RegisterIdentity(s.spaceService.TechSpaceId(), contact.Identity(), key, s.handleIdentityUpdate)
 	if err != nil {
-		return fmt.Errorf("failed to register contact identity %s", err)
+		return fmt.Errorf("failed to register contact identity %w", err)
 	}
 	s.applyContactStoreData(contact)
 	return nil
