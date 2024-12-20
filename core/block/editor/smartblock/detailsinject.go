@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
@@ -196,6 +195,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(isDeleted))
 	}
 
+	sb.injectResolvedLayout(s)
 	sb.injectLinksDetails(s)
 	sb.injectMentions(s)
 	sb.updateBackLinks(s)
@@ -222,42 +222,42 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	if s.Details() == nil {
 		return
 	}
-	rawValue := s.Details().Fields[bundle.RelationKeyLayout.String()]
-	if rawValue != nil {
+	rawValue := s.Details().Get(bundle.RelationKeyLayout)
+	if rawValue.Ok() {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
 		return
 	}
 
-	typeObjectId := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyType.String())
+	typeObjectId := s.LocalDetails().GetString(bundle.RelationKeyType)
 	if typeObjectId == "" {
-		if currentValue := s.LocalDetails().Fields[bundle.RelationKeyResolvedLayout.String()]; currentValue != nil {
+		if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
 			return
 		}
 		log.Errorf("failed to find id of object type")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return
 	}
 
-	if currentValue := s.LocalDetails().Fields[bundle.RelationKeyResolvedLayout.String()]; currentValue != nil {
+	if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
 		return
 	}
 
 	typeDetails, found := sb.lastDepDetails[typeObjectId]
 	if found {
-		rawValue = typeDetails.Details.Fields[bundle.RelationKeyRecommendedLayout.String()]
+		rawValue = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
 	} else {
 		records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
 		if err != nil || len(records) != 0 {
 			log.Errorf("failed to query object %s: %v", typeObjectId, err)
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 			return
 		}
-		rawValue = records[0].Details.Fields[bundle.RelationKeyRecommendedLayout.String()]
+		rawValue = records[0].Details.Get(bundle.RelationKeyRecommendedLayout)
 	}
 
-	if rawValue == nil {
+	if !rawValue.Ok() {
 		log.Errorf("failed to get recommended layout from details of type. Setting basic layout")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(int64(model.ObjectType_basic)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return
 	}
 

@@ -104,7 +104,7 @@ func (s *service) ObjectTypeSetLayout(objectTypeId string, layout int64) error {
 	// 1. set layout to object type
 	err := cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedLayout, pbtypes.Int64(layout))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedLayout, domain.Int64(layout))
 		return b.Apply(st)
 	})
 	if err != nil {
@@ -116,15 +116,13 @@ func (s *service) ObjectTypeSetLayout(objectTypeId string, layout int64) error {
 		return fmt.Errorf("failed to resolve space: %w", err)
 	}
 
-	// TODO: we should do operations below Async and with context, so separate service would be needed
-
 	// object types are not cross-space
 	index := s.store.SpaceIndex(spaceId)
-	records, err := index.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
+	records, err := index.Query(database.Query{Filters: []database.FilterRequest{
 		{
-			RelationKey: bundle.RelationKeyType.String(),
+			RelationKey: bundle.RelationKeyType,
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(objectTypeId),
+			Value:       domain.String(objectTypeId),
 		},
 	}})
 	if err != nil {
@@ -138,16 +136,16 @@ func (s *service) ObjectTypeSetLayout(objectTypeId string, layout int64) error {
 
 	var resultErr error
 	for _, record := range records {
-		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		id := record.Details.GetString(bundle.RelationKeyId)
 		if id == "" {
 			continue
 		}
-		if _, found := record.Details.Fields[bundle.RelationKeyLayout.String()]; found {
+		if record.Details.Has(bundle.RelationKeyLayout) {
 			// we should delete layout from object, that's why we apply changes even if object is not in cache
 			err = cache.Do(s.objectGetter, id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
-				st.RemoveDetail(bundle.RelationKeyLayout.String())
-				st.SetDetail(bundle.RelationKeyResolvedLayout.String(), pbtypes.Int64(layout))
+				st.RemoveDetail(bundle.RelationKeyLayout)
+				st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 				return b.Apply(st)
 			})
 			if err != nil {
@@ -157,14 +155,14 @@ func (s *service) ObjectTypeSetLayout(objectTypeId string, layout int64) error {
 		}
 
 		err = spc.DoLockedIfNotExists(id, func() error {
-			return index.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
-				if details == nil || details.Fields == nil {
+			return index.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
+				if details == nil {
 					return nil, false, nil
 				}
-				if pbtypes.GetInt64(details, bundle.RelationKeyResolvedLayout.String()) == layout {
+				if details.GetInt64(bundle.RelationKeyResolvedLayout) == layout {
 					return nil, false, nil
 				}
-				details.Fields[bundle.RelationKeyResolvedLayout.String()] = pbtypes.Int64(layout)
+				details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 				return details, true, nil
 			})
 		})
@@ -182,7 +180,7 @@ func (s *service) ObjectTypeSetLayout(objectTypeId string, layout int64) error {
 			if cr, ok := b.(source.ChangeReceiver); ok {
 				return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
 					st := d.NewState()
-					st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, pbtypes.Int64(layout))
+					st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 					return st, nil, nil
 				})
 			}
