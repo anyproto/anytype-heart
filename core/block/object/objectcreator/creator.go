@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -125,19 +126,14 @@ func (s *service) createObjectInSpace(
 			return "", nil, errors.Wrap(restriction.ErrRestricted, "creation of this object type is restricted")
 		}
 	}
+
+	if err = s.injectResolvedLayout(ctx, space, string(req.ObjectTypeKey), details); err != nil {
+		return "", nil, fmt.Errorf("failed to inject resolved layout: %w", err)
+	}
+
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
 		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
-	case bundle.TypeKeySet:
-		// TODO: this logic should be reviewed as:
-		// - set and collection are not the only types that could have set and collection layout
-		// - we should exclude layout relation prior to resolvedLayout
-		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_set))
-	case bundle.TypeKeyCollection:
-		// TODO: this logic should be reviewed as:
-		// - set and collection are not the only types that could have set and collection layout
-		// - we should exclude layout relation prior to resolvedLayout
-		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)
 	case bundle.TypeKeyRelation:
@@ -171,6 +167,31 @@ func (s *service) createObjectFromTemplate(
 		return
 	}
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
+}
+
+func (s *service) injectResolvedLayout(
+	ctx context.Context, space clientspace.Space, typeKey string, details *domain.Details,
+) error {
+	typeObjectId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(smartblock.SmartBlockTypeObjectType, typeKey))
+	if err != nil {
+		return fmt.Errorf("failed to derive object type id: %w", err)
+	}
+
+	records, err := s.objectStore.SpaceIndex(space.Id()).QueryByIds([]string{typeObjectId})
+	if err != nil {
+		return fmt.Errorf("failed to query details of object type: %w", err)
+	}
+
+	if len(records) != 1 {
+		return fmt.Errorf("expected to get 1 record on querying object type details, got %d", len(records))
+	}
+
+	layout := records[0].Details.GetInt64(bundle.RelationKeyRecommendedLayout)
+	details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+
+	// we should remove layout relation from details, if client accidentally add it in request
+	details.Delete(bundle.RelationKeyLayout)
+	return nil
 }
 
 // buildDateObject does not create real date object. It just builds date object details
