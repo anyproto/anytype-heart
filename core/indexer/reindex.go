@@ -259,7 +259,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List([]model.ObjectTypeLayout{
 					model.ObjectType_file,

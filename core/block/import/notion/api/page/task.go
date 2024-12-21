@@ -198,7 +198,7 @@ func (pt *Task) prepareDetails() (*domain.Details, []*model.RelationLink) {
 	lastEditedTime := common.ConvertStringToTime(pt.p.LastEditedTime)
 	details.SetInt64(bundle.RelationKeyLastModifiedDate, lastEditedTime)
 	details.SetInt64(bundle.RelationKeyCreatedDate, createdTime)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_basic))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_basic))
 	return details, relationLinks
 }
 
@@ -313,7 +313,7 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 	details.SetInt64(bundle.RelationKeyRelationFormat, int64(propObject.GetFormat()))
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyRelationKey, key)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_relation))
 	details.SetString(bundle.RelationKeySourceFilePath, propObject.GetID())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
@@ -562,7 +562,7 @@ func getDetailsForRelationOption(name, rel string) (string, *domain.Details) {
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyRelationKey, rel)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_relationOption))
 	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
 	if err != nil {

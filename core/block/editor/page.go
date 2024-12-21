@@ -124,7 +124,7 @@ func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
 				Value:       domain.String(relationKey),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},

@@ -211,7 +211,7 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 		},
 		{
 			Name:   "layout",
-			Fields: []string{bundle.RelationKeyLayout.String()},
+			Fields: []string{bundle.RelationKeyResolvedLayout.String()},
 		},
 		{
 			Name:   "type",

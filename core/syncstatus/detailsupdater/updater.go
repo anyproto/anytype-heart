@@ -260,7 +260,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {
-	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout))
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	_, ok := suitableLayouts[layout]
 	return ok
 }

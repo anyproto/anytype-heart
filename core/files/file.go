@@ -88,15 +88,15 @@ func (f *file) Details(ctx context.Context) (*domain.Details, domain.TypeKey, er
 
 	if meta.Media == "application/pdf" {
 		typeKey = bundle.TypeKeyFile
-		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_pdf))
+		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_pdf))
 	}
 	if strings.HasPrefix(meta.Media, "video") {
 		typeKey = bundle.TypeKeyVideo
-		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_video))
+		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_video))
 	}
 
 	if strings.HasPrefix(meta.Media, "audio") {
-		details.Set(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_audio))
+		details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_audio))
 		if audioDetails, err := f.audioDetails(ctx); err == nil {
 			details = details.Merge(audioDetails)
 		}
@@ -104,7 +104,7 @@ func (f *file) Details(ctx context.Context) (*domain.Details, domain.TypeKey, er
 	}
 	if filepath.Ext(meta.Name) == constant.SvgExt {
 		typeKey = bundle.TypeKeyImage
-		details.Set(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_image))
+		details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_image))
 	}
 
 	return details, typeKey, nil
@@ -140,7 +140,7 @@ func calculateCommonDetails(
 	det := domain.NewDetails()
 	det.SetString(bundle.RelationKeyFileId, fileId.String())
 	det.SetBool(bundle.RelationKeyIsReadonly, false)
-	det.SetInt64(bundle.RelationKeyLayout, int64(layout))
+	det.SetInt64(bundle.RelationKeyResolvedLayout, int64(layout))
 	det.SetFloat64(bundle.RelationKeyLastModifiedDate, float64(lastModifiedDate))
 	return det
 }

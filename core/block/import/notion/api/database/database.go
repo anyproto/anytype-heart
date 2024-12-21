@@ -258,7 +258,7 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyRelationKey, key)
 	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_relation))
 	details.SetString(bundle.RelationKeySourceFilePath, databaseProperty.GetID())
 	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
 	if err != nil {
@@ -294,7 +294,7 @@ func (ds *Service) getCollectionDetails(d Database) (*domain.Details, []*model.R
 	details.SetString(bundle.RelationKeyLastModifiedBy, d.LastEditedBy.Name)
 	details.SetString(bundle.RelationKeyDescription, api.RichTextToDescription(d.Description))
 	details.SetBool(bundle.RelationKeyIsFavorite, false)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_collection))
 
 	details.SetInt64(bundle.RelationKeyLastModifiedDate, d.LastEditedTime.Unix())
 	details.SetInt64(bundle.RelationKeyCreatedDate, d.CreatedTime.Unix())

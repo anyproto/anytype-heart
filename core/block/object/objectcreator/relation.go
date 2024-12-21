@@ -56,7 +56,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	}
 	// todo: check the existence of objectTypes in space. InstallBundledObjects should be called same as for recommendedRelations on type creation
 
-	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+	object.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_relation))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)

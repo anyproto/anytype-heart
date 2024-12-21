@@ -41,7 +41,7 @@ var (
 	log = logging.Logger("template")
 
 	templateIsPreferableRelationKeys = []domain.RelationKey{
-		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout,
+		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyResolvedLayout,
 		bundle.RelationKeyIconEmoji, bundle.RelationKeyCoverId,
 		bundle.RelationKeySourceObject,
 	}
@@ -97,7 +97,7 @@ func (s *service) CreateTemplateStateWithDetails(
 	details *domain.Details,
 ) (targetState *state.State, err error) {
 	if templateId == BlankTemplateId || templateId == "" {
-		layout := details.GetInt64(bundle.RelationKeyLayout)
+		layout := details.GetInt64(bundle.RelationKeyResolvedLayout)
 		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
 	} else {
 		targetState, err = s.createCustomTemplateState(templateId)
@@ -115,7 +115,7 @@ func (s *service) CreateTemplateStateWithDetails(
 func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State {
 	st, err := s.buildState(sb)
 	if err != nil {
-		layout := details.GetInt64(bundle.RelationKeyLayout)
+		layout := details.GetInt64(bundle.RelationKeyResolvedLayout)
 		st = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
 	}
 	addDetailsToState(st, details)

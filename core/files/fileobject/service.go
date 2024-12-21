@@ -345,7 +345,7 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeyFileId, fileId.String())
 	// Use general file layout. It will be changed for proper layout after indexing
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_file))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_file))
 	details.SetInt64(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_NotIndexed))
 	details.SetInt64(bundle.RelationKeySyncStatus, int64(domain.ObjectSyncStatusQueued))
 	details.SetInt64(bundle.RelationKeySyncError, int64(domain.SyncErrorNull))

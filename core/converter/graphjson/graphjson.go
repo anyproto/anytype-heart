@@ -84,7 +84,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 		IconEmoji:   st.Details().GetString(bundle.RelationKeyIconEmoji),
 		Description: st.Details().GetString(bundle.RelationKeyDescription),
 		Type:        st.ObjectTypeKey(),
-		Layout:      int(st.Details().GetInt64(bundle.RelationKeyLayout)),
+		Layout:      int(st.Details().GetInt64(bundle.RelationKeyResolvedLayout)),
 	}
 
 	g.nodes[st.RootId()] = &n

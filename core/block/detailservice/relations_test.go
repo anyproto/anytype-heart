@@ -23,7 +23,7 @@ func relationObject(key domain.RelationKey, format model.RelationFormat) objects
 	return objectstore.TestObject{
 		bundle.RelationKeyId:             domain.String(key.URL()),
 		bundle.RelationKeySpaceId:        domain.String(spaceId),
-		bundle.RelationKeyLayout:         domain.Float64(float64(model.ObjectType_relation)),
+		bundle.RelationKeyResolvedLayout: domain.Float64(float64(model.ObjectType_relation)),
 		bundle.RelationKeyRelationKey:    domain.String(key.String()),
 		bundle.RelationKeyRelationFormat: domain.Int64(int64(format)),
 	}

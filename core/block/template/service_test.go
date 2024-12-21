@@ -210,14 +210,14 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			// given
 			s := service{converter: converter.NewLayoutConverter()}
 			details := domain.NewDetails()
-			details.Set(bundle.RelationKeyLayout, domain.Int64(int64(layout)))
+			details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(int64(layout)))
 
 			// when
 			st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, details)
 
 			// then
 			assert.NoError(t, err)
-			assert.Equal(t, layout, model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyLayout)))
+			assert.Equal(t, layout, model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyResolvedLayout)))
 			assertLayoutBlocks(t, st, layout)
 		})
 	}
@@ -252,7 +252,7 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 
 		// when
 		st := s.CreateTemplateStateFromSmartBlock(nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_todo)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
 		}))
 
 		// then
@@ -328,9 +328,9 @@ func TestExtractTargetDetails(t *testing.T) {
 		OriginValue, TemplateValue domain.Value
 		OriginLeft                 bool
 	}{
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(0), TemplateValue: domain.Int64(1), OriginLeft: false},
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(5), TemplateValue: domain.Int64(0), OriginLeft: false},
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(3), TemplateValue: domain.Int64(3), OriginLeft: false},
+		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(0), TemplateValue: domain.Int64(1), OriginLeft: false},
+		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(5), TemplateValue: domain.Int64(0), OriginLeft: false},
+		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(3), TemplateValue: domain.Int64(3), OriginLeft: false},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String(""), TemplateValue: domain.String("s1"), OriginLeft: false},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s2"), TemplateValue: domain.String(""), OriginLeft: true},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s0"), TemplateValue: domain.String("s3"), OriginLeft: false},
