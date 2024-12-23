@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -15,24 +16,35 @@ import (
 )
 
 type ImportResult struct {
-	Tree       objecttree.ReadableObjectTree
+	List       list.AclList
+	Storage    objecttree.Storage
 	FolderPath string
 }
 
-type ImportParams struct {
-	FullTree bool
-	BeforeId string
+func (i ImportResult) CreateReadableTree(fullTree bool, beforeId string) (objecttree.ReadableObjectTree, error) {
+	return objecttree.BuildNonVerifiableHistoryTree(objecttree.HistoryTreeParams{
+		Storage:         i.Storage,
+		AclList:         i.List,
+		Heads:           i.Heads(fullTree, beforeId),
+		IncludeBeforeId: true,
+	})
 }
 
-func (i ImportParams) Heads() []string {
-	if i.FullTree {
+func (i ImportResult) Heads(fullTree bool, beforeId string) []string {
+	if fullTree {
 		return nil
 	}
-	return []string{i.BeforeId}
+	return []string{beforeId}
 }
 
-func ImportTree(ctx context.Context, path string, params ImportParams) (res ImportResult, err error) {
+func ImportStorage(ctx context.Context, path string) (res ImportResult, err error) {
 	targetDir := strings.TrimSuffix(path, filepath.Ext(path))
+	if _, err = os.Stat(targetDir); err == nil {
+		err = os.RemoveAll(targetDir)
+		if err != nil {
+			return
+		}
+	}
 	if err = ziputil.UnzipFolder(path, targetDir); err != nil {
 		return
 	}
@@ -76,17 +88,9 @@ func ImportTree(ctx context.Context, path string, params ImportParams) (res Impo
 	if err != nil {
 		return
 	}
-	objectTree, err := objecttree.BuildNonVerifiableHistoryTree(objecttree.HistoryTreeParams{
-		Storage:         treeStorage,
-		AclList:         acl,
-		Heads:           params.Heads(),
-		IncludeBeforeId: true,
-	})
-	if err != nil {
-		return
-	}
 	return ImportResult{
-		Tree:       objectTree,
+		List:       acl,
+		Storage:    treeStorage,
 		FolderPath: targetDir,
 	}, nil
 }
