@@ -230,7 +230,6 @@ func main() {
 		server.Stop()
 		proxy.Close()
 		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
-		fmt.Println("[anytype-heart] Shutdown: graceful shutdown finished, exiting...")
 	}
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
