@@ -1,16 +1,13 @@
 package debug
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	stdlog "log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -21,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/ziputil"
 )
 
 type treeExporter struct {
@@ -38,7 +36,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 		logPath        = filepath.Join(exportDirPath, "creation.log")
 	)
 	filename = exportDirPath + ".zip"
-	err = os.Mkdir(exportDirPath, 0755)
+	err = os.MkdirAll(exportDirPath, 0755)
 	if err != nil {
 		return
 	}
@@ -84,7 +82,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 				data[0].Relations[i] = transform(r, e.anonymized, anonymize.Relation)
 			}
 			osData := pbtypes.Sprint(data[0])
-			er := ioutil.WriteFile(localStorePath, []byte(osData), 0644)
+			er := os.WriteFile(localStorePath, []byte(osData), 0644)
 			if er != nil {
 				e.log.Printf("localstore.json write error: %v", err)
 			} else {
@@ -94,11 +92,11 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 			e.log.Printf("no data in objectstore")
 		}
 	}
-	err = ioutil.WriteFile(logPath, logBuf.Bytes(), 0644)
+	err = os.WriteFile(logPath, logBuf.Bytes(), 0644)
 	if err != nil {
 		return
 	}
-	err = zipFolder(exportDirPath, filename)
+	err = ziputil.ZipFolder(exportDirPath, filename)
 	return
 }
 
@@ -107,45 +105,4 @@ func transform[T any](in T, transformed bool, f func(T) T) T {
 		return f(in)
 	}
 	return in
-}
-
-func zipFolder(source, targetZip string) error {
-	zipFile, err := os.Create(targetZip)
-	if err != nil {
-		return err
-	}
-	defer zipFile.Close()
-
-	writer := zip.NewWriter(zipFile)
-	defer writer.Close()
-
-	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		relPath, err := filepath.Rel(source, path)
-		if err != nil {
-			return err
-		}
-		if relPath == "." {
-			return nil
-		}
-		if info.IsDir() {
-			_, err := writer.Create(strings.ReplaceAll(relPath, "\\", "/") + "/")
-			return err
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		zipWriter, err := writer.Create(strings.ReplaceAll(relPath, "\\", "/"))
-		if err != nil {
-			return err
-		}
-
-		// Copy the file data to the zip entry.
-		_, err = io.Copy(zipWriter, f)
-		return err
-	})
 }
