@@ -222,10 +222,7 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 	if err != nil {
 		return nil, err
 	}
-	return &clientStorage{
-		SpaceStorage: st,
-		cont:         cont,
-	}, nil
+	return newClientStorage(ctx, cont, st)
 }
 
 func (s *storageService) SpaceExists(id string) bool {
@@ -253,10 +250,7 @@ func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacest
 	if err != nil {
 		return nil, err
 	}
-	return &clientStorage{
-		SpaceStorage: st,
-		cont:         cont,
-	}, nil
+	return newClientStorage(ctx, cont, st)
 }
 
 func (s *storageService) TryLockAndDo(ctx context.Context, spaceId string, do func() error) (err error) {

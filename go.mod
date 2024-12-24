@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.4-0.20241211133419-d0c2df992842
-	github.com/anyproto/any-sync v0.5.18-0.20241211215636-c4d03e0630a6
+	github.com/anyproto/any-sync v0.6.0-alpha.1.0.20241224143141-033d6a39e992
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.0
@@ -104,6 +104,7 @@ require (
 	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
 	golang.org/x/net v0.32.0
 	golang.org/x/oauth2 v0.24.0
+	golang.org/x/sys v0.28.0
 	golang.org/x/text v0.21.0
 	google.golang.org/grpc v1.68.1
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
@@ -249,7 +250,6 @@ require (
 	golang.org/x/crypto v0.30.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/tools v0.27.0 // indirect
