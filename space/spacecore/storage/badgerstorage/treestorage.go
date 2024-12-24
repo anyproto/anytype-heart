@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/dgraph-io/badger/v4"
 )
 
@@ -16,7 +17,7 @@ type treeStorage struct {
 	root *treechangeproto.RawTreeChangeWithId
 }
 
-func newTreeStorage(db *badger.DB, spaceId, treeId string) (ts treestorage.TreeStorage, err error) {
+func newTreeStorage(db *badger.DB, spaceId, treeId string) (ts oldstorage.TreeStorage, err error) {
 	keys := newTreeKeys(spaceId, treeId)
 	err = db.View(func(txn *badger.Txn) error {
 		_, err := txn.Get(keys.RootIdKey())
@@ -48,7 +49,7 @@ func newTreeStorage(db *badger.DB, spaceId, treeId string) (ts treestorage.TreeS
 	return
 }
 
-func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
+func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts oldstorage.TreeStorage, err error) {
 	keys := newTreeKeys(spaceId, payload.RootRawChange.Id)
 	if hasDB(db, keys.RootIdKey()) {
 		err = treestorage.ErrTreeExists
@@ -57,7 +58,7 @@ func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeSt
 	return forceCreateTreeStorage(db, spaceId, payload)
 }
 
-func forceCreateTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
+func forceCreateTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts oldstorage.TreeStorage, err error) {
 	keys := newTreeKeys(spaceId, payload.RootRawChange.Id)
 	err = db.Update(func(txn *badger.Txn) error {
 		err = txn.Set(keys.RawChangeKey(payload.RootRawChange.Id), payload.RootRawChange.GetRawChange())

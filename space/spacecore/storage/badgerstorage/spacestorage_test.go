@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func spaceTestPayload() spacestorage.SpaceStorageCreatePayload {
 	}
 }
 
-func testSpace(t *testing.T, store spacestorage.SpaceStorage, payload spacestorage.SpaceStorageCreatePayload) {
+func testSpace(t *testing.T, store oldstorage.SpaceStorage, payload spacestorage.SpaceStorageCreatePayload) {
 	header, err := store.SpaceHeader()
 	require.NoError(t, err)
 	require.Equal(t, payload.SpaceHeaderWithId, header)

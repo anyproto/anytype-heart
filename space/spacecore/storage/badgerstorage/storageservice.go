@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/dgraph-io/badger/v4"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -46,11 +47,11 @@ func (s *storageService) Name() (name string) {
 	return spacestorage.CName
 }
 
-func (s *storageService) SpaceStorage(id string) (spacestorage.SpaceStorage, error) {
+func (s *storageService) SpaceStorage(id string) (oldstorage.SpaceStorage, error) {
 	return newSpaceStorage(s.db, id, s)
 }
 
-func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store spacestorage.SpaceStorage, err error) {
+func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store oldstorage.SpaceStorage, err error) {
 	var ls *lockSpace
 	ls, err = s.checkLock(id, func() error {
 		store, err = newSpaceStorage(s.db, id, s)
@@ -152,7 +153,7 @@ func (s *storageService) unlockSpaceStorage(id string) {
 	}
 }
 
-func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
+func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (oldstorage.SpaceStorage, error) {
 	return createSpaceStorage(s.db, payload, s)
 }
 

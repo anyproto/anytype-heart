@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +28,7 @@ type fixture struct {
 	db  *badger.DB
 }
 
-func testTreePayload(t *testing.T, store treestorage.TreeStorage, payload treestorage.TreeStorageCreatePayload) {
+func testTreePayload(t *testing.T, store oldstorage.TreeStorage, payload treestorage.TreeStorageCreatePayload) {
 	require.Equal(t, payload.RootRawChange.Id, store.Id())
 
 	root, err := store.Root()

@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/globalsign/mgo/bson"
 	"github.com/mattn/go-sqlite3"
 	"go.uber.org/atomic"
@@ -159,7 +160,7 @@ func (s *storageService) Name() (name string) {
 	return spacestorage.CName
 }
 
-func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store spacestorage.SpaceStorage, err error) {
+func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store oldstorage.SpaceStorage, err error) {
 	var ls *lockSpace
 	ls, err = s.checkLock(id, func() error {
 		store, err = newSpaceStorage(s, id)
@@ -277,7 +278,7 @@ func (s *storageService) unlockSpaceStorage(id string) {
 	}
 }
 
-func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (ss spacestorage.SpaceStorage, err error) {
+func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (ss oldstorage.SpaceStorage, err error) {
 	_, err = s.checkLock(payload.SpaceHeaderWithId.Id, func() error {
 		ss, err = createSpaceStorage(s, payload)
 		return err

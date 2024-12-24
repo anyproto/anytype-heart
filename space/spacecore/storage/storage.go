@@ -2,13 +2,11 @@ package storage
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/badgerstorage"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 )
 
 type SpaceStorageMode int
@@ -43,16 +41,6 @@ func (s *storageService) Name() (name string) {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	mode := a.MustComponent("config").(configGetter).GetSpaceStorageMode()
-	if mode == SpaceStorageModeBadger {
-		// for already existing account repos
-		s.ClientStorage = badgerstorage.New()
-	} else if mode == SpaceStorageModeSqlite {
-		// sqlite used for new account repos
-		s.ClientStorage = sqlitestorage.New()
-	} else {
-		return fmt.Errorf("unknown storage mode %d", mode)
-	}
-
+	s.ClientStorage = anystorage.New()
 	return s.ClientStorage.Init(a)
 }

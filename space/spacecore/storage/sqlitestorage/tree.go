@@ -7,9 +7,10 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 )
 
-func newTreeStorage(ss *spaceStorage, treeId string) (treestorage.TreeStorage, error) {
+func newTreeStorage(ss *spaceStorage, treeId string) (oldstorage.TreeStorage, error) {
 	ts := &treeStorage{
 		treeId:       treeId,
 		spaceStorage: ss,
@@ -23,7 +24,7 @@ func newTreeStorage(ss *spaceStorage, treeId string) (treestorage.TreeStorage, e
 	return ts, nil
 }
 
-func createTreeStorage(ss *spaceStorage, payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
+func createTreeStorage(ss *spaceStorage, payload treestorage.TreeStorageCreatePayload) (ts oldstorage.TreeStorage, err error) {
 	ts = &treeStorage{
 		treeId:       payload.RootRawChange.Id,
 		spaceStorage: ss,
