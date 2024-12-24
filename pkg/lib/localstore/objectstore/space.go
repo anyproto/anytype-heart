@@ -1,11 +1,18 @@
 package objectstore
 
 import (
+	"context"
+
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+const bindKey = "b"
 
 type SpaceNameGetter interface {
 	GetSpaceName(spaceId string) string
@@ -42,9 +49,32 @@ func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 }
 
 func (d *dsObjectStore) BindSpaceId(spaceId, objectId string) error {
-	panic("implement me")
+	return d.modifyBind(d.componentCtx, objectId, spaceId)
 }
 
 func (d *dsObjectStore) GetSpaceId(objectId string) (spaceId string, err error) {
-	panic("implement me")
+	doc, err := d.bindId.FindId(d.componentCtx, objectId)
+	if err != nil {
+		return "", err
+	}
+	return doc.Value().GetString(bindKey), nil
+}
+
+func (d *dsObjectStore) modifyBind(ctx context.Context, objectId, spaceId string) error {
+	tx, err := d.bindId.WriteTx(ctx)
+	if err != nil {
+		return err
+	}
+	arena := d.arenaPool.Get()
+	defer d.arenaPool.Put(arena)
+	mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		v.Set(bindKey, arena.NewString(spaceId))
+		return v, true, nil
+	})
+	_, err = d.bindId.UpsertId(tx.Context(), objectId, mod)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }

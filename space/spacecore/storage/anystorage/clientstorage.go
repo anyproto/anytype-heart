@@ -110,10 +110,12 @@ func (r *clientStorage) modifyState(ctx context.Context, isCreated bool) error {
 	if err != nil {
 		return err
 	}
+	// TODO: [storage] change to arena pool or use mutexes
 	val := r.arena.NewTrue()
 	if !isCreated {
 		val = r.arena.NewFalse()
 	}
+	defer r.arena.Reset()
 	mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
 		v.Set(createdKey, val)
 		return v, true, nil
