@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -102,7 +101,7 @@ type BuildOptions struct {
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
 		Listener: b.Listener,
-		TreeBuilder: func(treeStorage treestorage.TreeStorage, aclList list.AclList) (objecttree.ObjectTree, error) {
+		TreeBuilder: func(treeStorage objecttree.Storage, aclList list.AclList) (objecttree.ObjectTree, error) {
 			ot, err := objecttree.BuildKeyFilterableObjectTree(treeStorage, aclList)
 			if err != nil {
 				return nil, err

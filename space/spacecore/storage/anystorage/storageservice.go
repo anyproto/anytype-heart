@@ -149,7 +149,7 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 	if _, err := os.Stat(dbPath); err != nil {
 		err := os.MkdirAll(dbPath, 0755)
 		if err != nil {
-			return
+			return nil, err
 		}
 	}
 	return anystore.Open(ctx, dbPath, nil)

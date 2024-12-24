@@ -7,6 +7,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
@@ -427,35 +428,31 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 
 func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
 	store := i.store.SpaceIndex(space.Id())
-	tids := space.StoredIds()
+	var entries []headstorage.HeadsEntry
+	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
+		entries = append(entries, entry)
+		return true, nil
+	})
+	if err != nil {
+		return
+	}
 	var idsToReindex []string
-	for _, tid := range tids {
+	for _, entry := range entries {
+		id := entry.Id
 		logErr := func(err error) {
-			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
+			log.With("tree", entry.Id).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}
-
-		lastHash, err := store.GetLastIndexedHeadsHash(ctx, tid)
+		lastHash, err := store.GetLastIndexedHeadsHash(ctx, id)
 		if err != nil {
 			logErr(err)
 			continue
 		}
-		info, err := space.Storage().TreeStorage(tid)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		heads, err := info.Heads()
-		if err != nil {
-			logErr(err)
-			continue
-		}
-
-		hh := headsHash(heads)
+		hh := headsHash(entry.Heads)
 		if lastHash != hh {
 			if lastHash != "" {
-				log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
+				log.With("tree", id).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(entry.Heads))
 			}
-			idsToReindex = append(idsToReindex, tid)
+			idsToReindex = append(idsToReindex, id)
 		}
 	}
 
