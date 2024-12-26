@@ -120,7 +120,13 @@ func (a *ApiServer) getIconFromEmojiOrImage(iconEmoji string, iconImage string) 
 // getTags returns the list of tags from the object details
 func (a *ApiServer) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	tags := []Tag{}
-	for _, tagId := range resp.ObjectView.Details[0].Details.Fields["tag"].GetListValue().Values {
+
+	tagField, ok := resp.ObjectView.Details[0].Details.Fields["tag"]
+	if !ok {
+		return tags
+	}
+
+	for _, tagId := range tagField.GetListValue().Values {
 		id := tagId.GetStringValue()
 		for _, detail := range resp.ObjectView.Details {
 			if detail.Id == id {
