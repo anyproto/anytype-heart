@@ -116,3 +116,22 @@ func (a *ApiServer) getIconFromEmojiOrImage(iconEmoji string, iconImage string) 
 
 	return ""
 }
+
+// getTags returns the list of tags from the object details
+func (a *ApiServer) getTags(resp *pb.RpcObjectShowResponse) []Tag {
+	tags := []Tag{}
+	for _, tagId := range resp.ObjectView.Details[0].Details.Fields["tag"].GetListValue().Values {
+		id := tagId.GetStringValue()
+		for _, detail := range resp.ObjectView.Details {
+			if detail.Id == id {
+				tags = append(tags, Tag{
+					Id:    id,
+					Name:  detail.Details.Fields["name"].GetStringValue(),
+					Color: detail.Details.Fields["relationOptionColor"].GetStringValue(),
+				})
+				break
+			}
+		}
+	}
+	return tags
+}

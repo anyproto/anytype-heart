@@ -103,6 +103,12 @@ type Detail struct {
 	Details map[string]interface{} `json:"details"`
 }
 
+type Tag struct {
+	Id    string `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`
+	Name  string `json:"name" example:"Tag Name"`
+	Color string `json:"color" example:"yellow"`
+}
+
 type ObjectType struct {
 	Type      string `json:"type" example:"object_type"`
 	Id        string `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"`

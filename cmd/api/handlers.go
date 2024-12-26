@@ -351,6 +351,11 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			return
 		}
 
+		objectShowResp := a.mw.ObjectShow(c.Request.Context(), &pb.RpcObjectShowRequest{
+			SpaceId:  spaceId,
+			ObjectId: record.Fields["id"].GetStringValue(),
+		})
+
 		object := Object{
 			// TODO fix type inconsistency
 			Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
@@ -359,14 +364,20 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			Icon:       icon,
 			ObjectType: objectTypeName,
 			SpaceId:    spaceId,
+			RootId:     objectShowResp.ObjectView.RootId,
 			// TODO: populate other fields
-			// RootId:     record.Fields["rootId"].GetStringValue(),
 			// Blocks:  []Block{},
 			Details: []Detail{
 				{
 					Id: "lastModifiedDate",
 					Details: map[string]interface{}{
 						"lastModifiedDate": record.Fields["lastModifiedDate"].GetNumberValue(),
+					},
+				},
+				{
+					Id: "tags",
+					Details: map[string]interface{}{
+						"tags": a.getTags(objectShowResp),
 					},
 				},
 			},
@@ -423,8 +434,21 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 		ObjectType: objectTypeName,
 		RootId:     resp.ObjectView.RootId,
 		// TODO: populate other fields
-		Blocks:  []Block{},
-		Details: []Detail{},
+		// Blocks: []Block{},
+		Details: []Detail{
+			{
+				Id: "lastModifiedDate",
+				Details: map[string]interface{}{
+					"lastModifiedDate": resp.ObjectView.Details[0].Details.Fields["lastModifiedDate"].GetNumberValue(),
+				},
+			},
+			{
+				Id: "tags",
+				Details: map[string]interface{}{
+					"tags": a.getTags(resp),
+				},
+			},
+		},
 	}
 
 	c.JSON(http.StatusOK, gin.H{"object": object})
@@ -571,7 +595,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"objectTypes": objectTypes})
+	c.JSON(http.StatusOK, gin.H{"object_types": objectTypes})
 }
 
 // getObjectTypeTemplatesHandler retrieves a list of templates for a specific object type in a space
@@ -807,6 +831,11 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				return
 			}
 
+			objectShowResp := a.mw.ObjectShow(c.Request.Context(), &pb.RpcObjectShowRequest{
+				SpaceId:  spaceId,
+				ObjectId: record.Fields["id"].GetStringValue(),
+			})
+
 			searchResults = append(searchResults, Object{
 				Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
 				Id:         record.Fields["id"].GetStringValue(),
@@ -814,14 +843,20 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				Icon:       icon,
 				ObjectType: objectTypeName,
 				SpaceId:    spaceId,
+				RootId:     objectShowResp.ObjectView.RootId,
 				// TODO: populate other fields
-				// RootId:     record.Fields["rootId"].GetStringValue(),
 				// Blocks:     []Block{},
 				Details: []Detail{
 					{
 						Id: "lastModifiedDate",
 						Details: map[string]interface{}{
 							"lastModifiedDate": record.Fields["lastModifiedDate"].GetNumberValue(),
+						},
+					},
+					{
+						Id: "tags",
+						Details: map[string]interface{}{
+							"tags": a.getTags(objectShowResp),
 						},
 					},
 				},
