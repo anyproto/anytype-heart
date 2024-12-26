@@ -366,20 +366,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			SpaceId:    spaceId,
 			RootId:     objectShowResp.ObjectView.RootId,
 			Blocks:     a.getBlocks(objectShowResp),
-			Details: []Detail{
-				{
-					Id: "lastModifiedDate",
-					Details: map[string]interface{}{
-						"lastModifiedDate": record.Fields["lastModifiedDate"].GetNumberValue(),
-					},
-				},
-				{
-					Id: "tags",
-					Details: map[string]interface{}{
-						"tags": a.getTags(objectShowResp),
-					},
-				},
-			},
+			Details:    a.getDetails(objectShowResp),
 		}
 
 		objects = append(objects, object)
@@ -433,20 +420,7 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 		ObjectType: objectTypeName,
 		RootId:     resp.ObjectView.RootId,
 		Blocks:     a.getBlocks(resp),
-		Details: []Detail{
-			{
-				Id: "lastModifiedDate",
-				Details: map[string]interface{}{
-					"lastModifiedDate": resp.ObjectView.Details[0].Details.Fields["lastModifiedDate"].GetNumberValue(),
-				},
-			},
-			{
-				Id: "tags",
-				Details: map[string]interface{}{
-					"tags": a.getTags(resp),
-				},
-			},
-		},
+		Details:    a.getDetails(resp),
 	}
 
 	c.JSON(http.StatusOK, gin.H{"object": object})
@@ -843,20 +817,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				SpaceId:    spaceId,
 				RootId:     objectShowResp.ObjectView.RootId,
 				Blocks:     a.getBlocks(objectShowResp),
-				Details: []Detail{
-					{
-						Id: "lastModifiedDate",
-						Details: map[string]interface{}{
-							"lastModifiedDate": record.Fields["lastModifiedDate"].GetNumberValue(),
-						},
-					},
-					{
-						Id: "tags",
-						Details: map[string]interface{}{
-							"tags": a.getTags(objectShowResp),
-						},
-					},
-				},
+				Details:    a.getDetails(objectShowResp),
 			})
 		}
 	}

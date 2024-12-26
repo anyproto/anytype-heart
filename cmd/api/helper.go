@@ -117,31 +117,7 @@ func (a *ApiServer) getIconFromEmojiOrImage(iconEmoji string, iconImage string) 
 	return ""
 }
 
-// getTags returns the list of tags from the object details
-func (a *ApiServer) getTags(resp *pb.RpcObjectShowResponse) []Tag {
-	tags := []Tag{}
-
-	tagField, ok := resp.ObjectView.Details[0].Details.Fields["tag"]
-	if !ok {
-		return tags
-	}
-
-	for _, tagId := range tagField.GetListValue().Values {
-		id := tagId.GetStringValue()
-		for _, detail := range resp.ObjectView.Details {
-			if detail.Id == id {
-				tags = append(tags, Tag{
-					Id:    id,
-					Name:  detail.Details.Fields["name"].GetStringValue(),
-					Color: detail.Details.Fields["relationOptionColor"].GetStringValue(),
-				})
-				break
-			}
-		}
-	}
-	return tags
-}
-
+// getBlocks returns the blocks of the object
 func (a *ApiServer) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}
 
@@ -213,4 +189,53 @@ func mapVerticalAlign(align model.BlockVerticalAlign) string {
 	default:
 		return "unknown"
 	}
+}
+
+// getDetails returns the details of the object
+func (a *ApiServer) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
+	return []Detail{
+		{
+			Id: "lastModifiedDate",
+			Details: map[string]interface{}{
+				"lastModifiedDate": resp.ObjectView.Details[0].Details.Fields["lastModifiedDate"].GetNumberValue(),
+			},
+		},
+		{
+			Id: "createdDate",
+			Details: map[string]interface{}{
+				"createdDate": resp.ObjectView.Details[0].Details.Fields["createdDate"].GetNumberValue(),
+			},
+		},
+		{
+			Id: "tags",
+			Details: map[string]interface{}{
+				"tags": a.getTags(resp),
+			},
+		},
+	}
+}
+
+// getTags returns the list of tags from the object details
+func (a *ApiServer) getTags(resp *pb.RpcObjectShowResponse) []Tag {
+	tags := []Tag{}
+
+	tagField, ok := resp.ObjectView.Details[0].Details.Fields["tag"]
+	if !ok {
+		return tags
+	}
+
+	for _, tagId := range tagField.GetListValue().Values {
+		id := tagId.GetStringValue()
+		for _, detail := range resp.ObjectView.Details {
+			if detail.Id == id {
+				tags = append(tags, Tag{
+					Id:    id,
+					Name:  detail.Details.Fields["name"].GetStringValue(),
+					Color: detail.Details.Fields["relationOptionColor"].GetStringValue(),
+				})
+				break
+			}
+		}
+	}
+	return tags
 }
