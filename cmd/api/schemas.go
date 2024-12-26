@@ -69,13 +69,8 @@ type Block struct {
 	BackgroundColor string   `json:"background_color"`
 	Align           string   `json:"align"`
 	VerticalAlign   string   `json:"vertical_align"`
-	Layout          Layout   `json:"layout"`
-	Text            Text     `json:"text"`
-	File            File     `json:"file"`
-}
-
-type Layout struct {
-	Style string `json:"style"`
+	Text            *Text    `json:"text,omitempty"`
+	File            *File    `json:"file,omitempty"`
 }
 
 type Text struct {
@@ -94,8 +89,8 @@ type File struct {
 	Size           int    `json:"size"`
 	AddedAt        int    `json:"added_at"`
 	TargetObjectId string `json:"target_object_id"`
-	State          int    `json:"state"`
-	Style          int    `json:"style"`
+	State          string `json:"state"`
+	Style          string `json:"style"`
 }
 
 type Detail struct {

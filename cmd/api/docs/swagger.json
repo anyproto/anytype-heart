@@ -1025,9 +1025,6 @@
                 "id": {
                     "type": "string"
                 },
-                "layout": {
-                    "$ref": "#/definitions/api.Layout"
-                },
                 "text": {
                     "$ref": "#/definitions/api.Text"
                 },
@@ -1133,10 +1130,10 @@
                     "type": "integer"
                 },
                 "state": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "style": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "target_object_id": {
                     "type": "string"
@@ -1155,14 +1152,6 @@
                     "items": {
                         "type": "string"
                     }
-                }
-            }
-        },
-        "api.Layout": {
-            "type": "object",
-            "properties": {
-                "style": {
-                    "type": "string"
                 }
             }
         },

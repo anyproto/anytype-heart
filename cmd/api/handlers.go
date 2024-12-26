@@ -365,8 +365,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			ObjectType: objectTypeName,
 			SpaceId:    spaceId,
 			RootId:     objectShowResp.ObjectView.RootId,
-			// TODO: populate other fields
-			// Blocks:  []Block{},
+			Blocks:     a.getBlocks(objectShowResp),
 			Details: []Detail{
 				{
 					Id: "lastModifiedDate",
@@ -433,8 +432,7 @@ func (a *ApiServer) getObjectHandler(c *gin.Context) {
 		Icon:       resp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
 		ObjectType: objectTypeName,
 		RootId:     resp.ObjectView.RootId,
-		// TODO: populate other fields
-		// Blocks: []Block{},
+		Blocks:     a.getBlocks(resp),
 		Details: []Detail{
 			{
 				Id: "lastModifiedDate",
@@ -844,8 +842,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 				ObjectType: objectTypeName,
 				SpaceId:    spaceId,
 				RootId:     objectShowResp.ObjectView.RootId,
-				// TODO: populate other fields
-				// Blocks:     []Block{},
+				Blocks:     a.getBlocks(objectShowResp),
 				Details: []Detail{
 					{
 						Id: "lastModifiedDate",

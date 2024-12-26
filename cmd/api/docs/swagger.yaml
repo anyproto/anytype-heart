@@ -38,8 +38,6 @@ definitions:
         $ref: '#/definitions/api.File'
       id:
         type: string
-      layout:
-        $ref: '#/definitions/api.Layout'
       text:
         $ref: '#/definitions/api.Text'
       vertical_align:
@@ -109,9 +107,9 @@ definitions:
       size:
         type: integer
       state:
-        type: integer
+        type: string
       style:
-        type: integer
+        type: string
       target_object_id:
         type: string
       type:
@@ -124,11 +122,6 @@ definitions:
         items:
           type: string
         type: array
-    type: object
-  api.Layout:
-    properties:
-      style:
-        type: string
     type: object
   api.Member:
     properties:

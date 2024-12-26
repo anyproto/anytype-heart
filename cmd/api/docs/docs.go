@@ -1031,9 +1031,6 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "layout": {
-                    "$ref": "#/definitions/api.Layout"
-                },
                 "text": {
                     "$ref": "#/definitions/api.Text"
                 },
@@ -1139,10 +1136,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "state": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "style": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "target_object_id": {
                     "type": "string"
@@ -1161,14 +1158,6 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
-                }
-            }
-        },
-        "api.Layout": {
-            "type": "object",
-            "properties": {
-                "style": {
-                    "type": "string"
                 }
             }
         },

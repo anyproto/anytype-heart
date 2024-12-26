@@ -141,3 +141,76 @@ func (a *ApiServer) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	}
 	return tags
 }
+
+func (a *ApiServer) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
+	blocks := []Block{}
+
+	for _, block := range resp.ObjectView.Blocks {
+		var text *Text
+		var file *File
+
+		switch content := block.Content.(type) {
+		case *model.BlockContentOfText:
+			text = &Text{
+				Text:    content.Text.Text,
+				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
+				Checked: content.Text.Checked,
+				Color:   content.Text.Color,
+				Icon:    a.getIconFromEmojiOrImage(content.Text.IconEmoji, content.Text.IconImage),
+			}
+		case *model.BlockContentOfFile:
+			file = &File{
+				Hash:           content.File.Hash,
+				Name:           content.File.Name,
+				Type:           model.BlockContentFileType_name[int32(content.File.Type)],
+				Mime:           content.File.Mime,
+				Size:           content.File.Size(),
+				AddedAt:        int(content.File.AddedAt),
+				TargetObjectId: content.File.TargetObjectId,
+				State:          model.BlockContentFileState_name[int32(content.File.State)],
+				Style:          model.BlockContentFileStyle_name[int32(content.File.Style)],
+			}
+			// TODO: other content types?
+		}
+
+		blocks = append(blocks, Block{
+			Id:              block.Id,
+			ChildrenIds:     block.ChildrenIds,
+			BackgroundColor: block.BackgroundColor,
+			Align:           mapAlign(block.Align),
+			VerticalAlign:   mapVerticalAlign(block.VerticalAlign),
+			Text:            text,
+			File:            file,
+		})
+	}
+
+	return blocks
+}
+
+func mapAlign(align model.BlockAlign) string {
+	switch align {
+	case model.Block_AlignLeft:
+		return "left"
+	case model.Block_AlignCenter:
+		return "center"
+	case model.Block_AlignRight:
+		return "right"
+	case model.Block_AlignJustify:
+		return "justify"
+	default:
+		return "unknown"
+	}
+}
+
+func mapVerticalAlign(align model.BlockVerticalAlign) string {
+	switch align {
+	case model.Block_VerticalAlignTop:
+		return "top"
+	case model.Block_VerticalAlignMiddle:
+		return "middle"
+	case model.Block_VerticalAlignBottom:
+		return "bottom"
+	default:
+		return "unknown"
+	}
+}
