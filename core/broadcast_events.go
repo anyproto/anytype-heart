@@ -9,13 +9,11 @@ import (
 
 func (mw *Middleware) BroadcastPayloadEvent(cctx context.Context, req *pb.RpcBroadcastPayloadEventRequest) *pb.RpcBroadcastPayloadEventResponse {
 	messages := []*pb.EventMessage{
-		{
-			Value: &pb.EventMessageValueOfPayloadBroadcast{
-				PayloadBroadcast: &pb.EventPayloadBroadcast{Payload: req.Payload},
-			},
-		},
+		event.NewMessage("", &pb.EventMessageValueOfPayloadBroadcast{
+			PayloadBroadcast: &pb.EventPayloadBroadcast{Payload: req.Payload},
+		}),
 	}
-	getService[event.Sender](mw).Broadcast(&pb.Event{
+	mustService[event.Sender](mw).Broadcast(&pb.Event{
 		Messages: messages,
 	})
 	return &pb.RpcBroadcastPayloadEventResponse{

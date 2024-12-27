@@ -8,7 +8,6 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -22,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -224,7 +222,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	store := i.store.SpaceIndex(space.Id())
 	for _, id := range ids {
 		err := space.DoLockedIfNotExists(id, func() error {
-			return store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
+			return store.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
 				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
 				return details, true, nil
 			})
@@ -260,19 +258,19 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 	}
 	store := i.store.SpaceIndex(spaceId)
 	ids, _, err := store.QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value: pbtypes.IntList(
-					int(model.ObjectType_file),
-					int(model.ObjectType_image),
-					int(model.ObjectType_video),
-					int(model.ObjectType_audio),
-				),
+				Value: domain.Int64List([]model.ObjectTypeLayout{
+					model.ObjectType_file,
+					model.ObjectType_image,
+					model.ObjectType_video,
+					model.ObjectType_audio,
+				}),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Empty,
 			},
 		},
@@ -322,11 +320,11 @@ func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
 	if flags.bundledTemplates {
 		store := i.store.SpaceIndex(space.Id())
 		existing, _, err := store.QueryObjectIds(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
+			Filters: []database.FilterRequest{
 				{
-					RelationKey: bundle.RelationKeyType.String(),
+					RelationKey: bundle.RelationKeyType,
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+					Value:       domain.String(bundle.TypeKeyTemplate.BundledURL()),
 				},
 			},
 		})

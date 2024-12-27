@@ -3,12 +3,10 @@ package core
 import (
 	"context"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
@@ -22,7 +20,8 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		}
 		return m
 	}
-	err := getService[detailservice.Service](mw).SetDetailsAndUpdateLastUsed(ctx, req.ContextId, req.GetDetails())
+
+	err := mustService[detailservice.Service](mw).SetDetailsAndUpdateLastUsed(ctx, req.ContextId, requestDetailsListToDomain(req.GetDetails()))
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
@@ -41,7 +40,7 @@ func (mw *Middleware) ObjectListSetDetails(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 
-	err := getService[detailservice.Service](mw).SetDetailsList(ctx, req.ObjectIds, req.Details)
+	err := mustService[detailservice.Service](mw).SetDetailsList(ctx, req.ObjectIds, requestDetailsListToDomain(req.Details))
 	if err != nil {
 		return response(pb.RpcObjectListSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
@@ -60,9 +59,9 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		}
 		return m
 	}
-	ds := getService[detailservice.Service](mw)
-	err := ds.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
-		d := pbtypes.CopyStruct(current, false)
+	ds := mustService[detailservice.Service](mw)
+	err := ds.ModifyDetails(req.ContextId, func(current *domain.Details) (*domain.Details, error) {
+		d := current.Copy()
 		return internalflag.PutToDetails(d, req.InternalFlags), nil
 	})
 	if err != nil {
@@ -79,7 +78,7 @@ func (mw *Middleware) ObjectListModifyDetailValues(_ context.Context, req *pb.Rp
 		}
 		return m
 	}
-	err := getService[detailservice.Service](mw).ModifyDetailsList(req)
+	err := mustService[detailservice.Service](mw).ModifyDetailsList(req)
 	if err != nil {
 		return response(pb.RpcObjectListModifyDetailValuesResponseError_UNKNOWN_ERROR, err)
 	}
@@ -103,7 +102,7 @@ func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.
 		}
 		return resp
 	}
-	setId, err := getService[detailservice.Service](mw).SetWorkspaceDashboardId(ctx, req.ContextId, req.ObjectId)
+	setId, err := mustService[detailservice.Service](mw).SetWorkspaceDashboardId(ctx, req.ContextId, req.ObjectId)
 	return response(setId, err)
 }
 
@@ -115,7 +114,7 @@ func (mw *Middleware) ObjectSetIsFavorite(_ context.Context, req *pb.RpcObjectSe
 		}
 		return m
 	}
-	err := getService[detailservice.Service](mw).SetIsFavorite(req.ContextId, req.IsFavorite, true)
+	err := mustService[detailservice.Service](mw).SetIsFavorite(req.ContextId, req.IsFavorite, true)
 	if err != nil {
 		return response(pb.RpcObjectSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
 	}
@@ -130,7 +129,7 @@ func (mw *Middleware) ObjectSetIsArchived(_ context.Context, req *pb.RpcObjectSe
 		}
 		return m
 	}
-	err := getService[detailservice.Service](mw).SetIsArchived(req.ContextId, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetIsArchived(req.ContextId, req.IsArchived)
 	if err != nil {
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
@@ -145,7 +144,7 @@ func (mw *Middleware) ObjectListSetIsArchived(_ context.Context, req *pb.RpcObje
 		}
 		return m
 	}
-	err := getService[detailservice.Service](mw).SetListIsArchived(req.ObjectIds, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetListIsArchived(req.ObjectIds, req.IsArchived)
 	if err != nil {
 		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
@@ -160,7 +159,7 @@ func (mw *Middleware) ObjectListSetIsFavorite(_ context.Context, req *pb.RpcObje
 		}
 		return m
 	}
-	err := getService[detailservice.Service](mw).SetListIsFavorite(req.ObjectIds, req.IsFavorite)
+	err := mustService[detailservice.Service](mw).SetListIsFavorite(req.ObjectIds, req.IsFavorite)
 	if err != nil {
 		return response(pb.RpcObjectListSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
 	}

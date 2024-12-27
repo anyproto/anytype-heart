@@ -161,7 +161,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
 				continue
 			}
-			val := pbtypes.GetString(sb.Details(), rel.Key)
+			val := sb.Details().GetString(domain.RelationKey(rel.Key))
 			if val == "" {
 				continue
 			}
@@ -178,13 +178,16 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 				Text:    val,
 			}
 
-			layout, layoutValid := sb.Layout()
-			if layoutValid {
-				if _, contains := filesLayouts[layout]; !contains {
-					doc.Title = val
-					doc.Text = ""
+			if rel.Key == bundle.RelationKeyName.String() {
+				layout, layoutValid := sb.Layout()
+				if layoutValid {
+					if _, contains := filesLayouts[layout]; !contains {
+						doc.Title = val
+						doc.Text = ""
+					}
 				}
 			}
+
 			docs = append(docs, doc)
 		}
 

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
 	"golang.org/x/exp/slices"
@@ -16,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -24,13 +21,8 @@ import (
 )
 
 type snapshotOptions struct {
-	changeId           string
-	internalKey        string
-	uniqueKeyMigration *uniqueKeyMigration
-}
-
-type uniqueKeyMigration struct {
-	sbType smartblock.SmartBlockType
+	changeId    string
+	internalKey string
 }
 
 type SnapshotOption func(*snapshotOptions)
@@ -45,17 +37,6 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 func WithInternalKey(internalKey string) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.internalKey = internalKey
-	}
-}
-
-// WithUniqueKeyMigration tries to extract unique key from id of supported legacy objects.
-// For example, legacy object type has id "ot-page", so unique key will be "ot-page".
-// The full list of supported objects you can see in documentation near domain.UniqueKey
-func WithUniqueKeyMigration(sbType smartblock.SmartBlockType) func(*snapshotOptions) {
-	return func(o *snapshotOptions) {
-		o.uniqueKeyMigration = &uniqueKeyMigration{
-			sbType: sbType,
-		}
 	}
 }
 
@@ -81,22 +62,19 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		removedCollectionKeysMap[t] = struct{}{}
 	}
 
-	detailsToSave := pbtypes.StructCutKeys(snapshot.Data.Details, bundle.LocalAndDerivedRelationKeys)
-
-	if err := pbtypes.ValidateStruct(detailsToSave); err != nil {
+	detailsFromSnapshot := pbtypes.StructCutKeys(snapshot.Data.Details, slice.IntoStrings(bundle.LocalAndDerivedRelationKeys))
+	if err := pbtypes.ValidateStruct(detailsFromSnapshot); err != nil {
 		log.Errorf("NewDocFromSnapshot details validation error: %v; details normalized", err)
-		pbtypes.NormalizeStruct(detailsToSave)
+		pbtypes.NormalizeStruct(detailsFromSnapshot)
 	}
 
-	if sOpts.uniqueKeyMigration != nil {
-		migrateAddMissingUniqueKey(sOpts.uniqueKeyMigration.sbType, snapshot)
-	}
+	details := domain.NewDetailsFromProto(detailsFromSnapshot)
 
 	s := &State{
 		changeId:                 sOpts.changeId,
 		rootId:                   rootId,
 		blocks:                   blocks,
-		details:                  detailsToSave,
+		details:                  details,
 		relationLinks:            snapshot.Data.RelationLinks,
 		objectTypeKeys:           migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
 		fileKeys:                 fileKeys,
@@ -126,9 +104,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 
 func (s *State) SetLastModified(ts int64, identityLink string) {
 	if ts > 0 {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(ts))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, domain.Int64(ts))
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(identityLink))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, domain.String(identityLink))
 }
 
 func (s *State) SetChangeId(id string) {
@@ -263,35 +241,31 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	det := s.Details()
-	if det == nil || det.Fields == nil {
-		det = &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}
+	if det == nil {
+		det = domain.NewDetails()
 	}
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
-	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det, false)
+	if s.details == nil {
+		s.details = det.Copy()
 	}
 	if set.Value != nil {
-		s.details.Fields[set.Key] = set.Value
+		s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
 	} else {
-		delete(s.details.Fields, set.Key)
+		s.details.Delete(domain.RelationKey(set.Key))
 	}
 	return nil
 }
 
 func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	det := s.Details()
-	if det == nil || det.Fields == nil {
-		det = &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}
+	if det == nil {
+		det = domain.NewDetails()
 	}
-	if s.details == nil || s.details.Fields == nil {
-		s.details = pbtypes.CopyStruct(det, false)
+	if s.details == nil {
+		s.details = det.Copy()
 	}
-	delete(s.details.Fields, unset.Key)
+	s.details.Delete(domain.RelationKey(unset.Key))
 	return nil
 }
 
@@ -307,7 +281,7 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 }
 
 func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
-	s.RemoveRelation(rem.RelationKey...)
+	s.RemoveRelation(slice.StringsInto[domain.RelationKey](rem.RelationKey)...)
 	return nil
 }
 func migrateObjectTypeIDToKey(old string) (new string) {
@@ -646,7 +620,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 func (s *State) filterLocalAndDerivedRelations(newRelLinks pbtypes.RelationLinks) pbtypes.RelationLinks {
 	var relLinksWithoutLocal pbtypes.RelationLinks
 	for _, link := range newRelLinks {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(link.Key)) {
 			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
 		}
 	}
@@ -656,7 +630,7 @@ func (s *State) filterLocalAndDerivedRelations(newRelLinks pbtypes.RelationLinks
 func (s *State) filterLocalAndDerivedRelationsByKey(relationKeys []string) []string {
 	var relKeysWithoutLocal []string
 	for _, key := range relationKeys {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
 			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
 		}
 	}
@@ -725,36 +699,39 @@ func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChi
 }
 
 func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
-	if s.details == nil || s.details.Fields == nil {
+	if s.details == nil {
 		return nil
 	}
-	var prev *types.Struct
+	var prev *domain.Details
 	if s.parent != nil {
 		prev = s.parent.Details()
 	}
-	if prev == nil || prev.Fields == nil {
-		prev = &types.Struct{Fields: make(map[string]*types.Value)}
+	if prev == nil {
+		prev = domain.NewDetails()
 	}
 	curDetails := s.Details()
-	for k, v := range curDetails.Fields {
-		pv, ok := prev.Fields[k]
-		if !ok || !pv.Equal(v) {
+
+	for k, v := range curDetails.Iterate() {
+		prevValue := prev.Get(k)
+		if !prevValue.Ok() || !prevValue.Equal(v) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsSet{
-					DetailsSet: &pb.ChangeDetailsSet{Key: k, Value: v},
+					DetailsSet: &pb.ChangeDetailsSet{Key: string(k), Value: v.ToProto()},
 				},
 			})
 		}
 	}
-	for k := range prev.Fields {
-		if _, ok := curDetails.Fields[k]; !ok {
+
+	for k, _ := range prev.Iterate() {
+		if !curDetails.Has(k) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{
-					DetailsUnset: &pb.ChangeDetailsUnset{Key: k},
+					DetailsUnset: &pb.ChangeDetailsUnset{Key: string(k)},
 				},
 			})
 		}
 	}
+
 	return
 }
 
@@ -989,25 +966,4 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []domain.TypeKey {
 		objectTypeKeys = append(objectTypeKeys, key)
 	}
 	return objectTypeKeys
-}
-
-// Adds missing unique key for supported smartblock types
-func migrateAddMissingUniqueKey(sbType smartblock.SmartBlockType, snapshot *pb.ChangeSnapshot) {
-	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
-	uk, err := domain.UnmarshalUniqueKey(id)
-	if err != nil {
-		// Maybe it's a relation option?
-		if bson.IsObjectIdHex(id) {
-			uk = domain.MustUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
-		} else {
-			// Means that smartblock type is not supported
-			return
-		}
-	}
-	if uk.SmartblockType() != sbType {
-		log.Errorf("missingKeyMigration: wrong sbtype %s != %s", uk.SmartblockType(), sbType)
-		return
-	}
-
-	snapshot.Data.Key = uk.InternalKey()
 }

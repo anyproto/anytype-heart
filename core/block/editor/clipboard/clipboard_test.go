@@ -547,7 +547,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			s.Add(tb)
 			s.InsertTo("", 0, tb.Model().Id)
 		}
-		_, _, err := state.ApplyState(s, false)
+		_, _, err := state.ApplyState("", s, false)
 		require.NoError(t, err)
 		return sb
 	}
@@ -572,7 +572,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 		bm.Model().Id = "bookmarkId"
 		s.Add(bm)
 		s.InsertTo("", 0, bm.Model().Id)
-		_, _, err := state.ApplyState(s, false)
+		_, _, err := state.ApplyState("", s, false)
 		require.NoError(t, err)
 		return sb
 	}
@@ -1103,7 +1103,7 @@ func addDescription(st *smarttest.SmartTest, description string) {
 	newState := st.Doc.NewState()
 	template.InitTemplate(newState, template.WithForcedDescription)
 	newState.Get(template.DescriptionBlockId).(text.Block).SetText(description, nil)
-	state.ApplyState(newState, false)
+	state.ApplyState("", newState, false)
 }
 
 func addRelations(st *smarttest.SmartTest) {
@@ -1111,7 +1111,7 @@ func addRelations(st *smarttest.SmartTest) {
 	template.InitTemplate(newState, template.RequireHeader)
 	template.InitTemplate(newState, template.WithFeaturedRelations)
 	template.InitTemplate(newState, template.WithForcedDescription)
-	state.ApplyState(newState, false)
+	state.ApplyState("", newState, false)
 }
 
 func TestClipboard_PasteToCodeBlock(t *testing.T) {

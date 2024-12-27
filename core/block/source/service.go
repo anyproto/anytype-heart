@@ -6,12 +6,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -55,7 +53,7 @@ type Service interface {
 	RegisterStaticSource(s Source) error
 	NewStaticSource(params StaticSourceParams) SourceWithType
 
-	DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error)
+	DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error)
 	IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
@@ -213,7 +211,7 @@ func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.Sm
 	}
 }
 
-func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
+func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
 	if !strings.HasPrefix(id.ObjectID, addr.DatePrefix) {
 		return nil, fmt.Errorf("unsupported id")
 	}

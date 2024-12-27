@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -73,18 +74,12 @@ func (s *Service) LinkLocalStartNewChallenge(clientInfo *pb.EventAccountLinkChal
 	if err != nil {
 		return "", err
 	}
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfAccountLinkChallenge{
-					AccountLinkChallenge: &pb.EventAccountLinkChallenge{
-						Challenge:  value,
-						ClientInfo: clientInfo,
-					},
-				},
-			},
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkChallenge{
+		AccountLinkChallenge: &pb.EventAccountLinkChallenge{
+			Challenge:  value,
+			ClientInfo: clientInfo,
 		},
-	})
+	}))
 	return id, nil
 }
 

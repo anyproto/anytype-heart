@@ -6,34 +6,28 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // GetDetails returns empty struct without errors in case details are not found
 // todo: get rid of this or change the name method!
-func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
+func (s *dsObjectStore) GetDetails(id string) (*domain.Details, error) {
 	doc, err := s.objects.FindId(s.componentCtx, id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
-		return &model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil
+		return domain.NewDetails(), nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err := pbtypes.AnyEncToProto(doc.Value())
+	details, err := domain.NewDetailsFromAnyEnc(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
-	return &model.ObjectDetails{
-		Details: details,
-	}, nil
+	return details, nil
 }
 
 func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
@@ -41,20 +35,20 @@ func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
-	if rawUniqueKey == "" {
+	rawUniqueKey, ok := details.TryString(bundle.RelationKeyUniqueKey)
+	if !ok {
 		return nil, fmt.Errorf("object does not have unique key in details")
 	}
 	return domain.UnmarshalUniqueKey(rawUniqueKey)
 }
 
-func (s *dsObjectStore) List(includeArchived bool) ([]*model.ObjectInfo, error) {
-	var filters []*model.BlockContentDataviewFilter
+func (s *dsObjectStore) List(includeArchived bool) ([]*database.ObjectInfo, error) {
+	var filters []database.FilterRequest
 	if includeArchived {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeyIsArchived.String(),
+		filters = append(filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeyIsArchived,
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.Bool(true),
+			Value:       domain.Bool(true),
 		})
 	}
 	ids, _, err := s.QueryObjectIds(database.Query{
@@ -79,18 +73,18 @@ func (s *dsObjectStore) HasIds(ids []string) (exists []string, err error) {
 	return exists, err
 }
 
-func (s *dsObjectStore) GetInfosByIds(ids []string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) GetInfosByIds(ids []string) ([]*database.ObjectInfo, error) {
 	return s.getObjectsInfo(s.componentCtx, ids)
 }
 
-func (s *dsObjectStore) getObjectInfo(ctx context.Context, id string) (*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectInfo(ctx context.Context, id string) (*database.ObjectInfo, error) {
 	details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
 		ObjectID: id,
 		SpaceID:  s.SpaceId(),
 	})
 	if err == nil {
-		details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-		return &model.ObjectInfo{
+		details.SetString(bundle.RelationKeyId, id)
+		return &database.ObjectInfo{
 			Id:      id,
 			Details: details,
 		}, nil
@@ -100,21 +94,21 @@ func (s *dsObjectStore) getObjectInfo(ctx context.Context, id string) (*model.Ob
 	if err != nil {
 		return nil, fmt.Errorf("find by id: %w", err)
 	}
-	details, err = pbtypes.AnyEncToProto(doc.Value())
+	details, err = domain.NewDetailsFromAnyEnc(doc.Value())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal details: %w", err)
 	}
-	snippet := pbtypes.GetString(details, bundle.RelationKeySnippet.String())
+	snippet := details.GetString(bundle.RelationKeySnippet)
 
-	return &model.ObjectInfo{
+	return &database.ObjectInfo{
 		Id:      id,
 		Details: details,
 		Snippet: snippet,
 	}, nil
 }
 
-func (s *dsObjectStore) getObjectsInfo(ctx context.Context, ids []string) ([]*model.ObjectInfo, error) {
-	objects := make([]*model.ObjectInfo, 0, len(ids))
+func (s *dsObjectStore) getObjectsInfo(ctx context.Context, ids []string) ([]*database.ObjectInfo, error) {
+	objects := make([]*database.ObjectInfo, 0, len(ids))
 	for _, id := range ids {
 		info, err := s.getObjectInfo(ctx, id)
 		if err != nil {
@@ -123,9 +117,9 @@ func (s *dsObjectStore) getObjectsInfo(ctx context.Context, ids []string) ([]*mo
 			}
 			return nil, err
 		}
-		if f := info.GetDetails().GetFields(); f != nil {
+		if f := info.Details; f != nil {
 			// skip deleted objects
-			if v := f[bundle.RelationKeyIsDeleted.String()]; v != nil && v.GetBoolValue() {
+			if v, ok := f.TryBool(bundle.RelationKeyIsDeleted); ok && v {
 				continue
 			}
 		}
@@ -135,13 +129,13 @@ func (s *dsObjectStore) getObjectsInfo(ctx context.Context, ids []string) ([]*mo
 	return objects, nil
 }
 
-func (s *dsObjectStore) GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*model.ObjectDetails, error) {
+func (s *dsObjectStore) GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*domain.Details, error) {
 	records, err := s.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Value:       pbtypes.String(uniqueKey.Marshal()),
+				RelationKey: bundle.RelationKeyUniqueKey,
+				Value:       domain.String(uniqueKey.Marshal()),
 			},
 		},
 		Limit: 2,
@@ -159,5 +153,5 @@ func (s *dsObjectStore) GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*model
 		return nil, fmt.Errorf("multiple objects with unique key %s", uniqueKey)
 	}
 
-	return &model.ObjectDetails{Details: records[0].Details}, nil
+	return records[0].Details, nil
 }

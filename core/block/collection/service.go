@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/backlinks"
@@ -22,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -113,7 +111,9 @@ func (s *Service) updateCollection(ctx session.Context, contextID string, modifi
 		lst := s.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)
 		s.UpdateStoreSlice(template.CollectionStoreKey, lst)
-		internalflag.Set{}.AddToState(s)
+		// TODO why we're adding empty list of flags?
+		flags := internalflag.Set{}
+		flags.AddToState(s)
 		return nil
 	}, smartblock.KeepInternalFlags)
 }
@@ -199,7 +199,7 @@ func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID 
 	}
 }
 
-func (s *Service) CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error) {
+func (s *Service) CreateCollection(details *domain.Details, flags []*model.InternalFlag) (coresb.SmartBlockType, *domain.Details, *state.State, error) {
 	details = internalflag.PutToDetails(details, flags)
 
 	newState := state.NewDoc("", nil).NewState().SetDetails(details)
@@ -228,7 +228,7 @@ func (s *Service) setDefaultObjectTypeToViews(spaceId string, st *state.State) {
 		return
 	}
 
-	setOfValue := pbtypes.GetStringList(st.ParentState().Details(), bundle.RelationKeySetOf.String())
+	setOfValue := st.ParentState().Details().GetStringList(bundle.RelationKeySetOf)
 	if len(setOfValue) == 0 {
 		return
 	}

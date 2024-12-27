@@ -70,7 +70,7 @@ func (t *treeImporter) State() (*state.State, error) {
 		return nil, err
 	}
 
-	if _, _, err = state.ApplyStateFast(st); err != nil {
+	if _, _, err = state.ApplyStateFast("", st); err != nil {
 		return nil, err
 	}
 	return st, nil

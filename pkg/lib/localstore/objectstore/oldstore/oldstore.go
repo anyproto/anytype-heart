@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var pagesDetailsBase = ds.NewKey("/pages/details")
@@ -75,7 +76,7 @@ func (s *service) GetLocalDetails(objectId string) (*types.Struct, error) {
 		return nil, err
 	}
 
-	details := pbtypes.StructFilterKeys(objDetails.Details, bundle.LocalRelationsKeys)
+	details := pbtypes.StructFilterKeys(objDetails.Details, slice.IntoStrings(bundle.LocalRelationsKeys))
 	return details, nil
 }
 

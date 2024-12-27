@@ -3,8 +3,6 @@ package filemodels
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -15,7 +13,7 @@ type CreateRequest struct {
 	EncryptionKeys        map[string]string
 	ObjectOrigin          objectorigin.ObjectOrigin
 	ImageKind             model.ImageKind
-	AdditionalDetails     *types.Struct
+	AdditionalDetails     *domain.Details
 	AsyncMetadataIndexing bool
 }
 
