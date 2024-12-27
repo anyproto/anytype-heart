@@ -146,12 +146,6 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
 	dbPath := path.Join(s.rootPath, id)
-	if _, err := os.Stat(dbPath); err != nil {
-		err := os.MkdirAll(dbPath, 0755)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return anystore.Open(ctx, dbPath, nil)
 }
 
@@ -166,6 +160,12 @@ func (s *storageService) Init(a *app.App) (err error) {
 		ocache.WithLogger(log.Sugar()),
 		ocache.WithGCPeriod(time.Minute),
 		ocache.WithTTL(60*time.Second))
+	if _, err = os.Stat(s.rootPath); err != nil {
+		err = os.MkdirAll(s.rootPath, 0755)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
