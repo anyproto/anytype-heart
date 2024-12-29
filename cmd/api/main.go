@@ -102,7 +102,7 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	{
 		readOnly.GET("/spaces", paginator, a.getSpacesHandler)
 		readOnly.GET("/spaces/:space_id/members", paginator, a.getMembersHandler)
-		readOnly.GET("/spaces/:space_id/objects", paginator, a.getObjectsForSpaceHandler)
+		readOnly.GET("/spaces/:space_id/objects", paginator, a.getObjectsHandler)
 		readOnly.GET("/spaces/:space_id/objects/:object_id", a.getObjectHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes", paginator, a.getObjectTypesHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, a.getObjectTypeTemplatesHandler)

@@ -253,17 +253,21 @@ definitions:
     type: object
   api.PaginationMeta:
     properties:
-      has_next:
+      has_more:
         description: whether there are more items available
+        example: true
         type: boolean
       limit:
         description: the current limit
+        example: 100
         type: integer
       offset:
         description: the current offset
+        example: 0
         type: integer
       total:
         description: the total number of items returned
+        example: 100
         type: integer
     type: object
   api.Reactions:

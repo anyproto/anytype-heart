@@ -1,10 +1,10 @@
 package api
 
 type PaginationMeta struct {
-	Total   int  `json:"total"`    // the total number of items returned
-	Offset  int  `json:"offset"`   // the current offset
-	Limit   int  `json:"limit"`    // the current limit
-	HasNext bool `json:"has_next"` // whether there are more items available
+	Total   int  `json:"total" example:"100"`     // the total number of items returned
+	Offset  int  `json:"offset" example:"0"`      // the current offset
+	Limit   int  `json:"limit" example:"100"`     // the current limit
+	HasMore bool `json:"has_more" example:"true"` // whether there are more items available
 }
 
 type PaginatedResponse[T any] struct {

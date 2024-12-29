@@ -1342,21 +1342,25 @@
         "api.PaginationMeta": {
             "type": "object",
             "properties": {
-                "has_next": {
+                "has_more": {
                     "description": "whether there are more items available",
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "limit": {
                     "description": "the current limit",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 100
                 },
                 "offset": {
                     "description": "the current offset",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 0
                 },
                 "total": {
                     "description": "the total number of items returned",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 100
                 }
             }
         },

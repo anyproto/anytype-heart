@@ -63,7 +63,7 @@ func newFixture(t *testing.T) *fixture {
 	{
 		readOnly.GET("/spaces", paginator, apiServer.getSpacesHandler)
 		readOnly.GET("/spaces/:space_id/members", paginator, apiServer.getMembersHandler)
-		readOnly.GET("/spaces/:space_id/objects", paginator, apiServer.getObjectsForSpaceHandler)
+		readOnly.GET("/spaces/:space_id/objects", paginator, apiServer.getObjectsHandler)
 		readOnly.GET("/spaces/:space_id/objects/:object_id", apiServer.getObjectHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes", paginator, apiServer.getObjectTypesHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, apiServer.getObjectTypeTemplatesHandler)

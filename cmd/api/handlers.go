@@ -295,7 +295,7 @@ func (a *ApiServer) getMembersHandler(c *gin.Context) {
 	respondWithPagination(c, http.StatusOK, members, len(members), offset, limit, hasNext)
 }
 
-// getObjectsForSpaceHandler retrieves objects in a specific space
+// getObjectsHandler retrieves objects in a specific space
 //
 //	@Summary	Retrieve objects in a specific space
 //	@Tags		space_objects
@@ -309,7 +309,7 @@ func (a *ApiServer) getMembersHandler(c *gin.Context) {
 //	@Failure	404			{object}	NotFoundError		"Resource not found"
 //	@Failure	502			{object}	ServerError			"Internal server error"
 //	@Router		/spaces/{space_id}/objects [get]
-func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
+func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
@@ -339,7 +339,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 			IncludeTime:    true,
 			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}},
-		Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage", "lastModifiedDate"},
+		Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
 		Offset: int32(offset),
 		Limit:  int32(limit + 1),
 	})
@@ -808,7 +808,7 @@ func (a *ApiServer) searchHandler(c *gin.Context) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage", "lastModifiedDate"},
+			Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
 			Offset: int32(offset),
 			Limit:  int32(limit + 1),
 			// TODO split limit between spaces

@@ -249,7 +249,7 @@ func respondWithPagination[T any](c *gin.Context, statusCode int, data []T, tota
 			Total:   total,
 			Offset:  offset,
 			Limit:   limit,
-			HasNext: hasNext,
+			HasMore: hasNext,
 		},
 	})
 }
