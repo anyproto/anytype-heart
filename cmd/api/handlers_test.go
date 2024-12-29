@@ -67,7 +67,7 @@ func newFixture(t *testing.T) *fixture {
 		readOnly.GET("/spaces/:space_id/objects/:object_id", apiServer.getObjectHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes", paginator, apiServer.getObjectTypesHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, apiServer.getObjectTypeTemplatesHandler)
-		readOnly.GET("/objects", paginator, apiServer.getObjectsHandler)
+		readOnly.GET("/search", paginator, apiServer.searchHandler)
 	}
 
 	readWrite := apiServer.router.Group("/v1")
@@ -234,7 +234,7 @@ func TestApiServer_GetSpacesHandler(t *testing.T) {
 			},
 			Keys:   []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
 			Offset: offset,
-			Limit:  limit,
+			Limit:  limit + 1,
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
@@ -286,16 +286,16 @@ func TestApiServer_GetSpacesHandler(t *testing.T) {
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
 
-		var response SpacesResponse
+		var response PaginatedResponse[Space]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		require.Len(t, response.Spaces, 2)
-		require.Equal(t, "Another Workspace", response.Spaces[0].Name)
-		require.Equal(t, "another-space-id", response.Spaces[0].Id)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), response.Spaces[0].Icon, "Icon URL does not match")
-		require.Equal(t, "My Workspace", response.Spaces[1].Name)
-		require.Equal(t, "my-space-id", response.Spaces[1].Id)
-		require.Equal(t, "🚀", response.Spaces[1].Icon)
+		require.Len(t, response.Data, 2)
+		require.Equal(t, "Another Workspace", response.Data[0].Name)
+		require.Equal(t, "another-space-id", response.Data[0].Id)
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), response.Data[0].Icon, "Icon URL does not match")
+		require.Equal(t, "My Workspace", response.Data[1].Name)
+		require.Equal(t, "my-space-id", response.Data[1].Id)
+		require.Equal(t, "🚀", response.Data[1].Icon)
 	})
 
 	t.Run("no spaces found", func(t *testing.T) {
@@ -446,18 +446,18 @@ func TestApiServer_GetMembersHandler(t *testing.T) {
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
 
-		var response MembersResponse
+		var response PaginatedResponse[Member]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		require.Len(t, response.Members, 2)
-		require.Equal(t, "member-1", response.Members[0].Id)
-		require.Equal(t, "John Doe", response.Members[0].Name)
-		require.Equal(t, "👤", response.Members[0].Icon)
-		require.Equal(t, "john.any", response.Members[0].GlobalName)
-		require.Equal(t, "member-2", response.Members[1].Id)
-		require.Equal(t, "Jane Doe", response.Members[1].Name)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), response.Members[1].Icon, "Icon URL does not match")
-		require.Equal(t, "jane.any", response.Members[1].GlobalName)
+		require.Len(t, response.Data, 2)
+		require.Equal(t, "member-1", response.Data[0].Id)
+		require.Equal(t, "John Doe", response.Data[0].Name)
+		require.Equal(t, "👤", response.Data[0].Icon)
+		require.Equal(t, "john.any", response.Data[0].GlobalName)
+		require.Equal(t, "member-2", response.Data[1].Id)
+		require.Equal(t, "Jane Doe", response.Data[1].Name)
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), response.Data[1].Icon, "Icon URL does not match")
+		require.Equal(t, "jane.any", response.Data[1].GlobalName)
 	})
 
 	t.Run("no members found", func(t *testing.T) {
@@ -825,14 +825,34 @@ func TestApiServer_GetObjectTypeTemplatesHandler(t *testing.T) {
 	})
 }
 
-func TestApiServer_GetObjectsHandler(t *testing.T) {
+func TestApiServer_SearchHandler(t *testing.T) {
 	t.Run("objects found globally", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 
 		// Mock retrieving spaces first
 		fx.accountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: techSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+				},
+			},
+			Keys: []string{"targetSpaceId"},
+		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
@@ -841,7 +861,7 @@ func TestApiServer_GetObjectsHandler(t *testing.T) {
 				},
 			},
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Twice()
+		}).Once()
 
 		// Mock objects in space-1
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
@@ -858,15 +878,131 @@ func TestApiServer_GetObjectsHandler(t *testing.T) {
 				},
 			},
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Once()
+		}).Twice()
+
+		// Mock object show for object blocks and details
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  "space-1",
+			ObjectId: "obj-global-1",
+		}).Return(&pb.RpcObjectShowResponse{
+			ObjectView: &model.ObjectView{
+				RootId: "root-123",
+				Blocks: []*model.Block{
+					{
+						Id: "root-123",
+						Restrictions: &model.BlockRestrictions{
+							Read:   false,
+							Edit:   false,
+							Remove: false,
+							Drag:   false,
+							DropOn: false,
+						},
+						ChildrenIds: []string{"header", "text-block", "relation-block"},
+					},
+					{
+						Id: "header",
+						Restrictions: &model.BlockRestrictions{
+							Read:   false,
+							Edit:   true,
+							Remove: true,
+							Drag:   true,
+							DropOn: true,
+						},
+						ChildrenIds: []string{"title", "featuredRelations"},
+					},
+					{
+						Id: "text-block",
+						Content: &model.BlockContentOfText{
+							Text: &model.BlockContentText{
+								Text:  "This is a sample text block",
+								Style: model.BlockContentText_Paragraph,
+							},
+						},
+					},
+				},
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Id: "root-123",
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								"name":             pbtypes.String("Global Object"),
+								"iconEmoji":        pbtypes.String("🌐"),
+								"lastModifiedDate": pbtypes.Float64(999999),
+								"createdDate":      pbtypes.Float64(888888),
+								"tag":              pbtypes.StringList([]string{"tag-1", "tag-2"}),
+							},
+						},
+					},
+					{
+						Id: "tag-1",
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								"name":                pbtypes.String("Important"),
+								"relationOptionColor": pbtypes.String("red"),
+							},
+						},
+					},
+					{
+						Id: "tag-2",
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								"name":                pbtypes.String("Optional"),
+								"relationOptionColor": pbtypes.String("blue"),
+							},
+						},
+					},
+				},
+			},
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+		}, nil).Once()
 
 		// when
-		req, _ := http.NewRequest("GET", "/v1/objects", nil)
+		req, _ := http.NewRequest("GET", "/v1/search", nil)
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Contains(t, w.Body.String(), "Global Object")
+
+		var response PaginatedResponse[Object]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		require.Len(t, response.Data, 1)
+		require.Equal(t, "space-1", response.Data[0].SpaceId)
+		require.Equal(t, "Global Object", response.Data[0].Name)
+		require.Equal(t, "obj-global-1", response.Data[0].Id)
+		require.Equal(t, "🌐", response.Data[0].Icon)
+
+		// check details
+		for _, detail := range response.Data[0].Details {
+			if detail.Id == "createdDate" {
+				require.Equal(t, float64(888888), detail.Details["createdDate"])
+			} else if detail.Id == "lastModifiedDate" {
+				require.Equal(t, float64(999999), detail.Details["lastModifiedDate"])
+			}
+		}
+
+		// check tags
+		tags := []Tag{}
+		for _, detail := range response.Data[0].Details {
+			if tagList, ok := detail.Details["tags"].([]interface{}); ok {
+				for _, tagValue := range tagList {
+					tagStruct := tagValue.(map[string]interface{})
+					tag := Tag{
+						Id:    tagStruct["id"].(string),
+						Name:  tagStruct["name"].(string),
+						Color: tagStruct["color"].(string),
+					}
+					tags = append(tags, tag)
+				}
+			}
+		}
+		require.Len(t, tags, 2)
+		require.Equal(t, "tag-1", tags[0].Id)
+		require.Equal(t, "Important", tags[0].Name)
+		require.Equal(t, "red", tags[0].Color)
+		require.Equal(t, "tag-2", tags[1].Id)
+		require.Equal(t, "Optional", tags[1].Name)
+		require.Equal(t, "blue", tags[1].Color)
 	})
 }

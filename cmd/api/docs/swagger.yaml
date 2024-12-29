@@ -147,13 +147,6 @@ definitions:
         example: member
         type: string
     type: object
-  api.MembersResponse:
-    properties:
-      members:
-        items:
-          $ref: '#/definitions/api.Member'
-        type: array
-    type: object
   api.MessageContent:
     properties:
       marks:
@@ -240,6 +233,39 @@ definitions:
         example: ot-page
         type: string
     type: object
+  api.PaginatedResponse-api_Member:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/api.Member'
+        type: array
+      pagination:
+        $ref: '#/definitions/api.PaginationMeta'
+    type: object
+  api.PaginatedResponse-api_Space:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/api.Space'
+        type: array
+      pagination:
+        $ref: '#/definitions/api.PaginationMeta'
+    type: object
+  api.PaginationMeta:
+    properties:
+      has_next:
+        description: whether there are more items available
+        type: boolean
+      limit:
+        description: the current limit
+        type: integer
+      offset:
+        description: the current offset
+        type: integer
+      total:
+        description: the total number of items returned
+        type: integer
+    type: object
   api.Reactions:
     properties:
       reactions:
@@ -306,13 +332,6 @@ definitions:
       workspace_object_id:
         example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
         type: string
-    type: object
-  api.SpacesResponse:
-    properties:
-      spaces:
-        items:
-          $ref: '#/definitions/api.Space'
-        type: array
     type: object
   api.Text:
     properties:
@@ -412,14 +431,14 @@ paths:
       summary: Retrieve an authentication token using a code
       tags:
       - auth
-  /objects:
+  /search:
     get:
       consumes:
       - application/json
       parameters:
       - description: The search term to filter objects by name
         in: query
-        name: search
+        name: query
         type: string
       - description: Specify object type for search
         in: query
@@ -478,7 +497,7 @@ paths:
         "200":
           description: List of spaces
           schema:
-            $ref: '#/definitions/api.SpacesResponse'
+            $ref: '#/definitions/api.PaginatedResponse-api_Space'
         "403":
           description: Unauthorized
           schema:
@@ -548,7 +567,7 @@ paths:
         "200":
           description: List of members
           schema:
-            $ref: '#/definitions/api.MembersResponse'
+            $ref: '#/definitions/api.PaginatedResponse-api_Member'
         "403":
           description: Unauthorized
           schema:

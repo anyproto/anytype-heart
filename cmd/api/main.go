@@ -106,7 +106,7 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 		readOnly.GET("/spaces/:space_id/objects/:object_id", a.getObjectHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes", paginator, a.getObjectTypesHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, a.getObjectTypeTemplatesHandler)
-		readOnly.GET("/objects", paginator, a.getObjectsHandler)
+		readOnly.GET("/search", paginator, a.searchHandler)
 	}
 
 	// Read-write routes

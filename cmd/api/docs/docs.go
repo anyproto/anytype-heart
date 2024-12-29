@@ -102,7 +102,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/objects": {
+        "/search": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -118,7 +118,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "The search term to filter objects by name",
-                        "name": "search",
+                        "name": "query",
                         "in": "query"
                     },
                     {
@@ -200,7 +200,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of spaces",
                         "schema": {
-                            "$ref": "#/definitions/api.SpacesResponse"
+                            "$ref": "#/definitions/api.PaginatedResponse-api_Space"
                         }
                     },
                     "403": {
@@ -305,7 +305,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of members",
                         "schema": {
-                            "$ref": "#/definitions/api.MembersResponse"
+                            "$ref": "#/definitions/api.PaginatedResponse-api_Member"
                         }
                     },
                     "403": {
@@ -1194,17 +1194,6 @@ const docTemplate = `{
                 }
             }
         },
-        "api.MembersResponse": {
-            "type": "object",
-            "properties": {
-                "members": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Member"
-                    }
-                }
-            }
-        },
         "api.MessageContent": {
             "type": "object",
             "properties": {
@@ -1328,6 +1317,55 @@ const docTemplate = `{
                 }
             }
         },
+        "api.PaginatedResponse-api_Member": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.Member"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/api.PaginationMeta"
+                }
+            }
+        },
+        "api.PaginatedResponse-api_Space": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.Space"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/api.PaginationMeta"
+                }
+            }
+        },
+        "api.PaginationMeta": {
+            "type": "object",
+            "properties": {
+                "has_next": {
+                    "description": "whether there are more items available",
+                    "type": "boolean"
+                },
+                "limit": {
+                    "description": "the current limit",
+                    "type": "integer"
+                },
+                "offset": {
+                    "description": "the current offset",
+                    "type": "integer"
+                },
+                "total": {
+                    "description": "the total number of items returned",
+                    "type": "integer"
+                }
+            }
+        },
         "api.Reactions": {
             "type": "object",
             "properties": {
@@ -1419,17 +1457,6 @@ const docTemplate = `{
                 "workspace_object_id": {
                     "type": "string",
                     "example": "bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"
-                }
-            }
-        },
-        "api.SpacesResponse": {
-            "type": "object",
-            "properties": {
-                "spaces": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Space"
-                    }
                 }
             }
         },
