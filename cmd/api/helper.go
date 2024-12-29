@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -238,4 +240,16 @@ func (a *ApiServer) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 		}
 	}
 	return tags
+}
+
+func respondWithPagination[T any](c *gin.Context, statusCode int, data []T, total, offset, limit int, hasNext bool) {
+	c.JSON(statusCode, PaginatedResponse[T]{
+		Data: data,
+		Pagination: PaginationMeta{
+			Total:   total,
+			Offset:  offset,
+			Limit:   limit,
+			HasNext: hasNext,
+		},
+	})
 }

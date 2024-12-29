@@ -1,5 +1,17 @@
 package api
 
+type PaginationMeta struct {
+	Total   int  `json:"total"`    // the total number of items returned
+	Offset  int  `json:"offset"`   // the current offset
+	Limit   int  `json:"limit"`    // the current limit
+	HasNext bool `json:"has_next"` // whether there are more items available
+}
+
+type PaginatedResponse[T any] struct {
+	Data       []T            `json:"data"`
+	Pagination PaginationMeta `json:"pagination"`
+}
+
 type AuthDisplayCodeResponse struct {
 	ChallengeId string `json:"challenge_id" example:"67647f5ecda913e9a2e11b26"`
 }
@@ -7,10 +19,6 @@ type AuthDisplayCodeResponse struct {
 type AuthTokenResponse struct {
 	SessionToken string `json:"session_token" example:""`
 	AppKey       string `json:"app_key" example:""`
-}
-
-type SpacesResponse struct {
-	Spaces []Space `json:"spaces"`
 }
 
 type CreateSpaceResponse struct {
@@ -35,10 +43,6 @@ type Space struct {
 	TechSpaceId            string `json:"tech_space_id" example:"bafyreif4xuwncrjl6jajt4zrrfnylpki476nv2w64yf42ovt7gia7oypii.23me69r569oi1"`
 	Timezone               string `json:"timezone" example:""`
 	NetworkId              string `json:"network_id" example:"N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU"`
-}
-
-type MembersResponse struct {
-	Members []Member `json:"members"`
 }
 
 type Member struct {

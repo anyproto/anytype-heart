@@ -92,12 +92,12 @@ func (a *ApiServer) authTokenHandler(c *gin.Context) {
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
-//	@Param		offset	query		int					false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit	query		int					false	"The number of items to return"	default(100)
-//	@Success	200		{object}	SpacesResponse		"List of spaces"
-//	@Failure	403		{object}	UnauthorizedError	"Unauthorized"
-//	@Failure	404		{object}	NotFoundError		"Resource not found"
-//	@Failure	502		{object}	ServerError			"Internal server error"
+//	@Param		offset	query		int							false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit	query		int							false	"The number of items to return"	default(100)
+//	@Success	200		{object}	PaginatedResponse[Space]	"List of spaces"
+//	@Failure	403		{object}	UnauthorizedError			"Unauthorized"
+//	@Failure	404		{object}	NotFoundError				"Resource not found"
+//	@Failure	502		{object}	ServerError					"Internal server error"
 //	@Router		/spaces [get]
 func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 	offset := c.GetInt("offset")
@@ -131,7 +131,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		},
 		Keys:   []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
 		Offset: int32(offset),
-		Limit:  int32(limit),
+		Limit:  int32(limit + 1),
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -158,7 +158,13 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		spaces = append(spaces, workspace)
 	}
 
-	c.JSON(http.StatusOK, SpacesResponse{Spaces: spaces})
+	hasNext := false
+	if len(spaces) > limit {
+		hasNext = true
+		spaces = spaces[:limit]
+	}
+
+	respondWithPagination(c, http.StatusOK, spaces, len(spaces), offset, limit, hasNext)
 }
 
 // createSpaceHandler creates a new space
@@ -214,13 +220,13 @@ func (a *ApiServer) createSpaceHandler(c *gin.Context) {
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string				true	"The ID of the space"
-//	@Param		offset		query		int					false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int					false	"The number of items to return"	default(100)
-//	@Success	200			{object}	MembersResponse		"List of members"
-//	@Failure	403			{object}	UnauthorizedError	"Unauthorized"
-//	@Failure	404			{object}	NotFoundError		"Resource not found"
-//	@Failure	502			{object}	ServerError			"Internal server error"
+//	@Param		space_id	path		string						true	"The ID of the space"
+//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int							false	"The number of items to return"	default(100)
+//	@Success	200			{object}	PaginatedResponse[Member]	"List of members"
+//	@Failure	403			{object}	UnauthorizedError			"Unauthorized"
+//	@Failure	404			{object}	NotFoundError				"Resource not found"
+//	@Failure	502			{object}	ServerError					"Internal server error"
 //	@Router		/spaces/{space_id}/members [get]
 func (a *ApiServer) getMembersHandler(c *gin.Context) {
 	spaceId := c.Param("space_id")
@@ -250,7 +256,7 @@ func (a *ApiServer) getMembersHandler(c *gin.Context) {
 		},
 		Keys:   []string{"id", "name", "iconEmoji", "iconImage", "identity", "globalName", "participantPermissions"},
 		Offset: int32(offset),
-		Limit:  int32(limit),
+		Limit:  int32(limit + 1),
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -280,7 +286,13 @@ func (a *ApiServer) getMembersHandler(c *gin.Context) {
 		members = append(members, member)
 	}
 
-	c.JSON(http.StatusOK, MembersResponse{Members: members})
+	hasNext := false
+	if len(members) > limit {
+		hasNext = true
+		members = members[:limit]
+	}
+
+	respondWithPagination(c, http.StatusOK, members, len(members), offset, limit, hasNext)
 }
 
 // getObjectsForSpaceHandler retrieves objects in a specific space
@@ -329,7 +341,7 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 		}},
 		Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage", "lastModifiedDate"},
 		Offset: int32(offset),
-		Limit:  int32(limit),
+		Limit:  int32(limit + 1),
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -372,7 +384,13 @@ func (a *ApiServer) getObjectsForSpaceHandler(c *gin.Context) {
 		objects = append(objects, object)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"objects": objects})
+	hasNext := false
+	if len(objects) > limit {
+		hasNext = true
+		objects = objects[:limit]
+	}
+
+	respondWithPagination(c, http.StatusOK, objects, len(objects), offset, limit, hasNext)
 }
 
 // getObjectHandler retrieves a specific object in a space
@@ -543,7 +561,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		},
 		Keys:   []string{"id", "uniqueKey", "name", "iconEmoji"},
 		Offset: int32(offset),
-		Limit:  int32(limit),
+		Limit:  int32(limit + 1),
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -567,7 +585,13 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"object_types": objectTypes})
+	hasNext := false
+	if len(objectTypes) > limit {
+		hasNext = true
+		objectTypes = objectTypes[:limit]
+	}
+
+	respondWithPagination(c, http.StatusOK, objectTypes, len(objectTypes), offset, limit, hasNext)
 }
 
 // getObjectTypeTemplatesHandler retrieves a list of templates for a specific object type in a space
@@ -628,7 +652,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 		},
 		Keys:   []string{"id", "targetObjectType", "name", "iconEmoji"},
 		Offset: int32(offset),
-		Limit:  int32(limit),
+		Limit:  int32(limit + 1),
 	})
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -669,25 +693,31 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"templates": templates})
+	hasNext := false
+	if len(templates) > limit {
+		hasNext = true
+		templates = templates[:limit]
+	}
+
+	respondWithPagination(c, http.StatusOK, templates, len(templates), offset, limit, hasNext)
 }
 
-// getObjectsHandler searches and retrieves objects across all the spaces
+// searchHandler searches and retrieves objects across all the spaces
 //
 //	@Summary	Search and retrieve objects across all the spaces
 //	@Tags		search
 //	@Accept		json
 //	@Produce	json
-//	@Param		search		query		string				false	"The search term to filter objects by name"
+//	@Param		query		query		string				false	"The search term to filter objects by name"
 //	@Param		object_type	query		string				false	"Specify object type for search"
 //	@Param		offset		query		int					false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit		query		int					false	"The number of items to return"	default(100)
 //	@Success	200			{object}	map[string][]Object	"List of objects"
 //	@Failure	403			{object}	UnauthorizedError	"Unauthorized"
 //	@Failure	502			{object}	ServerError			"Internal server error"
-//	@Router		/objects [get]
-func (a *ApiServer) getObjectsHandler(c *gin.Context) {
-	searchTerm := c.Query("search")
+//	@Router		/search [get]
+func (a *ApiServer) searchHandler(c *gin.Context) {
+	searchQuery := c.Query("query")
 	objectType := c.Query("object_type")
 	offset := c.GetInt("offset")
 	limit := c.GetInt("limit")
@@ -748,12 +778,12 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		},
 	}
 
-	if searchTerm != "" {
+	if searchQuery != "" {
 		// TODO also include snippet for notes
 		filters = append(filters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeyName.String(),
 			Condition:   model.BlockContentDataviewFilter_Like,
-			Value:       pbtypes.String(searchTerm),
+			Value:       pbtypes.String(searchQuery),
 		})
 	}
 
@@ -780,7 +810,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			}},
 			Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage", "lastModifiedDate"},
 			Offset: int32(offset),
-			Limit:  int32(limit),
+			Limit:  int32(limit + 1),
 			// TODO split limit between spaces
 			// Limit: paginationLimitPerSpace,
 			// FullText: searchTerm,
@@ -828,11 +858,13 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 	})
 
 	// TODO: solve global pagination vs per space pagination
+	hasNext := false
 	if len(searchResults) > limit {
+		hasNext = true
 		searchResults = searchResults[:limit]
 	}
 
-	c.JSON(http.StatusOK, gin.H{"objects": searchResults})
+	respondWithPagination(c, http.StatusOK, searchResults, len(searchResults), offset, limit, hasNext)
 }
 
 // getChatMessagesHandler retrieves last chat messages
