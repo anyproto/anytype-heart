@@ -129,9 +129,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys:   []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
-		Offset: int32(offset),
-		Limit:  int32(limit + 1),
+		Keys: []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -144,8 +142,10 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		return
 	}
 
-	spaces := make([]Space, 0, len(resp.Records))
-	for _, record := range resp.Records {
+	paginatedSpaces, hasMore := paginate(resp.Records, offset, limit)
+	spaces := make([]Space, 0, len(paginatedSpaces))
+
+	for _, record := range paginatedSpaces {
 		workspace, statusCode, errorMessage := a.getWorkspaceInfo(record.Fields["targetSpaceId"].GetStringValue())
 		if statusCode != http.StatusOK {
 			c.JSON(statusCode, gin.H{"message": errorMessage})
@@ -158,13 +158,7 @@ func (a *ApiServer) getSpacesHandler(c *gin.Context) {
 		spaces = append(spaces, workspace)
 	}
 
-	hasNext := false
-	if len(spaces) > limit {
-		hasNext = true
-		spaces = spaces[:limit]
-	}
-
-	respondWithPagination(c, http.StatusOK, spaces, len(spaces), offset, limit, hasNext)
+	respondWithPagination(c, http.StatusOK, spaces, len(resp.Records), offset, limit, hasMore)
 }
 
 // createSpaceHandler creates a new space
@@ -254,9 +248,7 @@ func (a *ApiServer) getMembersHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys:   []string{"id", "name", "iconEmoji", "iconImage", "identity", "globalName", "participantPermissions"},
-		Offset: int32(offset),
-		Limit:  int32(limit + 1),
+		Keys: []string{"id", "name", "iconEmoji", "iconImage", "identity", "globalName", "participantPermissions"},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -269,8 +261,10 @@ func (a *ApiServer) getMembersHandler(c *gin.Context) {
 		return
 	}
 
-	members := make([]Member, 0, len(resp.Records))
-	for _, record := range resp.Records {
+	paginatedMembers, hasMore := paginate(resp.Records, offset, limit)
+	members := make([]Member, 0, len(paginatedMembers))
+
+	for _, record := range paginatedMembers {
 		icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 
 		member := Member{
@@ -286,13 +280,7 @@ func (a *ApiServer) getMembersHandler(c *gin.Context) {
 		members = append(members, member)
 	}
 
-	hasNext := false
-	if len(members) > limit {
-		hasNext = true
-		members = members[:limit]
-	}
-
-	respondWithPagination(c, http.StatusOK, members, len(members), offset, limit, hasNext)
+	respondWithPagination(c, http.StatusOK, members, len(resp.Records), offset, limit, hasMore)
 }
 
 // getObjectsHandler retrieves objects in a specific space
@@ -339,9 +327,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 			IncludeTime:    true,
 			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}},
-		Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
-		Offset: int32(offset),
-		Limit:  int32(limit + 1),
+		Keys: []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -354,8 +340,10 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		return
 	}
 
-	objects := make([]Object, 0, len(resp.Records))
-	for _, record := range resp.Records {
+	paginatedObjects, hasMore := paginate(resp.Records, offset, limit)
+	objects := make([]Object, 0, len(paginatedObjects))
+
+	for _, record := range paginatedObjects {
 		icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 		objectTypeName, statusCode, errorMessage := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 		if statusCode != http.StatusOK {
@@ -384,13 +372,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		objects = append(objects, object)
 	}
 
-	hasNext := false
-	if len(objects) > limit {
-		hasNext = true
-		objects = objects[:limit]
-	}
-
-	respondWithPagination(c, http.StatusOK, objects, len(objects), offset, limit, hasNext)
+	respondWithPagination(c, http.StatusOK, objects, len(resp.Records), offset, limit, hasMore)
 }
 
 // getObjectHandler retrieves a specific object in a space
@@ -559,9 +541,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys:   []string{"id", "uniqueKey", "name", "iconEmoji"},
-		Offset: int32(offset),
-		Limit:  int32(limit + 1),
+		Keys: []string{"id", "uniqueKey", "name", "iconEmoji"},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -574,8 +554,10 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		return
 	}
 
-	objectTypes := make([]ObjectType, 0, len(resp.Records))
-	for _, record := range resp.Records {
+	paginatedTypes, hasMore := paginate(resp.Records, offset, limit)
+	objectTypes := make([]ObjectType, 0, len(paginatedTypes))
+
+	for _, record := range paginatedTypes {
 		objectTypes = append(objectTypes, ObjectType{
 			Type:      "object_type",
 			Id:        record.Fields["id"].GetStringValue(),
@@ -585,13 +567,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		})
 	}
 
-	hasNext := false
-	if len(objectTypes) > limit {
-		hasNext = true
-		objectTypes = objectTypes[:limit]
-	}
-
-	respondWithPagination(c, http.StatusOK, objectTypes, len(objectTypes), offset, limit, hasNext)
+	respondWithPagination(c, http.StatusOK, objectTypes, len(resp.Records), offset, limit, hasMore)
 }
 
 // getObjectTypeTemplatesHandler retrieves a list of templates for a specific object type in a space
@@ -650,9 +626,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 				Value:       pbtypes.String(templateTypeId),
 			},
 		},
-		Keys:   []string{"id", "targetObjectType", "name", "iconEmoji"},
-		Offset: int32(offset),
-		Limit:  int32(limit + 1),
+		Keys: []string{"id", "targetObjectType", "name", "iconEmoji"},
 	})
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -673,8 +647,10 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	}
 
 	// Finally, open each template and populate the response
-	templates := make([]ObjectTemplate, 0, len(templateIds))
-	for _, templateId := range templateIds {
+	paginatedTemplates, hasMore := paginate(templateIds, offset, limit)
+	templates := make([]ObjectTemplate, 0, len(paginatedTemplates))
+
+	for _, templateId := range paginatedTemplates {
 		templateResp := a.mw.ObjectShow(c.Request.Context(), &pb.RpcObjectShowRequest{
 			SpaceId:  spaceId,
 			ObjectId: templateId,
@@ -693,13 +669,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 		})
 	}
 
-	hasNext := false
-	if len(templates) > limit {
-		hasNext = true
-		templates = templates[:limit]
-	}
-
-	respondWithPagination(c, http.StatusOK, templates, len(templates), offset, limit, hasNext)
+	respondWithPagination(c, http.StatusOK, templates, len(templateIds), offset, limit, hasMore)
 }
 
 // searchHandler searches and retrieves objects across all the spaces
@@ -808,9 +778,7 @@ func (a *ApiServer) searchHandler(c *gin.Context) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys:   []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
-			Offset: int32(offset),
-			Limit:  int32(limit + 1),
+			Keys: []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
 			// TODO split limit between spaces
 			// Limit: paginationLimitPerSpace,
 			// FullText: searchTerm,
@@ -858,13 +826,9 @@ func (a *ApiServer) searchHandler(c *gin.Context) {
 	})
 
 	// TODO: solve global pagination vs per space pagination
-	hasNext := false
-	if len(searchResults) > limit {
-		hasNext = true
-		searchResults = searchResults[:limit]
-	}
+	paginatedResults, hasMore := paginate(searchResults, offset, limit)
 
-	respondWithPagination(c, http.StatusOK, searchResults, len(searchResults), offset, limit, hasNext)
+	respondWithPagination(c, http.StatusOK, paginatedResults, len(searchResults), offset, limit, hasMore)
 }
 
 // getChatMessagesHandler retrieves last chat messages

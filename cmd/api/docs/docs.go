@@ -1364,9 +1364,9 @@ const docTemplate = `{
                     "example": 0
                 },
                 "total": {
-                    "description": "the total number of items returned",
+                    "description": "the total number of items available on that endpoint",
                     "type": "integer",
-                    "example": 100
+                    "example": 1024
                 }
             }
         },

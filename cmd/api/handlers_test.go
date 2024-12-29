@@ -232,9 +232,7 @@ func TestApiServer_GetSpacesHandler(t *testing.T) {
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
-			Keys:   []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
-			Offset: offset,
-			Limit:  limit + 1,
+			Keys: []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{

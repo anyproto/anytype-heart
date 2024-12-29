@@ -266,8 +266,8 @@ definitions:
         example: 0
         type: integer
       total:
-        description: the total number of items returned
-        example: 100
+        description: the total number of items available on that endpoint
+        example: 1024
         type: integer
     type: object
   api.Reactions:

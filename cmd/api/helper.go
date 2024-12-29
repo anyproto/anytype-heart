@@ -242,14 +242,33 @@ func (a *ApiServer) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	return tags
 }
 
-func respondWithPagination[T any](c *gin.Context, statusCode int, data []T, total, offset, limit int, hasNext bool) {
+// respondWithPagination returns a json response with the paginated data and corresponding metadata
+func respondWithPagination[T any](c *gin.Context, statusCode int, data []T, total, offset, limit int, hasMore bool) {
 	c.JSON(statusCode, PaginatedResponse[T]{
 		Data: data,
 		Pagination: PaginationMeta{
 			Total:   total,
 			Offset:  offset,
 			Limit:   limit,
-			HasMore: hasNext,
+			HasMore: hasMore,
 		},
 	})
+}
+
+// paginate paginates the given records based on the offset and limit
+func paginate[T any](records []T, offset, limit int) ([]T, bool) {
+	total := len(records)
+	start := offset
+	end := offset + limit
+
+	if start > total {
+		start = total
+	}
+	if end > total {
+		end = total
+	}
+
+	paginated := records[start:end]
+	hasMore := end < total
+	return paginated, hasMore
 }
