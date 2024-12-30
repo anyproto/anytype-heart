@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -224,8 +226,25 @@ func main() {
 
 	startReportMemory(mw)
 
+	shutdown := func() {
+		server.Stop()
+		proxy.Close()
+		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
+	}
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
+	if runtime.GOOS == "windows" {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			message := scanner.Text()
+			if message == "shutdown" {
+				fmt.Println("[anytype-heart] Shutdown: received shutdown msg, closing components...")
+				// Perform cleanup or exit
+				shutdown()
+				return
+			}
+		}
+	}
 
 	for {
 		sig := <-signalChan
@@ -235,9 +254,8 @@ func main() {
 			}
 			continue
 		}
-		server.Stop()
-		proxy.Close()
-		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
+		fmt.Printf("[anytype-heart] Shutdown: received OS signal (%s), closing components...\n", sig.String())
+		shutdown()
 		return
 	}
 }
