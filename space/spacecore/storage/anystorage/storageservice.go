@@ -139,6 +139,9 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB, err error) {
 	dbPath := path.Join(s.rootPath, id)
 	if _, err := os.Stat(dbPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, spacestorage.ErrSpaceStorageMissing
+		}
 		return nil, err
 	}
 	return anystore.Open(ctx, dbPath, nil)
