@@ -1,23 +1,19 @@
 package api
 
 import (
-	"crypto/rand"
-	"math/big"
 	"net/http"
 	"sort"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/cmd/api/pagination"
+	"github.com/anyproto/anytype-heart/cmd/api/utils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-type CreateSpaceRequest struct {
-	Name string `json:"name"`
-}
 
 type CreateObjectRequest struct {
 	Name                string `json:"name"`
@@ -86,205 +82,6 @@ func (a *ApiServer) authTokenHandler(c *gin.Context) {
 	})
 }
 
-// getSpacesHandler retrieves a list of spaces
-//
-//	@Summary	Retrieve a list of spaces
-//	@Tags		spaces
-//	@Accept		json
-//	@Produce	json
-//	@Param		offset	query		int							false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit	query		int							false	"The number of items to return"	default(100)
-//	@Success	200		{object}	PaginatedResponse[Space]	"List of spaces"
-//	@Failure	403		{object}	UnauthorizedError			"Unauthorized"
-//	@Failure	404		{object}	NotFoundError				"Resource not found"
-//	@Failure	502		{object}	ServerError					"Internal server error"
-//	@Router		/spaces [get]
-func (a *ApiServer) getSpacesHandler(c *gin.Context) {
-	offset := c.GetInt("offset")
-	limit := c.GetInt("limit")
-
-	// Call ObjectSearch for all objects of type spaceView
-	resp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
-		SpaceId: a.accountInfo.TechSpaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
-			},
-		},
-		Sorts: []*model.BlockContentDataviewSort{
-			{
-				RelationKey:    "spaceOrder",
-				Type:           model.BlockContentDataviewSort_Asc,
-				NoCollate:      true,
-				EmptyPlacement: model.BlockContentDataviewSort_End,
-			},
-		},
-		Keys: []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
-	})
-
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
-		return
-	}
-
-	if len(resp.Records) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "No spaces found."})
-		return
-	}
-
-	paginatedSpaces, hasMore := paginate(resp.Records, offset, limit)
-	spaces := make([]Space, 0, len(paginatedSpaces))
-
-	for _, record := range paginatedSpaces {
-		workspace, statusCode, errorMessage := a.getWorkspaceInfo(record.Fields["targetSpaceId"].GetStringValue())
-		if statusCode != http.StatusOK {
-			c.JSON(statusCode, gin.H{"message": errorMessage})
-			return
-		}
-
-		workspace.Name = record.Fields["name"].GetStringValue()
-		workspace.Icon = a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
-
-		spaces = append(spaces, workspace)
-	}
-
-	respondWithPagination(c, http.StatusOK, spaces, len(resp.Records), offset, limit, hasMore)
-}
-
-// createSpaceHandler creates a new space
-//
-//	@Summary	Create a new Space
-//	@Tags		spaces
-//	@Accept		json
-//	@Produce	json
-//	@Param		name	body		string				true	"Space Name"
-//	@Success	200		{object}	CreateSpaceResponse	"Space created successfully"
-//	@Failure	403		{object}	UnauthorizedError	"Unauthorized"
-//	@Failure	502		{object}	ServerError			"Internal server error"
-//	@Router		/spaces [post]
-func (a *ApiServer) createSpaceHandler(c *gin.Context) {
-	nameRequest := CreateSpaceRequest{}
-	if err := c.BindJSON(&nameRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid JSON"})
-		return
-	}
-	name := nameRequest.Name
-	iconOption, err := rand.Int(rand.Reader, big.NewInt(13))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate random icon."})
-		return
-	}
-
-	// Create new workspace with a random icon and import default use case
-	resp := a.mw.WorkspaceCreate(c.Request.Context(), &pb.RpcWorkspaceCreateRequest{
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"iconOption": {Kind: &types.Value_NumberValue{NumberValue: float64(iconOption.Int64())}},
-				"name":       {Kind: &types.Value_StringValue{StringValue: name}},
-				"spaceDashboardId": {Kind: &types.Value_StringValue{
-					StringValue: "lastOpened",
-				}},
-			},
-		},
-		UseCase:  pb.RpcObjectImportUseCaseRequest_GET_STARTED,
-		WithChat: true,
-	})
-
-	if resp.Error.Code != pb.RpcWorkspaceCreateResponseError_NULL {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create a new space."})
-		return
-	}
-
-	c.JSON(http.StatusOK, CreateSpaceResponse{SpaceId: resp.SpaceId, Name: name})
-}
-
-// getMembersHandler retrieves a list of members for the specified space
-//
-//	@Summary	Retrieve a list of members for the specified Space
-//	@Tags		spaces
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path		string						true	"The ID of the space"
-//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int							false	"The number of items to return"	default(100)
-//	@Success	200			{object}	PaginatedResponse[Member]	"List of members"
-//	@Failure	403			{object}	UnauthorizedError			"Unauthorized"
-//	@Failure	404			{object}	NotFoundError				"Resource not found"
-//	@Failure	502			{object}	ServerError					"Internal server error"
-//	@Router		/spaces/{space_id}/members [get]
-func (a *ApiServer) getMembersHandler(c *gin.Context) {
-	spaceId := c.Param("space_id")
-	offset := c.GetInt("offset")
-	limit := c.GetInt("limit")
-
-	// Call ObjectSearch for all objects of type participant
-	resp := a.mw.ObjectSearch(c.Request.Context(), &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
-			},
-			{
-				RelationKey: bundle.RelationKeyParticipantStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
-			},
-		},
-		Sorts: []*model.BlockContentDataviewSort{
-			{
-				RelationKey: "name",
-				Type:        model.BlockContentDataviewSort_Asc,
-			},
-		},
-		Keys: []string{"id", "name", "iconEmoji", "iconImage", "identity", "globalName", "participantPermissions"},
-	})
-
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of members."})
-		return
-	}
-
-	if len(resp.Records) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "No members found."})
-		return
-	}
-
-	paginatedMembers, hasMore := paginate(resp.Records, offset, limit)
-	members := make([]Member, 0, len(paginatedMembers))
-
-	for _, record := range paginatedMembers {
-		icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
-
-		member := Member{
-			Type:       "space_member",
-			Id:         record.Fields["id"].GetStringValue(),
-			Name:       record.Fields["name"].GetStringValue(),
-			Icon:       icon,
-			Identity:   record.Fields["identity"].GetStringValue(),
-			GlobalName: record.Fields["globalName"].GetStringValue(),
-			Role:       model.ParticipantPermissions_name[int32(record.Fields["participantPermissions"].GetNumberValue())],
-		}
-
-		members = append(members, member)
-	}
-
-	respondWithPagination(c, http.StatusOK, members, len(resp.Records), offset, limit, hasMore)
-}
-
 // getObjectsHandler retrieves objects in a specific space
 //
 //	@Summary	Retrieve objects in a specific space
@@ -342,11 +139,11 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		return
 	}
 
-	paginatedObjects, hasMore := paginate(resp.Records, offset, limit)
+	paginatedObjects, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	objects := make([]Object, 0, len(paginatedObjects))
 
 	for _, record := range paginatedObjects {
-		icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
+		icon := utils.GetIconFromEmojiOrImage(a.accountInfo, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 		objectTypeName, statusCode, errorMessage := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 		if statusCode != http.StatusOK {
 			c.JSON(statusCode, gin.H{"message": errorMessage})
@@ -374,7 +171,7 @@ func (a *ApiServer) getObjectsHandler(c *gin.Context) {
 		objects = append(objects, object)
 	}
 
-	respondWithPagination(c, http.StatusOK, objects, len(resp.Records), offset, limit, hasMore)
+	pagination.RespondWithPagination(c, http.StatusOK, objects, len(resp.Records), offset, limit, hasMore)
 }
 
 // getObjectHandler retrieves a specific object in a space
@@ -556,7 +353,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		return
 	}
 
-	paginatedTypes, hasMore := paginate(resp.Records, offset, limit)
+	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	objectTypes := make([]ObjectType, 0, len(paginatedTypes))
 
 	for _, record := range paginatedTypes {
@@ -569,7 +366,7 @@ func (a *ApiServer) getObjectTypesHandler(c *gin.Context) {
 		})
 	}
 
-	respondWithPagination(c, http.StatusOK, objectTypes, len(resp.Records), offset, limit, hasMore)
+	pagination.RespondWithPagination(c, http.StatusOK, objectTypes, len(resp.Records), offset, limit, hasMore)
 }
 
 // getObjectTypeTemplatesHandler retrieves a list of templates for a specific object type in a space
@@ -649,7 +446,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 	}
 
 	// Finally, open each template and populate the response
-	paginatedTemplates, hasMore := paginate(templateIds, offset, limit)
+	paginatedTemplates, hasMore := pagination.Paginate(templateIds, offset, limit)
 	templates := make([]ObjectTemplate, 0, len(paginatedTemplates))
 
 	for _, templateId := range paginatedTemplates {
@@ -671,7 +468,7 @@ func (a *ApiServer) getObjectTypeTemplatesHandler(c *gin.Context) {
 		})
 	}
 
-	respondWithPagination(c, http.StatusOK, templates, len(templateIds), offset, limit, hasMore)
+	pagination.RespondWithPagination(c, http.StatusOK, templates, len(templateIds), offset, limit, hasMore)
 }
 
 // searchHandler searches and retrieves objects across all the spaces
@@ -796,7 +593,7 @@ func (a *ApiServer) searchHandler(c *gin.Context) {
 		}
 
 		for _, record := range objectResp.Records {
-			icon := a.getIconFromEmojiOrImage(record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
+			icon := utils.GetIconFromEmojiOrImage(a.accountInfo, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 			objectTypeName, statusCode, errorMessage := a.resolveTypeToName(spaceId, record.Fields["type"].GetStringValue())
 			if statusCode != http.StatusOK {
 				c.JSON(statusCode, gin.H{"message": errorMessage})
@@ -828,190 +625,7 @@ func (a *ApiServer) searchHandler(c *gin.Context) {
 	})
 
 	// TODO: solve global pagination vs per space pagination
-	paginatedResults, hasMore := paginate(searchResults, offset, limit)
+	paginatedResults, hasMore := pagination.Paginate(searchResults, offset, limit)
 
-	respondWithPagination(c, http.StatusOK, paginatedResults, len(searchResults), offset, limit, hasMore)
-}
-
-// getChatMessagesHandler retrieves last chat messages
-//
-//	@Summary	Retrieve last chat messages
-//	@Tags		chat
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path		string						true	"The ID of the space"
-//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int							false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string][]ChatMessage	"List of chat messages"
-//	@Failure	502			{object}	ServerError					"Internal server error"
-//	@Router		/v1/spaces/{space_id}/chat/messages [get]
-func (a *ApiServer) getChatMessagesHandler(c *gin.Context) {
-	spaceId := c.Param("space_id")
-	// TODO: implement offset
-	// offset := c.GetInt("offset")
-	limit := c.GetInt("limit")
-
-	chatId, statusCode, errorMessage := a.getChatIdForSpace(spaceId)
-	if statusCode != http.StatusOK {
-		c.JSON(statusCode, gin.H{"message": errorMessage})
-		return
-	}
-
-	lastMessages := a.mw.ChatSubscribeLastMessages(c.Request.Context(), &pb.RpcChatSubscribeLastMessagesRequest{
-		ChatObjectId: chatId,
-		Limit:        int32(limit),
-	})
-
-	if lastMessages.Error.Code != pb.RpcChatSubscribeLastMessagesResponseError_NULL {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve last messages."})
-	}
-
-	messages := make([]ChatMessage, 0, len(lastMessages.Messages))
-	for _, message := range lastMessages.Messages {
-
-		attachments := make([]Attachment, 0, len(message.Attachments))
-		for _, attachment := range message.Attachments {
-			target := attachment.Target
-			if attachment.Type != model.ChatMessageAttachment_LINK {
-				target = a.getGatewayURLForMedia(attachment.Target, false)
-			}
-			attachments = append(attachments, Attachment{
-				Target: target,
-				Type:   model.ChatMessageAttachmentAttachmentType_name[int32(attachment.Type)],
-			})
-		}
-
-		messages = append(messages, ChatMessage{
-			Type:             "chat_message",
-			Id:               message.Id,
-			Creator:          message.Creator,
-			CreatedAt:        message.CreatedAt,
-			ReplyToMessageId: message.ReplyToMessageId,
-			Message: MessageContent{
-				Text: message.Message.Text,
-				// TODO: params
-				// Style: nil,
-				// Marks: nil,
-			},
-			Attachments: attachments,
-			Reactions: Reactions{
-				ReactionsMap: func() map[string]IdentityList {
-					reactionsMap := make(map[string]IdentityList)
-					for emoji, ids := range message.Reactions.Reactions {
-						reactionsMap[emoji] = IdentityList{Ids: ids.Ids}
-					}
-					return reactionsMap
-				}(),
-			},
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{"chatId": chatId, "messages": messages})
-}
-
-// getChatMessageHandler retrieves a specific chat message by message_id
-//
-//	@Summary	Retrieve a specific chat message
-//	@Tags		chat
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path		string			true	"The ID of the space"
-//	@Param		message_id	path		string			true	"Message ID"
-//	@Success	200			{object}	ChatMessage		"Chat message"
-//	@Failure	404			{object}	NotFoundError	"Message not found"
-//	@Failure	502			{object}	ServerError		"Internal server error"
-//	@Router		/v1/spaces/{space_id}/chat/messages/{message_id} [get]
-func (a *ApiServer) getChatMessageHandler(c *gin.Context) {
-	// TODO: Implement logic to retrieve a specific chat message by message_id
-
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
-// addChatMessageHandler adds a new chat message to chat
-//
-//	@Summary	Add a new chat message
-//	@Tags		chat
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path		string			true	"The ID of the space"
-//	@Param		message		body		ChatMessage		true	"Chat message"
-//	@Success	201			{object}	ChatMessage		"Created chat message"
-//	@Failure	400			{object}	ValidationError	"Invalid input"
-//	@Failure	502			{object}	ServerError		"Internal server error"
-//	@Router		/v1/spaces/{space_id}/chat/messages [post]
-func (a *ApiServer) addChatMessageHandler(c *gin.Context) {
-	spaceId := c.Param("space_id")
-
-	request := AddMessageRequest{}
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid JSON"})
-		return
-	}
-
-	chatId, statusCode, errorMessage := a.getChatIdForSpace(spaceId)
-	if statusCode != http.StatusOK {
-		c.JSON(statusCode, gin.H{"message": errorMessage})
-		return
-	}
-
-	resp := a.mw.ChatAddMessage(c.Request.Context(), &pb.RpcChatAddMessageRequest{
-		ChatObjectId: chatId,
-		Message: &model.ChatMessage{
-			Id:               "",
-			OrderId:          "",
-			Creator:          "",
-			CreatedAt:        0,
-			ModifiedAt:       0,
-			ReplyToMessageId: "",
-			Message: &model.ChatMessageMessageContent{
-				Text: request.Text,
-				// TODO: param
-				// Style: request.Style,
-			},
-		},
-	})
-
-	if resp.Error.Code != pb.RpcChatAddMessageResponseError_NULL {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create message."})
-	}
-
-	c.JSON(http.StatusOK, gin.H{"messageId": resp.MessageId})
-}
-
-// updateChatMessageHandler updates an existing chat message by message_id
-//
-//	@Summary	Update an existing chat message
-//	@Tags		chat
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path		string			true	"The ID of the space"
-//	@Param		message_id	path		string			true	"Message ID"
-//	@Param		message		body		ChatMessage		true	"Chat message"
-//	@Success	200			{object}	ChatMessage		"Updated chat message"
-//	@Failure	400			{object}	ValidationError	"Invalid input"
-//	@Failure	404			{object}	NotFoundError	"Message not found"
-//	@Failure	502			{object}	ServerError		"Internal server error"
-//	@Router		/v1/spaces/{space_id}/chat/messages/{message_id} [put]
-func (a *ApiServer) updateChatMessageHandler(c *gin.Context) {
-	// TODO: Implement logic to update an existing chat message by message_id
-
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
-// deleteChatMessageHandler deletes a chat message by message_id
-//
-//	@Summary	Delete a chat message
-//	@Tags		chat
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path	string	true	"The ID of the space"
-//	@Param		message_id	path	string	true	"Message ID"
-//	@Success	204			"Message deleted successfully"
-//	@Failure	404			{object}	NotFoundError	"Message not found"
-//	@Failure	502			{object}	ServerError		"Internal server error"
-//	@Router		/v1/spaces/{space_id}/chat/messages/{message_id} [delete]
-func (a *ApiServer) deleteChatMessageHandler(c *gin.Context) {
-	// TODO: Implement logic to delete a chat message by message_id
-
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	pagination.RespondWithPagination(c, http.StatusOK, paginatedResults, len(searchResults), offset, limit, hasMore)
 }

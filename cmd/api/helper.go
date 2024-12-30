@@ -2,26 +2,15 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-
+	"github.com/anyproto/anytype-heart/cmd/api/utils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-// getGatewayURLForMedia returns the URL of file gateway for the media object with the given ID
-func (a *ApiServer) getGatewayURLForMedia(objectId string, isIcon bool) string {
-	widthParam := ""
-	if isIcon {
-		widthParam = "?width=100"
-	}
-	return fmt.Sprintf("%s/image/%s%s", a.accountInfo.GatewayUrl, objectId, widthParam)
-}
 
 // resolveTypeToName resolves the type ID to the name of the type, e.g. "ot-page" to "Page" or "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu" to "Custom Type"
 func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (typeName string, statusCode int, errorMessage string) {
@@ -54,71 +43,6 @@ func (a *ApiServer) resolveTypeToName(spaceId string, typeId string) (typeName s
 	return resp.Records[0].Fields["name"].GetStringValue(), http.StatusOK, ""
 }
 
-// getChatIdForSpace returns the chat ID for the space with the given ID
-func (a *ApiServer) getChatIdForSpace(spaceId string) (chatId string, statusCode int, errorMessage string) {
-	workspace, statusCode, errorMessage := a.getWorkspaceInfo(spaceId)
-	if statusCode != http.StatusOK {
-		return "", statusCode, errorMessage
-	}
-
-	resp := a.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
-		SpaceId:  spaceId,
-		ObjectId: workspace.WorkspaceObjectId,
-	})
-
-	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return "", http.StatusInternalServerError, "Failed to open workspace object."
-	}
-
-	if !resp.ObjectView.Details[0].Details.Fields["hasChat"].GetBoolValue() {
-		return "", http.StatusNotFound, "Chat not found."
-	}
-
-	return resp.ObjectView.Details[0].Details.Fields["chatId"].GetStringValue(), http.StatusOK, ""
-}
-
-// getWorkspaceInfo returns the workspace info for the space with the given ID
-func (a *ApiServer) getWorkspaceInfo(spaceId string) (space Space, statusCode int, errorMessage string) {
-	workspaceResponse := a.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
-		SpaceId:  spaceId,
-		WithChat: true,
-	})
-
-	if workspaceResponse.Error.Code != pb.RpcWorkspaceOpenResponseError_NULL {
-		return Space{}, http.StatusInternalServerError, "Failed to open workspace."
-	}
-
-	return Space{
-		Type:                   "space",
-		Id:                     spaceId,
-		HomeObjectId:           workspaceResponse.Info.HomeObjectId,
-		ArchiveObjectId:        workspaceResponse.Info.ArchiveObjectId,
-		ProfileObjectId:        workspaceResponse.Info.ProfileObjectId,
-		MarketplaceWorkspaceId: workspaceResponse.Info.MarketplaceWorkspaceId,
-		WorkspaceObjectId:      workspaceResponse.Info.WorkspaceObjectId,
-		DeviceId:               workspaceResponse.Info.DeviceId,
-		AccountSpaceId:         workspaceResponse.Info.AccountSpaceId,
-		WidgetsId:              workspaceResponse.Info.WidgetsId,
-		SpaceViewId:            workspaceResponse.Info.SpaceViewId,
-		TechSpaceId:            workspaceResponse.Info.TechSpaceId,
-		Timezone:               workspaceResponse.Info.TimeZone,
-		NetworkId:              workspaceResponse.Info.NetworkId,
-	}, http.StatusOK, ""
-}
-
-// getIconFromEmojiOrImage returns the icon to use for the object, which can be either an emoji or an image url
-func (a *ApiServer) getIconFromEmojiOrImage(iconEmoji string, iconImage string) string {
-	if iconEmoji != "" {
-		return iconEmoji
-	}
-
-	if iconImage != "" {
-		return a.getGatewayURLForMedia(iconImage, true)
-	}
-
-	return ""
-}
-
 // getBlocks returns the blocks of the object
 func (a *ApiServer) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}
@@ -134,7 +58,7 @@ func (a *ApiServer) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 				Checked: content.Text.Checked,
 				Color:   content.Text.Color,
-				Icon:    a.getIconFromEmojiOrImage(content.Text.IconEmoji, content.Text.IconImage),
+				Icon:    utils.GetIconFromEmojiOrImage(a.accountInfo, content.Text.IconEmoji, content.Text.IconImage),
 			}
 		case *model.BlockContentOfFile:
 			file = &File{
@@ -240,35 +164,4 @@ func (a *ApiServer) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 		}
 	}
 	return tags
-}
-
-// respondWithPagination returns a json response with the paginated data and corresponding metadata
-func respondWithPagination[T any](c *gin.Context, statusCode int, data []T, total, offset, limit int, hasMore bool) {
-	c.JSON(statusCode, PaginatedResponse[T]{
-		Data: data,
-		Pagination: PaginationMeta{
-			Total:   total,
-			Offset:  offset,
-			Limit:   limit,
-			HasMore: hasMore,
-		},
-	})
-}
-
-// paginate paginates the given records based on the offset and limit
-func paginate[T any](records []T, offset, limit int) ([]T, bool) {
-	total := len(records)
-	start := offset
-	end := offset + limit
-
-	if start > total {
-		start = total
-	}
-	if end > total {
-		end = total
-	}
-
-	paginated := records[start:end]
-	hasMore := end < total
-	return paginated, hasMore
 }

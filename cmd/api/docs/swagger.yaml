@@ -1,14 +1,5 @@
 basePath: /v1
 definitions:
-  api.Attachment:
-    properties:
-      target:
-        description: Identifier for the attachment object
-        type: string
-      type:
-        description: Type of attachment
-        type: string
-    type: object
   api.AuthDisplayCodeResponse:
     properties:
       challenge_id:
@@ -43,49 +34,6 @@ definitions:
       vertical_align:
         type: string
     type: object
-  api.ChatMessage:
-    properties:
-      attachments:
-        description: Attachments slice
-        items:
-          $ref: '#/definitions/api.Attachment'
-        type: array
-      chat_message:
-        type: string
-      created_at:
-        type: integer
-      creator:
-        description: Identifier for the message creator
-        type: string
-      id:
-        description: Unique message identifier
-        type: string
-      message:
-        allOf:
-        - $ref: '#/definitions/api.MessageContent'
-        description: Message content
-      modified_at:
-        type: integer
-      order_id:
-        description: Used for subscriptions
-        type: string
-      reactions:
-        allOf:
-        - $ref: '#/definitions/api.Reactions'
-        description: Reactions to the message
-      reply_to_message_id:
-        description: Identifier for the message being replied to
-        type: string
-    type: object
-  api.CreateSpaceResponse:
-    properties:
-      name:
-        example: Space Name
-        type: string
-      space_id:
-        example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
-        type: string
-    type: object
   api.Detail:
     properties:
       details:
@@ -113,52 +61,6 @@ definitions:
       target_object_id:
         type: string
       type:
-        type: string
-    type: object
-  api.IdentityList:
-    properties:
-      ids:
-        description: List of user IDs
-        items:
-          type: string
-        type: array
-    type: object
-  api.Member:
-    properties:
-      global_name:
-        example: john.any
-        type: string
-      icon:
-        example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100
-        type: string
-      id:
-        example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
-        type: string
-      identity:
-        example: AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ
-        type: string
-      name:
-        example: John Doe
-        type: string
-      role:
-        example: Owner
-        type: string
-      type:
-        example: member
-        type: string
-    type: object
-  api.MessageContent:
-    properties:
-      marks:
-        description: List of marks applied to the text
-        items:
-          type: string
-        type: array
-      style:
-        description: The style/type of the message part
-        type: string
-      text:
-        description: The text content of the message part
         type: string
     type: object
   api.NotFoundError:
@@ -233,25 +135,62 @@ definitions:
         example: ot-page
         type: string
     type: object
-  api.PaginatedResponse-api_Member:
+  api.ServerError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  api.Text:
+    properties:
+      checked:
+        type: boolean
+      color:
+        type: string
+      icon:
+        type: string
+      style:
+        type: string
+      text:
+        type: string
+    type: object
+  api.UnauthorizedError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  api.ValidationError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  pagination.PaginatedResponse-space_Member:
     properties:
       data:
         items:
-          $ref: '#/definitions/api.Member'
+          $ref: '#/definitions/space.Member'
         type: array
       pagination:
-        $ref: '#/definitions/api.PaginationMeta'
+        $ref: '#/definitions/pagination.PaginationMeta'
     type: object
-  api.PaginatedResponse-api_Space:
+  pagination.PaginatedResponse-space_Space:
     properties:
       data:
         items:
-          $ref: '#/definitions/api.Space'
+          $ref: '#/definitions/space.Space'
         type: array
       pagination:
-        $ref: '#/definitions/api.PaginationMeta'
+        $ref: '#/definitions/pagination.PaginationMeta'
     type: object
-  api.PaginationMeta:
+  pagination.PaginationMeta:
     properties:
       has_more:
         description: whether there are more items available
@@ -270,32 +209,51 @@ definitions:
         example: 1024
         type: integer
     type: object
-  api.Reactions:
+  space.CreateSpaceResponse:
     properties:
-      reactions:
-        additionalProperties:
-          $ref: '#/definitions/api.IdentityList'
-        description: Map of emoji to list of user IDs
-        type: object
+      space:
+        $ref: '#/definitions/space.Space'
     type: object
-  api.ServerError:
+  space.Member:
     properties:
-      error:
-        properties:
-          message:
-            type: string
-        type: object
+      global_name:
+        example: john.any
+        type: string
+      icon:
+        example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100
+        type: string
+      id:
+        example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
+        type: string
+      identity:
+        example: AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ
+        type: string
+      name:
+        example: John Doe
+        type: string
+      role:
+        example: Owner
+        type: string
+      type:
+        example: member
+        type: string
     type: object
-  api.Space:
+  space.Space:
     properties:
       account_space_id:
         example: bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1
+        type: string
+      analytics_id:
+        example: ""
         type: string
       archive_object_id:
         example: bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri
         type: string
       device_id:
         example: 12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF
+        type: string
+      gateway_url:
+        example: ""
         type: string
       home_object_id:
         example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
@@ -305,6 +263,9 @@ definitions:
         type: string
       id:
         example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
+        type: string
+      local_storage_path:
+        example: ""
         type: string
       marketplace_workspace_id:
         example: _anytype_marketplace
@@ -336,35 +297,6 @@ definitions:
       workspace_object_id:
         example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
         type: string
-    type: object
-  api.Text:
-    properties:
-      checked:
-        type: boolean
-      color:
-        type: string
-      icon:
-        type: string
-      style:
-        type: string
-      text:
-        type: string
-    type: object
-  api.UnauthorizedError:
-    properties:
-      error:
-        properties:
-          message:
-            type: string
-        type: object
-    type: object
-  api.ValidationError:
-    properties:
-      error:
-        properties:
-          message:
-            type: string
-        type: object
     type: object
 externalDocs:
   description: OpenAPI
@@ -501,7 +433,7 @@ paths:
         "200":
           description: List of spaces
           schema:
-            $ref: '#/definitions/api.PaginatedResponse-api_Space'
+            $ref: '#/definitions/pagination.PaginatedResponse-space_Space'
         "403":
           description: Unauthorized
           schema:
@@ -533,7 +465,7 @@ paths:
         "200":
           description: Space created successfully
           schema:
-            $ref: '#/definitions/api.CreateSpaceResponse'
+            $ref: '#/definitions/space.CreateSpaceResponse'
         "403":
           description: Unauthorized
           schema:
@@ -571,7 +503,7 @@ paths:
         "200":
           description: List of members
           schema:
-            $ref: '#/definitions/api.PaginatedResponse-api_Member'
+            $ref: '#/definitions/pagination.PaginatedResponse-space_Member'
         "403":
           description: Unauthorized
           schema:
@@ -842,182 +774,6 @@ paths:
       summary: Update an existing object in a specific space
       tags:
       - space_objects
-  /v1/spaces/{space_id}/chat/messages:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: The ID of the space
-        in: path
-        name: space_id
-        required: true
-        type: string
-      - description: The number of items to skip before starting to collect the result
-          set
-        in: query
-        name: offset
-        type: integer
-      - default: 100
-        description: The number of items to return
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of chat messages
-          schema:
-            additionalProperties:
-              items:
-                $ref: '#/definitions/api.ChatMessage'
-              type: array
-            type: object
-        "502":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/api.ServerError'
-      summary: Retrieve last chat messages
-      tags:
-      - chat
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: The ID of the space
-        in: path
-        name: space_id
-        required: true
-        type: string
-      - description: Chat message
-        in: body
-        name: message
-        required: true
-        schema:
-          $ref: '#/definitions/api.ChatMessage'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created chat message
-          schema:
-            $ref: '#/definitions/api.ChatMessage'
-        "400":
-          description: Invalid input
-          schema:
-            $ref: '#/definitions/api.ValidationError'
-        "502":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/api.ServerError'
-      summary: Add a new chat message
-      tags:
-      - chat
-  /v1/spaces/{space_id}/chat/messages/{message_id}:
-    delete:
-      consumes:
-      - application/json
-      parameters:
-      - description: The ID of the space
-        in: path
-        name: space_id
-        required: true
-        type: string
-      - description: Message ID
-        in: path
-        name: message_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: Message deleted successfully
-        "404":
-          description: Message not found
-          schema:
-            $ref: '#/definitions/api.NotFoundError'
-        "502":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/api.ServerError'
-      summary: Delete a chat message
-      tags:
-      - chat
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: The ID of the space
-        in: path
-        name: space_id
-        required: true
-        type: string
-      - description: Message ID
-        in: path
-        name: message_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Chat message
-          schema:
-            $ref: '#/definitions/api.ChatMessage'
-        "404":
-          description: Message not found
-          schema:
-            $ref: '#/definitions/api.NotFoundError'
-        "502":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/api.ServerError'
-      summary: Retrieve a specific chat message
-      tags:
-      - chat
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: The ID of the space
-        in: path
-        name: space_id
-        required: true
-        type: string
-      - description: Message ID
-        in: path
-        name: message_id
-        required: true
-        type: string
-      - description: Chat message
-        in: body
-        name: message
-        required: true
-        schema:
-          $ref: '#/definitions/api.ChatMessage'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Updated chat message
-          schema:
-            $ref: '#/definitions/api.ChatMessage'
-        "400":
-          description: Invalid input
-          schema:
-            $ref: '#/definitions/api.ValidationError'
-        "404":
-          description: Message not found
-          schema:
-            $ref: '#/definitions/api.NotFoundError'
-        "502":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/api.ServerError'
-      summary: Update an existing chat message
-      tags:
-      - chat
 securityDefinitions:
   BasicAuth:
     type: basic

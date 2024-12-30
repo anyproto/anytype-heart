@@ -13,6 +13,7 @@ import (
 	"github.com/webstradev/gin-pagination/v2/pkg/pagination"
 
 	_ "github.com/anyproto/anytype-heart/cmd/api/docs"
+	"github.com/anyproto/anytype-heart/cmd/api/space"
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -29,8 +30,8 @@ type ApiServer struct {
 	router     *gin.Engine
 	server     *http.Server
 
-	// init after app start
-	accountInfo *model.AccountInfo
+	accountInfo  *model.AccountInfo
+	spaceService *space.SpaceService
 }
 
 // TODO: User represents an authenticated user with permissions
@@ -41,9 +42,10 @@ type User struct {
 
 func newApiServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) *ApiServer {
 	a := &ApiServer{
-		mw:         mw,
-		mwInternal: mwInternal,
-		router:     gin.Default(),
+		mw:           mw,
+		mwInternal:   mwInternal,
+		router:       gin.Default(),
+		spaceService: space.NewService(mw),
 	}
 
 	a.server = &http.Server{
@@ -100,8 +102,8 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	// readOnly.Use(a.AuthMiddleware())
 	// readOnly.Use(a.PermissionMiddleware("read-only"))
 	{
-		readOnly.GET("/spaces", paginator, a.getSpacesHandler)
-		readOnly.GET("/spaces/:space_id/members", paginator, a.getMembersHandler)
+		readOnly.GET("/spaces", paginator, space.GetSpacesHandler(a.spaceService))
+		readOnly.GET("/spaces/:space_id/members", paginator, space.GetMembersHandler(a.spaceService))
 		readOnly.GET("/spaces/:space_id/objects", paginator, a.getObjectsHandler)
 		readOnly.GET("/spaces/:space_id/objects/:object_id", a.getObjectHandler)
 		readOnly.GET("/spaces/:space_id/objectTypes", paginator, a.getObjectTypesHandler)
@@ -114,21 +116,9 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	// readWrite.Use(a.AuthMiddleware())
 	// readWrite.Use(a.PermissionMiddleware("read-write"))
 	{
-		readWrite.POST("/spaces", a.createSpaceHandler)
+		// readWrite.POST("/spaces", a.createSpaceHandler)
 		readWrite.POST("/spaces/:space_id/objects", a.createObjectHandler)
 		readWrite.PUT("/spaces/:space_id/objects/:object_id", a.updateObjectHandler)
-	}
-
-	// Chat routes
-	chat := a.router.Group("/v1/spaces/:space_id/chat")
-	// chat.Use(a.AuthMiddleware())
-	// chat.Use(a.PermissionMiddleware("read-write"))
-	{
-		chat.GET("/messages", paginator, a.getChatMessagesHandler)
-		chat.GET("/messages/:message_id", a.getChatMessageHandler)
-		chat.POST("/messages", a.addChatMessageHandler)
-		chat.PUT("/messages/:message_id", a.updateChatMessageHandler)
-		chat.DELETE("/messages/:message_id", a.deleteChatMessageHandler)
 	}
 
 	// Start the HTTP server

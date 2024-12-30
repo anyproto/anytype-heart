@@ -200,7 +200,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of spaces",
                         "schema": {
-                            "$ref": "#/definitions/api.PaginatedResponse-api_Space"
+                            "$ref": "#/definitions/pagination.PaginatedResponse-space_Space"
                         }
                     },
                     "403": {
@@ -249,7 +249,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Space created successfully",
                         "schema": {
-                            "$ref": "#/definitions/api.CreateSpaceResponse"
+                            "$ref": "#/definitions/space.CreateSpaceResponse"
                         }
                     },
                     "403": {
@@ -305,7 +305,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of members",
                         "schema": {
-                            "$ref": "#/definitions/api.PaginatedResponse-api_Member"
+                            "$ref": "#/definitions/pagination.PaginatedResponse-space_Member"
                         }
                     },
                     "403": {
@@ -708,286 +708,9 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/v1/spaces/{space_id}/chat/messages": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Retrieve last chat messages",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The ID of the space",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "The number of items to skip before starting to collect the result set",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 100,
-                        "description": "The number of items to return",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of chat messages",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/api.ChatMessage"
-                                }
-                            }
-                        }
-                    },
-                    "502": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ServerError"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Add a new chat message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The ID of the space",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Chat message",
-                        "name": "message",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.ChatMessage"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created chat message",
-                        "schema": {
-                            "$ref": "#/definitions/api.ChatMessage"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid input",
-                        "schema": {
-                            "$ref": "#/definitions/api.ValidationError"
-                        }
-                    },
-                    "502": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/spaces/{space_id}/chat/messages/{message_id}": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Retrieve a specific chat message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The ID of the space",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Chat message",
-                        "schema": {
-                            "$ref": "#/definitions/api.ChatMessage"
-                        }
-                    },
-                    "404": {
-                        "description": "Message not found",
-                        "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
-                        }
-                    },
-                    "502": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ServerError"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Update an existing chat message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The ID of the space",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Chat message",
-                        "name": "message",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.ChatMessage"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated chat message",
-                        "schema": {
-                            "$ref": "#/definitions/api.ChatMessage"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid input",
-                        "schema": {
-                            "$ref": "#/definitions/api.ValidationError"
-                        }
-                    },
-                    "404": {
-                        "description": "Message not found",
-                        "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
-                        }
-                    },
-                    "502": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ServerError"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Delete a chat message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The ID of the space",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Message deleted successfully"
-                    },
-                    "404": {
-                        "description": "Message not found",
-                        "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
-                        }
-                    },
-                    "502": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ServerError"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
-        "api.Attachment": {
-            "type": "object",
-            "properties": {
-                "target": {
-                    "description": "Identifier for the attachment object",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "Type of attachment",
-                    "type": "string"
-                }
-            }
-        },
         "api.AuthDisplayCodeResponse": {
             "type": "object",
             "properties": {
@@ -1039,72 +762,6 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ChatMessage": {
-            "type": "object",
-            "properties": {
-                "attachments": {
-                    "description": "Attachments slice",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Attachment"
-                    }
-                },
-                "chat_message": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "integer"
-                },
-                "creator": {
-                    "description": "Identifier for the message creator",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "Unique message identifier",
-                    "type": "string"
-                },
-                "message": {
-                    "description": "Message content",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api.MessageContent"
-                        }
-                    ]
-                },
-                "modified_at": {
-                    "type": "integer"
-                },
-                "order_id": {
-                    "description": "Used for subscriptions",
-                    "type": "string"
-                },
-                "reactions": {
-                    "description": "Reactions to the message",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api.Reactions"
-                        }
-                    ]
-                },
-                "reply_to_message_id": {
-                    "description": "Identifier for the message being replied to",
-                    "type": "string"
-                }
-            }
-        },
-        "api.CreateSpaceResponse": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "Space Name"
-                },
-                "space_id": {
-                    "type": "string",
-                    "example": "bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"
-                }
-            }
-        },
         "api.Detail": {
             "type": "object",
             "properties": {
@@ -1145,71 +802,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "api.IdentityList": {
-            "type": "object",
-            "properties": {
-                "ids": {
-                    "description": "List of user IDs",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "api.Member": {
-            "type": "object",
-            "properties": {
-                "global_name": {
-                    "type": "string",
-                    "example": "john.any"
-                },
-                "icon": {
-                    "type": "string",
-                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"
-                },
-                "identity": {
-                    "type": "string",
-                    "example": "AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "John Doe"
-                },
-                "role": {
-                    "type": "string",
-                    "example": "Owner"
-                },
-                "type": {
-                    "type": "string",
-                    "example": "member"
-                }
-            }
-        },
-        "api.MessageContent": {
-            "type": "object",
-            "properties": {
-                "marks": {
-                    "description": "List of marks applied to the text",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "style": {
-                    "description": "The style/type of the message part",
-                    "type": "string"
-                },
-                "text": {
-                    "description": "The text content of the message part",
                     "type": "string"
                 }
             }
@@ -1317,71 +909,6 @@ const docTemplate = `{
                 }
             }
         },
-        "api.PaginatedResponse-api_Member": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Member"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/api.PaginationMeta"
-                }
-            }
-        },
-        "api.PaginatedResponse-api_Space": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Space"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/api.PaginationMeta"
-                }
-            }
-        },
-        "api.PaginationMeta": {
-            "type": "object",
-            "properties": {
-                "has_more": {
-                    "description": "whether there are more items available",
-                    "type": "boolean",
-                    "example": true
-                },
-                "limit": {
-                    "description": "the current limit",
-                    "type": "integer",
-                    "example": 100
-                },
-                "offset": {
-                    "description": "the current offset",
-                    "type": "integer",
-                    "example": 0
-                },
-                "total": {
-                    "description": "the total number of items available on that endpoint",
-                    "type": "integer",
-                    "example": 1024
-                }
-            }
-        },
-        "api.Reactions": {
-            "type": "object",
-            "properties": {
-                "reactions": {
-                    "description": "Map of emoji to list of user IDs",
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/api.IdentityList"
-                    }
-                }
-            }
-        },
         "api.ServerError": {
             "type": "object",
             "properties": {
@@ -1392,75 +919,6 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
-                }
-            }
-        },
-        "api.Space": {
-            "type": "object",
-            "properties": {
-                "account_space_id": {
-                    "type": "string",
-                    "example": "bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1"
-                },
-                "archive_object_id": {
-                    "type": "string",
-                    "example": "bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"
-                },
-                "device_id": {
-                    "type": "string",
-                    "example": "12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF"
-                },
-                "home_object_id": {
-                    "type": "string",
-                    "example": "bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"
-                },
-                "icon": {
-                    "type": "string",
-                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"
-                },
-                "marketplace_workspace_id": {
-                    "type": "string",
-                    "example": "_anytype_marketplace"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Space Name"
-                },
-                "network_id": {
-                    "type": "string",
-                    "example": "N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU"
-                },
-                "profile_object_id": {
-                    "type": "string",
-                    "example": "bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4"
-                },
-                "space_view_id": {
-                    "type": "string",
-                    "example": "bafyreigzv3vq7qwlrsin6njoduq727ssnhwd6bgyfj6nm4hv3pxoc2rxhy"
-                },
-                "tech_space_id": {
-                    "type": "string",
-                    "example": "bafyreif4xuwncrjl6jajt4zrrfnylpki476nv2w64yf42ovt7gia7oypii.23me69r569oi1"
-                },
-                "timezone": {
-                    "type": "string",
-                    "example": ""
-                },
-                "type": {
-                    "type": "string",
-                    "example": "space"
-                },
-                "widgets_id": {
-                    "type": "string",
-                    "example": "bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva"
-                },
-                "workspace_object_id": {
-                    "type": "string",
-                    "example": "bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"
                 }
             }
         },
@@ -1507,6 +965,181 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
+                }
+            }
+        },
+        "pagination.PaginatedResponse-space_Member": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/space.Member"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
+                }
+            }
+        },
+        "pagination.PaginatedResponse-space_Space": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/space.Space"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
+                }
+            }
+        },
+        "pagination.PaginationMeta": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "description": "whether there are more items available",
+                    "type": "boolean",
+                    "example": true
+                },
+                "limit": {
+                    "description": "the current limit",
+                    "type": "integer",
+                    "example": 100
+                },
+                "offset": {
+                    "description": "the current offset",
+                    "type": "integer",
+                    "example": 0
+                },
+                "total": {
+                    "description": "the total number of items available on that endpoint",
+                    "type": "integer",
+                    "example": 1024
+                }
+            }
+        },
+        "space.CreateSpaceResponse": {
+            "type": "object",
+            "properties": {
+                "space": {
+                    "$ref": "#/definitions/space.Space"
+                }
+            }
+        },
+        "space.Member": {
+            "type": "object",
+            "properties": {
+                "global_name": {
+                    "type": "string",
+                    "example": "john.any"
+                },
+                "icon": {
+                    "type": "string",
+                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"
+                },
+                "identity": {
+                    "type": "string",
+                    "example": "AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "Owner"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "member"
+                }
+            }
+        },
+        "space.Space": {
+            "type": "object",
+            "properties": {
+                "account_space_id": {
+                    "type": "string",
+                    "example": "bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1"
+                },
+                "analytics_id": {
+                    "type": "string",
+                    "example": ""
+                },
+                "archive_object_id": {
+                    "type": "string",
+                    "example": "bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"
+                },
+                "device_id": {
+                    "type": "string",
+                    "example": "12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF"
+                },
+                "gateway_url": {
+                    "type": "string",
+                    "example": ""
+                },
+                "home_object_id": {
+                    "type": "string",
+                    "example": "bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"
+                },
+                "icon": {
+                    "type": "string",
+                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"
+                },
+                "local_storage_path": {
+                    "type": "string",
+                    "example": ""
+                },
+                "marketplace_workspace_id": {
+                    "type": "string",
+                    "example": "_anytype_marketplace"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Space Name"
+                },
+                "network_id": {
+                    "type": "string",
+                    "example": "N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU"
+                },
+                "profile_object_id": {
+                    "type": "string",
+                    "example": "bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4"
+                },
+                "space_view_id": {
+                    "type": "string",
+                    "example": "bafyreigzv3vq7qwlrsin6njoduq727ssnhwd6bgyfj6nm4hv3pxoc2rxhy"
+                },
+                "tech_space_id": {
+                    "type": "string",
+                    "example": "bafyreif4xuwncrjl6jajt4zrrfnylpki476nv2w64yf42ovt7gia7oypii.23me69r569oi1"
+                },
+                "timezone": {
+                    "type": "string",
+                    "example": ""
+                },
+                "type": {
+                    "type": "string",
+                    "example": "space"
+                },
+                "widgets_id": {
+                    "type": "string",
+                    "example": "bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva"
+                },
+                "workspace_object_id": {
+                    "type": "string",
+                    "example": "bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"
                 }
             }
         }
