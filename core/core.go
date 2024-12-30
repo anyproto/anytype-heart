@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -15,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
 
@@ -27,7 +25,6 @@ var (
 
 type MiddlewareInternal interface {
 	GetApp() *app.App
-	GetAccountInfo(ctx context.Context) (*model.AccountInfo, error)
 }
 
 type Middleware struct {
@@ -106,13 +103,6 @@ func requireApp(a *app.App) {
 
 func (mw *Middleware) GetApp() *app.App {
 	return mw.applicationService.GetApp()
-}
-
-func (mw *Middleware) GetAccountInfo(ctx context.Context) (*model.AccountInfo, error) {
-	if a := mw.GetApp(); a != nil {
-		return a.MustComponent(account.CName).(account.Service).GetInfo(ctx)
-	}
-	return nil, ErrNotLoggedIn
 }
 
 func (mw *Middleware) SetEventSender(sender event.Sender) {
