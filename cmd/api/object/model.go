@@ -1,13 +1,4 @@
-package api
-
-type AuthDisplayCodeResponse struct {
-	ChallengeId string `json:"challenge_id" example:"67647f5ecda913e9a2e11b26"`
-}
-
-type AuthTokenResponse struct {
-	SessionToken string `json:"session_token" example:""`
-	AppKey       string `json:"app_key" example:""`
-}
+package object
 
 type Object struct {
 	Type       string   `json:"type" example:"object"`
@@ -75,28 +66,4 @@ type ObjectTemplate struct {
 	Id   string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"`
 	Name string `json:"name" example:"Object Template Name"`
 	Icon string `json:"icon" example:"📄"`
-}
-
-type ServerError struct {
-	Error struct {
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-type ValidationError struct {
-	Error struct {
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-type UnauthorizedError struct {
-	Error struct {
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-type NotFoundError struct {
-	Error struct {
-		Message string `json:"message"`
-	} `json:"error"`
 }

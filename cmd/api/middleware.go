@@ -27,7 +27,9 @@ func (a *ApiServer) initAccountInfo() gin.HandlerFunc {
 		}
 
 		a.accountInfo = accInfo
+		a.objectService.AccountInfo = accInfo
 		a.spaceService.AccountInfo = accInfo
+		a.searchService.AccountInfo = accInfo
 		c.Next()
 	}
 }

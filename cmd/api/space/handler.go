@@ -1,12 +1,12 @@
 package space
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/cmd/api/pagination"
+	"github.com/anyproto/anytype-heart/cmd/api/util"
 )
 
 // GetSpacesHandler retrieves a list of spaces
@@ -18,9 +18,9 @@ import (
 //	@Param		offset	query		int									false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit	query		int									false	"The number of items to return"	default(100)
 //	@Success	200		{object}	pagination.PaginatedResponse[Space]	"List of spaces"
-//	@Failure	403		{object}	api.UnauthorizedError				"Unauthorized"
-//	@Failure	404		{object}	api.NotFoundError					"Resource not found"
-//	@Failure	502		{object}	api.ServerError						"Internal server error"
+//	@Failure	403		{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure	404		{object}	util.NotFoundError					"Resource not found"
+//	@Failure	502		{object}	util.ServerError					"Internal server error"
 //	@Router		/spaces [get]
 func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -28,20 +28,16 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 		limit := c.GetInt("limit")
 
 		spaces, total, hasMore, err := s.ListSpaces(c.Request.Context(), offset, limit)
-		if err != nil {
-			switch {
-			case errors.Is(err, ErrNoSpacesFound):
-				c.JSON(http.StatusNotFound, gin.H{"message": "No spaces found."})
-				return
-			case errors.Is(err, ErrFailedListSpaces):
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of spaces."})
-				return
-			case errors.Is(err, ErrFailedOpenWorkspace):
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to open workspace."})
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				return
-			}
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrNoSpacesFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedListSpaces, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedOpenWorkspace, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
 		}
 
 		pagination.RespondWithPagination(c, http.StatusOK, spaces, total, offset, limit, hasMore)
@@ -56,8 +52,8 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		name	body		string					true	"Space Name"
 //	@Success	200		{object}	CreateSpaceResponse		"Space created successfully"
-//	@Failure	403		{object}	api.UnauthorizedError	"Unauthorized"
-//	@Failure	502		{object}	api.ServerError			"Internal server error"
+//	@Failure	403		{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	502		{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces [post]
 func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -69,15 +65,14 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 		name := nameRequest.Name
 
 		space, err := s.CreateSpace(c.Request.Context(), name)
-		if err != nil {
-			switch {
-			case errors.Is(err, ErrFailedCreateSpace):
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create space."})
-				return
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				return
-			}
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrFailedCreateSpace, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
 		}
 
 		c.JSON(http.StatusOK, CreateSpaceResponse{Space: space})
@@ -94,9 +89,9 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 //	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit		query		int										false	"The number of items to return"	default(100)
 //	@Success	200			{object}	pagination.PaginatedResponse[Member]	"List of members"
-//	@Failure	403			{object}	api.UnauthorizedError					"Unauthorized"
-//	@Failure	404			{object}	api.NotFoundError						"Resource not found"
-//	@Failure	502			{object}	api.ServerError							"Internal server error"
+//	@Failure	403			{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure	404			{object}	util.NotFoundError						"Resource not found"
+//	@Failure	502			{object}	util.ServerError						"Internal server error"
 //	@Router		/spaces/{space_id}/members [get]
 func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -105,18 +100,15 @@ func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
 		limit := c.GetInt("limit")
 
 		members, total, hasMore, err := s.ListMembers(c.Request.Context(), spaceId, offset, limit)
-		if err != nil {
-			switch {
-			case errors.Is(err, ErrNoMembersFound):
-				c.JSON(http.StatusNotFound, gin.H{"message": "No members found."})
-				return
-			case errors.Is(err, ErrFailedListMembers):
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve list of members."})
-				return
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				return
-			}
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrNoMembersFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedListMembers, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
 		}
 
 		pagination.RespondWithPagination(c, http.StatusOK, members, total, offset, limit, hasMore)

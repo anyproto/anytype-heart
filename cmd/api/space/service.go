@@ -9,7 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/cmd/api/pagination"
-	"github.com/anyproto/anytype-heart/cmd/api/utils"
+	"github.com/anyproto/anytype-heart/cmd/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -92,7 +92,7 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 
 		// TODO: name and icon are only returned here; fix that
 		workspace.Name = record.Fields["name"].GetStringValue()
-		workspace.Icon = utils.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
+		workspace.Icon = util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 
 		spaces = append(spaces, workspace)
 	}
@@ -163,7 +163,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 	members = make([]Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := utils.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
+		icon := util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
 
 		member := Member{
 			Type:       "space_member",

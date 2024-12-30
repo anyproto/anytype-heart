@@ -1,12 +1,12 @@
 basePath: /v1
 definitions:
-  api.AuthDisplayCodeResponse:
+  auth.AuthDisplayCodeResponse:
     properties:
       challenge_id:
         example: 67647f5ecda913e9a2e11b26
         type: string
     type: object
-  api.AuthTokenResponse:
+  auth.AuthTokenResponse:
     properties:
       app_key:
         example: ""
@@ -15,7 +15,7 @@ definitions:
         example: ""
         type: string
     type: object
-  api.Block:
+  object.Block:
     properties:
       align:
         type: string
@@ -26,15 +26,15 @@ definitions:
           type: string
         type: array
       file:
-        $ref: '#/definitions/api.File'
+        $ref: '#/definitions/object.File'
       id:
         type: string
       text:
-        $ref: '#/definitions/api.Text'
+        $ref: '#/definitions/object.Text'
       vertical_align:
         type: string
     type: object
-  api.Detail:
+  object.Detail:
     properties:
       details:
         additionalProperties: true
@@ -42,7 +42,7 @@ definitions:
       id:
         type: string
     type: object
-  api.File:
+  object.File:
     properties:
       added_at:
         type: integer
@@ -63,23 +63,15 @@ definitions:
       type:
         type: string
     type: object
-  api.NotFoundError:
-    properties:
-      error:
-        properties:
-          message:
-            type: string
-        type: object
-    type: object
-  api.Object:
+  object.Object:
     properties:
       blocks:
         items:
-          $ref: '#/definitions/api.Block'
+          $ref: '#/definitions/object.Block'
         type: array
       details:
         items:
-          $ref: '#/definitions/api.Detail'
+          $ref: '#/definitions/object.Detail'
         type: array
       icon:
         example: "\U0001F4C4"
@@ -102,7 +94,7 @@ definitions:
         example: object
         type: string
     type: object
-  api.ObjectTemplate:
+  object.ObjectTemplate:
     properties:
       icon:
         example: "\U0001F4C4"
@@ -117,7 +109,7 @@ definitions:
         example: object_template
         type: string
     type: object
-  api.ObjectType:
+  object.ObjectType:
     properties:
       icon:
         example: "\U0001F4C4"
@@ -135,15 +127,7 @@ definitions:
         example: ot-page
         type: string
     type: object
-  api.ServerError:
-    properties:
-      error:
-        properties:
-          message:
-            type: string
-        type: object
-    type: object
-  api.Text:
+  object.Text:
     properties:
       checked:
         type: boolean
@@ -155,22 +139,6 @@ definitions:
         type: string
       text:
         type: string
-    type: object
-  api.UnauthorizedError:
-    properties:
-      error:
-        properties:
-          message:
-            type: string
-        type: object
-    type: object
-  api.ValidationError:
-    properties:
-      error:
-        properties:
-          message:
-            type: string
-        type: object
     type: object
   pagination.PaginatedResponse-space_Member:
     properties:
@@ -244,7 +212,7 @@ definitions:
         example: bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1
         type: string
       analytics_id:
-        example: ""
+        example: 624aecdd-4797-4611-9d61-a2ae5f53cf1c
         type: string
       archive_object_id:
         example: bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri
@@ -253,7 +221,7 @@ definitions:
         example: 12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF
         type: string
       gateway_url:
-        example: ""
+        example: http://127.0.0.1:31006
         type: string
       home_object_id:
         example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
@@ -265,7 +233,7 @@ definitions:
         example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
         type: string
       local_storage_path:
-        example: ""
+        example: /Users/johndoe/Library/Application Support/Anytype/data/AAHTtt1wuQEnaYBNZ2Cyfcvs6DqPqxgn8VXDVk4avsUkMuha
         type: string
       marketplace_workspace_id:
         example: _anytype_marketplace
@@ -298,6 +266,38 @@ definitions:
         example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
         type: string
     type: object
+  util.NotFoundError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  util.ServerError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  util.UnauthorizedError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  util.ValidationError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
 externalDocs:
   description: OpenAPI
   url: https://swagger.io/resources/open-api/
@@ -326,11 +326,11 @@ paths:
         "200":
           description: Challenge ID
           schema:
-            $ref: '#/definitions/api.AuthDisplayCodeResponse'
+            $ref: '#/definitions/auth.AuthDisplayCodeResponse'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Open a modal window with a code in Anytype Desktop app
       tags:
       - auth
@@ -355,15 +355,15 @@ paths:
         "200":
           description: Authentication token
           schema:
-            $ref: '#/definitions/api.AuthTokenResponse'
+            $ref: '#/definitions/auth.AuthTokenResponse'
         "400":
           description: Invalid input
           schema:
-            $ref: '#/definitions/api.ValidationError'
+            $ref: '#/definitions/util.ValidationError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Retrieve an authentication token using a code
       tags:
       - auth
@@ -376,7 +376,7 @@ paths:
         in: query
         name: query
         type: string
-      - description: Specify object type for search
+      - description: Specify object.Object type for search
         in: query
         name: object_type
         type: string
@@ -398,17 +398,21 @@ paths:
           schema:
             additionalProperties:
               items:
-                $ref: '#/definitions/api.Object'
+                $ref: '#/definitions/object.Object'
               type: array
             type: object
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Search and retrieve objects across all the spaces
       tags:
       - search
@@ -437,15 +441,15 @@ paths:
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "404":
           description: Resource not found
           schema:
-            $ref: '#/definitions/api.NotFoundError'
+            $ref: '#/definitions/util.NotFoundError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Retrieve a list of spaces
       tags:
       - spaces
@@ -469,11 +473,11 @@ paths:
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Create a new Space
       tags:
       - spaces
@@ -507,15 +511,15 @@ paths:
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "404":
           description: Resource not found
           schema:
-            $ref: '#/definitions/api.NotFoundError'
+            $ref: '#/definitions/util.NotFoundError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Retrieve a list of members for the specified Space
       tags:
       - spaces
@@ -546,20 +550,20 @@ paths:
           description: List of object types
           schema:
             additionalProperties:
-              $ref: '#/definitions/api.ObjectType'
+              $ref: '#/definitions/object.ObjectType'
             type: object
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "404":
           description: Resource not found
           schema:
-            $ref: '#/definitions/api.NotFoundError'
+            $ref: '#/definitions/util.NotFoundError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Retrieve object types in a specific space
       tags:
       - types_and_templates
@@ -596,21 +600,21 @@ paths:
           schema:
             additionalProperties:
               items:
-                $ref: '#/definitions/api.ObjectTemplate'
+                $ref: '#/definitions/object.ObjectTemplate'
               type: array
             type: object
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "404":
           description: Resource not found
           schema:
-            $ref: '#/definitions/api.NotFoundError'
+            $ref: '#/definitions/util.NotFoundError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Retrieve a list of templates for a specific object type in a space
       tags:
       - types_and_templates
@@ -642,21 +646,21 @@ paths:
           schema:
             additionalProperties:
               items:
-                $ref: '#/definitions/api.Object'
+                $ref: '#/definitions/object.Object'
               type: array
             type: object
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "404":
           description: Resource not found
           schema:
-            $ref: '#/definitions/api.NotFoundError'
+            $ref: '#/definitions/util.NotFoundError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Retrieve objects in a specific space
       tags:
       - space_objects
@@ -683,15 +687,15 @@ paths:
         "200":
           description: The created object
           schema:
-            $ref: '#/definitions/api.Object'
+            $ref: '#/definitions/object.Object'
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Create a new object in a specific space
       tags:
       - space_objects
@@ -716,19 +720,19 @@ paths:
         "200":
           description: The requested object
           schema:
-            $ref: '#/definitions/api.Object'
+            $ref: '#/definitions/object.Object'
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "404":
           description: Resource not found
           schema:
-            $ref: '#/definitions/api.NotFoundError'
+            $ref: '#/definitions/util.NotFoundError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Retrieve a specific object in a space
       tags:
       - space_objects
@@ -751,26 +755,26 @@ paths:
         name: object
         required: true
         schema:
-          $ref: '#/definitions/api.Object'
+          $ref: '#/definitions/object.Object'
       produces:
       - application/json
       responses:
         "200":
           description: The updated object
           schema:
-            $ref: '#/definitions/api.Object'
+            $ref: '#/definitions/object.Object'
         "403":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedError'
+            $ref: '#/definitions/util.UnauthorizedError'
         "404":
           description: Resource not found
           schema:
-            $ref: '#/definitions/api.NotFoundError'
+            $ref: '#/definitions/util.NotFoundError'
         "502":
           description: Internal server error
           schema:
-            $ref: '#/definitions/api.ServerError'
+            $ref: '#/definitions/util.ServerError'
       summary: Update an existing object in a specific space
       tags:
       - space_objects

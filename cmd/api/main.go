@@ -12,7 +12,10 @@ import (
 
 	"github.com/webstradev/gin-pagination/v2/pkg/pagination"
 
+	"github.com/anyproto/anytype-heart/cmd/api/auth"
 	_ "github.com/anyproto/anytype-heart/cmd/api/docs"
+	"github.com/anyproto/anytype-heart/cmd/api/object"
+	"github.com/anyproto/anytype-heart/cmd/api/search"
 	"github.com/anyproto/anytype-heart/cmd/api/space"
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/pb/service"
@@ -30,8 +33,11 @@ type ApiServer struct {
 	router     *gin.Engine
 	server     *http.Server
 
-	accountInfo  *model.AccountInfo
-	spaceService *space.SpaceService
+	accountInfo   *model.AccountInfo
+	authService   *auth.AuthService
+	objectService *object.ObjectService
+	spaceService  *space.SpaceService
+	searchService *search.SearchService
 }
 
 // TODO: User represents an authenticated user with permissions
@@ -42,10 +48,13 @@ type User struct {
 
 func newApiServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) *ApiServer {
 	a := &ApiServer{
-		mw:           mw,
-		mwInternal:   mwInternal,
-		router:       gin.Default(),
-		spaceService: space.NewService(mw),
+		mw:            mw,
+		mwInternal:    mwInternal,
+		router:        gin.Default(),
+		authService:   auth.NewService(mw),
+		objectService: object.NewService(mw),
+		spaceService:  space.NewService(mw),
+		searchService: search.NewService(mw),
 	}
 
 	a.server = &http.Server{
@@ -91,10 +100,10 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	a.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Unprotected routes
-	auth := a.router.Group("/v1/auth")
+	authRouter := a.router.Group("/v1/auth")
 	{
-		auth.POST("/displayCode", a.authDisplayCodeHandler)
-		auth.GET("/token", a.authTokenHandler)
+		authRouter.POST("/displayCode", auth.AuthDisplayCodeHandler(a.authService))
+		authRouter.GET("/token", auth.AuthTokenHandler(a.authService))
 	}
 
 	// Read-only routes
@@ -104,11 +113,11 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	{
 		readOnly.GET("/spaces", paginator, space.GetSpacesHandler(a.spaceService))
 		readOnly.GET("/spaces/:space_id/members", paginator, space.GetMembersHandler(a.spaceService))
-		readOnly.GET("/spaces/:space_id/objects", paginator, a.getObjectsHandler)
-		readOnly.GET("/spaces/:space_id/objects/:object_id", a.getObjectHandler)
-		readOnly.GET("/spaces/:space_id/objectTypes", paginator, a.getObjectTypesHandler)
-		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, a.getObjectTypeTemplatesHandler)
-		readOnly.GET("/search", paginator, a.searchHandler)
+		readOnly.GET("/spaces/:space_id/objects", paginator, object.GetObjectsHandler(a.objectService))
+		readOnly.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(a.objectService))
+		readOnly.GET("/spaces/:space_id/objectTypes", paginator, object.GetObjectTypesHandler(a.objectService))
+		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, object.GetObjectTypeTemplatesHandler(a.objectService))
+		readOnly.GET("/search", paginator, search.SearchHandler(a.searchService))
 	}
 
 	// Read-write routes
@@ -117,8 +126,8 @@ func RunApiServer(ctx context.Context, mw service.ClientCommandsServer, mwIntern
 	// readWrite.Use(a.PermissionMiddleware("read-write"))
 	{
 		// readWrite.POST("/spaces", a.createSpaceHandler)
-		readWrite.POST("/spaces/:space_id/objects", a.createObjectHandler)
-		readWrite.PUT("/spaces/:space_id/objects/:object_id", a.updateObjectHandler)
+		readWrite.POST("/spaces/:space_id/objects", object.CreateObjectHandler(a.objectService))
+		readWrite.PUT("/spaces/:space_id/objects/:object_id", object.UpdateObjectHandler(a.objectService))
 	}
 
 	// Start the HTTP server

@@ -40,13 +40,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Challenge ID",
                         "schema": {
-                            "$ref": "#/definitions/api.AuthDisplayCodeResponse"
+                            "$ref": "#/definitions/auth.AuthDisplayCodeResponse"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -84,19 +84,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Authentication token",
                         "schema": {
-                            "$ref": "#/definitions/api.AuthTokenResponse"
+                            "$ref": "#/definitions/auth.AuthTokenResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid input",
                         "schema": {
-                            "$ref": "#/definitions/api.ValidationError"
+                            "$ref": "#/definitions/util.ValidationError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -123,7 +123,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Specify object type for search",
+                        "description": "Specify object.Object type for search",
                         "name": "object_type",
                         "in": "query"
                     },
@@ -149,7 +149,7 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/api.Object"
+                                    "$ref": "#/definitions/object.Object"
                                 }
                             }
                         }
@@ -157,13 +157,19 @@ const docTemplate = `{
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "schema": {
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -206,19 +212,19 @@ const docTemplate = `{
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "404": {
                         "description": "Resource not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -255,13 +261,13 @@ const docTemplate = `{
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -311,19 +317,19 @@ const docTemplate = `{
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "404": {
                         "description": "Resource not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -369,26 +375,26 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
-                                "$ref": "#/definitions/api.ObjectType"
+                                "$ref": "#/definitions/object.ObjectType"
                             }
                         }
                     },
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "404": {
                         "description": "Resource not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -443,7 +449,7 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/api.ObjectTemplate"
+                                    "$ref": "#/definitions/object.ObjectTemplate"
                                 }
                             }
                         }
@@ -451,19 +457,19 @@ const docTemplate = `{
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "404": {
                         "description": "Resource not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -511,7 +517,7 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/api.Object"
+                                    "$ref": "#/definitions/object.Object"
                                 }
                             }
                         }
@@ -519,19 +525,19 @@ const docTemplate = `{
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "404": {
                         "description": "Resource not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -572,19 +578,19 @@ const docTemplate = `{
                     "200": {
                         "description": "The created object",
                         "schema": {
-                            "$ref": "#/definitions/api.Object"
+                            "$ref": "#/definitions/object.Object"
                         }
                     },
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -622,25 +628,25 @@ const docTemplate = `{
                     "200": {
                         "description": "The requested object",
                         "schema": {
-                            "$ref": "#/definitions/api.Object"
+                            "$ref": "#/definitions/object.Object"
                         }
                     },
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "404": {
                         "description": "Resource not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -677,7 +683,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.Object"
+                            "$ref": "#/definitions/object.Object"
                         }
                     }
                 ],
@@ -685,25 +691,25 @@ const docTemplate = `{
                     "200": {
                         "description": "The updated object",
                         "schema": {
-                            "$ref": "#/definitions/api.Object"
+                            "$ref": "#/definitions/object.Object"
                         }
                     },
                     "403": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedError"
+                            "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
                     "404": {
                         "description": "Resource not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundError"
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "502": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.ServerError"
+                            "$ref": "#/definitions/util.ServerError"
                         }
                     }
                 }
@@ -711,7 +717,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.AuthDisplayCodeResponse": {
+        "auth.AuthDisplayCodeResponse": {
             "type": "object",
             "properties": {
                 "challenge_id": {
@@ -720,7 +726,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.AuthTokenResponse": {
+        "auth.AuthTokenResponse": {
             "type": "object",
             "properties": {
                 "app_key": {
@@ -733,7 +739,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.Block": {
+        "object.Block": {
             "type": "object",
             "properties": {
                 "align": {
@@ -749,20 +755,20 @@ const docTemplate = `{
                     }
                 },
                 "file": {
-                    "$ref": "#/definitions/api.File"
+                    "$ref": "#/definitions/object.File"
                 },
                 "id": {
                     "type": "string"
                 },
                 "text": {
-                    "$ref": "#/definitions/api.Text"
+                    "$ref": "#/definitions/object.Text"
                 },
                 "vertical_align": {
                     "type": "string"
                 }
             }
         },
-        "api.Detail": {
+        "object.Detail": {
             "type": "object",
             "properties": {
                 "details": {
@@ -774,7 +780,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.File": {
+        "object.File": {
             "type": "object",
             "properties": {
                 "added_at": {
@@ -806,32 +812,19 @@ const docTemplate = `{
                 }
             }
         },
-        "api.NotFoundError": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "object",
-                    "properties": {
-                        "message": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "api.Object": {
+        "object.Object": {
             "type": "object",
             "properties": {
                 "blocks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.Block"
+                        "$ref": "#/definitions/object.Block"
                     }
                 },
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.Detail"
+                        "$ref": "#/definitions/object.Detail"
                     }
                 },
                 "icon": {
@@ -863,7 +856,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ObjectTemplate": {
+        "object.ObjectTemplate": {
             "type": "object",
             "properties": {
                 "icon": {
@@ -884,7 +877,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ObjectType": {
+        "object.ObjectType": {
             "type": "object",
             "properties": {
                 "icon": {
@@ -909,20 +902,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ServerError": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "object",
-                    "properties": {
-                        "message": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "api.Text": {
+        "object.Text": {
             "type": "object",
             "properties": {
                 "checked": {
@@ -939,32 +919,6 @@ const docTemplate = `{
                 },
                 "text": {
                     "type": "string"
-                }
-            }
-        },
-        "api.UnauthorizedError": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "object",
-                    "properties": {
-                        "message": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "api.ValidationError": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "object",
-                    "properties": {
-                        "message": {
-                            "type": "string"
-                        }
-                    }
                 }
             }
         },
@@ -1071,7 +1025,7 @@ const docTemplate = `{
                 },
                 "analytics_id": {
                     "type": "string",
-                    "example": ""
+                    "example": "624aecdd-4797-4611-9d61-a2ae5f53cf1c"
                 },
                 "archive_object_id": {
                     "type": "string",
@@ -1083,7 +1037,7 @@ const docTemplate = `{
                 },
                 "gateway_url": {
                     "type": "string",
-                    "example": ""
+                    "example": "http://127.0.0.1:31006"
                 },
                 "home_object_id": {
                     "type": "string",
@@ -1099,7 +1053,7 @@ const docTemplate = `{
                 },
                 "local_storage_path": {
                     "type": "string",
-                    "example": ""
+                    "example": "/Users/johndoe/Library/Application Support/Anytype/data/AAHTtt1wuQEnaYBNZ2Cyfcvs6DqPqxgn8VXDVk4avsUkMuha"
                 },
                 "marketplace_workspace_id": {
                     "type": "string",
@@ -1140,6 +1094,58 @@ const docTemplate = `{
                 "workspace_object_id": {
                     "type": "string",
                     "example": "bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"
+                }
+            }
+        },
+        "util.NotFoundError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "util.ServerError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "util.UnauthorizedError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "util.ValidationError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         }

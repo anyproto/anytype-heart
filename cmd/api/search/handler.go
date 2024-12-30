@@ -1,0 +1,50 @@
+package search
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/anyproto/anytype-heart/cmd/api/pagination"
+	"github.com/anyproto/anytype-heart/cmd/api/space"
+	"github.com/anyproto/anytype-heart/cmd/api/util"
+)
+
+// SearchHandler searches and retrieves objects across all the spaces
+//
+//	@Summary	Search and retrieve objects across all the spaces
+//	@Tags		search
+//	@Accept		json
+//	@Produce	json
+//	@Param		query		query		string						false	"The search term to filter objects by name"
+//	@Param		object_type	query		string						false	"Specify object.Object type for search"
+//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int							false	"The number of items to return"	default(100)
+//	@Success	200			{object}	map[string][]object.Object	"List of objects"
+//	@Failure	403			{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure	404			{object}	util.NotFoundError			"Resource not found"
+//	@Failure	502			{object}	util.ServerError			"Internal server error"
+//	@Router		/search [get]
+func SearchHandler(s *SearchService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		searchQuery := c.Query("query")
+		objectType := c.Query("object_type")
+		offset := c.GetInt("offset")
+		limit := c.GetInt("limit")
+
+		objects, total, hasMore, err := s.Search(c, searchQuery, objectType, offset, limit)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrNoObjectsFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(space.ErrNoSpacesFound, http.StatusNotFound),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		pagination.RespondWithPagination(c, http.StatusOK, objects, total, offset, limit, hasMore)
+	}
+}
