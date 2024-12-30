@@ -228,8 +228,10 @@ func TestApiServer_GetSpacesHandler(t *testing.T) {
 			},
 			Sorts: []*model.BlockContentDataviewSort{
 				{
-					RelationKey: "name",
-					Type:        model.BlockContentDataviewSort_Asc,
+					RelationKey:    "spaceOrder",
+					Type:           model.BlockContentDataviewSort_Asc,
+					NoCollate:      true,
+					EmptyPlacement: model.BlockContentDataviewSort_End,
 				},
 			},
 			Keys: []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
