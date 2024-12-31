@@ -11,7 +11,7 @@ import (
 var (
 	ErrFailedGenerateChallenge = errors.New("failed to generate a new challenge")
 	ErrInvalidInput            = errors.New("invalid input")
-	ErrorFailedAuthenticate    = errors.New("failed to authenticate user")
+	ErrFailedAuthenticate      = errors.New("failed to authenticate user")
 )
 
 type Service interface {
@@ -53,7 +53,7 @@ func (s *AuthService) SolveChallengeForToken(ctx context.Context, challengeID, c
 	})
 
 	if resp.Error.Code != pb.RpcAccountLocalLinkSolveChallengeResponseError_NULL {
-		return "", "", ErrorFailedAuthenticate
+		return "", "", ErrFailedAuthenticate
 	}
 
 	return resp.SessionToken, resp.AppKey, nil

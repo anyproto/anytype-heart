@@ -52,7 +52,7 @@ func AuthTokenHandler(s *AuthService) gin.HandlerFunc {
 		sessionToken, appKey, err := s.SolveChallengeForToken(c.Request.Context(), challengeID, code)
 		errCode := util.MapErrorCode(err,
 			util.ErrToCode(ErrInvalidInput, http.StatusBadRequest),
-			util.ErrToCode(ErrorFailedAuthenticate, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedAuthenticate, http.StatusInternalServerError),
 		)
 
 		if errCode != http.StatusOK {
