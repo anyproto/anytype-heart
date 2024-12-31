@@ -15,12 +15,13 @@ import (
 const (
 	baseURL = "http://localhost:31009/v1"
 	// testSpaceId = "bafyreifymx5ucm3fdc7vupfg7wakdo5qelni3jvlmawlnvjcppurn2b3di.2lcu0r85yg10d" // dev (entry space)
-	testSpaceId = "bafyreiezhzb4ggnhjwejmh67pd5grilk6jn3jt7y2rnfpbkjwekilreola.1t123w9f2lgn5" // LFLC
+	// testSpaceId = "bafyreiezhzb4ggnhjwejmh67pd5grilk6jn3jt7y2rnfpbkjwekilreola.1t123w9f2lgn5" // LFLC
 	// testSpaceId  = "bafyreiakofsfkgb7psju346cir2hit5hinhywaybi6vhp7hx4jw7hkngje.scoxzd7vu6rz" // HPI
 	// testObjectId = "bafyreidhtlbbspxecab6xf4pi5zyxcmvwy6lqzursbjouq5fxovh6y3xwu"              // "Work Faster with Templates"
-	// testTypeId   = "bafyreie3djy4mcldt3hgeet6bnjay2iajdyi2fvx556n6wcxii7brlni3i"              // Page (in dev space)
+	// testObjectId = "bafyreib3i5uq2tztocw3wrvhdugkwoxgg2xjh2jnl5retnyky66mr5b274" // Tag Test Page (in dev space)
+	// testTypeId   = "bafyreie3djy4mcldt3hgeet6bnjay2iajdyi2fvx556n6wcxii7brlni3i" // Page (in dev space)
 	// chatSpaceId  = "bafyreigryvrmerbtfswwz5kav2uq5dlvx3hl45kxn4nflg7lz46lneqs7m.2nvj2qik6ctdy" // Anytype Wiki space
-	chatSpaceId = "bafyreiexhpzaf7uxzheubh7cjeusqukjnxfvvhh4at6bygljwvto2dttnm.2lcu0r85yg10d" // chat space
+	// chatSpaceId = "bafyreiexhpzaf7uxzheubh7cjeusqukjnxfvvhh4at6bygljwvto2dttnm.2lcu0r85yg10d" // chat space
 )
 
 var log = logging.Logger("rest-api")
@@ -69,11 +70,7 @@ func main() {
 		// {"GET", "/spaces/{space_id}/objectTypes/{type_id}/templates?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "type_id": testTypeId, "limit": 100, "offset": 0}, nil},
 
 		// search
-		// {"GET", "/objects?search={search}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"search": "writing", "object_type": testTypeId, "limit": 100, "offset": 0}, nil},
-
-		// chat
-		// {"GET", "/spaces/{space_id}/chat/messages?limit={limit}&offset={offset}", map[string]interface{}{"space_id": chatSpaceId, "limit": 100, "offset": 0}, nil},
-		// {"POST", "/spaces/{space_id}/chat/messages", map[string]interface{}{"space_id": chatSpaceId}, map[string]interface{}{"text": "new message from demo"}},
+		// {"GET", "/search?query={query}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"query": "Tag", "object_type": testTypeId, "limit": 100, "offset": 0}, nil},
 	}
 
 	for _, ep := range endpoints {
