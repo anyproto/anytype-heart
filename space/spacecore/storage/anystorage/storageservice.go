@@ -137,6 +137,7 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 }
 
 func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB, err error) {
+	// TODO: [storage] set anystore config from config
 	dbPath := path.Join(s.rootPath, id)
 	if _, err := os.Stat(dbPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -144,12 +145,12 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 		}
 		return nil, err
 	}
-	return anystore.Open(ctx, dbPath, nil)
+	return anystore.Open(ctx, dbPath, anyStoreConfig)
 }
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
 	dbPath := path.Join(s.rootPath, id)
-	return anystore.Open(ctx, dbPath, nil)
+	return anystore.Open(ctx, dbPath, anyStoreConfig)
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
@@ -298,4 +299,13 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 	cont.Release()
 	<-ch
 	return nil
+}
+
+var anyStoreConfig *anystore.Config = &anystore.Config{
+	Namespace:       "",
+	ReadConnections: 0,
+	SQLiteConnectionOptions: map[string]string{
+		"synchronous": "off",
+	},
+	SyncPoolElementMaxSize: 0,
 }
