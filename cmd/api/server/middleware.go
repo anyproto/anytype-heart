@@ -1,4 +1,4 @@
-package api
+package server
 
 import (
 	"context"
@@ -10,11 +10,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 )
 
+// // TODO: User represents an authenticated user with permissions
+type User struct {
+	ID          string
+	Permissions string // "read-only" or "read-write"
+}
+
 // initAccountInfo retrieves the account information from the account service
-func (a *ApiServer) initAccountInfo() gin.HandlerFunc {
+func (s *Server) initAccountInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// TODO: consider not fetching account info on every request; currently used to avoid inconsistencies on logout/login
-		app := a.mwInternal.GetApp()
+		app := s.mwInternal.GetApp()
 		if app == nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get app instance"})
 			return
@@ -26,16 +32,15 @@ func (a *ApiServer) initAccountInfo() gin.HandlerFunc {
 			return
 		}
 
-		a.accountInfo = accInfo
-		a.objectService.AccountInfo = accInfo
-		a.spaceService.AccountInfo = accInfo
-		a.searchService.AccountInfo = accInfo
+		s.objectService.AccountInfo = accInfo
+		s.spaceService.AccountInfo = accInfo
+		s.searchService.AccountInfo = accInfo
 		c.Next()
 	}
 }
 
 // TODO: AuthMiddleware to ensure the user is authenticated
-func (a *ApiServer) AuthMiddleware() gin.HandlerFunc {
+func (s *Server) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		if token == "" {
@@ -56,7 +61,7 @@ func (a *ApiServer) AuthMiddleware() gin.HandlerFunc {
 }
 
 // TODO: PermissionMiddleware to ensure the user has the required permissions
-func (a *ApiServer) PermissionMiddleware(requiredPermission string) gin.HandlerFunc {
+func (s *Server) PermissionMiddleware(requiredPermission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, exists := c.Get("user")
 		if !exists {
