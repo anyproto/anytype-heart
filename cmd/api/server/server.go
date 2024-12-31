@@ -41,9 +41,9 @@ func NewServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareIntern
 		authService:   auth.NewService(mw),
 		objectService: object.NewService(mw),
 		spaceService:  space.NewService(mw),
-		searchService: search.NewService(mw),
 	}
 
+	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
 	s.engine = s.NewRouter()
 	s.srv = &http.Server{
 		Addr:              httpPort,

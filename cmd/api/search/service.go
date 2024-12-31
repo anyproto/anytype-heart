@@ -32,8 +32,8 @@ type SearchService struct {
 	AccountInfo   *model.AccountInfo
 }
 
-func NewService(mw service.ClientCommandsServer) *SearchService {
-	return &SearchService{mw: mw, spaceService: space.NewService(mw), objectService: object.NewService(mw)}
+func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceService, objectService *object.ObjectService) *SearchService {
+	return &SearchService{mw: mw, spaceService: spaceService, objectService: objectService}
 }
 
 func (s *SearchService) Search(ctx context.Context, searchQuery string, objectType string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error) {
