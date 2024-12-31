@@ -2,7 +2,9 @@ package objectstore
 
 import (
 	"context"
+	"errors"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 
@@ -55,6 +57,9 @@ func (d *dsObjectStore) BindSpaceId(spaceId, objectId string) error {
 func (d *dsObjectStore) GetSpaceId(objectId string) (spaceId string, err error) {
 	doc, err := d.bindId.FindId(d.componentCtx, objectId)
 	if err != nil {
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			return "", domain.ErrObjectNotFound
+		}
 		return "", err
 	}
 	return doc.Value().GetString(bindKey), nil

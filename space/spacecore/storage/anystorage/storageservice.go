@@ -282,7 +282,7 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 	})
 	cont, err := s.get(ctx, spaceId)
 	if err != nil {
-		if errors.Is(err, ErrDeleted) {
+		if errors.Is(err, ErrDeleted) || errors.Is(err, spacestorage.ErrSpaceStorageMissing) {
 			return nil
 		}
 		return err
