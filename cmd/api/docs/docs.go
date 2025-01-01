@@ -578,7 +578,13 @@ const docTemplate = `{
                     "200": {
                         "description": "The created object",
                         "schema": {
-                            "$ref": "#/definitions/object.Object"
+                            "$ref": "#/definitions/object.CreateObjectResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ValidationError"
                         }
                     },
                     "403": {
@@ -691,7 +697,13 @@ const docTemplate = `{
                     "200": {
                         "description": "The updated object",
                         "schema": {
-                            "$ref": "#/definitions/object.Object"
+                            "$ref": "#/definitions/object.UpdateObjectResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ValidationError"
                         }
                     },
                     "403": {
@@ -765,6 +777,14 @@ const docTemplate = `{
                 },
                 "vertical_align": {
                     "type": "string"
+                }
+            }
+        },
+        "object.CreateObjectResponse": {
+            "type": "object",
+            "properties": {
+                "object": {
+                    "$ref": "#/definitions/object.Object"
                 }
             }
         },
@@ -919,6 +939,14 @@ const docTemplate = `{
                 },
                 "text": {
                     "type": "string"
+                }
+            }
+        },
+        "object.UpdateObjectResponse": {
+            "type": "object",
+            "properties": {
+                "object": {
+                    "$ref": "#/definitions/object.Object"
                 }
             }
         },

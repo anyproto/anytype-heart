@@ -34,6 +34,11 @@ definitions:
       vertical_align:
         type: string
     type: object
+  object.CreateObjectResponse:
+    properties:
+      object:
+        $ref: '#/definitions/object.Object'
+    type: object
   object.Detail:
     properties:
       details:
@@ -139,6 +144,11 @@ definitions:
         type: string
       text:
         type: string
+    type: object
+  object.UpdateObjectResponse:
+    properties:
+      object:
+        $ref: '#/definitions/object.Object'
     type: object
   pagination.PaginatedResponse-space_Member:
     properties:
@@ -687,7 +697,11 @@ paths:
         "200":
           description: The created object
           schema:
-            $ref: '#/definitions/object.Object'
+            $ref: '#/definitions/object.CreateObjectResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
         "403":
           description: Unauthorized
           schema:
@@ -762,7 +776,11 @@ paths:
         "200":
           description: The updated object
           schema:
-            $ref: '#/definitions/object.Object'
+            $ref: '#/definitions/object.UpdateObjectResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
         "403":
           description: Unauthorized
           schema:

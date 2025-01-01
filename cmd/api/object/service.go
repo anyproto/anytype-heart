@@ -1,27 +1,45 @@
 package object
 
 import (
+	"context"
 	"errors"
 
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/cmd/api/pagination"
 	"github.com/anyproto/anytype-heart/cmd/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
-	ErrFailedGenerateChallenge = errors.New("failed to generate a new challenge")
-	ErrInvalidInput            = errors.New("invalid input")
-	ErrorFailedAuthenticate    = errors.New("failed to authenticate user")
+	ErrObjectNotFound             = errors.New("object not found")
+	ErrFailedRetrieveObject       = errors.New("failed to retrieve object")
+	ErrorFailedRetrieveObjects    = errors.New("failed to retrieve list of objects")
+	ErrNoObjectsFound             = errors.New("no objects found")
+	ErrFailedCreateObject         = errors.New("failed to create object")
+	ErrBadInput                   = errors.New("bad input")
+	ErrNotImplemented             = errors.New("not implemented")
+	ErrFailedUpdateObject         = errors.New("failed to update object")
+	ErrFailedRetrieveTypes        = errors.New("failed to retrieve types")
+	ErrNoTypesFound               = errors.New("no types found")
+	ErrFailedRetrieveTemplateType = errors.New("failed to retrieve template type")
+	ErrTemplateTypeNotFound       = errors.New("template type not found")
+	ErrFailedRetrieveTemplate     = errors.New("failed to retrieve template")
+	ErrFailedRetrieveTemplates    = errors.New("failed to retrieve templates")
+	ErrNoTemplatesFound           = errors.New("no templates found")
 )
 
 type Service interface {
-	ListObjects() ([]Object, error)
-	GetObject(id string) (Object, error)
-	CreateObject(obj Object) (Object, error)
-	UpdateObject(obj Object) (Object, error)
-	ListTypes() ([]ObjectType, error)
-	ListTemplates() ([]ObjectTemplate, error)
+	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
+	GetObject(ctx context.Context, spaceId string, objectId string) (Object, error)
+	CreateObject(ctx context.Context, spaceId string, obj Object) (Object, error)
+	UpdateObject(ctx context.Context, spaceId string, obj Object) (Object, error)
+	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]ObjectType, int, bool, error)
+	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]ObjectTemplate, int, bool, error)
 }
 
 type ObjectService struct {
@@ -29,41 +47,290 @@ type ObjectService struct {
 	AccountInfo *model.AccountInfo
 }
 
+// NewService creates a new object service
 func NewService(mw service.ClientCommandsServer) *ObjectService {
 	return &ObjectService{mw: mw}
 }
 
-func (s *ObjectService) ListObjects() ([]Object, error) {
-	// TODO
-	return nil, nil
+// ListObjects retrieves a list of objects in a specific space
+func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []Object, total int, hasMore bool, err error) {
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value: pbtypes.IntList([]int{
+					int(model.ObjectType_basic),
+					int(model.ObjectType_profile),
+					int(model.ObjectType_todo),
+					int(model.ObjectType_note),
+					int(model.ObjectType_bookmark),
+					int(model.ObjectType_set),
+					int(model.ObjectType_collection),
+					int(model.ObjectType_participant),
+				}...),
+			},
+		},
+		Sorts: []*model.BlockContentDataviewSort{{
+			RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
+			Type:           model.BlockContentDataviewSort_Desc,
+			Format:         model.RelationFormat_longtext,
+			IncludeTime:    true,
+			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+		}},
+		FullText:         "",
+		Offset:           0,
+		Limit:            0,
+		ObjectTypeFilter: []string{},
+		Keys:             []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
+	})
+
+	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, 0, false, ErrorFailedRetrieveObjects
+	}
+
+	if len(resp.Records) == 0 {
+		return nil, 0, false, ErrNoObjectsFound
+	}
+
+	total = len(resp.Records)
+	paginatedObjects, hasMore := pagination.Paginate(resp.Records, offset, limit)
+	objects = make([]Object, 0, len(paginatedObjects))
+
+	for _, record := range paginatedObjects {
+		object, err := s.GetObject(ctx, spaceId, record.Fields["id"].GetStringValue())
+		if err != nil {
+			return nil, 0, false, err
+		}
+
+		// TODO: layout is not correctly returned in ObjectShow; therefore we need to resolve it here
+		object.Type = model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())]
+
+		objects = append(objects, object)
+	}
+	return objects, total, hasMore, nil
 }
 
-func (s *ObjectService) GetObject(id string) (Object, error) {
-	// TODO
-	return Object{}, nil
+// GetObject retrieves a single object by its ID in a specific space
+func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
+	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: objectId,
+	})
+
+	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+		return Object{}, ErrObjectNotFound
+	}
+
+	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return Object{}, ErrFailedRetrieveObject
+	}
+
+	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(), resp.ObjectView.Details[0].Details.Fields["iconImage"].GetStringValue())
+	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
+	if err != nil {
+		return Object{}, err
+	}
+
+	object := Object{
+		Type:       "object",
+		Id:         resp.ObjectView.Details[0].Details.Fields["id"].GetStringValue(),
+		Name:       resp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
+		Icon:       icon,
+		ObjectType: objectTypeName,
+		SpaceId:    resp.ObjectView.Details[0].Details.Fields["spaceId"].GetStringValue(),
+		RootId:     resp.ObjectView.RootId,
+		Blocks:     s.GetBlocks(resp),
+		Details:    s.GetDetails(resp),
+	}
+
+	return object, nil
 }
 
-func (s *ObjectService) CreateObject(obj Object) (Object, error) {
-	// TODO
-	return Object{}, nil
+// CreateObject creates a new object in a specific space
+func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error) {
+	resp := s.mw.ObjectCreate(ctx, &pb.RpcObjectCreateRequest{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				"name":      pbtypes.String(request.Name),
+				"iconEmoji": pbtypes.String(request.Icon),
+			},
+		},
+		TemplateId:          request.TemplateId,
+		SpaceId:             spaceId,
+		ObjectTypeUniqueKey: request.ObjectTypeUniqueKey,
+		WithChat:            request.WithChat,
+	})
+
+	if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
+		return Object{}, ErrFailedCreateObject
+	}
+
+	objShowResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: resp.ObjectId,
+	})
+
+	if objShowResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return Object{}, ErrFailedRetrieveObject
+	}
+
+	icon2 := util.GetIconFromEmojiOrImage(s.AccountInfo, objShowResp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(), objShowResp.ObjectView.Details[0].Details.Fields["iconImage"].GetStringValue())
+	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, objShowResp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
+	if err != nil {
+		return Object{}, err
+	}
+
+	object := Object{
+		Type:       "object",
+		Id:         resp.ObjectId,
+		Name:       objShowResp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
+		Icon:       icon2,
+		ObjectType: objectTypeName,
+		SpaceId:    objShowResp.ObjectView.Details[0].Details.Fields["spaceId"].GetStringValue(),
+		RootId:     objShowResp.ObjectView.RootId,
+		Blocks:     s.GetBlocks(objShowResp),
+		Details:    s.GetDetails(objShowResp),
+	}
+
+	return object, nil
 }
 
-func (s *ObjectService) UpdateObject(obj Object) (Object, error) {
-	// TODO
-	return Object{}, nil
+// UpdateObject updates an existing object in a specific space
+func (s *ObjectService) UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (Object, error) {
+	// TODO: Implement logic to update an existing object
+	return Object{}, ErrNotImplemented
 }
 
-func (s *ObjectService) ListTypes() ([]ObjectType, error) {
-	// TODO
-	return nil, nil
+// ListTypes returns the list of types in a specific space
+func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []ObjectType, total int, hasMore bool, err error) {
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsHidden.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Bool(true),
+			},
+		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: "name",
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+		},
+		Keys: []string{"id", "uniqueKey", "name", "iconEmoji"},
+	})
+
+	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, 0, false, ErrFailedRetrieveTypes
+	}
+
+	if len(resp.Records) == 0 {
+		return nil, 0, false, ErrNoTypesFound
+	}
+
+	total = len(resp.Records)
+	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
+	objectTypes := make([]ObjectType, 0, len(paginatedTypes))
+
+	for _, record := range paginatedTypes {
+		objectTypes = append(objectTypes, ObjectType{
+			Type:      "object_type",
+			Id:        record.Fields["id"].GetStringValue(),
+			UniqueKey: record.Fields["uniqueKey"].GetStringValue(),
+			Name:      record.Fields["name"].GetStringValue(),
+			Icon:      record.Fields["iconEmoji"].GetStringValue(),
+		})
+	}
+	return objectTypes, total, hasMore, nil
 }
 
-func (s *ObjectService) ListTemplates() ([]ObjectTemplate, error) {
-	// TODO
-	return nil, nil
+// ListTemplates returns the list of templates in a specific space
+func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []ObjectTemplate, total int, hasMore bool, err error) {
+	// First, determine the type ID of "ot-template" in the space
+	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String("ot-template"),
+			},
+		},
+		Keys: []string{"id"},
+	})
+
+	if templateTypeIdResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, 0, false, ErrFailedRetrieveTemplateType
+	}
+
+	if len(templateTypeIdResp.Records) == 0 {
+		return nil, 0, false, ErrTemplateTypeNotFound
+	}
+
+	// Then, search all objects of the template type and filter by the target object type
+	templateTypeId := templateTypeIdResp.Records[0].Fields["id"].GetStringValue()
+	templateObjectsResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(templateTypeId),
+			},
+		},
+		Keys: []string{"id", "targetObjectType", "name", "iconEmoji"},
+	})
+
+	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, 0, false, ErrFailedRetrieveTemplates
+	}
+
+	if len(templateObjectsResp.Records) == 0 {
+		return nil, 0, false, ErrNoTemplatesFound
+	}
+
+	templateIds := make([]string, 0)
+	for _, record := range templateObjectsResp.Records {
+		if record.Fields["targetObjectType"].GetStringValue() == typeId {
+			templateIds = append(templateIds, record.Fields["id"].GetStringValue())
+		}
+	}
+
+	total = len(templateIds)
+	paginatedTemplates, hasMore := pagination.Paginate(templateIds, offset, limit)
+	templates = make([]ObjectTemplate, 0, len(paginatedTemplates))
+
+	// Finally, open each template and populate the response
+	for _, templateId := range paginatedTemplates {
+		templateResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+			SpaceId:  spaceId,
+			ObjectId: templateId,
+		})
+
+		if templateResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return nil, 0, false, ErrFailedRetrieveTemplate
+		}
+
+		templates = append(templates, ObjectTemplate{
+			Type: "object_template",
+			Id:   templateId,
+			Name: templateResp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
+			Icon: templateResp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(),
+		})
+	}
+
+	return templates, total, hasMore, nil
 }
 
-// GetDetails returns the details of the object
+// GetDetails returns the list of details from the ObjectShowResponse
 func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 	return []Detail{
 		{
@@ -87,7 +354,7 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 	}
 }
 
-// getTags returns the list of tags from the object details
+// getTags returns the list of tags from the ObjectShowResponse
 func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	tags := []Tag{}
 
@@ -112,7 +379,7 @@ func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	return tags
 }
 
-// GetBlocks returns the blocks of the object
+// GetBlocks returns the list of blocks from the ObjectShowResponse
 func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}
 
@@ -158,6 +425,7 @@ func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	return blocks
 }
 
+// mapAlign maps the protobuf BlockAlign to a string
 func mapAlign(align model.BlockAlign) string {
 	switch align {
 	case model.Block_AlignLeft:
@@ -173,6 +441,7 @@ func mapAlign(align model.BlockAlign) string {
 	}
 }
 
+// mapVerticalAlign maps the protobuf BlockVerticalAlign to a string
 func mapVerticalAlign(align model.BlockVerticalAlign) string {
 	switch align {
 	case model.Block_VerticalAlignTop:

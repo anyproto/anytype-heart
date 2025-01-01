@@ -58,6 +58,7 @@ func ResolveTypeToName(mw service.ClientCommandsServer, spaceId string, typeId s
 				Value:       pbtypes.String(typeId),
 			},
 		},
+		Keys: []string{"name"},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {

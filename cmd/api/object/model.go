@@ -1,5 +1,29 @@
 package object
 
+type GetObjectResponse struct {
+	Object Object `json:"object"`
+}
+
+type CreateObjectRequest struct {
+	Name                string `json:"name"`
+	Icon                string `json:"icon"`
+	TemplateId          string `json:"template_id"`
+	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
+	WithChat            bool   `json:"with_chat"`
+}
+
+type CreateObjectResponse struct {
+	Object Object `json:"object"`
+}
+
+type UpdateObjectRequest struct {
+	Object Object `json:"object"`
+}
+
+type UpdateObjectResponse struct {
+	Object Object `json:"object"`
+}
+
 type Object struct {
 	Type       string   `json:"type" example:"object"`
 	Id         string   `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`

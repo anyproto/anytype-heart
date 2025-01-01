@@ -46,8 +46,8 @@ func (s *Server) NewRouter() *gin.Engine {
 		readOnly.GET("/spaces/:space_id/members", paginator, space.GetMembersHandler(s.spaceService))
 		readOnly.GET("/spaces/:space_id/objects", paginator, object.GetObjectsHandler(s.objectService))
 		readOnly.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
-		readOnly.GET("/spaces/:space_id/objectTypes", paginator, object.GetObjectTypesHandler(s.objectService))
-		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, object.GetObjectTypeTemplatesHandler(s.objectService))
+		readOnly.GET("/spaces/:space_id/objectTypes", paginator, object.GetTypesHandler(s.objectService))
+		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, object.GetTemplatesHandler(s.objectService))
 		readOnly.GET("/search", paginator, search.SearchHandler(s.searchService))
 	}
 
