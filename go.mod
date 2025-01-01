@@ -285,3 +285,5 @@ replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr
 replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38
 
 replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38
+
+replace nhooyr.io/websocket => github.com/coder/websocket v1.8.7
