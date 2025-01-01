@@ -302,10 +302,8 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 }
 
 var anyStoreConfig *anystore.Config = &anystore.Config{
-	Namespace:       "",
-	ReadConnections: 0,
+	ReadConnections: 4,
 	SQLiteConnectionOptions: map[string]string{
 		"synchronous": "off",
 	},
-	SyncPoolElementMaxSize: 0,
 }

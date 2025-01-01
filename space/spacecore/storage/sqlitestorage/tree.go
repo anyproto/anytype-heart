@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -155,8 +156,14 @@ func (t *treeStorage) AddRawChangesSetHeads(changes []*treechangeproto.RawTreeCh
 	return nil
 }
 
+var totalCalls atomic.Int32
+
 func (t *treeStorage) GetRawChange(ctx context.Context, id string) (*treechangeproto.RawTreeChangeWithId, error) {
 	ch, err := t.spaceStorage.TreeRoot(id)
+	// totalCalls.Store(totalCalls.Load() + 1)
+	// if totalCalls.Load()%10 == 0 {
+	// 	fmt.Println("totalCalls", totalCalls.Load())
+	// }
 	if err != nil {
 		return nil, replaceNoRowsErr(err, treestorage.ErrUnknownChange)
 	}
