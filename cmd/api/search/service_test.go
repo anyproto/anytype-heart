@@ -22,7 +22,6 @@ const (
 	limit       = 100
 	techSpaceId = "tech-space-id"
 	gatewayUrl  = "http://localhost:31006"
-	iconImage   = "bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"
 )
 
 type fixture struct {
@@ -200,7 +199,7 @@ func TestSearchService_Search(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objects, _, _, err := fx.Search(ctx, "search-term", "", offset, limit)
+		objects, total, hasMore, err := fx.Search(ctx, "search-term", "", offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -237,5 +236,8 @@ func TestSearchService_Search(t *testing.T) {
 		require.Equal(t, "tag-2", tags[1].Id)
 		require.Equal(t, "Optional", tags[1].Name)
 		require.Equal(t, "blue", tags[1].Color)
+
+		require.Equal(t, 1, total)
+		require.False(t, hasMore)
 	})
 }

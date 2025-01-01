@@ -28,7 +28,7 @@ var (
 )
 
 type Service interface {
-	ListSpaces(ctx context.Context) ([]Space, error)
+	ListSpaces(ctx context.Context, offset int, limit int) ([]Space, int, bool, error)
 	CreateSpace(ctx context.Context, name string) (Space, error)
 }
 

@@ -3,12 +3,12 @@ package pagination
 import "github.com/gin-gonic/gin"
 
 type Service[T any] interface {
-	RespondWithPagination(c *gin.Context, statusCode int, data []T, total, offset, limit int, hasMore bool)
-	Paginate(records []T, offset, limit int) ([]T, bool)
+	RespondWithPagination(c *gin.Context, statusCode int, data []T, total int, offset int, limit int, hasMore bool)
+	Paginate(records []T, offset int, limit int) ([]T, bool)
 }
 
 // RespondWithPagination returns a json response with the paginated data and corresponding metadata
-func RespondWithPagination[T any](c *gin.Context, statusCode int, data []T, total, offset, limit int, hasMore bool) {
+func RespondWithPagination[T any](c *gin.Context, statusCode int, data []T, total int, offset int, limit int, hasMore bool) {
 	c.JSON(statusCode, PaginatedResponse[T]{
 		Data: data,
 		Pagination: PaginationMeta{
@@ -21,7 +21,7 @@ func RespondWithPagination[T any](c *gin.Context, statusCode int, data []T, tota
 }
 
 // Paginate paginates the given records based on the offset and limit
-func Paginate[T any](records []T, offset, limit int) ([]T, bool) {
+func Paginate[T any](records []T, offset int, limit int) ([]T, bool) {
 	total := len(records)
 	start := offset
 	end := offset + limit
@@ -35,5 +35,6 @@ func Paginate[T any](records []T, offset, limit int) ([]T, bool) {
 
 	paginated := records[start:end]
 	hasMore := end < total
+
 	return paginated, hasMore
 }

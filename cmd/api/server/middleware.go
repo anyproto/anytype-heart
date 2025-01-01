@@ -22,7 +22,7 @@ func (s *Server) initAccountInfo() gin.HandlerFunc {
 		// TODO: consider not fetching account info on every request; currently used to avoid inconsistencies on logout/login
 		app := s.mwInternal.GetApp()
 		if app == nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get app instance"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "failed to get app instance"})
 			return
 		}
 
