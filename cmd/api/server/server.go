@@ -21,7 +21,7 @@ const (
 	readHeaderTimeout = 5 * time.Second
 )
 
-// Server wraps the HTTP server logic.
+// Server wraps the HTTP server and service logic.
 type Server struct {
 	engine *gin.Engine
 	srv    *http.Server
@@ -33,8 +33,7 @@ type Server struct {
 	searchService *search.SearchService
 }
 
-// NewServer constructs a new Server with default config
-// and sets up routes via your router.go
+// NewServer constructs a new Server with default config and sets up the routes.
 func NewServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareInternal) *Server {
 	s := &Server{
 		mwInternal:    mwInternal,
@@ -54,13 +53,13 @@ func NewServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareIntern
 	return s
 }
 
-// ListenAndServe starts the HTTP server
+// ListenAndServe starts the HTTP server.
 func (s *Server) ListenAndServe() error {
 	fmt.Printf("Starting API server on %s\n", httpPort)
 	return s.srv.ListenAndServe()
 }
 
-// Shutdown gracefully stops the server
+// Shutdown gracefully stops the server.
 func (s *Server) Shutdown(ctx context.Context) error {
 	fmt.Println("Shutting down API server...")
 	return s.srv.Shutdown(ctx)

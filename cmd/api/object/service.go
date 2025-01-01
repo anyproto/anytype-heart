@@ -47,12 +47,11 @@ type ObjectService struct {
 	AccountInfo *model.AccountInfo
 }
 
-// NewService creates a new object service
 func NewService(mw service.ClientCommandsServer) *ObjectService {
 	return &ObjectService{mw: mw}
 }
 
-// ListObjects retrieves a list of objects in a specific space
+// ListObjects retrieves a paginated list of objects in a specific space.
 func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []Object, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -112,7 +111,7 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 	return objects, total, hasMore, nil
 }
 
-// GetObject retrieves a single object by its ID in a specific space
+// GetObject retrieves a single object by its ID in a specific space.
 func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
@@ -148,7 +147,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 	return object, nil
 }
 
-// CreateObject creates a new object in a specific space
+// CreateObject creates a new object in a specific space.
 func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error) {
 	resp := s.mw.ObjectCreate(ctx, &pb.RpcObjectCreateRequest{
 		Details: &types.Struct{
@@ -197,13 +196,13 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 	return object, nil
 }
 
-// UpdateObject updates an existing object in a specific space
+// UpdateObject updates an existing object in a specific space.
 func (s *ObjectService) UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (Object, error) {
 	// TODO: Implement logic to update an existing object
 	return Object{}, ErrNotImplemented
 }
 
-// ListTypes returns the list of types in a specific space
+// ListTypes returns a paginated list of types in a specific space.
 func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []ObjectType, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -252,7 +251,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 	return objectTypes, total, hasMore, nil
 }
 
-// ListTemplates returns the list of templates in a specific space
+// ListTemplates returns a paginated list of templates in a specific space.
 func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []ObjectTemplate, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
@@ -330,7 +329,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 	return templates, total, hasMore, nil
 }
 
-// GetDetails returns the list of details from the ObjectShowResponse
+// GetDetails returns the list of details from the ObjectShowResponse.
 func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 	return []Detail{
 		{
@@ -379,7 +378,7 @@ func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	return tags
 }
 
-// GetBlocks returns the list of blocks from the ObjectShowResponse
+// GetBlocks returns the list of blocks from the ObjectShowResponse.
 func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}
 
@@ -425,7 +424,7 @@ func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	return blocks
 }
 
-// mapAlign maps the protobuf BlockAlign to a string
+// mapAlign maps the protobuf BlockAlign to a string.
 func mapAlign(align model.BlockAlign) string {
 	switch align {
 	case model.Block_AlignLeft:
@@ -441,7 +440,7 @@ func mapAlign(align model.BlockAlign) string {
 	}
 }
 
-// mapVerticalAlign maps the protobuf BlockVerticalAlign to a string
+// mapVerticalAlign maps the protobuf BlockVerticalAlign to a string.
 func mapVerticalAlign(align model.BlockVerticalAlign) string {
 	switch align {
 	case model.Block_VerticalAlignTop:

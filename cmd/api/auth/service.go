@@ -27,8 +27,7 @@ func NewService(mw service.ClientCommandsServer) *AuthService {
 	return &AuthService{mw: mw}
 }
 
-// GenerateNewChallenge calls mw.AccountLocalLinkNewChallenge(...)
-// and returns the challenge ID, or an error if it fails.
+// GenerateNewChallenge calls AccountLocalLinkNewChallenge and returns the challenge ID, or an error if it fails.
 func (s *AuthService) GenerateNewChallenge(ctx context.Context, appName string) (string, error) {
 	resp := s.mw.AccountLocalLinkNewChallenge(ctx, &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: "api-test"})
 
@@ -39,8 +38,7 @@ func (s *AuthService) GenerateNewChallenge(ctx context.Context, appName string) 
 	return resp.ChallengeId, nil
 }
 
-// SolveChallengeForToken calls mw.AccountLocalLinkSolveChallenge(...)
-// and returns the session token + app key, or an error if it fails.
+// SolveChallengeForToken calls AccountLocalLinkSolveChallenge and returns the session token + app key, or an error if it fails.
 func (s *AuthService) SolveChallengeForToken(ctx context.Context, challengeID, code string) (sessionToken, appKey string, err error) {
 	if challengeID == "" || code == "" {
 		return "", "", ErrInvalidInput

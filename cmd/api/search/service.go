@@ -22,7 +22,7 @@ var (
 )
 
 type Service interface {
-	Search(ctx context.Context) ([]object.Object, error)
+	Search(ctx context.Context, searchQuery string, objectType string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error)
 }
 
 type SearchService struct {
@@ -36,6 +36,7 @@ func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceServic
 	return &SearchService{mw: mw, spaceService: spaceService, objectService: objectService}
 }
 
+// Search retrieves a paginated list of objects from all spaces that match the search parameters.
 func (s *SearchService) Search(ctx context.Context, searchQuery string, objectType string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error) {
 	spaces, _, _, err := s.spaceService.ListSpaces(ctx, 0, 100)
 	if err != nil {

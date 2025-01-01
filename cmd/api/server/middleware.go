@@ -10,13 +10,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 )
 
-// // TODO: User represents an authenticated user with permissions
+// TODO: User represents an authenticated user with permissions
 type User struct {
 	ID          string
 	Permissions string // "read-only" or "read-write"
 }
 
-// initAccountInfo retrieves the account information from the account service
+// initAccountInfo retrieves the account information from the account service.
 func (s *Server) initAccountInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// TODO: consider not fetching account info on every request; currently used to avoid inconsistencies on logout/login
@@ -39,7 +39,7 @@ func (s *Server) initAccountInfo() gin.HandlerFunc {
 	}
 }
 
-// TODO: AuthMiddleware to ensure the user is authenticated
+// TODO: AuthMiddleware ensures the user is authenticated.
 func (s *Server) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
@@ -60,7 +60,7 @@ func (s *Server) AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// TODO: PermissionMiddleware to ensure the user has the required permissions
+// TODO: PermissionMiddleware ensures the user has the required permissions.
 func (s *Server) PermissionMiddleware(requiredPermission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, exists := c.Get("user")

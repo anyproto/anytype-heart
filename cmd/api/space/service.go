@@ -30,6 +30,7 @@ var (
 type Service interface {
 	ListSpaces(ctx context.Context, offset int, limit int) ([]Space, int, bool, error)
 	CreateSpace(ctx context.Context, name string) (Space, error)
+	ListMembers(ctx context.Context, spaceId string, offset int, limit int) ([]Member, int, bool, error)
 }
 
 type SpaceService struct {
@@ -41,6 +42,7 @@ func NewService(mw service.ClientCommandsServer) *SpaceService {
 	return &SpaceService{mw: mw}
 }
 
+// ListSpaces returns a paginated list of spaces for the account.
 func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (spaces []Space, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.AccountInfo.TechSpaceId,
@@ -100,6 +102,7 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 	return spaces, total, hasMore, nil
 }
 
+// CreateSpace creates a new space with the given name and returns the space info.
 func (s *SpaceService) CreateSpace(ctx context.Context, name string) (Space, error) {
 	iconOption, err := rand.Int(rand.Reader, big.NewInt(13))
 	if err != nil {
@@ -126,6 +129,7 @@ func (s *SpaceService) CreateSpace(ctx context.Context, name string) (Space, err
 	return s.getWorkspaceInfo(resp.SpaceId)
 }
 
+// ListMembers returns a paginated list of members in the space with the given ID.
 func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []Member, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -181,7 +185,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 	return members, total, hasMore, nil
 }
 
-// getWorkspaceInfo returns the workspace info for the space with the given ID
+// getWorkspaceInfo returns the workspace info for the space with the given ID.
 func (s *SpaceService) getWorkspaceInfo(spaceId string) (space Space, err error) {
 	workspaceResponse := s.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
 		SpaceId:  spaceId,
