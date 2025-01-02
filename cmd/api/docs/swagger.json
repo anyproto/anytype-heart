@@ -34,7 +34,7 @@
                     "200": {
                         "description": "Challenge ID",
                         "schema": {
-                            "$ref": "#/definitions/auth.AuthDisplayCodeResponse"
+                            "$ref": "#/definitions/auth.DisplayCodeResponse"
                         }
                     },
                     "502": {
@@ -78,7 +78,7 @@
                     "200": {
                         "description": "Authentication token",
                         "schema": {
-                            "$ref": "#/definitions/auth.AuthTokenResponse"
+                            "$ref": "#/definitions/auth.TokenResponse"
                         }
                     },
                     "400": {
@@ -727,7 +727,7 @@
         }
     },
     "definitions": {
-        "auth.AuthDisplayCodeResponse": {
+        "auth.DisplayCodeResponse": {
             "type": "object",
             "properties": {
                 "challenge_id": {
@@ -736,7 +736,7 @@
                 }
             }
         },
-        "auth.AuthTokenResponse": {
+        "auth.TokenResponse": {
             "type": "object",
             "properties": {
                 "app_key": {

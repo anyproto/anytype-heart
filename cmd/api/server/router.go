@@ -30,11 +30,11 @@ func (s *Server) NewRouter() *gin.Engine {
 	// Swagger route
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Unprotected routes
+	// Auth
 	authRouter := router.Group("/v1/auth")
 	{
-		authRouter.POST("/displayCode", auth.AuthDisplayCodeHandler(s.authService))
-		authRouter.GET("/token", auth.AuthTokenHandler(s.authService))
+		authRouter.POST("/displayCode", auth.DisplayCodeHandler(s.authService))
+		authRouter.GET("/token", auth.TokenHandler(s.authService))
 	}
 
 	// Read-only group

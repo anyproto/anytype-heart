@@ -40,7 +40,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Challenge ID",
                         "schema": {
-                            "$ref": "#/definitions/auth.AuthDisplayCodeResponse"
+                            "$ref": "#/definitions/auth.DisplayCodeResponse"
                         }
                     },
                     "502": {
@@ -84,7 +84,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Authentication token",
                         "schema": {
-                            "$ref": "#/definitions/auth.AuthTokenResponse"
+                            "$ref": "#/definitions/auth.TokenResponse"
                         }
                     },
                     "400": {
@@ -733,7 +733,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "auth.AuthDisplayCodeResponse": {
+        "auth.DisplayCodeResponse": {
             "type": "object",
             "properties": {
                 "challenge_id": {
@@ -742,7 +742,7 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.AuthTokenResponse": {
+        "auth.TokenResponse": {
             "type": "object",
             "properties": {
                 "app_key": {

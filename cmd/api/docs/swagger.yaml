@@ -1,12 +1,12 @@
 basePath: /v1
 definitions:
-  auth.AuthDisplayCodeResponse:
+  auth.DisplayCodeResponse:
     properties:
       challenge_id:
         example: 67647f5ecda913e9a2e11b26
         type: string
     type: object
-  auth.AuthTokenResponse:
+  auth.TokenResponse:
     properties:
       app_key:
         example: ""
@@ -336,7 +336,7 @@ paths:
         "200":
           description: Challenge ID
           schema:
-            $ref: '#/definitions/auth.AuthDisplayCodeResponse'
+            $ref: '#/definitions/auth.DisplayCodeResponse'
         "502":
           description: Internal server error
           schema:
@@ -365,7 +365,7 @@ paths:
         "200":
           description: Authentication token
           schema:
-            $ref: '#/definitions/auth.AuthTokenResponse'
+            $ref: '#/definitions/auth.TokenResponse'
         "400":
           description: Invalid input
           schema:

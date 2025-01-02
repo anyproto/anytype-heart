@@ -151,7 +151,7 @@ func (s *SearchService) prepareBaseFilters() []*model.BlockContentDataviewFilter
 				int(model.ObjectType_note),
 				int(model.ObjectType_bookmark),
 				int(model.ObjectType_set),
-				// int(model.ObjectType_collection),
+				int(model.ObjectType_collection),
 				int(model.ObjectType_participant),
 			}...),
 		},

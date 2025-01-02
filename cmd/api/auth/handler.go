@@ -8,16 +8,16 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/api/util"
 )
 
-// AuthDisplayCodeHandler generates a new challenge and returns the challenge ID
+// DisplayCodeHandler generates a new challenge and returns the challenge ID
 //
 //	@Summary	Open a modal window with a code in Anytype Desktop app
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
-//	@Success	200	{object}	AuthDisplayCodeResponse	"Challenge ID"
+//	@Success	200	{object}	DisplayCodeResponse	"Challenge ID"
 //	@Failure	502	{object}	util.ServerError		"Internal server error"
 //	@Router		/auth/displayCode [post]
-func AuthDisplayCodeHandler(s *AuthService) gin.HandlerFunc {
+func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		challengeId, err := s.GenerateNewChallenge(c.Request.Context(), "api-test")
 		code := util.MapErrorCode(err, util.ErrToCode(ErrFailedGenerateChallenge, http.StatusInternalServerError))
@@ -28,11 +28,11 @@ func AuthDisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, AuthDisplayCodeResponse{ChallengeId: challengeId})
+		c.JSON(http.StatusOK, DisplayCodeResponse{ChallengeId: challengeId})
 	}
 }
 
-// AuthTokenHandler retrieves an authentication token using a code and challenge ID
+// TokenHandler retrieves an authentication token using a code and challenge ID
 //
 //	@Summary	Retrieve an authentication token using a code
 //	@Tags		auth
@@ -40,11 +40,11 @@ func AuthDisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		code			query		string					true	"The code retrieved from Anytype Desktop app"
 //	@Param		challenge_id	query		string					true	"The challenge ID"
-//	@Success	200				{object}	AuthTokenResponse		"Authentication token"
+//	@Success	200				{object}	TokenResponse		"Authentication token"
 //	@Failure	400				{object}	util.ValidationError	"Invalid input"
 //	@Failure	502				{object}	util.ServerError		"Internal server error"
 //	@Router		/auth/token [get]
-func AuthTokenHandler(s *AuthService) gin.HandlerFunc {
+func TokenHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		challengeID := c.Query("challenge_id")
 		code := c.Query("code")
@@ -61,7 +61,7 @@ func AuthTokenHandler(s *AuthService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, AuthTokenResponse{
+		c.JSON(http.StatusOK, TokenResponse{
 			SessionToken: sessionToken,
 			AppKey:       appKey,
 		})
