@@ -30,7 +30,8 @@ var log = logging.Logger("rest-api")
 func ReplacePlaceholders(endpoint string, parameters map[string]interface{}) string {
 	for key, value := range parameters {
 		placeholder := fmt.Sprintf("{%s}", key)
-		endpoint = strings.ReplaceAll(endpoint, placeholder, fmt.Sprintf("%v", value))
+		encodedValue := url.QueryEscape(fmt.Sprintf("%v", value))
+		endpoint = strings.ReplaceAll(endpoint, placeholder, encodedValue)
 	}
 
 	// Parse the base URL + endpoint

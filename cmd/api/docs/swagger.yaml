@@ -386,10 +386,13 @@ paths:
         in: query
         name: query
         type: string
-      - description: Specify object.Object type for search
+      - collectionFormat: csv
+        description: Specify object types for search
         in: query
-        name: object_type
-        type: string
+        items:
+          type: string
+        name: object_types
+        type: array
       - description: The number of items to skip before starting to collect the result
           set
         in: query

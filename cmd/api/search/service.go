@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 
 	"github.com/anyproto/anytype-heart/cmd/api/object"
 	"github.com/anyproto/anytype-heart/cmd/api/pagination"
@@ -22,7 +23,7 @@ var (
 )
 
 type Service interface {
-	Search(ctx context.Context, searchQuery string, objectType string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error)
+	Search(ctx context.Context, searchQuery string, objectTypes []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error)
 }
 
 type SearchService struct {
@@ -37,51 +38,16 @@ func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceServic
 }
 
 // Search retrieves a paginated list of objects from all spaces that match the search parameters.
-func (s *SearchService) Search(ctx context.Context, searchQuery string, objectType string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error) {
+func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTypes []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error) {
 	spaces, _, _, err := s.spaceService.ListSpaces(ctx, 0, 100)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
-	// Then, get objects from each space that match the search parameters
-	var filters = []*model.BlockContentDataviewFilter{
-		{
-			RelationKey: bundle.RelationKeyLayout.String(),
-			Condition:   model.BlockContentDataviewFilter_In,
-			Value: pbtypes.IntList([]int{
-				int(model.ObjectType_basic),
-				int(model.ObjectType_profile),
-				int(model.ObjectType_todo),
-				int(model.ObjectType_note),
-				int(model.ObjectType_bookmark),
-				int(model.ObjectType_set),
-				int(model.ObjectType_collection),
-				int(model.ObjectType_participant),
-			}...),
-		},
-		{
-			RelationKey: bundle.RelationKeyIsHidden.String(),
-			Condition:   model.BlockContentDataviewFilter_NotEqual,
-			Value:       pbtypes.Bool(true),
-		},
-	}
-
-	if searchQuery != "" {
-		// TODO also include snippet for notes
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeyName.String(),
-			Condition:   model.BlockContentDataviewFilter_Like,
-			Value:       pbtypes.String(searchQuery),
-		})
-	}
-
-	if objectType != "" {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeyType.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(objectType),
-		})
-	}
+	baseFilters := s.prepareBaseFilters()
+	queryFilters := s.prepareQueryFilter(searchQuery)
+	objectTypeFilters := s.prepareObjectTypeFilters(objectTypes)
+	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, objectTypeFilters)
 
 	results := make([]object.Object, 0)
 	for _, space := range spaces {
@@ -96,7 +62,7 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys: []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
+			Keys: []string{"id", "name", "type", "snippet", "layout", "iconEmoji", "iconImage"},
 			// TODO split limit between spaces
 			// Limit: paginationLimitPerSpace,
 			// FullText: searchTerm,
@@ -122,6 +88,7 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 				ObjectId: record.Fields["id"].GetStringValue(),
 			})
 
+			// TODO: return snippet for notes?
 			results = append(results, object.Object{
 				Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
 				Id:         record.Fields["id"].GetStringValue(),
@@ -149,4 +116,108 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 	total = len(results)
 	paginatedResults, hasMore := pagination.Paginate(results, offset, limit)
 	return paginatedResults, total, hasMore, nil
+}
+
+// makeAndCondition combines multiple filter groups with the given operator.
+func (s *SearchService) combineFilters(operator model.BlockContentDataviewFilterOperator, filterGroups ...[]*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+	nestedFilters := make([]*model.BlockContentDataviewFilter, 0)
+	for _, group := range filterGroups {
+		nestedFilters = append(nestedFilters, group...)
+	}
+
+	if len(nestedFilters) == 0 {
+		return nil
+	}
+
+	return []*model.BlockContentDataviewFilter{
+		{
+			Operator:      operator,
+			NestedFilters: nestedFilters,
+		},
+	}
+}
+
+// prepareBaseFilters returns a list of default filters that should be applied to all search queries.
+func (s *SearchService) prepareBaseFilters() []*model.BlockContentDataviewFilter {
+	return []*model.BlockContentDataviewFilter{
+		{
+			Operator:    model.BlockContentDataviewFilter_No,
+			RelationKey: bundle.RelationKeyLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value: pbtypes.IntList([]int{
+				int(model.ObjectType_basic),
+				int(model.ObjectType_profile),
+				int(model.ObjectType_todo),
+				int(model.ObjectType_note),
+				int(model.ObjectType_bookmark),
+				int(model.ObjectType_set),
+				// int(model.ObjectType_collection),
+				int(model.ObjectType_participant),
+			}...),
+		},
+		{
+			Operator:    model.BlockContentDataviewFilter_No,
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.Bool(true),
+		},
+	}
+}
+
+// prepareQueryFilter combines object name and snippet filters with an OR condition.
+func (s *SearchService) prepareQueryFilter(searchQuery string) []*model.BlockContentDataviewFilter {
+	if searchQuery == "" {
+		return nil
+	}
+
+	return []*model.BlockContentDataviewFilter{
+		{
+			Operator: model.BlockContentDataviewFilter_Or,
+			NestedFilters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyName.String(),
+					Condition:   model.BlockContentDataviewFilter_Like,
+					Value:       pbtypes.String(searchQuery),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeySnippet.String(),
+					Condition:   model.BlockContentDataviewFilter_Like,
+					Value:       pbtypes.String(searchQuery),
+				},
+			},
+		},
+	}
+}
+
+// prepareObjectTypeFilters combines object type filters with an OR condition.
+func (s *SearchService) prepareObjectTypeFilters(objectTypes []string) []*model.BlockContentDataviewFilter {
+	if len(objectTypes) == 0 || objectTypes[0] == "" {
+		return nil
+	}
+
+	// Prepare nested filters for each object type
+	nestedFilters := make([]*model.BlockContentDataviewFilter, len(objectTypes))
+	for i, objectType := range objectTypes {
+		relationKey := bundle.RelationKeyType.String()
+		if strings.HasPrefix(objectType, "ot-") {
+			relationKey = bundle.RelationKeyUniqueKey.String()
+		}
+
+		nestedFilters[i] = &model.BlockContentDataviewFilter{
+			Operator:    model.BlockContentDataviewFilter_No,
+			RelationKey: relationKey,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(objectType),
+		}
+	}
+
+	// Combine all filters with an OR operator
+	return []*model.BlockContentDataviewFilter{
+		{
+			Operator:      model.BlockContentDataviewFilter_Or,
+			NestedFilters: nestedFilters,
+		},
+	}
 }

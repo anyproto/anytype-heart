@@ -48,16 +48,19 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 		SpaceId: s.AccountInfo.TechSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 			},
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 			},
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),

@@ -16,23 +16,23 @@ import (
 //	@Tags		search
 //	@Accept		json
 //	@Produce	json
-//	@Param		query		query		string						false	"The search term to filter objects by name"
-//	@Param		object_type	query		string						false	"Specify object.Object type for search"
-//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int							false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string][]object.Object	"List of objects"
-//	@Failure	403			{object}	util.UnauthorizedError		"Unauthorized"
-//	@Failure	404			{object}	util.NotFoundError			"Resource not found"
-//	@Failure	502			{object}	util.ServerError			"Internal server error"
+//	@Param		query			query		string						false	"The search term to filter objects by name"
+//	@Param		object_types	query		[]string					false	"Specify object types for search"
+//	@Param		offset			query		int							false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit			query		int							false	"The number of items to return"	default(100)
+//	@Success	200				{object}	map[string][]object.Object	"List of objects"
+//	@Failure	403				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure	404				{object}	util.NotFoundError			"Resource not found"
+//	@Failure	502				{object}	util.ServerError			"Internal server error"
 //	@Router		/search [get]
 func SearchHandler(s *SearchService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		searchQuery := c.Query("query")
-		objectType := c.Query("object_type")
+		objectTypes := c.QueryArray("object_types")
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		objects, total, hasMore, err := s.Search(c, searchQuery, objectType, offset, limit)
+		objects, total, hasMore, err := s.Search(c, searchQuery, objectTypes, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrNoObjectsFound, http.StatusNotFound),
 			util.ErrToCode(ErrFailedSearchObjects, http.StatusInternalServerError),

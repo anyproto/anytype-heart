@@ -122,9 +122,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "Specify object.Object type for search",
-                        "name": "object_type",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Specify object types for search",
+                        "name": "object_types",
                         "in": "query"
                     },
                     {
