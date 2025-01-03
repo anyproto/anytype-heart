@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/cmd/api/auth"
+	"github.com/anyproto/anytype-heart/cmd/api/export"
 	"github.com/anyproto/anytype-heart/cmd/api/object"
 	"github.com/anyproto/anytype-heart/cmd/api/search"
 	"github.com/anyproto/anytype-heart/cmd/api/space"
@@ -28,6 +29,7 @@ type Server struct {
 
 	mwInternal    core.MiddlewareInternal
 	authService   *auth.AuthService
+	exportService *export.ExportService
 	objectService *object.ObjectService
 	spaceService  *space.SpaceService
 	searchService *search.SearchService
@@ -38,6 +40,7 @@ func NewServer(mw service.ClientCommandsServer, mwInternal core.MiddlewareIntern
 	s := &Server{
 		mwInternal:    mwInternal,
 		authService:   auth.NewService(mw),
+		exportService: export.NewService(mw),
 		objectService: object.NewService(mw),
 		spaceService:  space.NewService(mw),
 	}

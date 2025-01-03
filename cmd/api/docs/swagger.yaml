@@ -15,6 +15,11 @@ definitions:
         example: ""
         type: string
     type: object
+  export.ObjectExportResponse:
+    properties:
+      path:
+        type: string
+    type: object
   object.Block:
     properties:
       align:
@@ -803,6 +808,52 @@ paths:
       summary: Update an existing object in a specific space
       tags:
       - space_objects
+  /spaces/{space_id}/objects/{object_id}/export/{format}:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Object ID
+        in: path
+        name: object_id
+        required: true
+        type: string
+      - description: Export format
+        in: query
+        name: format
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Object exported successfully
+          schema:
+            $ref: '#/definitions/export.ObjectExportResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "502":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Export an object
+      tags:
+      - exports
 securityDefinitions:
   BasicAuth:
     type: basic

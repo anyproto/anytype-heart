@@ -7,6 +7,7 @@ import (
 	"github.com/webstradev/gin-pagination/v2/pkg/pagination"
 
 	"github.com/anyproto/anytype-heart/cmd/api/auth"
+	"github.com/anyproto/anytype-heart/cmd/api/export"
 	"github.com/anyproto/anytype-heart/cmd/api/object"
 	"github.com/anyproto/anytype-heart/cmd/api/search"
 	"github.com/anyproto/anytype-heart/cmd/api/space"
@@ -15,7 +16,6 @@ import (
 // NewRouter builds and returns a *gin.Engine with all routes configured.
 func (s *Server) NewRouter() *gin.Engine {
 	router := gin.Default()
-	router.Use(s.initAccountInfo())
 
 	// Pagination middleware setup
 	paginator := pagination.New(
@@ -30,35 +30,34 @@ func (s *Server) NewRouter() *gin.Engine {
 	// Swagger route
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Auth
-	authRouter := router.Group("/v1/auth")
+	// API routes
+	v1 := router.Group("/v1")
+	v1.Use(s.initAccountInfo())
+	v1.Use(s.ensureAuthenticated())
 	{
-		authRouter.POST("/displayCode", auth.DisplayCodeHandler(s.authService))
-		authRouter.GET("/token", auth.TokenHandler(s.authService))
-	}
+		// Auth
+		v1.POST("/auth/display_code", auth.DisplayCodeHandler(s.authService))
+		v1.GET("/auth/token", auth.TokenHandler(s.authService))
 
-	// Read-only group
-	readOnly := router.Group("/v1")
-	// readOnly.Use(a.AuthMiddleware())
-	// readOnly.Use(a.PermissionMiddleware("read-only"))
-	{
-		readOnly.GET("/spaces", paginator, space.GetSpacesHandler(s.spaceService))
-		readOnly.GET("/spaces/:space_id/members", paginator, space.GetMembersHandler(s.spaceService))
-		readOnly.GET("/spaces/:space_id/objects", paginator, object.GetObjectsHandler(s.objectService))
-		readOnly.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
-		readOnly.GET("/spaces/:space_id/objectTypes", paginator, object.GetTypesHandler(s.objectService))
-		readOnly.GET("/spaces/:space_id/objectTypes/:typeId/templates", paginator, object.GetTemplatesHandler(s.objectService))
-		readOnly.GET("/search", paginator, search.SearchHandler(s.searchService))
-	}
+		// Export
+		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
+		v1.GET("/spaces/:space_id/objects/export/:format", export.GetSpaceExportHandler(s.exportService))
 
-	// Read-write group
-	readWrite := router.Group("/v1")
-	// readWrite.Use(a.AuthMiddleware())
-	// readWrite.Use(a.PermissionMiddleware("read-write"))
-	{
-		readWrite.POST("/spaces", space.CreateSpaceHandler(s.spaceService))
-		readWrite.POST("/spaces/:space_id/objects", object.CreateObjectHandler(s.objectService))
-		readWrite.PUT("/spaces/:space_id/objects/:object_id", object.UpdateObjectHandler(s.objectService))
+		// Object
+		v1.GET("/spaces/:space_id/objects", paginator, object.GetObjectsHandler(s.objectService))
+		v1.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
+		v1.GET("/spaces/:space_id/object_types", paginator, object.GetTypesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/object_types/:typeId/templates", paginator, object.GetTemplatesHandler(s.objectService))
+		v1.POST("/spaces/:space_id/objects", object.CreateObjectHandler(s.objectService))
+		v1.PUT("/spaces/:space_id/objects/:object_id", object.UpdateObjectHandler(s.objectService))
+
+		// Search
+		v1.GET("/search", paginator, search.SearchHandler(s.searchService))
+
+		// Space
+		v1.GET("/spaces", paginator, space.GetSpacesHandler(s.spaceService))
+		v1.GET("/spaces/:space_id/members", paginator, space.GetMembersHandler(s.spaceService))
+		v1.POST("/spaces", space.CreateSpaceHandler(s.spaceService))
 	}
 
 	return router

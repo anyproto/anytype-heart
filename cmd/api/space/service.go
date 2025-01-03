@@ -23,6 +23,7 @@ var (
 	ErrFailedOpenWorkspace      = errors.New("failed to open workspace")
 	ErrFailedGenerateRandomIcon = errors.New("failed to generate random icon")
 	ErrFailedCreateSpace        = errors.New("failed to create space")
+	ErrBadInput                 = errors.New("bad input")
 	ErrNoMembersFound           = errors.New("no members found")
 	ErrFailedListMembers        = errors.New("failed to retrieve list of members")
 )

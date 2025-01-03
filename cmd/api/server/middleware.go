@@ -26,6 +26,7 @@ func (s *Server) initAccountInfo() gin.HandlerFunc {
 			return
 		}
 
+		s.exportService.AccountInfo = accInfo
 		s.objectService.AccountInfo = accInfo
 		s.spaceService.AccountInfo = accInfo
 		s.searchService.AccountInfo = accInfo
