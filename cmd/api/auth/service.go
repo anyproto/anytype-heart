@@ -29,7 +29,7 @@ func NewService(mw service.ClientCommandsServer) *AuthService {
 
 // GenerateNewChallenge calls AccountLocalLinkNewChallenge and returns the challenge ID, or an error if it fails.
 func (s *AuthService) GenerateNewChallenge(ctx context.Context, appName string) (string, error) {
-	resp := s.mw.AccountLocalLinkNewChallenge(ctx, &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: "api-test"})
+	resp := s.mw.AccountLocalLinkNewChallenge(ctx, &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: appName})
 
 	if resp.Error.Code != pb.RpcAccountLocalLinkNewChallengeResponseError_NULL {
 		return "", ErrFailedGenerateChallenge

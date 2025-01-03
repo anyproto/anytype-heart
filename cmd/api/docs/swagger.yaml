@@ -483,6 +483,10 @@ paths:
           description: Space created successfully
           schema:
             $ref: '#/definitions/space.CreateSpaceResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
         "403":
           description: Unauthorized
           schema:

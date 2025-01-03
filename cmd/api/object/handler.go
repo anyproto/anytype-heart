@@ -98,7 +98,8 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 
 		request := CreateObjectRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			c.JSON(http.StatusBadRequest, util.CodeToAPIError(http.StatusBadRequest, ErrBadInput.Error()))
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 
@@ -140,7 +141,8 @@ func UpdateObjectHandler(s *ObjectService) gin.HandlerFunc {
 
 		request := UpdateObjectRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			c.JSON(http.StatusBadRequest, util.CodeToAPIError(http.StatusBadRequest, ErrBadInput.Error()))
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 

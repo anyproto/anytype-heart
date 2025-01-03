@@ -262,6 +262,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/space.CreateSpaceResponse"
                         }
                     },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ValidationError"
+                        }
+                    },
                     "403": {
                         "description": "Unauthorized",
                         "schema": {

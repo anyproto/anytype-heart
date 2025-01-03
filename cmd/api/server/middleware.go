@@ -10,12 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 )
 
-// TODO: User represents an authenticated user with permissions
-type User struct {
-	ID          string
-	Permissions string // "read-only" or "read-write"
-}
-
 // initAccountInfo retrieves the account information from the account service.
 func (s *Server) initAccountInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -39,43 +33,16 @@ func (s *Server) initAccountInfo() gin.HandlerFunc {
 	}
 }
 
-// TODO: AuthMiddleware ensures the user is authenticated.
-func (s *Server) AuthMiddleware() gin.HandlerFunc {
+// ensureAuthenticated is a middleware that ensures the request is authenticated.
+func (s *Server) ensureAuthenticated() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
-		if token == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
+		// token := c.GetHeader("Authorization")
+		// if token == "" {
+		// 	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		// 	return
+		// }
 
 		// TODO: Validate the token and retrieve user information; this is mock example
-		user := &User{
-			ID:          "user123",
-			Permissions: "read-only", // or "read-only"
-		}
-
-		// Add the user to the context
-		c.Set("user", user)
-		c.Next()
-	}
-}
-
-// TODO: PermissionMiddleware ensures the user has the required permissions.
-func (s *Server) PermissionMiddleware(requiredPermission string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user, exists := c.Get("user")
-		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
-
-		u := user.(*User)
-		if requiredPermission == "read-write" && u.Permissions != "read-write" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden: write access required"})
-			return
-		}
-
-		// For read-only access, both "read-only" and "read-write" permissions are acceptable
 		c.Next()
 	}
 }

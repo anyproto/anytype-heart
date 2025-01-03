@@ -52,6 +52,7 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		name	body		string					true	"Space Name"
 //	@Success	200		{object}	CreateSpaceResponse		"Space created successfully"
+//	@Failure	400		{object}	util.ValidationError	"Bad request"
 //	@Failure	403		{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	502		{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces [post]
@@ -59,12 +60,12 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		nameRequest := CreateSpaceRequest{}
 		if err := c.BindJSON(&nameRequest); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid JSON"})
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
-		name := nameRequest.Name
 
-		space, err := s.CreateSpace(c.Request.Context(), name)
+		space, err := s.CreateSpace(c.Request.Context(), nameRequest.Name)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedCreateSpace, http.StatusInternalServerError),
 		)
