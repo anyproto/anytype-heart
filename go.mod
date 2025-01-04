@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.4-0.20241211133419-d0c2df992842
-	github.com/anyproto/any-sync v0.6.0-alpha.1.0.20241224143141-033d6a39e992
+	github.com/anyproto/any-sync v0.6.0-alpha.1.0.20250104142651-b103f553e562
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.0
@@ -287,4 +287,4 @@ replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.202402
 
 replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38
 
-replace github.com/anyproto/any-sync => ../any-sync
+//replace github.com/anyproto/any-sync => ../any-sync
