@@ -7,6 +7,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 )
@@ -21,6 +22,7 @@ type ClientSpaceStorage interface {
 	MarkSpaceCreated(ctx context.Context) error
 	IsSpaceCreated(ctx context.Context) (created bool, err error)
 	UnmarkSpaceCreated(ctx context.Context) error
+	AllDeletedTreeIds(ctx context.Context) (ids []string, err error)
 }
 
 var _ ClientSpaceStorage = (*clientStorage)(nil)
@@ -38,6 +40,14 @@ type clientStorage struct {
 	cont       *storageContainer
 	clientColl anystore.Collection
 	arena      *anyenc.Arena
+}
+
+func (r *clientStorage) AllDeletedTreeIds(ctx context.Context) (ids []string, err error) {
+	err = r.SpaceStorage.HeadStorage().IterateEntries(ctx, headstorage.IterOpts{Deleted: true}, func(entry headstorage.HeadsEntry) (bool, error) {
+		ids = append(ids, entry.Id)
+		return true, nil
+	})
+	return
 }
 
 func newClientStorage(ctx context.Context, cont *storageContainer, spaceStorage spacestorage.SpaceStorage) (*clientStorage, error) {

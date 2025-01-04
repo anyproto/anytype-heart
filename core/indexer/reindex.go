@@ -50,7 +50,7 @@ const (
 )
 
 type allDeletedIdsProvider interface {
-	AllDeletedTreeIds() (ids []string, err error)
+	AllDeletedTreeIds(ctx context.Context) (ids []string, err error)
 }
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
@@ -235,14 +235,11 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	store := i.store.SpaceIndex(space.Id())
-	storage, ok := space.Storage().(allDeletedIdsProvider)
-	if !ok {
-		return fmt.Errorf("space storage doesn't implement allDeletedIdsProvider")
-	}
-	allIds, err := storage.AllDeletedTreeIds()
+	allIds, err := space.Storage().AllDeletedTreeIds(i.runCtx)
 	if err != nil {
 		return fmt.Errorf("get deleted tree ids: %w", err)
 	}
+	fmt.Println("[x]: deletedIds", len(allIds))
 	for _, objectId := range allIds {
 		err = store.DeleteObject(objectId)
 		if err != nil {
