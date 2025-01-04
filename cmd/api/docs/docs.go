@@ -942,6 +942,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
                 },
+                "layout": {
+                    "type": "string",
+                    "example": "basic"
+                },
                 "name": {
                     "type": "string",
                     "example": "Object Name"

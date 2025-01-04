@@ -55,23 +55,24 @@ func main() {
 		// {"POST", "/auth/displayCode", nil, nil},
 		// {"GET", "/auth/token?challengeId={challengeId}&code={code}", map[string]interface{}{"challengeId": "6738dfc5cda913aad90e8c2a", "code": "2931"}, nil},
 
+		// export
+		// {"GET", "/spaces/{space_id}/objects/{object_id}/export/{format}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId, "format": "markdown"}, nil},
+
 		// spaces
 		// {"POST", "/spaces", nil, map[string]interface{}{"name": "New Space"}},
 		// {"GET", "/spaces?limit={limit}&offset={offset}", map[string]interface{}{"limit": 100, "offset": 0}, nil},
 		// {"GET", "/spaces/{space_id}/members?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
 
-		// space_objects
+		// objects
 		// {"GET", "/spaces/{space_id}/objects?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
 		// {"GET", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, nil},
-		// {"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object from demo", "icon_emoji": "💥", "template_id": "", "object_type_unique_key": "ot-page", "with_chat": false}},
+		// {"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object from demo", "icon": "💥", "template_id": "", "object_type_unique_key": "ot-page", "with_chat": false}},
 		// {"PUT", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, map[string]interface{}{"name": "Updated Object"}},
-
-		// types_and_templates
-		// {"GET", "/spaces/{space_id}/objectTypes?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
-		// {"GET", "/spaces/{space_id}/objectTypes/{type_id}/templates?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "type_id": testTypeId, "limit": 100, "offset": 0}, nil},
+		// {"GET", "/spaces/{space_id}/object_types?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
+		// {"GET", "/spaces/{space_id}/object_types/{type_id}/templates?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "type_id": testTypeId, "limit": 100, "offset": 0}, nil},
 
 		// search
-		// {"GET", "/search?query={query}&object_type={object_type}&limit={limit}&offset={offset}", map[string]interface{}{"query": "Tag", "object_type": testTypeId, "limit": 100, "offset": 0}, nil},
+		// {"GET", "/search?query={query}&object_types={object_types}&limit={limit}&offset={offset}", map[string]interface{}{"query": "new", "object_types": "", "limit": 100, "offset": 0}, nil},
 	}
 
 	for _, ep := range endpoints {

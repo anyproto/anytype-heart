@@ -79,7 +79,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Offset:           0,
 			Limit:            0,
 			ObjectTypeFilter: []string{},
-			Keys:             []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
+			Keys:             []string{"id", "name"},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{

@@ -89,6 +89,9 @@ definitions:
       id:
         example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
         type: string
+      layout:
+        example: basic
+        type: string
       name:
         example: Object Name
         type: string

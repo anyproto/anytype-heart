@@ -82,7 +82,7 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 		Offset:           0,
 		Limit:            0,
 		ObjectTypeFilter: []string{},
-		Keys:             []string{"id", "name", "type", "layout", "iconEmoji", "iconImage"},
+		Keys:             []string{"id", "name"},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -102,9 +102,6 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 		if err != nil {
 			return nil, 0, false, err
 		}
-
-		// TODO: layout is not correctly returned in ObjectShow; therefore we need to resolve it here
-		object.Type = model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())]
 
 		objects = append(objects, object)
 	}
@@ -137,6 +134,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		Id:         resp.ObjectView.Details[0].Details.Fields["id"].GetStringValue(),
 		Name:       resp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
 		Icon:       icon,
+		Layout:     model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields["layout"].GetNumberValue())],
 		ObjectType: objectTypeName,
 		SpaceId:    resp.ObjectView.Details[0].Details.Fields["spaceId"].GetStringValue(),
 		RootId:     resp.ObjectView.RootId,
@@ -166,34 +164,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 		return Object{}, ErrFailedCreateObject
 	}
 
-	objShowResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
-		SpaceId:  spaceId,
-		ObjectId: resp.ObjectId,
-	})
-
-	if objShowResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return Object{}, ErrFailedRetrieveObject
-	}
-
-	icon2 := util.GetIconFromEmojiOrImage(s.AccountInfo, objShowResp.ObjectView.Details[0].Details.Fields["iconEmoji"].GetStringValue(), objShowResp.ObjectView.Details[0].Details.Fields["iconImage"].GetStringValue())
-	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, objShowResp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
-	if err != nil {
-		return Object{}, err
-	}
-
-	object := Object{
-		Type:       "object",
-		Id:         resp.ObjectId,
-		Name:       objShowResp.ObjectView.Details[0].Details.Fields["name"].GetStringValue(),
-		Icon:       icon2,
-		ObjectType: objectTypeName,
-		SpaceId:    objShowResp.ObjectView.Details[0].Details.Fields["spaceId"].GetStringValue(),
-		RootId:     objShowResp.ObjectView.RootId,
-		Blocks:     s.GetBlocks(objShowResp),
-		Details:    s.GetDetails(objShowResp),
-	}
-
-	return object, nil
+	return s.GetObject(ctx, spaceId, resp.ObjectId)
 }
 
 // UpdateObject updates an existing object in a specific space.

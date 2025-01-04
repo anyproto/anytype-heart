@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/api/object"
 	"github.com/anyproto/anytype-heart/cmd/api/pagination"
 	"github.com/anyproto/anytype-heart/cmd/api/space"
-	"github.com/anyproto/anytype-heart/cmd/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -62,7 +61,7 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys: []string{"id", "name", "type", "snippet", "layout", "iconEmoji", "iconImage"},
+			Keys: []string{"id", "name"},
 			// TODO split limit between spaces
 			// Limit: paginationLimitPerSpace,
 			// FullText: searchTerm,
@@ -77,29 +76,11 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 		}
 
 		for _, record := range objResp.Records {
-			icon := util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields["iconEmoji"].GetStringValue(), record.Fields["iconImage"].GetStringValue())
-			objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, record.Fields["type"].GetStringValue())
+			object, err := s.objectService.GetObject(ctx, spaceId, record.Fields["id"].GetStringValue())
 			if err != nil {
 				return nil, 0, false, err
 			}
-
-			showResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
-				SpaceId:  spaceId,
-				ObjectId: record.Fields["id"].GetStringValue(),
-			})
-
-			// TODO: return snippet for notes?
-			results = append(results, object.Object{
-				Type:       model.ObjectTypeLayout_name[int32(record.Fields["layout"].GetNumberValue())],
-				Id:         record.Fields["id"].GetStringValue(),
-				Name:       record.Fields["name"].GetStringValue(),
-				Icon:       icon,
-				ObjectType: objectTypeName,
-				SpaceId:    spaceId,
-				RootId:     showResp.ObjectView.RootId,
-				Blocks:     s.objectService.GetBlocks(showResp),
-				Details:    s.objectService.GetDetails(showResp),
-			})
+			results = append(results, object)
 		}
 	}
 

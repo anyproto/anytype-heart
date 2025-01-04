@@ -110,12 +110,8 @@ func TestSearchService_Search(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						"id":               pbtypes.String("obj-global-1"),
-						"name":             pbtypes.String("Global Object"),
-						"type":             pbtypes.String("global-type-id"),
-						"layout":           pbtypes.Float64(float64(model.ObjectType_basic)),
-						"iconEmoji":        pbtypes.String("🌐"),
-						"lastModifiedDate": pbtypes.Float64(999999),
+						"id":   pbtypes.String("obj-global-1"),
+						"name": pbtypes.String("Global Object"),
 					},
 				},
 			},
@@ -167,10 +163,13 @@ func TestSearchService_Search(t *testing.T) {
 						Id: "root-123",
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
+								"id":               pbtypes.String("obj-global-1"),
 								"name":             pbtypes.String("Global Object"),
+								"layout":           pbtypes.Int64(int64(model.ObjectType_basic)),
 								"iconEmoji":        pbtypes.String("🌐"),
 								"lastModifiedDate": pbtypes.Float64(999999),
 								"createdDate":      pbtypes.Float64(888888),
+								"spaceId":          pbtypes.String("space-1"),
 								"tag":              pbtypes.StringList([]string{"tag-1", "tag-2"}),
 							},
 						},
@@ -199,16 +198,17 @@ func TestSearchService_Search(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, "search-term", "", offset, limit)
+		objects, total, hasMore, err := fx.Search(ctx, "search-term", []string{}, offset, limit)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
+		require.Equal(t, "object", objects[0].Type)
 		require.Equal(t, "space-1", objects[0].SpaceId)
 		require.Equal(t, "Global Object", objects[0].Name)
 		require.Equal(t, "obj-global-1", objects[0].Id)
+		require.Equal(t, "basic", objects[0].Layout)
 		require.Equal(t, "🌐", objects[0].Icon)
-		require.Equal(t, "basic", objects[0].Type)
 		require.Equal(t, "This is a sample text block", objects[0].Blocks[2].Text.Text)
 
 		// check details
