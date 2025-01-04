@@ -33,6 +33,8 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrorFailedRetrieveObjects, http.StatusInternalServerError),
 			util.ErrToCode(ErrNoObjectsFound, http.StatusNotFound),
+			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -105,7 +107,11 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 
 		object, err := s.CreateObject(c.Request.Context(), spaceId, request)
 		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrInputMissingSource, http.StatusBadRequest),
 			util.ErrToCode(ErrFailedCreateObject, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedSetRelationFeatured, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedFetchBookmark, http.StatusInternalServerError),
+			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
 			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 

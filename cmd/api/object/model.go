@@ -7,6 +7,9 @@ type GetObjectResponse struct {
 type CreateObjectRequest struct {
 	Name                string `json:"name"`
 	Icon                string `json:"icon"`
+	Description         string `json:"description"`
+	Body                string `json:"body"`
+	Source              string `json:"source"`
 	TemplateId          string `json:"template_id"`
 	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
 	WithChat            bool   `json:"with_chat"`

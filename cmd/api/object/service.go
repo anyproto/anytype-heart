@@ -21,7 +21,10 @@ var (
 	ErrorFailedRetrieveObjects    = errors.New("failed to retrieve list of objects")
 	ErrNoObjectsFound             = errors.New("no objects found")
 	ErrFailedCreateObject         = errors.New("failed to create object")
-	ErrBadInput                   = errors.New("bad input")
+	ErrInputMissingSource         = errors.New("source is missing for bookmark")
+	ErrFailedSetRelationFeatured  = errors.New("failed to set relation featured")
+	ErrFailedFetchBookmark        = errors.New("failed to fetch bookmark")
+	ErrFailedPasteBody            = errors.New("failed to paste body")
 	ErrNotImplemented             = errors.New("not implemented")
 	ErrFailedUpdateObject         = errors.New("failed to update object")
 	ErrFailedRetrieveTypes        = errors.New("failed to retrieve types")
@@ -147,13 +150,21 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 
 // CreateObject creates a new object in a specific space.
 func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error) {
-	resp := s.mw.ObjectCreate(ctx, &pb.RpcObjectCreateRequest{
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"name":      pbtypes.String(request.Name),
-				"iconEmoji": pbtypes.String(request.Icon),
-			},
+	if request.ObjectTypeUniqueKey == "ot-bookmark" && request.Source == "" {
+		return Object{}, ErrInputMissingSource
+	}
+
+	details := &types.Struct{
+		Fields: map[string]*types.Value{
+			"name":        pbtypes.String(request.Name),
+			"iconEmoji":   pbtypes.String(request.Icon),
+			"description": pbtypes.String(request.Description),
+			"source":      pbtypes.String(request.Source),
 		},
+	}
+
+	resp := s.mw.ObjectCreate(ctx, &pb.RpcObjectCreateRequest{
+		Details:             details,
 		TemplateId:          request.TemplateId,
 		SpaceId:             spaceId,
 		ObjectTypeUniqueKey: request.ObjectTypeUniqueKey,
@@ -162,6 +173,73 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 
 	if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
 		return Object{}, ErrFailedCreateObject
+	}
+
+	// ObjectRelationAddFeatured if description was set
+	if request.Description != "" {
+		relAddFeatResp := s.mw.ObjectRelationAddFeatured(ctx, &pb.RpcObjectRelationAddFeaturedRequest{
+			ContextId: resp.ObjectId,
+			Relations: []string{"description"},
+		})
+
+		if relAddFeatResp.Error.Code != pb.RpcObjectRelationAddFeaturedResponseError_NULL {
+			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId)
+			return object, ErrFailedSetRelationFeatured
+		}
+	}
+
+	// ObjectBookmarkFetch after creating a bookmark object
+	if request.ObjectTypeUniqueKey == "ot-bookmark" {
+		bookmarkResp := s.mw.ObjectBookmarkFetch(ctx, &pb.RpcObjectBookmarkFetchRequest{
+			ContextId: resp.ObjectId,
+			Url:       request.Source,
+		})
+
+		if bookmarkResp.Error.Code != pb.RpcObjectBookmarkFetchResponseError_NULL {
+			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId)
+			return object, ErrFailedFetchBookmark
+		}
+	}
+
+	// First call BlockCreate at top, then BlockPaste to paste the body
+	if request.Body != "" {
+		blockCreateResp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
+			ContextId: resp.ObjectId,
+			TargetId:  "",
+			Block: &model.Block{
+				Id:              "",
+				BackgroundColor: "",
+				Align:           model.Block_AlignLeft,
+				VerticalAlign:   model.Block_VerticalAlignTop,
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:      "",
+						Style:     model.BlockContentText_Paragraph,
+						Checked:   false,
+						Color:     "",
+						IconEmoji: "",
+						IconImage: "",
+					},
+				},
+			},
+			Position: model.Block_Bottom,
+		})
+
+		if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
+			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId)
+			return object, ErrFailedCreateObject
+		}
+
+		blockPasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
+			ContextId:      resp.ObjectId,
+			FocusedBlockId: blockCreateResp.BlockId,
+			TextSlot:       request.Body,
+		})
+
+		if blockPasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
+			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId)
+			return object, ErrFailedPasteBody
+		}
 	}
 
 	return s.GetObject(ctx, spaceId, resp.ObjectId)
