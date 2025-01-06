@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
@@ -354,33 +355,20 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 }
 
 func (s *fileSync) sendLimitReachedEvent(spaceID string) {
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfFileLimitReached{
-					FileLimitReached: &pb.EventFileLimitReached{
-						SpaceId: spaceID,
-					},
-				},
-			},
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfFileLimitReached{
+		FileLimitReached: &pb.EventFileLimitReached{
+			SpaceId: spaceID,
 		},
-	})
+	}))
 }
 
 func (s *fileSync) addImportEvent(spaceID string) {
 	s.importEventsMutex.Lock()
 	defer s.importEventsMutex.Unlock()
-	s.importEvents = append(s.importEvents, &pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfFileLimitReached{
-					FileLimitReached: &pb.EventFileLimitReached{
-						SpaceId: spaceID,
-					},
-				},
-			},
-		},
-	})
+	s.importEvents = append(s.importEvents, event.NewEventSingleMessage("", &pb.EventMessageValueOfFileLimitReached{
+		FileLimitReached: &pb.EventFileLimitReached{
+			SpaceId: spaceID,
+		}}))
 }
 
 type blocksAvailabilityResponse struct {

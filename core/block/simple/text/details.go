@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -92,23 +93,21 @@ func (td *textDetails) Validate() error {
 	return nil
 }
 
-func (td *textDetails) Diff(s simple.Block) (msgs []simple.EventMessage, err error) {
+func (td *textDetails) Diff(spaceId string, s simple.Block) (msgs []simple.EventMessage, err error) {
 	sd, ok := s.(*textDetails)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = td.Text.Diff(sd.Text); err != nil {
+	if msgs, err = td.Text.Diff(spaceId, sd.Text); err != nil {
 		return
 	}
-	var virtEvent = simple.EventMessage{
+	virtEvent := simple.EventMessage{
 		Virtual: true,
-		Msg: &pb.EventMessage{
-			Value: &pb.EventMessageValueOfBlockSetText{
-				BlockSetText: &pb.EventBlockSetText{
-					Id: td.Id,
-				},
+		Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetText{
+			BlockSetText: &pb.EventBlockSetText{
+				Id: td.Id,
 			},
-		},
+		}),
 	}
 	var (
 		toRemove   = -1

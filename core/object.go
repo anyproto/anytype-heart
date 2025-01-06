@@ -114,7 +114,11 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	var records2 = make([]*domain.Details, 0, len(records))
 	for _, rec := range records {
-		records2 = append(records2, rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
+		if len(req.Keys) == 0 {
+			records2 = append(records2, rec.Details)
+		} else {
+			records2 = append(records2, rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
+		}
 	}
 
 	protoRecords := lo.Map(records2, func(item *domain.Details, _ int) *types.Struct {
@@ -363,7 +367,15 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		)
 	}
 
-	nodes, edges, err := mustService[objectgraph.Service](mw).ObjectGraph(req)
+	nodes, edges, err := mustService[objectgraph.Service](mw).ObjectGraph(objectgraph.ObjectGraphRequest{
+		Filters:          database.FiltersFromProto(req.Filters),
+		Limit:            req.Limit,
+		ObjectTypeFilter: req.ObjectTypeFilter,
+		Keys:             req.Keys,
+		SpaceId:          req.SpaceId,
+		CollectionId:     req.CollectionId,
+		SetSource:        req.SetSource,
+	})
 	if err != nil {
 		return unknownError(err)
 	}

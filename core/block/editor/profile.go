@@ -135,17 +135,11 @@ func (p *Profile) SetDetails(ctx session.Context, details []domain.Detail, showE
 		return
 	}
 
-	p.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfAccountDetails{
-					AccountDetails: &pb.EventAccountDetails{
-						ProfileId: p.Id(),
-						Details:   p.Details().ToProto(),
-					},
-				},
-			},
+	p.eventSender.Broadcast(event.NewEventSingleMessage(p.SpaceID(), &pb.EventMessageValueOfAccountDetails{
+		AccountDetails: &pb.EventAccountDetails{
+			ProfileId: p.Id(),
+			Details:   p.Details().ToProto(),
 		},
-	})
+	}))
 	return
 }

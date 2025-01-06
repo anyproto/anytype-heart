@@ -34,8 +34,7 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 				encryptionKeys[key.Path] = key.Key
 			}
 		}
-		name := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
-		fileObjectId, err := uploadFile(ctx, o.blockService, spaceId, name, filePath, origin, encryptionKeys)
+		fileObjectId, err := uploadFile(ctx, o.blockService, spaceId, filePath, origin, encryptionKeys, sn.Snapshot.Data.Details)
 		if err != nil {
 			log.Error("handling file object: upload file", zap.Error(err))
 			return id, payload, nil

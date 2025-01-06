@@ -214,7 +214,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 			}
 		}
 
-		vals, ok := v.TryStringList()
+		vals, ok := v.TryWrapToStringList()
 		if !ok {
 			return fmt.Errorf("incorrect type: %v instead of string list", v)
 		}

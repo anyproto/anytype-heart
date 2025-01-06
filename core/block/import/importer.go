@@ -531,19 +531,13 @@ func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync b
 	if isSync {
 		return
 	}
-	i.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfImportFinish{
-					ImportFinish: &pb.EventImportFinish{
-						RootCollectionID: rootCollectionID,
-						ObjectsCount:     objectsCount,
-						ImportType:       importType,
-					},
-				},
-			},
+	i.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfImportFinish{
+		ImportFinish: &pb.EventImportFinish{
+			RootCollectionID: rootCollectionID,
+			ObjectsCount:     objectsCount,
+			ImportType:       importType,
 		},
-	})
+	}))
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

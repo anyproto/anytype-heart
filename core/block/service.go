@@ -274,7 +274,7 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 		if err = s.DeleteObjectByFullID(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
-			sendOnRemoveEvent(s.eventSender, id.ObjectID)
+			s.sendOnRemoveEvent(id.SpaceID, id.ObjectID)
 		}
 	}
 	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id.ObjectID); return nil })

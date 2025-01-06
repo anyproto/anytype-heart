@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -88,12 +89,12 @@ func (b *Bookmark) Validate() error {
 	return nil
 }
 
-func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err error) {
+func (b *Bookmark) Diff(spaceId string, other simple.Block) (msgs []simple.EventMessage, err error) {
 	bookmark, ok := other.(*Bookmark)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = b.Base.Diff(bookmark); err != nil {
+	if msgs, err = b.Base.Diff(spaceId, bookmark); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetBookmark{
@@ -135,7 +136,7 @@ func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err err
 	}
 
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes})})
 	}
 	return
 }

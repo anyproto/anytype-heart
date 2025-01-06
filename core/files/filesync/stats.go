@@ -10,6 +10,8 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -223,18 +225,12 @@ func (s *fileSync) sendSpaceUsageEvent(spaceId string, bytesUsage uint64) {
 }
 
 func makeSpaceUsageEvent(spaceId string, bytesUsage uint64) *pb.Event {
-	return &pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfFileSpaceUsage{
-					FileSpaceUsage: &pb.EventFileSpaceUsage{
-						BytesUsage: bytesUsage,
-						SpaceId:    spaceId,
-					},
-				},
-			},
+	return event.NewEventSingleMessage("", &pb.EventMessageValueOfFileSpaceUsage{
+		FileSpaceUsage: &pb.EventFileSpaceUsage{
+			BytesUsage: bytesUsage,
+			SpaceId:    spaceId,
 		},
-	}
+	})
 }
 
 func (s *fileSync) sendLimitUpdatedEvent(limit uint64) {
@@ -242,17 +238,11 @@ func (s *fileSync) sendLimitUpdatedEvent(limit uint64) {
 }
 
 func makeLimitUpdatedEvent(limit uint64) *pb.Event {
-	return &pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfFileLimitUpdated{
-					FileLimitUpdated: &pb.EventFileLimitUpdated{
-						BytesLimit: limit,
-					},
-				},
-			},
+	return event.NewEventSingleMessage("", &pb.EventMessageValueOfFileLimitUpdated{
+		FileLimitUpdated: &pb.EventFileLimitUpdated{
+			BytesLimit: limit,
 		},
-	}
+	})
 }
 
 func (s *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -18,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // oldFile represents file in pre Files-as-Objects format
@@ -40,8 +38,7 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 
 	filePath := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	if filePath != "" {
-		name := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
-		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, name, filePath, origin, filesKeys)
+		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, filePath, origin, filesKeys, sn.Snapshot.Data.Details)
 		if err != nil {
 			log.Error("handling old file object: upload file", zap.Error(err))
 		}
@@ -64,14 +61,17 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 	return objectId, treestorage.TreeStorageCreatePayload{}, nil
 }
 
-func uploadFile(ctx context.Context, blockService *block.Service, spaceId string, name string, filePath string, origin objectorigin.ObjectOrigin, encryptionKeys map[string]string) (string, error) {
+func uploadFile(
+	ctx context.Context,
+	blockService *block.Service,
+	spaceId, filePath string,
+	origin objectorigin.ObjectOrigin,
+	encryptionKeys map[string]string,
+	details *domain.Details,
+) (string, error) {
 	params := pb.RpcFileUploadRequest{
 		SpaceId: spaceId,
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String(name),
-			},
-		},
+		Details: details.CopyOnlyKeys(bundle.RelationKeyName, bundle.RelationKeyIsHiddenDiscovery).ToProto(),
 	}
 
 	if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
