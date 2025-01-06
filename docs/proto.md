@@ -83,6 +83,10 @@
     - [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request)
     - [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error)
+    - [Rpc.Account.Migrate](#anytype-Rpc-Account-Migrate)
+    - [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request)
+    - [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response)
+    - [Rpc.Account.Migrate.Response.Error](#anytype-Rpc-Account-Migrate-Response-Error)
     - [Rpc.Account.Move](#anytype-Rpc-Account-Move)
     - [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request)
     - [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response)
@@ -1260,6 +1264,7 @@
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
+    - [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
@@ -1988,6 +1993,7 @@
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
+| AccountMigrate | [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request) | [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
@@ -3355,6 +3361,63 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Migrate"></a>
+
+### Rpc.Account.Migrate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Migrate-Request"></a>
+
+### Rpc.Account.Migrate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Id of a selected account |
+| rootPath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Migrate-Response"></a>
+
+### Rpc.Account.Migrate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.Migrate.Response.Error](#anytype-Rpc-Account-Migrate-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Migrate-Response-Error"></a>
+
+### Rpc.Account.Migrate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -20482,6 +20545,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INVALID_CHALLENGE_ID | 102 |  |
 | CHALLENGE_ATTEMPTS_EXCEEDED | 103 |  |
 | INCORRECT_ANSWER | 104 |  |
+
+
+
+<a name="anytype-Rpc-Account-Migrate-Response-Error-Code"></a>
+
+### Rpc.Account.Migrate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | Id or root path is wrong |
+| ACCOUNT_NOT_FOUND | 101 | TODO: [storage] Add specific error codes for migration problems |
 
 
 

@@ -108,13 +108,14 @@ func (s *storageContainer) TryClose(objectTTL time.Duration) (res bool, err erro
 	return true, nil
 }
 
-func New() *storageService {
-	return &storageService{}
+func New(rootPath string) *storageService {
+	return &storageService{
+		rootPath: rootPath,
+	}
 }
 
 type storageService struct {
 	rootPath string
-	tempPath string
 	cache    ocache.OCache
 }
 
@@ -159,7 +160,6 @@ func (s *storageService) Close(ctx context.Context) (err error) {
 
 func (s *storageService) Init(a *app.App) (err error) {
 	s.rootPath = a.MustComponent("config").(configGetter).GetSpaceStorePath()
-	s.tempPath = a.MustComponent("config").(configGetter).GetTempDirPath()
 	s.cache = ocache.New(s.loadFunc,
 		ocache.WithLogger(log.Sugar()),
 		ocache.WithGCPeriod(time.Minute),

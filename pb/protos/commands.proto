@@ -811,6 +811,31 @@ message Rpc {
             }
         }
 
+        message Migrate {
+            message Request {
+                option (no_auth) = true;
+                string id = 1; // Id of a selected account
+                string rootPath = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2; // Id or root path is wrong
+
+                        ACCOUNT_NOT_FOUND = 101;
+                        // TODO: [storage] Add specific error codes for migration problems
+                    }
+                }
+            }
+        }
+
         message Select {
             /**
             * Front end to middleware request-to-launch-a specific account using account id and a root path

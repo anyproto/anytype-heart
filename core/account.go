@@ -49,6 +49,19 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 	}
 }
 
+func (mw *Middleware) AccountMigrate(cctx context.Context, req *pb.RpcAccountMigrateRequest) *pb.RpcAccountMigrateResponse {
+	err := mw.applicationService.AccountMigrate(cctx, req)
+	code := mapErrorCode(err,
+		errToCode(application.ErrAccountNotFound, pb.RpcAccountMigrateResponseError_ACCOUNT_NOT_FOUND),
+	)
+	return &pb.RpcAccountMigrateResponse{
+		Error: &pb.RpcAccountMigrateResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	account, err := mw.applicationService.AccountSelect(cctx, req)
 	code := mapErrorCode(err,
