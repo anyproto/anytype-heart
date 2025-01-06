@@ -105,7 +105,9 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 func (s *SearchService) combineFilters(operator model.BlockContentDataviewFilterOperator, filterGroups ...[]*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
 	nestedFilters := make([]*model.BlockContentDataviewFilter, 0)
 	for _, group := range filterGroups {
-		nestedFilters = append(nestedFilters, group...)
+		if len(group) > 0 {
+			nestedFilters = append(nestedFilters, group...)
+		}
 	}
 
 	if len(nestedFilters) == 0 {
@@ -181,8 +183,8 @@ func (s *SearchService) prepareObjectTypeFilters(spaceId string, objectTypes []s
 	}
 
 	// Prepare nested filters for each object type
-	nestedFilters := make([]*model.BlockContentDataviewFilter, len(objectTypes))
-	for i, objectType := range objectTypes {
+	nestedFilters := make([]*model.BlockContentDataviewFilter, 0, len(objectTypes))
+	for _, objectType := range objectTypes {
 		typeId := objectType
 
 		if strings.HasPrefix(objectType, "ot-") {
@@ -193,12 +195,16 @@ func (s *SearchService) prepareObjectTypeFilters(spaceId string, objectTypes []s
 			}
 		}
 
-		nestedFilters[i] = &model.BlockContentDataviewFilter{
+		nestedFilters = append(nestedFilters, &model.BlockContentDataviewFilter{
 			Operator:    model.BlockContentDataviewFilter_No,
 			RelationKey: bundle.RelationKeyType.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String(typeId),
-		}
+		})
+	}
+
+	if len(nestedFilters) == 0 {
+		return nil
 	}
 
 	// Combine all filters with an OR operator
