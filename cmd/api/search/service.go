@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/api/object"
 	"github.com/anyproto/anytype-heart/cmd/api/pagination"
 	"github.com/anyproto/anytype-heart/cmd/api/space"
+	"github.com/anyproto/anytype-heart/cmd/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -45,14 +46,15 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(searchQuery)
-	objectTypeFilters := s.prepareObjectTypeFilters(objectTypes)
-	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, objectTypeFilters)
 
 	results := make([]object.Object, 0)
 	for _, space := range spaces {
-		spaceId := space.Id
+		// Resolve object type IDs per space, as they are unique per space
+		objectTypeFilters := s.prepareObjectTypeFilters(space.Id, objectTypes)
+		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, objectTypeFilters)
+
 		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-			SpaceId: spaceId,
+			SpaceId: space.Id,
 			Filters: filters,
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
@@ -76,7 +78,7 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 		}
 
 		for _, record := range objResp.Records {
-			object, err := s.objectService.GetObject(ctx, spaceId, record.Fields["id"].GetStringValue())
+			object, err := s.objectService.GetObject(ctx, space.Id, record.Fields["id"].GetStringValue())
 			if err != nil {
 				return nil, 0, false, err
 			}
@@ -173,7 +175,7 @@ func (s *SearchService) prepareQueryFilter(searchQuery string) []*model.BlockCon
 }
 
 // prepareObjectTypeFilters combines object type filters with an OR condition.
-func (s *SearchService) prepareObjectTypeFilters(objectTypes []string) []*model.BlockContentDataviewFilter {
+func (s *SearchService) prepareObjectTypeFilters(spaceId string, objectTypes []string) []*model.BlockContentDataviewFilter {
 	if len(objectTypes) == 0 || objectTypes[0] == "" {
 		return nil
 	}
@@ -181,16 +183,21 @@ func (s *SearchService) prepareObjectTypeFilters(objectTypes []string) []*model.
 	// Prepare nested filters for each object type
 	nestedFilters := make([]*model.BlockContentDataviewFilter, len(objectTypes))
 	for i, objectType := range objectTypes {
-		relationKey := bundle.RelationKeyType.String()
+		typeId := objectType
+
 		if strings.HasPrefix(objectType, "ot-") {
-			relationKey = bundle.RelationKeyUniqueKey.String()
+			var err error
+			typeId, err = util.ResolveUniqueKeyToTypeId(s.mw, spaceId, objectType)
+			if err != nil {
+				continue
+			}
 		}
 
 		nestedFilters[i] = &model.BlockContentDataviewFilter{
 			Operator:    model.BlockContentDataviewFilter_No,
-			RelationKey: relationKey,
+			RelationKey: bundle.RelationKeyType.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(objectType),
+			Value:       pbtypes.String(typeId),
 		}
 	}
 
