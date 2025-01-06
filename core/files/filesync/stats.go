@@ -10,7 +10,6 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
