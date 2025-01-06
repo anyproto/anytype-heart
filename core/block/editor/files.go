@@ -14,9 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
-	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -105,26 +105,25 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		f.AddHook(func(applyInfo smartblock.ApplyInfo) error {
 			return f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, applyInfo.State.Details())
 		}, smartblock.HookOnStateRebuild)
-	}
 
-	fileId := domain.FullFileId{
-		FileId:  domain.FileId(ctx.State.Details().GetString(bundle.RelationKeyFileId)),
-		SpaceId: f.SpaceID(),
-	}
-
-	// Migrate file to the new file index. The old file index was in the separate database. Now all file info is stored
-	// in the object store directly
-	if len(ctx.State.Details().GetStringList(bundle.RelationKeyFileVariantIds)) == 0 {
-		infos, err := f.fileService.GetFileVariants(ctx.Ctx, fileId, ctx.State.GetFileInfo().EncryptionKeys)
-		if err != nil {
-			return fmt.Errorf("get infos for indexing: %w", err)
+		fileId := domain.FullFileId{
+			FileId:  domain.FileId(ctx.State.Details().GetString(bundle.RelationKeyFileId)),
+			SpaceId: f.SpaceID(),
 		}
-		err = filemodels.InjectVariantsToDetails(infos, ctx.State)
-		if err != nil {
-			return fmt.Errorf("inject variants: %w", err)
+
+		// Migrate file to the new file index. The old file index was in the separate database. Now all file info is stored
+		// in the object store directly
+		if len(ctx.State.Details().GetStringList(bundle.RelationKeyFileVariantIds)) == 0 {
+			infos, err := f.fileService.GetFileVariants(ctx.Ctx, fileId, ctx.State.GetFileInfo().EncryptionKeys)
+			if err != nil {
+				return fmt.Errorf("get infos for indexing: %w", err)
+			}
+			err = filemodels.InjectVariantsToDetails(infos, ctx.State)
+			if err != nil {
+				return fmt.Errorf("inject variants: %w", err)
+			}
 		}
 	}
-
 	return nil
 }
 
