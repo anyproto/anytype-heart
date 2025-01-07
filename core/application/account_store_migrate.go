@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -56,7 +55,6 @@ func (m *migration) setFinished(err error, notify bool) {
 }
 
 func (m *migration) wait() error {
-	fmt.Println("[x]: started")
 	m.mx.Lock()
 	if !m.manager.setMigrationRunning(m.id, true) {
 		m.mx.Unlock()
@@ -85,7 +83,6 @@ func (m *migration) wait() error {
 		return err
 	}
 	m.setFinished(nil, true)
-	fmt.Println("[x]: finished")
 	return nil
 }
 
@@ -131,6 +128,12 @@ func (m *migrationManager) setMigrationRunning(id string, isRunning bool) bool {
 	return true
 }
 
+func (m *migrationManager) isRunning() bool {
+	m.Lock()
+	defer m.Unlock()
+	return m.runningMigration != ""
+}
+
 func (m *migrationManager) getMigration(rootPath, id string) *migration {
 	m.Lock()
 	defer m.Unlock()
@@ -149,6 +152,5 @@ func (m *migrationManager) getMigration(rootPath, id string) *migration {
 }
 
 func (s *Service) AccountMigrate(ctx context.Context, req *pb.RpcAccountMigrateRequest) error {
-	fmt.Println("[x]: migrate account")
 	return s.migrationManager.getMigration(req.RootPath, req.Id).wait()
 }
