@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
@@ -438,7 +439,11 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 	if err != nil {
 		return err
 	}
-	for _, object := range viewDependentObjects {
+	templates, err := e.queryAndFilterObjectsByRelation(e.spaceId, viewDependentObjectsIds, bundle.RelationKeyTargetObjectType)
+	if err != nil {
+		return err
+	}
+	for _, object := range append(viewDependentObjects, templates...) {
 		id := object.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = object.Details
 	}
@@ -448,21 +453,8 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsIds []string) ([]string, error) {
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
 		st := sb.NewState()
-		return st.Iterate(func(b simple.Block) (isContinue bool) {
-			dv := b.Model().GetDataview()
-			if dv == nil {
-				return true
-			}
-			for _, view := range dv.GetViews() {
-				if view.DefaultObjectTypeId != "" {
-					viewDependentObjectsIds = append(viewDependentObjectsIds, view.DefaultObjectTypeId)
-				}
-				if view.DefaultTemplateId != "" {
-					viewDependentObjectsIds = append(viewDependentObjectsIds, view.DefaultTemplateId)
-				}
-			}
-			return false
-		})
+		viewDependentObjectsIds = append(viewDependentObjectsIds, objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{Blocks: true})...)
+		return nil
 	})
 	if err != nil {
 		return nil, err

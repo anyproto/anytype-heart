@@ -1375,6 +1375,7 @@ func Test_docsForExport(t *testing.T) {
 		assert.Nil(t, err)
 
 		defaultTemplateId := "defaultTemplateId"
+		defaultObjectTypeTemplateId := "defaultObjectTypeTemplateId"
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
@@ -1402,6 +1403,12 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyId:      domain.String(defaultTemplateId),
 				bundle.RelationKeySpaceId: domain.String(spaceId),
 				bundle.RelationKeyType:    domain.String(objectTypeId),
+			},
+			{
+				bundle.RelationKeyId:               domain.String(defaultObjectTypeTemplateId),
+				bundle.RelationKeySpaceId:          domain.String(spaceId),
+				bundle.RelationKeyType:             domain.String(objectTypeId),
+				bundle.RelationKeyTargetObjectType: domain.String(defaultObjectTypeId),
 			},
 		})
 
@@ -1480,12 +1487,27 @@ func Test_docsForExport(t *testing.T) {
 		})
 		defaultTemplate.Doc = defaultTemplateDoc
 
+		defaultObjectTypeTemplate := smarttest.New(defaultObjectTypeTemplateId)
+		defaultObjectTypeTemplateDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(defaultObjectTypeTemplateId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		defaultObjectTypeTemplateDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		defaultObjectTypeTemplate.Doc = defaultObjectTypeTemplateDoc
+
 		objectGetter := mock_cache.NewMockObjectGetter(t)
 
 		objectGetter.EXPECT().GetObject(context.Background(), id).Return(smartBlockTest, nil)
 		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 		objectGetter.EXPECT().GetObject(context.Background(), defaultObjectTypeId).Return(defaultObjectType, nil)
 		objectGetter.EXPECT().GetObject(context.Background(), defaultTemplateId).Return(defaultTemplate, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), defaultObjectTypeTemplateId).Return(defaultObjectTypeTemplate, nil)
 
 		e := &export{
 			objectStore: storeFixture,
@@ -1503,7 +1525,7 @@ func Test_docsForExport(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 4, len(expCtx.docs))
+		assert.Equal(t, 5, len(expCtx.docs))
 	})
 	t.Run("no default object type and template from dataview", func(t *testing.T) {
 		// given
