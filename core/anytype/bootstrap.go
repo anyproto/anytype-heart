@@ -57,6 +57,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	templateservice "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
+	"github.com/anyproto/anytype-heart/core/contact"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
@@ -317,7 +318,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
 		Register(lastused.New()).
-		Register(spaceview.New())
+		Register(spaceview.New()).
+		Register(contact.New())
 }
 
 func MiddlewareVersion() string {

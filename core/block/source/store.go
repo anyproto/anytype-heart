@@ -155,7 +155,7 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	}
 	changeId = addResult.Added[0].Id
 	err = tx.Commit()
-	if err == nil {
+	if err == nil && s.onUpdateHook != nil {
 		s.onUpdateHook()
 	}
 	return changeId, err
@@ -174,7 +174,7 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return errors.Join(tx.Rollback(), err)
 	}
 	err = tx.Commit()
-	if err == nil {
+	if err == nil && s.onUpdateHook != nil {
 		s.onUpdateHook()
 	}
 	return err

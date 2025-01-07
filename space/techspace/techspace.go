@@ -16,6 +16,7 @@ import (
 
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/userdataobject"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -66,6 +67,7 @@ type TechSpace interface {
 	SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) (err error)
 	SpaceViewId(id string) (string, error)
 	AccountObjectId() (string, error)
+	DoUserDataObject(ctx context.Context, apply func(userDataObject userdataobject.UserDataObject) error) (err error)
 }
 
 type SpaceView interface {
@@ -95,9 +97,10 @@ func New() TechSpace {
 }
 
 type techSpace struct {
-	techCore        commonspace.Space
-	objectCache     objectcache.Cache
-	accountObjectId string
+	techCore         commonspace.Space
+	objectCache      objectcache.Cache
+	accountObjectId  string
+	userDataObjectId string
 
 	mu sync.Mutex
 
@@ -119,6 +122,10 @@ func (s *techSpace) Name() (name string) {
 func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
+	err = s.userDataObjectCreate(s.ctx)
+	if err != nil {
+		log.Error("failed to create user data object", zap.Error(err))
+	}
 	if !create {
 		exists, err := s.accountObjectExists(s.ctx)
 		if err != nil {
@@ -302,6 +309,30 @@ func (s *techSpace) accountObjectCreate(ctx context.Context) (err error) {
 	return
 }
 
+func (s *techSpace) userDataObjectCreate(ctx context.Context) (err error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeUserDataObject, s.techCore.Id())
+	if err != nil {
+		return
+	}
+	s.userDataObjectId, err = s.objectCache.DeriveObjectID(ctx, uniqueKey)
+	if err != nil {
+		return err
+	}
+	_, err = s.objectCache.GetObject(ctx, s.userDataObjectId)
+	if err == nil {
+		return nil
+	}
+	initFunc := func(id string) *editorsb.InitContext {
+		st := state.NewDoc(id, nil).(*state.State)
+		return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: st}
+	}
+	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+		Key:      uniqueKey,
+		InitFunc: initFunc,
+	})
+	return err
+}
+
 func (s *techSpace) AccountObjectId() (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -372,6 +403,20 @@ func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObjec
 	accountObject.Lock()
 	defer accountObject.Unlock()
 	return apply(accountObject)
+}
+
+func (s *techSpace) DoUserDataObject(ctx context.Context, apply func(userDataObject userdataobject.UserDataObject) error) (err error) {
+	obj, err := s.objectCache.GetObject(ctx, s.userDataObjectId)
+	if err != nil {
+		return fmt.Errorf("user data object not exists: %w", err)
+	}
+	userDataObject, ok := obj.(userdataobject.UserDataObject)
+	if !ok {
+		return fmt.Errorf("not user data object")
+	}
+	userDataObject.Lock()
+	defer userDataObject.Unlock()
+	return apply(userDataObject)
 }
 
 func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId string, err error) {

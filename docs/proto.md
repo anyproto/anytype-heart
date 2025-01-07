@@ -564,6 +564,15 @@
     - [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request)
     - [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response)
     - [Rpc.Chat.Unsubscribe.Response.Error](#anytype-Rpc-Chat-Unsubscribe-Response-Error)
+    - [Rpc.Contact](#anytype-Rpc-Contact)
+    - [Rpc.Contact.Create](#anytype-Rpc-Contact-Create)
+    - [Rpc.Contact.Create.Request](#anytype-Rpc-Contact-Create-Request)
+    - [Rpc.Contact.Create.Response](#anytype-Rpc-Contact-Create-Response)
+    - [Rpc.Contact.Create.Response.Error](#anytype-Rpc-Contact-Create-Response-Error)
+    - [Rpc.Contact.Delete](#anytype-Rpc-Contact-Delete)
+    - [Rpc.Contact.Delete.Request](#anytype-Rpc-Contact-Delete-Request)
+    - [Rpc.Contact.Delete.Response](#anytype-Rpc-Contact-Delete-Response)
+    - [Rpc.Contact.Delete.Response.Error](#anytype-Rpc-Contact-Delete-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.AccountSelectTrace](#anytype-Rpc-Debug-AccountSelectTrace)
     - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
@@ -1376,6 +1385,8 @@
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
+    - [Rpc.Contact.Create.Response.Error.Code](#anytype-Rpc-Contact-Create-Response-Error-Code)
+    - [Rpc.Contact.Delete.Response.Error.Code](#anytype-Rpc-Contact-Delete-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code)
@@ -2233,6 +2244,8 @@
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| ContactCreate | [Rpc.Contact.Create.Request](#anytype-Rpc-Contact-Create-Request) | [Rpc.Contact.Create.Response](#anytype-Rpc-Contact-Create-Response) |  |
+| ContactDelete | [Rpc.Contact.Delete.Request](#anytype-Rpc-Contact-Delete-Request) | [Rpc.Contact.Delete.Response](#anytype-Rpc-Contact-Delete-Response) |  |
 
  
 
@@ -10400,6 +10413,129 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact"></a>
+
+### Rpc.Contact
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Create"></a>
+
+### Rpc.Contact.Create
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Create-Request"></a>
+
+### Rpc.Contact.Create.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+| profileSymKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Create-Response"></a>
+
+### Rpc.Contact.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Contact.Create.Response.Error](#anytype-Rpc-Contact-Create-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Create-Response-Error"></a>
+
+### Rpc.Contact.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Contact.Create.Response.Error.Code](#anytype-Rpc-Contact-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Delete"></a>
+
+### Rpc.Contact.Delete
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Delete-Request"></a>
+
+### Rpc.Contact.Delete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Delete-Response"></a>
+
+### Rpc.Contact.Delete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Contact.Delete.Response.Error](#anytype-Rpc-Contact-Delete-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Contact-Delete-Response-Error"></a>
+
+### Rpc.Contact.Delete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Contact.Delete.Response.Error.Code](#anytype-Rpc-Contact-Delete-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22020,6 +22156,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Contact-Create-Response-Error-Code"></a>
+
+### Rpc.Contact.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Contact-Delete-Response-Error-Code"></a>
+
+### Rpc.Contact.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code"></a>
 
 ### Rpc.Debug.AccountSelectTrace.Response.Error.Code
@@ -30520,6 +30682,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | chat | 21 | deprecated |
 | chatDerived | 22 |  |
 | tag | 23 |  |
+| contact | 24 |  |
 
 
 
@@ -30675,6 +30838,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ChatObject | 537 | Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
+| UserDataObject | 546 |  |
+| ContactObject | 547 |  |
 
 
 

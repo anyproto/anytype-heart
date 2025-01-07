@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -256,6 +257,9 @@ type spaceServiceStub struct {
 
 func (s *spaceServiceStub) PersonalSpaceId() string {
 	return ""
+}
+func (s *spaceServiceStub) TechSpace() *clientspace.TechSpace {
+	return nil
 }
 
 func (s *spaceServiceStub) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
