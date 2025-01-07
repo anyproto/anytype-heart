@@ -496,6 +496,10 @@ func (e *exportContext) collectDerivedObjects(objects map[string]*domain.Details
 			objectsTypes = lo.Union(objectsTypes, []string{objectTypeId})
 			setOfList := details.GetStringList(bundle.RelationKeySetOf)
 			setOf = lo.Union(setOf, setOfList)
+			targetObjectType := details.GetString(bundle.RelationKeyTargetObjectType)
+			if targetObjectType != "" {
+				objectsTypes = lo.Union(objectsTypes, []string{targetObjectType})
+			}
 			return nil
 		})
 		if err != nil {
