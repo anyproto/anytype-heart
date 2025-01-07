@@ -33,8 +33,7 @@ func New() ClientStorage {
 }
 
 type configGetter interface {
-	GetSpaceStorePath() string
-	GetTempDirPath() string
+	GetNewSpaceStorePath() string
 }
 
 func (s *storageService) Name() (name string) {
@@ -42,7 +41,7 @@ func (s *storageService) Name() (name string) {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	rootPath := a.MustComponent("config").(configGetter).GetSpaceStorePath()
+	rootPath := a.MustComponent("config").(configGetter).GetNewSpaceStorePath()
 	s.ClientStorage = anystorage.New(rootPath)
 	return s.ClientStorage.Init(a)
 }

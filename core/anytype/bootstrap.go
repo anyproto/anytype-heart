@@ -111,7 +111,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
@@ -208,13 +207,13 @@ func appVersion(a *app.App, clientWithVersion string) string {
 	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
-func BootstrapMigration(newPath string, a *app.App, components ...app.Component) {
+func BootstrapMigration(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
 	a.Register(clientds.New()).
 		Register(oldstorage.New()).
-		Register(anystorage.New(newPath)).
+		Register(storage.New()).
 		Register(process.New()).
 		Register(migrator.New())
 }

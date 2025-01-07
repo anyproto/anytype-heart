@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"os"
-	"path"
 	"path/filepath"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 )
 
 var (
@@ -21,13 +22,13 @@ var (
 )
 
 func (s *Service) AccountMigrate(ctx context.Context, req *pb.RpcAccountMigrateRequest) error {
+	if s.rootPath == "" {
+		s.rootPath = req.RootPath
+	}
 	return s.migrationManager.getMigration(req.RootPath, req.Id).wait(ctx)
 }
 
-func (s *Service) migrate(ctx context.Context, id string, rootPath string) error {
-	if rootPath != "" {
-		s.rootPath = rootPath
-	}
+func (s *Service) migrate(ctx context.Context, id string) error {
 	res, err := core.WalletAccountAt(s.mnemonic, 0)
 	if err != nil {
 		return err
@@ -44,9 +45,8 @@ func (s *Service) migrate(ctx context.Context, id string, rootPath string) error
 		anytype.BootstrapWallet(s.rootPath, res),
 		s.eventSender,
 	}
-	spaceStorePath := path.Join(s.rootPath, id, "spacestore")
 	a := &app.App{}
-	anytype.BootstrapMigration(spaceStorePath, a, comps...)
+	anytype.BootstrapMigration(a, comps...)
 	err = a.Start(ctx)
 	if err != nil {
 		return err
@@ -60,22 +60,20 @@ type migration struct {
 	isFinished bool
 	manager    *migrationManager
 	err        error
-	rootPath   string
 	id         string
 	done       chan struct{}
 }
 
-func newMigration(m *migrationManager, rootPath, id string) *migration {
+func newMigration(m *migrationManager, id string) *migration {
 	return &migration{
-		done:     make(chan struct{}),
-		rootPath: rootPath,
-		id:       id,
-		manager:  m,
+		done:    make(chan struct{}),
+		id:      id,
+		manager: m,
 	}
 }
 
-func newSuccessfulMigration(manager *migrationManager, rootPath, id string) *migration {
-	m := newMigration(manager, rootPath, id)
+func newSuccessfulMigration(manager *migrationManager, id string) *migration {
+	m := newMigration(manager, id)
 	m.setFinished(nil, false)
 	return m
 }
@@ -105,7 +103,7 @@ func (m *migration) wait(ctx context.Context) error {
 		return m.err
 	}
 	m.mx.Unlock()
-	err := m.manager.service.migrate(ctx, m.id, m.rootPath)
+	err := m.manager.service.migrate(ctx, m.id)
 	if err != nil {
 		m.setFinished(err, true)
 		return err
@@ -169,12 +167,28 @@ func (m *migrationManager) getMigration(rootPath, id string) *migration {
 		m.migrations = make(map[string]*migration)
 	}
 	if m.migrations[id] == nil {
-		// TODO: [store] add successful migration if we don't need a migration
-		m.migrations[id] = newMigration(m, rootPath, id)
+		sqlitePath := filepath.Join(rootPath, id, config.SpaceStoreSqlitePath)
+		baderPath := filepath.Join(rootPath, id, config.SpaceStoreBadgerPath)
+		newPath := filepath.Join(rootPath, id, config.SpaceStoreNewPath)
+		path := pathExists([]string{sqlitePath, baderPath})
+		if path == "" || migrator.MigrationCompleted(newPath) {
+			m.migrations[id] = newSuccessfulMigration(m, id)
+		} else {
+			m.migrations[id] = newMigration(m, id)
+		}
 	}
 	if m.migrations[id].finished() && !m.migrations[id].successful() {
 		// resetting migration
-		m.migrations[id] = newMigration(m, rootPath, id)
+		m.migrations[id] = newMigration(m, id)
 	}
 	return m.migrations[id]
+}
+
+func pathExists(paths []string) string {
+	for _, path := range paths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return ""
 }

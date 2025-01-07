@@ -42,6 +42,7 @@ const (
 const (
 	SpaceStoreBadgerPath = "spacestore"
 	SpaceStoreSqlitePath = "spaceStore.db"
+	SpaceStoreNewPath    = "spaceStoreNew"
 )
 
 var (
@@ -296,7 +297,11 @@ func (c *Config) GetConfigPath() string {
 }
 
 func (c *Config) GetSpaceStorePath() string {
-	return filepath.Join(c.RepoPath, "spaceStore.db")
+	return filepath.Join(c.RepoPath, SpaceStoreSqlitePath)
+}
+
+func (c *Config) GetNewSpaceStorePath() string {
+	return filepath.Join(c.RepoPath, SpaceStoreNewPath)
 }
 
 func (c *Config) GetTempDirPath() string {

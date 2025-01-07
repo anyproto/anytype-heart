@@ -159,7 +159,6 @@ func (s *storageService) Close(ctx context.Context) (err error) {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	s.rootPath = a.MustComponent("config").(configGetter).GetSpaceStorePath()
 	s.cache = ocache.New(s.loadFunc,
 		ocache.WithLogger(log.Sugar()),
 		ocache.WithGCPeriod(time.Minute),
