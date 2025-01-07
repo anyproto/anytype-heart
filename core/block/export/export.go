@@ -427,8 +427,7 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 		err                     error
 	)
 	for id, details := range e.docs {
-		layout := details.GetInt64(bundle.RelationKeyLayout)
-		if layout == int64(model.ObjectType_collection) {
+		if isObjectWithDataview(details) {
 			viewDependentObjectsIds, err = e.getViewDependentObjects(id, viewDependentObjectsIds)
 			if err != nil {
 				return err
