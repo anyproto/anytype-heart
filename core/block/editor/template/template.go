@@ -104,11 +104,6 @@ var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.Object
 	}
 }
 
-// deprecated?
-var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
-	return WithDetail(bundle.RelationKeyLayout, domain.Int64(layout))
-}
-
 var WithDetailName = func(name string) StateTransformer {
 	return WithDetail(bundle.RelationKeyName, domain.String(name))
 }
