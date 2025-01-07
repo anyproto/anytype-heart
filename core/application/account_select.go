@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -41,8 +42,10 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	if req.Id == "" {
 		return nil, ErrEmptyAccountID
 	}
+	fmt.Println("[x]: select account")
 	curMigration := s.migrationManager.getMigration(req.RootPath, req.Id)
 	if !curMigration.successful() {
+		fmt.Println("[x]: failed to start")
 		return nil, ErrAccountStoreIsNotMigrated
 	}
 
