@@ -61,7 +61,6 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.17.11
 	github.com/kovidgoyal/imaging v1.6.3
-	github.com/libp2p/go-libp2p v0.37.0
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.9
@@ -102,7 +101,7 @@ require (
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/image v0.23.0
 	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
-	golang.org/x/net v0.33.0
+	golang.org/x/net v0.34.0
 	golang.org/x/oauth2 v0.24.0
 	golang.org/x/text v0.21.0
 	google.golang.org/grpc v1.69.2
@@ -190,6 +189,7 @@ require (
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
+	github.com/libp2p/go-libp2p v0.37.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -246,11 +246,11 @@ require (
 	go.opentelemetry.io/otel v1.32.0 // indirect
 	go.opentelemetry.io/otel/metric v1.32.0 // indirect
 	go.opentelemetry.io/otel/trace v1.32.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/tools v0.27.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241104194629-dd2ea8efbc28 // indirect
