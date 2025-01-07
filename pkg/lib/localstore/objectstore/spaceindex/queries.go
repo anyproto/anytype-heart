@@ -59,6 +59,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 		return nil
 	}
 
+	//nolint:gosec
 	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	switch layout {
 	case model.ObjectType_relationOption:

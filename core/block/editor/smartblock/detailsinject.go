@@ -360,7 +360,7 @@ func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage,
 	}
 
 	if resultErr != nil {
-		return fmt.Errorf("failed to change layout for objects: %v", resultErr)
+		return fmt.Errorf("failed to change layout for objects: %w", resultErr)
 	}
 	return nil
 }
