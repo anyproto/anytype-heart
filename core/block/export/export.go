@@ -422,51 +422,52 @@ func (e *exportContext) processProtobuf() error {
 
 func (e *exportContext) addDependentObjectsFromDataview() error {
 	var (
-		viewDependantObjectsIds []string
+		viewDependentObjectsIds []string
 		err                     error
 	)
 	for id, details := range e.docs {
 		layout := details.GetInt64(bundle.RelationKeyLayout)
 		if layout == int64(model.ObjectType_collection) {
-			viewDependantObjectsIds, err = e.getViewDependentObjects(id, viewDependantObjectsIds)
+			viewDependentObjectsIds, err = e.getViewDependentObjects(id, viewDependentObjectsIds)
 			if err != nil {
 				return err
 			}
 		}
 	}
-	viewDependantObjects, err := e.queryAndFilterObjectsByRelation(e.spaceId, viewDependantObjectsIds, bundle.RelationKeyId)
+	viewDependentObjects, err := e.queryAndFilterObjectsByRelation(e.spaceId, viewDependentObjectsIds, bundle.RelationKeyId)
 	if err != nil {
 		return err
 	}
-	for _, object := range viewDependantObjects {
+	for _, object := range viewDependentObjects {
 		id := object.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = object.Details
 	}
 	return nil
 }
 
-func (e *exportContext) getViewDependentObjects(id string, viewDependantObjectsIds []string) ([]string, error) {
+func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsIds []string) ([]string, error) {
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
 		st := sb.NewState()
 		return st.Iterate(func(b simple.Block) (isContinue bool) {
-			if dv := b.Model().GetDataview(); dv != nil {
-				for _, view := range dv.GetViews() {
-					if view.DefaultObjectTypeId != "" {
-						viewDependantObjectsIds = append(viewDependantObjectsIds, view.DefaultObjectTypeId)
-					}
-					if view.DefaultTemplateId != "" {
-						viewDependantObjectsIds = append(viewDependantObjectsIds, view.DefaultTemplateId)
-					}
-				}
-				return false
+			dv := b.Model().GetDataview()
+			if dv == nil {
+				return true
 			}
-			return true
+			for _, view := range dv.GetViews() {
+				if view.DefaultObjectTypeId != "" {
+					viewDependentObjectsIds = append(viewDependentObjectsIds, view.DefaultObjectTypeId)
+				}
+				if view.DefaultTemplateId != "" {
+					viewDependentObjectsIds = append(viewDependentObjectsIds, view.DefaultTemplateId)
+				}
+			}
+			return false
 		})
 	})
 	if err != nil {
 		return nil, err
 	}
-	return viewDependantObjectsIds, nil
+	return viewDependentObjectsIds, nil
 }
 
 func (e *exportContext) addFileObjects(ids []string) error {
