@@ -131,7 +131,7 @@ func extractTargetDetails(originDetails *domain.Details, templateDetails *domain
 		templateVal := templateDetails.Get(key)
 		if templateVal.Ok() {
 			inTemplateEmpty := templateVal.IsEmpty()
-			if key == bundle.RelationKeyLayout {
+			if key == bundle.RelationKeyResolvedLayout {
 				// layout = 0 is actually basic layout, so it counts
 				inTemplateEmpty = false
 			}

@@ -98,7 +98,7 @@ var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.Object
 			otypes = s.ObjectTypeKeys()
 		}
 
-		if !s.Details().Has(bundle.RelationKeyResolvedLayout) {
+		if !s.LocalDetails().Has(bundle.RelationKeyResolvedLayout) {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 		}
 	}

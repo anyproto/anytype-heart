@@ -118,7 +118,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	}
 
 	n.Set("type", string(st.ObjectTypeKey()))
-	layout := st.Details().GetInt64(bundle.RelationKeyResolvedLayout)
+	layout := st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)
 	n.Set("layout", fmt.Sprintf("%d", layout))
 
 	// TODO: add relations

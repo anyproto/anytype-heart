@@ -171,27 +171,40 @@ func (s *service) createObjectFromTemplate(
 
 func (s *service) injectResolvedLayout(
 	ctx context.Context, space clientspace.Space, typeKey string, details *domain.Details,
-) error {
+) (err error) {
+	var layout int64
+	if bundle.IsInternalType(domain.TypeKey(typeKey)) {
+		ot := bundle.MustGetType(domain.TypeKey(typeKey))
+		layout = int64(ot.Layout)
+	} else {
+		layout, err = s.getLayoutFromType(ctx, space, typeKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+	// we should remove layout relation from details, if client accidentally add it in request
+	details.Delete(bundle.RelationKeyLayout)
+	return nil
+}
+
+func (s *service) getLayoutFromType(ctx context.Context, space clientspace.Space, typeKey string) (int64, error) {
 	typeObjectId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(smartblock.SmartBlockTypeObjectType, typeKey))
 	if err != nil {
-		return fmt.Errorf("failed to derive object type id: %w", err)
+		return 0, fmt.Errorf("failed to derive object type id: %w", err)
 	}
 
 	records, err := s.objectStore.SpaceIndex(space.Id()).QueryByIds([]string{typeObjectId})
 	if err != nil {
-		return fmt.Errorf("failed to query details of object type: %w", err)
+		return 0, fmt.Errorf("failed to query details of object type: %w", err)
 	}
 
 	if len(records) != 1 {
-		return fmt.Errorf("expected to get 1 record on querying object type details, got %d", len(records))
+		return 0, fmt.Errorf("expected to get 1 record on querying object type details, got %d", len(records))
 	}
 
-	layout := records[0].Details.GetInt64(bundle.RelationKeyRecommendedLayout)
-	details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
-
-	// we should remove layout relation from details, if client accidentally add it in request
-	details.Delete(bundle.RelationKeyLayout)
-	return nil
+	return records[0].Details.GetInt64(bundle.RelationKeyRecommendedLayout), nil
 }
 
 // buildDateObject does not create real date object. It just builds date object details

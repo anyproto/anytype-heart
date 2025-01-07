@@ -256,6 +256,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 		return nil
 	}
 	store := i.store.SpaceIndex(spaceId)
+	// TODO: It seems we should also filter objects by Layout, because file objects should be re-indexed to receive resolvedLayout
 	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{

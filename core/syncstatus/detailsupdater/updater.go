@@ -226,7 +226,7 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 		return nil
 	}
 	st := sb.NewState()
-	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
+	if !u.isLayoutSuitableForSyncRelations(sb.LocalDetails()) {
 		return nil
 	}
 	if fileStatus, ok := st.Details().TryFloat64(bundle.RelationKeyFileBackupStatus); ok {

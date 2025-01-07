@@ -535,7 +535,7 @@ func TestQuery(t *testing.T) {
 				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
-						RelationKey: "layout",
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_NotIn,
 						Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
 					},
@@ -593,7 +593,7 @@ func TestQuery(t *testing.T) {
 				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
-						RelationKey: "layout",
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_NotIn,
 						Value:       domain.Int64List([]int64{int64(model.ObjectType_objectType)}),
 					},

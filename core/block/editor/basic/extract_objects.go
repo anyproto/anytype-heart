@@ -253,5 +253,5 @@ func copySubtreeOfBlocks(s *state.State, oldRootId string, oldBlocks []simple.Bl
 
 func hasNoteLayout(s *state.State) bool {
 	//nolint:gosec
-	return model.ObjectTypeLayout(s.Details().GetInt64(bundle.RelationKeyResolvedLayout)) == model.ObjectType_note
+	return model.ObjectTypeLayout(s.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)) == model.ObjectType_note
 }

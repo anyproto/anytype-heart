@@ -121,6 +121,7 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
+	// TODO: It seems we should also filter objects by Layout, because participants should be re-indexed to receive resolvedLayout
 	ids, _, err := i.store.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{

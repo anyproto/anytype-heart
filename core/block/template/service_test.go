@@ -217,7 +217,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 			// then
 			assert.NoError(t, err)
-			assert.Equal(t, layout, model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyResolvedLayout)))
+			assert.Equal(t, layout, model.ObjectTypeLayout(st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)))
 			assertLayoutBlocks(t, st, layout)
 		})
 	}
