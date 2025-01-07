@@ -31,14 +31,19 @@ var (
 	ErrNoMnemonicProvided  = errors.New("no mnemonic provided")
 	ErrIncompatibleVersion = errors.New("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version")
 
-	ErrAnotherProcessIsRunning = errors.New("another anytype process is running")
-	ErrFailedToFindAccountInfo = errors.New("failed to find account info")
-	ErrAccountIsDeleted        = errors.New("account is deleted")
+	ErrAnotherProcessIsRunning   = errors.New("another anytype process is running")
+	ErrFailedToFindAccountInfo   = errors.New("failed to find account info")
+	ErrAccountIsDeleted          = errors.New("account is deleted")
+	ErrAccountStoreIsNotMigrated = errors.New("account store is not migrated")
 )
 
 func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) (*model.Account, error) {
 	if req.Id == "" {
 		return nil, ErrEmptyAccountID
+	}
+	curMigration := s.migrationManager.getMigration(req.RootPath, req.Id)
+	if !curMigration.successful() {
+		return nil, ErrAccountStoreIsNotMigrated
 	}
 
 	if runtime.GOOS != "android" && runtime.GOOS != "ios" {
