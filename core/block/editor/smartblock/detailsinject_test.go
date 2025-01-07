@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -278,5 +279,100 @@ func TestInjectDerivedDetails(t *testing.T) {
 
 		// then
 		assert.Len(t, st.LocalDetails().GetStringList(bundle.RelationKeyLinks), 3)
+	})
+}
+
+func TestInjectResolvedLayout(t *testing.T) {
+	const (
+		id      = "id"
+		spaceId = "testSpace"
+	)
+	t.Run("resolved layout is injected from layout detail", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", nil).NewState()
+		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_todo))
+
+		// when
+		fx.injectResolvedLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+	t.Run("resolved layout is already injected", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", nil).NewState()
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_set))
+
+		// when
+		fx.injectResolvedLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_set), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+	t.Run("failed to get type object id -> fallback to basic", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", nil).NewState()
+
+		// when
+		fx.injectResolvedLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+	t.Run("layout is resolved from sb last deps", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", nil).NewState()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
+
+		fx.lastDepDetails = map[string]*domain.Details{
+			bundle.TypeKeyTask.URL(): domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
+			}),
+		}
+
+		// when
+		fx.injectResolvedLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+	t.Run("layout is resolved from object store", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", nil).NewState()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyProfile.URL()))
+
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyProfile.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_profile),
+		}})
+
+		// when
+		fx.injectResolvedLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_profile), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+	t.Run("failed to query type object -> fallback to basic", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", nil).NewState()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyNote.URL()))
+
+		// when
+		fx.injectResolvedLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
 }

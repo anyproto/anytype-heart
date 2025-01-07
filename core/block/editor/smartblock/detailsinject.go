@@ -227,7 +227,7 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 }
 
 func (sb *smartBlock) injectResolvedLayout(s *state.State) {
-	if s.Details() == nil {
+	if s.Details() == nil && s.LocalDetails() == nil {
 		return
 	}
 	rawValue := s.Details().Get(bundle.RelationKeyLayout)
@@ -255,7 +255,7 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 		rawValue = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
 	} else {
 		records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
-		if err != nil || len(records) != 0 {
+		if err != nil || len(records) != 1 {
 			log.Errorf("failed to query object %s: %v", typeObjectId, err)
 			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 			return
