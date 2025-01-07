@@ -1989,11 +1989,11 @@
 | WorkspaceSetInfo | [Rpc.Workspace.SetInfo.Request](#anytype-Rpc-Workspace-SetInfo-Request) | [Rpc.Workspace.SetInfo.Response](#anytype-Rpc-Workspace-SetInfo-Response) |  |
 | WorkspaceExport | [Rpc.Workspace.Export.Request](#anytype-Rpc-Workspace-Export-Request) | [Rpc.Workspace.Export.Response](#anytype-Rpc-Workspace-Export-Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request) | [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response) | Account *** |
+| AccountMigrate | [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request) | [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
-| AccountMigrate | [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request) | [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
@@ -20657,6 +20657,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 | ACCOUNT_IS_DELETED | 111 |  |
 | ACCOUNT_LOAD_IS_CANCELED | 112 |  |
+| ACCOUNT_STORE_NOT_MIGRATED | 113 |  |
 | CONFIG_FILE_NOT_FOUND | 200 |  |
 | CONFIG_FILE_INVALID | 201 |  |
 | CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |

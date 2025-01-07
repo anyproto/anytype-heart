@@ -77,6 +77,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 		errToCode(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
+		errToCode(application.ErrAccountStoreIsNotMigrated, pb.RpcAccountSelectResponseError_ACCOUNT_STORE_NOT_MIGRATED),
 	)
 	return &pb.RpcAccountSelectResponse{
 		Config:  nil,

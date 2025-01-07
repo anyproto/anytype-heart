@@ -215,6 +215,7 @@ func BootstrapMigration(newPath string, a *app.App, components ...app.Component)
 	a.Register(clientds.New()).
 		Register(oldstorage.New()).
 		Register(anystorage.New(newPath)).
+		Register(process.New()).
 		Register(migrator.New())
 }
 
@@ -287,7 +288,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(recordsbatcher.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
-		Register(core.New()).
 		Register(core.NewTempDirService()).
 		Register(treemanager.New()).
 		Register(block.New()).
