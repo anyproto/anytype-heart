@@ -9,10 +9,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -307,7 +305,7 @@ func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage,
 			err = sb.space.Do(id, func(b SmartBlock) error {
 				st := b.NewState()
 				st.RemoveDetail(bundle.RelationKeyLayout)
-				st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 				return b.Apply(st)
 			})
 			if err != nil {
@@ -344,15 +342,9 @@ func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage,
 		}
 
 		err = sb.space.Do(id, func(b SmartBlock) error {
-			if cr, ok := b.(source.ChangeReceiver); ok {
-				return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
-					st := d.NewState()
-					st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
-					return st, nil, nil
-				})
-			}
-			// do not Apply. StateAppend sends the event and runs reindex
-			return nil
+			st := b.NewState()
+			st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+			return b.Apply(st, KeepInternalFlags, NotPushChanges)
 		})
 		if err != nil {
 			resultErr = errors.Join(resultErr, err)
