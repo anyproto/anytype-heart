@@ -2,6 +2,7 @@ package migrator
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -53,6 +54,10 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	if MigrationCompleted(m.path) {
 		return nil
 	}
+	err = removeAllContents(m.path)
+	if err != nil {
+		return fmt.Errorf("failed to remove all contents: %w", err)
+	}
 	migrator := migration.NewSpaceMigrator(m.storage, m.newStorage, 10)
 	allIds, err := m.storage.AllSpaceIds()
 	if err != nil {
@@ -103,4 +108,19 @@ func MigrationCompletedPath(path string) string {
 func MigrationCompleted(path string) bool {
 	_, err := os.Stat(MigrationCompletedPath(path))
 	return err == nil
+}
+
+func removeAllContents(folder string) error {
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return fmt.Errorf("failed to read directory: %w", err)
+	}
+	for _, entry := range entries {
+		entryPath := filepath.Join(folder, entry.Name())
+		err = os.RemoveAll(entryPath)
+		if err != nil {
+			return fmt.Errorf("failed to remove %s: %w", entryPath, err)
+		}
+	}
+	return nil
 }

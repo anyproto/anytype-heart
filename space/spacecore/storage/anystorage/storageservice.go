@@ -11,13 +11,11 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"go.uber.org/zap"
-	"golang.org/x/sys/unix"
-
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"go.uber.org/zap"
 )
 
 var log = logger.NewNamed(spacestorage.CName)
@@ -155,7 +153,7 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
-	return unix.Rmdir(s.rootPath)
+	return s.cache.Close()
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
