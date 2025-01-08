@@ -16,7 +16,7 @@ var (
 
 type Service interface {
 	GenerateNewChallenge(ctx context.Context, appName string) (string, error)
-	SolveChallengeForToken(ctx context.Context, challengeID, code string) (sessionToken, appKey string, err error)
+	SolveChallengeForToken(ctx context.Context, challengeId string, code string) (sessionToken, appKey string, err error)
 }
 
 type AuthService struct {
@@ -39,14 +39,14 @@ func (s *AuthService) GenerateNewChallenge(ctx context.Context, appName string) 
 }
 
 // SolveChallengeForToken calls AccountLocalLinkSolveChallenge and returns the session token + app key, or an error if it fails.
-func (s *AuthService) SolveChallengeForToken(ctx context.Context, challengeID, code string) (sessionToken, appKey string, err error) {
-	if challengeID == "" || code == "" {
+func (s *AuthService) SolveChallengeForToken(ctx context.Context, challengeId string, code string) (sessionToken string, appKey string, err error) {
+	if challengeId == "" || code == "" {
 		return "", "", ErrInvalidInput
 	}
 
 	// Call AccountLocalLinkSolveChallenge to retrieve session token and app key
 	resp := s.mw.AccountLocalLinkSolveChallenge(ctx, &pb.RpcAccountLocalLinkSolveChallengeRequest{
-		ChallengeId: challengeID,
+		ChallengeId: challengeId,
 		Answer:      code,
 	})
 

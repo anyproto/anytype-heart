@@ -15,8 +15,8 @@ import (
 //	@Accept		json
 //	@Produce	json
 //	@Success	200	{object}	DisplayCodeResponse	"Challenge ID"
-//	@Failure	502	{object}	util.ServerError		"Internal server error"
-//	@Router		/auth/displayCode [post]
+//	@Failure	502	{object}	util.ServerError	"Internal server error"
+//	@Router		/auth/display_code [post]
 func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		challengeId, err := s.GenerateNewChallenge(c.Request.Context(), "api-test")
@@ -38,18 +38,18 @@ func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
-//	@Param		code			query		string					true	"The code retrieved from Anytype Desktop app"
 //	@Param		challenge_id	query		string					true	"The challenge ID"
-//	@Success	200				{object}	TokenResponse		"Authentication token"
+//	@Param		code			query		string					true	"The 4-digit code retrieved from Anytype Desktop app"
+//	@Success	200				{object}	TokenResponse			"Authentication token"
 //	@Failure	400				{object}	util.ValidationError	"Invalid input"
 //	@Failure	502				{object}	util.ServerError		"Internal server error"
-//	@Router		/auth/token [get]
+//	@Router		/auth/token [post]
 func TokenHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		challengeID := c.Query("challenge_id")
+		challengeId := c.Query("challenge_id")
 		code := c.Query("code")
 
-		sessionToken, appKey, err := s.SolveChallengeForToken(c.Request.Context(), challengeID, code)
+		sessionToken, appKey, err := s.SolveChallengeForToken(c.Request.Context(), challengeId, code)
 		errCode := util.MapErrorCode(err,
 			util.ErrToCode(ErrInvalidInput, http.StatusBadRequest),
 			util.ErrToCode(ErrFailedAuthenticate, http.StatusInternalServerError),

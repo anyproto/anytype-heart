@@ -12,7 +12,7 @@ import (
 // GetObjectsHandler retrieves objects in a specific space
 //
 //	@Summary	Retrieve objects in a specific space
-//	@Tags		space_objects
+//	@Tags		objects
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"The ID of the space"
@@ -50,7 +50,7 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 // GetObjectHandler retrieves a specific object in a space
 //
 //	@Summary	Retrieve a specific object in a space
-//	@Tags		space_objects
+//	@Tags		objects
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"The ID of the space"
@@ -84,7 +84,7 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 // CreateObjectHandler creates a new object in a specific space
 //
 //	@Summary	Create a new object in a specific space
-//	@Tags		space_objects
+//	@Tags		objects
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"The ID of the space"
@@ -128,7 +128,7 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 // UpdateObjectHandler updates an existing object in a specific space
 //
 //	@Summary	Update an existing object in a specific space
-//	@Tags		space_objects
+//	@Tags		objects
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"The ID of the space"
@@ -172,7 +172,7 @@ func UpdateObjectHandler(s *ObjectService) gin.HandlerFunc {
 // GetTypesHandler retrieves object types in a specific space
 //
 //	@Summary	Retrieve object types in a specific space
-//	@Tags		types_and_templates
+//	@Tags		objects
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"The ID of the space"
@@ -182,7 +182,7 @@ func UpdateObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
 //	@Failure	502			{object}	util.ServerError		"Internal server error"
-//	@Router		/spaces/{space_id}/objectTypes [get]
+//	@Router		/spaces/{space_id}/object_types [get]
 func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -208,22 +208,22 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 // GetTemplatesHandler retrieves a list of templates for a specific object type in a space
 //
 //	@Summary	Retrieve a list of templates for a specific object type in a space
-//	@Tags		types_and_templates
+//	@Tags		objects
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string						true	"The ID of the space"
-//	@Param		typeId		path		string						true	"The ID of the object type"
+//	@Param		type_id		path		string						true	"The ID of the object type"
 //	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit		query		int							false	"The number of items to return"	default(100)
 //	@Success	200			{object}	map[string][]ObjectTemplate	"List of templates"
 //	@Failure	403			{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError			"Resource not found"
 //	@Failure	502			{object}	util.ServerError			"Internal server error"
-//	@Router		/spaces/{space_id}/objectTypes/{typeId}/templates [get]
+//	@Router		/spaces/{space_id}/object_types/{type_id}/templates [get]
 func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
-		typeId := c.Param("typeId")
+		typeId := c.Param("type_id")
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 

@@ -18,7 +18,7 @@
     "host": "localhost:31009",
     "basePath": "/v1",
     "paths": {
-        "/auth/displayCode": {
+        "/auth/display_code": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -47,7 +47,7 @@
             }
         },
         "/auth/token": {
-            "get": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -61,15 +61,15 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The code retrieved from Anytype Desktop app",
-                        "name": "code",
+                        "description": "The challenge ID",
+                        "name": "challenge_id",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The challenge ID",
-                        "name": "challenge_id",
+                        "description": "The 4-digit code retrieved from Anytype Desktop app",
+                        "name": "code",
                         "in": "query",
                         "required": true
                     }
@@ -339,7 +339,7 @@
                 }
             }
         },
-        "/spaces/{space_id}/objectTypes": {
+        "/spaces/{space_id}/object_types": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -348,7 +348,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "types_and_templates"
+                    "objects"
                 ],
                 "summary": "Retrieve object types in a specific space",
                 "parameters": [
@@ -404,7 +404,7 @@
                 }
             }
         },
-        "/spaces/{space_id}/objectTypes/{typeId}/templates": {
+        "/spaces/{space_id}/object_types/{type_id}/templates": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -413,7 +413,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "types_and_templates"
+                    "objects"
                 ],
                 "summary": "Retrieve a list of templates for a specific object type in a space",
                 "parameters": [
@@ -427,7 +427,7 @@
                     {
                         "type": "string",
                         "description": "The ID of the object type",
-                        "name": "typeId",
+                        "name": "type_id",
                         "in": "path",
                         "required": true
                     },
@@ -488,7 +488,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "space_objects"
+                    "objects"
                 ],
                 "summary": "Retrieve objects in a specific space",
                 "parameters": [
@@ -554,7 +554,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "space_objects"
+                    "objects"
                 ],
                 "summary": "Create a new object in a specific space",
                 "parameters": [
@@ -615,7 +615,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "space_objects"
+                    "objects"
                 ],
                 "summary": "Retrieve a specific object in a space",
                 "parameters": [
@@ -669,7 +669,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "space_objects"
+                    "objects"
                 ],
                 "summary": "Update an existing object in a specific space",
                 "parameters": [
@@ -740,7 +740,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "exports"
+                    "export"
                 ],
                 "summary": "Export an object",
                 "parameters": [

@@ -37,11 +37,11 @@ func (s *Server) NewRouter() *gin.Engine {
 	{
 		// Auth
 		v1.POST("/auth/display_code", auth.DisplayCodeHandler(s.authService))
-		v1.GET("/auth/token", auth.TokenHandler(s.authService))
+		v1.POST("/auth/token", auth.TokenHandler(s.authService))
 
 		// Export
 		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
-		v1.GET("/spaces/:space_id/objects/export/:format", export.GetSpaceExportHandler(s.exportService))
+		v1.POST("/spaces/:space_id/objects/export/:format", export.GetSpaceExportHandler(s.exportService))
 
 		// Object
 		v1.GET("/spaces/:space_id/objects", paginator, object.GetObjectsHandler(s.objectService))

@@ -52,8 +52,8 @@ func main() {
 		body       map[string]interface{}
 	}{
 		// auth
-		// {"POST", "/auth/displayCode", nil, nil},
-		// {"GET", "/auth/token?challengeId={challengeId}&code={code}", map[string]interface{}{"challengeId": "6738dfc5cda913aad90e8c2a", "code": "2931"}, nil},
+		// {"POST", "/auth/display_code", nil, nil},
+		// {"POST", "/auth/token?challenge_id={challenge_id}&code={code}", map[string]interface{}{"challenge_id": "6738dfc5cda913aad90e8c2a", "code": "2931"}, nil},
 
 		// export
 		// {"GET", "/spaces/{space_id}/objects/{object_id}/export/{format}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId, "format": "markdown"}, nil},

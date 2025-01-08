@@ -11,7 +11,7 @@ import (
 // GetObjectExportHandler exports an object to the specified format
 //
 //	@Summary	Export an object
-//	@Tags		exports
+//	@Tags		export
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"

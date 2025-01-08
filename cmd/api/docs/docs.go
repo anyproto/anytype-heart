@@ -24,7 +24,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/displayCode": {
+        "/auth/display_code": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -53,7 +53,7 @@ const docTemplate = `{
             }
         },
         "/auth/token": {
-            "get": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -67,15 +67,15 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The code retrieved from Anytype Desktop app",
-                        "name": "code",
+                        "description": "The challenge ID",
+                        "name": "challenge_id",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The challenge ID",
-                        "name": "challenge_id",
+                        "description": "The 4-digit code retrieved from Anytype Desktop app",
+                        "name": "code",
                         "in": "query",
                         "required": true
                     }
@@ -345,7 +345,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/spaces/{space_id}/objectTypes": {
+        "/spaces/{space_id}/object_types": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -354,7 +354,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "types_and_templates"
+                    "objects"
                 ],
                 "summary": "Retrieve object types in a specific space",
                 "parameters": [
@@ -410,7 +410,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/spaces/{space_id}/objectTypes/{typeId}/templates": {
+        "/spaces/{space_id}/object_types/{type_id}/templates": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -419,7 +419,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "types_and_templates"
+                    "objects"
                 ],
                 "summary": "Retrieve a list of templates for a specific object type in a space",
                 "parameters": [
@@ -433,7 +433,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "The ID of the object type",
-                        "name": "typeId",
+                        "name": "type_id",
                         "in": "path",
                         "required": true
                     },
@@ -494,7 +494,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "space_objects"
+                    "objects"
                 ],
                 "summary": "Retrieve objects in a specific space",
                 "parameters": [
@@ -560,7 +560,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "space_objects"
+                    "objects"
                 ],
                 "summary": "Create a new object in a specific space",
                 "parameters": [
@@ -621,7 +621,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "space_objects"
+                    "objects"
                 ],
                 "summary": "Retrieve a specific object in a space",
                 "parameters": [
@@ -675,7 +675,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "space_objects"
+                    "objects"
                 ],
                 "summary": "Update an existing object in a specific space",
                 "parameters": [
@@ -746,7 +746,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "exports"
+                    "export"
                 ],
                 "summary": "Export an object",
                 "parameters": [

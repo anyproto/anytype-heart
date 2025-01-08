@@ -334,7 +334,7 @@ info:
   title: Anytype API
   version: "1.0"
 paths:
-  /auth/displayCode:
+  /auth/display_code:
     post:
       consumes:
       - application/json
@@ -353,18 +353,18 @@ paths:
       tags:
       - auth
   /auth/token:
-    get:
+    post:
       consumes:
       - application/json
       parameters:
-      - description: The code retrieved from Anytype Desktop app
-        in: query
-        name: code
-        required: true
-        type: string
       - description: The challenge ID
         in: query
         name: challenge_id
+        required: true
+        type: string
+      - description: The 4-digit code retrieved from Anytype Desktop app
+        in: query
+        name: code
         required: true
         type: string
       produces:
@@ -548,7 +548,7 @@ paths:
       summary: Retrieve a list of members for the specified Space
       tags:
       - spaces
-  /spaces/{space_id}/objectTypes:
+  /spaces/{space_id}/object_types:
     get:
       consumes:
       - application/json
@@ -591,8 +591,8 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Retrieve object types in a specific space
       tags:
-      - types_and_templates
-  /spaces/{space_id}/objectTypes/{typeId}/templates:
+      - objects
+  /spaces/{space_id}/object_types/{type_id}/templates:
     get:
       consumes:
       - application/json
@@ -604,7 +604,7 @@ paths:
         type: string
       - description: The ID of the object type
         in: path
-        name: typeId
+        name: type_id
         required: true
         type: string
       - description: The number of items to skip before starting to collect the result
@@ -642,7 +642,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Retrieve a list of templates for a specific object type in a space
       tags:
-      - types_and_templates
+      - objects
   /spaces/{space_id}/objects:
     get:
       consumes:
@@ -688,7 +688,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Retrieve objects in a specific space
       tags:
-      - space_objects
+      - objects
     post:
       consumes:
       - application/json
@@ -727,7 +727,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Create a new object in a specific space
       tags:
-      - space_objects
+      - objects
   /spaces/{space_id}/objects/{object_id}:
     get:
       consumes:
@@ -764,7 +764,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Retrieve a specific object in a space
       tags:
-      - space_objects
+      - objects
     put:
       consumes:
       - application/json
@@ -810,7 +810,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Update an existing object in a specific space
       tags:
-      - space_objects
+      - objects
   /spaces/{space_id}/objects/{object_id}/export/{format}:
     post:
       consumes:
@@ -856,7 +856,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Export an object
       tags:
-      - exports
+      - export
 securityDefinitions:
   BasicAuth:
     type: basic
