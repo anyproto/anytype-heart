@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.4-0.20241211133419-d0c2df992842
-	github.com/anyproto/any-sync v0.6.0-alpha.2.0.20250106182015-8cb2e54eefa7
+	github.com/anyproto/any-sync v0.6.0-alpha.2.0.20250108125822-83738c231f77
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.0
@@ -61,7 +61,6 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.17.11
 	github.com/kovidgoyal/imaging v1.6.3
-	github.com/libp2p/go-libp2p v0.38.1
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.9
@@ -104,7 +103,6 @@ require (
 	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
 	golang.org/x/net v0.33.0
 	golang.org/x/oauth2 v0.24.0
-	golang.org/x/sys v0.28.0
 	golang.org/x/text v0.21.0
 	google.golang.org/grpc v1.69.2
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
@@ -192,6 +190,7 @@ require (
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
+	github.com/libp2p/go-libp2p v0.38.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -251,6 +250,7 @@ require (
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/tools v0.28.0 // indirect
@@ -286,5 +286,3 @@ replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr
 replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38
 
 replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38
-
-replace github.com/anyproto/any-sync => ../any-sync

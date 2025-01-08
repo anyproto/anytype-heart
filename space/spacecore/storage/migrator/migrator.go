@@ -48,6 +48,10 @@ func (m *migrator) Name() (name string) {
 func (m *migrator) Run(ctx context.Context) (err error) {
 	progress := process.NewProgress(&pb.ModelProcessMessageOfMigration{Migration: &pb.ModelProcessMigration{}})
 	progress.SetProgressMessage("Migrating spaces")
+	err = m.process.Add(progress)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		progress.Finish(err)
 	}()
@@ -58,7 +62,7 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to remove all contents: %w", err)
 	}
-	migrator := migration.NewSpaceMigrator(m.storage, m.newStorage, 10)
+	migrator := migration.NewSpaceMigrator(m.storage, m.newStorage, 40)
 	allIds, err := m.storage.AllSpaceIds()
 	if err != nil {
 		return err
