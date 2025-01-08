@@ -37,7 +37,6 @@ const (
 
 type clientStorage struct {
 	spacestorage.SpaceStorage
-	cont       *storageContainer
 	clientColl anystore.Collection
 	arena      *anyenc.Arena
 }
@@ -50,10 +49,9 @@ func (r *clientStorage) AllDeletedTreeIds(ctx context.Context) (ids []string, er
 	return
 }
 
-func newClientStorage(ctx context.Context, cont *storageContainer, spaceStorage spacestorage.SpaceStorage) (*clientStorage, error) {
+func newClientStorage(ctx context.Context, spaceStorage spacestorage.SpaceStorage) (*clientStorage, error) {
 	storage := &clientStorage{
 		SpaceStorage: spaceStorage,
-		cont:         cont,
 		arena:        &anyenc.Arena{},
 	}
 	anyStore := storage.AnyStore()
@@ -66,8 +64,9 @@ func newClientStorage(ctx context.Context, cont *storageContainer, spaceStorage 
 }
 
 func (r *clientStorage) Close(ctx context.Context) (err error) {
-	defer r.cont.Release()
-	return r.SpaceStorage.Close(ctx)
+	spaceStorageErr := r.SpaceStorage.Close(ctx)
+	anyStoreErr := r.SpaceStorage.AnyStore().Close()
+	return errors.Join(spaceStorageErr, anyStoreErr)
 }
 
 func (r *clientStorage) HasTree(ctx context.Context, id string) (has bool, err error) {

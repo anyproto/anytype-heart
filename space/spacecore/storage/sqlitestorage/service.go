@@ -31,7 +31,7 @@ var (
 )
 
 type configGetter interface {
-	GetSpaceStorePath() string
+	GetSqliteStorePath() string
 	GetTempDirPath() string
 }
 
@@ -92,7 +92,7 @@ func New() *storageService {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	s.dbPath = a.MustComponent("config").(configGetter).GetSpaceStorePath()
+	s.dbPath = a.MustComponent("config").(configGetter).GetSqliteStorePath()
 	s.dbTempPath = a.MustComponent("config").(configGetter).GetTempDirPath()
 	s.lockedSpaces = map[string]*lockSpace{}
 	if s.checkpointAfterWrite == 0 {

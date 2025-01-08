@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 )
 
 var (
@@ -170,12 +169,10 @@ func (m *migrationManager) getMigration(rootPath, id string) *migration {
 	if m.migrations[id] == nil {
 		sqlitePath := filepath.Join(rootPath, id, config.SpaceStoreSqlitePath)
 		baderPath := filepath.Join(rootPath, id, config.SpaceStoreBadgerPath)
-		newPath := filepath.Join(rootPath, id, config.SpaceStoreNewPath)
-		path := pathExists([]string{sqlitePath, baderPath})
-		if path == "" || migrator.MigrationCompleted(newPath) {
-			m.migrations[id] = newSuccessfulMigration(m, id)
-		} else {
+		if anyPathExists([]string{sqlitePath, baderPath}) {
 			m.migrations[id] = newMigration(m, id)
+		} else {
+			m.migrations[id] = newSuccessfulMigration(m, id)
 		}
 	}
 	if m.migrations[id].finished() && !m.migrations[id].successful() {
@@ -185,11 +182,11 @@ func (m *migrationManager) getMigration(rootPath, id string) *migration {
 	return m.migrations[id]
 }
 
-func pathExists(paths []string) string {
+func anyPathExists(paths []string) bool {
 	for _, path := range paths {
 		if _, err := os.Stat(path); err == nil {
-			return path
+			return true
 		}
 	}
-	return ""
+	return false
 }

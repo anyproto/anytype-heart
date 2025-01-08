@@ -192,7 +192,7 @@ type testConfig struct {
 	tmpDir string
 }
 
-func (t *testConfig) GetSpaceStorePath() string {
+func (t *testConfig) GetSqliteStorePath() string {
 	return filepath.Join(t.tmpDir, "spaceStore.db")
 }
 func (t *testConfig) GetTempDirPath() string {

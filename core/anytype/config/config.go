@@ -296,8 +296,15 @@ func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
 }
 
-func (c *Config) GetSpaceStorePath() string {
+func (c *Config) GetSqliteStorePath() string {
 	return filepath.Join(c.RepoPath, SpaceStoreSqlitePath)
+}
+
+func (c *Config) GetOldSpaceStorePath() string {
+	if c.GetSpaceStorageMode() == storage.SpaceStorageModeBadger {
+		return filepath.Join(c.RepoPath, SpaceStoreBadgerPath)
+	}
+	return c.GetSqliteStorePath()
 }
 
 func (c *Config) GetNewSpaceStorePath() string {
