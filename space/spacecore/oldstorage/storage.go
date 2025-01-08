@@ -5,14 +5,16 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/badgerstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
 )
 
 type SpaceStorageMode int
+
+const CName = "client.spacecore.oldstorage"
 
 const (
 	SpaceStorageModeSqlite SpaceStorageMode = iota // used for new account repos
@@ -36,19 +38,19 @@ func New() ClientStorage {
 }
 
 type configGetter interface {
-	GetSpaceStorageMode() SpaceStorageMode
+	GetSpaceStorageMode() storage.SpaceStorageMode
 }
 
 func (s *storageService) Name() (name string) {
-	return spacestorage.CName
+	return CName
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
 	mode := a.MustComponent("config").(configGetter).GetSpaceStorageMode()
-	if mode == SpaceStorageModeBadger {
+	if mode == storage.SpaceStorageModeBadger {
 		// for already existing account repos
 		s.ClientStorage = badgerstorage.New()
-	} else if mode == SpaceStorageModeSqlite {
+	} else if mode == storage.SpaceStorageModeSqlite {
 		// sqlite used for new account repos
 		s.ClientStorage = sqlitestorage.New()
 	} else {
