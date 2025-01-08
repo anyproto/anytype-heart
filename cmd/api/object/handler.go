@@ -55,7 +55,7 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string					true	"The ID of the space"
 //	@Param		object_id	path		string					true	"The ID of the object"
-//	@Success	200			{object}	Object					"The requested object"
+//	@Success	200			{object}	ObjectResponse			"The requested object"
 //	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
 //	@Failure	502			{object}	util.ServerError		"Internal server error"
@@ -77,7 +77,42 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, GetObjectResponse{Object: object})
+		c.JSON(http.StatusOK, ObjectResponse{Object: object})
+	}
+}
+
+// DeleteObjectHandler deletes a specific object in a space
+//
+//	@Summary	Delete a specific object in a space
+//	@Tags		objects
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string					true	"The ID of the space"
+//	@Param		object_id	path		string					true	"The ID of the object"
+//	@Success	200			{object}	ObjectResponse			"The deleted object"
+//	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	util.NotFoundError		"Resource not found"
+//	@Failure	502			{object}	util.ServerError		"Internal server error"
+//	@Router		/spaces/{space_id}/objects/{object_id} [delete]
+func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		objectId := c.Param("object_id")
+
+		object, err := s.DeleteObject(c.Request.Context(), spaceId, objectId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedDeleteObject, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, ObjectResponse{Object: object})
 	}
 }
 
@@ -89,7 +124,7 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string					true	"The ID of the space"
 //	@Param		object		body		map[string]string		true	"Object details (e.g., name)"
-//	@Success	200			{object}	CreateObjectResponse	"The created object"
+//	@Success	200			{object}	ObjectResponse			"The created object"
 //	@Failure	400			{object}	util.ValidationError	"Bad request"
 //	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	502			{object}	util.ServerError		"Internal server error"
@@ -121,7 +156,7 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, CreateObjectResponse{Object: object})
+		c.JSON(http.StatusOK, ObjectResponse{Object: object})
 	}
 }
 
@@ -134,7 +169,7 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Param		space_id	path		string					true	"The ID of the space"
 //	@Param		object_id	path		string					true	"The ID of the object"
 //	@Param		object		body		Object					true	"The updated object details"
-//	@Success	200			{object}	UpdateObjectResponse	"The updated object"
+//	@Success	200			{object}	ObjectResponse			"The updated object"
 //	@Failure	400			{object}	util.ValidationError	"Bad request"
 //	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
@@ -165,7 +200,7 @@ func UpdateObjectHandler(s *ObjectService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusNotImplemented, UpdateObjectResponse{Object: object})
+		c.JSON(http.StatusNotImplemented, ObjectResponse{Object: object})
 	}
 }
 

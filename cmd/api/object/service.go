@@ -20,6 +20,7 @@ var (
 	ErrFailedRetrieveObject       = errors.New("failed to retrieve object")
 	ErrorFailedRetrieveObjects    = errors.New("failed to retrieve list of objects")
 	ErrNoObjectsFound             = errors.New("no objects found")
+	ErrFailedDeleteObject         = errors.New("failed to delete object")
 	ErrFailedCreateObject         = errors.New("failed to create object")
 	ErrInputMissingSource         = errors.New("source is missing for bookmark")
 	ErrFailedSetRelationFeatured  = errors.New("failed to set relation featured")
@@ -39,8 +40,9 @@ var (
 type Service interface {
 	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
 	GetObject(ctx context.Context, spaceId string, objectId string) (Object, error)
-	CreateObject(ctx context.Context, spaceId string, obj Object) (Object, error)
-	UpdateObject(ctx context.Context, spaceId string, obj Object) (Object, error)
+	DeleteObject(ctx context.Context, spaceId string, objectId string) error
+	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error)
+	UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (Object, error)
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]ObjectType, int, bool, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]ObjectTemplate, int, bool, error)
 }
@@ -143,6 +145,25 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		RootId:     resp.ObjectView.RootId,
 		Blocks:     s.GetBlocks(resp),
 		Details:    s.GetDetails(resp),
+	}
+
+	return object, nil
+}
+
+// DeleteObject deletes an existing object in a specific space.
+func (s *ObjectService) DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
+	object, err := s.GetObject(ctx, spaceId, objectId)
+	if err != nil {
+		return Object{}, err
+	}
+
+	resp := s.mw.ObjectListSetIsArchived(ctx, &pb.RpcObjectListSetIsArchivedRequest{
+		ObjectIds:  []string{objectId},
+		IsArchived: true,
+	})
+
+	if resp.Error.Code != pb.RpcObjectListSetIsArchivedResponseError_NULL {
+		return Object{}, ErrFailedDeleteObject
 	}
 
 	return object, nil

@@ -1,9 +1,5 @@
 package object
 
-type GetObjectResponse struct {
-	Object Object `json:"object"`
-}
-
 type CreateObjectRequest struct {
 	Name                string `json:"name"`
 	Icon                string `json:"icon"`
@@ -15,15 +11,12 @@ type CreateObjectRequest struct {
 	WithChat            bool   `json:"with_chat"`
 }
 
-type CreateObjectResponse struct {
-	Object Object `json:"object"`
-}
-
+// TODO: Add fields to the request
 type UpdateObjectRequest struct {
 	Object Object `json:"object"`
 }
 
-type UpdateObjectResponse struct {
+type ObjectResponse struct {
 	Object Object `json:"object"`
 }
 

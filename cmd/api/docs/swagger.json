@@ -582,7 +582,7 @@
                     "200": {
                         "description": "The created object",
                         "schema": {
-                            "$ref": "#/definitions/object.CreateObjectResponse"
+                            "$ref": "#/definitions/object.ObjectResponse"
                         }
                     },
                     "400": {
@@ -638,7 +638,7 @@
                     "200": {
                         "description": "The requested object",
                         "schema": {
-                            "$ref": "#/definitions/object.Object"
+                            "$ref": "#/definitions/object.ObjectResponse"
                         }
                     },
                     "403": {
@@ -701,13 +701,67 @@
                     "200": {
                         "description": "The updated object",
                         "schema": {
-                            "$ref": "#/definitions/object.UpdateObjectResponse"
+                            "$ref": "#/definitions/object.ObjectResponse"
                         }
                     },
                     "400": {
                         "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/util.ValidationError"
+                        }
+                    },
+                    "403": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "schema": {
+                            "$ref": "#/definitions/util.NotFoundError"
+                        }
+                    },
+                    "502": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "objects"
+                ],
+                "summary": "Delete a specific object in a space",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The ID of the space",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The ID of the object",
+                        "name": "object_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The deleted object",
+                        "schema": {
+                            "$ref": "#/definitions/object.ObjectResponse"
                         }
                     },
                     "403": {
@@ -861,14 +915,6 @@
                 }
             }
         },
-        "object.CreateObjectResponse": {
-            "type": "object",
-            "properties": {
-                "object": {
-                    "$ref": "#/definitions/object.Object"
-                }
-            }
-        },
         "object.Detail": {
             "type": "object",
             "properties": {
@@ -961,6 +1007,14 @@
                 }
             }
         },
+        "object.ObjectResponse": {
+            "type": "object",
+            "properties": {
+                "object": {
+                    "$ref": "#/definitions/object.Object"
+                }
+            }
+        },
         "object.ObjectTemplate": {
             "type": "object",
             "properties": {
@@ -1024,14 +1078,6 @@
                 },
                 "text": {
                     "type": "string"
-                }
-            }
-        },
-        "object.UpdateObjectResponse": {
-            "type": "object",
-            "properties": {
-                "object": {
-                    "$ref": "#/definitions/object.Object"
                 }
             }
         },

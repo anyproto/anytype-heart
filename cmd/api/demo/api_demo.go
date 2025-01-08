@@ -66,6 +66,7 @@ func main() {
 		// objects
 		// {"GET", "/spaces/{space_id}/objects?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
 		// {"GET", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, nil},
+		// {"DELETE", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": "asd", "object_id": "asd"}, nil},
 		// {"POST", "/spaces/{space_id}/objects", map[string]interface{}{"space_id": testSpaceId}, map[string]interface{}{"name": "New Object from demo", "icon": "💥", "template_id": "", "object_type_unique_key": "ot-page", "with_chat": false}},
 		// {"PUT", "/spaces/{space_id}/objects/{object_id}", map[string]interface{}{"space_id": testSpaceId, "object_id": testObjectId}, map[string]interface{}{"name": "Updated Object"}},
 		// {"GET", "/spaces/{space_id}/object_types?limit={limit}&offset={offset}", map[string]interface{}{"space_id": testSpaceId, "limit": 100, "offset": 0}, nil},
