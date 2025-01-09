@@ -54,6 +54,7 @@ func (mw *Middleware) AccountMigrate(cctx context.Context, req *pb.RpcAccountMig
 	code := mapErrorCode(err,
 		errToCode(application.ErrBadInput, pb.RpcAccountMigrateResponseError_BAD_INPUT),
 		errToCode(application.ErrAccountNotFound, pb.RpcAccountMigrateResponseError_ACCOUNT_NOT_FOUND),
+		errToCode(context.Canceled, pb.RpcAccountMigrateResponseError_CANCELED),
 	)
 	return &pb.RpcAccountMigrateResponse{
 		Error: &pb.RpcAccountMigrateResponseError{

@@ -830,6 +830,7 @@ message Rpc {
                         BAD_INPUT = 2; // Id or root path is wrong
 
                         ACCOUNT_NOT_FOUND = 101;
+                        CANCELED = 102;
                         // TODO: [storage] Add specific error codes for migration problems
                     }
                 }
