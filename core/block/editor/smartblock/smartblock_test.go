@@ -187,6 +187,7 @@ type fixture struct {
 	eventSender        *mock_event.MockSender
 	source             *sourceStub
 	spaceIdResolver    *mock_idresolver.MockResolver
+	space              *MockSpace
 
 	*smartBlock
 }
@@ -199,6 +200,8 @@ func newFixture(id string, t *testing.T) *fixture {
 
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
+	space := NewMockSpace(t)
+
 	indexer := NewMockIndexer(t)
 
 	restrictionService := mock_restriction.NewMockService(t)
@@ -206,7 +209,7 @@ func newFixture(id string, t *testing.T) *fixture {
 
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(nil, "", nil, restrictionService, spaceIndex, objectStore, indexer, sender, spaceIdResolver).(*smartBlock)
+	sb := New(space, "", nil, restrictionService, spaceIndex, objectStore, indexer, sender, spaceIdResolver).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",
@@ -223,6 +226,7 @@ func newFixture(id string, t *testing.T) *fixture {
 		eventSender:        sender,
 		spaceIdResolver:    spaceIdResolver,
 		objectStore:        objectStore,
+		space:              space,
 	}
 }
 

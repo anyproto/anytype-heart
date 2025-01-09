@@ -6,12 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -375,4 +378,108 @@ func TestInjectResolvedLayout(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
+}
+
+func TestChangeResolvedLayoutForObjects(t *testing.T) {
+	typeId := "typeId"
+	t.Run("change resolvedLayout, do not delete layout", func(t *testing.T) {
+		// given
+		fx := newFixture(typeId, t)
+		fx.source.sbType = smartblock.SmartBlockTypeObjectType
+
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("obj1"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj2"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj3"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_profile)),
+			},
+		})
+
+		fx.space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func() error) error {
+			if id == "obj1" {
+				return f()
+			}
+			return ocache.ErrExists
+		})
+
+		fx.space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func(SmartBlock) error) error {
+			assert.Equal(t, "obj3", id)
+			return nil
+		})
+
+		// when
+		err := fx.changeResolvedLayoutForObjects(makeLayoutChanges(int64(model.ObjectType_todo)), false)
+
+		// then
+		assert.NoError(t, err)
+	})
+
+	t.Run("change resolvedLayout, do not delete layout", func(t *testing.T) {
+		// given
+		fx := newFixture(typeId, t)
+		fx.source.sbType = smartblock.SmartBlockTypeObjectType
+
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:     domain.String("obj1"),
+				bundle.RelationKeyType:   domain.String(typeId),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj2"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_todo)),
+			},
+			{
+				bundle.RelationKeyId:     domain.String("obj3"),
+				bundle.RelationKeyType:   domain.String(typeId),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_profile)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj4"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
+			},
+		})
+
+		fx.space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func() error) error {
+			assert.Equal(t, "obj4", id)
+			return f()
+		})
+
+		counter := 0
+		fx.space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func(SmartBlock) error) error {
+			counter++
+			return nil
+		})
+
+		// when
+		err := fx.changeResolvedLayoutForObjects(makeLayoutChanges(int64(model.ObjectType_todo)), true)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, 3, counter)
+	})
+}
+
+func makeLayoutChanges(layout int64) []simple.EventMessage {
+	return []simple.EventMessage{{
+		Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfObjectDetailsAmend{ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+			Details: []*pb.EventObjectDetailsAmendKeyValue{{
+				Key:   bundle.RelationKeyRecommendedLayout.String(),
+				Value: domain.Int64(layout).ToProto(),
+			},
+			}}}},
+	}}
 }
