@@ -128,3 +128,18 @@ func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelati
 	list, err := mustService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, domain.ValueFromProto(req.Value))
 	return response(list, err)
 }
+
+func (mw *Middleware) ObjectTypeListConflictingRelations(_ context.Context, req *pb.RpcObjectTypeListConflictingRelationsRequest) *pb.RpcObjectTypeListConflictingRelationsResponse {
+	detailsService := mustService[detailservice.Service](mw)
+	conflictingRelations, err := detailsService.ObjectTypeListConflictingRelations(req.SpaceId, req.TypeObjectId)
+	code := mapErrorCode(err,
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeListConflictingRelationsResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeListConflictingRelationsResponse{
+		Error: &pb.RpcObjectTypeListConflictingRelationsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		RelationIds: conflictingRelations,
+	}
+}
