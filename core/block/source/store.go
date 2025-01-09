@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 
@@ -132,11 +131,11 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 		IsEncrypted: true,
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),
-	}, func(change *treechangeproto.RawTreeChangeWithId) error {
-		order := tx.NextOrder(tx.GetMaxOrder())
+	}, func(change objecttree.StorageChange) error {
+		// TODO: get order here
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
 			Id:        change.Id,
-			Order:     order,
+			Order:     change.OrderId,
 			Changes:   params.Changes,
 			Creator:   s.accountService.AccountID(),
 			Timestamp: params.Time.Unix(),

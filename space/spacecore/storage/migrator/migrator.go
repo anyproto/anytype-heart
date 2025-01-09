@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -19,7 +20,11 @@ import (
 
 const CName = "client.storage.migration"
 
-const migratedName = "space_store_migrated"
+const (
+	migratedName      = "space_store_migrated"
+	objectStoreFolder = "objectstore"
+	crdtDb            = "crdt"
+)
 
 type migrator struct {
 	storage    oldstorage.ClientStorage
@@ -112,6 +117,10 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 		default:
 		}
 	}
+	err = removeFilesWithPrefix(filepath.Join(filepath.Dir(m.path), objectStoreFolder), crdtDb)
+	if err != nil {
+		return nil
+	}
 	return renamePreserveExtension(m.oldPath, migratedName)
 }
 
@@ -126,4 +135,18 @@ func renamePreserveExtension(oldPath, newName string) error {
 		return fmt.Errorf("failed to rename: %w", err)
 	}
 	return nil
+}
+
+func removeFilesWithPrefix(rootDir, prefix string) error {
+	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasPrefix(info.Name(), prefix) {
+			if removeErr := os.Remove(path); removeErr != nil {
+				return removeErr
+			}
+		}
+		return nil
+	})
 }
