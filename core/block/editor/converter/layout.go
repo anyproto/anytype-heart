@@ -3,8 +3,11 @@ package converter
 import (
 	"fmt"
 
-	"github.com/anyproto/any-sync/app"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -29,6 +32,8 @@ type layoutConverter struct {
 	objectStore objectstore.ObjectStore
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
+
+var log = logger.NewNamed("client.space")
 
 func NewLayoutConverter() LayoutConverter {
 	return &layoutConverter{}
@@ -141,6 +146,9 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	if err != nil {
 		return err
 	}
+	if err = c.insertTypeLevelFieldsToDataview(dvBlock, st); err != nil {
+		log.Error("failed to insert type level fields to dataview block", zap.Error(err))
+	}
 	template.InitTemplate(st, template.WithDataview(dvBlock, false))
 	return nil
 }
@@ -212,6 +220,9 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 	blockContent := template.MakeDataviewContent(true, nil, nil)
+	if err := c.insertTypeLevelFieldsToDataview(blockContent, st); err != nil {
+		log.Error("failed to insert type level fields to dataview block", zap.Error(err))
+	}
 	template.InitTemplate(st, template.WithDataview(blockContent, false))
 	return nil
 }
@@ -310,4 +321,23 @@ func (c *layoutConverter) appendTypesFilter(types []string, filters []database.F
 		})
 	}
 	return filters
+}
+
+func (c *layoutConverter) insertTypeLevelFieldsToDataview(block *model.BlockContentOfDataview, st *state.State) error {
+	typeId := st.LocalDetails().GetString(bundle.RelationKeyType)
+	records, err := c.objectStore.SpaceIndex(st.SpaceID()).QueryByIds([]string{typeId})
+	if err != nil {
+		return fmt.Errorf("failed to get type object from store: %w", err)
+	}
+	if len(records) != 1 {
+		return fmt.Errorf("failed to get type object: expected 1 record, got %d", len(records))
+	}
+
+	viewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
+	defaultTypeId := records[0].Details.GetString(bundle.RelationKeyDefaultTypeId)
+
+	block.Dataview.Views[0].Type = model.BlockContentDataviewViewType(viewType)
+	block.Dataview.Views[0].DefaultObjectTypeId = defaultTypeId
+
+	return nil
 }

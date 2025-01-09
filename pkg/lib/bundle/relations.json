@@ -1399,5 +1399,25 @@
     "name": "Space order",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Default view type that will be used for new sets/collections",
+    "format": "number",
+    "hidden": true,
+    "key": "defaultViewType",
+    "maxCount": 1,
+    "name": "Default view type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Default object type id that will be set to new sets/collections",
+    "format": "object",
+    "hidden": true,
+    "key": "defaultTypeId",
+    "maxCount": 1,
+    "name": "Default type id",
+    "readonly": false,
+    "source": "details"
   }
 ]

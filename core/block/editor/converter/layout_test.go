@@ -28,6 +28,11 @@ func TestLayoutConverter_Convert(t *testing.T) {
 		bundle.RelationKeyId:        domain.String(bundle.TypeKeyTask.URL()),
 		bundle.RelationKeySpaceId:   domain.String(spaceId),
 		bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyTask.URL()),
+	}, {
+		bundle.RelationKeyId:              domain.String(bundle.TypeKeySet.URL()),
+		bundle.RelationKeySpaceId:         domain.String(spaceId),
+		bundle.RelationKeyDefaultTypeId:   domain.String(bundle.TypeKeySet.URL()),
+		bundle.RelationKeyDefaultViewType: domain.Int64(int64(model.BlockContentDataviewView_Gallery)),
 	}})
 
 	for _, from := range []model.ObjectTypeLayout{
@@ -45,6 +50,7 @@ func TestLayoutConverter_Convert(t *testing.T) {
 			st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeySpaceId: domain.String(spaceId),
 				bundle.RelationKeySetOf:   domain.StringList([]string{bundle.TypeKeyTask.URL()}),
+				bundle.RelationKeyType:    domain.String(bundle.TypeKeySet.URL()),
 			}))
 
 			lc := layoutConverter{objectStore: store}
@@ -58,8 +64,10 @@ func TestLayoutConverter_Convert(t *testing.T) {
 			assert.NotNil(t, dvb)
 			dv := dvb.Model().GetDataview()
 			require.NotNil(t, dv)
-			assert.NotEmpty(t, dv.Views)
 			assert.NotEmpty(t, dv.RelationLinks)
+			assert.Len(t, dv.Views, 1)
+			assert.Equal(t, bundle.TypeKeySet.URL(), dv.Views[0].DefaultObjectTypeId)
+			assert.Equal(t, model.BlockContentDataviewView_Gallery, dv.Views[0].Type)
 		})
 	}
 }

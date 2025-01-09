@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -160,6 +161,13 @@ func (s *service) createObjectFromTemplate(
 	details *domain.Details,
 	templateId string,
 ) (id string, newDetails *domain.Details, err error) {
+	typeId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, string(objectTypeKeys[0])))
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to derive object type id: %w", err)
+	}
+	// we should enrich details with spaceId and type to use type object to form state of new object
+	details.Set(bundle.RelationKeySpaceId, domain.String(space.Id()))
+	details.Set(bundle.RelationKeyType, domain.String(typeId))
 	createState, err := s.templateService.CreateTemplateStateWithDetails(templateId, details)
 	if err != nil {
 		return
