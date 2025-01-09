@@ -315,6 +315,10 @@ func TestService_ObjectTypeListConflictingRelations(t *testing.T) {
 			// object type
 			{
 				bundle.RelationKeyId: domain.String(bundle.TypeKeyTask.URL()),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{
+					bundle.RelationKeyType.URL(),
+					bundle.RelationKeyName.URL(),
+				}),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
 					bundle.RelationKeyAssignee.URL(),
 					bundle.RelationKeyDone.URL(),
@@ -323,11 +327,11 @@ func TestService_ObjectTypeListConflictingRelations(t *testing.T) {
 			},
 			// objects
 			{
-				bundle.RelationKeyId:       domain.String("task1"),                  // 1
-				bundle.RelationKeyType:     domain.String(bundle.TypeKeyTask.URL()), // 2
-				bundle.RelationKeyName:     domain.String("Invent alphabet"),        // 3
+				bundle.RelationKeyId:       domain.String("task1"), // 1
+				bundle.RelationKeyType:     domain.String(bundle.TypeKeyTask.URL()),
+				bundle.RelationKeyName:     domain.String("Invent alphabet"),
 				bundle.RelationKeyAssignee: domain.StringList([]string{"Kirill", "Methodius"}),
-				bundle.RelationKeyDueDate:  domain.Int64(863), // 4
+				bundle.RelationKeyDueDate:  domain.Int64(863), // 2
 			},
 			{
 				bundle.RelationKeyId:       domain.String("task2"),
@@ -335,7 +339,7 @@ func TestService_ObjectTypeListConflictingRelations(t *testing.T) {
 				bundle.RelationKeyName:     domain.String("Fight CO2 pollution"),
 				bundle.RelationKeyAssignee: domain.StringList([]string{"Humanity"}),
 				bundle.RelationKeyDone:     domain.Bool(false),
-				bundle.RelationKeyStatus:   domain.String("In Progress"), // 5
+				bundle.RelationKeyStatus:   domain.String("In Progress"), // 3
 			},
 			// relations
 			generateRelationTestObject(bundle.RelationKeyId),
@@ -352,7 +356,7 @@ func TestService_ObjectTypeListConflictingRelations(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Len(t, relations, 5)
+		assert.Len(t, relations, 3)
 	})
 }
 

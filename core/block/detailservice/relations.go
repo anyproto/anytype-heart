@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
@@ -103,8 +104,10 @@ func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId strin
 	}
 
 	recommendedRelations := records[0].Details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	recommendedFeaturedRelations := records[0].Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	allRecommendedRelations := lo.Uniq(append(recommendedRelations, recommendedFeaturedRelations...))
 
-	allRelationKeys := make([]string, 0, len(recommendedRelations))
+	allRelationKeys := make([]string, 0, len(allRecommendedRelations))
 	err = s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyType,
@@ -146,7 +149,7 @@ func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId strin
 	conflictingRelations := make([]string, 0, len(records))
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
-		if !slices.Contains(recommendedRelations, id) {
+		if !slices.Contains(allRecommendedRelations, id) {
 			conflictingRelations = append(conflictingRelations, id)
 		}
 	}
