@@ -24,7 +24,16 @@ func (s *Service) AccountMigrate(ctx context.Context, req *pb.RpcAccountMigrateR
 	if s.rootPath == "" {
 		s.rootPath = req.RootPath
 	}
-	return s.migrationManager.getMigration(req.RootPath, req.Id).wait(ctx)
+	return s.migrationManager.getOrCreateMigration(req.RootPath, req.Id).wait()
+}
+
+func (s *Service) AccountMigrateCancel(ctx context.Context, req *pb.RpcAccountMigrateCancelRequest) error {
+	m := s.migrationManager.getMigration(req.Id)
+	if m == nil {
+		return nil
+	}
+	m.cancelMigration()
+	return nil
 }
 
 func (s *Service) migrate(ctx context.Context, id string) error {
@@ -58,6 +67,8 @@ type migration struct {
 	mx         sync.Mutex
 	isStarted  bool
 	isFinished bool
+	ctx        context.Context
+	cancel     context.CancelFunc
 	manager    *migrationManager
 	err        error
 	id         string
@@ -65,7 +76,10 @@ type migration struct {
 }
 
 func newMigration(m *migrationManager, id string) *migration {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &migration{
+		ctx:     ctx,
+		cancel:  cancel,
 		done:    make(chan struct{}),
 		id:      id,
 		manager: m,
@@ -89,7 +103,12 @@ func (m *migration) setFinished(err error, notify bool) {
 	}
 }
 
-func (m *migration) wait(ctx context.Context) error {
+func (m *migration) cancelMigration() {
+	m.cancel()
+	_ = m.wait()
+}
+
+func (m *migration) wait() error {
 	m.mx.Lock()
 	if !m.manager.setMigrationRunning(m.id, true) {
 		m.mx.Unlock()
@@ -103,7 +122,7 @@ func (m *migration) wait(ctx context.Context) error {
 		return m.err
 	}
 	m.mx.Unlock()
-	err := m.manager.service.migrate(ctx, m.id)
+	err := m.manager.service.migrate(m.ctx, m.id)
 	if err != nil {
 		m.setFinished(err, true)
 		return err
@@ -160,7 +179,7 @@ func (m *migrationManager) isRunning() bool {
 	return m.runningMigration != ""
 }
 
-func (m *migrationManager) getMigration(rootPath, id string) *migration {
+func (m *migrationManager) getOrCreateMigration(rootPath, id string) *migration {
 	m.Lock()
 	defer m.Unlock()
 	if m.migrations == nil {
@@ -179,6 +198,12 @@ func (m *migrationManager) getMigration(rootPath, id string) *migration {
 		// resetting migration
 		m.migrations[id] = newMigration(m, id)
 	}
+	return m.migrations[id]
+}
+
+func (m *migrationManager) getMigration(id string) *migration {
+	m.Lock()
+	defer m.Unlock()
 	return m.migrations[id]
 }
 

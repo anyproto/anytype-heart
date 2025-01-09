@@ -87,6 +87,10 @@
     - [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request)
     - [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response)
     - [Rpc.Account.Migrate.Response.Error](#anytype-Rpc-Account-Migrate-Response-Error)
+    - [Rpc.Account.MigrateCancel](#anytype-Rpc-Account-MigrateCancel)
+    - [Rpc.Account.MigrateCancel.Request](#anytype-Rpc-Account-MigrateCancel-Request)
+    - [Rpc.Account.MigrateCancel.Response](#anytype-Rpc-Account-MigrateCancel-Response)
+    - [Rpc.Account.MigrateCancel.Response.Error](#anytype-Rpc-Account-MigrateCancel-Response-Error)
     - [Rpc.Account.Move](#anytype-Rpc-Account-Move)
     - [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request)
     - [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response)
@@ -1265,6 +1269,7 @@
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
     - [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code)
+    - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
@@ -1990,6 +1995,7 @@
 | WorkspaceExport | [Rpc.Workspace.Export.Request](#anytype-Rpc-Workspace-Export-Request) | [Rpc.Workspace.Export.Response](#anytype-Rpc-Workspace-Export-Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request) | [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response) | Account *** |
 | AccountMigrate | [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request) | [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response) |  |
+| AccountMigrateCancel | [Rpc.Account.MigrateCancel.Request](#anytype-Rpc-Account-MigrateCancel-Request) | [Rpc.Account.MigrateCancel.Response](#anytype-Rpc-Account-MigrateCancel-Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
@@ -3418,6 +3424,62 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel"></a>
+
+### Rpc.Account.MigrateCancel
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel-Request"></a>
+
+### Rpc.Account.MigrateCancel.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Id of a selected account |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel-Response"></a>
+
+### Rpc.Account.MigrateCancel.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.MigrateCancel.Response.Error](#anytype-Rpc-Account-MigrateCancel-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel-Response-Error"></a>
+
+### Rpc.Account.MigrateCancel.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -20559,6 +20621,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 | Id or root path is wrong |
 | ACCOUNT_NOT_FOUND | 101 | TODO: [storage] Add specific error codes for migration problems |
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel-Response-Error-Code"></a>
+
+### Rpc.Account.MigrateCancel.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | Id or root path is wrong |
 
 
 

@@ -86,6 +86,11 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 	}
 	progress.SetTotal(total)
 	for _, id := range allIds {
@@ -100,6 +105,11 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 		err = st.Close(ctx)
 		if err != nil {
 			return err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
 		}
 	}
 	return renamePreserveExtension(m.oldPath, migratedName)
