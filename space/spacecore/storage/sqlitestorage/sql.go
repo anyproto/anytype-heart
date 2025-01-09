@@ -58,7 +58,7 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.updateSpaceIsDeleted, err = s.writeDb.Prepare(`UPDATE spaces SET isDeleted = ? WHERE id = ?`); err != nil {
 		return
 	}
-	if s.stmt.treeIdsBySpace, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND type != 1`); err != nil {
+	if s.stmt.treeIdsBySpace, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND type != 1 AND deleteStatus IS NULL`); err != nil {
 		return
 	}
 	if s.stmt.deleteTree, err = s.writeDb.Prepare(`
