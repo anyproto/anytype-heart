@@ -99,6 +99,7 @@ func (s *service) CreateTemplateStateWithDetails(
 ) (targetState *state.State, err error) {
 	if templateId == BlankTemplateId || templateId == "" {
 		layout := details.GetInt64(bundle.RelationKeyLayout)
+		// nolint:gosec
 		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout), details)
 	} else {
 		targetState, err = s.createCustomTemplateState(templateId)
@@ -117,6 +118,7 @@ func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, de
 	st, err := s.buildState(sb)
 	if err != nil {
 		layout := details.GetInt64(bundle.RelationKeyLayout)
+		// nolint:gosec
 		st = s.createBlankTemplateState(model.ObjectTypeLayout(layout), nil)
 	}
 	addDetailsToState(st, details)

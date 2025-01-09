@@ -336,6 +336,7 @@ func (c *layoutConverter) insertTypeLevelFieldsToDataview(block *model.BlockCont
 	viewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
 	defaultTypeId := records[0].Details.GetString(bundle.RelationKeyDefaultTypeId)
 
+	// nolint:gosec
 	block.Dataview.Views[0].Type = model.BlockContentDataviewViewType(viewType)
 	block.Dataview.Views[0].DefaultObjectTypeId = defaultTypeId
 
