@@ -320,6 +320,65 @@ func (_c *MockService_ObjectTypeAddRelations_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// ObjectTypeListConflictingRelations provides a mock function with given fields: spaceId, typeKey
+func (_m *MockService) ObjectTypeListConflictingRelations(spaceId string, typeKey string) ([]string, error) {
+	ret := _m.Called(spaceId, typeKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectTypeListConflictingRelations")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) ([]string, error)); ok {
+		return rf(spaceId, typeKey)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) []string); ok {
+		r0 = rf(spaceId, typeKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceId, typeKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_ObjectTypeListConflictingRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeListConflictingRelations'
+type MockService_ObjectTypeListConflictingRelations_Call struct {
+	*mock.Call
+}
+
+// ObjectTypeListConflictingRelations is a helper method to define mock.On call
+//   - spaceId string
+//   - typeKey string
+func (_e *MockService_Expecter) ObjectTypeListConflictingRelations(spaceId interface{}, typeKey interface{}) *MockService_ObjectTypeListConflictingRelations_Call {
+	return &MockService_ObjectTypeListConflictingRelations_Call{Call: _e.mock.On("ObjectTypeListConflictingRelations", spaceId, typeKey)}
+}
+
+func (_c *MockService_ObjectTypeListConflictingRelations_Call) Run(run func(spaceId string, typeKey string)) *MockService_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_ObjectTypeListConflictingRelations_Call) Return(relationObjectIds []string, err error) *MockService_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Return(relationObjectIds, err)
+	return _c
+}
+
+func (_c *MockService_ObjectTypeListConflictingRelations_Call) RunAndReturn(run func(string, string) ([]string, error)) *MockService_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectTypeRemoveRelations provides a mock function with given fields: ctx, objectTypeId, relationKeys
 func (_m *MockService) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
 	ret := _m.Called(ctx, objectTypeId, relationKeys)
