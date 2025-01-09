@@ -75,11 +75,12 @@ type Tag struct {
 }
 
 type ObjectType struct {
-	Type      string `json:"type" example:"object_type"`
-	Id        string `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"`
-	UniqueKey string `json:"unique_key" example:"ot-page"`
-	Name      string `json:"name" example:"Page"`
-	Icon      string `json:"icon" example:"📄"`
+	Type              string `json:"type" example:"object_type"`
+	Id                string `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"`
+	UniqueKey         string `json:"unique_key" example:"ot-page"`
+	Name              string `json:"name" example:"Page"`
+	Icon              string `json:"icon" example:"📄"`
+	RecommendedLayout string `json:"recommended_layout" example:"todo"`
 }
 
 type ObjectTemplate struct {

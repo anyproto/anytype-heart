@@ -294,7 +294,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys: []string{"id", "uniqueKey", "name", "iconEmoji"},
+		Keys: []string{"id", "uniqueKey", "name", "iconEmoji", "recommendedLayout"},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -311,11 +311,12 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 
 	for _, record := range paginatedTypes {
 		objectTypes = append(objectTypes, ObjectType{
-			Type:      "object_type",
-			Id:        record.Fields["id"].GetStringValue(),
-			UniqueKey: record.Fields["uniqueKey"].GetStringValue(),
-			Name:      record.Fields["name"].GetStringValue(),
-			Icon:      record.Fields["iconEmoji"].GetStringValue(),
+			Type:              "object_type",
+			Id:                record.Fields["id"].GetStringValue(),
+			UniqueKey:         record.Fields["uniqueKey"].GetStringValue(),
+			Name:              record.Fields["name"].GetStringValue(),
+			Icon:              record.Fields["iconEmoji"].GetStringValue(),
+			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields["recommendedLayout"].GetNumberValue())],
 		})
 	}
 	return objectTypes, total, hasMore, nil
