@@ -33,7 +33,7 @@ type layoutConverter struct {
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
-var log = logger.NewNamed("client.space")
+var log = logger.NewNamed("layout.converter")
 
 func NewLayoutConverter() LayoutConverter {
 	return &layoutConverter{}
@@ -330,7 +330,7 @@ func (c *layoutConverter) insertTypeLevelFieldsToDataview(block *model.BlockCont
 		return fmt.Errorf("failed to get type object from store: %w", err)
 	}
 	if len(records) != 1 {
-		return fmt.Errorf("failed to get type object: expected 1 record, got %d", len(records))
+		return fmt.Errorf("failed to get type object: expected 1 record")
 	}
 
 	viewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
