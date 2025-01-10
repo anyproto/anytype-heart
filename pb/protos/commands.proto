@@ -831,6 +831,7 @@ message Rpc {
 
                         ACCOUNT_NOT_FOUND = 101;
                         CANCELED = 102;
+                        NOT_ENOUGH_STORAGE = 103;
                         // TODO: [storage] Add specific error codes for migration problems
                     }
                 }
