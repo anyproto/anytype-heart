@@ -154,6 +154,8 @@ var (
 	}
 )
 
+var editableSystemTypes = []domain.TypeKey{bundle.TypeKeyPage, bundle.TypeKeyTask, bundle.TypeKeyNote}
+
 func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
 	restrictions := objectRestrictionsBySBType[sbType]
 	result := make([]int, len(restrictions))
@@ -226,7 +228,7 @@ func getRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
-		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
+		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) && !lo.Contains(editableSystemTypes, domain.TypeKey(key)) {
 			r = sysTypesRestrictions
 		}
 		if t, _ := bundle.GetType(domain.TypeKey(key)); t != nil && t.RestrictObjectCreation {
