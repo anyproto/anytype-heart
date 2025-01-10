@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
@@ -345,13 +346,13 @@ func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds [
 	const singleBatchCount = 50
 	for j := 0; j < len(reqIds); {
 		if j+singleBatchCount < len(reqIds) {
-			records, err := e.queryObjectsByIds(spaceId, reqIds[j:j+singleBatchCount], relationKey)
+			records, err := e.queryObjectsByRelation(spaceId, reqIds[j:j+singleBatchCount], relationKey)
 			if err != nil {
 				return nil, err
 			}
 			allObjects = append(allObjects, records...)
 		} else {
-			records, err := e.queryObjectsByIds(spaceId, reqIds[j:], relationKey)
+			records, err := e.queryObjectsByRelation(spaceId, reqIds[j:], relationKey)
 			if err != nil {
 				return nil, err
 			}
@@ -362,7 +363,7 @@ func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds [
 	return allObjects, nil
 }
 
-func (e *exportContext) queryObjectsByIds(spaceId string, reqIds []string, relationKey domain.RelationKey) ([]database.Record, error) {
+func (e *exportContext) queryObjectsByRelation(spaceId string, reqIds []string, relationKey domain.RelationKey) ([]database.Record, error) {
 	return e.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -392,6 +393,12 @@ func (e *exportContext) processNotProtobuf() error {
 }
 
 func (e *exportContext) processProtobuf() error {
+	if !e.includeNested {
+		err := e.addDependentObjectsFromDataview()
+		if err != nil {
+			return err
+		}
+	}
 	ids := listObjectIds(e.docs)
 	if e.includeFiles {
 		err := e.addFileObjects(ids)
@@ -399,6 +406,7 @@ func (e *exportContext) processProtobuf() error {
 			return err
 		}
 	}
+
 	err := e.addDerivedObjects()
 	if err != nil {
 		return err
@@ -411,6 +419,46 @@ func (e *exportContext) processProtobuf() error {
 		}
 	}
 	return nil
+}
+
+func (e *exportContext) addDependentObjectsFromDataview() error {
+	var (
+		viewDependentObjectsIds []string
+		err                     error
+	)
+	for id, details := range e.docs {
+		if isObjectWithDataview(details) {
+			viewDependentObjectsIds, err = e.getViewDependentObjects(id, viewDependentObjectsIds)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	viewDependentObjects, err := e.queryAndFilterObjectsByRelation(e.spaceId, viewDependentObjectsIds, bundle.RelationKeyId)
+	if err != nil {
+		return err
+	}
+	templates, err := e.queryAndFilterObjectsByRelation(e.spaceId, viewDependentObjectsIds, bundle.RelationKeyTargetObjectType)
+	if err != nil {
+		return err
+	}
+	for _, object := range append(viewDependentObjects, templates...) {
+		id := object.Details.GetString(bundle.RelationKeyId)
+		e.docs[id] = object.Details
+	}
+	return nil
+}
+
+func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsIds []string) ([]string, error) {
+	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
+		st := sb.NewState()
+		viewDependentObjectsIds = append(viewDependentObjectsIds, objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{Blocks: true})...)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return viewDependentObjectsIds, nil
 }
 
 func (e *exportContext) addFileObjects(ids []string) error {
