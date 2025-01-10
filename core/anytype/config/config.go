@@ -292,6 +292,10 @@ func (c *Config) FSConfig() (FSConfig, error) {
 	return FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
 }
 
+func (c *Config) GetRepoPath() string {
+	return c.RepoPath
+}
+
 func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
 }

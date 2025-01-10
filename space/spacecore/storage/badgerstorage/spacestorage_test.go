@@ -140,3 +140,58 @@ func TestSpaceStorage_StoredIds_BigTxn(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, storedIds, 0)
 }
+
+func newServiceFixture(t *testing.T) *storageService {
+	fx := newFixture(t)
+	fx.open(t)
+
+	t.Cleanup(func() {
+		fx.stop(t)
+	})
+
+	s := &storageService{
+		db:           fx.db,
+		keys:         newStorageServiceKeys(),
+		lockedSpaces: map[string]*lockSpace{},
+	}
+	return s
+}
+
+func TestStorageService_BindSpaceID(t *testing.T) {
+	fx := newServiceFixture(t)
+
+	err := fx.BindSpaceID("spaceId1", "objectId1")
+	require.NoError(t, err)
+
+	spaceId, err := fx.GetSpaceID("objectId1")
+	require.NoError(t, err)
+
+	require.Equal(t, spaceId, "spaceId1")
+}
+
+func TestStorageService_GetBoundObjectIds(t *testing.T) {
+	t.Run("with no bindings", func(t *testing.T) {
+		fx := newServiceFixture(t)
+
+		ids, err := fx.GetBoundObjectIds("spaceId")
+		require.NoError(t, err)
+		assert.Empty(t, ids)
+	})
+
+	t.Run("ok", func(t *testing.T) {
+		fx := newServiceFixture(t)
+
+		spaceId := "spaceId1"
+		err := fx.BindSpaceID(spaceId, "objectId1")
+		require.NoError(t, err)
+
+		err = fx.BindSpaceID(spaceId, "objectId2")
+		require.NoError(t, err)
+
+		ids, err := fx.GetBoundObjectIds(spaceId)
+		require.NoError(t, err)
+
+		assert.ElementsMatch(t, []string{"objectId1", "objectId2"}, ids)
+	})
+
+}

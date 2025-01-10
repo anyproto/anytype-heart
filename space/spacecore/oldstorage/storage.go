@@ -24,7 +24,8 @@ const (
 type ClientStorage interface {
 	oldstorage.SpaceStorageProvider
 	app.ComponentRunnable
-	GetBinds(spaceId string) ([]string, error)
+	// GetBoundObjectIds returns list of object ids bound (mapped) to space id
+	GetBoundObjectIds(spaceId string) ([]string, error)
 	AllSpaceIds() (ids []string, err error)
 	DeleteSpaceStorage(ctx context.Context, spaceId string) error
 }

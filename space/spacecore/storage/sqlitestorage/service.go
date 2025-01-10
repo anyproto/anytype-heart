@@ -61,6 +61,7 @@ type storageService struct {
 		spaceIds,
 		spaceIsCreated,
 		upsertBind,
+		getAllBinds,
 		deleteSpace,
 		deleteTreesBySpace,
 		deleteChangesBySpace,
@@ -292,8 +293,23 @@ func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error)
 	return
 }
 
-func (s *storageService) GetBinds(spaceId string) ([]string, error) {
-	return nil, nil
+func (s *storageService) GetBoundObjectIds(spaceId string) ([]string, error) {
+	rows, err := s.stmt.getAllBinds.Query(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = errors.Join(rows.Close())
+	}()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (s *storageService) BindSpaceID(spaceID, objectID string) (err error) {
