@@ -100,7 +100,7 @@ func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId strin
 	}
 
 	if len(records) != 1 {
-		return nil, fmt.Errorf("failed to query object type, expected 1 record, got %d", len(records))
+		return nil, fmt.Errorf("failed to query object type, expected 1 record")
 	}
 
 	recommendedRelations := records[0].Details.GetStringList(bundle.RelationKeyRecommendedRelations)
@@ -143,7 +143,7 @@ func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId strin
 		return nil, fmt.Errorf("failed to fetch relations by keys: %w", err)
 	}
 	if len(records) != len(allRelationKeys) {
-		return nil, fmt.Errorf("failed to query relations from store, expected %d record, got %d", len(allRelationKeys), len(records))
+		return nil, fmt.Errorf("failed to query relations from store, number of records is less than expected")
 	}
 
 	conflictingRelations := make([]string, 0, len(records))
