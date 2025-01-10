@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -98,7 +99,8 @@ func (s *service) CreateTemplateStateWithDetails(
 ) (targetState *state.State, err error) {
 	if templateId == BlankTemplateId || templateId == "" {
 		layout := details.GetInt64(bundle.RelationKeyLayout)
-		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
+		// nolint:gosec
+		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout), details)
 	} else {
 		targetState, err = s.createCustomTemplateState(templateId)
 		if err != nil {
@@ -116,7 +118,8 @@ func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, de
 	st, err := s.buildState(sb)
 	if err != nil {
 		layout := details.GetInt64(bundle.RelationKeyLayout)
-		st = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
+		// nolint:gosec
+		st = s.createBlankTemplateState(model.ObjectTypeLayout(layout), nil)
 	}
 	addDetailsToState(st, details)
 	return st
@@ -158,7 +161,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		return nil
 	})
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return s.createBlankTemplateState(model.ObjectType_basic), nil
+		return s.createBlankTemplateState(model.ObjectType_basic, nil), nil
 	}
 	return
 }
@@ -335,7 +338,7 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	return path, err
 }
 
-func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *state.State) {
+func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout, details *domain.Details) (st *state.State) {
 	st = state.NewDoc(BlankTemplateId, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
@@ -344,6 +347,12 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 		template.WithDetail(bundle.RelationKeyTag, domain.StringList(nil)),
 		template.WithTitle,
 	)
+	if slices.Contains([]model.ObjectTypeLayout{model.ObjectType_set, model.ObjectType_collection}, layout) && details != nil {
+		template.InitTemplate(st,
+			template.WithDetail(bundle.RelationKeySpaceId, details.Get(bundle.RelationKeySpaceId)),
+			template.WithDetail(bundle.RelationKeyType, details.Get(bundle.RelationKeyType)),
+		)
+	}
 	if err := s.converter.Convert(st, model.ObjectType_basic, layout); err != nil {
 		log.Errorf("failed to set '%s' layout to blank template: %v", layout.String(), err)
 	}

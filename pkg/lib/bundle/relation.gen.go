@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "988fe0e151919f1331d67f7334d80efa82c85a3655c4cdcc11309d248513c37d"
+const RelationChecksum = "edeeae3595f2095e368d8bfe083cccb9b0b1b4ffefb247b3ac7a9bcb39354f02"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -147,6 +147,8 @@ const (
 	RelationKeyRecommendedFeaturedRelations domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyLayoutWidth                  domain.RelationKey = "layoutWidth"
 	RelationKeySpaceOrder                   domain.RelationKey = "spaceOrder"
+	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
+	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 )
 
 var (
@@ -456,6 +458,34 @@ var (
 			Key:              "defaultTemplateId",
 			MaxCount:         1,
 			Name:             "Default Template ID",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDefaultTypeId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Default object type id that will be set to new sets/collections",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdefaultTypeId",
+			Key:              "defaultTypeId",
+			MaxCount:         1,
+			Name:             "Default type id",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDefaultViewType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Default view type that will be used for new sets/collections",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brdefaultViewType",
+			Key:              "defaultViewType",
+			MaxCount:         1,
+			Name:             "Default view type",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

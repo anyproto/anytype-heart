@@ -92,5 +92,7 @@
   "hasChat",
   "timestamp",
   "recommendedFeaturedRelations",
-  "layoutWidth"
+  "layoutWidth",
+  "defaultViewType",
+  "defaultTypeId"
 ]

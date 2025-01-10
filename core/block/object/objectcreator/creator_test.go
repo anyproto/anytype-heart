@@ -77,6 +77,7 @@ func TestService_CreateObject(t *testing.T) {
 		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
 		f.spc.EXPECT().CreateTreeObject(mock.Anything, mock.Anything).Return(sb, nil)
 		f.spc.EXPECT().Id().Return(spaceId)
+		f.spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(bundle.TypeKeyTask.URL(), nil)
 		f.lastUsedService.EXPECT().UpdateLastUsedDate(spaceId, bundle.TypeKeyTemplate, mock.Anything).Return()
 
 		// when
