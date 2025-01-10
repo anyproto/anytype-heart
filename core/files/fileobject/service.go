@@ -9,13 +9,11 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/avast/retry-go/v4"
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
@@ -23,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -39,7 +38,6 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
@@ -53,19 +51,19 @@ type Service interface {
 
 	InitEmptyFileState(st *state.State)
 	DeleteFileData(spaceId string, objectId string) error
-	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error)
+	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
-	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error)
+	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
-	EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error
+	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
 }
 
 type objectCreatorService interface {
-	CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *domain.Details, err error)
 }
 
 type service struct {
@@ -169,19 +167,19 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 	personalSpaceId := s.spaceService.PersonalSpaceId()
 
 	records, err := s.objectStore.QueryCrossSpace(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				RelationKey: bundle.RelationKeyUniqueKey,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(personalSpaceId),
+				Value:       domain.String(personalSpaceId),
 			},
 		},
 	})
@@ -191,7 +189,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 	if len(records) > 0 {
 		ids := make([]string, 0, len(records))
 		for _, record := range records {
-			ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+			ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 		}
 		if err = s.objectArchiver.SetListIsArchived(ids, true); err != nil {
 			return err
@@ -204,15 +202,15 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 // After migrating to new sync queue we need to ensure that all not synced files are added to the queue
 func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 	records, err := s.objectStore.QueryCrossSpace(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
-				RelationKey: bundle.RelationKeyFileBackupStatus.String(),
+				RelationKey: bundle.RelationKeyFileBackupStatus,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Int64(int64(filesyncstatus.Synced)),
+				Value:       domain.Int64(int64(filesyncstatus.Synced)),
 			},
 		},
 	})
@@ -222,7 +220,7 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 
 	for _, record := range records {
 		fullId := extractFullFileIdFromDetails(record.Details)
-		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		id := record.Details.GetString(bundle.RelationKeyId)
 		err := s.addToSyncQueue(id, fullId, false, false)
 		if err != nil {
 			log.Errorf("add to sync queue: %v", err)
@@ -232,22 +230,22 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 	return nil
 }
 
-func extractFullFileIdFromDetails(details *types.Struct) domain.FullFileId {
+func extractFullFileIdFromDetails(details *domain.Details) domain.FullFileId {
 	return domain.FullFileId{
-		SpaceId: pbtypes.GetString(details, bundle.RelationKeySpaceId.String()),
-		FileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
+		SpaceId: details.GetString(bundle.RelationKeySpaceId),
+		FileId:  domain.FileId(details.GetString(bundle.RelationKeyFileId)),
 	}
 }
 
 // EnsureFileAddedToSyncQueue adds file to sync queue if it is not synced yet, we need to do this
 // after migrating to new sync queue
-func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *types.Struct) error {
-	if pbtypes.GetInt64(details, bundle.RelationKeyFileBackupStatus.String()) == int64(filesyncstatus.Synced) {
+func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error {
+	if details.GetInt64(bundle.RelationKeyFileBackupStatus) == int64(filesyncstatus.Synced) {
 		return nil
 	}
 	fullId := domain.FullFileId{
 		SpaceId: id.SpaceID,
-		FileId:  domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String())),
+		FileId:  domain.FileId(details.GetString(bundle.RelationKeyFileId)),
 	}
 	err := s.addToSyncQueue(id.ObjectID, fullId, false, false)
 	return err
@@ -259,17 +257,19 @@ func (s *service) Close(ctx context.Context) error {
 	return errors.Join(err, s.indexer.close())
 }
 
-func (s *service) InitEmptyFileState(st *state.State) {
-	template.InitTemplate(st,
-		template.WithEmpty,
-		template.WithTitle,
-		template.WithDefaultFeaturedRelations,
-		template.WithFeaturedRelations,
-		template.WithAllBlocksEditsRestricted,
-	)
+type CreateRequest struct {
+	FileId                domain.FileId
+	EncryptionKeys        map[string]string
+	ObjectOrigin          objectorigin.ObjectOrigin
+	AdditionalDetails     *domain.Details
+	AsyncMetadataIndexing bool
 }
 
-func (s *service) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *types.Struct, err error) {
+func (s *service) InitEmptyFileState(st *state.State) {
+	fileblocks.InitEmptyFileState(st)
+}
+
+func (s *service) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error) {
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
@@ -287,7 +287,7 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 	return id, object, nil
 }
 
-func (s *service) createInSpace(ctx context.Context, space clientspace.Space, req filemodels.CreateRequest) (id string, object *types.Struct, err error) {
+func (s *service) createInSpace(ctx context.Context, space clientspace.Space, req filemodels.CreateRequest) (id string, object *domain.Details, err error) {
 	if req.FileId == "" {
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
@@ -309,7 +309,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		EncryptionKeys: req.EncryptionKeys,
 	})
 	if !req.AsyncMetadataIndexing {
-		s.InitEmptyFileState(createState)
+		fileblocks.InitEmptyFileState(createState)
 		fullFileId := domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}
 		fullObjectId := domain.FullID{SpaceID: space.Id(), ObjectID: payload.RootRawChange.Id}
 		err := s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
@@ -319,8 +319,8 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	}
 
 	if req.AdditionalDetails != nil {
-		for k, v := range req.AdditionalDetails.GetFields() {
-			createState.SetDetailAndBundledRelation(domain.RelationKey(k), v)
+		for k, v := range req.AdditionalDetails.Iterate() {
+			createState.SetDetailAndBundledRelation(k, v)
 		}
 	}
 
@@ -341,25 +341,22 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 	return id, object, nil
 }
 
-func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin, kind model.ImageKind) *types.Struct {
-	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyFileId.String(): pbtypes.String(fileId.String()),
-			// Use general file layout. It will be changed for proper layout after indexing
-			bundle.RelationKeyLayout.String():             pbtypes.Int64(int64(model.ObjectType_file)),
-			bundle.RelationKeyFileIndexingStatus.String(): pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
-			bundle.RelationKeySyncStatus.String():         pbtypes.Int64(int64(domain.ObjectSyncStatusQueued)),
-			bundle.RelationKeySyncError.String():          pbtypes.Int64(int64(domain.SyncErrorNull)),
-			bundle.RelationKeyFileBackupStatus.String():   pbtypes.Int64(int64(filesyncstatus.Queued)),
-		},
-	}
+func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.ObjectOrigin, kind model.ImageKind) *domain.Details {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyFileId, fileId.String())
+	// Use general file layout. It will be changed for proper layout after indexing
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_file))
+	details.SetInt64(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_NotIndexed))
+	details.SetInt64(bundle.RelationKeySyncStatus, int64(domain.ObjectSyncStatusQueued))
+	details.SetInt64(bundle.RelationKeySyncError, int64(domain.SyncErrorNull))
+	details.SetInt64(bundle.RelationKeyFileBackupStatus, int64(filesyncstatus.Queued))
 	origin.AddToDetails(details)
 	if kind == model.ImageKind_Basic {
 		return details
 	}
-	details.Fields[bundle.RelationKeyImageKind.String()] = pbtypes.Int64(int64(kind))
+	details.SetInt64(bundle.RelationKeyImageKind, int64(kind))
 	if kind == model.ImageKind_AutomaticallyAdded {
-		details.Fields[bundle.RelationKeyIsHiddenDiscovery.String()] = pbtypes.Bool(true)
+		details.SetBool(bundle.RelationKeyIsHiddenDiscovery, true)
 	}
 	return details
 }
@@ -368,16 +365,16 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
 	// Check that fileId is not a file object id
 	recs, _, err := s.objectStore.SpaceIndex(fileId.SpaceId).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.FileId.String()),
+				Value:       domain.String(fileId.FileId.String()),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.SpaceId),
+				Value:       domain.String(fileId.SpaceId),
 			},
 		},
 	})
@@ -412,18 +409,18 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 	return nil
 }
 
-func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *types.Struct, error) {
+func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error) {
 	records, err := s.objectStore.SpaceIndex(fileId.SpaceId).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.FileId.String()),
+				Value:       domain.String(fileId.FileId.String()),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
+				RelationKey: bundle.RelationKeySpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileId.SpaceId),
+				Value:       domain.String(fileId.SpaceId),
 			},
 		},
 	})
@@ -434,7 +431,7 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *t
 		return "", nil, filemodels.ErrObjectNotFound
 	}
 	details := records[0].Details
-	return pbtypes.GetString(details, bundle.RelationKeyId.String()), details, nil
+	return details.GetString(bundle.RelationKeyId), details, nil
 }
 
 func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
@@ -446,7 +443,7 @@ func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error
 	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
-	fileId := pbtypes.GetString(details.Details, bundle.RelationKeyFileId.String())
+	fileId := details.GetString(bundle.RelationKeyFileId)
 	if fileId == "" {
 		return domain.FullFileId{}, filemodels.ErrEmptyFileId
 	}
@@ -470,7 +467,7 @@ func (s *service) GetFileIdFromObjectWaitLoad(ctx context.Context, objectId stri
 	}
 	err = spc.Do(objectId, func(sb smartblock.SmartBlock) error {
 		details := sb.Details()
-		id.FileId = domain.FileId(pbtypes.GetString(details, bundle.RelationKeyFileId.String()))
+		id.FileId = domain.FileId(details.GetString(bundle.RelationKeyFileId))
 		if id.FileId == "" {
 			return filemodels.ErrEmptyFileId
 		}
@@ -510,16 +507,16 @@ func (s *service) DeleteFileData(spaceId string, objectId string) error {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
 	records, err := s.objectStore.QueryCrossSpace(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyId.String(),
+				RelationKey: bundle.RelationKeyId,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(objectId),
+				Value:       domain.String(objectId),
 			},
 			{
-				RelationKey: bundle.RelationKeyFileId.String(),
+				RelationKey: bundle.RelationKeyFileId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fullId.FileId.String()),
+				Value:       domain.String(fullId.FileId.String()),
 			},
 		},
 	})

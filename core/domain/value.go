@@ -283,6 +283,26 @@ func (v Value) StringList() []string {
 	return res
 }
 
+func (v Value) TryWrapToStringList() ([]string, bool) {
+	res, ok := v.TryStringList()
+	if ok {
+		return res, true
+	}
+	s, ok := v.TryString()
+	if ok {
+		return []string{s}, true
+	}
+	return nil, false
+}
+
+func (v Value) WrapToStringList() []string {
+	res, ok := v.TryWrapToStringList()
+	if ok {
+		return res
+	}
+	return nil
+}
+
 func (v Value) IsInt64List() bool {
 	return v.IsFloat64List()
 }
@@ -341,21 +361,30 @@ func (v Value) TryWrapToList() ([]Value, error) {
 	if v, ok := v.TryFloat64(); ok {
 		return []Value{Float64(v)}, nil
 	}
+
+	list, ok := v.TryListValues()
+	if ok {
+		return list, nil
+	}
+	return nil, fmt.Errorf("unsupported type: %v", v.Type())
+}
+
+func (v Value) TryListValues() ([]Value, bool) {
 	if v, ok := v.TryStringList(); ok {
 		res := make([]Value, 0, len(v))
 		for _, s := range v {
 			res = append(res, String(s))
 		}
-		return res, nil
+		return res, true
 	}
 	if v, ok := v.TryFloat64List(); ok {
 		res := make([]Value, 0, len(v))
 		for _, f := range v {
 			res = append(res, Float64(f))
 		}
-		return res, nil
+		return res, true
 	}
-	return nil, fmt.Errorf("unsupported type: %v", v.Type())
+	return nil, false
 }
 
 func (v Value) IsMapValue() bool {

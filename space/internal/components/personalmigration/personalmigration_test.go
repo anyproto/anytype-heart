@@ -76,10 +76,10 @@ func TestRunner_Run(t *testing.T) {
 			},
 		}
 		st.SetFileInfo(fileInfo)
-		st.SetDetails(pbtypes.ToStruct(map[string]any{
-			bundle.RelationKeyName.String():        "name",
-			bundle.RelationKeyDescription.String(): "description",
-			bundle.RelationKeyIconImage.String():   "iconImage",
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
+			bundle.RelationKeyIconImage:   domain.String("iconImage"),
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
@@ -112,9 +112,9 @@ func TestRunner_Run(t *testing.T) {
 		fx := newFixture(t)
 		st := fx.smartBlock.NewState()
 		st.SetSetting(state.SettingsAnalyticsId, pbtypes.String("analyticsId"))
-		st.SetDetails(pbtypes.ToStruct(map[string]any{
-			bundle.RelationKeyName.String():        "name",
-			bundle.RelationKeyDescription.String(): "description",
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)
@@ -148,10 +148,10 @@ func TestRunner_Run(t *testing.T) {
 			},
 		}
 		st.SetFileInfo(fileInfo)
-		st.SetDetails(pbtypes.ToStruct(map[string]any{
-			bundle.RelationKeyName.String():        "name",
-			bundle.RelationKeyDescription.String(): "description",
-			bundle.RelationKeyIconImage.String():   "iconImage",
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:        domain.String("name"),
+			bundle.RelationKeyDescription: domain.String("description"),
+			bundle.RelationKeyIconImage:   domain.String("iconImage"),
 		}))
 		err := fx.smartBlock.Apply(st)
 		require.NoError(t, err)

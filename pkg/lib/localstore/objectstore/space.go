@@ -1,10 +1,10 @@
 package objectstore
 
 import (
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type SpaceNameGetter interface {
@@ -13,16 +13,16 @@ type SpaceNameGetter interface {
 
 func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 	records, err := d.SpaceIndex(d.techSpaceId).Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
+				RelationKey: bundle.RelationKeyTargetSpaceId,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceId),
+				Value:       domain.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
 			},
 		},
 	})
@@ -31,7 +31,7 @@ func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 	}
 	var spaceName string
 	if len(records) > 0 {
-		spaceName = pbtypes.GetString(records[0].Details, bundle.RelationKeyName.String())
+		spaceName = records[0].Details.GetString(bundle.RelationKeyName)
 	}
 	return spaceName
 }

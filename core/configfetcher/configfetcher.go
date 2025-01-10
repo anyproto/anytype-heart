@@ -14,7 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	pbMiddle "github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -130,17 +130,11 @@ func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayl
 	}
 
 	c.lastStatus = s.StatusType
-	ev := &pbMiddle.Event{
-		Messages: []*pbMiddle.EventMessage{
-			{
-				Value: &pbMiddle.EventMessageValueOfAccountUpdate{
-					AccountUpdate: &pbMiddle.EventAccountUpdate{
-						Status: s,
-					},
-				},
-			},
+	ev := event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountUpdate{
+		AccountUpdate: &pb.EventAccountUpdate{
+			Status: s,
 		},
-	}
+	})
 	if c.eventSender != nil {
 		c.eventSender.Broadcast(ev)
 	}

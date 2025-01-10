@@ -3,9 +3,10 @@ package core
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/pb"
-	"go.uber.org/zap"
 )
 
 // rpc PublishingCreate (anytype.Rpc.Publishing.Create.Request) returns (anytype.Rpc.Publishing.Create.Response)
@@ -16,7 +17,7 @@ import (
 
 func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishingCreateRequest) *pb.RpcPublishingCreateResponse {
 	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))
-	publishService := getService[publish.Service](mw)
+	publishService := mustService[publish.Service](mw)
 
 	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId, req.Uri)
 	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))

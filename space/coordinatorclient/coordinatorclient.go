@@ -36,11 +36,11 @@ func (c *coordinatorClient) SpaceSign(ctx context.Context, payload coordinatorcl
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-c.limiter:
+	case c.limiter <- struct{}{}:
 	}
 
 	res, err := c.CoordinatorClient.SpaceSign(ctx, payload)
-	c.limiter <- struct{}{}
+	<-c.limiter
 	if err != nil {
 		return nil, err
 	}

@@ -83,7 +83,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	s.subscription = newSubscription(s.Id(), s.eventSender)
+	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
 		subscription: s.subscription,
@@ -322,11 +322,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 		return messages[i].OrderId < messages[j].OrderId
 	})
 
-	var firstOrderId string
-	if len(messages) > 0 {
-		firstOrderId = messages[0].OrderId
-	}
-	s.subscription.subscribe(firstOrderId)
+	s.subscription.enable()
 
 	return messages, 0, nil
 }

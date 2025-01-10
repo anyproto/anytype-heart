@@ -194,6 +194,10 @@ func (d *GenericMap[K]) GetStringList(key K) []string {
 	return d.Get(key).StringList()
 }
 
+func (d *GenericMap[K]) WrapToStringList(key K) []string {
+	return d.Get(key).WrapToStringList()
+}
+
 func (d *GenericMap[K]) TryFloat64List(key K) ([]float64, bool) {
 	return d.Get(key).TryFloat64List()
 }
@@ -220,7 +224,7 @@ func (d *GenericMap[K]) GetMapValue(key K) ValueMap {
 
 func (d *GenericMap[K]) Copy() *GenericMap[K] {
 	if d == nil {
-		return nil
+		return NewGenericMap[K]()
 	}
 	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
@@ -231,7 +235,7 @@ func (d *GenericMap[K]) Copy() *GenericMap[K] {
 
 func (d *GenericMap[K]) CopyWithoutKeys(keys ...K) *GenericMap[K] {
 	if d == nil {
-		return nil
+		return NewGenericMap[K]()
 	}
 	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
@@ -244,7 +248,7 @@ func (d *GenericMap[K]) CopyWithoutKeys(keys ...K) *GenericMap[K] {
 
 func (d *GenericMap[K]) CopyOnlyKeys(keys ...K) *GenericMap[K] {
 	if d == nil {
-		return nil
+		return NewGenericMap[K]()
 	}
 	newData := make(map[K]Value, len(d.data))
 	for k, v := range d.data {
