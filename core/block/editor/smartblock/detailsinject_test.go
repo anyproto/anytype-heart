@@ -403,10 +403,16 @@ func TestChangeResolvedLayoutForObjects(t *testing.T) {
 				bundle.RelationKeyType:           domain.String(typeId),
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_profile)),
 			},
+			{
+				bundle.RelationKeyId:               domain.String("tmpl"),
+				bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyTargetObjectType: domain.String(typeId),
+			},
 		})
 
 		fx.space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func() error) error {
-			if id == "obj1" {
+			if id == "obj1" || id == "tmpl" {
 				return f()
 			}
 			return ocache.ErrExists

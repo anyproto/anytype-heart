@@ -294,8 +294,19 @@ func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage,
 		return fmt.Errorf("failed to get objects of single type: %w", err)
 	}
 
+	templates, err := index.Query(database.Query{Filters: []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyTargetObjectType,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(sb.Id()),
+		},
+	}})
+	if err != nil {
+		return fmt.Errorf("failed to get templates with this target type: %w", err)
+	}
+
 	var resultErr error
-	for _, record := range records {
+	for _, record := range append(records, templates...) {
 		id := record.Details.GetString(bundle.RelationKeyId)
 		if id == "" {
 			continue
