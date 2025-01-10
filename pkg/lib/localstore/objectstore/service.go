@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"golang.org/x/exp/maps"
 
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
@@ -79,7 +80,6 @@ type VirtualSpacesStore interface {
 }
 
 type configProvider interface {
-	GetObjectStorePath() string
 	GetAnyStoreConfig() *anystore.Config
 }
 
@@ -149,6 +149,9 @@ func New() ObjectStore {
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.sourceService = app.MustComponent[spaceindex.SourceDetailsFromID](a)
+
+	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
+
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
 		log.Warnf("init objectstore without fulltext")
@@ -158,7 +161,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.arenaPool = &anyenc.ArenaPool{}
 
 	cfg := app.MustComponent[configProvider](a)
-	s.objectStorePath = cfg.GetObjectStorePath()
+	s.objectStorePath = filepath.Join(repoPath, "objectstore")
 	s.anyStoreConfig = *cfg.GetAnyStoreConfig()
 	s.setDefaultConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)

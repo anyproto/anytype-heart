@@ -81,6 +81,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	dataStore, err := datastore.NewInMemory()
 	require.NoError(t, err)
 
+	testApp.Register(newWalletStub(t))
 	testApp.Register(dataStore)
 	err = fullText.Init(testApp)
 	require.NoError(t, err)
