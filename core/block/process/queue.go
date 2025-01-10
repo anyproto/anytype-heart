@@ -74,7 +74,6 @@ type queue struct {
 	s                   Service
 	m                   sync.Mutex
 	message             string
-	process             Process
 	noProgress          bool
 	notificationService NotificationService
 	notification        *model.Notification
