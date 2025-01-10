@@ -167,7 +167,7 @@ func (m *migrator) doObjectStoreDb(ctx context.Context, proc func(db anystore.DB
 		return fmt.Errorf("ensure dir exists: %w", err)
 	}
 
-	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, m.objectStorePath, cfg)
+	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, filepath.Join(m.objectStorePath, "objects.db"), cfg)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
