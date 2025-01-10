@@ -138,7 +138,6 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 			}
 
 			for _, objectId := range objectIds {
-				fmt.Println(spaceId, " ==>> ", objectId)
 				err = resolverStore.BindSpaceId(spaceId, objectId)
 				if err != nil {
 					return fmt.Errorf("bind space id: %w", err)
