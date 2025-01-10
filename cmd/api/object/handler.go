@@ -103,7 +103,7 @@ func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
 			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
-			util.ErrToCode(ErrFailedDeleteObject, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedDeleteObject, http.StatusForbidden),
 		)
 
 		if code != http.StatusOK {

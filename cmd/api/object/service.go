@@ -157,12 +157,12 @@ func (s *ObjectService) DeleteObject(ctx context.Context, spaceId string, object
 		return Object{}, err
 	}
 
-	resp := s.mw.ObjectListSetIsArchived(ctx, &pb.RpcObjectListSetIsArchivedRequest{
-		ObjectIds:  []string{objectId},
+	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
+		ContextId:  objectId,
 		IsArchived: true,
 	})
 
-	if resp.Error.Code != pb.RpcObjectListSetIsArchivedResponseError_NULL {
+	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
 		return Object{}, ErrFailedDeleteObject
 	}
 

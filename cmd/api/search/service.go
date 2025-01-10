@@ -59,7 +59,7 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
 				Type:           model.BlockContentDataviewSort_Desc,
-				Format:         model.RelationFormat_longtext,
+				Format:         model.RelationFormat_date,
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
