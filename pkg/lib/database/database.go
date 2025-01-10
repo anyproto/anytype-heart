@@ -190,6 +190,7 @@ func FiltersFromProto(filters []*model.BlockContentDataviewFilter) []FilterReque
 			QuickOption:      f.QuickOption,
 			Format:           f.Format,
 			IncludeTime:      f.IncludeTime,
+			NestedFilters:    FiltersFromProto(f.NestedFilters),
 		})
 	}
 	return res
