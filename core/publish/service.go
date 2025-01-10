@@ -490,11 +490,12 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string) (res
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
+		return
 	}
 
 	// for now: staging-url/identity/pageid
 	// will be fixed in GO-4758
-	stagingUrl := "https://publishing-stage.any.coop"
+	stagingUrl := "https://any.coop"
 	identity := s.accountService.Account().SignKey.GetPublic().Account()
 	url := fmt.Sprintf("%s/%s/%s", stagingUrl, identity, uri)
 
