@@ -167,6 +167,10 @@ func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error)
 	return spaceID, err
 }
 
+func (s *storageService) GetBinds(spaceId string) ([]string, error) {
+	return nil, nil
+}
+
 func (s *storageService) BindSpaceID(spaceID, objectID string) (err error) {
 	return badgerhelper.SetValue(s.db, s.keys.BindObjectIDKey(objectID), []byte(spaceID))
 }

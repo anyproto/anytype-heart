@@ -292,6 +292,10 @@ func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error)
 	return
 }
 
+func (s *storageService) GetBinds(spaceId string) ([]string, error) {
+	return nil, nil
+}
+
 func (s *storageService) BindSpaceID(spaceID, objectID string) (err error) {
 	_, err = s.stmt.upsertBind.Exec(objectID, spaceID, spaceID)
 	return
