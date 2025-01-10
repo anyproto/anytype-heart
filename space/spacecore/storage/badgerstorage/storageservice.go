@@ -1,8 +1,10 @@
 package badgerstorage
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -167,8 +169,35 @@ func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error)
 	return spaceID, err
 }
 
-func (s *storageService) GetBinds(spaceId string) ([]string, error) {
-	return nil, nil
+func (s *storageService) GetBoundObjectIds(spaceId string) (ids []string, err error) {
+	prefix := []byte("bind/")
+	spaceIdBytes := []byte(spaceId)
+	err = s.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		opts.Prefix = prefix
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			id := item.Key()
+
+			err = item.Value(func(val []byte) error {
+				if bytes.Equal(spaceIdBytes, val) {
+					idStr := string(id)
+					ids = append(ids, idStr[len(prefix):])
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("read value: %w", err)
+			}
+		}
+		return nil
+	})
+	return
 }
 
 func (s *storageService) BindSpaceID(spaceID, objectID string) (err error) {
