@@ -206,7 +206,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 
 		return nil
 	case model.RelationFormat_file, model.RelationFormat_object:
-		vals, ok := v.TryStringList()
+		vals, ok := v.TryWrapToStringList()
 		if !ok {
 			return fmt.Errorf("incorrect type: %v instead of string list", v)
 		}

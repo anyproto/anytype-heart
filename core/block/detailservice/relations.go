@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -89,6 +91,70 @@ func (s *service) objectTypeSetRelations(
 		st.SetDetailAndBundledRelation(relationToSet, domain.StringList(relationList))
 		return b.Apply(st)
 	})
+}
+
+func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId string) ([]string, error) {
+	records, err := s.store.SpaceIndex(spaceId).QueryByIds([]string{typeObjectId})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query object type: %w", err)
+	}
+
+	if len(records) != 1 {
+		return nil, fmt.Errorf("failed to query object type, expected 1 record")
+	}
+
+	recommendedRelations := records[0].Details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	recommendedFeaturedRelations := records[0].Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	allRecommendedRelations := lo.Uniq(append(recommendedRelations, recommendedFeaturedRelations...))
+
+	allRelationKeys := make([]string, 0, len(allRecommendedRelations))
+	err = s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyType,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(typeObjectId),
+		},
+	}}, func(details *domain.Details) {
+		for _, key := range details.Keys() {
+			if !slices.Contains(allRelationKeys, string(key)) {
+				allRelationKeys = append(allRelationKeys, string(key))
+			}
+		}
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate over all objects to collect their relations: %w", err)
+	}
+
+	records, err = s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyRelationKey,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.StringList(allRelationKeys),
+			},
+			{
+				RelationKey: bundle.RelationKeyLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_relation)),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch relations by keys: %w", err)
+	}
+	if len(records) != len(allRelationKeys) {
+		return nil, fmt.Errorf("failed to query relations from store, number of records is less than expected")
+	}
+
+	conflictingRelations := make([]string, 0, len(records))
+	for _, record := range records {
+		id := record.Details.GetString(bundle.RelationKeyId)
+		if !slices.Contains(allRecommendedRelations, id) {
+			conflictingRelations = append(conflictingRelations, id)
+		}
+	}
+
+	return conflictingRelations, nil
 }
 
 func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) {

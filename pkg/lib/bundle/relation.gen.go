@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b90b34a574d8af507986c1d9b8d5aa640c1cedbf47e51dfc65ba5834b71fda6b"
+const RelationChecksum = "b11da33964518961375918da989f595981c3d4a4056853c79a60883c22c10958"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -148,6 +148,8 @@ const (
 	RelationKeyLayoutWidth                  domain.RelationKey = "layoutWidth"
 	RelationKeyResolvedLayout               domain.RelationKey = "resolvedLayout"
 	RelationKeySpaceOrder                   domain.RelationKey = "spaceOrder"
+	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
+	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 )
 
 var (
@@ -457,6 +459,34 @@ var (
 			Key:              "defaultTemplateId",
 			MaxCount:         1,
 			Name:             "Default Template ID",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDefaultTypeId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Default object type id that will be set to new sets/collections",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdefaultTypeId",
+			Key:              "defaultTypeId",
+			MaxCount:         1,
+			Name:             "Default type id",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDefaultViewType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Default view type that will be used for new sets/collections",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brdefaultViewType",
+			Key:              "defaultViewType",
+			MaxCount:         1,
+			Name:             "Default view type",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

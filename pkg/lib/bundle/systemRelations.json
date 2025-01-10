@@ -93,5 +93,7 @@
   "timestamp",
   "recommendedFeaturedRelations",
   "layoutWidth",
+  "defaultViewType",
+  "defaultTypeId",
   "resolvedLayout"
 ]
