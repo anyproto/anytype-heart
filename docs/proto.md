@@ -49,6 +49,11 @@
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
+    - [Rpc.AI](#anytype-Rpc-AI)
+    - [Rpc.AI.WritingTools](#anytype-Rpc-AI-WritingTools)
+    - [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request)
+    - [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response)
+    - [Rpc.AI.WritingTools.Response.Error](#anytype-Rpc-AI-WritingTools-Response-Error)
     - [Rpc.Account](#anytype-Rpc-Account)
     - [Rpc.Account.ChangeNetworkConfigAndRestart](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request)
@@ -1252,6 +1257,10 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language)
+    - [Rpc.AI.WritingTools.Request.Mode](#anytype-Rpc-AI-WritingTools-Request-Mode)
+    - [Rpc.AI.WritingTools.Request.Provider](#anytype-Rpc-AI-WritingTools-Request-Provider)
+    - [Rpc.AI.WritingTools.Response.Error.Code](#anytype-Rpc-AI-WritingTools-Response-Error-Code)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
@@ -2233,6 +2242,7 @@
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | AI |
 
  
 
@@ -2890,6 +2900,80 @@ Rpc is a namespace, that agregates all of the service commands between client an
 Structure: Topic &gt; Subtopic &gt; Subsub... &gt; Action &gt; (Request, Response).
 Request – message from a client.
 Response – message from a middleware.
+
+
+
+
+
+
+<a name="anytype-Rpc-AI"></a>
+
+### Rpc.AI
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-WritingTools"></a>
+
+### Rpc.AI.WritingTools
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Request"></a>
+
+### Rpc.AI.WritingTools.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mode | [Rpc.AI.WritingTools.Request.Mode](#anytype-Rpc-AI-WritingTools-Request-Mode) |  |  |
+| language | [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language) |  |  |
+| provider | [Rpc.AI.WritingTools.Request.Provider](#anytype-Rpc-AI-WritingTools-Request-Provider) |  |  |
+| endpoint | [string](#string) |  |  |
+| model | [string](#string) |  |  |
+| token | [string](#string) |  |  |
+| temperature | [float](#float) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Response"></a>
+
+### Rpc.AI.WritingTools.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.WritingTools.Response.Error](#anytype-Rpc-AI-WritingTools-Response-Error) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Response-Error"></a>
+
+### Rpc.AI.WritingTools.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.WritingTools.Response.Error.Code](#anytype-Rpc-AI-WritingTools-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -20329,6 +20413,79 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
  
+
+
+<a name="anytype-Rpc-AI-WritingTools-Request-Language"></a>
+
+### Rpc.AI.WritingTools.Request.Language
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EN | 0 |  |
+| ES | 1 |  |
+| FR | 2 |  |
+| DE | 3 |  |
+| IT | 4 |  |
+| PT | 5 |  |
+| HI | 6 |  |
+| TH | 7 | ... |
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Request-Mode"></a>
+
+### Rpc.AI.WritingTools.Request.Mode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DEFAULT | 0 |  |
+| SUMMARIZE | 1 |  |
+| GRAMMAR | 2 |  |
+| SHORTEN | 3 |  |
+| EXPAND | 4 |  |
+| BULLET | 5 |  |
+| TABLE | 6 |  |
+| CASUAL | 7 |  |
+| FUNNY | 8 |  |
+| CONFIDENT | 9 |  |
+| STRAIGHTFORWARD | 10 |  |
+| PROFESSIONAL | 11 |  |
+| TRANSLATE | 12 | ... |
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Request-Provider"></a>
+
+### Rpc.AI.WritingTools.Request.Provider
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OLLAMA | 0 |  |
+| OPENAI | 1 |  |
+| LMSTUDIO | 2 |  |
+| LLAMACPP | 3 | ... |
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Response-Error-Code"></a>
+
+### Rpc.AI.WritingTools.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| LANGUAGE_NOT_SUPPORTED | 101 |  |
+| ENDPOINT_NOT_REACHABLE | 102 |  |
+| MODEL_NOT_FOUND | 103 |  |
+| AUTH_REQUIRED | 104 | ... |
+
 
 
 <a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code"></a>
