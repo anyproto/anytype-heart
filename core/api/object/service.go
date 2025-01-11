@@ -204,7 +204,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 		})
 
 		if relAddFeatResp.Error.Code != pb.RpcObjectRelationAddFeaturedResponseError_NULL {
-			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId)
+			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId) // nolint:errcheck
 			return object, ErrFailedSetRelationFeatured
 		}
 	}
@@ -217,7 +217,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 		})
 
 		if bookmarkResp.Error.Code != pb.RpcObjectBookmarkFetchResponseError_NULL {
-			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId)
+			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId) // nolint:errcheck
 			return object, ErrFailedFetchBookmark
 		}
 	}
@@ -247,7 +247,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 		})
 
 		if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
-			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId)
+			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId) // nolint:errcheck
 			return object, ErrFailedCreateObject
 		}
 
@@ -258,7 +258,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 		})
 
 		if blockPasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
-			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId)
+			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId) // nolint:errcheck
 			return object, ErrFailedPasteBody
 		}
 	}

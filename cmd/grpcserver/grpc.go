@@ -247,7 +247,7 @@ func main() {
 		}
 	}
 
-	// run rest api server
+	// pass mw to api service
 	api.SetMiddlewareParams(mw)
 
 	for {
