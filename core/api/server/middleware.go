@@ -5,22 +5,22 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 )
 
 // initAccountInfo retrieves the account information from the account service.
-func (s *Server) initAccountInfo() gin.HandlerFunc {
+func (s *Server) initAccountInfo(a *app.App) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// TODO: consider not fetching account info on every request; currently used to avoid inconsistencies on logout/login
-		app := s.mwInternal.GetApp()
-		if app == nil {
+		if a == nil {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "failed to get app instance"})
 			return
 		}
 
-		accInfo, err := app.Component(account.CName).(account.Service).GetInfo(context.Background())
+		accInfo, err := a.Component(account.CName).(account.Service).GetInfo(context.Background())
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get account info: %v", err)})
 			return

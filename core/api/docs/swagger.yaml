@@ -133,6 +133,9 @@ definitions:
       name:
         example: Page
         type: string
+      recommended_layout:
+        example: todo
+        type: string
       type:
         example: object_type
         type: string

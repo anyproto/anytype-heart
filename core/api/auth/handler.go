@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/cmd/api/util"
+	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
 // DisplayCodeHandler generates a new challenge and returns the challenge ID

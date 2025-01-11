@@ -30,8 +30,8 @@ import (
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
 
-	"github.com/anyproto/anytype-heart/cmd/api"
 	"github.com/anyproto/anytype-heart/core"
+	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -248,10 +248,7 @@ func main() {
 	}
 
 	// run rest api server
-	var mwInternal core.MiddlewareInternal = mw
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go api.RunApiServer(ctx, mw, mwInternal)
+	api.SetMiddlewareParams(mw)
 
 	for {
 		sig := <-signalChan

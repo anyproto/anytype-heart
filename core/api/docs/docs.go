@@ -1057,6 +1057,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Page"
                 },
+                "recommended_layout": {
+                    "type": "string",
+                    "example": "todo"
+                },
                 "type": {
                     "type": "string",
                     "example": "object_type"

@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/cmd/api/pagination"
-	"github.com/anyproto/anytype-heart/cmd/api/space"
-	"github.com/anyproto/anytype-heart/cmd/api/util"
+	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/space"
+	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
 // SearchHandler searches and retrieves objects across all the spaces

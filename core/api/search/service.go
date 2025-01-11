@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/anyproto/anytype-heart/cmd/api/object"
-	"github.com/anyproto/anytype-heart/cmd/api/pagination"
-	"github.com/anyproto/anytype-heart/cmd/api/space"
-	"github.com/anyproto/anytype-heart/cmd/api/util"
+	object2 "github.com/anyproto/anytype-heart/core/api/object"
+	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/space"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -23,22 +23,22 @@ var (
 )
 
 type Service interface {
-	Search(ctx context.Context, searchQuery string, objectTypes []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error)
+	Search(ctx context.Context, searchQuery string, objectTypes []string, offset, limit int) (objects []object2.Object, total int, hasMore bool, err error)
 }
 
 type SearchService struct {
 	mw            service.ClientCommandsServer
 	spaceService  *space.SpaceService
-	objectService *object.ObjectService
+	objectService *object2.ObjectService
 	AccountInfo   *model.AccountInfo
 }
 
-func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceService, objectService *object.ObjectService) *SearchService {
+func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceService, objectService *object2.ObjectService) *SearchService {
 	return &SearchService{mw: mw, spaceService: spaceService, objectService: objectService}
 }
 
 // Search retrieves a paginated list of objects from all spaces that match the search parameters.
-func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTypes []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error) {
+func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTypes []string, offset, limit int) (objects []object2.Object, total int, hasMore bool, err error) {
 	spaces, _, _, err := s.spaceService.ListSpaces(ctx, 0, 100)
 	if err != nil {
 		return nil, 0, false, err
@@ -47,7 +47,7 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(searchQuery)
 
-	results := make([]object.Object, 0)
+	results := make([]object2.Object, 0)
 	for _, space := range spaces {
 		// Resolve object type IDs per space, as they are unique per space
 		objectTypeFilters := s.prepareObjectTypeFilters(space.Id, objectTypes)

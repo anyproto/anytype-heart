@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/cmd/api/pagination"
-	"github.com/anyproto/anytype-heart/cmd/api/util"
+	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
 // GetObjectsHandler retrieves objects in a specific space
