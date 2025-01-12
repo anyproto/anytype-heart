@@ -228,6 +228,3 @@ packages:
   github.com/anyproto/anytype-heart/pb/service:
     interfaces:
       ClientCommandsServer:
-  github.com/anyproto/anytype-heart/core:
-    interfaces:
-      MiddlewareInternal:

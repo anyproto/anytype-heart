@@ -23,10 +23,6 @@ var (
 	ErrNotLoggedIn = errors.New("not logged in")
 )
 
-type MiddlewareInternal interface {
-	GetApp() *app.App
-}
-
 type Middleware struct {
 	applicationService *application.Service
 }
