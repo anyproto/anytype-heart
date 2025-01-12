@@ -3,10 +3,10 @@ package link
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -34,7 +34,7 @@ type Block interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetLink) error
-	ToText(targetDetails *types.Struct) simple.Block
+	ToText(targetDetails *domain.Details) simple.Block
 	SetAppearance(content *model.BlockContentLink) error
 }
 
@@ -66,12 +66,12 @@ func (l *Link) SetAppearance(content *model.BlockContentLink) error {
 	return nil
 }
 
-func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
+func (l *Link) Diff(spaceId string, b simple.Block) (msgs []simple.EventMessage, err error) {
 	link, ok := b.(*Link)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = l.Base.Diff(link); err != nil {
+	if msgs, err = l.Base.Diff(spaceId, link); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetLink{
@@ -109,7 +109,7 @@ func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	}
 
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetLink{BlockSetLink: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetLink{BlockSetLink: changes})})
 	}
 	return
 }
@@ -163,10 +163,10 @@ func (l *Link) ApplyEvent(e *pb.EventBlockSetLink) error {
 	return nil
 }
 
-func (l *Link) ToText(targetDetails *types.Struct) simple.Block {
+func (l *Link) ToText(targetDetails *domain.Details) simple.Block {
 	tb := &model.BlockContentText{}
 	if l.content.TargetBlockId != "" {
-		name := pbtypes.GetString(targetDetails, bundle.RelationKeyName.String())
+		name := targetDetails.GetString(bundle.RelationKeyName)
 		if name == "" {
 			name = "Untitled"
 		}

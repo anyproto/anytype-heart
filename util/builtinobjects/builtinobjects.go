@@ -24,6 +24,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/notifications"
@@ -39,7 +40,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -351,10 +351,10 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
 	if err := b.detailsService.SetDetails(nil,
 		spc.DerivedIDs().Workspace,
-		[]*model.Detail{
+		[]domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.StringList([]string{id}),
 			},
 		},
 	); err != nil {
@@ -414,16 +414,11 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
 	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
-				Value:       pbtypes.String(oldID),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				RelationKey: bundle.RelationKeyOldAnytypeID,
+				Value:       domain.String(oldID),
 			},
 		},
 	}); err != nil {

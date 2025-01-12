@@ -12,11 +12,14 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -103,8 +106,8 @@ func TestSubscribe(t *testing.T) {
 
 		// Add objects
 		obj1 := objectstore.TestObject{
-			bundle.RelationKeyId:     pbtypes.String("participant1"),
-			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+			bundle.RelationKeyId:     domain.String("participant1"),
+			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
 		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 			obj1,
@@ -115,7 +118,7 @@ func TestSubscribe(t *testing.T) {
 		require.NoError(t, err)
 
 		want := []*pb.EventMessage{
-			makeDetailsSetEvent(resp.SubId, obj1.Details()),
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
 			makeAddEvent(resp.SubId, obj1.Id()),
 			makeCountersEvent(resp.SubId, 1),
 		}
@@ -123,9 +126,9 @@ func TestSubscribe(t *testing.T) {
 
 		t.Run("update object", func(t *testing.T) {
 			obj1 = objectstore.TestObject{
-				bundle.RelationKeyId:     pbtypes.String("participant1"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
-				bundle.RelationKeyName:   pbtypes.String("John Doe"),
+				bundle.RelationKeyId:     domain.String("participant1"),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyName:   domain.String("John Doe"),
 			}
 			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 				obj1,
@@ -168,8 +171,8 @@ func TestSubscribe(t *testing.T) {
 
 			// Add objects
 			obj1 := objectstore.TestObject{
-				bundle.RelationKeyId:     pbtypes.String("participant1"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyId:     domain.String("participant1"),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
 			}
 			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 				obj1,
@@ -180,7 +183,7 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want := []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj1.Details()),
+				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
 				makeAddEvent(resp.SubId, obj1.Id()),
 				makeCountersEvent(resp.SubId, 1),
 			}
@@ -188,8 +191,8 @@ func TestSubscribe(t *testing.T) {
 
 			// Add another objects
 			obj2 := objectstore.TestObject{
-				bundle.RelationKeyId:     pbtypes.String("participant2"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyId:     domain.String("participant2"),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
 			}
 			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 				obj2,
@@ -200,7 +203,7 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want = []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj2.Details()),
+				makeDetailsSetEvent(resp.SubId, obj2.Details().ToProto()),
 				makeAddEvent(resp.SubId, obj2.Id()),
 				makeCountersEvent(resp.SubId, 2),
 			}
@@ -215,8 +218,8 @@ func TestSubscribe(t *testing.T) {
 
 			// Add objects
 			obj1 := objectstore.TestObject{
-				bundle.RelationKeyId:     pbtypes.String("participant3"),
-				bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyId:     domain.String("participant3"),
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
 			}
 			fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{
 				obj1,
@@ -227,7 +230,7 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want := []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj1.Details()),
+				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
 				makeAddEvent(resp.SubId, obj1.Id()),
 				makeCountersEvent(resp.SubId, 3),
 			}
@@ -246,12 +249,12 @@ func TestSubscribe(t *testing.T) {
 			givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
 		})
 		obj1 := objectstore.TestObject{
-			bundle.RelationKeyId:     pbtypes.String("participant1"),
-			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+			bundle.RelationKeyId:     domain.String("participant1"),
+			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
 		}
 		obj2 := objectstore.TestObject{
-			bundle.RelationKeyId:     pbtypes.String("participant2"),
-			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+			bundle.RelationKeyId:     domain.String("participant2"),
+			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
 		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 			obj1,
@@ -263,7 +266,7 @@ func TestSubscribe(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
-		assert.Equal(t, []*types.Struct{obj1.Details(), obj2.Details()}, resp.Records)
+		assert.Equal(t, []*domain.Details{obj1.Details(), obj2.Details()}, resp.Records)
 
 		// Remove space view by changing its status
 		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
@@ -311,8 +314,8 @@ func TestUnsubscribe(t *testing.T) {
 
 		// Add objects
 		obj1 := objectstore.TestObject{
-			bundle.RelationKeyId:     pbtypes.String("participant1"),
-			bundle.RelationKeyLayout: pbtypes.Int64(int64(model.ObjectType_participant)),
+			bundle.RelationKeyId:     domain.String("participant1"),
+			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
 		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 			obj1,
@@ -329,65 +332,55 @@ func TestUnsubscribe(t *testing.T) {
 }
 
 func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectDetailsSet{
-			ObjectDetailsSet: &pb.EventObjectDetailsSet{
-				Id: pbtypes.GetString(details, bundle.RelationKeyId.String()),
-				SubIds: []string{
-					subId,
-				},
-				Details: details,
+	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsSet{
+		ObjectDetailsSet: &pb.EventObjectDetailsSet{
+			Id: pbtypes.GetString(details, bundle.RelationKeyId.String()),
+			SubIds: []string{
+				subId,
 			},
+			Details: details,
 		},
-	}
+	})
 }
 
 func makeDetailsAmendEvent(subId string, id string, details []*pb.EventObjectDetailsAmendKeyValue) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectDetailsAmend{
-			ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-				Id: id,
-				SubIds: []string{
-					subId,
-				},
-				Details: details,
+	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsAmend{
+		ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+			Id: id,
+			SubIds: []string{
+				subId,
 			},
+			Details: details,
 		},
-	}
+	})
 }
 
 func makeAddEvent(subId string, id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfSubscriptionAdd{
-			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
-				SubId:   subId,
-				Id:      id,
-				AfterId: "",
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionAdd{
+		SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+			SubId:   subId,
+			Id:      id,
+			AfterId: "",
 		},
-	}
+	})
 }
 
 func makeCountersEvent(subId string, total int) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfSubscriptionCounters{
-			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
-				SubId: subId,
-				Total: int64(total),
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionCounters{
+		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+			SubId: subId,
+			Total: int64(total),
 		},
-	}
+	})
 }
 
 func makeRemoveEvent(subId string, id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfSubscriptionRemove{
-			SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
-				SubId: subId,
-				Id:    id,
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionRemove{
+		SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+			SubId: subId,
+			Id:    id,
 		},
-	}
+	})
 }
 
 type dummyCollectionService struct{}
@@ -411,11 +404,11 @@ func givenRequest() subscriptionservice.SubscribeRequest {
 	return subscriptionservice.SubscribeRequest{
 		NoDepSubscription: true,
 		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String(), bundle.RelationKeyName.String()},
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+				Value:       domain.Int64(int64(model.ObjectType_participant)),
 			},
 		},
 	}
@@ -423,10 +416,10 @@ func givenRequest() subscriptionservice.SubscribeRequest {
 
 func givenSpaceViewObject(id string, targetSpaceId string, accountStatus model.AccountStatusType, localStatus model.SpaceStatus) objectstore.TestObject {
 	return objectstore.TestObject{
-		bundle.RelationKeyId:                 pbtypes.String(id),
-		bundle.RelationKeyTargetSpaceId:      pbtypes.String(targetSpaceId),
-		bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_spaceView)),
-		bundle.RelationKeySpaceAccountStatus: pbtypes.Int64(int64(accountStatus)),
-		bundle.RelationKeySpaceLocalStatus:   pbtypes.Int64(int64(localStatus)),
+		bundle.RelationKeyId:                 domain.String(id),
+		bundle.RelationKeyTargetSpaceId:      domain.String(targetSpaceId),
+		bundle.RelationKeyLayout:             domain.Int64(int64(model.ObjectType_spaceView)),
+		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(accountStatus)),
+		bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(localStatus)),
 	}
 }

@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "builtintemplate"
@@ -107,12 +106,12 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 
 	st := state.NewDocFromSnapshot(id, snapshot).(*state.State)
 	st.SetRootId(id)
-	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
-	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
-	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
-	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
-	st.SetLocalDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
-	st.SetDetail(bundle.RelationKeyOrigin.String(), pbtypes.Int64(int64(model.ObjectOrigin_builtin)))
+	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled, domain.Bool(true))
+	st.RemoveDetail(bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy)
+	st.SetLocalDetail(bundle.RelationKeyCreator, domain.String(addr.AnytypeProfileId))
+	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, domain.String(addr.AnytypeProfileId))
+	st.SetLocalDetail(bundle.RelationKeySpaceId, domain.String(addr.AnytypeMarketplaceWorkspace))
+	st.SetDetail(bundle.RelationKeyOrigin, domain.Int64(model.ObjectOrigin_builtin))
 
 	err = b.setObjectTypes(st, "TODO")
 	if err != nil {
@@ -152,7 +151,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 }
 
 func (b *builtinTemplate) setObjectTypes(st *state.State, spaceId string) error {
-	targetObjectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
+	targetObjectTypeID := st.Details().GetString(bundle.RelationKeyTargetObjectType)
 	var targetObjectTypeKey domain.TypeKey
 	if strings.HasPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix) {
 		// todo: remove this hack after fixing bundled templates
@@ -173,10 +172,10 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	if st.ObjectTypeKey() != bundle.TypeKeyTemplate {
 		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectTypeKey())
 	}
-	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {
+	if !cd.GetBool(bundle.RelationKeyTemplateIsBundled) {
 		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
 	}
-	targetObjectTypeID := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String())
+	targetObjectTypeID := cd.GetString(bundle.RelationKeyTargetObjectType)
 	if targetObjectTypeID == "" || domain.TypeKey(targetObjectTypeID) == st.ObjectTypeKey() {
 		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), targetObjectTypeID)
 	}

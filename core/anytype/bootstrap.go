@@ -275,7 +275,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(recordsbatcher.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
-		Register(core.New()).
 		Register(core.NewTempDirService()).
 		Register(treemanager.New()).
 		Register(block.New()).
