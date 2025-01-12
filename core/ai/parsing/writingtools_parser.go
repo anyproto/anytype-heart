@@ -14,18 +14,18 @@ type WritingToolsParser struct {
 
 // WritingToolsResponse represents the structure of the content response for different writing tool modes.
 type WritingToolsResponse struct {
-	Summary                string `json:"summary,omitempty"`
-	Corrected              string `json:"corrected,omitempty"`
-	Shortened              string `json:"shortened,omitempty"`
-	Expanded               string `json:"expanded,omitempty"`
-	Bullet                 string `json:"bullet,omitempty"`
-	ContentAsTable         string `json:"content_as_table,omitempty"`
-	Translation            string `json:"translation,omitempty"`
-	CasualContent          string `json:"casual_content,omitempty"`
-	FunnyContent           string `json:"funny_content,omitempty"`
-	ConfidentContent       string `json:"confident_content,omitempty"`
-	StraightforwardContent string `json:"straightforward_content,omitempty"`
-	ProfessionalContent    string `json:"professional_content,omitempty"`
+	Summary      string `json:"summary,omitempty"`
+	Corrected    string `json:"corrected,omitempty"`
+	Shortened    string `json:"shortened,omitempty"`
+	Expanded     string `json:"expanded,omitempty"`
+	Bullet       string `json:"bullet,omitempty"`
+	Table        string `json:"table,omitempty"`
+	Casual       string `json:"casual,omitempty"`
+	Funny        string `json:"funny,omitempty"`
+	Confident    string `json:"confident,omitempty"`
+	Straight     string `json:"straight,omitempty"`
+	Professional string `json:"professional,omitempty"`
+	Translation  string `json:"translation,omitempty"`
 }
 
 // NewWritingToolsParser returns a new WritingToolsParser instance.
@@ -37,12 +37,12 @@ func NewWritingToolsParser() *WritingToolsParser {
 			3:  "shortened",
 			4:  "expanded",
 			5:  "bullet",
-			6:  "content_as_table",
-			7:  "casual_content",
-			8:  "funny_content",
-			9:  "confident_content",
-			10: "straightforward_content",
-			11: "professional_content",
+			6:  "table",
+			7:  "casual",
+			8:  "funny",
+			9:  "confident",
+			10: "straight",
+			11: "professional",
 			12: "translation",
 		},
 	}
@@ -82,20 +82,20 @@ func (p *WritingToolsParser) ExtractContent(mode int, response interface{}) (str
 		return wtResp.Expanded, CheckEmpty(wtResp.Expanded, mode)
 	case "bullet":
 		return wtResp.Bullet, CheckEmpty(wtResp.Bullet, mode)
-	case "content_as_table":
-		return wtResp.ContentAsTable, CheckEmpty(wtResp.ContentAsTable, mode)
+	case "table":
+		return wtResp.Table, CheckEmpty(wtResp.Table, mode)
+	case "casual":
+		return wtResp.Casual, CheckEmpty(wtResp.Casual, mode)
+	case "funny":
+		return wtResp.Funny, CheckEmpty(wtResp.Funny, mode)
+	case "confident":
+		return wtResp.Confident, CheckEmpty(wtResp.Confident, mode)
+	case "straight":
+		return wtResp.Straight, CheckEmpty(wtResp.Straight, mode)
+	case "professional":
+		return wtResp.Professional, CheckEmpty(wtResp.Professional, mode)
 	case "translation":
 		return wtResp.Translation, CheckEmpty(wtResp.Translation, mode)
-	case "casual_content":
-		return wtResp.CasualContent, CheckEmpty(wtResp.CasualContent, mode)
-	case "funny_content":
-		return wtResp.FunnyContent, CheckEmpty(wtResp.FunnyContent, mode)
-	case "confident_content":
-		return wtResp.ConfidentContent, CheckEmpty(wtResp.ConfidentContent, mode)
-	case "straightforward_content":
-		return wtResp.StraightforwardContent, CheckEmpty(wtResp.StraightforwardContent, mode)
-	case "professional_content":
-		return wtResp.ProfessionalContent, CheckEmpty(wtResp.ProfessionalContent, mode)
 	default:
 		return "", fmt.Errorf("field %s is not recognized", fieldName)
 	}

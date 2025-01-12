@@ -22,7 +22,7 @@ const (
 	httpTimeout = 30 * time.Second
 )
 
-var log = logging.Logger("ai")
+var log = logging.Logger(CName)
 
 var (
 	ErrRateLimitExceeded    = errors.New("rate limit exceeded")

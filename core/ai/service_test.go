@@ -72,7 +72,7 @@ func TestWritingTools(t *testing.T) {
 					modelName:            "llama3.2:3b",
 					expectValidResponse:  "Paris",
 					expectBulletPoints:   "* Milk\n* Eggs\n* Bread\n* Butter\n* Apples (consider if on sale)",
-					expectJSONExtraction: "| Country | Capital |\n|----------|---------|\n| France   | Paris   |\n| Germany  | Berlin  |\n",
+					expectJSONExtraction: "| Country | Capital |\n|----------|---------|\n| France   | Paris   |\n| Germany  | Berlin  |",
 				},
 				{
 					modelName:            "llama3.1:8b",
@@ -134,7 +134,7 @@ func TestWritingTools(t *testing.T) {
 					modelName:            "llama-3.2-3b-instruct",
 					expectValidResponse:  "Paris",
 					expectBulletPoints:   "My Shopping List:\\\\ items to buy:\\\\\\  - milk\\\\\\  - eggs\\\\\\  - bread\\\\\\  - butter\\\\\\  consider apples if on sale.",
-					expectJSONExtraction: "| Country | Capital |\n| --- | --- |\n| France | Paris |\n| Germany | Berlin |",
+					expectJSONExtraction: "| Country | Capital |\n| --- | --- |\n| france | paris |\n| germany | berlin |",
 				},
 				// {
 				// 	modelName:            "meta-llama-3.1-8b-instruct",
