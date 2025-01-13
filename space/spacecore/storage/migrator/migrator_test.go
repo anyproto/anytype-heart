@@ -61,7 +61,6 @@ func (fx *fixture) start(t *testing.T) {
 	processService := process.New()
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(ev *pb.Event) {
-		t.Log(ev)
 	}).Maybe()
 	eventSender.EXPECT().BroadcastExceptSessions(mock.Anything, mock.Anything).Run(func(ev *pb.Event, exceptSessions []string) {
 		t.Log(ev)
