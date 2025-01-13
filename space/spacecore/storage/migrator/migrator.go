@@ -106,7 +106,7 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	}
 	progress.SetTotal(total)
 	for _, id := range allIds {
-		st, err := migrator.MigrateId(ctx, id, progress)
+		err := migrator.MigrateId(ctx, id, progress)
 		if err != nil {
 			if errors.Is(err, migration.ErrAlreadyMigrated) {
 				progress.AddDone(totalMap[id])
@@ -114,11 +114,6 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 			}
 			return err
 		}
-		err = st.Close(ctx)
-		if err != nil {
-			return err
-		}
-
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
