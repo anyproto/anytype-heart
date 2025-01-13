@@ -112,6 +112,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
@@ -211,7 +212,8 @@ func BootstrapMigration(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
-	a.Register(clientds.New()).
+	a.Register(migratorfinisher.New()).
+		Register(clientds.New()).
 		Register(oldstorage.New()).
 		Register(storage.New()).
 		Register(process.New()).

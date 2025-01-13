@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -19,15 +18,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
 )
 
 const CName = "client.storage.migration"
-
-const (
-	migratedName      = "space_store_migrated"
-	objectStoreFolder = "objectstore"
-	crdtDb            = "crdt"
-)
 
 type migrator struct {
 	storage         oldstorage.ClientStorage
@@ -36,6 +30,7 @@ type migrator struct {
 	path            string
 	oldPath         string
 	objectStorePath string
+	finisher        migratorfinisher.Service
 }
 
 type pathProvider interface {
@@ -57,6 +52,7 @@ func (m *migrator) Init(a *app.App) (err error) {
 	m.storage = app.MustComponent[oldstorage.ClientStorage](a)
 	m.newStorage = app.MustComponent[storage.ClientStorage](a)
 	m.process = app.MustComponent[process.Service](a)
+	m.finisher = app.MustComponent[migratorfinisher.Service](a)
 	return nil
 }
 
@@ -146,11 +142,14 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("migrate space id bindings: %w", err)
 	}
 
-	err = removeFilesWithPrefix(filepath.Join(filepath.Dir(m.path), objectStoreFolder), crdtDb)
-	if err != nil {
-		return nil
-	}
-	return renamePreserveExtension(m.oldPath, migratedName)
+	// TODO Maybe add some condition?
+	m.finisher.SetMigrationDone()
+
+	return nil
+}
+
+func (m *migrator) verify(ctx context.Context) error {
+	return fmt.Errorf("not implemented")
 }
 
 func (m *migrator) doObjectStoreDb(ctx context.Context, proc func(db anystore.DB) error) error {
@@ -185,27 +184,4 @@ func ensureDirExists(dir string) error {
 
 func (m *migrator) Close(ctx context.Context) (err error) {
 	return nil
-}
-
-func renamePreserveExtension(oldPath, newName string) error {
-	newPath := filepath.Join(filepath.Dir(oldPath), newName+filepath.Ext(oldPath))
-	err := os.Rename(oldPath, newPath)
-	if err != nil {
-		return fmt.Errorf("failed to rename: %w", err)
-	}
-	return nil
-}
-
-func removeFilesWithPrefix(rootDir, prefix string) error {
-	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() && strings.HasPrefix(info.Name(), prefix) {
-			if removeErr := os.Remove(path); removeErr != nil {
-				return removeErr
-			}
-		}
-		return nil
-	})
 }
