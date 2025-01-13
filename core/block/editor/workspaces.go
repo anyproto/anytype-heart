@@ -80,7 +80,8 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithTitle,
 		template.WithFeaturedRelations,
 		template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
-		template.WithForcedDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_space)),
+		template.WithLayout(model.ObjectType_space),
+		template.WithResolvedLayout(model.ObjectType_space),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 	)

@@ -68,6 +68,7 @@ func (d *date) getDetails() (*domain.Details, error) {
 		bundle.RelationKeyIsArchived:     domain.Bool(false),
 		bundle.RelationKeyIsHidden:       domain.Bool(false),
 		bundle.RelationKeyResolvedLayout: domain.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyLayout:         domain.Float64(float64(model.ObjectType_date)),
 		bundle.RelationKeyIconEmoji:      domain.String("📅"),
 		bundle.RelationKeySpaceId:        domain.String(d.SpaceID()),
 		bundle.RelationKeyTimestamp:      domain.Int64(dateObject.Time().Unix()),

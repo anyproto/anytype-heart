@@ -314,6 +314,7 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyRelationKey, key)
 	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_relation))
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
 	details.SetString(bundle.RelationKeySourceFilePath, propObject.GetID())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
@@ -563,6 +564,7 @@ func getDetailsForRelationOption(name, rel string) (string, *domain.Details) {
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyRelationKey, rel)
 	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_relationOption))
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
 	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
 	if err != nil {

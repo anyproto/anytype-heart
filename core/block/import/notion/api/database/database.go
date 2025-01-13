@@ -259,6 +259,7 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 	details.SetString(bundle.RelationKeyRelationKey, key)
 	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_relation))
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
 	details.SetString(bundle.RelationKeySourceFilePath, databaseProperty.GetID())
 	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
 	if err != nil {

@@ -38,6 +38,7 @@ func (ot *ObjectType) BundledTypeDetails() *domain.Details {
 	det := domain.NewDetails()
 	det.SetString(bundle.RelationKeyType, bundle.TypeKeyObjectType.BundledURL())
 	det.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 	det.SetString(bundle.RelationKeyName, ot.Name)
 	det.SetString(bundle.RelationKeyCreator, addr.AnytypeProfileId)
 	det.SetString(bundle.RelationKeyIconEmoji, ot.IconEmoji)

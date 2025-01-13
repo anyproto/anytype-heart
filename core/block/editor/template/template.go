@@ -90,16 +90,28 @@ var WithRequiredRelations = func(s *state.State) {
 	WithRelations(bundle.RequiredInternalRelations)(s)
 }
 
-var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.ObjectTypeLayout) StateTransformer {
+var WithObjectTypes = func(otypes []domain.TypeKey) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypeKeys()) == 0 {
 			s.SetObjectTypeKeys(otypes)
 		} else {
 			otypes = s.ObjectTypeKeys()
 		}
+	}
+}
 
+var WithResolvedLayout = func(layout model.ObjectTypeLayout) StateTransformer {
+	return func(s *state.State) {
 		if !s.LocalDetails().Has(bundle.RelationKeyResolvedLayout) {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+		}
+	}
+}
+
+var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
+	return func(s *state.State) {
+		if !s.Details().Has(bundle.RelationKeyLayout) {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(layout))
 		}
 	}
 }
