@@ -2,9 +2,11 @@ package migrator
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/mock"
@@ -93,7 +95,7 @@ func TestMigration(t *testing.T) {
 		fx.start(t)
 	})
 
-	t.Run("with old data", func(t *testing.T) {
+	t.Run("with old data, fast verifier", func(t *testing.T) {
 		fx := newFixture(t)
 
 		err := copyFile("testdata/spaceStore.db", fx.cfg.GetOldSpaceStorePath())
@@ -103,7 +105,25 @@ func TestMigration(t *testing.T) {
 
 		fx.start(t)
 
+		now := time.Now()
 		err = fx.migrator.verify(context.Background(), true)
+		fmt.Println("FAST", time.Since(now))
+		require.NoError(t, err)
+	})
+
+	t.Run("with old data, full verifier", func(t *testing.T) {
+		fx := newFixture(t)
+
+		err := copyFile("testdata/spaceStore.db", fx.cfg.GetOldSpaceStorePath())
+		require.NoError(t, err)
+
+		// TODO Test object->space bindings were populated
+
+		fx.start(t)
+
+		now := time.Now()
+		err = fx.migrator.verify(context.Background(), false)
+		fmt.Println("FULL", time.Since(now))
 		require.NoError(t, err)
 	})
 }

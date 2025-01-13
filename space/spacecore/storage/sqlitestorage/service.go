@@ -53,6 +53,7 @@ type storageService struct {
 		change,
 		hasTree,
 		listChanges,
+		iterateChanges,
 		hasChange,
 		updateTreeHeads,
 		deleteTree,

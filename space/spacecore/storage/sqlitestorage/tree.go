@@ -117,6 +117,29 @@ func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
 	return chs, rows.Close()
 }
 
+func (t *treeStorage) IterateChanges(proc func(id string, rawChange []byte) error) error {
+	rows, err := t.service.stmt.iterateChanges.Query(t.treeId)
+	if err != nil {
+		return replaceNoRowsErr(err, nil)
+	}
+
+	buf := make([]byte, 0, 1024)
+	for rows.Next() {
+		var id string
+		err = rows.Scan(&id, &buf)
+		if err != nil {
+			return errors.Join(rows.Close(), err)
+		}
+
+		err = proc(id, buf)
+		if err != nil {
+			return errors.Join(rows.Close(), err)
+		}
+		buf = buf[:0]
+	}
+	return rows.Close()
+}
+
 func (t *treeStorage) SetHeads(heads []string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()

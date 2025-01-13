@@ -1,6 +1,7 @@
 package migrator
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	oldstorage2 "github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
@@ -165,6 +167,10 @@ func (m *migrator) verify(ctx context.Context, fast bool) error {
 	return nil
 }
 
+type oldStoreChangesIterator interface {
+	IterateChanges(proc func(id string, rawChange []byte) error) error
+}
+
 func (m *migrator) verifySpace(ctx context.Context, spaceId string, fast bool) error {
 	oldStore, err := m.oldStorage.WaitSpaceStorage(ctx, spaceId)
 	if err != nil {
@@ -180,6 +186,11 @@ func (m *migrator) verifySpace(ctx context.Context, spaceId string, fast bool) e
 	storedIds, err := oldStore.StoredIds()
 	if err != nil {
 		return err
+	}
+
+	newStoreCollection, err := newStore.AnyStore().Collection(ctx, "changes")
+	if err != nil {
+		return fmt.Errorf("get new store collection: %w", err)
 	}
 
 	var bytesCompared int
@@ -210,6 +221,11 @@ func (m *migrator) verifySpace(ctx context.Context, spaceId string, fast bool) e
 
 		if fast {
 			err = m.verifyTreeFast(ctx, oldTreeStorage, newTreeStorage)
+			if err != nil {
+				return fmt.Errorf("verify tree fast: %w", err)
+			}
+		} else {
+			err = m.verifyTreeFull(ctx, newStoreCollection, oldTreeStorage)
 			if err != nil {
 				return fmt.Errorf("verify tree fast: %w", err)
 			}
@@ -250,6 +266,25 @@ func (m *migrator) verifyTreeFast(ctx context.Context, oldTreeStorage oldstorage
 		}
 	}
 	return nil
+}
+
+func (m *migrator) verifyTreeFull(ctx context.Context, newStoreCollection anystore.Collection, oldTreeStorage oldstorage2.TreeStorage) error {
+	iterator, ok := oldTreeStorage.(oldStoreChangesIterator)
+	if !ok {
+		return fmt.Errorf("old tree storage doesn't implement iterator")
+	}
+
+	anyParser := &anyenc.Parser{}
+	return iterator.IterateChanges(func(id string, oldChange []byte) error {
+		doc, err := newStoreCollection.FindIdWithParser(ctx, anyParser, id)
+		if err != nil {
+			return fmt.Errorf("get new store document: %w", err)
+		}
+		if !bytes.Equal(oldChange, doc.Value().GetBytes("r")) {
+			return fmt.Errorf("old tree change does not match tree storage")
+		}
+		return nil
+	})
 }
 
 func (m *migrator) doObjectStoreDb(ctx context.Context, proc func(db anystore.DB) error) error {
