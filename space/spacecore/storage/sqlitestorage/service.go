@@ -52,6 +52,7 @@ type storageService struct {
 		allTreeDelStatus,
 		change,
 		hasTree,
+		listChanges,
 		hasChange,
 		updateTreeHeads,
 		deleteTree,

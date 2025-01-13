@@ -2,6 +2,7 @@ package sqlitestorage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -101,7 +102,19 @@ func (t *treeStorage) Heads() ([]string, error) {
 }
 
 func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
-	return nil, fmt.Errorf("get all change ids should not be called")
+	rows, err := t.service.stmt.listChanges.Query(t.treeId)
+	if err != nil {
+		return nil, replaceNoRowsErr(err, nil)
+	}
+	for rows.Next() {
+		var id string
+		err = rows.Scan(&id)
+		if err != nil {
+			return nil, errors.Join(rows.Close(), err)
+		}
+		chs = append(chs, id)
+	}
+	return chs, rows.Close()
 }
 
 func (t *treeStorage) SetHeads(heads []string) error {

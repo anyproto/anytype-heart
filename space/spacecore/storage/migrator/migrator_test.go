@@ -17,12 +17,14 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 type fixture struct {
-	app *app.App
-	cfg *config.Config
+	migrator *migrator
+	app      *app.App
+	cfg      *config.Config
 }
 
 type quicPreferenceSetterStub struct {
@@ -62,10 +64,12 @@ func (fx *fixture) start(t *testing.T) {
 	eventSender.EXPECT().BroadcastExceptSessions(mock.Anything, mock.Anything).Run(func(ev *pb.Event, exceptSessions []string) {
 		t.Log(ev)
 	}).Maybe()
-	migrator := New()
+
+	migrator := New().(*migrator)
 
 	ctx := context.Background()
 	testApp := &app.App{}
+	testApp.Register(migratorfinisher.New())
 	testApp.Register(testutil.PrepareMock(ctx, testApp, eventSender))
 	testApp.Register(&quicPreferenceSetterStub{})
 	testApp.Register(walletService)
@@ -76,6 +80,7 @@ func (fx *fixture) start(t *testing.T) {
 	testApp.Register(migrator)
 
 	fx.app = testApp
+	fx.migrator = migrator
 
 	err := testApp.Start(ctx)
 	require.NoError(t, err)
@@ -97,6 +102,9 @@ func TestMigration(t *testing.T) {
 		// TODO Test object->space bindings were populated
 
 		fx.start(t)
+
+		err = fx.migrator.verify(context.Background(), true)
+		require.NoError(t, err)
 	})
 }
 

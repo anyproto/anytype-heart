@@ -88,6 +88,9 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.hasChange, err = s.readDb.Prepare(`SELECT COUNT(*) FROM changes WHERE id = ? AND treeId = ?`); err != nil {
 		return
 	}
+	if s.stmt.listChanges, err = s.readDb.Prepare(`SELECT id FROM changes WHERE treeId = ?`); err != nil {
+		return
+	}
 	if s.stmt.updateTreeHeads, err = s.writeDb.Prepare(`UPDATE trees SET heads = ? WHERE id = ?`); err != nil {
 		return
 	}
