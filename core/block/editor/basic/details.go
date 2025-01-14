@@ -3,6 +3,7 @@ package basic
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -403,13 +404,18 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 }
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
+	fromLayout, _ := s.Layout()
+
 	if !ignoreRestriction {
 		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
 			return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
 		}
+
+		if !isLayoutConversionAllowed(fromLayout, toLayout) {
+			return fmt.Errorf("layout change from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
+		}
 	}
 
-	fromLayout, _ := s.Layout()
 	s.SetDetail(bundle.RelationKeyLayout, domain.Int64(toLayout))
 	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
@@ -422,4 +428,33 @@ func removeInternalFlags(s *state.State) {
 	flags.Remove(model.InternalFlag_editorSelectType)
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(s)
+}
+
+func isLayoutConversionAllowed(from, to model.ObjectTypeLayout) bool {
+	if from == to {
+		return true
+	}
+
+	if isPageLayout(from) && isPageLayout(to) {
+		return true
+	}
+
+	if isSetLayout(from) && isSetLayout(to) {
+		return true
+	}
+
+	return false
+}
+
+func isPageLayout(layout model.ObjectTypeLayout) bool {
+	return slices.Contains([]model.ObjectTypeLayout{
+		model.ObjectType_basic,
+		model.ObjectType_todo,
+		model.ObjectType_note,
+		model.ObjectType_profile,
+	}, layout)
+}
+
+func isSetLayout(layout model.ObjectTypeLayout) bool {
+	return slices.Contains([]model.ObjectTypeLayout{model.ObjectType_collection, model.ObjectType_set}, layout)
 }
