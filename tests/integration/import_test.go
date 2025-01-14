@@ -22,7 +22,6 @@ func TestImportFileFromRelation(t *testing.T) {
 
 	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
-		filterEqualsToInteger(bundle.RelationKeyResolvedLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "Saturn"),
 		filterEqualsToString(bundle.RelationKeyFileMimeType, "image/jpeg"),
 		filterNotEmpty(bundle.RelationKeyFileId),
@@ -85,7 +84,6 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 
 	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
-		filterEqualsToInteger(bundle.RelationKeyResolvedLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "saturn"), // Name comes from file's name
 		filterEqualsToString(bundle.RelationKeyFileMimeType, "image/jpeg"),
 		filterNotEmpty(bundle.RelationKeyFileId),
@@ -126,7 +124,6 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 
 	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
-		filterEqualsToInteger(bundle.RelationKeyResolvedLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "test_image"),
 		filterEqualsToString(bundle.RelationKeyFileMimeType, "image/png"),
 		filterNotEmpty(bundle.RelationKeyFileId),
