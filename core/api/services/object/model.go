@@ -11,11 +11,6 @@ type CreateObjectRequest struct {
 	WithChat            bool   `json:"with_chat"`
 }
 
-// TODO: Add fields to the request
-type UpdateObjectRequest struct {
-	Object Object `json:"object"`
-}
-
 type ObjectResponse struct {
 	Object Object `json:"object"`
 }

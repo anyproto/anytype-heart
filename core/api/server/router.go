@@ -41,7 +41,6 @@ func (s *Server) NewRouter(a *app.App) *gin.Engine {
 
 		// Export
 		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
-		v1.POST("/spaces/:space_id/objects/export/:format", export.GetSpaceExportHandler(s.exportService))
 
 		// Object
 		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
@@ -50,7 +49,6 @@ func (s *Server) NewRouter(a *app.App) *gin.Engine {
 		v1.GET("/spaces/:space_id/object_types", object.GetTypesHandler(s.objectService))
 		v1.GET("/spaces/:space_id/object_types/:typeId/templates", object.GetTemplatesHandler(s.objectService))
 		v1.POST("/spaces/:space_id/objects", object.CreateObjectHandler(s.objectService))
-		v1.PUT("/spaces/:space_id/objects/:object_id", object.UpdateObjectHandler(s.objectService))
 
 		// Search
 		v1.GET("/search", search.SearchHandler(s.searchService))

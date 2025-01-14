@@ -160,50 +160,6 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 	}
 }
 
-// UpdateObjectHandler updates an existing object in a specific space
-//
-//	@Summary	Update an existing object in a specific space
-//	@Tags		objects
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path		string					true	"The ID of the space"
-//	@Param		object_id	path		string					true	"The ID of the object"
-//	@Param		object		body		Object					true	"The updated object details"
-//	@Success	200			{object}	ObjectResponse			"The updated object"
-//	@Failure	400			{object}	util.ValidationError	"Bad request"
-//	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure	404			{object}	util.NotFoundError		"Resource not found"
-//	@Failure	502			{object}	util.ServerError		"Internal server error"
-//	@Router		/spaces/{space_id}/objects/{object_id} [put]
-func UpdateObjectHandler(s *ObjectService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		spaceId := c.Param("space_id")
-		objectId := c.Param("object_id")
-
-		request := UpdateObjectRequest{}
-		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
-			c.JSON(http.StatusBadRequest, apiErr)
-			return
-		}
-
-		object, err := s.UpdateObject(c.Request.Context(), spaceId, objectId, request)
-		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrNotImplemented, http.StatusNotImplemented),
-			util.ErrToCode(ErrFailedUpdateObject, http.StatusInternalServerError),
-			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
-		)
-
-		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
-			c.JSON(code, apiErr)
-			return
-		}
-
-		c.JSON(http.StatusNotImplemented, ObjectResponse{Object: object})
-	}
-}
-
 // GetTypesHandler retrieves object types in a specific space
 //
 //	@Summary	Retrieve object types in a specific space

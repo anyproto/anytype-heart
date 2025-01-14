@@ -26,8 +26,6 @@ var (
 	ErrFailedSetRelationFeatured  = errors.New("failed to set relation featured")
 	ErrFailedFetchBookmark        = errors.New("failed to fetch bookmark")
 	ErrFailedPasteBody            = errors.New("failed to paste body")
-	ErrNotImplemented             = errors.New("not implemented")
-	ErrFailedUpdateObject         = errors.New("failed to update object")
 	ErrFailedRetrieveTypes        = errors.New("failed to retrieve types")
 	ErrNoTypesFound               = errors.New("no types found")
 	ErrFailedRetrieveTemplateType = errors.New("failed to retrieve template type")
@@ -42,7 +40,6 @@ type Service interface {
 	GetObject(ctx context.Context, spaceId string, objectId string) (Object, error)
 	DeleteObject(ctx context.Context, spaceId string, objectId string) error
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error)
-	UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (Object, error)
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]ObjectType, int, bool, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]ObjectTemplate, int, bool, error)
 }
@@ -264,12 +261,6 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 	}
 
 	return s.GetObject(ctx, spaceId, resp.ObjectId)
-}
-
-// UpdateObject updates an existing object in a specific space.
-func (s *ObjectService) UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (Object, error) {
-	// TODO: Implement logic to update an existing object
-	return Object{}, ErrNotImplemented
 }
 
 // ListTypes returns a paginated list of types in a specific space.

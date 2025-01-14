@@ -48,12 +48,3 @@ func GetObjectExportHandler(s *ExportService) gin.HandlerFunc {
 		c.JSON(http.StatusOK, ObjectExportResponse{Path: outputPath})
 	}
 }
-
-func GetSpaceExportHandler(s *ExportService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// spaceId := c.Param("space_id")
-		// format := c.Query("format")
-
-		c.JSON(http.StatusNotImplemented, "Not implemented")
-	}
-}

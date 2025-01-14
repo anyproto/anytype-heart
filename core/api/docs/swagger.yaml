@@ -799,52 +799,6 @@ paths:
       summary: Retrieve a specific object in a space
       tags:
       - objects
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: The ID of the space
-        in: path
-        name: space_id
-        required: true
-        type: string
-      - description: The ID of the object
-        in: path
-        name: object_id
-        required: true
-        type: string
-      - description: The updated object details
-        in: body
-        name: object
-        required: true
-        schema:
-          $ref: '#/definitions/object.Object'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: The updated object
-          schema:
-            $ref: '#/definitions/object.ObjectResponse'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/util.ValidationError'
-        "403":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/util.UnauthorizedError'
-        "404":
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/util.NotFoundError'
-        "502":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/util.ServerError'
-      summary: Update an existing object in a specific space
-      tags:
-      - objects
   /spaces/{space_id}/objects/{object_id}/export/{format}:
     post:
       consumes:

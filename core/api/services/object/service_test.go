@@ -405,27 +405,6 @@ func TestObjectService_CreateObject(t *testing.T) {
 	})
 }
 
-func TestObjectService_UpdateObject(t *testing.T) {
-	t.Run("not implemented", func(t *testing.T) {
-		// given
-		ctx := context.Background()
-		fx := newFixture(t)
-
-		// when
-		object, err := fx.UpdateObject(ctx, mockedSpaceId, mockedObjectId, UpdateObjectRequest{
-			Object: Object{
-				Name: "Updated Object",
-			},
-		})
-
-		// then
-		require.ErrorIs(t, err, ErrNotImplemented)
-		require.Empty(t, object)
-	})
-
-	// TODO: further tests
-}
-
 func TestObjectService_ListTypes(t *testing.T) {
 	t.Run("types found", func(t *testing.T) {
 		// given
