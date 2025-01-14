@@ -24857,6 +24857,7 @@ sent when the view have been changed or added
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
+| align | [model.Block.Align](#anytype-model-Block-Align) |  |  |
 
 
 

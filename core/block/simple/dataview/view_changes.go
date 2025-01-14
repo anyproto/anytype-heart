@@ -13,6 +13,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		a.Name == b.Name &&
 		a.CoverRelationKey == b.CoverRelationKey &&
 		a.HideIcon == b.HideIcon &&
+		a.Align == b.Align &&
 		a.CardSize == b.CardSize &&
 		a.CoverFit == b.CoverFit &&
 		a.GroupRelationKey == b.GroupRelationKey &&
@@ -29,6 +30,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		Name:                  b.Name,
 		CoverRelationKey:      b.CoverRelationKey,
 		HideIcon:              b.HideIcon,
+		Align:                 b.Align,
 		CardSize:              b.CardSize,
 		CoverFit:              b.CoverFit,
 		GroupRelationKey:      b.GroupRelationKey,
@@ -230,6 +232,7 @@ func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		view.Name = f.Name
 		view.CoverRelationKey = f.CoverRelationKey
 		view.HideIcon = f.HideIcon
+		view.Align = f.Align
 		view.CardSize = f.CardSize
 		view.CoverFit = f.CoverFit
 		view.GroupRelationKey = f.GroupRelationKey
