@@ -15576,6 +15576,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | includeFiles | [bool](#bool) |  | include all files |
 | isJson | [bool](#bool) |  | for protobuf export |
 | includeArchived | [bool](#bool) |  | for migration |
+| noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
 
 
 

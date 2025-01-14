@@ -39,6 +39,7 @@ func (s *ExportService) GetObjectExport(ctx context.Context, spaceId string, obj
 		IncludeFiles:    true,
 		IsJson:          false,
 		IncludeArchived: false,
+		NoProgress:      true,
 	})
 
 	if resp.Error.Code != pb.RpcObjectListExportResponseError_NULL {

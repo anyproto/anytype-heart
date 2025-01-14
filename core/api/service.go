@@ -133,6 +133,7 @@ func (s *apiService) Start() error {
 
 	return nil
 }
+
 func (s *apiService) Stop() error {
 	if s.httpSrv == nil {
 		return ErrServerNotStarted
