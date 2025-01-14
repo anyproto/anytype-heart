@@ -25,26 +25,17 @@ func GetIconFromEmojiOrImage(accountInfo *model.AccountInfo, iconEmoji string, i
 	}
 
 	if iconImage != "" {
-		return GetGatewayURLForMedia(accountInfo, iconImage, true)
+		return fmt.Sprintf("%s/image/%s", accountInfo.GatewayUrl, iconImage)
 	}
 
 	return ""
-}
-
-// GetGatewayURLForMedia returns the URL of file gateway for the media object with the given ID
-func GetGatewayURLForMedia(accountInfo *model.AccountInfo, objectId string, isIcon bool) string {
-	widthParam := ""
-	if isIcon {
-		widthParam = "?width=100"
-	}
-	return fmt.Sprintf("%s/image/%s%s", accountInfo.GatewayUrl, objectId, widthParam)
 }
 
 // ResolveTypeToName resolves the type ID to the name of the type, e.g. "ot-page" to "Page" or "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu" to "Custom Type"
 func ResolveTypeToName(mw service.ClientCommandsServer, spaceId string, typeId string) (typeName string, err error) {
 	// Can't look up preinstalled types based on relation key, therefore need to use unique key
 	relKey := bundle.RelationKeyId.String()
-	if strings.Contains(typeId, "ot-") {
+	if strings.HasPrefix(typeId, "ot-") {
 		relKey = bundle.RelationKeyUniqueKey.String()
 	}
 
