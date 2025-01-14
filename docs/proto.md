@@ -28334,6 +28334,7 @@ Bookmark is to keep a web-link and to preview a content.
 | timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
 | dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
 | formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
+| align | [Block.Align](#anytype-model-Block-Align) |  |  |
 
 
 
