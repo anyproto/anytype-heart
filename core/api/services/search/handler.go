@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/pagination"
-	"github.com/anyproto/anytype-heart/core/api/space"
+	"github.com/anyproto/anytype-heart/core/api/services/space"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 

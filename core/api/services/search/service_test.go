@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	object2 "github.com/anyproto/anytype-heart/core/api/object"
-	"github.com/anyproto/anytype-heart/core/api/space"
+	"github.com/anyproto/anytype-heart/core/api/services/object"
+	"github.com/anyproto/anytype-heart/core/api/services/space"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -34,7 +34,7 @@ func newFixture(t *testing.T) *fixture {
 
 	spaceService := space.NewService(mw)
 	spaceService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
-	objectService := object2.NewService(mw)
+	objectService := object.NewService(mw)
 	objectService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
 	searchService := NewService(mw, spaceService, objectService)
 	searchService.AccountInfo = &model.AccountInfo{
@@ -221,9 +221,9 @@ func TestSearchService_Search(t *testing.T) {
 		}
 
 		// check tags
-		tags := []object2.Tag{}
+		tags := []object.Tag{}
 		for _, detail := range objects[0].Details {
-			if tagList, ok := detail.Details["tags"].([]object2.Tag); ok {
+			if tagList, ok := detail.Details["tags"].([]object.Tag); ok {
 				for _, tag := range tagList {
 					tags = append(tags, tag)
 				}

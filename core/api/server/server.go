@@ -4,11 +4,11 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/auth"
-	"github.com/anyproto/anytype-heart/core/api/export"
-	"github.com/anyproto/anytype-heart/core/api/object"
-	"github.com/anyproto/anytype-heart/core/api/search"
-	"github.com/anyproto/anytype-heart/core/api/space"
+	"github.com/anyproto/anytype-heart/core/api/services/auth"
+	"github.com/anyproto/anytype-heart/core/api/services/export"
+	"github.com/anyproto/anytype-heart/core/api/services/object"
+	"github.com/anyproto/anytype-heart/core/api/services/search"
+	"github.com/anyproto/anytype-heart/core/api/services/space"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
 
