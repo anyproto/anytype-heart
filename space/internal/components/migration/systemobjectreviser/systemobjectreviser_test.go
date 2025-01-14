@@ -38,8 +38,10 @@ func TestMigration_Run(t *testing.T) {
 
 		spc := mock_space.NewMockSpace(t)
 		spc.EXPECT().Id().Return("space1").Maybe()
-
 		spc.EXPECT().DoCtx(ctx, "id1", mock.Anything).Return(nil).Times(1)
+		spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 
 		// when
 		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), spc)
@@ -165,6 +167,9 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 
 		// when
 		toRevise, err := reviseObject(ctx, log, space, rel)
@@ -183,6 +188,9 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 
 		// when
 		toRevise, err := reviseObject(ctx, log, space, rel)
@@ -252,6 +260,9 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 
 		// when
 		toRevise, err := reviseObject(ctx, log, space, rel)

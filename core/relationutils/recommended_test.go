@@ -1,4 +1,4 @@
-package objectcreator
+package relationutils
 
 import (
 	"context"
@@ -70,7 +70,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			})
 
 			// when
-			keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
 
 			// then
 			assert.NoError(t, err)
@@ -90,7 +90,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 		})
 
 		// when
-		keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
 
 		// then
 		assert.NoError(t, err)
@@ -129,7 +129,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			})
 
 			// when
-			keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
 
 			// then
 			assert.NoError(t, err)
@@ -139,6 +139,35 @@ func TestFillRecommendedRelations(t *testing.T) {
 			assert.Len(t, keys, len(tc.expected)+3)
 		})
 	}
+
+	t.Run("recommendedRelations of file types", func(t *testing.T) {
+		// given
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
+				bundle.RelationKeyOrigin.BundledURL(),
+				bundle.RelationKeyFileExt.BundledURL(),
+				bundle.RelationKeyAddedDate.BundledURL(),
+				bundle.RelationKeyCameraIso.BundledURL(),
+				bundle.RelationKeyAperture.BundledURL(),
+			}),
+			bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyImage.URL()),
+		})
+
+		// when
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, isAlreadyFilled)
+		assert.Equal(t, buildRelationIds(append(nonFileSpecificRelationKeys, defaultRecommendedRelationKeys...)), details.GetStringList(bundle.RelationKeyRecommendedRelations))
+		assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+		assert.Equal(t, []string{
+			bundle.RelationKeyFileExt.URL(),
+			bundle.RelationKeyCameraIso.URL(),
+			bundle.RelationKeyAperture.URL(),
+		}, details.GetStringList(bundle.RelationKeyRecommendedFileRelations))
+		assert.Len(t, keys, 11)
+	})
 }
 
 func buildRelationIds(keys []domain.RelationKey) []string {
