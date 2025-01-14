@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -19,10 +21,15 @@ const (
 )
 
 var (
-	mwSrv service.ClientCommandsServer
+	mwSrv                   service.ClientCommandsServer
+	ErrPortAlreadyUsed      = fmt.Errorf("port %s is already in use", httpPort)
+	ErrServerAlreadyStarted = fmt.Errorf("server already started")
+	ErrServerNotStarted     = fmt.Errorf("server not started")
 )
 
 type Api interface {
+	Start() error
+	Stop() error
 	app.ComponentRunnable
 }
 
@@ -59,24 +66,27 @@ func (s *apiService) Name() (name string) {
 //	@externalDocs.description	OpenAPI
 //	@externalDocs.url			https://swagger.io/resources/open-api/
 func (s *apiService) Init(a *app.App) (err error) {
-	fmt.Println("Initializing API service...")
-
 	s.srv = server.NewServer(a, s.mw)
+	return nil
+}
+
+func (s *apiService) Run(ctx context.Context) (err error) {
+	// TODO: remove once client takes responsibility
 	s.httpSrv = &http.Server{
 		Addr:              httpPort,
 		Handler:           s.srv.Engine(),
 		ReadHeaderTimeout: timeout,
 	}
 
-	return nil
-}
-
-func (s *apiService) Run(ctx context.Context) (err error) {
 	fmt.Printf("Starting API server on %s\n", s.httpSrv.Addr)
 
 	go func() {
-		if err := s.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("API server ListenAndServe error: %v\n", err)
+		if err := s.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if strings.Contains(err.Error(), "address already in use") {
+				fmt.Printf("API server ListenAndServe error: %v\n", ErrPortAlreadyUsed)
+			} else {
+				fmt.Printf("API server ListenAndServe error: %v\n", err)
+			}
 		}
 	}()
 
@@ -84,18 +94,59 @@ func (s *apiService) Run(ctx context.Context) (err error) {
 }
 
 func (s *apiService) Close(ctx context.Context) (err error) {
-	fmt.Println("Closing API service...")
+	if s.httpSrv == nil {
+		return nil
+	}
 
-	// Give the server a short time to finish ongoing requests.
 	shutdownCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {
-		fmt.Printf("API server shutdown error: %v\n", err)
 		return err
 	}
 
-	fmt.Println("API service stopped gracefully.")
+	return nil
+}
+
+func (s *apiService) Start() error {
+	if s.httpSrv != nil {
+		return ErrServerAlreadyStarted
+	}
+
+	s.httpSrv = &http.Server{
+		Addr:              httpPort,
+		Handler:           s.srv.Engine(),
+		ReadHeaderTimeout: timeout,
+	}
+
+	fmt.Printf("Starting API server on %s\n", s.httpSrv.Addr)
+
+	go func() {
+		if err := s.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if strings.Contains(err.Error(), "address already in use") {
+				fmt.Printf("API server ListenAndServe error: %v\n", ErrPortAlreadyUsed)
+			} else {
+				fmt.Printf("API server ListenAndServe error: %v\n", err)
+			}
+		}
+	}()
+
+	return nil
+}
+func (s *apiService) Stop() error {
+	if s.httpSrv == nil {
+		return ErrServerNotStarted
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {
+		return err
+	}
+
+	// Clear the server reference to allow reinitialization
+	s.httpSrv = nil
 	return nil
 }
 

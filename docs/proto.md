@@ -107,6 +107,15 @@
     - [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request)
     - [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response)
     - [Rpc.Account.Stop.Response.Error](#anytype-Rpc-Account-Stop-Response-Error)
+    - [Rpc.Api](#anytype-Rpc-Api)
+    - [Rpc.Api.StartServer](#anytype-Rpc-Api-StartServer)
+    - [Rpc.Api.StartServer.Request](#anytype-Rpc-Api-StartServer-Request)
+    - [Rpc.Api.StartServer.Response](#anytype-Rpc-Api-StartServer-Response)
+    - [Rpc.Api.StartServer.Response.Error](#anytype-Rpc-Api-StartServer-Response-Error)
+    - [Rpc.Api.StopServer](#anytype-Rpc-Api-StopServer)
+    - [Rpc.Api.StopServer.Request](#anytype-Rpc-Api-StopServer-Request)
+    - [Rpc.Api.StopServer.Response](#anytype-Rpc-Api-StopServer-Response)
+    - [Rpc.Api.StopServer.Response.Error](#anytype-Rpc-Api-StopServer-Response-Error)
     - [Rpc.App](#anytype-Rpc-App)
     - [Rpc.App.GetVersion](#anytype-Rpc-App-GetVersion)
     - [Rpc.App.GetVersion.Request](#anytype-Rpc-App-GetVersion-Request)
@@ -1267,6 +1276,8 @@
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code)
+    - [Rpc.Api.StartServer.Response.Error.Code](#anytype-Rpc-Api-StartServer-Response-Error-Code)
+    - [Rpc.Api.StopServer.Response.Error.Code](#anytype-Rpc-Api-StopServer-Response-Error-Code)
     - [Rpc.App.GetVersion.Response.Error.Code](#anytype-Rpc-App-GetVersion-Response-Error-Code)
     - [Rpc.App.SetDeviceState.Request.DeviceState](#anytype-Rpc-App-SetDeviceState-Request-DeviceState)
     - [Rpc.App.SetDeviceState.Response.Error.Code](#anytype-Rpc-App-SetDeviceState-Response-Error-Code)
@@ -2233,6 +2244,8 @@
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| ApiStartServer | [Rpc.Api.StartServer.Request](#anytype-Rpc-Api-StartServer-Request) | [Rpc.Api.StartServer.Response](#anytype-Rpc-Api-StartServer-Response) | API *** |
+| ApiStopServer | [Rpc.Api.StopServer.Request](#anytype-Rpc-Api-StopServer-Request) | [Rpc.Api.StopServer.Response](#anytype-Rpc-Api-StopServer-Response) |  |
 
  
 
@@ -3695,6 +3708,118 @@ Middleware-to-front-end response for an account stop request
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Api"></a>
+
+### Rpc.Api
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Api-StartServer"></a>
+
+### Rpc.Api.StartServer
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Api-StartServer-Request"></a>
+
+### Rpc.Api.StartServer.Request
+empty
+
+
+
+
+
+
+<a name="anytype-Rpc-Api-StartServer-Response"></a>
+
+### Rpc.Api.StartServer.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Api.StartServer.Response.Error](#anytype-Rpc-Api-StartServer-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Api-StartServer-Response-Error"></a>
+
+### Rpc.Api.StartServer.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Api.StartServer.Response.Error.Code](#anytype-Rpc-Api-StartServer-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Api-StopServer"></a>
+
+### Rpc.Api.StopServer
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Api-StopServer-Request"></a>
+
+### Rpc.Api.StopServer.Request
+empty
+
+
+
+
+
+
+<a name="anytype-Rpc-Api-StopServer-Response"></a>
+
+### Rpc.Api.StopServer.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Api.StopServer.Response.Error](#anytype-Rpc-Api-StopServer-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Api-StopServer-Response-Error"></a>
+
+### Rpc.Api.StopServer.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Api.StopServer.Response.Error.Code](#anytype-Rpc-Api-StopServer-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -20599,6 +20724,35 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_IS_NOT_RUNNING | 101 |  |
 | FAILED_TO_STOP_NODE | 102 |  |
 | FAILED_TO_REMOVE_ACCOUNT_DATA | 103 |  |
+
+
+
+<a name="anytype-Rpc-Api-StartServer-Response-Error-Code"></a>
+
+### Rpc.Api.StartServer.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| PORT_ALREADY_USED | 3 |  |
+| SERVER_ALREADY_STARTED | 4 |  |
+
+
+
+<a name="anytype-Rpc-Api-StopServer-Response-Error-Code"></a>
+
+### Rpc.Api.StopServer.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| SERVER_NOT_STARTED | 3 |  |
 
 
 
