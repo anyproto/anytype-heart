@@ -185,6 +185,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	v.PageLimit = view.PageLimit
 	v.DefaultTemplateId = view.DefaultTemplateId
 	v.DefaultObjectTypeId = view.DefaultObjectTypeId
+	v.Align = view.Align
 
 	return nil
 }
@@ -207,6 +208,7 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 	v.PageLimit = view.PageLimit
 	v.DefaultTemplateId = view.DefaultTemplateId
 	v.DefaultObjectTypeId = view.DefaultObjectTypeId
+	v.Align = view.Align
 
 	return nil
 }
