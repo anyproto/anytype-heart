@@ -106,14 +106,23 @@ func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 }
 
 func Init(root string, logLevels string, sendLogs bool, saveLogs bool) {
+	println("### go Init brr")
+	println("### root: " + root)
 	if root != "" {
+		println("### root is not empty")
 		environment.ROOT_PATH = filepath.Join(root, "common")
-		err := os.MkdirAll(environment.ROOT_PATH, 0755)
+		err := os.MkdirAll(environment.ROOT_PATH, 0644)
 		if err != nil {
 			if !os.IsExist(err) {
-				fmt.Println("failed to create global dir", err)
+				res, _ := fmt.Printf("### failed to create global dir 1", err)
+				println(res)
+			} else {
+				res, _ := fmt.Printf("### failed to create global dir 2", err)
+				println(res)
 			}
 		}
+	} else {
+		println("### root is empty")
 	}
 
 	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" || !sendLogs {
