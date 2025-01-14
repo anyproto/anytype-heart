@@ -7,20 +7,19 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
+type mockDeriver struct{}
+
+func (d *mockDeriver) DeriveObjectID(ctx context.Context, key domain.UniqueKey) (string, error) {
+	return domain.RelationKey(key.InternalKey()).URL(), nil
+}
+
 func TestFillRecommendedRelations(t *testing.T) {
-	spc := mock_clientspace.NewMockSpace(t)
-	spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.UniqueKey) (string, error) {
-		return domain.RelationKey(key.InternalKey()).URL(), nil
-	}).Maybe()
-	spc.EXPECT().IsReadOnly().Return(true).Maybe()
 	defaultRecFeatRelIds := buildRelationIds(defaultRecommendedFeaturedRelationKeys)
 	defaultRecRelIds := buildRelationIds(defaultRecommendedRelationKeys)
 
@@ -70,7 +69,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			})
 
 			// when
-			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
 
 			// then
 			assert.NoError(t, err)
@@ -90,7 +89,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 		})
 
 		// when
-		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
 
 		// then
 		assert.NoError(t, err)
@@ -129,7 +128,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			})
 
 			// when
-			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
 
 			// then
 			assert.NoError(t, err)
@@ -154,7 +153,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 		})
 
 		// when
-		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, spc, details)
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
 
 		// then
 		assert.NoError(t, err)
