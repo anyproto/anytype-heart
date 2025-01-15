@@ -91,7 +91,7 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 
 		treeIds, err := store.StoredIds()
 		require.NoError(t, err)
-		assert.Equal(t, []string{payload.SpaceSettingsWithId.Id, otherStore.Id()}, treeIds)
+		assert.Equal(t, []string{payload.SpaceSettingsWithId.Id}, treeIds)
 
 		deletedIds, err := store.(*spaceStorage).AllDeletedTreeIds()
 		require.NoError(t, err)

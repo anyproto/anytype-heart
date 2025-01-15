@@ -1,9 +1,12 @@
 package sqlitestorage
 
 import (
+	"bytes"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"slices"
+	"sort"
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -55,7 +58,7 @@ func TestTreeStorage_Methods(t *testing.T) {
 	})
 
 	t.Run("add raw change, get change and has change", func(t *testing.T) {
-		newChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("ab"), Id: "newId"}
+		newChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("ab"), Id: "id10"}
 		require.NoError(t, store.AddRawChange(newChange))
 		rawCh, err := store.GetRawChange(ctx, newChange.Id)
 		require.NoError(t, err)
@@ -72,6 +75,55 @@ func TestTreeStorage_Methods(t *testing.T) {
 		has, err := store.HasChange(ctx, incorrectId)
 		require.NoError(t, err)
 		require.False(t, has)
+	})
+
+	t.Run("iterate changes", func(t *testing.T) {
+		newChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("foo"), Id: "id01"}
+		require.NoError(t, store.AddRawChange(newChange))
+		newChange = &treechangeproto.RawTreeChangeWithId{RawChange: []byte("bar"), Id: "id20"}
+		require.NoError(t, store.AddRawChange(newChange))
+
+		var collected []*treechangeproto.RawTreeChangeWithId
+		require.NoError(t, store.IterateChanges(func(id string, rawChange []byte) error {
+			collected = append(collected, &treechangeproto.RawTreeChangeWithId{
+				Id:        id,
+				RawChange: bytes.Clone(rawChange),
+			})
+			return nil
+		}))
+
+		want := slices.Clone(payload.Changes)
+		want = append(want, []*treechangeproto.RawTreeChangeWithId{
+			{Id: "id01", RawChange: []byte("foo")},
+			{Id: "id10", RawChange: []byte("ab")},
+			{Id: "id20", RawChange: []byte("bar")},
+		}...)
+
+		sort.Slice(want, func(i, j int) bool {
+			return want[i].Id < want[j].Id
+		})
+		assert.Equal(t, want, collected)
+
+		got, err := store.GetAllChanges()
+		require.NoError(t, err)
+
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("get all change ids", func(t *testing.T) {
+		got, err := store.GetAllChangeIds()
+		require.NoError(t, err)
+
+		want := []string{
+			payload.Changes[0].Id,
+			payload.Changes[1].Id,
+			"id01",
+			"id10",
+			"id20",
+		}
+		sort.Strings(want)
+
+		assert.Equal(t, want, got)
 	})
 }
 

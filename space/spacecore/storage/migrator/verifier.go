@@ -53,10 +53,6 @@ func (v *verifier) verify(ctx context.Context) error {
 	return nil
 }
 
-type oldStoreChangesIterator interface {
-	IterateChanges(proc func(id string, rawChange []byte) error) error
-}
-
 func (v *verifier) verifySpace(ctx context.Context, spaceId string) (*verificationReport, error) {
 	oldStore, err := v.oldStorage.WaitSpaceStorage(ctx, spaceId)
 	if err != nil {
@@ -160,9 +156,9 @@ func (v *verifier) verifyChangesFast(ctx context.Context, oldTreeStorage oldstor
 }
 
 func (v *verifier) verifyChangesFull(ctx context.Context, newStoreCollection anystore.Collection, oldTreeStorage oldstorage2.TreeStorage) (int, error) {
-	iterator, ok := oldTreeStorage.(oldStoreChangesIterator)
+	iterator, ok := oldTreeStorage.(oldstorage2.ChangesIterator)
 	if !ok {
-		return 0, fmt.Errorf("old tree storage doesn't implement iterator")
+		return 0, fmt.Errorf("old tree storage does not implement ChangesIterator")
 	}
 	var bytesCompared int
 	iter, err := newStoreCollection.Find(query.Key{Path: []string{"t"}, Filter: query.NewComp(query.CompOpEq, oldTreeStorage.Id())}).Sort("id").Iter(ctx)

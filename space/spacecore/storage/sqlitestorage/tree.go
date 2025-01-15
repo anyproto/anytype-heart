@@ -1,6 +1,7 @@
 package sqlitestorage
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -115,6 +116,18 @@ func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
 		chs = append(chs, id)
 	}
 	return chs, rows.Close()
+}
+
+func (t *treeStorage) GetAllChanges() ([]*treechangeproto.RawTreeChangeWithId, error) {
+	var changes []*treechangeproto.RawTreeChangeWithId
+	err := t.IterateChanges(func(id string, rawChange []byte) error {
+		changes = append(changes, &treechangeproto.RawTreeChangeWithId{
+			Id:        id,
+			RawChange: bytes.Clone(rawChange),
+		})
+		return nil
+	})
+	return changes, err
 }
 
 func (t *treeStorage) IterateChanges(proc func(id string, rawChange []byte) error) error {

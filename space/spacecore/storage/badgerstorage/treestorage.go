@@ -1,6 +1,7 @@
 package badgerstorage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -109,7 +110,74 @@ func (t *treeStorage) Heads() (heads []string, err error) {
 }
 
 func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
-	return nil, fmt.Errorf("get all change ids should not be called")
+	prefix := t.keys.RawChangesPrefix()
+	err = t.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		opts.Prefix = prefix
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			id := item.Key()
+
+			changeId := string(id[len(prefix)+1:])
+			// Special case
+			if changeId == "heads" {
+				continue
+			}
+			chs = append(chs, changeId)
+			if err != nil {
+				return fmt.Errorf("read value: %w", err)
+			}
+		}
+		return nil
+	})
+	return chs, err
+}
+
+func (t *treeStorage) GetAllChanges() ([]*treechangeproto.RawTreeChangeWithId, error) {
+	var changes []*treechangeproto.RawTreeChangeWithId
+	err := t.IterateChanges(func(id string, rawChange []byte) error {
+		changes = append(changes, &treechangeproto.RawTreeChangeWithId{
+			Id:        id,
+			RawChange: bytes.Clone(rawChange),
+		})
+		return nil
+	})
+	return changes, err
+}
+
+func (t *treeStorage) IterateChanges(proc func(id string, rawChange []byte) error) error {
+	prefix := t.keys.RawChangesPrefix()
+	return t.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		opts.Prefix = prefix
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			id := item.Key()
+
+			changeId := string(id[len(prefix)+1:])
+			// Special case
+			if changeId == "heads" {
+				continue
+			}
+			err := item.Value(func(val []byte) error {
+				return proc(changeId, val)
+			})
+			if err != nil {
+				return fmt.Errorf("read value: %w", err)
+			}
+		}
+		return nil
+	})
 }
 
 func (t *treeStorage) SetHeads(heads []string) (err error) {
