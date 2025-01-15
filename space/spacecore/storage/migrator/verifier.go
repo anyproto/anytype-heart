@@ -8,7 +8,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	oldstorage2 "github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
@@ -164,14 +164,27 @@ func (v *verifier) verifyChangesFull(ctx context.Context, newStoreCollection any
 	if !ok {
 		return 0, fmt.Errorf("old tree storage doesn't implement iterator")
 	}
-	anyParser := &anyenc.Parser{}
 	var bytesCompared int
-	err := iterator.IterateChanges(func(id string, oldChange []byte) error {
-		bytesCompared += len(oldChange)
-		doc, err := newStoreCollection.FindIdWithParser(ctx, anyParser, id)
-		if err != nil {
-			return fmt.Errorf("get new store document: %w", err)
+	iter, err := newStoreCollection.Find(query.Key{Path: []string{"t"}, Filter: query.NewComp(query.CompOpEq, oldTreeStorage.Id())}).Sort("id").Iter(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("new store: changes iterator: %w", err)
+	}
+	defer iter.Close()
+	err = iterator.IterateChanges(func(id string, oldChange []byte) error {
+		if !iter.Next() {
+			return fmt.Errorf("new store iterator: no more changes")
 		}
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("new store iterator: read doc: %w", err)
+		}
+
+		newId := doc.Value().GetString("id")
+		if newId != id {
+			return fmt.Errorf("new store iterator: id does not match")
+		}
+
+		bytesCompared += len(oldChange)
 		if !bytes.Equal(oldChange, doc.Value().GetBytes("r")) {
 			return fmt.Errorf("old tree change does not match tree storage")
 		}
