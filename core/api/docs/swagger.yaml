@@ -23,6 +23,7 @@ definitions:
   object.Block:
     properties:
       align:
+        example: AlignLeft
         type: string
       background_color:
         type: string
@@ -37,6 +38,7 @@ definitions:
       text:
         $ref: '#/definitions/object.Text'
       vertical_align:
+        example: VerticalAlignTop
         type: string
     type: object
   object.Detail:

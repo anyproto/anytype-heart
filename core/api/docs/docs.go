@@ -827,7 +827,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "align": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "AlignLeft"
                 },
                 "background_color": {
                     "type": "string"
@@ -848,7 +849,8 @@ const docTemplate = `{
                     "$ref": "#/definitions/object.Text"
                 },
                 "vertical_align": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "VerticalAlignTop"
                 }
             }
         },
