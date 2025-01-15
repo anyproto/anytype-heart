@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -43,8 +44,15 @@ var (
 
 const CName = "common.core.publishservice"
 
+const (
+	membershipLimit = 100 << 20
+	defaultLimit    = 10 << 20
+)
+
 var log = logger.NewNamed(CName)
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
+
+var ErrLimitExceeded = errors.New("limit exceeded")
 
 type PublishResult struct {
 	Cid string
@@ -71,14 +79,19 @@ type Service interface {
 	Publish(ctx context.Context, spaceId, pageObjId, uri string) (res PublishResult, err error)
 }
 
+type MembershipStatusProvider interface {
+	MembershipStatus() model.MembershipStatus
+}
+
 type service struct {
-	commonFile           fileservice.FileService
-	fileSyncService      filesync.FileSync
-	spaceService         space.Service
-	dagService           ipld.DAGService
-	exportService        export.Export
-	publishClientService publishclient.Client
-	accountService       accountservice.Service
+	commonFile               fileservice.FileService
+	fileSyncService          filesync.FileSync
+	spaceService             space.Service
+	dagService               ipld.DAGService
+	exportService            export.Export
+	publishClientService     publishclient.Client
+	accountService           accountservice.Service
+	membershipStatusProvider MembershipStatusProvider
 }
 
 func New() Service {
@@ -93,7 +106,7 @@ func (s *service) Init(a *app.App) error {
 	s.exportService = app.MustComponent[export.Export](a)
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
-
+	s.membershipStatusProvider = app.MustComponent[MembershipStatusProvider](a)
 	return nil
 }
 
@@ -137,6 +150,7 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 		Zip:          false,
 		Path:         tempDir,
 		ObjectIds:    []string{pageId},
+		NoProgress:   true,
 	})
 	if err != nil {
 		return
@@ -367,6 +381,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	// "meta": { "root-page", "inviteLink", and other things}
 	// then, add this `index.json` in `publishTmpFolder`
 
+	limit := s.getPublishLimit()
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
@@ -382,17 +397,30 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		PbFiles: make(map[string]string),
 	}
 
+	var size int64
 	for _, entry := range dirEntries {
 		if entry.IsDir() {
 			var dirFiles []fs.DirEntry
 			dirName := entry.Name()
 
-			if dirName == "files" {
-				err = os.CopyFS(filepath.Join(tempPublishDir, "files"), os.DirFS(filepath.Join(exportPath, "files")))
+			if dirName == export.Files {
+				fileDir := filepath.Join(tempPublishDir, export.Files)
+				err = os.CopyFS(fileDir, os.DirFS(filepath.Join(exportPath, export.Files)))
 				if err != nil {
 					return
 				}
-
+				err = filepath.Walk(fileDir, func(path string, info os.FileInfo, err error) error {
+					if !info.IsDir() {
+						size = size + info.Size()
+						if size > limit {
+							return ErrLimitExceeded
+						}
+					}
+					return nil
+				})
+				if err != nil {
+					return err
+				}
 				continue
 			}
 
@@ -403,7 +431,6 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 
 			for _, file := range dirFiles {
 				withDirName := filepath.Join(dirName, file.Name())
-
 				var snapshotData []byte
 				snapshotData, err = os.ReadFile(filepath.Join(exportPath, withDirName))
 				if err != nil {
@@ -455,9 +482,17 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return
 	}
 
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
 	err = file.Close()
 	if err != nil {
 		return
+	}
+	size = size + stat.Size()
+	if size > limit {
+		return ErrLimitExceeded
 	}
 
 	log.Error("publishing started", zap.String("pageid", pageId), zap.String("uri", uri))
@@ -482,6 +517,15 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	log.Error("publishing finished", zap.String("pageid", pageId))
 	return nil
 
+}
+
+func (s *service) getPublishLimit() int64 {
+	status := s.membershipStatusProvider.MembershipStatus()
+	limit := defaultLimit
+	if status == model.Membership_StatusActive {
+		limit = membershipLimit
+	}
+	return int64(limit)
 }
 
 func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string) (res PublishResult, err error) {

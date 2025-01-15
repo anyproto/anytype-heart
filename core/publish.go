@@ -22,12 +22,14 @@ func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishin
 	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId, req.Uri)
 	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))
 	code := mapErrorCode(err,
-		errToCode(nil, pb.RpcPublishingCreateResponseError_NULL))
+		errToCode(nil, pb.RpcPublishingCreateResponseError_NULL),
+		errToCode(err, pb.RpcPublishingCreateResponseError_UNKNOWN_ERROR),
+		errToCode(publish.ErrLimitExceeded, pb.RpcPublishingCreateResponseError_LIMIT_EXCEEDED))
 
 	r := &pb.RpcPublishingCreateResponse{
 		Error: &pb.RpcPublishingCreateResponseError{
 			Code:        code,
-			Description: getErrorDescription(nil),
+			Description: getErrorDescription(err),
 		},
 		Uri: res.Cid,
 		// PublishCid:     res.Cid,
