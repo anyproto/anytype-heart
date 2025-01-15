@@ -24858,7 +24858,6 @@ sent when the view have been changed or added
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
-| align | [model.Block.Align](#anytype-model-Block-Align) |  |  |
 
 
 
@@ -28336,6 +28335,7 @@ Bookmark is to keep a web-link and to preview a content.
 | timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
 | dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
 | formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
+| align | [Block.Align](#anytype-model-Block-Align) |  |  |
 
 
 
@@ -28417,7 +28417,6 @@ Bookmark is to keep a web-link and to preview a content.
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
-| align | [Block.Align](#anytype-model-Block-Align) |  |  |
 
 
 
