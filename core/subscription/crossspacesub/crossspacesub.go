@@ -84,6 +84,9 @@ func (s *crossSpaceSubscription) run() {
 }
 
 func (s *crossSpaceSubscription) patchEvent(msg *pb.EventMessage) {
+	// Remove spaceId as it's the cross space subscription
+	msg.SpaceId = ""
+
 	matcher := subscriptionservice.EventMatcher{
 		OnAdd: func(add *pb.EventObjectSubscriptionAdd) {
 			add.SubId = s.subId
@@ -171,28 +174,26 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 			return err
 		}
 		for _, id := range ids {
-			err = s.queue.Add(s.ctx, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfSubscriptionRemove{
-					SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
-						SubId: s.subId,
-						Id:    id,
-					},
+			err = s.queue.Add(s.ctx, event.NewMessage("", &pb.EventMessageValueOfSubscriptionRemove{
+				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+					SubId: s.subId,
+					Id:    id,
 				},
-			})
+			},
+			))
 			if err != nil {
 				return fmt.Errorf("send remove event to queue: %w", err)
 			}
 		}
 
 		total := s.removeTotalCount(subId)
-		err = s.queue.Add(s.ctx, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfSubscriptionCounters{
-				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
-					SubId: subId,
-					Total: total,
-				},
+		err = s.queue.Add(s.ctx, event.NewMessage("", &pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: subId,
+				Total: total,
 			},
-		})
+		},
+		))
 		if err != nil {
 			return fmt.Errorf("send counters event to queue: %w", err)
 		}

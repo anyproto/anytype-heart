@@ -21,7 +21,7 @@ func TestDiv_Diff(t *testing.T) {
 	t.Run("type error", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := NewBase(&model.Block{})
-		_, err := b1.Diff(b2)
+		_, err := b1.Diff("", b2)
 		assert.Error(t, err)
 	})
 	t.Run("no diff", func(t *testing.T) {
@@ -29,7 +29,7 @@ func TestDiv_Diff(t *testing.T) {
 		b2 := testBlock()
 		b1.content.Style = model.BlockContentDiv_Dots
 		b2.content.Style = model.BlockContentDiv_Dots
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 0)
 	})
@@ -37,7 +37,7 @@ func TestDiv_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.Restrictions.Read = true
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 1)
 	})
@@ -46,7 +46,7 @@ func TestDiv_Diff(t *testing.T) {
 		b2 := testBlock()
 		b2.SetStyle(model.BlockContentDiv_Dots)
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetDiv{

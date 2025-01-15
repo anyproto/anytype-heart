@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -18,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // oldFile represents file in pre Files-as-Objects format
@@ -29,7 +27,7 @@ type oldFile struct {
 }
 
 func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
-	fileId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	fileId := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyId)
 	filesKeys := map[string]string{}
 	for _, fileKeys := range sn.Snapshot.FileKeys {
 		if fileKeys.Hash == fileId {
@@ -38,7 +36,7 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		}
 	}
 
-	filePath := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySource.String())
+	filePath := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	if filePath != "" {
 		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, filePath, origin, filesKeys, sn.Snapshot.Data.Details)
 		if err != nil {
@@ -69,11 +67,11 @@ func uploadFile(
 	spaceId, filePath string,
 	origin objectorigin.ObjectOrigin,
 	encryptionKeys map[string]string,
-	details *types.Struct,
+	details *domain.Details,
 ) (string, error) {
 	params := pb.RpcFileUploadRequest{
 		SpaceId: spaceId,
-		Details: pbtypes.StructFilterKeys(details, []string{bundle.RelationKeyName.String(), bundle.RelationKeyIsHiddenDiscovery.String()}),
+		Details: details.CopyOnlyKeys(bundle.RelationKeyName, bundle.RelationKeyIsHiddenDiscovery).ToProto(),
 	}
 
 	if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {

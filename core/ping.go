@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -33,14 +34,9 @@ func (mw *Middleware) DebugPing(cctx context.Context, req *pb.RpcDebugPingReques
 		n = time.Now()
 		fmt.Printf("%d.%d go send ping event %d\n", n.Unix(), nsToMs(n.UnixNano()), i)
 
-		mw.applicationService.GetEventSender().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{
-				&pb.EventMessage{
-					Value: &pb.EventMessageValueOfPing{
-						Ping: &pb.EventPing{Index: int32(i)},
-					},
-				}},
-		})
+		mw.applicationService.GetEventSender().Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfPing{
+			Ping: &pb.EventPing{Index: int32(i)},
+		}))
 	}
 
 	return response(req.Index, pb.RpcDebugPingResponseError_NULL, nil)

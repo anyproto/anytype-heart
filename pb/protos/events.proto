@@ -15,6 +15,7 @@ message Event {
     string traceId = 4;
 
     message Message {
+        string spaceId = 132;
         oneof value {
             Account.Show accountShow = 1;
             Account.Details accountDetails = 201;
@@ -785,6 +786,7 @@ message Event {
                     int32 pageLimit = 9; // Limit of objects shown in widget
                     string defaultTemplateId = 10; // Id of template object set default for the view
                     string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
+                    anytype.model.Block.Align align = 16;
                 }
 
                 message Filter {

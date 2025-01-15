@@ -15451,6 +15451,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | includeFiles | [bool](#bool) |  | include all files |
 | isJson | [bool](#bool) |  | for protobuf export |
 | includeArchived | [bool](#bool) |  | for migration |
+| noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
 
 
 
@@ -24857,6 +24858,7 @@ sent when the view have been changed or added
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
+| align | [model.Block.Align](#anytype-model-Block-Align) |  |  |
 
 
 
@@ -26805,6 +26807,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | accountShow | [Event.Account.Show](#anytype-Event-Account-Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype-Event-Account-Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
@@ -28414,6 +28417,7 @@ Bookmark is to keep a web-link and to preview a content.
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
+| align | [Block.Align](#anytype-model-Block-Align) |  |  |
 
 
 

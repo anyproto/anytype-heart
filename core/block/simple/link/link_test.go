@@ -3,15 +3,14 @@ package link
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/test"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestLink_Diff(t *testing.T) {
@@ -24,7 +23,7 @@ func TestLink_Diff(t *testing.T) {
 	t.Run("type error", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := base.NewBase(&model.Block{})
-		_, err := b1.Diff(b2)
+		_, err := b1.Diff("", b2)
 		assert.Error(t, err)
 	})
 	t.Run("no diff", func(t *testing.T) {
@@ -32,7 +31,7 @@ func TestLink_Diff(t *testing.T) {
 		b2 := testBlock()
 		b1.content.TargetBlockId = "1"
 		b2.content.TargetBlockId = "1"
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 0)
 	})
@@ -40,7 +39,7 @@ func TestLink_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.Restrictions.Read = true
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 1)
 	})
@@ -56,7 +55,7 @@ func TestLink_Diff(t *testing.T) {
 		b2.content.IconSize = model.BlockContentLink_SizeMedium
 		b2.content.Description = model.BlockContentLink_Content
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -79,7 +78,7 @@ func TestLink_Diff(t *testing.T) {
 
 		// when
 		b2.content.Relations = append(b2.content.Relations, "cover")
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -100,11 +99,9 @@ func TestLink_ToText(t *testing.T) {
 			Restrictions: &model.BlockRestrictions{},
 			Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "targetId"}},
 		}).(*Link)
-		tb := b.ToText(&types.Struct{
-			Fields: map[string]*types.Value{
-				"name": pbtypes.String("target name"),
-			},
-		})
+		tb := b.ToText(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"name": domain.String("target name"),
+		}))
 		require.NotNil(t, tb)
 		textModel := tb.Model().GetText()
 		assert.Equal(t, "target name", textModel.Text)

@@ -145,3 +145,7 @@ func defaultNameSort() []*model.BlockContentDataviewSort {
 		},
 	}
 }
+
+func DefaultCollectionRelations() []domain.RelationKey {
+	return defaultCollectionRelations
+}

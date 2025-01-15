@@ -6,10 +6,9 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids []string) error {
@@ -40,14 +39,14 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	rollback := func(err error) error {
 		return errors.Join(txn.Rollback(), err)
 	}
+
+	newDetails := domain.NewDetails()
+	newDetails.SetString(bundle.RelationKeyId, id)
+	newDetails.SetString(bundle.RelationKeySpaceId, s.spaceId)
+	newDetails.SetBool(bundle.RelationKeyIsDeleted, true)
+
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err = s.UpdateObjectDetails(txn.Context(), id, &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():        pbtypes.String(id),
-			bundle.RelationKeySpaceId.String():   pbtypes.String(s.spaceId),
-			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
-		},
-	})
+	err = s.UpdateObjectDetails(txn.Context(), id, newDetails)
 	if err != nil {
 		return rollback(fmt.Errorf("failed to overwrite details and relations: %w", err))
 	}
