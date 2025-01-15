@@ -44,6 +44,7 @@ func ResolveTypeToName(mw service.ClientCommandsServer, spaceId string, typeId s
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: relKey,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(typeId),

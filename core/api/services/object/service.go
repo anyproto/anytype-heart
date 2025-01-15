@@ -412,29 +412,27 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 
 	return []Detail{
 		{
-			Id: "lastModifiedDate",
+			Id: "last_modified_date",
 			Details: map[string]interface{}{
-				"lastModifiedDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue()),
+				"last_modified_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue()),
 			},
 		},
 		{
-			Id: "createdDate",
+			Id: "last_modified_by",
 			Details: map[string]interface{}{
-				"createdDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreatedDate.String()].GetNumberValue()),
-			},
-		},
-		{
-			Id: "createdBy",
-			Details: map[string]interface{}{
-				"id":      creatorId,
-				"details": s.spaceService.GetParticipantDetails(s.mw, s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId),
-			},
-		},
-		{
-			Id: "lastModifiedBy",
-			Details: map[string]interface{}{
-				"id":      lastModifiedById,
 				"details": s.spaceService.GetParticipantDetails(s.mw, s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), lastModifiedById),
+			},
+		},
+		{
+			Id: "created_date",
+			Details: map[string]interface{}{
+				"created_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreatedDate.String()].GetNumberValue()),
+			},
+		},
+		{
+			Id: "created_by",
+			Details: map[string]interface{}{
+				"details": s.spaceService.GetParticipantDetails(s.mw, s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId),
 			},
 		},
 		{

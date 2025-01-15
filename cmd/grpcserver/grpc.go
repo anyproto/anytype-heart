@@ -226,6 +226,7 @@ func main() {
 	}()
 
 	startReportMemory(mw)
+	api.SetMiddlewareParams(mw)
 
 	shutdown := func() {
 		server.Stop()
@@ -246,9 +247,6 @@ func main() {
 			}
 		}
 	}
-
-	// pass mw to api service
-	api.SetMiddlewareParams(mw)
 
 	for {
 		sig := <-signalChan

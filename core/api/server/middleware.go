@@ -48,7 +48,6 @@ func (s *Server) ensureAuthenticated() gin.HandlerFunc {
 // ensureAccountInfo is a middleware that ensures the account info is available in the services.
 func (s *Server) ensureAccountInfo(a *app.App) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO: consider not fetching account info on every request; currently used to avoid inconsistencies on logout/login
 		if a == nil {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "failed to get app instance"})
 			return

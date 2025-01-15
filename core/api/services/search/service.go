@@ -88,10 +88,10 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 		return nil, 0, false, ErrNoObjectsFound
 	}
 
-	// sort after ISO 8601 lastModifiedDate to achieve descending sort order across all spaces
+	// sort after ISO 8601 last_modified_date to achieve descending sort order across all spaces
 	sort.Slice(results, func(i, j int) bool {
-		dateStrI := results[i].Details[0].Details["lastModifiedDate"].(string)
-		dateStrJ := results[j].Details[0].Details["lastModifiedDate"].(string)
+		dateStrI := results[i].Details[0].Details["last_modified_date"].(string)
+		dateStrJ := results[j].Details[0].Details["last_modified_date"].(string)
 		return dateStrI > dateStrJ
 	})
 
