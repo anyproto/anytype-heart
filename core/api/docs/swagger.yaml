@@ -338,6 +338,12 @@ paths:
     post:
       consumes:
       - application/json
+      parameters:
+      - description: The name of the app that requests the code
+        in: query
+        name: app_name
+        required: true
+        type: string
       produces:
       - application/json
       responses:

@@ -36,6 +36,15 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Open a modal window with a code in Anytype Desktop app",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The name of the app that requests the code",
+                        "name": "app_name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Challenge ID",

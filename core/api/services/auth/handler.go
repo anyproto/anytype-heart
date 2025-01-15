@@ -14,12 +14,15 @@ import (
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
-//	@Success	200	{object}	DisplayCodeResponse	"Challenge ID"
-//	@Failure	502	{object}	util.ServerError	"Internal server error"
+//	@Param		app_name	query		string				true	"The name of the app that requests the code"
+//	@Success	200			{object}	DisplayCodeResponse	"Challenge ID"
+//	@Failure	502			{object}	util.ServerError	"Internal server error"
 //	@Router		/auth/display_code [post]
 func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		challengeId, err := s.GenerateNewChallenge(c.Request.Context(), "api-test")
+		appName := c.Query("app_name")
+
+		challengeId, err := s.GenerateNewChallenge(c.Request.Context(), appName)
 		code := util.MapErrorCode(err, util.ErrToCode(ErrFailedGenerateChallenge, http.StatusInternalServerError))
 
 		if code != http.StatusOK {
