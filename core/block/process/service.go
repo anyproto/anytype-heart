@@ -33,7 +33,7 @@ type Service interface {
 	// Cancel cancels process by id
 	Cancel(id string) (err error)
 	// NewQueue creates new queue with given workers count
-	NewQueue(info pb.ModelProcess, workers int) Queue
+	NewQueue(info pb.ModelProcess, workers int, noProgress bool, notificationService NotificationService) Queue
 	// Subscribe remove session from the map of disabled sessions
 	Subscribe(token string)
 	// Unsubscribe add session to the map of disabled sessions
