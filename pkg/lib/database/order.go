@@ -184,7 +184,7 @@ func (ko *KeyOrder) textSort() query.Sort {
 func (ko *KeyOrder) boolSort() query.Sort {
 	return boolSort{
 		arena:       ko.arena,
-		relationKey: ko.Key,
+		relationKey: ko.Key.String(),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 	}
 }
@@ -243,13 +243,13 @@ func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av domain.Value, bv domain.Va
 		(aString || !av.Ok()) && (bString || !bv.Ok())
 }
 
-func (ko *KeyOrder) tryExtractBool(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+func (ko *KeyOrder) tryExtractBool(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
 	if ko.relationFormat == model.RelationFormat_checkbox {
-		if av == nil {
-			av = pbtypes.Bool(false)
+		if !av.Ok() {
+			av = domain.Bool(false)
 		}
-		if bv == nil {
-			bv = pbtypes.Bool(false)
+		if !bv.Ok() {
+			bv = domain.Bool(false)
 		}
 	}
 	return av, bv
