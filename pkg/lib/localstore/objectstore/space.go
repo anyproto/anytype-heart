@@ -20,7 +20,7 @@ func (d *dsObjectStore) GetSpaceName(spaceId string) string {
 				Value:       domain.String(spaceId),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
 			},

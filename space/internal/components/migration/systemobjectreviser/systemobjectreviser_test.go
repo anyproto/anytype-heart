@@ -24,7 +24,7 @@ func TestMigration_Run(t *testing.T) {
 			{
 				bundle.RelationKeySpaceId:        domain.String("space1"),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyIsHidden:       domain.Bool(true), // bundle = false
 				bundle.RelationKeyRevision:       domain.Int64(1),   // bundle = 3

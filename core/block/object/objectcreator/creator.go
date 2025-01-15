@@ -126,13 +126,14 @@ func (s *service) createObjectInSpace(
 			return "", nil, errors.Wrap(restriction.ErrRestricted, "creation of this object type is restricted")
 		}
 	}
+
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
 		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
 	case bundle.TypeKeySet:
-		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_set))
+		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_set))
 	case bundle.TypeKeyCollection:
-		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
+		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_collection))
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)
 	case bundle.TypeKeyRelation:

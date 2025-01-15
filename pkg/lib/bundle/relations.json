@@ -1391,6 +1391,16 @@
     "source": "details"
   },
   {
+    "description": "Layout resolved based on object self layout and type recommended layout",
+    "format": "number",
+    "hidden": true,
+    "key": "resolvedLayout",
+    "maxCount": 1,
+    "name": "Resolved layout",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Space order",
     "format": "longtext",
     "hidden": true,

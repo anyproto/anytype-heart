@@ -50,12 +50,12 @@ func TestInstaller_queryDeletedObjects(t *testing.T) {
 		{true, false, "otherSpaceId", bundle.RelationKeyAudioAlbum},
 	} {
 		store.AddObjects(t, obj.spaceId, []objectstore.TestObject{{
-			bundle.RelationKeyId:           domain.String(obj.key.URL()),
-			bundle.RelationKeySpaceId:      domain.String(obj.spaceId),
-			bundle.RelationKeySourceObject: domain.String(obj.key.BundledURL()),
-			bundle.RelationKeyIsDeleted:    domain.Bool(obj.isDeleted),
-			bundle.RelationKeyIsArchived:   domain.Bool(obj.isArchived),
-			bundle.RelationKeyLayout:       domain.Int64(model.ObjectType_relation),
+			bundle.RelationKeyId:             domain.String(obj.key.URL()),
+			bundle.RelationKeySpaceId:        domain.String(obj.spaceId),
+			bundle.RelationKeySourceObject:   domain.String(obj.key.BundledURL()),
+			bundle.RelationKeyIsDeleted:      domain.Bool(obj.isDeleted),
+			bundle.RelationKeyIsArchived:     domain.Bool(obj.isArchived),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_relation),
 		}})
 		sourceObjectIds = append(sourceObjectIds, obj.key.BundledURL())
 		if obj.spaceId == spaceId && (obj.isDeleted || obj.isArchived) {
@@ -83,9 +83,9 @@ func TestInstaller_reinstallObject(t *testing.T) {
 	t.Run("reinstall archived object", func(t *testing.T) {
 		// given
 		sourceDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:      domain.String(bundle.TypeKeyProject.BundledURL()),
-			bundle.RelationKeySpaceId: domain.String(addr.AnytypeMarketplaceWorkspace),
-			bundle.RelationKeyName:    domain.String(bundle.TypeKeyProject.String()),
+			bundle.RelationKeyId:        domain.String(bundle.TypeKeyProject.BundledURL()),
+			bundle.RelationKeySpaceId:   domain.String(addr.AnytypeMarketplaceWorkspace),
+			bundle.RelationKeyName:      domain.String(bundle.TypeKeyProject.String()),
 			bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyProject.URL()),
 		})
 

@@ -96,5 +96,6 @@
   "recommendedFileRelations",
   "layoutWidth",
   "defaultViewType",
-  "defaultTypeId"
+  "defaultTypeId",
+  "resolvedLayout"
 ]

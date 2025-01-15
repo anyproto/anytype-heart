@@ -146,12 +146,12 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 				Operator: model.BlockContentDataviewFilter_Or,
 				NestedFilters: []database.FilterRequest{
 					{
-						RelationKey: bundle.RelationKeyLayout,
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       domain.Int64(model.ObjectType_objectType),
 					},
 					{
-						RelationKey: bundle.RelationKeyLayout,
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       domain.Int64(model.ObjectType_relation),
 					},
@@ -301,11 +301,11 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 	return s.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FiltersOr{
 			database.FilterEq{
-				Key:   bundle.RelationKeyLayout,
+				Key:   bundle.RelationKeyResolvedLayout,
 				Value: domain.Int64(model.ObjectType_objectType),
 			},
 			database.FilterEq{
-				Key:   bundle.RelationKeyLayout,
+				Key:   bundle.RelationKeyResolvedLayout,
 				Value: domain.Int64(model.ObjectType_relation),
 			},
 		},

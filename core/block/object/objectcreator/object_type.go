@@ -41,6 +41,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	}
 
 	object.SetString(bundle.RelationKeyId, id)
+	object.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)

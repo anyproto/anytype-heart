@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "6bc8ce850001905263ba1ac86611612981e5f0b579701ae5713f2999a2607655"
+const RelationChecksum = "2cd8997ed52909b8c95269a2b2b5c27f6797d97df03b532576b9fa662acb4c62"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -146,6 +146,7 @@ const (
 	RelationKeyTimestamp                    domain.RelationKey = "timestamp"
 	RelationKeyRecommendedFeaturedRelations domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyLayoutWidth                  domain.RelationKey = "layoutWidth"
+	RelationKeyResolvedLayout               domain.RelationKey = "resolvedLayout"
 	RelationKeySpaceOrder                   domain.RelationKey = "spaceOrder"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
@@ -1521,6 +1522,20 @@ var (
 			MaxCount:         1,
 			Name:             "Released year",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyResolvedLayout: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Layout resolved based on object self layout and type recommended layout",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brresolvedLayout",
+			Key:              "resolvedLayout",
+			MaxCount:         1,
+			Name:             "Resolved layout",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
