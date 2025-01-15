@@ -883,6 +883,7 @@ enum ObjectOrigin {
   usecase = 6;
   builtin = 7;
   bookmark = 8;
+  api = 9;
 }
 
 message RelationLink {

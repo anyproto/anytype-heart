@@ -175,10 +175,11 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			"name":        pbtypes.String(request.Name),
-			"iconEmoji":   pbtypes.String(request.Icon),
-			"description": pbtypes.String(request.Description),
-			"source":      pbtypes.String(request.Source),
+			"name":                           pbtypes.String(request.Name),
+			"iconEmoji":                      pbtypes.String(request.Icon),
+			"description":                    pbtypes.String(request.Description),
+			"source":                         pbtypes.String(request.Source),
+			string(bundle.RelationKeyOrigin): pbtypes.Int64(int64(model.ObjectOrigin_api)),
 		},
 	}
 
