@@ -2,11 +2,9 @@ package migrator
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/mock"
@@ -104,9 +102,7 @@ func TestMigration(t *testing.T) {
 
 		fx.start(t)
 
-		now := time.Now()
 		err = fx.migrator.verify(context.Background(), true)
-		fmt.Println("FAST", time.Since(now))
 		require.NoError(t, err)
 	})
 
@@ -120,9 +116,7 @@ func TestMigration(t *testing.T) {
 
 		fx.start(t)
 
-		now := time.Now()
 		err = fx.migrator.verify(context.Background(), false)
-		fmt.Println("FULL", time.Since(now))
 		require.NoError(t, err)
 	})
 }

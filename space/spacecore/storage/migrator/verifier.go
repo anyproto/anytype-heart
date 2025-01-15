@@ -134,6 +134,7 @@ func (v *verifier) verifyTree(ctx context.Context, oldStore oldstorage2.SpaceSto
 	return bytesCompared, nil
 }
 
+// verifyChangesFast checks only existence of changes
 func (v *verifier) verifyChangesFast(ctx context.Context, oldTreeStorage oldstorage2.TreeStorage, newTreeStorage objecttree.Storage) error {
 	oldChangeIds, err := oldTreeStorage.GetAllChangeIds()
 	if err != nil {
@@ -155,6 +156,7 @@ func (v *verifier) verifyChangesFast(ctx context.Context, oldTreeStorage oldstor
 	return nil
 }
 
+// verifyChangesFull checks byte contents of changes
 func (v *verifier) verifyChangesFull(ctx context.Context, newStoreCollection anystore.Collection, oldTreeStorage oldstorage2.TreeStorage) (int, error) {
 	iterator, ok := oldTreeStorage.(oldstorage2.ChangesIterator)
 	if !ok {
