@@ -93,6 +93,10 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
 		}
 
+		if view.DefaultObjectTypeId != "" {
+			view.DefaultObjectTypeId = oldIDtoNew[view.DefaultObjectTypeId]
+		}
+
 		updateRelationsInView(view, oldIDtoNew)
 		updateSortsInView(view, oldIDtoNew)
 	}

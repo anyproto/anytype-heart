@@ -3,10 +3,11 @@ package converter
 import (
 	"fmt"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -167,6 +168,10 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 		return fmt.Errorf("dataview block is not found")
 	}
 	details := st.Details()
+	err := c.addDefaultCollectionRelationIfNotPresent(st)
+	if err != nil {
+		return err
+	}
 	setSourceIds := details.GetStringList(bundle.RelationKeySetOf)
 	spaceId := st.SpaceID()
 
@@ -180,6 +185,38 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 	}
 	st.UpdateStoreSlice(template.CollectionStoreKey, ids)
 	return nil
+}
+
+func (c *layoutConverter) addDefaultCollectionRelationIfNotPresent(st *state.State) error {
+	relationExists := func(relations []*model.BlockContentDataviewRelation, relationKey domain.RelationKey) bool {
+		return lo.ContainsBy(relations, func(item *model.BlockContentDataviewRelation) bool {
+			return item.Key == relationKey.String()
+		})
+	}
+
+	addRelationToView := func(view *model.BlockContentDataviewView, dv *model.BlockContentDataview, relationKey domain.RelationKey) {
+		if !relationExists(view.Relations, relationKey) {
+			bundleRelation := bundle.MustGetRelation(relationKey)
+			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: bundleRelation.Key})
+			dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{
+				Key:    bundleRelation.Key,
+				Format: bundleRelation.Format,
+			})
+		}
+	}
+
+	return st.Iterate(func(block simple.Block) (isContinue bool) {
+		dataview := block.Model().GetDataview()
+		if dataview == nil {
+			return true
+		}
+		for _, view := range dataview.Views {
+			for _, defaultRelation := range template.DefaultCollectionRelations() {
+				addRelationToView(view, dataview, defaultRelation)
+			}
+		}
+		return false
+	})
 }
 
 func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) ([]string, error) {
