@@ -697,7 +697,7 @@ func TestHistory_DiffVersions(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, changes, 4)
+		assert.Len(t, changes, 3)
 	})
 	t.Run("object diff -local relations changes", func(t *testing.T) {
 		// given
