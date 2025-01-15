@@ -139,11 +139,13 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
@@ -174,7 +176,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 		icon := util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields[string(bundle.RelationKeyIconEmoji)].GetStringValue(), record.Fields[string(bundle.RelationKeyIconImage)].GetStringValue())
 
 		member := Member{
-			Type:       "space_member",
+			Type:       "member",
 			Id:         record.Fields[string(bundle.RelationKeyId)].GetStringValue(),
 			Name:       record.Fields[string(bundle.RelationKeyName)].GetStringValue(),
 			Icon:       icon,
@@ -187,6 +189,41 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 	}
 
 	return members, total, hasMore, nil
+}
+
+func (s *SpaceService) GetParticipantDetails(mw service.ClientCommandsServer, accountInfo *model.AccountInfo, spaceId string, participantId string) Member {
+	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(participantId),
+			},
+		},
+		Keys: []string{string(bundle.RelationKeyId), string(bundle.RelationKeyName), string(bundle.RelationKeyIconEmoji), string(bundle.RelationKeyIconImage), string(bundle.RelationKeyIdentity), string(bundle.RelationKeyGlobalName), string(bundle.RelationKeyParticipantPermissions)},
+	})
+
+	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return Member{}
+	}
+
+	if len(resp.Records) == 0 {
+		return Member{}
+	}
+
+	icon := util.GetIconFromEmojiOrImage(accountInfo, "", resp.Records[0].Fields[string(bundle.RelationKeyIconImage)].GetStringValue())
+
+	return Member{
+		Type:       "member",
+		Id:         resp.Records[0].Fields[string(bundle.RelationKeyId)].GetStringValue(),
+		Name:       resp.Records[0].Fields[string(bundle.RelationKeyName)].GetStringValue(),
+		Icon:       icon,
+		Identity:   resp.Records[0].Fields[string(bundle.RelationKeyIdentity)].GetStringValue(),
+		GlobalName: resp.Records[0].Fields[string(bundle.RelationKeyGlobalName)].GetStringValue(),
+		Role:       model.ParticipantPermissions_name[int32(resp.Records[0].Fields[string(bundle.RelationKeyParticipantPermissions)].GetNumberValue())],
+	}
 }
 
 // getWorkspaceInfo returns the workspace info for the space with the given ID.

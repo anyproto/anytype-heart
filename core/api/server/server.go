@@ -28,10 +28,10 @@ func NewServer(a *app.App, mw service.ClientCommandsServer) *Server {
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw),
-		objectService: object.NewService(mw),
 		spaceService:  space.NewService(mw),
 	}
 
+	s.objectService = object.NewService(mw, s.spaceService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
 	s.engine = s.NewRouter(a)
 

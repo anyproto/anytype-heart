@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/services/space"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
@@ -46,12 +47,13 @@ type Service interface {
 }
 
 type ObjectService struct {
-	mw          service.ClientCommandsServer
-	AccountInfo *model.AccountInfo
+	mw           service.ClientCommandsServer
+	spaceService *space.SpaceService
+	AccountInfo  *model.AccountInfo
 }
 
-func NewService(mw service.ClientCommandsServer) *ObjectService {
-	return &ObjectService{mw: mw}
+func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceService) *ObjectService {
+	return &ObjectService{mw: mw, spaceService: spaceService}
 }
 
 // ListObjects retrieves a paginated list of objects in a specific space.
@@ -127,7 +129,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 	}
 
 	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyIconEmoji)].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyIconImage)].GetStringValue())
-	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, resp.ObjectView.Details[0].Details.Fields["type"].GetStringValue())
+	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyType)].GetStringValue())
 	if err != nil {
 		return Object{}, err
 	}
@@ -395,6 +397,19 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 
 // GetDetails returns the list of details from the ObjectShowResponse.
 func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
+	creator := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreator.String()].GetStringValue()
+	lastModifiedBy := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedBy.String()].GetStringValue()
+
+	var creatorId, lastModifiedById string
+	for _, detail := range resp.ObjectView.Details {
+		if detail.Id == creator {
+			creatorId = detail.Id
+		}
+		if detail.Id == lastModifiedBy {
+			lastModifiedById = detail.Id
+		}
+	}
+
 	return []Detail{
 		{
 			Id: "lastModifiedDate",
@@ -406,6 +421,20 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 			Id: "createdDate",
 			Details: map[string]interface{}{
 				"createdDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyCreatedDate)].GetNumberValue()),
+			},
+		},
+		{
+			Id: "createdBy",
+			Details: map[string]interface{}{
+				"id":      creatorId,
+				"details": s.spaceService.GetParticipantDetails(s.mw, s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId),
+			},
+		},
+		{
+			Id: "lastModifiedBy",
+			Details: map[string]interface{}{
+				"id":      lastModifiedById,
+				"details": s.spaceService.GetParticipantDetails(s.mw, s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), lastModifiedById),
 			},
 		},
 		{
