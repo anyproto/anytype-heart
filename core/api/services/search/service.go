@@ -63,7 +63,7 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys:  []string{string(bundle.RelationKeyId), string(bundle.RelationKeyName)},
+			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 			Limit: int32(limit), // nolint: gosec
 		})
 
@@ -76,7 +76,7 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 		}
 
 		for _, record := range objResp.Records {
-			object, err := s.objectService.GetObject(ctx, space.Id, record.Fields[string(bundle.RelationKeyId)].GetStringValue())
+			object, err := s.objectService.GetObject(ctx, space.Id, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
 			if err != nil {
 				return nil, 0, false, err
 			}

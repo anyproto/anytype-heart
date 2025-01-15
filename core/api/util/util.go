@@ -49,7 +49,7 @@ func ResolveTypeToName(mw service.ClientCommandsServer, spaceId string, typeId s
 				Value:       pbtypes.String(typeId),
 			},
 		},
-		Keys: []string{string(bundle.RelationKeyName)},
+		Keys: []string{bundle.RelationKeyName.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -60,7 +60,7 @@ func ResolveTypeToName(mw service.ClientCommandsServer, spaceId string, typeId s
 		return "", ErrorTypeNotFound
 	}
 
-	return resp.Records[0].Fields[string(bundle.RelationKeyName)].GetStringValue(), nil
+	return resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(), nil
 }
 
 func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, uniqueKey string) (typeId string, err error) {
@@ -74,7 +74,7 @@ func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, u
 				Value:       pbtypes.String(uniqueKey),
 			},
 		},
-		Keys: []string{string(bundle.RelationKeyId)},
+		Keys: []string{bundle.RelationKeyId.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -85,5 +85,5 @@ func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, u
 		return "", ErrorTypeNotFound
 	}
 
-	return resp.Records[0].Fields[string(bundle.RelationKeyId)].GetStringValue(), nil
+	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
 }

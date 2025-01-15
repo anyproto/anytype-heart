@@ -69,13 +69,13 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 		},
 		Sorts: []*model.BlockContentDataviewSort{
 			{
-				RelationKey:    string(bundle.RelationKeySpaceOrder),
+				RelationKey:    bundle.RelationKeySpaceOrder.String(),
 				Type:           model.BlockContentDataviewSort_Asc,
 				NoCollate:      true,
 				EmptyPlacement: model.BlockContentDataviewSort_End,
 			},
 		},
-		Keys: []string{string(bundle.RelationKeyTargetSpaceId), string(bundle.RelationKeyName), string(bundle.RelationKeyIconEmoji), string(bundle.RelationKeyIconImage)},
+		Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -91,14 +91,14 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 	spaces = make([]Space, 0, len(paginatedRecords))
 
 	for _, record := range paginatedRecords {
-		workspace, err := s.getWorkspaceInfo(record.Fields[string(bundle.RelationKeyTargetSpaceId)].GetStringValue())
+		workspace, err := s.getWorkspaceInfo(record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue())
 		if err != nil {
 			return nil, 0, false, err
 		}
 
 		// TODO: name and icon are only returned here; fix that
-		workspace.Name = record.Fields[string(bundle.RelationKeyName)].GetStringValue()
-		workspace.Icon = util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields[string(bundle.RelationKeyIconEmoji)].GetStringValue(), record.Fields[string(bundle.RelationKeyIconImage)].GetStringValue())
+		workspace.Name = record.Fields[bundle.RelationKeyName.String()].GetStringValue()
+		workspace.Icon = util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
 
 		spaces = append(spaces, workspace)
 	}
@@ -117,9 +117,9 @@ func (s *SpaceService) CreateSpace(ctx context.Context, name string) (Space, err
 	resp := s.mw.WorkspaceCreate(ctx, &pb.RpcWorkspaceCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				string(bundle.RelationKeyIconOption):       pbtypes.Float64(float64(iconOption.Int64())),
-				string(bundle.RelationKeyName):             pbtypes.String(name),
-				string(bundle.RelationKeySpaceDashboardId): pbtypes.String("lastOpened"),
+				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(iconOption.Int64())),
+				bundle.RelationKeyName.String():             pbtypes.String(name),
+				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
 			},
 		},
 		UseCase:  pb.RpcObjectImportUseCaseRequest_GET_STARTED,
@@ -153,11 +153,11 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 		},
 		Sorts: []*model.BlockContentDataviewSort{
 			{
-				RelationKey: string(bundle.RelationKeyName),
+				RelationKey: bundle.RelationKeyName.String(),
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys: []string{string(bundle.RelationKeyId), string(bundle.RelationKeyName), string(bundle.RelationKeyIconEmoji), string(bundle.RelationKeyIconImage), string(bundle.RelationKeyIdentity), string(bundle.RelationKeyGlobalName), string(bundle.RelationKeyParticipantPermissions)},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String(), bundle.RelationKeyIdentity.String(), bundle.RelationKeyGlobalName.String(), bundle.RelationKeyParticipantPermissions.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -173,16 +173,16 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 	members = make([]Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields[string(bundle.RelationKeyIconEmoji)].GetStringValue(), record.Fields[string(bundle.RelationKeyIconImage)].GetStringValue())
+		icon := util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
 
 		member := Member{
 			Type:       "member",
-			Id:         record.Fields[string(bundle.RelationKeyId)].GetStringValue(),
-			Name:       record.Fields[string(bundle.RelationKeyName)].GetStringValue(),
+			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:       icon,
-			Identity:   record.Fields[string(bundle.RelationKeyIdentity)].GetStringValue(),
-			GlobalName: record.Fields[string(bundle.RelationKeyGlobalName)].GetStringValue(),
-			Role:       model.ParticipantPermissions_name[int32(record.Fields[string(bundle.RelationKeyParticipantPermissions)].GetNumberValue())],
+			Identity:   record.Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
+			GlobalName: record.Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
+			Role:       model.ParticipantPermissions_name[int32(record.Fields[bundle.RelationKeyParticipantPermissions.String()].GetNumberValue())],
 		}
 
 		members = append(members, member)
@@ -202,7 +202,7 @@ func (s *SpaceService) GetParticipantDetails(mw service.ClientCommandsServer, ac
 				Value:       pbtypes.String(participantId),
 			},
 		},
-		Keys: []string{string(bundle.RelationKeyId), string(bundle.RelationKeyName), string(bundle.RelationKeyIconEmoji), string(bundle.RelationKeyIconImage), string(bundle.RelationKeyIdentity), string(bundle.RelationKeyGlobalName), string(bundle.RelationKeyParticipantPermissions)},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String(), bundle.RelationKeyIdentity.String(), bundle.RelationKeyGlobalName.String(), bundle.RelationKeyParticipantPermissions.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -213,16 +213,16 @@ func (s *SpaceService) GetParticipantDetails(mw service.ClientCommandsServer, ac
 		return Member{}
 	}
 
-	icon := util.GetIconFromEmojiOrImage(accountInfo, "", resp.Records[0].Fields[string(bundle.RelationKeyIconImage)].GetStringValue())
+	icon := util.GetIconFromEmojiOrImage(accountInfo, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
 
 	return Member{
 		Type:       "member",
-		Id:         resp.Records[0].Fields[string(bundle.RelationKeyId)].GetStringValue(),
-		Name:       resp.Records[0].Fields[string(bundle.RelationKeyName)].GetStringValue(),
+		Id:         resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:       resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:       icon,
-		Identity:   resp.Records[0].Fields[string(bundle.RelationKeyIdentity)].GetStringValue(),
-		GlobalName: resp.Records[0].Fields[string(bundle.RelationKeyGlobalName)].GetStringValue(),
-		Role:       model.ParticipantPermissions_name[int32(resp.Records[0].Fields[string(bundle.RelationKeyParticipantPermissions)].GetNumberValue())],
+		Identity:   resp.Records[0].Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
+		GlobalName: resp.Records[0].Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
+		Role:       model.ParticipantPermissions_name[int32(resp.Records[0].Fields[bundle.RelationKeyParticipantPermissions.String()].GetNumberValue())],
 	}
 }
 

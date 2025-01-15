@@ -87,7 +87,7 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 		Offset:           0,
 		Limit:            0,
 		ObjectTypeFilter: []string{},
-		Keys:             []string{string(bundle.RelationKeyId), string(bundle.RelationKeyName)},
+		Keys:             []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -103,7 +103,7 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 	objects = make([]Object, 0, len(paginatedObjects))
 
 	for _, record := range paginatedObjects {
-		object, err := s.GetObject(ctx, spaceId, record.Fields[string(bundle.RelationKeyId)].GetStringValue())
+		object, err := s.GetObject(ctx, spaceId, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
 		if err != nil {
 			return nil, 0, false, err
 		}
@@ -128,20 +128,20 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		return Object{}, ErrFailedRetrieveObject
 	}
 
-	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyIconEmoji)].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyIconImage)].GetStringValue())
-	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyType)].GetStringValue())
+	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
+	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue())
 	if err != nil {
 		return Object{}, err
 	}
 
 	object := Object{
 		Type:       "object",
-		Id:         resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyId)].GetStringValue(),
-		Name:       resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyName)].GetStringValue(),
+		Id:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:       resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:       icon,
-		Layout:     model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyLayout)].GetNumberValue())],
+		Layout:     model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue())],
 		ObjectType: objectTypeName,
-		SpaceId:    resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeySpaceId)].GetStringValue(),
+		SpaceId:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		RootId:     resp.ObjectView.RootId,
 		Blocks:     s.GetBlocks(resp),
 		Details:    s.GetDetails(resp),
@@ -177,11 +177,11 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			string(bundle.RelationKeyName):        pbtypes.String(request.Name),
-			string(bundle.RelationKeyIconEmoji):   pbtypes.String(request.Icon),
-			string(bundle.RelationKeyDescription): pbtypes.String(request.Description),
-			string(bundle.RelationKeySource):      pbtypes.String(request.Source),
-			string(bundle.RelationKeyOrigin):      pbtypes.Int64(int64(model.ObjectOrigin_api)),
+			bundle.RelationKeyName.String():        pbtypes.String(request.Name),
+			bundle.RelationKeyIconEmoji.String():   pbtypes.String(request.Icon),
+			bundle.RelationKeyDescription.String(): pbtypes.String(request.Description),
+			bundle.RelationKeySource.String():      pbtypes.String(request.Source),
+			bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
 		},
 	}
 
@@ -201,7 +201,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 	if request.Description != "" {
 		relAddFeatResp := s.mw.ObjectRelationAddFeatured(ctx, &pb.RpcObjectRelationAddFeaturedRequest{
 			ContextId: resp.ObjectId,
-			Relations: []string{string(bundle.RelationKeyDescription)},
+			Relations: []string{bundle.RelationKeyDescription.String()},
 		})
 
 		if relAddFeatResp.Error.Code != pb.RpcObjectRelationAddFeaturedResponseError_NULL {
@@ -285,11 +285,11 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 		},
 		Sorts: []*model.BlockContentDataviewSort{
 			{
-				RelationKey: string(bundle.RelationKeyName),
+				RelationKey: bundle.RelationKeyName.String(),
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys: []string{string(bundle.RelationKeyId), string(bundle.RelationKeyUniqueKey), string(bundle.RelationKeyName), string(bundle.RelationKeyIconEmoji), string(bundle.RelationKeyRecommendedLayout)},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyRecommendedLayout.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -307,11 +307,11 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 	for _, record := range paginatedTypes {
 		objectTypes = append(objectTypes, ObjectType{
 			Type:              "object_type",
-			Id:                record.Fields[string(bundle.RelationKeyId)].GetStringValue(),
-			UniqueKey:         record.Fields[string(bundle.RelationKeyUniqueKey)].GetStringValue(),
-			Name:              record.Fields[string(bundle.RelationKeyName)].GetStringValue(),
-			Icon:              record.Fields[string(bundle.RelationKeyIconEmoji)].GetStringValue(),
-			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[string(bundle.RelationKeyRecommendedLayout)].GetNumberValue())],
+			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+			UniqueKey:         record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Icon:              record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 		})
 	}
 	return objectTypes, total, hasMore, nil
@@ -329,7 +329,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 				Value:       pbtypes.String("ot-template"),
 			},
 		},
-		Keys: []string{string(bundle.RelationKeyId)},
+		Keys: []string{bundle.RelationKeyId.String()},
 	})
 
 	if templateTypeIdResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -341,7 +341,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 	}
 
 	// Then, search all objects of the template type and filter by the target object type
-	templateTypeId := templateTypeIdResp.Records[0].Fields[string(bundle.RelationKeyId)].GetStringValue()
+	templateTypeId := templateTypeIdResp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue()
 	templateObjectsResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -351,7 +351,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 				Value:       pbtypes.String(templateTypeId),
 			},
 		},
-		Keys: []string{string(bundle.RelationKeyId), string(bundle.RelationKeyTargetObjectType), string(bundle.RelationKeyName), string(bundle.RelationKeyIconEmoji)},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String()},
 	})
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -364,8 +364,8 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 
 	templateIds := make([]string, 0)
 	for _, record := range templateObjectsResp.Records {
-		if record.Fields[string(bundle.RelationKeyTargetObjectType)].GetStringValue() == typeId {
-			templateIds = append(templateIds, record.Fields[string(bundle.RelationKeyId)].GetStringValue())
+		if record.Fields[bundle.RelationKeyTargetObjectType.String()].GetStringValue() == typeId {
+			templateIds = append(templateIds, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
 		}
 	}
 
@@ -387,8 +387,8 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		templates = append(templates, ObjectTemplate{
 			Type: "object_template",
 			Id:   templateId,
-			Name: templateResp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyName)].GetStringValue(),
-			Icon: templateResp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyIconEmoji)].GetStringValue(),
+			Name: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Icon: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
 		})
 	}
 
@@ -414,13 +414,13 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "lastModifiedDate",
 			Details: map[string]interface{}{
-				"lastModifiedDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyLastModifiedDate)].GetNumberValue()),
+				"lastModifiedDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue()),
 			},
 		},
 		{
 			Id: "createdDate",
 			Details: map[string]interface{}{
-				"createdDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[string(bundle.RelationKeyCreatedDate)].GetNumberValue()),
+				"createdDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreatedDate.String()].GetNumberValue()),
 			},
 		},
 		{
@@ -461,8 +461,8 @@ func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 			if detail.Id == id {
 				tags = append(tags, Tag{
 					Id:    id,
-					Name:  detail.Details.Fields[string(bundle.RelationKeyName)].GetStringValue(),
-					Color: detail.Details.Fields[string(bundle.RelationKeyRelationOptionColor)].GetStringValue(),
+					Name:  detail.Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+					Color: detail.Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
 				})
 				break
 			}
