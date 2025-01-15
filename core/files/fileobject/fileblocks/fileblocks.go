@@ -3,8 +3,6 @@ package fileblocks
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -12,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func InitEmptyFileState(st *state.State) {
@@ -25,12 +22,12 @@ func InitEmptyFileState(st *state.State) {
 	)
 }
 
-func AddFileBlocks(st *state.State, details *types.Struct, objectId string) error {
-	fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
-	fileType := fileblock.DetectTypeByMIME(fname, pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
+func AddFileBlocks(st *state.State, details *domain.Details, objectId string) error {
+	fname := details.GetString(bundle.RelationKeyName)
+	fileType := fileblock.DetectTypeByMIME(fname, details.GetString(bundle.RelationKeyFileMimeType))
 
 	if fileType == model.BlockContentFile_Image {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.String(objectId))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(objectId))
 	}
 
 	blocks := buildFileBlocks(details, objectId, fname, fileType)
@@ -50,19 +47,19 @@ func AddFileBlocks(st *state.State, details *types.Struct, objectId string) erro
 	return nil
 }
 
-func buildFileBlocks(details *types.Struct, objectId, fname string, fileType model.BlockContentFileType) []*model.Block {
+func buildFileBlocks(details *domain.Details, objectId, fname string, fileType model.BlockContentFileType) []*model.Block {
 	var blocks []*model.Block
 	blocks = append(blocks, &model.Block{
 		Id: "file",
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
 				Name:           fname,
-				Mime:           pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
+				Mime:           details.GetString(bundle.RelationKeyFileMimeType),
 				TargetObjectId: objectId,
 				Type:           fileType,
-				Size_:          int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
+				Size_:          details.GetInt64(bundle.RelationKeySizeInBytes),
 				State:          model.BlockContentFile_Done,
-				AddedAt:        int64(pbtypes.GetFloat64(details, bundle.RelationKeyAddedDate.String())),
+				AddedAt:        details.GetInt64(bundle.RelationKeyAddedDate),
 			},
 		}}, makeFileInfoBlock(), makeRelationBlock(bundle.RelationKeyFileExt))
 
@@ -113,7 +110,7 @@ func buildFileBlocks(details *types.Struct, objectId, fname string, fileType mod
 		bundle.RelationKeyImportType,
 		bundle.RelationKeyAddedDate,
 	} {
-		if pbtypes.GetInt64(details, relKey.String()) != 0 {
+		if details.GetInt64(relKey) != 0 {
 			blocks = append(blocks, makeRelationBlock(relKey))
 		}
 	}
@@ -141,8 +138,8 @@ func makeFileInfoBlock() *model.Block {
 	}
 }
 
-func notEmpty(details *types.Struct, relKey domain.RelationKey) bool {
-	return pbtypes.GetInt64(details, relKey.String()) != 0 || pbtypes.GetString(details, relKey.String()) != ""
+func notEmpty(details *domain.Details, relKey domain.RelationKey) bool {
+	return details.GetInt64(relKey) != 0 || details.GetString(relKey) != ""
 }
 
 func makeRelationBlock(relationKey domain.RelationKey) *model.Block {

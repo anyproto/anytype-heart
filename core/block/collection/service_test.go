@@ -21,7 +21,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const collectionID = "collectionID"
@@ -163,7 +162,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 					Views: []*model.BlockContentDataviewView{{Id: viewID1}, {Id: viewID2}},
 				}},
 			}))
-			parent.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList([]string{setOf}))
+			parent.SetDetail(bundle.RelationKeySetOf, domain.StringList([]string{setOf}))
 			return parent.NewState()
 		}
 
@@ -204,8 +203,8 @@ func TestSetObjectTypeToViews(t *testing.T) {
 			s := newFixture(t)
 			s.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 				{
-					bundle.RelationKeyId:        pbtypes.String(setOfValue),
-					bundle.RelationKeyUniqueKey: pbtypes.String(domain.MustUniqueKey(testCase.sbType, testCase.key).Marshal()),
+					bundle.RelationKeyId:        domain.String(setOfValue),
+					bundle.RelationKeyUniqueKey: domain.String(domain.MustUniqueKey(testCase.sbType, testCase.key).Marshal()),
 				},
 			})
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -13,20 +12,18 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) createRelationOption(ctx context.Context, space clientspace.Space, details *types.Struct) (id string, object *types.Struct, err error) {
-	if details == nil || details.Fields == nil {
+func (s *service) createRelationOption(ctx context.Context, space clientspace.Space, details *domain.Details) (id string, object *domain.Details, err error) {
+	if details == nil {
 		return "", nil, fmt.Errorf("create option: no data")
 	}
 
-	if pbtypes.GetString(details, "relationOptionText") != "" {
-		return "", nil, fmt.Errorf("use name instead of relationOptionText")
-	} else if pbtypes.GetString(details, "name") == "" {
+	if details.GetString(bundle.RelationKeyName) == "" {
 		return "", nil, fmt.Errorf("name is empty")
-	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
-		return "", nil, fmt.Errorf("invalid relation Key: unknown enum")
+	}
+	if details.GetString(bundle.RelationKeyRelationKey) == "" {
+		return "", nil, fmt.Errorf("relation key is empty")
 	}
 
 	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeRelationOption, details)
@@ -34,9 +31,9 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
 
-	object = pbtypes.CopyStruct(details, false)
-	object.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
-	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
+	object = details.Copy()
+	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
@@ -44,8 +41,8 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelationOption}, createState)
 }
 
-func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (domain.UniqueKey, error) {
-	uniqueKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *domain.Details) (domain.UniqueKey, error) {
+	uniqueKey := details.GetString(bundle.RelationKeyUniqueKey)
 	if uniqueKey == "" {
 		newUniqueKey, err := domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
 		if err != nil {

@@ -26,7 +26,7 @@ func TestDiff(t *testing.T) {
 
 		// when
 		b2.content.IsCollection = true
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestDiff(t *testing.T) {
 		// when
 		b1.content.TargetObjectId = "1"
 		b2.content.TargetObjectId = "2"
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -65,7 +65,7 @@ func TestDiff(t *testing.T) {
 
 		// when
 		b2.content.Source = []string{"1"}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestDiff(t *testing.T) {
 		// when
 		b2.content.Source = nil
 		b1.content.Source = []string{"1"}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestDiff(t *testing.T) {
 		// when
 		b1.content.Views = []*model.BlockContentDataviewView{{Id: "1"}, {Id: "2"}}
 		b2.content.Views = []*model.BlockContentDataviewView{{Id: "2"}, {Id: "1"}}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -186,7 +186,7 @@ func TestDiff(t *testing.T) {
 				ViewGroups: view2Groups,
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestDiff(t *testing.T) {
 				ObjectIds: []string{"object1", "object3"},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -281,7 +281,7 @@ func TestDiff(t *testing.T) {
 				ObjectIds: []string{"object1"},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -338,7 +338,7 @@ func TestDiff(t *testing.T) {
 				ObjectIds: []string{"object1", "object3", "object2"},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -383,7 +383,7 @@ func TestDiff(t *testing.T) {
 				Format: model.RelationFormat_longtext,
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -424,7 +424,7 @@ func TestDiff(t *testing.T) {
 				Format: model.RelationFormat_longtext,
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -451,6 +451,7 @@ func TestDiff(t *testing.T) {
 				Name:                  "All",
 				CoverRelationKey:      "cover",
 				HideIcon:              false,
+				Align:                 0,
 				CardSize:              model.BlockContentDataviewView_Medium,
 				CoverFit:              false,
 				GroupRelationKey:      "status",
@@ -465,6 +466,7 @@ func TestDiff(t *testing.T) {
 				Name:                  "New Name",
 				CoverRelationKey:      "cover",
 				HideIcon:              true,
+				Align:                 1,
 				CardSize:              model.BlockContentDataviewView_Large,
 				CoverFit:              true,
 				GroupRelationKey:      "tag",
@@ -472,7 +474,7 @@ func TestDiff(t *testing.T) {
 				PageLimit:             11,
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -487,6 +489,7 @@ func TestDiff(t *testing.T) {
 						Name:                  "New Name",
 						CoverRelationKey:      "cover",
 						HideIcon:              true,
+						Align:                 1,
 						CardSize:              model.BlockContentDataviewView_Large,
 						CoverFit:              true,
 						GroupRelationKey:      "tag",
@@ -517,7 +520,7 @@ func TestDiff(t *testing.T) {
 			},
 		}
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -561,7 +564,7 @@ func TestDiff(t *testing.T) {
 			},
 		}
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -618,7 +621,7 @@ func TestDiff(t *testing.T) {
 				Sorts: []*model.BlockContentDataviewSort{newSort},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -685,7 +688,7 @@ func TestDiff(t *testing.T) {
 				},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -735,7 +738,7 @@ func TestDiff(t *testing.T) {
 				Id: "1",
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -793,7 +796,7 @@ func TestDiff(t *testing.T) {
 			},
 		}
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -846,7 +849,7 @@ func TestDiff(t *testing.T) {
 			},
 		}
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -912,7 +915,7 @@ func TestDiff(t *testing.T) {
 				},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -985,7 +988,7 @@ func TestDiff(t *testing.T) {
 				},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -1039,7 +1042,7 @@ func TestDiff(t *testing.T) {
 				},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -1105,7 +1108,7 @@ func TestDiff(t *testing.T) {
 				},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -1154,7 +1157,7 @@ func TestDiff(t *testing.T) {
 				Relations: []*model.BlockContentDataviewRelation{},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -1218,7 +1221,7 @@ func TestDiff(t *testing.T) {
 				},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -1363,7 +1366,7 @@ func TestDiff(t *testing.T) {
 				ObjectIds: []string{"object1", "object2", "object3"},
 			},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)

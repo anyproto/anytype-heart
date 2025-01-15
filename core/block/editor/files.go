@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -108,10 +106,10 @@ func (f *File) InjectVirtualBlocks(objectId string, view *model.ObjectView) {
 		return
 	}
 
-	var details *types.Struct
+	var details *domain.Details
 	for _, det := range view.Details {
 		if det.Id == objectId {
-			details = det.Details
+			details = domain.NewDetailsFromProto(det.Details)
 			break
 		}
 	}

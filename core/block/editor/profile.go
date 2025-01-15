@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Profile struct {
@@ -82,7 +81,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
-				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
+				template.WithDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter)),
 				migrationSetHidden,
 			)
 		},
@@ -90,7 +89,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 }
 
 func migrationSetHidden(st *state.State) {
-	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
+	st.SetDetail(bundle.RelationKeyIsHidden, domain.Bool(true))
 }
 
 func migrationWithIdentityBlock(st *state.State) {
@@ -131,22 +130,16 @@ func (p *Profile) StateMigrations() migration.Migrations {
 	})
 }
 
-func (p *Profile) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (p *Profile) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}
 
-	p.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfAccountDetails{
-					AccountDetails: &pb.EventAccountDetails{
-						ProfileId: p.Id(),
-						Details:   p.Details(),
-					},
-				},
-			},
+	p.eventSender.Broadcast(event.NewEventSingleMessage(p.SpaceID(), &pb.EventMessageValueOfAccountDetails{
+		AccountDetails: &pb.EventAccountDetails{
+			ProfileId: p.Id(),
+			Details:   p.Details().ToProto(),
 		},
-	})
+	}))
 	return
 }
