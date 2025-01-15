@@ -34,7 +34,7 @@ func newFixture(t *testing.T) *fixture {
 
 	spaceService := space.NewService(mw)
 	spaceService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
-	objectService := object.NewService(mw)
+	objectService := object.NewService(mw, spaceService)
 	objectService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
 	searchService := NewService(mw, spaceService, objectService)
 	searchService.AccountInfo = &model.AccountInfo{
@@ -59,35 +59,32 @@ func TestSearchService_Search(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
+					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
 				{
+					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
-				},
-				{
-					RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 				},
 			},
 			Sorts: []*model.BlockContentDataviewSort{
 				{
-					RelationKey:    "spaceOrder",
+					RelationKey:    bundle.RelationKeySpaceOrder.String(),
 					Type:           model.BlockContentDataviewSort_Asc,
 					NoCollate:      true,
 					EmptyPlacement: model.BlockContentDataviewSort_End,
 				},
 			},
-			Keys: []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
+			Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						"targetSpaceId": pbtypes.String("space-1"),
+						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("space-1"),
 					},
 				},
 			},
@@ -106,17 +103,73 @@ func TestSearchService_Search(t *testing.T) {
 		}).Once()
 
 		// Mock objects in space-1
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-1",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator: model.BlockContentDataviewFilter_And,
+					NestedFilters: []*model.BlockContentDataviewFilter{
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyLayout.String(),
+							Condition:   model.BlockContentDataviewFilter_In,
+							Value: pbtypes.IntList([]int{
+								int(model.ObjectType_basic),
+								int(model.ObjectType_profile),
+								int(model.ObjectType_todo),
+								int(model.ObjectType_note),
+								int(model.ObjectType_bookmark),
+								int(model.ObjectType_set),
+								int(model.ObjectType_collection),
+								int(model.ObjectType_participant),
+							}...),
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyIsHidden.String(),
+							Condition:   model.BlockContentDataviewFilter_NotEqual,
+							Value:       pbtypes.Bool(true),
+						},
+						{
+							Operator: model.BlockContentDataviewFilter_Or,
+							NestedFilters: []*model.BlockContentDataviewFilter{
+								{
+									Operator:    model.BlockContentDataviewFilter_No,
+									RelationKey: bundle.RelationKeyName.String(),
+									Condition:   model.BlockContentDataviewFilter_Like,
+									Value:       pbtypes.String("search-term"),
+								},
+								{
+									Operator:    model.BlockContentDataviewFilter_No,
+									RelationKey: bundle.RelationKeySnippet.String(),
+									Condition:   model.BlockContentDataviewFilter_Like,
+									Value:       pbtypes.String("search-term"),
+								},
+							},
+						},
+					},
+				},
+			},
+			Sorts: []*model.BlockContentDataviewSort{{
+				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
+				Type:           model.BlockContentDataviewSort_Desc,
+				Format:         model.RelationFormat_date,
+				IncludeTime:    true,
+				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+			}},
+			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+			Limit: int32(limit),
+		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						"id":   pbtypes.String("obj-global-1"),
-						"name": pbtypes.String("Global Object"),
+						bundle.RelationKeyId.String():   pbtypes.String("obj-global-1"),
+						bundle.RelationKeyName.String(): pbtypes.String("Global Object"),
 					},
 				},
 			},
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Twice()
+		}).Once()
 
 		// Mock object show for object blocks and details
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
@@ -163,14 +216,25 @@ func TestSearchService_Search(t *testing.T) {
 						Id: "root-123",
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								"id":               pbtypes.String("obj-global-1"),
-								"name":             pbtypes.String("Global Object"),
-								"layout":           pbtypes.Int64(int64(model.ObjectType_basic)),
-								"iconEmoji":        pbtypes.String("🌐"),
-								"lastModifiedDate": pbtypes.Float64(999999),
-								"createdDate":      pbtypes.Float64(888888),
-								"spaceId":          pbtypes.String("space-1"),
-								"tag":              pbtypes.StringList([]string{"tag-1", "tag-2"}),
+								bundle.RelationKeyId.String():               pbtypes.String("obj-global-1"),
+								bundle.RelationKeyName.String():             pbtypes.String("Global Object"),
+								bundle.RelationKeyLayout.String():           pbtypes.Int64(int64(model.ObjectType_basic)),
+								bundle.RelationKeyIconEmoji.String():        pbtypes.String("🌐"),
+								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
+								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String("participant-id"),
+								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
+								bundle.RelationKeyCreator.String():          pbtypes.String("participant-id"),
+								bundle.RelationKeySpaceId.String():          pbtypes.String("space-1"),
+								bundle.RelationKeyType.String():             pbtypes.String("type-1"),
+								bundle.RelationKeyTag.String():              pbtypes.StringList([]string{"tag-1", "tag-2"}),
+							},
+						},
+					},
+					{
+						Id: "participant-id",
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String(): pbtypes.String("participant-id"),
 							},
 						},
 					},
@@ -178,8 +242,8 @@ func TestSearchService_Search(t *testing.T) {
 						Id: "tag-1",
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								"name":                pbtypes.String("Important"),
-								"relationOptionColor": pbtypes.String("red"),
+								bundle.RelationKeyName.String():                pbtypes.String("Important"),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("red"),
 							},
 						},
 					},
@@ -187,8 +251,8 @@ func TestSearchService_Search(t *testing.T) {
 						Id: "tag-2",
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								"name":                pbtypes.String("Optional"),
-								"relationOptionColor": pbtypes.String("blue"),
+								bundle.RelationKeyName.String():                pbtypes.String("Optional"),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("blue"),
 							},
 						},
 					},
@@ -196,6 +260,65 @@ func TestSearchService_Search(t *testing.T) {
 			},
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}, nil).Once()
+
+		// Mock type resolution
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-1",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("type-1"),
+				},
+			},
+			Keys: []string{bundle.RelationKeyName.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyName.String(): pbtypes.String("object-type-name"),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// Mock participant details
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-1",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("participant-id"),
+				},
+			},
+			Keys: []string{bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("participant-id"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Participant Name"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String("emoji"),
+						bundle.RelationKeyIconImage.String():              pbtypes.String("image-url"),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("identity"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("global-name"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Twice()
 
 		// when
 		objects, total, hasMore, err := fx.Search(ctx, "search-term", []string{}, offset, limit)
@@ -213,10 +336,14 @@ func TestSearchService_Search(t *testing.T) {
 
 		// check details
 		for _, detail := range objects[0].Details {
-			if detail.Id == "createdDate" {
-				require.Equal(t, string("1970-01-11T06:54:48Z"), detail.Details["createdDate"])
-			} else if detail.Id == "lastModifiedDate" {
-				require.Equal(t, string("1970-01-12T13:46:39Z"), detail.Details["lastModifiedDate"])
+			if detail.Id == "created_date" {
+				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["created_date"])
+			} else if detail.Id == "last_modified_date" {
+				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
+			} else if detail.Id == "created_by" {
+				require.Equal(t, "participant-id", detail.Details["details"].(space.Member).Id)
+			} else if detail.Id == "last_modified_by" {
+				require.Equal(t, "participant-id", detail.Details["details"].(space.Member).Id)
 			}
 		}
 

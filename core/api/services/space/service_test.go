@@ -52,17 +52,14 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
+					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
 				{
+					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
-				},
-				{
-					RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 				},
@@ -80,18 +77,18 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						"name":          pbtypes.String("Another Workspace"),
-						"targetSpaceId": pbtypes.String("another-space-id"),
-						"iconEmoji":     pbtypes.String(""),
-						"iconImage":     pbtypes.String(iconImage),
+						bundle.RelationKeyName.String():          pbtypes.String("Another Workspace"),
+						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("another-space-id"),
+						bundle.RelationKeyIconEmoji.String():     pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():     pbtypes.String(iconImage),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						"name":          pbtypes.String("My Workspace"),
-						"targetSpaceId": pbtypes.String("my-space-id"),
-						"iconEmoji":     pbtypes.String("🚀"),
-						"iconImage":     pbtypes.String(""),
+						bundle.RelationKeyName.String():          pbtypes.String("My Workspace"),
+						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("my-space-id"),
+						bundle.RelationKeyIconEmoji.String():     pbtypes.String("🚀"),
+						bundle.RelationKeyIconImage.String():     pbtypes.String(""),
 					},
 				},
 			},
@@ -164,10 +161,10 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 				Records: []*types.Struct{
 					{
 						Fields: map[string]*types.Value{
-							"name":          pbtypes.String("My Workspace"),
-							"targetSpaceId": pbtypes.String("my-space-id"),
-							"iconEmoji":     pbtypes.String("🚀"),
-							"iconImage":     pbtypes.String(""),
+							bundle.RelationKeyName.String():          pbtypes.String("My Workspace"),
+							bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("my-space-id"),
+							bundle.RelationKeyIconEmoji.String():     pbtypes.String("🚀"),
+							bundle.RelationKeyIconImage.String():     pbtypes.String(""),
 						},
 					},
 				},
@@ -256,20 +253,20 @@ func TestSpaceService_ListMembers(t *testing.T) {
 				Records: []*types.Struct{
 					{
 						Fields: map[string]*types.Value{
-							"id":         pbtypes.String("member-1"),
-							"name":       pbtypes.String("John Doe"),
-							"iconEmoji":  pbtypes.String("👤"),
-							"identity":   pbtypes.String("AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"),
-							"globalName": pbtypes.String("john.any"),
+							bundle.RelationKeyId.String():         pbtypes.String("member-1"),
+							bundle.RelationKeyName.String():       pbtypes.String("John Doe"),
+							bundle.RelationKeyIconEmoji.String():  pbtypes.String("👤"),
+							bundle.RelationKeyIdentity.String():   pbtypes.String("AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"),
+							bundle.RelationKeyGlobalName.String(): pbtypes.String("john.any"),
 						},
 					},
 					{
 						Fields: map[string]*types.Value{
-							"id":         pbtypes.String("member-2"),
-							"name":       pbtypes.String("Jane Doe"),
-							"iconImage":  pbtypes.String(iconImage),
-							"identity":   pbtypes.String("AAjLbEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMD4"),
-							"globalName": pbtypes.String("jane.any"),
+							bundle.RelationKeyId.String():         pbtypes.String("member-2"),
+							bundle.RelationKeyName.String():       pbtypes.String("Jane Doe"),
+							bundle.RelationKeyIconImage.String():  pbtypes.String(iconImage),
+							bundle.RelationKeyIdentity.String():   pbtypes.String("AAjLbEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMD4"),
+							bundle.RelationKeyGlobalName.String(): pbtypes.String("jane.any"),
 						},
 					},
 				},
