@@ -94,5 +94,6 @@
   "recommendedFeaturedRelations",
   "layoutWidth",
   "defaultViewType",
-  "defaultTypeId"
+  "defaultTypeId",
+  "resolvedLayout"
 ]

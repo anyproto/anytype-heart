@@ -52,25 +52,25 @@ func Test(t *testing.T) {
 		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("rel1"),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
 				bundle.RelationKeyId:             domain.String("rel2"),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 			},
 			{
 				bundle.RelationKeyId:             domain.String("rel3"),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyAuthor.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
 				bundle.RelationKeyId:             domain.String("rel4"),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLinkedProjects.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
@@ -96,34 +96,34 @@ func Test(t *testing.T) {
 		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("rel1"),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
 				bundle.RelationKeyId:             domain.String("rel2"),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 			},
 			{
 				bundle.RelationKeyId:             domain.String("rel3"),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyAuthor.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 			{
 				bundle.RelationKeyId:             domain.String("rel4"),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLinkedProjects.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 			},
 		})
 		fx.objectStoreMock.AddVirtualDetails(dateObject.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:        domain.String(dateObject.Id()),
-			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_date)),
-			bundle.RelationKeyName:      domain.String(dateObject.Name()),
-			bundle.RelationKeyTimestamp: domain.Int64(dateObject.Time().Unix()),
+			bundle.RelationKeyId:             domain.String(dateObject.Id()),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_date)),
+			bundle.RelationKeyName:           domain.String(dateObject.Name()),
+			bundle.RelationKeyTimestamp:      domain.Int64(dateObject.Time().Unix()),
 		}))
 		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{

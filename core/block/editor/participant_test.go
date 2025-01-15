@@ -177,7 +177,7 @@ func newStoreFixture(t *testing.T) *spaceindex.StoreFixture {
 	for _, rel := range []domain.RelationKey{
 		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyIdentity, bundle.RelationKeyName,
 		bundle.RelationKeyIdentityProfileLink, bundle.RelationKeyIsReadonly, bundle.RelationKeyIsArchived,
-		bundle.RelationKeyDescription, bundle.RelationKeyIsHidden, bundle.RelationKeyLayout,
+		bundle.RelationKeyDescription, bundle.RelationKeyIsHidden, bundle.RelationKeyResolvedLayout,
 		bundle.RelationKeyLayoutAlign, bundle.RelationKeyIconImage, bundle.RelationKeyGlobalName,
 		bundle.RelationKeyId, bundle.RelationKeyParticipantPermissions, bundle.RelationKeyLastModifiedBy,
 		bundle.RelationKeySpaceId, bundle.RelationKeyParticipantStatus, bundle.RelationKeyIsHiddenDiscovery,

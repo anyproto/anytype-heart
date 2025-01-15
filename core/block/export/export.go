@@ -515,8 +515,8 @@ func getObjectRelations(state *state.State) []string {
 }
 
 func isObjectWithDataview(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_collection) ||
-		details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_set)
+	return details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_collection) ||
+		details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_set)
 }
 
 func getDataviewRelations(state *state.State) ([]string, error) {
@@ -656,7 +656,7 @@ func (e *exportContext) getRelationOptions(relationKey string) ([]database.Recor
 	relationOptionsDetails, err := e.objectStore.SpaceIndex(e.spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
@@ -1139,8 +1139,8 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 }
 
 func validLayoutForNonProtobuf(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyLayout) != int64(model.ObjectType_collection) &&
-		details.GetInt64(bundle.RelationKeyLayout) != int64(model.ObjectType_set)
+	return details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_collection) &&
+		details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_set)
 }
 
 func cleanupFile(wr writer) {

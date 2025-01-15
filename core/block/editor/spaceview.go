@@ -112,7 +112,9 @@ func (s *SpaceView) StateMigrations() migration.Migrations {
 
 func (s *SpaceView) initTemplate(st *state.State) {
 	template.InitTemplate(st,
-		template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
+		template.WithObjectTypes([]domain.TypeKey{bundle.TypeKeySpaceView}),
+		template.WithLayout(model.ObjectType_spaceView),
+		template.WithResolvedLayout(model.ObjectType_spaceView),
 	)
 }
 
