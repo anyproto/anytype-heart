@@ -48,7 +48,7 @@ func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *domain.Detail
 		if err != nil {
 			return nil, err
 		}
-		details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(newUniqueKey.Marshal())
+		details.SetString(bundle.RelationKeyUniqueKey, newUniqueKey.Marshal())
 		return newUniqueKey, err
 	}
 	return domain.UnmarshalUniqueKey(uniqueKey)
