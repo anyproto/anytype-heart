@@ -32,8 +32,8 @@ type Block struct {
 	Id              string   `json:"id"`
 	ChildrenIds     []string `json:"children_ids"`
 	BackgroundColor string   `json:"background_color"`
-	Align           string   `json:"align"`
-	VerticalAlign   string   `json:"vertical_align"`
+	Align           string   `json:"align" example:"AlignLeft"`
+	VerticalAlign   string   `json:"vertical_align" example:"VerticalAlignTop"`
 	Text            *Text    `json:"text,omitempty"`
 	File            *File    `json:"file,omitempty"`
 }

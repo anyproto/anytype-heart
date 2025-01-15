@@ -63,10 +63,8 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys: []string{"id", "name"},
-			// TODO split limit between spaces
-			// Limit: paginationLimitPerSpace,
-			// FullText: searchTerm,
+			Keys:  []string{"id", "name"},
+			Limit: int32(limit), // nolint: gosec
 		})
 
 		if objResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -90,9 +88,11 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 		return nil, 0, false, ErrNoObjectsFound
 	}
 
-	// sort after lastModifiedDate to achieve descending sort order across all spaces
+	// sort after ISO 8601 lastModifiedDate to achieve descending sort order across all spaces
 	sort.Slice(results, func(i, j int) bool {
-		return results[i].Details[0].Details["lastModifiedDate"].(float64) > results[j].Details[0].Details["lastModifiedDate"].(float64)
+		dateStrI := results[i].Details[0].Details["lastModifiedDate"].(string)
+		dateStrJ := results[j].Details[0].Details["lastModifiedDate"].(string)
+		return dateStrI > dateStrJ
 	})
 
 	// TODO: solve global pagination vs per space pagination

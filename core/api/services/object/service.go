@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 
@@ -397,13 +398,13 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "lastModifiedDate",
 			Details: map[string]interface{}{
-				"lastModifiedDate": resp.ObjectView.Details[0].Details.Fields["lastModifiedDate"].GetNumberValue(),
+				"lastModifiedDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields["lastModifiedDate"].GetNumberValue()),
 			},
 		},
 		{
 			Id: "createdDate",
 			Details: map[string]interface{}{
-				"createdDate": resp.ObjectView.Details[0].Details.Fields["createdDate"].GetNumberValue(),
+				"createdDate": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields["createdDate"].GetNumberValue()),
 			},
 		},
 		{
@@ -476,8 +477,8 @@ func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 			Id:              block.Id,
 			ChildrenIds:     block.ChildrenIds,
 			BackgroundColor: block.BackgroundColor,
-			Align:           mapAlign(block.Align),
-			VerticalAlign:   mapVerticalAlign(block.VerticalAlign),
+			Align:           model.BlockAlign_name[int32(block.Align)],
+			VerticalAlign:   model.BlockVerticalAlign_name[int32(block.VerticalAlign)],
 			Text:            text,
 			File:            file,
 		})
@@ -486,32 +487,7 @@ func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	return blocks
 }
 
-// mapAlign maps the protobuf BlockAlign to a string.
-func mapAlign(align model.BlockAlign) string {
-	switch align {
-	case model.Block_AlignLeft:
-		return "left"
-	case model.Block_AlignCenter:
-		return "center"
-	case model.Block_AlignRight:
-		return "right"
-	case model.Block_AlignJustify:
-		return "justify"
-	default:
-		return "unknown"
-	}
-}
-
-// mapVerticalAlign maps the protobuf BlockVerticalAlign to a string.
-func mapVerticalAlign(align model.BlockVerticalAlign) string {
-	switch align {
-	case model.Block_VerticalAlignTop:
-		return "top"
-	case model.Block_VerticalAlignMiddle:
-		return "middle"
-	case model.Block_VerticalAlignBottom:
-		return "bottom"
-	default:
-		return "unknown"
-	}
+func PosixToISO8601(posix float64) string {
+	t := time.Unix(int64(posix), 0).UTC()
+	return t.Format(time.RFC3339)
 }

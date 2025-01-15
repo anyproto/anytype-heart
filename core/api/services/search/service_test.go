@@ -214,9 +214,9 @@ func TestSearchService_Search(t *testing.T) {
 		// check details
 		for _, detail := range objects[0].Details {
 			if detail.Id == "createdDate" {
-				require.Equal(t, float64(888888), detail.Details["createdDate"])
+				require.Equal(t, string("1970-01-11T06:54:48Z"), detail.Details["createdDate"])
 			} else if detail.Id == "lastModifiedDate" {
-				require.Equal(t, float64(999999), detail.Details["lastModifiedDate"])
+				require.Equal(t, string("1970-01-12T13:46:39Z"), detail.Details["lastModifiedDate"])
 			}
 		}
 
