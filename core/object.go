@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
@@ -407,29 +408,32 @@ func objectResponse(
 	return response
 }
 
-func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
-		m := &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
+func (mw *Middleware) ObjectRelationAdd(_ context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
 	if len(req.RelationKeys) == 0 {
-		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
+		return &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{
+			Code:        pb.RpcObjectRelationAddResponseError_BAD_INPUT,
+			Description: fmt.Errorf("relation keys list is empty").Error(),
+		}}
 	}
 
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.AddExtraRelations(ctx, req.ContextId, req.RelationKeys)
+	detailsService := mustService[detailservice.Service](mw)
+	err := detailsService.ModifyDetails(req.ContextId, func(current *domain.Details) (*domain.Details, error) {
+		for _, key := range req.RelationKeys {
+			if current.Has(domain.RelationKey(key)) {
+				continue
+			}
+			current.Set(domain.RelationKey(key), domain.Null())
+		}
+		return current, nil
 	})
 	if err != nil {
-		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
+		return &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{
+			Code:        pb.RpcObjectRelationAddResponseError_BAD_INPUT,
+			Description: getErrorDescription(err),
+		}}
 	}
 
-	return response(pb.RpcObjectRelationAddResponseError_NULL, nil)
+	return &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{}}
 }
 
 func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {

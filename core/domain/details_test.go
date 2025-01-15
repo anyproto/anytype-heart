@@ -17,13 +17,14 @@ func TestStructDiff(t *testing.T) {
 		st2 *Details
 	}
 	tests := []struct {
-		name string
-		args args
-		want *Details
+		name     string
+		args     args
+		wantDiff *Details
+		wantKeys []RelationKey
 	}{
 		{"both nil",
 			args{nil, nil},
-			nil,
+			nil, nil,
 		},
 		{"equal",
 			args{
@@ -34,7 +35,7 @@ func TestStructDiff(t *testing.T) {
 					"k1": String("v1"),
 				}),
 			},
-			nil,
+			nil, nil,
 		},
 		{"nil st1", args{
 			nil,
@@ -43,7 +44,7 @@ func TestStructDiff(t *testing.T) {
 			}),
 		}, NewDetailsFromMap(map[RelationKey]Value{
 			"k1": String("v1"),
-		}),
+		}), nil,
 		},
 		{"nil map st1", args{
 			NewDetails(),
@@ -52,7 +53,7 @@ func TestStructDiff(t *testing.T) {
 			}),
 		}, NewDetailsFromMap(map[RelationKey]Value{
 			"k1": String("v1"),
-		}),
+		}), nil,
 		},
 		{"empty map st1", args{
 			NewDetailsFromMap(map[RelationKey]Value{}),
@@ -61,16 +62,14 @@ func TestStructDiff(t *testing.T) {
 			}),
 		}, NewDetailsFromMap(map[RelationKey]Value{
 			"k1": String("v1"),
-		}),
+		}), nil,
 		},
 		{"nil st2", args{
 			NewDetailsFromMap(map[RelationKey]Value{
 				"k1": String("v1"),
 			}),
 			nil,
-		}, NewDetailsFromMap(map[RelationKey]Value{
-			"k1": Null(),
-		}),
+		}, nil, []RelationKey{"k1"},
 		},
 		{"nil map st2", args{
 			NewDetailsFromMap(map[RelationKey]Value{
@@ -78,16 +77,14 @@ func TestStructDiff(t *testing.T) {
 			}),
 			NewDetails(),
 		},
-			NewDetailsFromMap(map[RelationKey]Value{
-				"k1": Null(),
-			})},
+			nil, []RelationKey{"k1"},
+		},
 		{"empty map st2", args{
 			NewDetailsFromMap(map[RelationKey]Value{
 				"k1": String("v1"),
 			}),
-			NewDetailsFromMap(map[RelationKey]Value{})}, NewDetailsFromMap(map[RelationKey]Value{
-			"k1": Null(),
-		}),
+			NewDetailsFromMap(map[RelationKey]Value{})},
+			nil, []RelationKey{"k1"},
 		},
 		{"complex", args{
 			NewDetailsFromMap(map[RelationKey]Value{
@@ -100,17 +97,16 @@ func TestStructDiff(t *testing.T) {
 				"k3": String("v3_"),
 			}),
 		}, NewDetailsFromMap(map[RelationKey]Value{
-			"k2": Null(),
 			"k3": String("v3_"),
-		}),
+		}), []RelationKey{"k2"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := StructDiff(tt.args.st1, tt.args.st2); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("StructDiff() = %v, want %v", got, tt.want)
-			}
+			diff, keys := StructDiff(tt.args.st1, tt.args.st2)
+			assert.True(t, reflect.DeepEqual(diff, tt.wantDiff))
+			assert.True(t, reflect.DeepEqual(keys, tt.wantKeys))
 		})
 	}
 }
