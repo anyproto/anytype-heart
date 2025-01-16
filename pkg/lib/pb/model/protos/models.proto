@@ -363,7 +363,6 @@ message Block {
                 int32 pageLimit = 13; // Limit of objects shown in widget
                 string defaultTemplateId = 14; // Default template that is chosen for new object created within the view
                 string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
-                Block.Align align = 16;
 
                 enum Type {
                     Table = 0;
@@ -391,6 +390,7 @@ message Block {
                 TimeFormat timeFormat = 6;
                 DateFormat dateFormat = 7;
                 FormulaType formula = 8;
+                Block.Align align = 9;
 
                 enum DateFormat {
                     MonthAbbrBeforeDay = 0; // Jul 30, 2020
