@@ -147,7 +147,7 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (m *migrator) verify(ctx context.Context, fast bool) error {
+func (m *migrator) verify(ctx context.Context, fast bool) ([]*verificationReport, error) {
 	v := &verifier{
 		fast:       fast,
 		oldStorage: m.oldStorage,

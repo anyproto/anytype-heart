@@ -38,19 +38,20 @@ type verificationReport struct {
 	duration time.Duration
 }
 
-func (v *verifier) verify(ctx context.Context) error {
+func (v *verifier) verify(ctx context.Context) ([]*verificationReport, error) {
 	allSpaceIds, err := v.oldStorage.AllSpaceIds()
 	if err != nil {
-		return fmt.Errorf("list all space ids: %w", err)
+		return nil, fmt.Errorf("list all space ids: %w", err)
 	}
+	reports := make([]*verificationReport, 0, len(allSpaceIds))
 	for _, spaceId := range allSpaceIds {
 		report, err := v.verifySpace(ctx, spaceId)
 		if err != nil {
-			return fmt.Errorf("verify space: %w", err)
+			return nil, fmt.Errorf("verify space: %w", err)
 		}
-		fmt.Printf("%#v\n%s\n", report, report.duration)
+		report.spaceId = spaceId
 	}
-	return nil
+	return reports, nil
 }
 
 func (v *verifier) verifySpace(ctx context.Context, spaceId string) (*verificationReport, error) {

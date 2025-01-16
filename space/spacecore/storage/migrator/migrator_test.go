@@ -4,9 +4,11 @@ import (
 	"context"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
@@ -41,9 +44,9 @@ func (q *quicPreferenceSetterStub) Name() (name string) {
 func (q *quicPreferenceSetterStub) PreferQuic(b bool) {
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T, mode storage.SpaceStorageMode) *fixture {
 	cfg := config.New()
-	cfg.SpaceStorageMode = storage.SpaceStorageModeSqlite
+	cfg.SpaceStorageMode = mode
 	cfg.RepoPath = t.TempDir()
 
 	fx := &fixture{
@@ -69,6 +72,7 @@ func (fx *fixture) start(t *testing.T) {
 	ctx := context.Background()
 	testApp := &app.App{}
 	testApp.Register(migratorfinisher.New())
+	testApp.Register(clientds.New())
 	testApp.Register(testutil.PrepareMock(ctx, testApp, eventSender))
 	testApp.Register(&quicPreferenceSetterStub{})
 	testApp.Register(walletService)
@@ -85,15 +89,23 @@ func (fx *fixture) start(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func assertReports(t *testing.T, reports []*verificationReport) {
+	for _, report := range reports {
+		for _, err := range report.errors {
+			assert.NoError(t, err.err, err.id)
+		}
+	}
+}
+
 func TestMigration(t *testing.T) {
 	t.Run("no old storage", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newFixture(t, storage.SpaceStorageModeSqlite)
 
 		fx.start(t)
 	})
 
-	t.Run("with old data, fast verifier", func(t *testing.T) {
-		fx := newFixture(t)
+	t.Run("with sqlite, fast verification", func(t *testing.T) {
+		fx := newFixture(t, storage.SpaceStorageModeSqlite)
 
 		err := copyFile("testdata/spaceStore.db", fx.cfg.GetOldSpaceStorePath())
 		require.NoError(t, err)
@@ -102,12 +114,13 @@ func TestMigration(t *testing.T) {
 
 		fx.start(t)
 
-		err = fx.migrator.verify(context.Background(), true)
+		reports, err := fx.migrator.verify(context.Background(), true)
 		require.NoError(t, err)
+		assertReports(t, reports)
 	})
 
-	t.Run("with old data, full verifier", func(t *testing.T) {
-		fx := newFixture(t)
+	t.Run("with sqlite, full verification", func(t *testing.T) {
+		fx := newFixture(t, storage.SpaceStorageModeSqlite)
 
 		err := copyFile("testdata/spaceStore.db", fx.cfg.GetOldSpaceStorePath())
 		require.NoError(t, err)
@@ -116,8 +129,39 @@ func TestMigration(t *testing.T) {
 
 		fx.start(t)
 
-		err = fx.migrator.verify(context.Background(), false)
+		reports, err := fx.migrator.verify(context.Background(), false)
 		require.NoError(t, err)
+		assertReports(t, reports)
+	})
+
+	t.Run("with badger, fast verification", func(t *testing.T) {
+		fx := newFixture(t, storage.SpaceStorageModeBadger)
+
+		err := copyDir("testdata/badger_spacestore", fx.cfg.GetOldSpaceStorePath())
+		require.NoError(t, err)
+
+		// TODO Test object->space bindings were populated
+
+		fx.start(t)
+
+		reports, err := fx.migrator.verify(context.Background(), true)
+		require.NoError(t, err)
+		assertReports(t, reports)
+	})
+
+	t.Run("with badger, full verification", func(t *testing.T) {
+		fx := newFixture(t, storage.SpaceStorageModeBadger)
+
+		err := copyDir("testdata/badger_spacestore", fx.cfg.GetOldSpaceStorePath())
+		require.NoError(t, err)
+
+		// TODO Test object->space bindings were populated
+
+		fx.start(t)
+
+		reports, err := fx.migrator.verify(context.Background(), false)
+		require.NoError(t, err)
+		assertReports(t, reports)
 	})
 }
 
@@ -134,4 +178,26 @@ func copyFile(srcPath string, destPath string) error {
 	defer dest.Close()
 	_, err = io.Copy(dest, src)
 	return err
+}
+
+func copyDir(srcPath string, destPath string) error {
+	dir, err := os.ReadDir(srcPath)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(destPath, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range dir {
+		src := filepath.Join(srcPath, entry.Name())
+		dst := filepath.Join(destPath, entry.Name())
+		err := copyFile(src, dst)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
