@@ -164,7 +164,7 @@ func TestPublish(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, expected, publish.Cid)
+		assert.Equal(t, expected, publish.Url)
 		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
@@ -218,7 +218,7 @@ func TestPublish(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, expected, publish.Cid)
+		assert.Equal(t, expected, publish.Url)
 		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
@@ -265,7 +265,7 @@ func TestPublish(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, expected, publish.Cid)
+		assert.Equal(t, expected, publish.Url)
 		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
@@ -323,7 +323,7 @@ func TestPublish(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, expectedUrl, publish.Cid)
+		assert.Equal(t, expectedUrl, publish.Url)
 		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
@@ -368,7 +368,7 @@ func TestPublish(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
-		assert.Equal(t, "", publish.Cid)
+		assert.Equal(t, "", publish.Url)
 		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
@@ -411,7 +411,7 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, ErrLimitExceeded)
-		assert.Equal(t, "", publish.Cid)
+		assert.Equal(t, "", publish.Url)
 	})
 	t.Run("default limit error", func(t *testing.T) {
 		// given
@@ -447,7 +447,7 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, ErrLimitExceeded)
-		assert.Equal(t, "", publish.Cid)
+		assert.Equal(t, "", publish.Url)
 	})
 }
 

@@ -31,7 +31,7 @@ func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishin
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
-		Uri: res.Cid,
+		Uri: res.Url,
 	}
 
 	return r

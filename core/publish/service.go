@@ -50,8 +50,7 @@ var log = logger.NewNamed(CName)
 var ErrLimitExceeded = errors.New("limit exceeded")
 
 type PublishResult struct {
-	Cid string
-	Key string
+	Url string
 }
 
 type PublishingUberSnapshotMeta struct {
@@ -393,7 +392,7 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 	}
 	url := s.makeUrl(uri, identity, globalName)
 
-	return PublishResult{Cid: url}, nil
+	return PublishResult{Url: url}, nil
 }
 
 func (s *service) makeUrl(uri, identity, globalName string) string {
