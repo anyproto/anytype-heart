@@ -159,7 +159,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	uberSnapshot, size, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId)
+	uberSnapshot, totalSize, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	if err != nil {
 		return err
 	}
-	if err := s.createIndexFile(tempPublishDir, uberSnapshot, &size, limit); err != nil {
+	if err := s.createIndexFile(tempPublishDir, uberSnapshot, totalSize, limit); err != nil {
 		return err
 	}
 
@@ -207,59 +207,62 @@ func (s *service) processExportedData(dirEntries []fs.DirEntry, exportPath, temp
 		PbFiles: make(map[string]string),
 	}
 
-	var size int64
+	var totalSize int64
 	for _, entry := range dirEntries {
 		if entry.IsDir() {
-			if err := s.processDirectory(entry, exportPath, tempPublishDir, &uberSnapshot, &size, limit); err != nil {
+			if size, err := s.processDirectory(entry, exportPath, tempPublishDir, &uberSnapshot, limit); err != nil {
 				return PublishingUberSnapshot{}, 0, err
+			} else {
+				totalSize += size
 			}
 		} else {
 			return PublishingUberSnapshot{}, 0, fmt.Errorf("unexpected file on export root level: %s", entry.Name())
 		}
 	}
 
-	return uberSnapshot, size, nil
+	return uberSnapshot, totalSize, nil
 }
 
-func (s *service) processDirectory(entry fs.DirEntry, exportPath, tempPublishDir string, uberSnapshot *PublishingUberSnapshot, size *int64, limit int64) error {
+func (s *service) processDirectory(entry fs.DirEntry, exportPath, tempPublishDir string, uberSnapshot *PublishingUberSnapshot, limit int64) (int64, error) {
 	dirName := entry.Name()
 	if dirName == export.Files {
-		return s.processFilesDirectory(exportPath, tempPublishDir, size, limit)
+		return s.processFilesDirectory(exportPath, tempPublishDir, limit)
 	}
 
 	dirFiles, err := os.ReadDir(filepath.Join(exportPath, dirName))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	for _, file := range dirFiles {
 		if err := s.processSnapshotFile(exportPath, dirName, file, uberSnapshot); err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	return nil
+	return 0, nil
 }
 
-func (s *service) processFilesDirectory(exportPath, tempPublishDir string, size *int64, limit int64) error {
+func (s *service) processFilesDirectory(exportPath, tempPublishDir string, limit int64) (int64, error) {
+	var size int64
 	originalPath := filepath.Join(exportPath, export.Files)
 	err := filepath.Walk(originalPath, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
-			*size += info.Size()
-			if *size > limit {
+			size += info.Size()
+			if size > limit {
 				return ErrLimitExceeded
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		return err
+		return size, err
 	}
 	fileDir := filepath.Join(tempPublishDir, export.Files)
 	if err := os.CopyFS(fileDir, os.DirFS(originalPath)); err != nil {
-		return err
+		return size, err
 	}
-	return nil
+	return size, nil
 }
 
 func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEntry, uberSnapshot *PublishingUberSnapshot) error {
@@ -284,7 +287,7 @@ func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEnt
 	return nil
 }
 
-func (s *service) createIndexFile(tempPublishDir string, uberSnapshot PublishingUberSnapshot, size *int64, limit int64) error {
+func (s *service) createIndexFile(tempPublishDir string, uberSnapshot PublishingUberSnapshot, totalSize int64, limit int64) error {
 	jsonData, err := json.Marshal(&uberSnapshot)
 	if err != nil {
 		return err
@@ -310,8 +313,8 @@ func (s *service) createIndexFile(tempPublishDir string, uberSnapshot Publishing
 		return err
 	}
 
-	*size += stat.Size()
-	if *size > limit {
+	totalSize += stat.Size()
+	if totalSize > limit {
 		return ErrLimitExceeded
 	}
 

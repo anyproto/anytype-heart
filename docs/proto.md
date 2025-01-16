@@ -31078,6 +31078,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Template | 7 | restricts template creation from this object |
 | Duplicate | 8 | restricts duplicate object |
 | CreateObjectOfThisType | 9 | can be set only for types. Restricts creating objects of this type |
+| Publish | 10 | object is not allowed to publish |
 
 
 
