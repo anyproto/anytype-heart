@@ -269,7 +269,7 @@ func (st *SmartTest) SetDetailsAndUpdateLastUsed(ctx session.Context, details []
 	return st.SetDetails(ctx, details, showEvent)
 }
 
-func (st *SmartTest) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
+func (st *SmartTest) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	details := st.Doc.(*state.State).CombinedDetails()
 	if details == nil {
 		details = domain.NewDetails()
@@ -282,7 +282,7 @@ func (st *SmartTest) UpdateDetails(update func(current *domain.Details) (*domain
 	return nil
 }
 
-func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) (err error) {
+func (st *SmartTest) UpdateDetailsAndLastUsed(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	details := st.Doc.(*state.State).CombinedDetails()
 	if details == nil {
 		details = domain.NewDetails()

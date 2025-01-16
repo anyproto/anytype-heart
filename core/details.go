@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -60,7 +61,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 	ds := mustService[detailservice.Service](mw)
-	err := ds.ModifyDetails(req.ContextId, func(current *domain.Details) (*domain.Details, error) {
+	err := ds.ModifyDetails(ctx, req.ContextId, func(current *domain.Details) (*domain.Details, error) {
 		d := current.Copy()
 		return internalflag.PutToDetails(d, req.InternalFlags), nil
 	})
@@ -164,4 +165,36 @@ func (mw *Middleware) ObjectListSetIsFavorite(_ context.Context, req *pb.RpcObje
 		return response(pb.RpcObjectListSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectListSetIsFavoriteResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
+	ctx := mw.newContext(cctx)
+	if len(req.RelationKeys) == 0 {
+		return &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{
+			Code:        pb.RpcObjectRelationAddResponseError_BAD_INPUT,
+			Description: fmt.Errorf("relation keys list is empty").Error(),
+		}}
+	}
+
+	detailsService := mustService[detailservice.Service](mw)
+	err := detailsService.ModifyDetails(ctx, req.ContextId, func(current *domain.Details) (*domain.Details, error) {
+		for _, key := range req.RelationKeys {
+			if current.Has(domain.RelationKey(key)) {
+				continue
+			}
+			current.Set(domain.RelationKey(key), domain.Null())
+		}
+		return current, nil
+	})
+	if err != nil {
+		return &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{
+			Code:        pb.RpcObjectRelationAddResponseError_BAD_INPUT,
+			Description: getErrorDescription(err),
+		}}
+	}
+
+	return &pb.RpcObjectRelationAddResponse{
+		Error: &pb.RpcObjectRelationAddResponseError{},
+		Event: mw.getResponseEvent(ctx),
+	}
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
@@ -406,34 +405,6 @@ func objectResponse(
 	}
 
 	return response
-}
-
-func (mw *Middleware) ObjectRelationAdd(_ context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
-	if len(req.RelationKeys) == 0 {
-		return &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{
-			Code:        pb.RpcObjectRelationAddResponseError_BAD_INPUT,
-			Description: fmt.Errorf("relation keys list is empty").Error(),
-		}}
-	}
-
-	detailsService := mustService[detailservice.Service](mw)
-	err := detailsService.ModifyDetails(req.ContextId, func(current *domain.Details) (*domain.Details, error) {
-		for _, key := range req.RelationKeys {
-			if current.Has(domain.RelationKey(key)) {
-				continue
-			}
-			current.Set(domain.RelationKey(key), domain.Null())
-		}
-		return current, nil
-	})
-	if err != nil {
-		return &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{
-			Code:        pb.RpcObjectRelationAddResponseError_BAD_INPUT,
-			Description: getErrorDescription(err),
-		}}
-	}
-
-	return &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{}}
 }
 
 func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
