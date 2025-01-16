@@ -2,14 +2,15 @@ package objectstore
 
 import (
 	"errors"
+	"fmt"
 
 	anystore "github.com/anyproto/any-store"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) SaveVirtualSpace(id string) (err error) {
@@ -23,7 +24,7 @@ func (s *dsObjectStore) SaveVirtualSpace(id string) (err error) {
 	if err != nil {
 		return err
 	}
-	_, err = s.virtualSpaces.UpsertOne(s.componentCtx, it)
+	err = s.virtualSpaces.UpsertOne(s.componentCtx, it)
 	return err
 }
 
@@ -32,52 +33,49 @@ func (s *dsObjectStore) ListVirtualSpaces() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer iter.Close()
+
 	var spaceIds []string
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return nil, errors.Join(iter.Close(), err)
+			return nil, fmt.Errorf("get doc: %w", err)
 		}
 		id := doc.Value().GetStringBytes("id")
 		spaceIds = append(spaceIds, string(id))
 	}
-	return spaceIds, iter.Close()
+	return spaceIds, nil
 }
 
 func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
-	ids, _, err := s.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+	ids, _, err := s.SpaceIndex(spaceID).QueryObjectIds(database.Query{
+		Filters: []database.FilterRequest{
 			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				Condition:   model.BlockContentDataviewFilter_NotLike,
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(addr.BundledRelationURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledRelationURLPrefix),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(addr.BundledObjectTypeURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledObjectTypeURLPrefix),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(addr.BundledTemplatesURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledTemplatesURLPrefix),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.AnytypeProfileId),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(addr.AnytypeProfileId),
 			},
 		},
 	})
 	if err != nil {
 		return err
 	}
-	err = s.DeleteDetails(ids...)
+	err = s.SpaceIndex(spaceID).DeleteDetails(s.componentCtx, ids)
 	if err != nil {
 		return err
 	}

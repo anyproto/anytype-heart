@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type derivedObject struct {
@@ -44,21 +43,21 @@ func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 		}
 		return id, payload, nil
 	}
-	rawUniqueKey := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+	rawUniqueKey := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey)
 	uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 	if err != nil {
-		uniqueKey, err = domain.NewUniqueKey(sn.SbType, sn.Snapshot.Data.Key)
+		uniqueKey, err = domain.NewUniqueKey(sn.Snapshot.SbType, sn.Snapshot.Data.Key)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s and %q: %w", sn.SbType, sn.Snapshot.Data.Key, err)
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s and %q: %w", sn.Snapshot.SbType, sn.Snapshot.Data.Key, err)
 		}
 	}
 
 	var key string
 	if d.isDeletedObject(spaceID, uniqueKey.Marshal()) {
 		key = bson.NewObjectId().Hex()
-		uniqueKey, err = domain.NewUniqueKey(sn.SbType, key)
+		uniqueKey, err = domain.NewUniqueKey(sn.Snapshot.SbType, key)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s: %w", sn.SbType, err)
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s: %w", sn.Snapshot.SbType, err)
 		}
 	}
 	d.internalKey = key
@@ -79,22 +78,17 @@ func (d *derivedObject) GetInternalKey(sbType sb.SmartBlockType) string {
 }
 
 func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
-	ids, _, err := d.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+	ids, _, err := d.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceId),
+				RelationKey: bundle.RelationKeyUniqueKey,
+				Value:       domain.String(uniqueKey),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Value:       pbtypes.String(uniqueKey),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-				Value:       pbtypes.Bool(true),
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Value:       domain.Bool(true),
 			},
 		},
 	})
@@ -102,22 +96,17 @@ func (d *derivedObject) isDeletedObject(spaceId string, uniqueKey string) bool {
 }
 
 func (d *derivedObject) getInternalKey(spaceID, objectId string) (string, error) {
-	ids, err := d.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+	ids, err := d.objectStore.SpaceIndex(spaceID).Query(database.Query{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(objectId),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(objectId),
 			},
 		},
 	})
 	if err == nil && len(ids) > 0 {
-		uniqueKey := pbtypes.GetString(ids[0].Details, bundle.RelationKeyUniqueKey.String())
+		uniqueKey := ids[0].Details.GetString(bundle.RelationKeyUniqueKey)
 		key, err := domain.UnmarshalUniqueKey(uniqueKey)
 		if err != nil {
 			return "", nil

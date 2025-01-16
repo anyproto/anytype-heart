@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -21,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -169,19 +167,19 @@ func (u *updater) updateLastUsedDate(spc clientspace.Space, key Key, ts int64) e
 		return fmt.Errorf("cannot update lastUsedDate for object with invalid smartBlock type. Only object types and relations are expected")
 	}
 
-	details, err := u.store.GetObjectByUniqueKey(spc.Id(), uk)
+	details, err := u.store.SpaceIndex(spc.Id()).GetObjectByUniqueKey(uk)
 	if err != nil {
 		return fmt.Errorf("failed to get details: %w", err)
 	}
 
-	id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
+	id := details.GetString(bundle.RelationKeyId)
 	if id == "" {
 		return fmt.Errorf("failed to get id from details: %w", err)
 	}
 
 	if err = spc.DoCtx(u.ctx, id, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		st.SetLocalDetail(bundle.RelationKeyLastUsedDate.String(), pbtypes.Int64(ts))
+		st.SetLocalDetail(bundle.RelationKeyLastUsedDate, domain.Int64(ts))
 		return sb.Apply(st)
 	}); err != nil {
 		return fmt.Errorf("failed to set lastUsedDate to object: %w", err)
@@ -189,8 +187,8 @@ func (u *updater) updateLastUsedDate(spc clientspace.Space, key Key, ts int64) e
 	return nil
 }
 
-func SetLastUsedDateForInitialObjectType(id string, details *types.Struct) {
-	if !strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || details == nil || details.Fields == nil {
+func SetLastUsedDateForInitialObjectType(id string, details *domain.Details) {
+	if !strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || details == nil {
 		return
 	}
 
@@ -212,5 +210,5 @@ func SetLastUsedDateForInitialObjectType(id string, details *types.Struct) {
 
 	// we do this trick to order crucial Anytype object types by last date
 	lastUsed := time.Now().Add(time.Duration(-1 * priority * int64(maxInstallationTime))).Unix()
-	details.Fields[bundle.RelationKeyLastUsedDate.String()] = pbtypes.Int64(lastUsed)
+	details.SetInt64(bundle.RelationKeyLastUsedDate, lastUsed)
 }

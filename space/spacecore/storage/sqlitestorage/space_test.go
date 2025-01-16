@@ -91,7 +91,31 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 		treeIds, err := store.StoredIds()
 		require.NoError(t, err)
 		assert.Equal(t, []string{payload.SpaceSettingsWithId.Id, otherStore.Id()}, treeIds)
+
+		deletedIds, err := store.(*spaceStorage).AllDeletedTreeIds()
+		require.NoError(t, err)
+		assert.Equal(t, []string{otherStore.Id()}, deletedIds)
 	})
+}
+
+func TestSpaceStorage_AllDeletedTreeIds(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	payload := spaceTestPayload()
+	store, err := createSpaceStorage(fx.storageService, payload)
+	require.NoError(t, err)
+
+	err = store.SetTreeDeletedStatus("id1", spacestorage.TreeDeletedStatusDeleted)
+	require.NoError(t, err)
+	err = store.SetTreeDeletedStatus("id2", spacestorage.TreeDeletedStatusQueued)
+	require.NoError(t, err)
+	err = store.SetTreeDeletedStatus("id3", spacestorage.TreeDeletedStatusDeleted)
+	require.NoError(t, err)
+
+	deletedIds, err := store.(*spaceStorage).AllDeletedTreeIds()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id1", "id3"}, deletedIds)
 }
 
 func TestSpaceStorage_SetTreeDeletedStatus(t *testing.T) {
@@ -175,20 +199,13 @@ func TestSpaceStorage_ReadSpaceHash(t *testing.T) {
 	hash, err := ss.ReadSpaceHash()
 	require.NoError(t, err)
 	assert.Empty(t, hash)
-	oldHash, err := ss.ReadOldSpaceHash()
-	require.NoError(t, err)
-	assert.Empty(t, oldHash)
 
 	require.NoError(t, ss.WriteSpaceHash("hash"))
-	require.NoError(t, ss.WriteOldSpaceHash("oldHash"))
 
 	var checkHashes = func(ss spacestorage.SpaceStorage) {
 		hash, err = ss.ReadSpaceHash()
 		require.NoError(t, err)
 		assert.Equal(t, "hash", hash)
-		oldHash, err = ss.ReadOldSpaceHash()
-		require.NoError(t, err)
-		assert.Equal(t, "oldHash", oldHash)
 	}
 
 	checkHashes(ss)

@@ -26,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -47,7 +47,7 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
-func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service, fileObjectService fileobject.Service) Clipboard {
+func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore spaceindex.Store, fileService files.Service, fileObjectService fileobject.Service) Clipboard {
 	return &clipboard{
 		SmartBlock:        sb,
 		file:              file,
@@ -62,7 +62,7 @@ type clipboard struct {
 	smartblock.SmartBlock
 	file              file.File
 	tempDirProvider   core.TempDirProvider
-	objectStore       objectstore.ObjectStore
+	objectStore       spaceindex.Store
 	fileService       files.Service
 	fileObjectService fileobject.Service
 }
@@ -448,13 +448,13 @@ func (cb *clipboard) pasteAny(
 	}
 
 	relationLinks := destState.GetRelationLinks()
-	var missingRelationKeys []string
+	var missingRelationKeys []domain.RelationKey
 
 	// collect missing relation keys to add it to state
 	for _, b := range s.Blocks() {
 		if r := b.GetRelation(); r != nil {
 			if !relationLinks.Has(r.Key) {
-				missingRelationKeys = append(missingRelationKeys, r.Key)
+				missingRelationKeys = append(missingRelationKeys, domain.RelationKey(r.Key))
 			}
 		}
 	}
@@ -524,11 +524,13 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			},
 		})
 		s.Add(b)
+
 		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
-			Bytes:  fs.Data,
-			Path:   fs.LocalPath,
-			Name:   fs.Name,
-			Origin: objectorigin.Clipboard(),
+			Bytes:     fs.Data,
+			Path:      fs.LocalPath,
+			Name:      fs.Name,
+			Origin:    objectorigin.Clipboard(),
+			ImageKind: model.ImageKind_Basic,
 		}, false); err != nil {
 			return
 		}
@@ -568,11 +570,11 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 		return
 	}
 
-	relationKeysList := make([]string, len(relationKeys))
+	relationKeysList := make([]domain.RelationKey, 0, len(relationKeys))
 	for k := range relationKeys {
-		relationKeysList = append(relationKeysList, k)
+		relationKeysList = append(relationKeysList, domain.RelationKey(k))
 	}
-	relations, err := cb.objectStore.FetchRelationByKeys(cb.SpaceID(), relationKeysList...)
+	relations, err := cb.objectStore.FetchRelationByKeys(relationKeysList...)
 	if err != nil {
 		return fmt.Errorf("failed to fetch relation keys of dataview: %w", err)
 	}

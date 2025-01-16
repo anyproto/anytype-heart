@@ -3,30 +3,32 @@ package editor
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestParticipant_ModifyProfileDetails(t *testing.T) {
 	// given
 	fx := newParticipantFixture(t)
 	defer fx.finish()
-	details := pbtypes.ToStruct(map[string]interface{}{
-		bundle.RelationKeyName.String():        "name",
-		bundle.RelationKeyDescription.String(): "description",
-		bundle.RelationKeyIconImage.String():   "icon",
-		bundle.RelationKeyId.String():          "profile",
-		bundle.RelationKeyGlobalName.String():  "global",
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:        domain.String("name"),
+		bundle.RelationKeyDescription: domain.String("description"),
+		bundle.RelationKeyIconImage:   domain.String("icon"),
+		bundle.RelationKeyId:          domain.String("profile"),
+		bundle.RelationKeyGlobalName:  domain.String("global"),
 	})
 
 	// when
@@ -34,14 +36,13 @@ func TestParticipant_ModifyProfileDetails(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	details.Fields[bundle.RelationKeyIdentityProfileLink.String()] = pbtypes.String("profile")
-	delete(details.Fields, bundle.RelationKeyId.String())
-	fields := details.GetFields()
-	participantFields := fx.CombinedDetails().GetFields()
+	details.Set(bundle.RelationKeyIdentityProfileLink, domain.String("profile"))
+	details.Delete(bundle.RelationKeyId)
+	participantDetails := fx.CombinedDetails()
 	participantRelationLinks := fx.GetRelationLinks()
-	for key, _ := range details.Fields {
-		require.Equal(t, fields[key], participantFields[key])
-		require.True(t, participantRelationLinks.Has(key))
+	for key, _ := range details.Iterate() {
+		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
+		require.True(t, participantRelationLinks.Has(key.String()))
 	}
 }
 
@@ -61,21 +62,20 @@ func TestParticipant_ModifyParticipantAclState(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	details := pbtypes.ToStruct(map[string]interface{}{
-		bundle.RelationKeyId.String():                     "id",
-		bundle.RelationKeyIdentity.String():               "identity",
-		bundle.RelationKeySpaceId.String():                "spaceId",
-		bundle.RelationKeyLastModifiedBy.String():         "id",
-		bundle.RelationKeyParticipantPermissions.String(): model.ParticipantPermissions_Owner,
-		bundle.RelationKeyParticipantStatus.String():      model.ParticipantStatus_Active,
-		bundle.RelationKeyIsHiddenDiscovery.String():      false,
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:                     domain.String("id"),
+		bundle.RelationKeyIdentity:               domain.String("identity"),
+		bundle.RelationKeySpaceId:                domain.String("spaceId"),
+		bundle.RelationKeyLastModifiedBy:         domain.String("id"),
+		bundle.RelationKeyParticipantPermissions: domain.Int64(model.ParticipantPermissions_Owner),
+		bundle.RelationKeyParticipantStatus:      domain.Int64(model.ParticipantStatus_Active),
+		bundle.RelationKeyIsHiddenDiscovery:      domain.Bool(false),
 	})
-	fields := details.GetFields()
-	participantFields := fx.CombinedDetails().GetFields()
+	participantDetails := fx.CombinedDetails()
 	participantRelationLinks := fx.GetRelationLinks()
-	for key, _ := range details.Fields {
-		require.Equal(t, fields[key], participantFields[key])
-		require.True(t, participantRelationLinks.Has(key))
+	for key, _ := range details.Iterate() {
+		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
+		require.True(t, participantRelationLinks.Has(key.String()))
 	}
 }
 
@@ -95,23 +95,84 @@ func TestParticipant_ModifyIdentityDetails(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	details := pbtypes.ToStruct(map[string]interface{}{
-		bundle.RelationKeyName.String():        "name",
-		bundle.RelationKeyDescription.String(): "description",
-		bundle.RelationKeyIconImage.String():   "icon",
-		bundle.RelationKeyGlobalName.String():  "global",
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:        domain.String("name"),
+		bundle.RelationKeyDescription: domain.String("description"),
+		bundle.RelationKeyIconImage:   domain.String("icon"),
+		bundle.RelationKeyGlobalName:  domain.String("global"),
 	})
-	fields := details.GetFields()
-	participantFields := fx.CombinedDetails().GetFields()
+	participantDetails := fx.CombinedDetails()
 	participantRelationLinks := fx.GetRelationLinks()
-	for key, _ := range details.Fields {
-		require.Equal(t, fields[key], participantFields[key])
-		require.True(t, participantRelationLinks.Has(key))
+	for key, _ := range details.Iterate() {
+		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
+		require.True(t, participantRelationLinks.Has(key.String()))
 	}
 }
 
-func newStoreFixture(t *testing.T) *objectstore.StoreFixture {
-	store := objectstore.NewStoreFixture(t)
+func TestParticipant_Init(t *testing.T) {
+	t.Run("title block not empty, because name detail is in store", func(t *testing.T) {
+		// given
+		sb := smarttest.New("root")
+		store := newStoreFixture(t)
+		store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeySpaceId: domain.String("spaceId"),
+			bundle.RelationKeyId:      domain.String("root"),
+			bundle.RelationKeyName:    domain.String("test"),
+		}})
+
+		basicComponent := basic.NewBasic(sb, store, nil, nil, nil)
+		p := &participant{
+			SmartBlock:       sb,
+			DetailsUpdatable: basicComponent,
+			objectStore:      store,
+		}
+
+		initCtx := &smartblock.InitContext{
+			IsNewObject: true,
+		}
+
+		// when
+		err := p.Init(initCtx)
+		assert.NoError(t, err)
+		migration.RunMigrations(p, initCtx)
+		err = p.Apply(initCtx.State)
+		assert.NoError(t, err)
+
+		// then
+		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
+		assert.Equal(t, "test", p.NewState().Get(state.TitleBlockID).Model().GetText().GetText())
+	})
+	t.Run("title block is empty", func(t *testing.T) {
+		// given
+		sb := smarttest.New("root")
+		store := newStoreFixture(t)
+
+		basicComponent := basic.NewBasic(sb, store, nil, nil, nil)
+		p := &participant{
+			SmartBlock:       sb,
+			DetailsUpdatable: basicComponent,
+			objectStore:      store,
+		}
+
+		initCtx := &smartblock.InitContext{
+			IsNewObject: true,
+		}
+
+		// when
+		err := p.Init(initCtx)
+		assert.NoError(t, err)
+		migration.RunMigrations(p, initCtx)
+		err = p.Apply(initCtx.State)
+		assert.NoError(t, err)
+
+		// then
+		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
+		assert.Equal(t, "", p.NewState().Get(state.TitleBlockID).Model().GetText().GetText())
+	})
+}
+
+func newStoreFixture(t *testing.T) *spaceindex.StoreFixture {
+	store := spaceindex.NewStoreFixture(t)
 
 	for _, rel := range []domain.RelationKey{
 		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyIdentity, bundle.RelationKeyName,
@@ -122,10 +183,10 @@ func newStoreFixture(t *testing.T) *objectstore.StoreFixture {
 		bundle.RelationKeySpaceId, bundle.RelationKeyParticipantStatus, bundle.RelationKeyIsHiddenDiscovery,
 	} {
 		store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeySpaceId:     pbtypes.String(""),
-			bundle.RelationKeyUniqueKey:   pbtypes.String(rel.URL()),
-			bundle.RelationKeyId:          pbtypes.String(rel.String()),
-			bundle.RelationKeyRelationKey: pbtypes.String(rel.String()),
+			bundle.RelationKeySpaceId:     domain.String("space1"),
+			bundle.RelationKeyUniqueKey:   domain.String(rel.URL()),
+			bundle.RelationKeyId:          domain.String(rel.String()),
+			bundle.RelationKeyRelationKey: domain.String(rel.String()),
 		}})
 	}
 

@@ -4,21 +4,21 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (sb *smartBlock) updateBackLinks(s *state.State) {
-	backLinks, err := sb.objectStore.GetInboundLinksByID(sb.Id())
+	backLinks, err := sb.spaceIndex.GetInboundLinksById(sb.Id())
 	if err != nil {
 		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err)
 		return
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, pbtypes.StringList(backLinks))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, domain.StringList(backLinks))
 }
 
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
@@ -32,9 +32,10 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 		NoSystemRelations:        true,
 		NoHiddenBundledRelations: true,
 		NoImages:                 true,
+		RoundDateIdsToDay:        true,
 	})
 	links = slice.RemoveMut(links, sb.Id())
-	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
+	s.SetLocalDetail(bundle.RelationKeyLinks, domain.StringList(links))
 }
 
 func (sb *smartBlock) injectMentions(s *state.State) {
@@ -50,7 +51,7 @@ func (sb *smartBlock) injectMentions(s *state.State) {
 		NoImages:                 true,
 	})
 	mentions = slice.RemoveMut(mentions, sb.Id())
-	s.SetDetailAndBundledRelation(bundle.RelationKeyMentions, pbtypes.StringList(mentions))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyMentions, domain.StringList(mentions))
 }
 
 func isBacklinksChanged(msgs []simple.EventMessage) bool {

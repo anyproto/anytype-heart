@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -32,17 +33,17 @@ type Workspaces struct {
 	migrator     subObjectsMigrator
 }
 
-func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
+func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceindex.Store) *Workspaces {
 	w := &Workspaces{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
+		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
-			f.objectStore,
+			store,
 			f.eventSender,
 		),
-		Dataview:     dataview.NewDataview(sb, f.objectStore),
+		Dataview:     dataview.NewDataview(sb, store),
 		spaceService: f.spaceService,
 		config:       f.config,
 	}
@@ -78,10 +79,10 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
-		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
+		template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
+		template.WithForcedDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_space)),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
-		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
+		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 	)
 }
 
@@ -97,23 +98,23 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 
 func (w *Workspaces) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, pbtypes.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, pbtypes.String(fileKey))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
 	return w.Apply(st)
 }
 
 func (w *Workspaces) GetExistingInviteInfo() (fileCid string, fileKey string) {
 	details := w.CombinedDetails()
-	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
-	fileKey = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileKey.String())
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
+	fileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
 	return
 }
 
 func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
 	details := w.Details()
-	fileCid = pbtypes.GetString(details, bundle.RelationKeySpaceInviteFileCid.String())
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
 	newState := w.NewState()
-	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid.String(), bundle.RelationKeySpaceInviteFileKey.String())
+	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
 	return fileCid, w.Apply(newState)
 }
 
@@ -127,6 +128,6 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 }
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
-	details := pbtypes.CopyStruct(state.CombinedDetails(), true)
+	details := state.CombinedDetails().Copy()
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
 }

@@ -894,15 +894,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": false,
-    "key": "scope",
-    "maxCount": 1,
-    "name": "Scope",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Important relations that always appear at the top of the object",
     "format": "object",
     "hidden": true,
@@ -1256,9 +1247,10 @@
     "hidden": true,
     "key": "lastUsedDate",
     "maxCount": 1,
-    "name": "Last Used date",
+    "name": "Last used date",
     "readonly": true,
-    "source": "local"
+    "source": "local",
+    "revision": 1
   },
   {
     "description": "Revision of system object",
@@ -1331,6 +1323,26 @@
     "source": "local"
   },
   {
+    "description": "Object has a chat",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "hasChat",
+    "maxCount": 1,
+    "name": "Has a chat",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Chat id",
+    "format": "object",
+    "hidden": true,
+    "key": "chatId",
+    "maxCount": 1,
+    "name": "Chat id",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Objects that are mentioned in blocks of this object",
     "format": "object",
     "hidden": true,
@@ -1339,5 +1351,25 @@
     "name": "Mentions",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Unix time representation of date object",
+    "format": "date",
+    "hidden": true,
+    "key": "timestamp",
+    "maxCount": 1,
+    "name": "Timestamp",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Space order",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spaceOrder",
+    "maxCount": 1,
+    "name": "Space order",
+    "readonly": true,
+    "source": "details"
   }
 ]

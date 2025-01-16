@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
@@ -26,7 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
@@ -40,22 +38,12 @@ type FileUploadRequest struct {
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
 	ObjectOrigin objectorigin.ObjectOrigin
+	ImageKind    model.ImageKind
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
 	ObjectOrigin objectorigin.ObjectOrigin
-}
-
-func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
-	return cache.Do(s, id, func(b basic.CommonOperations) error {
-		return b.SetDetails(nil, []*model.Detail{
-			{
-				Key:   "isArchived",
-				Value: pbtypes.Bool(archived),
-			},
-		}, true)
-	})
 }
 
 func (s *Service) CreateBlock(ctx session.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -349,29 +337,21 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 	})
 }
 
-func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupID string) (err error) {
-	return cache.Do(s, req.ContextId, func(b file.File) error {
-		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
-			Path:    req.FilePath,
-			Url:     req.Url,
-			Bytes:   req.Bytes,
-			GroupID: groupID,
-			Origin:  req.ObjectOrigin,
-		}, false)
+func (s *Service) UploadBlockFile(
+	ctx session.Context, req UploadRequest, groupID string, isSync bool,
+) (fileObjectId string, err error) {
+	err = cache.Do(s, req.ContextId, func(b file.File) error {
+		fileObjectId, err = b.Upload(ctx, req.BlockId, file.FileSource{
+			Path:      req.FilePath,
+			Url:       req.Url,
+			Bytes:     req.Bytes,
+			GroupID:   groupID,
+			Origin:    req.ObjectOrigin,
+			ImageKind: req.ImageKind,
+		}, isSync)
 		return err
 	})
-}
-
-func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (err error) {
-	return cache.Do(s, req.ContextId, func(b file.File) error {
-		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
-			Path:   req.FilePath,
-			Url:    req.Url,
-			Bytes:  req.Bytes,
-			Origin: req.ObjectOrigin,
-		}, true)
-		return err
-	})
+	return fileObjectId, err
 }
 
 func (s *Service) CreateAndUploadFile(
@@ -384,7 +364,7 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *types.Struct, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *domain.Details, err error) {
 	upl := s.fileUploaderService.NewUploader(spaceId, req.ObjectOrigin)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -394,7 +374,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 		upl.SetCustomEncryptionKeys(req.CustomEncryptionKeys)
 	}
 	upl.SetStyle(req.Style)
-	upl.SetAdditionalDetails(req.Details)
+	upl.SetAdditionalDetails(domain.NewDetailsFromProto(req.Details))
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	}
@@ -402,6 +382,9 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 		upl.SetFile(req.LocalPath)
 	} else if req.Url != "" {
 		upl.SetUrl(req.Url)
+	}
+	if req.ImageKind != model.ImageKind_Basic {
+		upl.SetImageKind(req.ImageKind)
 	}
 	res := upl.Upload(ctx)
 	if res.Err != nil {
@@ -428,25 +411,6 @@ func (s *Service) SetFileStyle(
 	return cache.Do(s, contextId, func(b file.File) error {
 		return b.SetFileStyle(ctx, style, blockIds...)
 	})
-}
-
-func (s *Service) UploadFileBlock(
-	contextID string, req UploadRequest,
-) (fileObjectId string, err error) {
-	err = cache.Do(s, contextID, func(b file.File) error {
-		fileObjectId, err = b.Upload(nil, req.BlockId, file.FileSource{
-			Path:    req.FilePath,
-			Url:     req.Url,
-			Bytes:   req.Bytes,
-			GroupID: "",
-			Origin:  req.ObjectOrigin,
-		}, true)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	return fileObjectId, err
 }
 
 func (s *Service) Undo(
@@ -510,7 +474,7 @@ func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relati
 		return nil
 	}
 	return cache.Do(s, objectId, func(b smartblock.SmartBlock) error { // TODO RQ: check if empty
-		return b.AddRelationLinks(ctx, relationIds...)
+		return b.AddRelationLinks(ctx, slice.StringsInto[domain.RelationKey](relationIds)...)
 	})
 }
 
@@ -530,7 +494,7 @@ func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTyp
 
 func (s *Service) RemoveExtraRelations(ctx session.Context, objectTypeId string, relationKeys []string) (err error) {
 	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
-		return b.RemoveExtraRelations(ctx, relationKeys)
+		return b.RemoveExtraRelations(ctx, slice.StringsInto[domain.RelationKey](relationKeys))
 	})
 }
 

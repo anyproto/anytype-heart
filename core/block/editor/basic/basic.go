@@ -3,7 +3,6 @@ package basic
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -25,9 +24,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -65,13 +63,13 @@ type CommonOperations interface {
 }
 
 type DetailsSettable interface {
-	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
-	SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+	SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error)
+	SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error)
 }
 
 type DetailsUpdatable interface {
-	UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error)
-	UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error)
+	UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error)
+	UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) (err error)
 }
 
 type Restrictionable interface {
@@ -104,7 +102,7 @@ type Updatable interface {
 
 func NewBasic(
 	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	lastUsedUpdater lastused.ObjectUsageUpdater,
@@ -121,8 +119,8 @@ func NewBasic(
 type basic struct {
 	smartblock.SmartBlock
 
-	objectStore       objectstore.ObjectStore
-	layoutConverter   converter.LayoutConverter
+	objectStore     spaceindex.Store
+	layoutConverter converter.LayoutConverter
 	fileObjectService fileobject.Service
 	lastUsedUpdater   lastused.ObjectUsageUpdater
 }
@@ -419,7 +417,7 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationA
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	rel, err := bs.objectStore.FetchRelationByKey(bs.SpaceID(), req.RelationKey)
+	rel, err := bs.objectStore.FetchRelationByKey(req.RelationKey)
 	if err != nil {
 		return
 	}
@@ -435,7 +433,7 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationA
 
 func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
-	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
@@ -447,7 +445,7 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 			}
 			frc = append(frc, r)
 			if !bs.HasRelation(s, r) {
-				err = bs.addRelationLink(s, r)
+				err = bs.addRelationLink(s, domain.RelationKey(r))
 				if err != nil {
 					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %w", r, err)
 				}
@@ -455,14 +453,14 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 		}
 	}
 	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
 func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
-	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
@@ -476,7 +474,7 @@ func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string
 		}
 	}
 	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
@@ -504,8 +502,9 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 	details := s.Details()
 	for _, rel := range rels {
 		if rel.Format == model.RelationFormat_object {
-			if pbtypes.GetString(details, rel.Key) == oldId {
-				s.SetDetail(rel.Key, pbtypes.String(newId))
+			key := domain.RelationKey(rel.Key)
+			if details.GetString(key) == oldId {
+				s.SetDetail(key, domain.String(newId))
 			}
 		}
 	}

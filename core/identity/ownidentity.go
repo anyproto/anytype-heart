@@ -12,21 +12,19 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type observerService interface {
@@ -50,7 +48,7 @@ type ownProfileSubscription struct {
 
 	detailsLock sync.Mutex
 	gotDetails  bool
-	details     *types.Struct // save details to batch update operation
+	details     *domain.Details // save details to batch update operation
 
 	pushIdentityTimer        *time.Timer // timer for batching
 	pushIdentityBatchTimeout time.Duration
@@ -93,23 +91,17 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-
 	s.myIdentity = s.accountService.AccountID()
-
-	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeProfilePage, "")
-	if err != nil {
-		return err
-	}
-	personalSpace, err := s.spaceService.GetPersonalSpace(ctx)
+	techSpace, err := s.spaceService.GetTechSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	profileObjectId, err := personalSpace.DeriveObjectID(ctx, uniqueKey)
+	id, err := techSpace.(*clientspace.TechSpace).TechSpace.AccountObjectId()
 	if err != nil {
 		return err
 	}
 
-	recordsCh := make(chan *types.Struct)
+	recordsCh := make(chan *domain.Details)
 	sub := database.NewSubscription(nil, recordsCh)
 
 	var (
@@ -117,7 +109,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		closeSub func()
 	)
 
-	records, closeSub, err = s.objectStore.QueryByIDAndSubscribeForChanges([]string{profileObjectId}, sub)
+	records, closeSub, err = s.objectStore.SpaceIndex(s.spaceService.TechSpaceId()).QueryByIdsAndSubscribeForChanges([]string{id}, sub)
 	if err != nil {
 		return err
 	}
@@ -172,7 +164,7 @@ func (s *ownProfileSubscription) enqueuePush() {
 	}
 }
 
-func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.Struct) {
+func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *domain.Details) {
 	if profileDetails == nil {
 		return
 	}
@@ -183,9 +175,7 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 	}
 
 	if s.details == nil {
-		s.details = &types.Struct{
-			Fields: map[string]*types.Value{},
-		}
+		s.details = domain.NewDetails()
 	}
 	for _, key := range []domain.RelationKey{
 		bundle.RelationKeyId,
@@ -193,8 +183,8 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *types.S
 		bundle.RelationKeyDescription,
 		bundle.RelationKeyIconImage,
 	} {
-		if _, ok := profileDetails.Fields[key.String()]; ok {
-			s.details.Fields[key.String()] = pbtypes.CopyVal(profileDetails.Fields[key.String()])
+		if v, ok := profileDetails.TryString(key); ok {
+			s.details.SetString(key, v)
 		}
 	}
 	identityProfile := s.prepareIdentityProfile()
@@ -233,11 +223,9 @@ func (s *ownProfileSubscription) updateGlobalName(globalName string) {
 func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 	s.detailsLock.Lock()
 	if s.details == nil {
-		s.details = &types.Struct{
-			Fields: map[string]*types.Value{},
-		}
+		s.details = domain.NewDetails()
 	}
-	s.details.Fields[bundle.RelationKeyGlobalName.String()] = pbtypes.String(globalName)
+	s.details.SetString(bundle.RelationKeyGlobalName, globalName)
 	identityProfile := s.prepareIdentityProfile()
 	s.detailsLock.Unlock()
 
@@ -254,10 +242,10 @@ func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 func (s *ownProfileSubscription) prepareIdentityProfile() *model.IdentityProfile {
 	return &model.IdentityProfile{
 		Identity:    s.myIdentity,
-		Name:        pbtypes.GetString(s.details, bundle.RelationKeyName.String()),
-		Description: pbtypes.GetString(s.details, bundle.RelationKeyDescription.String()),
-		IconCid:     pbtypes.GetString(s.details, bundle.RelationKeyIconImage.String()),
-		GlobalName:  pbtypes.GetString(s.details, bundle.RelationKeyGlobalName.String()),
+		Name:        s.details.GetString(bundle.RelationKeyName),
+		Description: s.details.GetString(bundle.RelationKeyDescription),
+		IconCid:     s.details.GetString(bundle.RelationKeyIconImage),
+		GlobalName:  s.details.GetString(bundle.RelationKeyGlobalName),
 	}
 }
 
@@ -300,7 +288,7 @@ func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityPro
 	s.detailsLock.Lock()
 	defer s.detailsLock.Unlock()
 
-	iconImageObjectId := pbtypes.GetString(s.details, bundle.RelationKeyIconImage.String())
+	iconImageObjectId := s.details.GetString(bundle.RelationKeyIconImage)
 	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(iconImageObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("prepare icon image info: %w", err)
@@ -309,11 +297,11 @@ func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityPro
 	identity := s.accountService.AccountID()
 	return &model.IdentityProfile{
 		Identity:           identity,
-		Name:               pbtypes.GetString(s.details, bundle.RelationKeyName.String()),
-		Description:        pbtypes.GetString(s.details, bundle.RelationKeyDescription.String()),
+		Name:               s.details.GetString(bundle.RelationKeyName),
+		Description:        s.details.GetString(bundle.RelationKeyDescription),
 		IconCid:            iconCid,
 		IconEncryptionKeys: iconEncryptionKeys,
-		GlobalName:         pbtypes.GetString(s.details, bundle.RelationKeyGlobalName.String()),
+		GlobalName:         s.details.GetString(bundle.RelationKeyGlobalName),
 	}, nil
 }
 
@@ -324,7 +312,7 @@ func (s *ownProfileSubscription) prepareIconImageInfo(iconImageObjectId string) 
 	return s.fileAclService.GetInfoForFileSharing(iconImageObjectId)
 }
 
-func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct) {
+func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details) {
 	select {
 	case <-s.gotDetailsCh:
 
@@ -336,6 +324,6 @@ func (s *ownProfileSubscription) getDetails(ctx context.Context) (identity strin
 	s.detailsLock.Lock()
 	defer s.detailsLock.Unlock()
 
-	detailsCopy := pbtypes.CopyStruct(s.details, true)
+	detailsCopy := s.details.Copy()
 	return s.myIdentity, s.spaceService.AccountMetadataSymKey(), detailsCopy
 }

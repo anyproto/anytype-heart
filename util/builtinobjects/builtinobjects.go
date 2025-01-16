@@ -24,6 +24,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/notifications"
@@ -39,7 +40,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -64,20 +64,8 @@ type widgetParameters struct {
 //go:embed data/get_started.zip
 var getStartedZip []byte
 
-//go:embed data/personal_projects.zip
-var personalProjectsZip []byte
-
-//go:embed data/knowledge_base.zip
-var knowledgeBaseZip []byte
-
-//go:embed data/notes_diary.zip
-var notesDiaryZip []byte
-
 //go:embed data/migration_dashboard.zip
 var migrationDashboardZip []byte
-
-//go:embed data/strategic_writing.zip
-var strategicWritingZip []byte
 
 //go:embed data/empty.zip
 var emptyZip []byte
@@ -86,53 +74,20 @@ var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED:       getStartedZip,
-		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
-		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
-		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
-		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
-		pb.RpcObjectImportUseCaseRequest_EMPTY:             emptyZip,
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
+		pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
 	}
 
 	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
 	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
 		pb.RpcObjectImportUseCaseRequest_EMPTY: {
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
 		},
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Tree, "bafyreib54qrvlara5ickx4sk7mtdmeuwnyrmsdwrrrmvw7rhluwd3mwkg4", "", true},
-			{model.BlockContentWidget_List, "bafyreifvmvqmlmrzzdd4db5gau4fcdhxbii4pkanjdvcjbofmmywhg3zni", "f984ddde-eb13-497e-809a-2b9a96fd3503", true},
-			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-		},
-		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, "bafyreibdfkwnnj6xndyzazkm2gersm5fk3yg2274d5hqr6drurncxiyeoi", "", true}, // Tasks
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-		},
-		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE: {
-			{model.BlockContentWidget_Link, "bafyreiaszkibjyfls2og3ztgxfllqlom422y5ic64z7w3k3oio6f3pc2ia", "", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-		},
-		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY: {
-			{model.BlockContentWidget_Link, "bafyreiexkrata5ofvswxyisuumukmkyerdwv3xa34qkxpgx6jtl7waah34", "", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-		},
-		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: {
-			{model.BlockContentWidget_List, "bafyreido5lhh4vntmlxh2hwn4b3xfmz53yw5rrfmcl22cdb4phywhjlcdu", "f984ddde-eb13-497e-809a-2b9a96fd3503", true}, // Task tracker
-			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_Tree, "bafyreicblsgojhhlfduz7ek4g4jh6ejy24fle2q5xjbue5kkcd7ifbc4ki", "", true}, // My Home
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
-			{model.BlockContentWidget_Link, "bafyreiaoeaxv4dkw4xgdcgubetieyuqlf24q2kg5pdysz4prun6qg5v2ru", "", true}, // About Anytype
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+			{model.BlockContentWidget_Link, "bafyreiccjf5vbijsmr55ypsnnzltmcvl4n63g73twwxqnfkn5usoq2iqyi", "", true},
+			{model.BlockContentWidget_View, "bafyreifjgm3iy4o6o4zyf33ld3dnweo2grhvakvr7psn5twjge3xo3627m", "66f6775526909528d002c932", true},
+			{model.BlockContentWidget_View, "bafyreihrzztw2xcmxxz5uz5xodncby23xdacalcek2dtxxu77yn6wvzsq4", "6182a74fcae0300221f9f207", true},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecentOpen, "", false},
 		},
 	}
 )
@@ -225,7 +180,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			if pErr := progress.Cancel(); pErr != nil {
 				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
 			}
-			progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+			if notificationProgress, ok := progress.(process.Notificationable); ok {
+				notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+			}
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
 			}
@@ -239,7 +196,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-	progress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
+	if notificationProgress, ok := progress.(process.Notificationable); ok {
+		notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
+	}
 
 	if importErr != nil {
 		log.Errorf("failed to send notification: %v", importErr)
@@ -263,7 +222,7 @@ func (b *builtinObjects) provideNotification(spaceID string, progress process.Pr
 		Space:   spaceID,
 		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
 			ProcessId: progress.Id(),
-			ErrorCode: common.GetImportErrorCode(err),
+			ErrorCode: common.GetImportNotificationErrorCode(err),
 			SpaceId:   spaceID,
 			Name:      title,
 			SpaceName: spaceName,
@@ -396,10 +355,10 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
 	if err := b.detailsService.SetDetails(nil,
 		spc.DerivedIDs().Workspace,
-		[]*model.Detail{
+		[]domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.StringList([]string{id}),
 			},
 		},
 	); err != nil {
@@ -458,17 +417,12 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
-	if ids, _, err = b.store.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
-				Value:       pbtypes.String(oldID),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				RelationKey: bundle.RelationKeyOldAnytypeID,
+				Value:       domain.String(oldID),
 			},
 		},
 	}); err != nil {
@@ -543,8 +497,8 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	return path, nil
 }
 
-func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
-	progress := process.NewNotificationProcess(pb.ModelProcess_Import, b.notifications)
+func (b *builtinObjects) setupProgress() (process.Progress, error) {
+	progress := process.NewNotificationProcess(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)
 	}

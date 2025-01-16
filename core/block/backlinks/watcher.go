@@ -9,28 +9,34 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const CName = "backlinks-update-watcher"
+const (
+	CName = "backlinks-update-watcher"
+
+	defaultAggregationInterval = time.Second * 5
+)
 
 var log = logging.Logger(CName)
 
 type backlinksUpdater interface {
-	SubscribeLinksUpdate(callback func(info objectstore.LinksUpdateInfo))
+	SubscribeLinksUpdate(callback func(info spaceindex.LinksUpdateInfo))
 }
 
 type backLinksUpdate struct {
@@ -38,54 +44,69 @@ type backLinksUpdate struct {
 	removed []string
 }
 
-type UpdateWatcher struct {
+type UpdateWatcher interface {
 	app.ComponentRunnable
 
+	FlushUpdates()
+}
+
+type watcher struct {
 	updater      backlinksUpdater
 	store        objectstore.ObjectStore
 	resolver     idresolver.Resolver
 	spaceService space.Service
 
-	infoBatch *mb.MB
+	infoBatch            *mb.MB
+	lock                 sync.Mutex
+	accumulatedBacklinks map[string]*backLinksUpdate
+	aggregationInterval  time.Duration
 }
 
-func New() app.Component {
-	return &UpdateWatcher{}
+func New() UpdateWatcher {
+	return &watcher{}
 }
 
-func (uw *UpdateWatcher) Name() string {
+func (w *watcher) Name() string {
 	return CName
 }
 
-func (uw *UpdateWatcher) Init(a *app.App) error {
-	uw.updater = app.MustComponent[backlinksUpdater](a)
-	uw.store = app.MustComponent[objectstore.ObjectStore](a)
-	uw.resolver = app.MustComponent[idresolver.Resolver](a)
-	uw.spaceService = app.MustComponent[space.Service](a)
-	uw.infoBatch = mb.New(0)
-
+func (w *watcher) Init(a *app.App) error {
+	w.updater = app.MustComponent[backlinksUpdater](a)
+	w.store = app.MustComponent[objectstore.ObjectStore](a)
+	w.resolver = app.MustComponent[idresolver.Resolver](a)
+	w.spaceService = app.MustComponent[space.Service](a)
+	w.infoBatch = mb.New(0)
+	w.accumulatedBacklinks = make(map[string]*backLinksUpdate)
+	w.aggregationInterval = defaultAggregationInterval
 	return nil
 }
 
-func (uw *UpdateWatcher) Close(context.Context) error {
-	if err := uw.infoBatch.Close(); err != nil {
+func (w *watcher) Close(context.Context) error {
+	if err := w.infoBatch.Close(); err != nil {
 		log.Errorf("failed to close message batch: %v", err)
 	}
 	return nil
 }
 
-func (uw *UpdateWatcher) Run(context.Context) error {
-	uw.updater.SubscribeLinksUpdate(func(info objectstore.LinksUpdateInfo) {
-		if err := uw.infoBatch.Add(info); err != nil {
+func (w *watcher) Run(context.Context) error {
+	w.updater.SubscribeLinksUpdate(func(info spaceindex.LinksUpdateInfo) {
+		if err := w.infoBatch.Add(info); err != nil {
 			log.With("objectId", info.LinksFromId).Errorf("failed to add backlinks update info to message batch: %v", err)
 		}
 	})
 
-	go uw.backlinksUpdateHandler()
+	go w.backlinksUpdateHandler()
 	return nil
 }
 
-func applyUpdates(m map[string]*backLinksUpdate, update objectstore.LinksUpdateInfo) {
+func (w *watcher) FlushUpdates() {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	w.updateAccumulatedBacklinks()
+}
+
+func applyUpdates(m map[string]*backLinksUpdate, update spaceindex.LinksUpdateInfo) {
 	if update.LinksFromId == "" {
 		return
 	}
@@ -115,81 +136,92 @@ func applyUpdates(m map[string]*backLinksUpdate, update objectstore.LinksUpdateI
 	}
 }
 
-func (uw *UpdateWatcher) backlinksUpdateHandler() {
+func (w *watcher) backlinksUpdateHandler() {
 	var (
-		accumulatedBacklinks = make(map[string]*backLinksUpdate)
-		l                    sync.Mutex
-		lastReceivedUpdates  time.Time
-		closedCh             = make(chan struct{})
-		aggregationInterval  = time.Second * 5
+		lastReceivedUpdates time.Time
+		closedCh            = make(chan struct{})
 	)
 	defer close(closedCh)
 
 	go func() {
-		process := func() {
-			log.Debugf("updating backlinks for %d objects", len(accumulatedBacklinks))
-			for id, updates := range accumulatedBacklinks {
-				uw.updateBackLinksInObject(id, updates)
-			}
-			accumulatedBacklinks = make(map[string]*backLinksUpdate)
-		}
 		for {
 			select {
 			case <-closedCh:
-				l.Lock()
-				process()
-				l.Unlock()
+				w.lock.Lock()
+				w.updateAccumulatedBacklinks()
+				w.lock.Unlock()
 				return
-			case <-time.After(aggregationInterval):
-				l.Lock()
-				if time.Since(lastReceivedUpdates) < aggregationInterval || len(accumulatedBacklinks) == 0 {
-					l.Unlock()
+			case <-time.After(w.aggregationInterval):
+				w.lock.Lock()
+				if time.Since(lastReceivedUpdates) < w.aggregationInterval || len(w.accumulatedBacklinks) == 0 {
+					w.lock.Unlock()
 					continue
 				}
 
-				process()
-				l.Unlock()
+				w.updateAccumulatedBacklinks()
+				w.lock.Unlock()
 			}
 		}
 	}()
 
 	for {
-		msgs := uw.infoBatch.Wait()
+		msgs := w.infoBatch.Wait()
 		if len(msgs) == 0 {
 			return
 		}
 
-		l.Lock()
+		w.lock.Lock()
 		for _, msg := range msgs {
-			info, ok := msg.(objectstore.LinksUpdateInfo)
-			if !ok || hasSelfLinks(info) {
+			info, ok := msg.(spaceindex.LinksUpdateInfo)
+			if !ok {
 				continue
 			}
-
-			applyUpdates(accumulatedBacklinks, info)
+			info = cleanSelfLinks(info)
+			applyUpdates(w.accumulatedBacklinks, info)
 		}
 		lastReceivedUpdates = time.Now()
-		l.Unlock()
+		w.lock.Unlock()
 	}
 }
 
-func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksUpdate) {
-	spaceId, err := uw.resolver.ResolveSpaceID(id)
+func (w *watcher) updateAccumulatedBacklinks() {
+	log.Debugf("updating backlinks for %d objects", len(w.accumulatedBacklinks))
+	for id, updates := range w.accumulatedBacklinks {
+		w.updateBackLinksInObject(id, updates)
+	}
+	w.accumulatedBacklinks = make(map[string]*backLinksUpdate)
+}
+
+func shouldIndexBacklinks(ids threads.DerivedSmartblockIds, id string) bool {
+	if _, parseDateErr := dateutil.BuildDateObjectFromId(id); parseDateErr == nil {
+		return false
+	}
+	switch id {
+	case ids.Workspace, ids.Archive, ids.Home, ids.Widgets, ids.Profile:
+		return false
+	default:
+		return true
+	}
+}
+
+func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksUpdate) {
+	spaceId, err := w.resolver.ResolveSpaceID(id)
 	if err != nil {
 		log.With("objectId", id).Errorf("failed to resolve space id for object: %v", err)
 		return
 	}
-	spc, err := uw.spaceService.Get(context.Background(), spaceId)
+	spc, err := w.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		log.With("objectId", id, "spaceId", spaceId).Errorf("failed to get space: %v", err)
 		return
 	}
+	spaceDerivedIds := spc.DerivedIDs()
 
-	updateBacklinks := func(current *types.Struct, backlinksChange *backLinksUpdate) (*types.Struct, bool, error) {
-		if current == nil || current.Fields == nil {
+	updateBacklinks := func(current *domain.Details, backlinksChange *backLinksUpdate) (*domain.Details, bool, error) {
+		if current == nil {
 			return nil, false, nil
 		}
-		backlinks := pbtypes.GetStringList(current, bundle.RelationKeyBacklinks.String())
+		backlinks := current.GetStringList(bundle.RelationKeyBacklinks)
 
 		for _, removed := range backlinksChange.removed {
 			backlinks = slice.Remove(backlinks, removed)
@@ -201,15 +233,23 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 			}
 		}
 
-		current.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backlinks)
+		backlinks = slice.Filter(backlinks, func(s string) bool {
+			// filter-out backlinks to system objects
+			return shouldIndexBacklinks(spaceDerivedIds, s)
+		})
+
+		current.SetStringList(bundle.RelationKeyBacklinks, backlinks)
 		return current, true, nil
 	}
 
-	err = spc.DoLockedIfNotExists(id, func() error {
-		return uw.store.ModifyObjectDetails(id, func(details *types.Struct) (*types.Struct, bool, error) {
-			return updateBacklinks(details, backlinksUpdate)
+	if shouldIndexBacklinks(spaceDerivedIds, id) {
+		// filter-out backlinks in system objects
+		err = spc.DoLockedIfNotExists(id, func() error {
+			return w.store.SpaceIndex(spaceId).ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
+				return updateBacklinks(details, backlinksUpdate)
+			})
 		})
-	})
+	}
 
 	if err == nil {
 		return
@@ -232,7 +272,7 @@ func (uw *UpdateWatcher) updateBackLinksInObject(id string, backlinksUpdate *bac
 
 }
 
-func hasSelfLinks(info objectstore.LinksUpdateInfo) bool {
+func hasSelfLinks(info spaceindex.LinksUpdateInfo) bool {
 	for _, link := range info.Added {
 		if link == info.LinksFromId {
 			return true
@@ -244,4 +284,27 @@ func hasSelfLinks(info objectstore.LinksUpdateInfo) bool {
 		}
 	}
 	return false
+}
+
+func cleanSelfLinks(info spaceindex.LinksUpdateInfo) spaceindex.LinksUpdateInfo {
+	if !hasSelfLinks(info) {
+		// optimisation to avoid additional allocations
+		return info
+	}
+	infoFilter := spaceindex.LinksUpdateInfo{
+		LinksFromId: info.LinksFromId,
+		Added:       make([]string, 0, len(info.Added)),
+		Removed:     make([]string, 0, len(info.Removed)),
+	}
+	for _, link := range info.Added {
+		if link != info.LinksFromId {
+			infoFilter.Added = append(infoFilter.Added, link)
+		}
+	}
+	for _, link := range info.Removed {
+		if link != info.LinksFromId {
+			infoFilter.Removed = append(infoFilter.Removed, link)
+		}
+	}
+	return infoFilter
 }

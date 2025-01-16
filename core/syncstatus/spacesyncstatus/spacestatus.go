@@ -127,9 +127,6 @@ func (s *spaceSyncStatus) update(ctx context.Context) error {
 	})
 	s.mx.Unlock()
 	for _, spaceId := range statuses {
-		if spaceId == s.spaceIdGetter.TechSpaceId() {
-			continue
-		}
 		// if the there are too many updates and this hurts performance,
 		// we may skip some iterations and not do the updates for example
 		s.updateSpaceSyncStatus(spaceId)
@@ -148,13 +145,9 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)),
 	}
-	s.eventSender.SendToSession(token, &pb.Event{
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
-			},
-		}},
-	})
+	s.eventSender.SendToSession(token, event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
+	}))
 }
 
 func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
@@ -164,17 +157,13 @@ func (s *spaceSyncStatus) sendStartEvent(spaceIds []string) {
 }
 
 func (s *spaceSyncStatus) sendLocalOnlyEvent(spaceId string) {
-	s.broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-					Id:      spaceId,
-					Status:  pb.EventSpace_Offline,
-					Network: pb.EventSpace_LocalOnly,
-				},
-			},
-		}},
-	})
+	s.broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+		SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+			Id:      spaceId,
+			Status:  pb.EventSpace_Offline,
+			Network: pb.EventSpace_LocalOnly,
+		},
+	}))
 }
 
 func eventsEqual(a, b pb.EventSpaceSyncStatusUpdate) bool {
@@ -198,17 +187,13 @@ func (s *spaceSyncStatus) broadcast(event *pb.Event) {
 }
 
 func (s *spaceSyncStatus) sendLocalOnlyEventToSession(spaceId, token string) {
-	s.eventSender.SendToSession(token, &pb.Event{
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-					Id:      spaceId,
-					Status:  pb.EventSpace_Offline,
-					Network: pb.EventSpace_LocalOnly,
-				},
-			},
-		}},
-	})
+	s.eventSender.SendToSession(token, event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+		SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+			Id:      spaceId,
+			Status:  pb.EventSpace_Offline,
+			Network: pb.EventSpace_LocalOnly,
+		},
+	}))
 }
 
 func (s *spaceSyncStatus) Refresh(spaceId string) {
@@ -247,13 +232,9 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
 	}
-	s.broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-				SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
-			},
-		}},
-	})
+	s.broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
+	}))
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {

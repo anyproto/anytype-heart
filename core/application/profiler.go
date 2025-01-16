@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 	"runtime/trace"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +20,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/util/debug"
 )
+
+var ErrNoFolder = fmt.Errorf("no folder provided")
 
 func (s *Service) RunProfiler(ctx context.Context, seconds int) (string, error) {
 	// Start
@@ -113,6 +117,71 @@ func createZipArchive(w io.Writer, files []zipFile) error {
 
 func (s *Service) SaveLoginTrace(dir string) (string, error) {
 	return s.traceRecorder.save(dir)
+}
+
+func (s *Service) SaveLog(logFile, destDir string) (string, error) {
+	if logFile == "" {
+		return "", ErrNoFolder
+	}
+	targetFile, err := os.CreateTemp(destDir, "anytype-log-*.zip")
+	if err != nil {
+		return "", fmt.Errorf("create temp file: %w", err)
+	}
+
+	err = os.Chmod(targetFile.Name(), 0664)
+	if err != nil {
+		return "", err
+	}
+
+	var files []zipFile
+	var toClose []io.Closer
+
+	srcDir := filepath.Dir(logFile)
+	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing file %s: %w", path, err)
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		if strings.HasPrefix(info.Name(), "anytype") {
+			relPath, err := filepath.Rel(srcDir, path)
+			if err != nil {
+				return fmt.Errorf("failed to compute relative path: %w", err)
+			}
+
+			file, err := os.Open(path)
+			if err != nil {
+				return fmt.Errorf("failed to open file %s: %w", path, err)
+			}
+
+			files = append(files, zipFile{name: relPath, data: file})
+			toClose = append(toClose, file)
+		}
+		return nil
+	})
+	defer func() {
+		for _, closeable := range toClose {
+			closeable.Close()
+		}
+	}()
+
+	if err != nil {
+		return "", fmt.Errorf("error while walking directory: %w", err)
+	}
+
+	if len(files) == 0 {
+		return "", fmt.Errorf("no log files found in directory: %w", err)
+	}
+
+	err = createZipArchive(targetFile, files)
+	if err != nil {
+		return "", fmt.Errorf("failed to create zip archive: %w", err)
+	}
+
+	return targetFile.Name(), targetFile.Close()
 }
 
 // traceRecorder is a helper to start and stop flight trace recorder

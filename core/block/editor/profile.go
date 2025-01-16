@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Profile struct {
@@ -36,15 +35,16 @@ type Profile struct {
 	fileObjectService fileobject.Service
 }
 
-func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
+func (f *ObjectFactory) newProfile(spaceId string, sb smartblock.SmartBlock) *Profile {
+	store := f.objectStore.SpaceIndex(spaceId)
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
+		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
-			f.objectStore,
+			store,
 			f.eventSender,
 		),
 		File: fileComponent,
@@ -52,7 +52,7 @@ func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
 			sb,
 			fileComponent,
 			f.tempDirProvider,
-			f.objectStore,
+			store,
 			f.fileService,
 			f.fileObjectService,
 		),
@@ -81,7 +81,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
-				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
+				template.WithDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter)),
 				migrationSetHidden,
 			)
 		},
@@ -89,7 +89,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 }
 
 func migrationSetHidden(st *state.State) {
-	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
+	st.SetDetail(bundle.RelationKeyIsHidden, domain.Bool(true))
 }
 
 func migrationWithIdentityBlock(st *state.State) {
@@ -130,22 +130,16 @@ func (p *Profile) StateMigrations() migration.Migrations {
 	})
 }
 
-func (p *Profile) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (p *Profile) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}
 
-	p.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfAccountDetails{
-					AccountDetails: &pb.EventAccountDetails{
-						ProfileId: p.Id(),
-						Details:   p.Details(),
-					},
-				},
-			},
+	p.eventSender.Broadcast(event.NewEventSingleMessage(p.SpaceID(), &pb.EventMessageValueOfAccountDetails{
+		AccountDetails: &pb.EventAccountDetails{
+			ProfileId: p.Id(),
+			Details:   p.Details().ToProto(),
 		},
-	})
+	}))
 	return
 }

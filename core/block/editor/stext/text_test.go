@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -16,14 +15,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
@@ -534,7 +532,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		defer ctrl.Finish()
 
 		sb := smarttest.New("test")
-		os := testMock.NewMockObjectStore(ctrl)
+		os := spaceindex.NewStoreFixture(t)
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(link.NewLink(&model.Block{
@@ -548,15 +546,12 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		sender := mock_event.NewMockSender(t)
 		tb := NewText(sb, os, sender)
 
-		os.EXPECT().QueryByID([]string{"targetId"}).Return([]database.Record{
+		os.AddObjects(t, []spaceindex.TestObject{
 			{
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						"name": pbtypes.String("link name"),
-					},
-				},
+				bundle.RelationKeyId:   domain.String("targetId"),
+				bundle.RelationKeyName: domain.String("link name"),
 			},
-		}, nil)
+		})
 
 		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Paragraph, "2"))
 		secondBlockId := sb.Doc.Pick("test").Model().ChildrenIds[1]
@@ -576,7 +571,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List([]int64{0, 1, 2})}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
@@ -589,7 +584,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Len(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()), 3)
+		assert.Len(t, sb.Details().GetInt64List(bundle.RelationKeyInternalFlags), 3)
 	})
 
 	t.Run("text is changed", func(t *testing.T) {
@@ -598,7 +593,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List([]int64{0, 1, 2})}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
@@ -611,7 +606,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Empty(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, sb.Details().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 
 	t.Run("marks are changed", func(t *testing.T) {
@@ -620,7 +615,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
 			AddBlock(newTextBlock(blockID, text))
-		_ = sb.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List([]int64{0, 1, 2})}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
@@ -634,7 +629,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Empty(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, sb.Details().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 
 	t.Run("title is changed", func(t *testing.T) {
@@ -643,7 +638,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 		sb := smarttest.New(rootID)
 		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{template.TitleBlockId}})).
 			AddBlock(newTextBlock(template.TitleBlockId, text))
-		_ = sb.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		_ = sb.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyInternalFlags, Value: domain.Int64List([]int64{0, 1, 2})}}, false)
 		tb := NewText(sb, nil, nil)
 
 		// when
@@ -656,7 +651,7 @@ func TestTextImpl_removeInternalFlags(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		flags := pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String())
+		flags := sb.Details().GetInt64List(bundle.RelationKeyInternalFlags)
 		assert.Len(t, flags, 2)
 		assert.NotContains(t, flags, model.InternalFlag_editorDeleteEmpty)
 	})

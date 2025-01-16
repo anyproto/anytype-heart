@@ -9,6 +9,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
@@ -22,6 +23,7 @@ type Task func()
 
 type Queue interface {
 	Process
+	Notificationable
 	// Start starts the queue and register process in service
 	Start() (err error)
 	// Add adds tasks to queue. Can be called before Start
@@ -36,7 +38,7 @@ type Queue interface {
 	Stop(err error)
 }
 
-func (s *service) NewQueue(info pb.ModelProcess, workers int) Queue {
+func (s *service) NewQueue(info pb.ModelProcess, workers int, noProgress bool, notificationService NotificationService) Queue {
 	if workers <= 0 {
 		workers = 1
 	}
@@ -44,32 +46,37 @@ func (s *service) NewQueue(info pb.ModelProcess, workers int) Queue {
 		info.Id = bson.NewObjectId().Hex()
 	}
 	q := &queue{
-		id:      info.Id,
-		info:    info,
-		state:   pb.ModelProcess_None,
-		msgs:    mb.New(0),
-		done:    make(chan struct{}),
-		cancel:  make(chan struct{}),
-		s:       s,
-		workers: workers,
-		wg:      &sync.WaitGroup{},
+		id:                  info.Id,
+		info:                info,
+		state:               pb.ModelProcess_None,
+		msgs:                mb.New(0),
+		done:                make(chan struct{}),
+		cancel:              make(chan struct{}),
+		s:                   s,
+		workers:             workers,
+		wg:                  &sync.WaitGroup{},
+		noProgress:          noProgress,
+		notificationService: notificationService,
 	}
 	q.wg.Add(workers)
 	return q
 }
 
 type queue struct {
-	id            string
-	info          pb.ModelProcess
-	state         pb.ModelProcessState
-	msgs          *mb.MB
-	wg            *sync.WaitGroup
-	done, cancel  chan struct{}
-	pTotal, pDone int64
-	workers       int
-	s             Service
-	m             sync.Mutex
-	message       string
+	id                  string
+	info                pb.ModelProcess
+	state               pb.ModelProcessState
+	msgs                *mb.MB
+	wg                  *sync.WaitGroup
+	done, cancel        chan struct{}
+	pTotal, pDone       int64
+	workers             int
+	s                   Service
+	m                   sync.Mutex
+	message             string
+	noProgress          bool
+	notificationService NotificationService
+	notification        *model.Notification
 }
 
 func (p *queue) Id() string {
@@ -85,6 +92,9 @@ func (p *queue) Start() (err error) {
 	p.state = pb.ModelProcess_Running
 	for i := 0; i < p.workers; i++ {
 		go p.worker()
+	}
+	if p.noProgress {
+		return nil
 	}
 	return p.s.Add(p)
 }
@@ -180,13 +190,13 @@ func (p *queue) Info() pb.ModelProcess {
 	defer p.m.Unlock()
 	return pb.ModelProcess{
 		Id:    p.id,
-		Type:  p.info.Type,
 		State: p.state,
 		Progress: &pb.ModelProcessProgress{
 			Total:   atomic.LoadInt64(&p.pTotal),
 			Done:    atomic.LoadInt64(&p.pDone),
 			Message: p.message,
 		},
+		Message: p.info.Message,
 	}
 }
 
@@ -224,6 +234,20 @@ func (p *queue) Stop(err error) {
 	p.wg.Wait()
 	close(p.done)
 	return
+}
+
+func (p *queue) FinishWithNotification(notification *model.Notification, err error) {
+	p.notification = notification
+}
+
+func (p *queue) SendNotification() {
+	if p.notification == nil {
+		return
+	}
+	err := p.notificationService.CreateAndSend(p.notification)
+	if err != nil {
+		log.Errorf("failed to send notification: %v", err)
+	}
 }
 
 func (p *queue) checkRunning(checkStarted bool) (err error) {

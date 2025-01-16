@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -14,26 +15,30 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/techspace"
+	"github.com/anyproto/anytype-heart/util/metricsid"
 )
 
-const CName = "account"
+const (
+	CName = "account"
+
+	analyticsWaitTimeout = time.Second * 30
+)
 
 var log = logging.Logger(CName)
 
 type Service interface {
 	app.Component
-	GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error)
+	GetInfo(ctx context.Context) (*model.AccountInfo, error)
+	GetSpaceInfo(ctx context.Context, spaceId string) (*model.AccountInfo, error)
 	Delete(ctx context.Context) (toBeDeleted int64, err error)
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
@@ -112,14 +117,17 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error) {
-
+func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
+	accountId, err := s.spaceService.TechSpace().AccountObjectId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account id: %w", err)
+	}
 	deviceKey := s.wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().PeerId()
 
-	analyticsId, err := s.getAnalyticsID(ctx)
+	analyticsId, err := s.getAnalyticsId(ctx, s.spaceService.TechSpace())
 	if err != nil {
-		log.Errorf("failed to get analytics id: %s", err)
+		return nil, fmt.Errorf("failed to get analytics id: %w", err)
 	}
 
 	gwAddr := s.gateway.Addr()
@@ -133,77 +141,75 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
-	profileSpace, err := s.spaceService.GetPersonalSpace(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get personal space: %w", err)
-	}
-	profileObjectId := profileSpace.DerivedIDs().Profile
-
-	techSpaceId, err := s.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to derive tech space id: %w", err)
-	}
-
-	ids, err := s.getDerivedIds(ctx, spaceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get derived ids: %w", err)
-	}
-
-	var spaceViewId string
-	// Tech space doesn't have space view
-	if spaceID != techSpaceId {
-		spaceViewId, err = s.spaceService.SpaceViewId(spaceID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
-		}
-	}
-
 	return &model.AccountInfo{
-		HomeObjectId:           ids.Home,
-		ArchiveObjectId:        ids.Archive,
-		ProfileObjectId:        profileObjectId,
+		ProfileObjectId:        accountId,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 		DeviceId:               deviceId,
-		AccountSpaceId:         spaceID,
-		WidgetsId:              ids.Widgets,
-		SpaceViewId:            spaceViewId,
 		GatewayUrl:             gwAddr,
 		LocalStoragePath:       cfg.CustomFileStorePath,
 		AnalyticsId:            analyticsId,
-		NetworkId:              s.getNetworkID(),
-		TechSpaceId:            techSpaceId,
+		NetworkId:              s.getNetworkId(),
+		TechSpaceId:            s.spaceService.TechSpaceId(),
 	}, nil
 }
 
-func (s *service) getDerivedIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	spc, err := s.spaceService.Wait(ctx, spaceID)
+func (s *service) GetSpaceInfo(ctx context.Context, spaceId string) (*model.AccountInfo, error) {
+	getInfo, err := s.GetInfo(ctx)
 	if err != nil {
-		return ids, fmt.Errorf("failed to get space: %w", err)
+		return nil, err
 	}
-	return spc.DeriveObjectIDs(ctx)
+	spc, err := s.spaceService.Wait(ctx, spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get space: %w", err)
+	}
+	ids := spc.DerivedIDs()
+	spaceViewId, err := s.spaceService.SpaceViewId(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
+	}
+	getInfo.AccountSpaceId = spaceId
+	getInfo.SpaceViewId = spaceViewId
+	getInfo.HomeObjectId = ids.Home
+	getInfo.WorkspaceObjectId = ids.Workspace
+	getInfo.WidgetsId = ids.Widgets
+	getInfo.ArchiveObjectId = ids.Archive
+	return getInfo, nil
 }
 
-func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
-	if s.config.AnalyticsId != "" {
-		return s.config.AnalyticsId, nil
-	}
-	ids, err := s.getDerivedIds(ctx, s.personalSpaceId)
-	if err != nil {
-		return "", fmt.Errorf("failed to get derived ids: %w", err)
-	}
-	var analyticsID string
-	err = cache.Do(s.picker, ids.Workspace, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState().GetSetting(state.SettingsAnalyticsId)
-		if st == nil {
-			log.Errorf("analytics id not found")
-		} else {
-			analyticsID = st.GetStringValue()
+func (s *service) getAnalyticsId(ctx context.Context, techSpace techspace.TechSpace) (analyticsId string, err error) {
+	start := time.Now()
+	for {
+		err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+			var innerErr error
+			analyticsId, innerErr = accountObject.GetAnalyticsId()
+			if innerErr != nil {
+				log.Debug("failed to get analytics id: %s", innerErr)
+			}
+			return nil
+		})
+		if err != nil {
+			return
 		}
-		return nil
-	})
-	return analyticsID, err
+		if analyticsId != "" {
+			return analyticsId, nil
+		}
+		if time.Since(start) > analyticsWaitTimeout {
+			metricsId, err := metricsid.DeriveMetricsId(s.keyProvider.Account().SignKey)
+			if err != nil {
+				return "", err
+			}
+			err = techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
+				return accountObject.SetAnalyticsId(metricsId)
+			})
+			if err != nil {
+				return "", err
+			}
+			return metricsId, nil
+		}
+		time.Sleep(time.Second)
+	}
 }
 
-func (s *service) getNetworkID() string {
+func (s *service) getNetworkId() string {
 	return s.config.GetNodeConf().NetworkId
 }

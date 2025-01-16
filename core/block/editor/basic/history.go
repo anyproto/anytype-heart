@@ -6,7 +6,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type IHistory interface {
@@ -50,7 +49,7 @@ func (h *history) Undo(ctx session.Context) (info HistoryInfo, err error) {
 	}
 
 	if action.Details != nil {
-		s.SetDetails(pbtypes.CopyStruct(action.Details.Before, false))
+		s.SetDetails(action.Details.Before.Copy())
 	}
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
@@ -82,7 +81,7 @@ func (h *history) Redo(ctx session.Context) (info HistoryInfo, err error) {
 		s.SetObjectTypeKeys(ot)
 	}
 	if action.Details != nil {
-		s.SetDetails(pbtypes.CopyStruct(action.Details.After, true))
+		s.SetDetails(action.Details.After.Copy())
 	}
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return

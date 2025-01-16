@@ -5,23 +5,27 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var ErrUnexpectedBlockType = errors.New("unexpected block type")
 
-func (s *service) SetSpaceInfo(spaceId string, details *types.Struct) error {
+func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	ctx := context.TODO()
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
@@ -29,9 +33,9 @@ func (s *service) SetSpaceInfo(spaceId string, details *types.Struct) error {
 	}
 	workspaceId := spc.DerivedIDs().Workspace
 
-	setDetails := make([]*model.Detail, 0, len(details.GetFields()))
-	for k, v := range details.GetFields() {
-		setDetails = append(setDetails, &model.Detail{
+	setDetails := make([]domain.Detail, 0, details.Len())
+	for k, v := range details.Iterate() {
+		setDetails = append(setDetails, domain.Detail{
 			Key:   k,
 			Value: v,
 		})
@@ -44,10 +48,10 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
-		if err = ws.SetDetails(ctx, []*model.Detail{
+		if err = ws.SetDetails(ctx, []domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.StringList([]string{id}),
 			},
 		}, false); err != nil {
 			return err
@@ -57,7 +61,7 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 	return id, err
 }
 
-func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
+func (s *service) SetIsFavorite(objectId string, isFavorite, createWidget bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -66,7 +70,18 @@ func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	return s.objectLinksCollectionModify(spc.DerivedIDs().Home, objectId, isFavorite)
+	if err = s.objectLinksCollectionModify(spc.DerivedIDs().Home, objectId, isFavorite); err != nil {
+		return err
+	}
+
+	if createWidget && isFavorite {
+		err = s.createFavoriteWidget(spc.DerivedIDs().Widgets)
+		if err != nil {
+			log.Error("failed to create favorite widget", zap.Error(err))
+		}
+	}
+
+	return nil
 }
 
 func (s *service) SetIsArchived(objectId string, isArchived bool) error {
@@ -78,6 +93,9 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
+	if objectId == spc.DerivedIDs().Archive {
+		return fmt.Errorf("can't archive archive itself")
+	}
 	if err := s.checkArchivedRestriction(isArchived, objectId); err != nil {
 		return err
 	}
@@ -85,22 +103,32 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 }
 
 func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
-	ids, err := s.store.HasIDs(objectIds...)
+	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
-		return err
+		return fmt.Errorf("partition object ids by spaces: %w", err)
 	}
+
 	var (
 		anySucceed  bool
 		resultError error
 	)
-	for _, id := range ids {
-		err := s.SetIsFavorite(id, isFavorite)
+	for spaceId, objectIds := range objectIdsPerSpace {
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(objectIds)
 		if err != nil {
-			log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
-			resultError = errors.Join(resultError, err)
-		} else {
-			anySucceed = true
+			return err
 		}
+
+		for i, id := range ids {
+			// TODO Set list of ids at once
+			err := s.SetIsFavorite(id, isFavorite, i == 0)
+			if err != nil {
+				log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
+				resultError = errors.Join(resultError, err)
+			} else {
+				anySucceed = true
+			}
+		}
+
 	}
 	if resultError != nil {
 		log.Warn("failed to set objects as favorite", zap.Error(resultError))
@@ -147,6 +175,9 @@ func (s *service) checkArchivedRestriction(isArchived bool, objectId string) err
 }
 
 func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
+	if objectId == collectionId {
+		return fmt.Errorf("can't add links collection to itself")
+	}
 	return cache.Do(s.objectGetter, collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
 		if !ok {
@@ -183,10 +214,20 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		ids, err := s.store.HasIDs(objectIds...)
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(objectIds)
 		if err != nil {
 			return err
 		}
+
+		ids = slice.Filter(ids, func(id string) bool {
+			for _, objId := range spc.DerivedIDs().IDsWithSystemTypesAndRelations() {
+				if id == objId {
+					// avoid archive system objects including archive itself
+					return false
+				}
+			}
+			return true
+		})
 		anySucceed, err := s.modifyArchiveLinks(archive, isArchived, ids...)
 
 		if err != nil {
@@ -218,4 +259,43 @@ func (s *service) modifyArchiveLinks(
 		anySucceed = true
 	}
 	return
+}
+
+func (s *service) createFavoriteWidget(widgetObjectId string) error {
+	return cache.DoState(s.objectGetter, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
+		var favoriteBlockFound bool
+		err = st.Iterate(func(b simple.Block) (isContinue bool) {
+			link := b.Model().GetLink()
+			if link == nil {
+				return true
+			}
+			if link.TargetBlockId == widget.DefaultWidgetFavorite {
+				favoriteBlockFound = true
+				return false
+			}
+			return true
+		})
+
+		if err != nil {
+			return err
+		}
+
+		if favoriteBlockFound {
+			log.Debug("favorite widget block is already presented")
+			return nil
+		}
+
+		_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    widgetObjectId,
+			ObjectLimit:  6,
+			WidgetLayout: model.BlockContentWidget_List,
+			Position:     model.Block_Bottom,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+					TargetBlockId: widget.DefaultWidgetFavorite,
+				}},
+			},
+		})
+		return err
+	})
 }

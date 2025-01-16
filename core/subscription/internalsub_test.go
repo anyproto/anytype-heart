@@ -7,20 +7,21 @@ import (
 	"time"
 
 	mb2 "github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func wrapToEventMessages(vals []pb.IsEventMessageValue) []*pb.EventMessage {
+func wrapToEventMessages(spaceId string, vals []pb.IsEventMessageValue) []*pb.EventMessage {
 	msgs := make([]*pb.EventMessage, len(vals))
 	for i, v := range vals {
-		msgs[i] = &pb.EventMessage{Value: v}
+		msgs[i] = &pb.EventMessage{SpaceId: spaceId, Value: v}
 	}
 	return msgs
 }
@@ -28,12 +29,13 @@ func wrapToEventMessages(vals []pb.IsEventMessageValue) []*pb.EventMessage {
 func TestInternalSubscriptionSingle(t *testing.T) {
 	fx := NewInternalTestService(t)
 	resp, err := fx.Search(SubscribeRequest{
-		SubId: "test",
-		Filters: []*model.BlockContentDataviewFilter{
+		SpaceId: testSpaceId,
+		SubId:   "test",
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority.String(),
+				RelationKey: bundle.RelationKeyPriority,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(10),
+				Value:       domain.Int64(10),
 			},
 		},
 		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
@@ -44,20 +46,20 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 	require.Empty(t, resp.Records)
 
 	t.Run("amend details not related to filter", func(t *testing.T) {
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String("id1"),
-				bundle.RelationKeyName:           pbtypes.String("task1"),
-				bundle.RelationKeyPriority:       pbtypes.Int64(10),
-				bundle.RelationKeyLinkedProjects: pbtypes.StringList([]string{"project1", "project2"}), // Should be ignored as not listed in keys
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeyName:           domain.String("task1"),
+				bundle.RelationKeyPriority:       domain.Int64(10),
+				bundle.RelationKeyLinkedProjects: domain.StringList([]string{"project1", "project2"}), // Should be ignored as not listed in keys
 			},
 		})
 		time.Sleep(batchTime)
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       pbtypes.String("id1"),
-				bundle.RelationKeyName:     pbtypes.String("task1 renamed"),
-				bundle.RelationKeyPriority: pbtypes.Int64(10),
+				bundle.RelationKeyId:       domain.String("id1"),
+				bundle.RelationKeyName:     domain.String("task1 renamed"),
+				bundle.RelationKeyPriority: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
@@ -70,24 +72,24 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		msgs, err := resp.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       pbtypes.String("id2"),
-				bundle.RelationKeyName:     pbtypes.String("task2"),
-				bundle.RelationKeyPriority: pbtypes.Int64(10),
+				bundle.RelationKeyId:       domain.String("id2"),
+				bundle.RelationKeyName:     domain.String("task2"),
+				bundle.RelationKeyPriority: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
 
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       pbtypes.String("id2"),
-				bundle.RelationKeyName:     pbtypes.String("task2"),
-				bundle.RelationKeyPriority: pbtypes.Int64(9),
+				bundle.RelationKeyId:       domain.String("id2"),
+				bundle.RelationKeyName:     domain.String("task2"),
+				bundle.RelationKeyPriority: domain.Int64(9),
 			},
 		})
 		time.Sleep(batchTime)
@@ -99,24 +101,24 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		msgs, err := resp.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 	})
 
-	t.Run("close", func(t *testing.T) {
+	t.Run("unsubscribe", func(t *testing.T) {
 		err = fx.Unsubscribe("test")
 		require.NoError(t, err)
 
-		err = resp.Output.Add(context.Background(), &pb.EventMessage{})
+		err = resp.Output.Add(context.Background(), event.NewMessage("", nil))
 		require.True(t, errors.Is(err, mb2.ErrClosed))
 	})
 
 	t.Run("try to add after close", func(t *testing.T) {
 		time.Sleep(batchTime)
-		fx.AddObjects(t, []objectstore.TestObject{
+		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       pbtypes.String("id3"),
-				bundle.RelationKeyName:     pbtypes.String("task2"),
-				bundle.RelationKeyPriority: pbtypes.Int64(10),
+				bundle.RelationKeyId:       domain.String("id3"),
+				bundle.RelationKeyName:     domain.String("task2"),
+				bundle.RelationKeyPriority: domain.Int64(10),
 			},
 		})
 	})
@@ -125,46 +127,50 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 func TestInternalSubscriptionMultiple(t *testing.T) {
 	fx := newFixtureWithRealObjectStore(t)
 	resp1, err := fx.Search(SubscribeRequest{
-		SubId: "internal1",
-		Filters: []*model.BlockContentDataviewFilter{
+		SpaceId: testSpaceId,
+		SubId:   "internal1",
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority.String(),
+				RelationKey: bundle.RelationKeyPriority,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(10),
+				Value:       domain.Int64(10),
 			},
 		},
 		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 		Internal: true,
 	})
 	_, err = fx.Search(SubscribeRequest{
-		SubId: "client1",
-		Filters: []*model.BlockContentDataviewFilter{
+		SpaceId: testSpaceId,
+		SubId:   "client1",
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority.String(),
+				RelationKey: bundle.RelationKeyPriority,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(10),
+				Value:       domain.Int64(10),
 			},
 		},
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 	})
 	_, err = fx.Search(SubscribeRequest{
-		SubId: "client2",
-		Filters: []*model.BlockContentDataviewFilter{
+		SpaceId: testSpaceId,
+		SubId:   "client2",
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority.String(),
+				RelationKey: bundle.RelationKeyPriority,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(10),
+				Value:       domain.Int64(10),
 			},
 		},
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
 	})
 	resp4, err := fx.Search(SubscribeRequest{
-		SubId: "internal2",
-		Filters: []*model.BlockContentDataviewFilter{
+		SpaceId: testSpaceId,
+		SubId:   "internal2",
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyName.String(),
+				RelationKey: bundle.RelationKeyName,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String("Jane Doe"),
+				Value:       domain.String("Jane Doe"),
 			},
 		},
 		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
@@ -175,20 +181,20 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	require.Empty(t, resp1.Records)
 
 	t.Run("amend details not related to filter", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:             pbtypes.String("id1"),
-				bundle.RelationKeyName:           pbtypes.String("task1"),
-				bundle.RelationKeyPriority:       pbtypes.Int64(10),
-				bundle.RelationKeyLinkedProjects: pbtypes.StringList([]string{"project1", "project2"}), // Should be ignored as not listed in keys
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeyName:           domain.String("task1"),
+				bundle.RelationKeyPriority:       domain.Int64(10),
+				bundle.RelationKeyLinkedProjects: domain.StringList([]string{"project1", "project2"}), // Should be ignored as not listed in keys
 			},
 		})
 		time.Sleep(batchTime)
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       pbtypes.String("id1"),
-				bundle.RelationKeyName:     pbtypes.String("task1 renamed"),
-				bundle.RelationKeyPriority: pbtypes.Int64(10),
+				bundle.RelationKeyId:       domain.String("id1"),
+				bundle.RelationKeyName:     domain.String("task1 renamed"),
+				bundle.RelationKeyPriority: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
@@ -201,27 +207,27 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		msgs, err := resp1.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 
 		want = givenMessagesForFirstObject("client1", "client2")
 		fx.waitEvents(t, want...)
 	})
 
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       pbtypes.String("id2"),
-				bundle.RelationKeyName:     pbtypes.String("task2"),
-				bundle.RelationKeyPriority: pbtypes.Int64(10),
+				bundle.RelationKeyId:       domain.String("id2"),
+				bundle.RelationKeyName:     domain.String("task2"),
+				bundle.RelationKeyPriority: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
 
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       pbtypes.String("id2"),
-				bundle.RelationKeyName:     pbtypes.String("task2"),
-				bundle.RelationKeyPriority: pbtypes.Int64(9),
+				bundle.RelationKeyId:       domain.String("id2"),
+				bundle.RelationKeyName:     domain.String("task2"),
+				bundle.RelationKeyPriority: domain.Int64(9),
 			},
 		})
 		time.Sleep(batchTime)
@@ -233,18 +239,18 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		msgs, err := resp1.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 
 		want = givenMessagesForSecondObject("client1", "client2")
 		fx.waitEvents(t, want...)
 	})
 
 	t.Run("add item satisfying filters from all subscription", func(t *testing.T) {
-		fx.store.AddObjects(t, []objectstore.TestObject{
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       pbtypes.String("id3"),
-				bundle.RelationKeyName:     pbtypes.String("Jane Doe"),
-				bundle.RelationKeyPriority: pbtypes.Int64(10),
+				bundle.RelationKeyId:       domain.String("id3"),
+				bundle.RelationKeyName:     domain.String("Jane Doe"),
+				bundle.RelationKeyPriority: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
@@ -255,16 +261,135 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		want := givenMessagesForThirdObject(2, "id1", "internal1")
 		msgs, err := resp1.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 
 		want = givenMessagesForThirdObject(1, "", "internal2")
 		msgs, err = resp4.Output.NewCond().WithMin(len(want)).Wait(ctx)
 		require.NoError(t, err)
-		require.Equal(t, wrapToEventMessages(want), msgs)
+		require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 
 		want = givenMessagesForThirdObject(2, "id1", "client1", "client2")
 		fx.waitEvents(t, want...)
 	})
+}
+
+func TestInternalSubCustomQueue(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	subId := "test"
+	fx := newFixtureWithRealObjectStore(t)
+
+	queue := mb2.New[*pb.EventMessage](0)
+
+	resp, err := fx.Search(SubscribeRequest{
+		SpaceId: testSpaceId,
+		SubId:   subId,
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyPriority,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(10),
+			},
+		},
+		Keys:          []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Internal:      true,
+		InternalQueue: queue,
+	})
+	require.NoError(t, err)
+	require.Same(t, resp.Output, queue)
+
+	obj := objectstore.TestObject{
+		bundle.RelationKeyId:       domain.String("id1"),
+		bundle.RelationKeyName:     domain.String("Jane Doe"),
+		bundle.RelationKeyPriority: domain.Int64(10),
+	}
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+
+	want := []pb.IsEventMessageValue{
+		&pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      "id1",
+				SubIds:  []string{subId},
+				Details: obj.Details().ToProto(),
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				SubId: subId,
+				Id:    "id1",
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: subId,
+				Total: 1,
+			},
+		},
+	}
+
+	msgs, err := queue.NewCond().WithMin(len(want)).Wait(ctx)
+	require.NoError(t, err)
+	require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
+}
+
+func TestInternalSubAsyncInit(t *testing.T) {
+	ctx := context.Background()
+	subId := "test"
+	fx := newFixtureWithRealObjectStore(t)
+	obj := objectstore.TestObject{
+		bundle.RelationKeyId:       domain.String("id1"),
+		bundle.RelationKeyName:     domain.String("Jane Doe"),
+		bundle.RelationKeyPriority: domain.Int64(10),
+	}
+
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		obj,
+	})
+
+	resp, err := fx.Search(SubscribeRequest{
+		SpaceId: testSpaceId,
+		SubId:   subId,
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyPriority,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(10),
+			},
+		},
+		Keys:      []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Internal:  true,
+		AsyncInit: true,
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, resp.Records)
+
+	want := []pb.IsEventMessageValue{
+		&pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      "id1",
+				SubIds:  []string{subId},
+				Details: obj.Details().ToProto(),
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				SubId: subId,
+				Id:    "id1",
+			},
+		},
+		&pb.EventMessageValueOfSubscriptionCounters{
+			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+				SubId: subId,
+				Total: 1,
+			},
+		},
+	}
+
+	msgs, err := resp.Output.NewCond().WithMin(len(want)).Wait(ctx)
+	require.NoError(t, err)
+	require.Equal(t, wrapToEventMessages(testSpaceId, want), msgs)
 }
 
 func givenMessagesForFirstObject(subIds ...string) []pb.IsEventMessageValue {
@@ -273,13 +398,11 @@ func givenMessagesForFirstObject(subIds ...string) []pb.IsEventMessageValue {
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
 			Id:     "id1",
 			SubIds: subIds,
-			Details: &types.Struct{
-				Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():       pbtypes.String("id1"),
-					bundle.RelationKeyName.String():     pbtypes.String("task1"),
-					bundle.RelationKeyPriority.String(): pbtypes.Int64(10),
-				},
-			},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:       domain.String("id1"),
+				bundle.RelationKeyName:     domain.String("task1"),
+				bundle.RelationKeyPriority: domain.Int64(10),
+			}).ToProto(),
 		},
 	})
 
@@ -306,7 +429,7 @@ func givenMessagesForFirstObject(subIds ...string) []pb.IsEventMessageValue {
 			Details: []*pb.EventObjectDetailsAmendKeyValue{
 				{
 					Key:   bundle.RelationKeyName.String(),
-					Value: pbtypes.String("task1 renamed"),
+					Value: domain.String("task1 renamed").ToProto(),
 				},
 			},
 		},
@@ -320,13 +443,11 @@ func givenMessagesForSecondObject(subIds ...string) []pb.IsEventMessageValue {
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
 			Id:     "id2",
 			SubIds: subIds,
-			Details: &types.Struct{
-				Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():       pbtypes.String("id2"),
-					bundle.RelationKeyName.String():     pbtypes.String("task2"),
-					bundle.RelationKeyPriority.String(): pbtypes.Int64(10),
-				},
-			},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:       domain.String("id2"),
+				bundle.RelationKeyName:     domain.String("task2"),
+				bundle.RelationKeyPriority: domain.Int64(10),
+			}).ToProto(),
 		},
 	})
 
@@ -372,13 +493,11 @@ func givenMessagesForThirdObject(total int, afterId string, subIds ...string) []
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
 			Id:     "id3",
 			SubIds: subIds,
-			Details: &types.Struct{
-				Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():       pbtypes.String("id3"),
-					bundle.RelationKeyName.String():     pbtypes.String("Jane Doe"),
-					bundle.RelationKeyPriority.String(): pbtypes.Int64(10),
-				},
-			},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:       domain.String("id3"),
+				bundle.RelationKeyName:     domain.String("Jane Doe"),
+				bundle.RelationKeyPriority: domain.Int64(10),
+			}).ToProto(),
 		},
 	})
 

@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	bb "github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestMigrateFiles(t *testing.T) {
@@ -206,16 +205,16 @@ func TestMigrateIds(t *testing.T) {
 				bb.ID(objectId),
 			),
 		)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{fileId.String()}))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().IsPersonal().Return(true)
 
-		fx.objectStore.AddObjects(t, []objectstore.TestObject{
+		fx.objectStore.AddObjects(t, "spaceId2", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String(fileId.String()),
-				bundle.RelationKeyFileId:  pbtypes.String("fileId"),
-				bundle.RelationKeySpaceId: pbtypes.String("spaceId2"),
+				bundle.RelationKeyId:      domain.String(fileId.String()),
+				bundle.RelationKeyFileId:  domain.String("fileId"),
+				bundle.RelationKeySpaceId: domain.String("spaceId2"),
 			},
 		})
 
@@ -227,7 +226,7 @@ func TestMigrateIds(t *testing.T) {
 				bb.ID(objectId),
 			),
 		)
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{fileId.String()}))
+		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
 
 		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())
@@ -253,9 +252,9 @@ func TestMigrateIds(t *testing.T) {
 		)
 
 		// Relation format: file
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{fileId.String()}))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
 		// Relation format: object
-		st.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, pbtypes.StringList([]string{fileId.String()}))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, domain.StringList([]string{fileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().IsPersonal().Return(true)
@@ -273,8 +272,8 @@ func TestMigrateIds(t *testing.T) {
 				),
 			),
 		)
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, pbtypes.StringList([]string{expectedFileObjectId}))
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, pbtypes.StringList([]string{expectedFileObjectId}))
+		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{expectedFileObjectId}))
+		wantState.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, domain.StringList([]string{expectedFileObjectId}))
 
 		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())

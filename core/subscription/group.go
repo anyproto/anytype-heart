@@ -1,16 +1,14 @@
 package subscription
 
 import (
-	"github.com/gogo/protobuf/types"
-
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *service) newGroupSub(id string, relKey string, f *database.Filters, groups []*model.BlockContentDataviewGroup) *groupSub {
+func (s *spaceSubscriptions) newGroupSub(id string, relKey domain.RelationKey, f *database.Filters, groups []*model.BlockContentDataviewGroup) *groupSub {
 	sub := &groupSub{
 		id:     id,
 		relKey: relKey,
@@ -24,7 +22,7 @@ func (s *service) newGroupSub(id string, relKey string, f *database.Filters, gro
 
 type groupSub struct {
 	id     string
-	relKey string
+	relKey domain.RelationKey
 
 	cache *cache
 
@@ -55,8 +53,8 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 		if _, inSet := gs.set[ctxEntry.id]; inSet {
 			cacheEntry := gs.cache.Get(ctxEntry.id)
 			if !checkGroups && cacheEntry != nil {
-				oldList := pbtypes.GetStringList(cacheEntry.data, gs.relKey)
-				newList := pbtypes.GetStringList(ctxEntry.data, gs.relKey)
+				oldList := cacheEntry.data.GetStringList(gs.relKey)
+				newList := ctxEntry.data.GetStringList(gs.relKey)
 				checkGroups = !slice.UnsortedEqual(oldList, newList)
 			}
 			if !inFilter {
@@ -115,7 +113,7 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 	}
 }
 
-func (gs *groupSub) getActiveRecords() (res []*types.Struct) {
+func (gs *groupSub) getActiveRecords() (res []*domain.Details) {
 	return
 }
 

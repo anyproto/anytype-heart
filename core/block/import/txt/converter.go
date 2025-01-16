@@ -113,7 +113,7 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *common.Conve
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".txt"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil, nil
 	}
 	snapshots := make([]*common.Snapshot, 0, numberOfFiles)
@@ -155,7 +155,7 @@ func (t *TXT) getBlocksForSnapshot(rc io.ReadCloser) ([]*model.Block, error) {
 }
 
 func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, string) {
-	sn := &model.SmartBlockSnapshotBase{
+	sn := &common.StateSnapshot{
 		Blocks:      blocks,
 		Details:     common.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.String()},
@@ -164,8 +164,10 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, st
 	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
-		Snapshot: &pb.ChangeSnapshot{Data: sn},
-		SbType:   smartblock.SmartBlockTypePage,
+		Snapshot: &common.SnapshotModel{
+			SbType: smartblock.SmartBlockTypePage,
+			Data:   sn,
+		},
 	}
 	return snapshot, snapshot.Id
 }

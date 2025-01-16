@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -207,7 +209,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if strings.HasPrefix(f.Name, "files") {
+		if (strings.HasPrefix(f.Name, export.Files) && !strings.HasPrefix(f.Name, export.FilesObjects)) || f.FileInfo().IsDir() {
 			continue
 		}
 
@@ -236,7 +238,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
 			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
-			if !bundle.HasRelation(key) {
+			if !bundle.HasRelation(domain.RelationKey(key)) {
 				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 			}
 		case model.SmartBlockType_STType:
@@ -257,7 +259,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 				key := strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
 				info.relations[id] = domain.RelationKey(key)
 				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
-				if !bundle.HasRelation(key) {
+				if !bundle.HasRelation(domain.RelationKey(key)) {
 					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 				}
 			}
@@ -296,14 +298,21 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 		if err != nil {
 			return err
 		}
-		newData, err := processRawData(data, f.Name, info, flags)
-		if err != nil {
-			if !(flags.exclude && errors.Is(err, errValidationFailed)) {
-				// just do not include object that failed validation
-				incorrectFileFound = true
+
+		var newData []byte
+		if f.FileInfo().IsDir() {
+			newData = data
+		} else {
+			newData, err = processRawData(data, f.Name, info, flags)
+			if err != nil {
+				if !(flags.exclude && errors.Is(err, errValidationFailed)) {
+					// just do not include object that failed validation
+					incorrectFileFound = true
+				}
+				continue
 			}
-			continue
 		}
+
 		if newData == nil || !writeNewFile {
 			continue
 		}
@@ -463,8 +472,13 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeySourceFilePath.String(),
 			bundle.RelationKeyLinks.String(),
 			bundle.RelationKeyBacklinks.String(),
+			bundle.RelationKeyMentions.String(),
 			bundle.RelationKeyWorkspaceId.String(),
-			bundle.RelationKeyIdentityProfileLink.String():
+			bundle.RelationKeyIdentityProfileLink.String(),
+			bundle.RelationKeyAddedDate.String(),
+			bundle.RelationKeySyncDate.String(),
+			bundle.RelationKeySyncError.String(),
+			bundle.RelationKeySyncStatus.String():
 
 			delete(s.Data.Details.Fields, key)
 		}
@@ -492,7 +506,7 @@ func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]
 	}
 
 	fmt.Println("spaceDashboardId = " + profile.SpaceDashboardId)
-	if _, found := info.objects[profile.SpaceDashboardId]; !found {
+	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened"}, profile.SpaceDashboardId) {
 		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
 		fmt.Println(err)
 		return nil, err

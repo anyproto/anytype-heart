@@ -2,6 +2,7 @@ package html
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -119,7 +120,7 @@ func (h *HTML) handleImportPath(path string, allErrors *common.ConvertError) ([]
 	}
 	var numberOfFiles int
 	if numberOfFiles = importSource.CountFilesWithGivenExtensions([]string{".html"}); numberOfFiles == 0 {
-		allErrors.Add(common.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil, nil
 	}
 	return h.getSnapshotsAndRootObjects(path, allErrors, numberOfFiles, importSource)
@@ -160,7 +161,7 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, filesSource source.Source,
 	}
 	blocks, _, err := anymark.HTMLToBlocks(b, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", common.ErrWrongHTMLFormat, err.Error())
 	}
 	for _, block := range blocks {
 		if block.GetFile() != nil {
@@ -200,7 +201,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, filesSource source.Source,
 }
 
 func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, string) {
-	sn := &model.SmartBlockSnapshotBase{
+	sn := &common.StateSnapshot{
 		Blocks:      blocks,
 		Details:     common.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.String()},
@@ -209,8 +210,10 @@ func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*common.Snapshot, s
 	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
-		Snapshot: &pb.ChangeSnapshot{Data: sn},
-		SbType:   smartblock.SmartBlockTypePage,
+		Snapshot: &common.SnapshotModel{
+			SbType: smartblock.SmartBlockTypePage,
+			Data:   sn,
+		},
 	}
 	return snapshot, snapshot.Id
 }

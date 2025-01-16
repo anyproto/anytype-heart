@@ -63,6 +63,8 @@ service ClientCommands {
     rpc SpaceMakeShareable (anytype.Rpc.Space.MakeShareable.Request) returns (anytype.Rpc.Space.MakeShareable.Response);
     rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
     rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
+    rpc SpaceSetOrder (anytype.Rpc.Space.SetOrder.Request) returns (anytype.Rpc.Space.SetOrder.Response);
+    rpc SpaceUnsetOrder (anytype.Rpc.Space.UnsetOrder.Request) returns (anytype.Rpc.Space.UnsetOrder.Response);
 
     // Object
     // ***
@@ -73,7 +75,6 @@ service ClientCommands {
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
     rpc ObjectCreateFromUrl (anytype.Rpc.Object.CreateFromUrl.Request) returns (anytype.Rpc.Object.CreateFromUrl.Response);
-    rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
@@ -81,6 +82,8 @@ service ClientCommands {
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
     rpc ObjectSearchWithMeta (anytype.Rpc.Object.SearchWithMeta.Request) returns (anytype.Rpc.Object.SearchWithMeta.Response);
     rpc ObjectSearchSubscribe (anytype.Rpc.Object.SearchSubscribe.Request) returns (anytype.Rpc.Object.SearchSubscribe.Response);
+    rpc ObjectCrossSpaceSearchSubscribe (anytype.Rpc.Object.CrossSpaceSearchSubscribe.Request) returns (anytype.Rpc.Object.CrossSpaceSearchSubscribe.Response);
+    rpc ObjectCrossSpaceSearchUnsubscribe (anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Request) returns (anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Response);
     rpc ObjectSubscribeIds (anytype.Rpc.Object.SubscribeIds.Request) returns (anytype.Rpc.Object.SubscribeIds.Response);
     rpc ObjectGroupsSubscribe (anytype.Rpc.Object.GroupsSubscribe.Request) returns (anytype.Rpc.Object.GroupsSubscribe.Response);
     rpc ObjectSearchUnsubscribe (anytype.Rpc.Object.SearchUnsubscribe.Request) returns (anytype.Rpc.Object.SearchUnsubscribe.Response);
@@ -116,6 +119,7 @@ service ClientCommands {
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
     rpc ObjectImportUseCase (anytype.Rpc.Object.ImportUseCase.Request) returns (anytype.Rpc.Object.ImportUseCase.Response);
     rpc ObjectImportExperience (anytype.Rpc.Object.ImportExperience.Request) returns (anytype.Rpc.Object.ImportExperience.Response);
+    rpc ObjectDateByTimestamp (anytype.Rpc.Object.DateByTimestamp.Request) returns (anytype.Rpc.Object.DateByTimestamp.Response);
 
     // Collections
     // ***
@@ -295,6 +299,8 @@ service ClientCommands {
     rpc BlockLatexSetText (anytype.Rpc.BlockLatex.SetText.Request) returns (anytype.Rpc.BlockLatex.SetText.Response);
 
     rpc ProcessCancel (anytype.Rpc.Process.Cancel.Request) returns (anytype.Rpc.Process.Cancel.Response);
+    rpc ProcessSubscribe (anytype.Rpc.Process.Subscribe.Request) returns (anytype.Rpc.Process.Subscribe.Response);
+    rpc ProcessUnsubscribe (anytype.Rpc.Process.Unsubscribe.Request) returns (anytype.Rpc.Process.Unsubscribe.Response);
 
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 
@@ -309,8 +315,11 @@ service ClientCommands {
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
     rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
     rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
+    rpc DebugAnystoreObjectChanges (anytype.Rpc.Debug.AnystoreObjectChanges.Request) returns (anytype.Rpc.Debug.AnystoreObjectChanges.Response);
+    rpc DebugNetCheck (anytype.Rpc.Debug.NetCheck.Request) returns (anytype.Rpc.Debug.NetCheck.Response);
+    rpc DebugExportLog (anytype.Rpc.Debug.ExportLog.Request) returns (anytype.Rpc.Debug.ExportLog.Response);
 
-    rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
+    rpc InitialSetParameters (anytype.Rpc.Initial.SetParameters.Request) returns (anytype.Rpc.Initial.SetParameters.Response);
 
     // used only for lib-server via grpc
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);
@@ -359,7 +368,7 @@ service ClientCommands {
     rpc DeviceList (anytype.Rpc.Device.List.Request) returns (anytype.Rpc.Device.List.Response);
     rpc DeviceNetworkStateSet (anytype.Rpc.Device.NetworkState.Set.Request) returns (anytype.Rpc.Device.NetworkState.Set.Response);
 
-    // Chats dummy impl
+    // Chats
     rpc ChatAddMessage (anytype.Rpc.Chat.AddMessage.Request) returns (anytype.Rpc.Chat.AddMessage.Response);
     rpc ChatEditMessageContent (anytype.Rpc.Chat.EditMessageContent.Request) returns (anytype.Rpc.Chat.EditMessageContent.Response);
     rpc ChatToggleMessageReaction (anytype.Rpc.Chat.ToggleMessageReaction.Request) returns (anytype.Rpc.Chat.ToggleMessageReaction.Response);
@@ -368,4 +377,6 @@ service ClientCommands {
     rpc ChatGetMessagesByIds (anytype.Rpc.Chat.GetMessagesByIds.Request) returns (anytype.Rpc.Chat.GetMessagesByIds.Response);
     rpc ChatSubscribeLastMessages (anytype.Rpc.Chat.SubscribeLastMessages.Request) returns (anytype.Rpc.Chat.SubscribeLastMessages.Response);
     rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
+    rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
+
 }

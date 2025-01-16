@@ -1,16 +1,15 @@
 package subscription
 
 import (
-	"github.com/gogo/protobuf/types"
-
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub {
+func (s *spaceSubscriptions) newSimpleSub(id string, spaceId string, keys []domain.RelationKey, isDep bool) *simpleSub {
 	sub := &simpleSub{
-		id:    id,
-		keys:  keys,
-		cache: s.cache,
+		id:      id,
+		spaceId: spaceId,
+		keys:    keys,
+		cache:   s.cache,
 	}
 	if !isDep {
 		sub.ds = s.ds
@@ -20,11 +19,12 @@ func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub 
 
 type simpleSub struct {
 	id       string
+	spaceId  string
 	set      map[string]struct{}
-	keys     []string
+	keys     []domain.RelationKey
 	forceIds []string
 
-	depKeys          []string
+	depKeys          []domain.RelationKey
 	depSub           *simpleSub
 	activeEntriesBuf []*entry
 
@@ -37,12 +37,12 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 	for _, e := range entries {
 		e = s.cache.GetOrSet(e)
 		s.set[e.id] = struct{}{}
-		e.SetSub(s.id, true, false)
+		e.SetSub(s.id, true, true)
 	}
 	if s.ds != nil {
-		s.depKeys = s.ds.depKeys(s.keys)
+		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
 		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
 		}
 	}
 	return
@@ -122,9 +122,9 @@ func (s *simpleSub) getActiveEntries() (res []*entry) {
 	return s.activeEntriesBuf
 }
 
-func (s *simpleSub) getActiveRecords() (res []*types.Struct) {
+func (s *simpleSub) getActiveRecords() (res []*domain.Details) {
 	for id := range s.set {
-		res = append(res, pbtypes.StructFilterKeys(s.cache.Get(id).data, s.keys))
+		res = append(res, s.cache.Get(id).data.CopyOnlyKeys(s.keys...))
 	}
 	return
 }

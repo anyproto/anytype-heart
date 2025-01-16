@@ -11,7 +11,7 @@ import (
 )
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
@@ -30,7 +30,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
-	detailsService := getService[detailservice.Service](mw)
+	detailsService := mustService[detailservice.Service](mw)
 	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
@@ -87,17 +87,16 @@ func (mw *Middleware) RelationOptions(_ context.Context, _ *pb.RpcRelationOption
 }
 
 func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelationListWithValueRequest) *pb.RpcRelationListWithValueResponse {
-	response := func(keys []string, counters []int64, err error) *pb.RpcRelationListWithValueResponse {
+	response := func(list []*pb.RpcRelationListWithValueResponseResponseItem, err error) *pb.RpcRelationListWithValueResponse {
 		m := &pb.RpcRelationListWithValueResponse{Error: &pb.RpcRelationListWithValueResponseError{Code: pb.RpcRelationListWithValueResponseError_NULL}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		} else {
-			m.RelationKeys = keys
-			m.Counters = counters
+			m.List = list
 		}
 		return m
 	}
 
-	keys, counters, err := getService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, req.Value)
-	return response(keys, counters, err)
+	list, err := mustService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, domain.ValueFromProto(req.Value))
+	return response(list, err)
 }

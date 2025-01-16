@@ -25,7 +25,7 @@ func TestDiff(t *testing.T) {
 
 		// when
 		b2.content.Layout = model.BlockContentWidget_Tree
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestDiff(t *testing.T) {
 
 		// when
 		b2.content.ViewId = "viewID"
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestDiff(t *testing.T) {
 
 		// when
 		b2.content.Limit = 10
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)

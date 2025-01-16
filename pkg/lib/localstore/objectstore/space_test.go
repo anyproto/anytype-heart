@@ -4,12 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestGetSpaceName(t *testing.T) {
@@ -32,12 +31,12 @@ func TestGetSpaceName(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context.Background(), spaceViewId, &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():            pbtypes.String(spaceViewId),
-			bundle.RelationKeyLayout.String():        pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyTargetSpaceId.String(): pbtypes.String(spaceId),
-			bundle.RelationKeyName.String():          pbtypes.String(spaceName),
-		}})
+		err := s.SpaceIndex(s.techSpaceId).UpdateObjectDetails(context.Background(), spaceViewId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:            domain.String(spaceViewId),
+			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId: domain.String(spaceId),
+			bundle.RelationKeyName:          domain.String(spaceName),
+		}))
 		assert.Nil(t, err)
 
 		// when
@@ -51,11 +50,11 @@ func TestGetSpaceName(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails(context.Background(), spaceViewId, &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():            pbtypes.String(spaceViewId),
-			bundle.RelationKeyLayout.String():        pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyTargetSpaceId.String(): pbtypes.String(spaceId),
-		}})
+		err := s.SpaceIndex(s.techSpaceId).UpdateObjectDetails(context.Background(), spaceViewId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:            domain.String(spaceViewId),
+			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId: domain.String(spaceId),
+		}))
 		assert.Nil(t, err)
 
 		// when

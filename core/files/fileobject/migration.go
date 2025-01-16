@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -25,7 +26,7 @@ import (
 type migrationItem struct {
 	FileObjectId  string
 	SpaceId       string
-	CreateRequest CreateRequest
+	CreateRequest filemodels.CreateRequest
 	UniqueKeyRaw  string
 }
 
@@ -124,7 +125,7 @@ func (s *service) migrateFile(space clientspace.Space, origin objectorigin.Objec
 	queueIt := &migrationItem{
 		FileObjectId: fileObjectId,
 		SpaceId:      space.Id(),
-		CreateRequest: CreateRequest{
+		CreateRequest: filemodels.CreateRequest{
 			FileId:         fileId,
 			EncryptionKeys: fileKeysChange.Keys,
 			ObjectOrigin:   origin,
@@ -165,11 +166,11 @@ func (s *service) migrationQueueHandler(ctx context.Context, it *migrationItem) 
 	return persistentqueue.ActionDone, nil
 }
 
-func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req CreateRequest, uniqueKey domain.UniqueKey) (err error) {
+func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Space, req filemodels.CreateRequest, uniqueKey domain.UniqueKey) (err error) {
 	if req.FileId == "" {
 		return fmt.Errorf("file hash is empty")
 	}
-	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin)
+	details := s.makeInitialDetails(req.FileId, req.ObjectOrigin, req.ImageKind)
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(details)

@@ -318,6 +318,51 @@ func (_c *MockService_Delete_Call) RunAndReturn(run func(context.Context, string
 	return _c
 }
 
+// FirstCreatedSpaceId provides a mock function with given fields:
+func (_m *MockService) FirstCreatedSpaceId() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for FirstCreatedSpaceId")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockService_FirstCreatedSpaceId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FirstCreatedSpaceId'
+type MockService_FirstCreatedSpaceId_Call struct {
+	*mock.Call
+}
+
+// FirstCreatedSpaceId is a helper method to define mock.On call
+func (_e *MockService_Expecter) FirstCreatedSpaceId() *MockService_FirstCreatedSpaceId_Call {
+	return &MockService_FirstCreatedSpaceId_Call{Call: _e.mock.On("FirstCreatedSpaceId")}
+}
+
+func (_c *MockService_FirstCreatedSpaceId_Call) Run(run func()) *MockService_FirstCreatedSpaceId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_FirstCreatedSpaceId_Call) Return(_a0 string) *MockService_FirstCreatedSpaceId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_FirstCreatedSpaceId_Call) RunAndReturn(run func() string) *MockService_FirstCreatedSpaceId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: ctx, id
 func (_m *MockService) Get(ctx context.Context, id string) (clientspace.Space, error) {
 	ret := _m.Called(ctx, id)
@@ -628,6 +673,51 @@ func (_c *MockService_Name_Call) Return(name string) *MockService_Name_Call {
 }
 
 func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PersonalSpaceId provides a mock function with given fields:
+func (_m *MockService) PersonalSpaceId() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PersonalSpaceId")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockService_PersonalSpaceId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PersonalSpaceId'
+type MockService_PersonalSpaceId_Call struct {
+	*mock.Call
+}
+
+// PersonalSpaceId is a helper method to define mock.On call
+func (_e *MockService_Expecter) PersonalSpaceId() *MockService_PersonalSpaceId_Call {
+	return &MockService_PersonalSpaceId_Call{Call: _e.mock.On("PersonalSpaceId")}
+}
+
+func (_c *MockService_PersonalSpaceId_Call) Run(run func()) *MockService_PersonalSpaceId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_PersonalSpaceId_Call) Return(_a0 string) *MockService_PersonalSpaceId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_PersonalSpaceId_Call) RunAndReturn(run func() string) *MockService_PersonalSpaceId_Call {
 	_c.Call.Return(run)
 	return _c
 }

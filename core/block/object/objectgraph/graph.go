@@ -1,8 +1,9 @@
 package objectgraph
 
 import (
+	"fmt"
+
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -12,11 +13,12 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.LoggerNotSugared("object-graph")
@@ -36,7 +38,7 @@ var relationsSkipList = []domain.RelationKey{
 }
 
 type Service interface {
-	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
+	ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error)
 }
 
 type Builder struct {
@@ -64,8 +66,21 @@ func (gr *Builder) Name() (name string) {
 	return CName
 }
 
-func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
-	relations, err := gr.objectStore.ListAllRelations(req.SpaceId)
+type ObjectGraphRequest struct {
+	Filters          []database.FilterRequest
+	Limit            int32
+	ObjectTypeFilter []string
+	Keys             []string
+	SpaceId          string
+	CollectionId     string
+	SetSource        []string
+}
+
+func (gr *Builder) ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error) {
+	if req.SpaceId == "" {
+		return nil, nil, fmt.Errorf("spaceId is required")
+	}
+	relations, err := gr.objectStore.SpaceIndex(req.SpaceId).ListAllRelations()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -75,6 +90,7 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 	})...)
 
 	resp, err := gr.subscriptionService.Search(subscription.SubscribeRequest{
+		SpaceId:      req.SpaceId,
 		Source:       req.SetSource,
 		Filters:      req.Filters,
 		Keys:         lo.Map(relations.Models(), func(rel *model.Relation, _ int) string { return rel.Key }),
@@ -95,7 +111,7 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 
 	nodes, edges := gr.buildGraph(
 		resp.Records,
-		make([]*types.Struct, 0, len(resp.Records)),
+		make([]*domain.Details, 0, len(resp.Records)),
 		req,
 		relations,
 		make([]*pb.RpcObjectGraphEdge, 0, len(resp.Records)*2),
@@ -108,39 +124,49 @@ func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation) bool {
 }
 
 func (gr *Builder) buildGraph(
-	records []*types.Struct,
-	nodes []*types.Struct,
-	req *pb.RpcObjectGraphRequest,
+	records []*domain.Details,
+	nodes []*domain.Details,
+	req ObjectGraphRequest,
 	relations relationutils.Relations,
 	edges []*pb.RpcObjectGraphEdge,
-) ([]*types.Struct, []*pb.RpcObjectGraphEdge) {
+) ([]*domain.Details, []*pb.RpcObjectGraphEdge) {
 	existedNodes := fillExistedNodes(records)
 	for _, rec := range records {
-		sourceId := pbtypes.GetString(rec, bundle.RelationKeyId.String())
+		sourceId := rec.GetString(bundle.RelationKeyId)
 
-		nodes = append(nodes, pbtypes.Map(rec, req.Keys...))
+		if len(req.Keys) == 0 {
+			nodes = append(nodes, rec)
+		} else {
+			nodes = append(nodes, rec.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
+		}
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
-		edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
+		var nodesToAdd []*domain.Details
+		nodesToAdd, edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
+
+		nodesToAdd = lo.Map(nodesToAdd, func(item *domain.Details, _ int) *domain.Details {
+			return item.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
+		})
+		nodes = append(nodes, nodesToAdd...)
 	}
 	return nodes, edges
 }
 
 func (gr *Builder) appendRelations(
-	rec *types.Struct,
+	rec *domain.Details,
 	relations relationutils.Relations,
 	edges []*pb.RpcObjectGraphEdge,
 	existedNodes map[string]struct{},
 	sourceId string,
 	outgoingRelationLink map[string]struct{},
 ) []*pb.RpcObjectGraphEdge {
-	for relKey, relValue := range rec.GetFields() {
-		rel := relations.GetByKey(relKey)
+	for relKey, relValue := range rec.Iterate() {
+		rel := relations.GetByKey(string(relKey))
 		if !isRelationShouldBeIncludedAsEdge(rel) {
 			continue
 		}
-		stringValues := pbtypes.GetStringListValue(relValue)
+		stringValues := relValue.StringList()
 		if len(stringValues) == 0 || isExcludedRelation(rel) {
 			continue
 		}
@@ -159,13 +185,14 @@ func (gr *Builder) appendRelations(
 			}
 		}
 	}
+
 	return edges
 }
 
-func fillExistedNodes(records []*types.Struct) map[string]struct{} {
+func fillExistedNodes(records []*domain.Details) map[string]struct{} {
 	existedNodes := make(map[string]struct{}, len(records))
 	for _, rec := range records {
-		id := pbtypes.GetString(rec, bundle.RelationKeyId.String())
+		id := rec.GetString(bundle.RelationKeyId)
 		existedNodes[id] = struct{}{}
 	}
 	return existedNodes
@@ -180,31 +207,50 @@ func isExcludedRelation(rel *relationutils.Relation) bool {
 
 func (gr *Builder) appendLinks(
 	spaceID string,
-	rec *types.Struct,
+	rec *domain.Details,
 	outgoingRelationLink map[string]struct{},
 	existedNodes map[string]struct{},
 	edges []*pb.RpcObjectGraphEdge,
 	id string,
-) []*pb.RpcObjectGraphEdge {
-	links := pbtypes.GetStringList(rec, bundle.RelationKeyLinks.String())
+) (nodes []*domain.Details, resultEdges []*pb.RpcObjectGraphEdge) {
+	links := rec.GetStringList(bundle.RelationKeyLinks)
 	for _, link := range links {
 		sbType, err := gr.sbtProvider.Type(spaceID, link)
 		if err != nil {
 			log.Error("get smartblock type", zap.String("objectId", link), zap.Error(err))
 		}
-		// ignore files because we index all file blocks as outgoing links
-		if sbType != smartblock.SmartBlockTypeFileObject {
-			if _, exists := outgoingRelationLink[link]; !exists {
-				if _, exists := existedNodes[link]; exists {
-					edges = append(edges, &pb.RpcObjectGraphEdge{
-						Source: id,
-						Target: link,
-						Name:   "",
-						Type:   pb.RpcObjectGraphEdge_Link,
-					})
+
+		switch sbType {
+		case smartblock.SmartBlockTypeFileObject:
+			// ignore files because we index all file blocks as outgoing links
+			continue
+		case smartblock.SmartBlockTypeDate:
+			if _, exists := existedNodes[link]; !exists {
+				details, err := gr.objectStore.SpaceIndex(spaceID).QueryByIds([]string{link})
+				if err == nil && len(details) != 1 {
+					err = fmt.Errorf("expected to get 1 date object, got %d", len(details))
 				}
+				if err != nil {
+					log.Error("get details of Date object", zap.String("objectId", link), zap.Error(err))
+					continue
+				}
+				existedNodes[link] = struct{}{}
+				nodes = append(nodes, details[0].Details)
 			}
 		}
+
+		if _, exists := outgoingRelationLink[link]; exists {
+			continue
+		}
+
+		if _, exists := existedNodes[link]; exists {
+			edges = append(edges, &pb.RpcObjectGraphEdge{
+				Source: id,
+				Target: link,
+				Name:   "",
+				Type:   pb.RpcObjectGraphEdge_Link,
+			})
+		}
 	}
-	return edges
+	return nodes, edges
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -15,7 +16,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -27,7 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -46,14 +46,15 @@ var (
 
 	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
 
-	ErrObjectNotFound = errors.New("object not found")
-	ErrReadOnly       = errors.New("object is read only")
-	ErrBigChangeSize  = errors.New("change size is above the limit")
+	ErrReadOnly      = errors.New("object is read only")
+	ErrBigChangeSize = errors.New("change size is above the limit")
 )
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
 	data := bytesPool.Get().([]byte)[:0]
-	defer bytesPool.Put(data)
+	defer func() {
+		bytesPool.Put(data)
+	}()
 
 	data = slices.Grow(data, change.Size())
 	n, err := change.MarshalTo(data)
@@ -73,10 +74,21 @@ func MarshalChange(change *pb.Change) (result []byte, dataType string, err error
 }
 
 func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, err error) {
-	change := &pb.Change{}
+	return unmarshalChange(treeChange, data, true)
+}
+
+func unmarshalChange(treeChange *objecttree.Change, data []byte, needSnapshot bool) (result any, err error) {
+	var change proto.Message
+	if needSnapshot {
+		change = &pb.Change{}
+	} else {
+		change = &pb.ChangeNoSnapshot{}
+	}
 	if treeChange.DataType == dataTypeSnappy {
 		buf := bytesPool.Get().([]byte)[:0]
-		defer bytesPool.Put(buf)
+		defer func() {
+			bytesPool.Put(buf)
+		}()
 
 		var n int
 		if n, err = snappy.DecodedLen(data); err == nil {
@@ -88,10 +100,28 @@ func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, er
 			}
 		}
 	}
-	if err = proto.Unmarshal(data, change); err == nil {
-		result = change
+	if err = proto.Unmarshal(data, change); err != nil {
+		return
 	}
-	return
+	if needSnapshot {
+		return change, nil
+	} else {
+		noSnapshotChange := change.(*pb.ChangeNoSnapshot)
+		return &pb.Change{
+			Content:   noSnapshotChange.Content,
+			FileKeys:  noSnapshotChange.FileKeys,
+			Timestamp: noSnapshotChange.Timestamp,
+			Version:   noSnapshotChange.Version,
+		}, nil
+	}
+}
+
+// NewUnmarshalTreeChange creates UnmarshalChange func that unmarshalls snapshot only for the first change and ignores it for following. It saves some memory
+func NewUnmarshalTreeChange() objecttree.ChangeConvertFunc {
+	var changeCount atomic.Int32
+	return func(treeChange *objecttree.Change, data []byte) (result any, err error) {
+		return unmarshalChange(treeChange, data, changeCount.CompareAndSwap(0, 1))
+	}
 }
 
 func UnmarshalChangeWithDataType(dataType string, decrypted []byte) (res any, err error) {
@@ -118,7 +148,7 @@ type Source interface {
 
 type SourceIdEndodedDetails interface {
 	Id() string
-	DetailsFromId() (*types.Struct, error)
+	DetailsFromId() (*domain.Details, error)
 }
 
 type IDsLister interface {
@@ -147,7 +177,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		return nil, err
 	}
 
-	return &source{
+	src := &source{
 		ObjectTree:         ot,
 		id:                 id,
 		space:              space,
@@ -157,9 +187,14 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		accountKeysService: s.accountKeysService,
 		sbtProvider:        s.sbtProvider,
 		fileService:        s.fileService,
-		objectStore:        s.objectStore,
+		objectStore:        s.objectStore.SpaceIndex(space.Id()),
 		fileObjectMigrator: s.fileObjectMigrator,
-	}, nil
+	}
+	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
+		return &store{source: src}, nil
+	}
+
+	return src, nil
 }
 
 type ObjectTreeProvider interface {
@@ -169,11 +204,6 @@ type ObjectTreeProvider interface {
 type fileObjectMigrator interface {
 	MigrateFiles(st *state.State, spc Space, keysChanges []*pb.ChangeFileKeys)
 	MigrateFileIdsInDetails(st *state.State, spc Space)
-}
-
-type Store interface {
-	GetRelationByKey(spaceId string, key string) (*model.Relation, error)
-	QueryByID(ids []string) (records []database.Record, err error)
 }
 
 type source struct {
@@ -192,7 +222,7 @@ type source struct {
 	accountService     accountService
 	accountKeysService accountservice.Service
 	sbtProvider        typeprovider.SmartBlockTypeProvider
-	objectStore        Store
+	objectStore        spaceindex.Store
 	fileObjectMigrator fileObjectMigrator
 }
 
@@ -202,7 +232,7 @@ func (s *source) Tree() objecttree.ObjectTree {
 	return s.ObjectTree
 }
 
-func (s *source) Update(ot objecttree.ObjectTree) {
+func (s *source) Update(ot objecttree.ObjectTree) error {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
 	prevSnapshot := s.lastSnapshotId
@@ -224,23 +254,25 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
 	}
+	return nil
 }
 
-func (s *source) Rebuild(ot objecttree.ObjectTree) {
+func (s *source) Rebuild(ot objecttree.ObjectTree) error {
 	if s.ObjectTree == nil {
-		return
+		return nil
 	}
 
 	doc, err := s.buildState()
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to build state")
-		return
+		return nil
 	}
 	st := doc.(*state.State)
 	err = s.receiver.StateRebuild(st)
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to send the state to receiver")
 	}
+	return nil
 }
 
 func (s *source) ReadOnly() bool {
@@ -316,22 +348,17 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 
 	// TODO: check if we can use apply fast one
-	if _, _, err = state.ApplyState(st, false); err != nil {
+	if _, _, err = state.ApplyState(s.spaceID, st, false); err != nil {
 		return
 	}
 	return st, nil
 }
 
 func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
-	root := s.ObjectTree.Root()
-	createdDate = root.Timestamp
-
 	header := s.ObjectTree.UnmarshalledHeader()
-	if header != nil && header.Timestamp != 0 && header.Timestamp < createdDate {
-		createdDate = header.Timestamp
-	}
-	if root != nil && root.Identity != nil {
-		creatorObjectId = domain.NewParticipantId(s.spaceID, root.Identity.Account())
+	createdDate = header.Timestamp
+	if header.Identity != nil {
+		creatorObjectId = domain.NewParticipantId(s.spaceID, header.Identity.Account())
 	}
 	return
 }
@@ -393,7 +420,7 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:                   params.State.BlocksToSave(),
-				Details:                  params.State.Details(),
+				Details:                  params.State.Details().ToProto(),
 				ObjectTypes:              domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
 				Collections:              params.State.Store(),
 				RelationLinks:            params.State.PickRelationLinks(),
@@ -551,7 +578,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		return
 	}
 	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId, UnmarshalChange,
+	err = ot.IterateFrom(startId, NewUnmarshalTreeChange(),
 		func(change *objecttree.Change) bool {
 			count++
 			lastChange = change
@@ -595,7 +622,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		return
 	}
 	if applyState {
-		_, _, err = state.ApplyStateFastOne(st)
+		_, _, err = state.ApplyStateFastOne(spaceId, st)
 		if err != nil {
 			return
 		}

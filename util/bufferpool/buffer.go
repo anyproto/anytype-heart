@@ -20,6 +20,16 @@ type buffer struct {
 	closed bool
 }
 
+func (b *buffer) Close() error {
+	b.m.Lock()
+	defer b.m.Unlock()
+	if !b.closed {
+		b.pool.Put(b.buf)
+		b.closed = true
+	}
+	return nil
+}
+
 // GetReadSeekCloser returns a ReadSeekCloser that reads from the buffer.
 // GetReadSeekCloser after Close will return EOF.
 // It's a responsibility of the caller to Close the ReadSeekCloser to put the buffer back into the pool.
@@ -47,12 +57,3 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 
 // Close puts the buffer back into the pool.
 // Close after GetReadSeekCloser does nothing.
-func (b *buffer) Close() error {
-	b.m.Lock()
-	defer b.m.Unlock()
-	if !b.closed {
-		b.pool.Put(b.buf)
-		b.closed = true
-	}
-	return nil
-}

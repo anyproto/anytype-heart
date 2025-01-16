@@ -3,9 +3,8 @@ package database
 import (
 	"time"
 
-	"github.com/anyproto/any-store/encoding"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/valyala/fastjson"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -14,7 +13,7 @@ import (
 )
 
 type dateOnlySort struct {
-	arena       *fastjson.Arena
+	arena       *anyenc.Arena
 	relationKey string
 	reverse     bool
 	nulls       model.BlockContentDataviewSortEmptyType
@@ -28,7 +27,7 @@ func (s dateOnlySort) Fields() []query.SortField {
 	}
 }
 
-func (s dateOnlySort) AppendKey(k []byte, v *fastjson.Value) []byte {
+func (s dateOnlySort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		s.arena.Reset()
 	}()
@@ -37,7 +36,7 @@ func (s dateOnlySort) AppendKey(k []byte, v *fastjson.Value) []byte {
 		empty bool
 		ts    int64
 	)
-	if val != nil && val.Type() == fastjson.TypeNumber {
+	if val != nil && val.Type() == anyenc.TypeNumber {
 		tsFloat, _ := val.Float64()
 		ts = time_util.CutToDay(time.Unix(int64(tsFloat), 0)).Unix()
 	} else {
@@ -46,25 +45,25 @@ func (s dateOnlySort) AppendKey(k []byte, v *fastjson.Value) []byte {
 
 	if empty {
 		if s.nulls == model.BlockContentDataviewSort_Start {
-			return encoding.AppendJSONValue(k, s.arena.NewNull())
+			return tuple.Append(s.arena.NewNull())
 		} else {
-			return encoding.AppendInvertedJSON(k, s.arena.NewNull())
+			return tuple.AppendInverted(s.arena.NewNull())
 		}
 	}
 
 	if s.reverse {
-		return encoding.AppendInvertedJSON(k, s.arena.NewNumberFloat64(float64(ts)))
+		return tuple.AppendInverted(s.arena.NewNumberFloat64(float64(ts)))
 	} else {
-		return encoding.AppendJSONValue(k, s.arena.NewNumberFloat64(float64(ts)))
+		return tuple.Append(s.arena.NewNumberFloat64(float64(ts)))
 	}
 }
 
 type emptyPlacementSort struct {
-	arena       *fastjson.Arena
+	arena       *anyenc.Arena
 	relationKey string
 	reverse     bool
 	nulls       model.BlockContentDataviewSortEmptyType
-	valType     fastjson.Type
+	valType     anyenc.Type
 }
 
 func (s emptyPlacementSort) Fields() []query.SortField {
@@ -75,7 +74,7 @@ func (s emptyPlacementSort) Fields() []query.SortField {
 	}
 }
 
-func (s emptyPlacementSort) AppendKey(k []byte, v *fastjson.Value) []byte {
+func (s emptyPlacementSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		s.arena.Reset()
 	}()
@@ -83,45 +82,45 @@ func (s emptyPlacementSort) AppendKey(k []byte, v *fastjson.Value) []byte {
 
 	if s.isEmpty(val) {
 		if s.nulls == model.BlockContentDataviewSort_Start {
-			return encoding.AppendJSONValue(k, s.arena.NewNull())
+			return tuple.Append(s.arena.NewNull())
 		} else {
-			return encoding.AppendInvertedJSON(k, s.arena.NewNull())
+			return tuple.AppendInverted(s.arena.NewNull())
 		}
 	}
 
 	if s.reverse {
-		return encoding.AppendInvertedJSON(k, val)
+		return tuple.AppendInverted(val)
 	} else {
-		return encoding.AppendJSONValue(k, val)
+		return tuple.Append(val)
 	}
 }
 
-func (s emptyPlacementSort) isEmpty(val *fastjson.Value) bool {
+func (s emptyPlacementSort) isEmpty(val *anyenc.Value) bool {
 	if val == nil {
 		return true
 	}
 	switch s.valType {
-	case fastjson.TypeNull:
+	case anyenc.TypeNull:
 		return true
-	case fastjson.TypeString:
+	case anyenc.TypeString:
 		return len(val.GetStringBytes()) == 0
-	case fastjson.TypeNumber:
+	case anyenc.TypeNumber:
 		n, _ := val.Float64()
 		return n == 0
-	case fastjson.TypeFalse:
+	case anyenc.TypeFalse:
 		return true
-	case fastjson.TypeTrue:
+	case anyenc.TypeTrue:
 		return false
-	case fastjson.TypeArray:
+	case anyenc.TypeArray:
 		return len(val.GetArray()) == 0
-	case fastjson.TypeObject:
+	case anyenc.TypeObject:
 		panic("not implemented")
 	}
 	return false
 }
 
 type textSort struct {
-	arena          *fastjson.Arena
+	arena          *anyenc.Arena
 	collatorBuffer *collate.Buffer
 	collator       *collate.Collator
 	relationKey    string
@@ -138,14 +137,12 @@ func (s textSort) Fields() []query.SortField {
 	}
 }
 
-func (s textSort) AppendKey(k []byte, v *fastjson.Value) []byte {
+func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		s.arena.Reset()
 		s.collatorBuffer.Reset()
 	}()
-
 	val := v.GetStringBytes(s.relationKey)
-
 	if s.relationKey == bundle.RelationKeyName.String() && len(val) == 0 {
 		layout := model.ObjectTypeLayout(v.GetFloat64(bundle.RelationKeyLayout.String()))
 		if layout == model.ObjectType_note {
@@ -156,21 +153,21 @@ func (s textSort) AppendKey(k []byte, v *fastjson.Value) []byte {
 	collated := s.collator.Key(s.collatorBuffer, val)
 	if s.reverse {
 		if s.nulls == model.BlockContentDataviewSort_Start && len(val) == 0 {
-			return encoding.AppendJSONValue(k, s.arena.NewNull())
+			return tuple.Append(s.arena.NewNull())
 		} else {
-			return encoding.AppendInvertedJSON(k, s.arena.NewStringBytes(collated))
+			return tuple.AppendInverted(s.arena.NewStringBytes(collated))
 		}
 	} else {
 		if s.nulls == model.BlockContentDataviewSort_End && len(val) == 0 {
-			return encoding.AppendInvertedJSON(k, s.arena.NewNull())
+			return tuple.AppendInverted(s.arena.NewNull())
 		} else {
-			return encoding.AppendJSONValue(k, s.arena.NewStringBytes(collated))
+			return tuple.Append(s.arena.NewStringBytes(collated))
 		}
 	}
 }
 
 type tagStatusSort struct {
-	arena       *fastjson.Arena
+	arena       *anyenc.Arena
 	relationKey string
 	reverse     bool
 	nulls       model.BlockContentDataviewSortEmptyType
@@ -185,17 +182,17 @@ func (s tagStatusSort) Fields() []query.SortField {
 	}
 }
 
-func (s tagStatusSort) AppendKey(k []byte, v *fastjson.Value) []byte {
+func (s tagStatusSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		s.arena.Reset()
 	}()
 
 	val := v.Get(s.relationKey)
 	var sortKey string
-	if val != nil && val.Type() == fastjson.TypeString {
+	if val != nil && val.Type() == anyenc.TypeString {
 		id, _ := val.StringBytes()
 		sortKey = s.idToName[string(id)]
-	} else if val != nil && val.Type() == fastjson.TypeArray {
+	} else if val != nil && val.Type() == anyenc.TypeArray {
 		arr, _ := val.Array()
 		for _, it := range arr {
 			id, _ := it.StringBytes()
@@ -205,15 +202,15 @@ func (s tagStatusSort) AppendKey(k []byte, v *fastjson.Value) []byte {
 
 	if sortKey == "" {
 		if s.nulls == model.BlockContentDataviewSort_Start {
-			return encoding.AppendJSONValue(k, s.arena.NewNull())
+			return tuple.Append(s.arena.NewNull())
 		} else if s.nulls == model.BlockContentDataviewSort_End {
-			return encoding.AppendInvertedJSON(k, s.arena.NewNull())
+			return tuple.AppendInverted(s.arena.NewNull())
 		}
 	}
 
 	if s.reverse {
-		return encoding.AppendInvertedJSON(k, s.arena.NewString(sortKey))
+		return tuple.AppendInverted(s.arena.NewString(sortKey))
 	} else {
-		return encoding.AppendJSONValue(k, s.arena.NewString(sortKey))
+		return tuple.Append(s.arena.NewString(sortKey))
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 )
 
 const CName = "client.syncstatus.syncsubscriptions"
@@ -15,7 +16,7 @@ const CName = "client.syncstatus.syncsubscriptions"
 type SyncSubscription interface {
 	Run() error
 	Close()
-	GetObjectSubscription() *ObjectSubscription[struct{}]
+	GetObjectSubscription() *objectsubscription.ObjectSubscription[struct{}]
 	SyncingObjectsCount(missing []string) int
 }
 

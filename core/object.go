@@ -4,31 +4,29 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
 
-	"github.com/anyproto/go-naturaldate/v2"
-	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
+	"github.com/anyproto/anytype-heart/core/date"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
@@ -93,12 +91,14 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, err := ds.Query(database.Query{
-		Filters:  req.Filters,
-		Sorts:    req.Sorts,
-		Offset:   int(req.Offset),
-		Limit:    int(req.Limit),
-		FullText: req.FullText,
+	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
+		Filters:         database.FiltersFromProto(req.Filters),
+		SpaceId:         req.SpaceId,
+		Sorts:           database.SortsFromProto(req.Sorts),
+		Offset:          int(req.Offset),
+		Limit:           int(req.Limit),
+		TextQuery:       req.FullText,
+		PrefixNameQuery: true,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
@@ -106,18 +106,25 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	// Add dates only to the first page of search results
 	if req.Offset == 0 {
-		records, err = mw.enrichWithDateSuggestion(cctx, records, req, ds)
+		records, err = date.EnrichRecordsWithDateSuggestions(cctx, req.SpaceId, req.FullText, records, req.Filters, ds, mustService[space.Service](mw))
 		if err != nil {
 			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 		}
 	}
 
-	var records2 = make([]*types.Struct, 0, len(records))
+	var records2 = make([]*domain.Details, 0, len(records))
 	for _, rec := range records {
-		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
+		if len(req.Keys) == 0 {
+			records2 = append(records2, rec.Details)
+		} else {
+			records2 = append(records2, rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...))
+		}
 	}
 
-	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
+	protoRecords := lo.Map(records2, func(item *domain.Details, _ int) *types.Struct {
+		return item.ToProto()
+	})
+	return response(pb.RpcObjectSearchResponseError_NULL, protoRecords, nil)
 }
 
 func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObjectSearchWithMetaRequest) *pb.RpcObjectSearchWithMetaResponse {
@@ -139,28 +146,32 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	highlighter := ftsearch.DefaultHighlightFormatter
-	if req.ReturnHTMLHighlightsInsteadOfRanges {
-		highlighter = ftsearch.HtmlHighlightFormatter
-	}
-	results, err := ds.Query(database.Query{
-		Filters:     req.Filters,
-		Sorts:       req.Sorts,
-		Offset:      int(req.Offset),
-		Limit:       int(req.Limit),
-		FullText:    req.FullText,
-		Highlighter: highlighter,
+	results, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
+		Filters:   database.FiltersFromProto(req.Filters),
+		Sorts:     database.SortsFromProto(req.Sorts),
+		Offset:    int(req.Offset),
+		Limit:     int(req.Limit),
+		TextQuery: req.FullText,
+		SpaceId:   req.SpaceId,
 	})
+
+	// Add dates only to the first page of search results
+	if req.Offset == 0 {
+		results, err = date.EnrichRecordsWithDateSuggestions(cctx, req.SpaceId, req.FullText, results, req.Filters, ds, mustService[space.Service](mw))
+		if err != nil {
+			return response(pb.RpcObjectSearchWithMetaResponseError_UNKNOWN_ERROR, nil, err)
+		}
+	}
 
 	var resultsModels = make([]*model.SearchResult, 0, len(results))
 	for i, rec := range results {
 		if len(req.Keys) > 0 {
-			rec.Details = pbtypes.StructFilterKeys(rec.Details, req.Keys)
+			rec.Details = rec.Details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
 		}
 		resultsModels = append(resultsModels, &model.SearchResult{
 
-			ObjectId: pbtypes.GetString(rec.Details, database.RecordIDField),
-			Details:  rec.Details,
+			ObjectId: rec.Details.GetString(bundle.RelationKeyId),
+			Details:  rec.Details.ToProto(),
 			Meta:     []*model.SearchMeta{&(results[i].Meta)},
 		})
 	}
@@ -169,142 +180,6 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	}
 
 	return response(pb.RpcObjectSearchWithMetaResponseError_NULL, resultsModels, nil)
-}
-
-func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
-	dt := suggestDateForSearch(time.Now(), req.FullText)
-	if dt.IsZero() {
-		return records, nil
-	}
-
-	id := deriveDateId(dt)
-
-	// Don't duplicate search suggestions
-	var found bool
-	for _, r := range records {
-		if r.Details == nil || r.Details.Fields == nil {
-			continue
-		}
-		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
-			if v.GetStringValue() == id {
-				found = true
-				break
-			}
-		}
-
-	}
-	if found {
-		return records, nil
-	}
-
-	var rec database.Record
-	var spaceID string
-	for _, f := range req.Filters {
-		if f.RelationKey == bundle.RelationKeySpaceId.String() {
-			if f.Condition == model.BlockContentDataviewFilter_Equal {
-				spaceID = f.Value.GetStringValue()
-			}
-			if f.Condition == model.BlockContentDataviewFilter_In {
-				spaces := f.Value.GetListValue().Values
-				if len(spaces) > 0 {
-					spaceID = spaces[0].GetStringValue()
-				}
-			}
-			break
-		}
-	}
-	rec, err := mw.makeSuggestedDateRecord(ctx, spaceID, dt)
-	if err != nil {
-		return nil, fmt.Errorf("make date record: %w", err)
-	}
-	f, _ := database.MakeFilters(req.Filters, store) //nolint:errcheck
-	if f.FilterObject(rec.Details) {
-		return append([]database.Record{rec}, records...), nil
-	}
-	return records, nil
-}
-
-func suggestDateForSearch(now time.Time, raw string) time.Time {
-	suggesters := []func() time.Time{
-		func() time.Time {
-			var exprType naturaldate.ExprType
-			t, exprType, err := naturaldate.Parse(raw, now)
-			if err != nil {
-				return time.Time{}
-			}
-			if exprType == naturaldate.ExprTypeInvalid {
-				return time.Time{}
-			}
-
-			// naturaldate parses numbers without qualifiers (m,s) as hours in 24 hours clock format. It leads to weird behavior
-			// when inputs like "123" represented as "current time + 123 hours"
-			if (exprType & naturaldate.ExprTypeClock24Hour) != 0 {
-				t = time.Time{}
-			}
-			return t
-		},
-		func() time.Time {
-			// Don't use plain numbers, because they will be represented as years
-			if _, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil {
-				return time.Time{}
-			}
-			// todo: use system locale to get preferred date format
-			t, err := dateparse.ParseIn(raw, now.Location(), dateparse.PreferMonthFirst(false))
-			if err != nil {
-				return time.Time{}
-			}
-			return t
-		},
-	}
-
-	var t time.Time
-	for _, s := range suggesters {
-		if t = s(); !t.IsZero() {
-			break
-		}
-	}
-	if t.IsZero() {
-		return t
-	}
-
-	// Sanitize date
-
-	// Date without year
-	if t.Year() == 0 {
-		_, month, day := t.Date()
-		h, m, s := t.Clock()
-		t = time.Date(now.Year(), month, day, h, m, s, 0, t.Location())
-	}
-
-	return t
-}
-
-func deriveDateId(t time.Time) string {
-	return "_date_" + t.Format("2006-01-02")
-}
-
-func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID string, t time.Time) (database.Record, error) {
-	id := deriveDateId(t)
-	spc, err := getService[space.Service](mw).Get(ctx, spaceID)
-	if err != nil {
-		return database.Record{}, fmt.Errorf("get space: %w", err)
-	}
-	typeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
-	if err != nil {
-		return database.Record{}, fmt.Errorf("get date type id: %w", err)
-	}
-	d := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():        pbtypes.String(id),
-		bundle.RelationKeyName.String():      pbtypes.String(t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
-		bundle.RelationKeyType.String():      pbtypes.String(typeId),
-		bundle.RelationKeyIconEmoji.String(): pbtypes.String("📅"),
-		bundle.RelationKeySpaceId.String():   pbtypes.String(spaceID),
-	}}
-
-	return database.Record{
-		Details: d,
-	}, nil
 }
 
 func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
@@ -327,16 +202,16 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
 	resp, err := subService.Search(subscription.SubscribeRequest{
+		SpaceId:           req.SpaceId,
 		SubId:             req.SubId,
-		Filters:           req.Filters,
-		Sorts:             req.Sorts,
+		Filters:           database.FiltersFromProto(req.Filters),
+		Sorts:             database.SortsFromProto(req.Sorts),
 		Limit:             req.Limit,
 		Offset:            req.Offset,
 		Keys:              req.Keys,
 		AfterId:           req.AfterId,
 		BeforeId:          req.BeforeId,
 		Source:            req.Source,
-		IgnoreWorkspace:   req.IgnoreWorkspace,
 		NoDepSubscription: req.NoDepSubscription,
 		CollectionId:      req.CollectionId,
 	})
@@ -346,14 +221,55 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	return &pb.RpcObjectSearchSubscribeResponse{
 		SubId:        resp.SubId,
-		Records:      resp.Records,
-		Dependencies: resp.Dependencies,
+		Records:      domain.DetailsListToProtos(resp.Records),
+		Dependencies: domain.DetailsListToProtos(resp.Dependencies),
 		Counters:     resp.Counters,
 	}
 }
 
-func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
-	ctx := mw.newContext(cctx)
+func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchSubscribeRequest) *pb.RpcObjectCrossSpaceSearchSubscribeResponse {
+	subService := mustService[crossspacesub.Service](mw)
+	resp, err := subService.Subscribe(subscription.SubscribeRequest{
+		SubId:             req.SubId,
+		Filters:           database.FiltersFromProto(req.Filters),
+		Sorts:             database.SortsFromProto(req.Sorts),
+		Keys:              req.Keys,
+		Source:            req.Source,
+		NoDepSubscription: req.NoDepSubscription,
+		CollectionId:      req.CollectionId,
+	})
+	if err != nil {
+		return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchSubscribeResponseError{
+				Code:        pb.RpcObjectCrossSpaceSearchSubscribeResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
+		SubId:        resp.SubId,
+		Records:      domain.DetailsListToProtos(resp.Records),
+		Dependencies: domain.DetailsListToProtos(resp.Dependencies),
+		Counters:     resp.Counters,
+	}
+}
+
+func (mw *Middleware) ObjectCrossSpaceSearchUnsubscribe(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchUnsubscribeRequest) *pb.RpcObjectCrossSpaceSearchUnsubscribeResponse {
+	subService := mustService[crossspacesub.Service](mw)
+	err := subService.Unsubscribe(req.SubId)
+	if err != nil {
+		return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{
+			Error: &pb.RpcObjectCrossSpaceSearchUnsubscribeResponseError{
+				Code:        pb.RpcObjectCrossSpaceSearchUnsubscribeResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcObjectCrossSpaceSearchUnsubscribeResponse{}
+}
+
+func (mw *Middleware) ObjectGroupsSubscribe(_ context.Context, req *pb.RpcObjectGroupsSubscribeRequest) *pb.RpcObjectGroupsSubscribeResponse {
 	errResponse := func(err error) *pb.RpcObjectGroupsSubscribeResponse {
 		r := &pb.RpcObjectGroupsSubscribeResponse{
 			Error: &pb.RpcObjectGroupsSubscribeResponseError{
@@ -372,7 +288,14 @@ func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.SubscribeGroups(ctx, *req)
+	resp, err := subService.SubscribeGroups(subscription.SubscribeGroupsRequest{
+		SpaceId:      req.SpaceId,
+		SubId:        req.SubId,
+		RelationKey:  req.RelationKey,
+		Filters:      database.FiltersFromProto(req.Filters),
+		Source:       req.Source,
+		CollectionId: req.CollectionId,
+	})
 	if err != nil {
 		return errResponse(err)
 	}
@@ -444,11 +367,19 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		)
 	}
 
-	nodes, edges, err := getService[objectgraph.Service](mw).ObjectGraph(req)
+	nodes, edges, err := mustService[objectgraph.Service](mw).ObjectGraph(objectgraph.ObjectGraphRequest{
+		Filters:          database.FiltersFromProto(req.Filters),
+		Limit:            req.Limit,
+		ObjectTypeFilter: req.ObjectTypeFilter,
+		Keys:             req.Keys,
+		SpaceId:          req.SpaceId,
+		CollectionId:     req.CollectionId,
+		SetSource:        req.SetSource,
+	})
 	if err != nil {
 		return unknownError(err)
 	}
-	return objectResponse(pb.RpcObjectGraphResponseError_NULL, nodes, edges, nil)
+	return objectResponse(pb.RpcObjectGraphResponseError_NULL, domain.DetailsListToProtos(nodes), edges, nil)
 }
 
 func unknownError(err error) *pb.RpcObjectGraphResponse {
@@ -721,18 +652,6 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{
-			Error: &pb.RpcObjectImportResponseError{
-				Code: code,
-			},
-		}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: req,
 		Origin:                 objectorigin.Import(req.Type),
@@ -740,23 +659,9 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		SendNotification:       true,
 		IsSync:                 false,
 	}
-	res := getService[importer.Importer](mw).Import(cctx, importRequest)
 
-	if res == nil || res.Err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, nil)
-	}
-	switch {
-	case errors.Is(res.Err, common.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, res.Err)
-	case errors.Is(res.Err, common.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, res.Err)
-	case errors.Is(res.Err, common.ErrLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, res.Err)
-	case errors.Is(res.Err, common.ErrFileLoad):
-		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, res.Err)
-	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, res.Err)
-	}
+	mustService[importer.Importer](mw).Import(cctx, importRequest)
+	return &pb.RpcObjectImportResponse{}
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
@@ -827,7 +732,7 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 		return resp
 	}
 
-	objCreator := getService[builtinobjects.BuiltinObjects](mw)
+	objCreator := mustService[builtinobjects.BuiltinObjects](mw)
 	return response(objCreator.CreateObjectsForUseCase(ctx, req.SpaceId, req.UseCase))
 }
 
@@ -844,7 +749,25 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 		return resp
 	}
 
-	objCreator := getService[builtinobjects.BuiltinObjects](mw)
+	objCreator := mustService[builtinobjects.BuiltinObjects](mw)
 	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
 	return response(common.GetGalleryResponseCode(err), err)
+}
+
+func (mw *Middleware) ObjectDateByTimestamp(ctx context.Context, req *pb.RpcObjectDateByTimestampRequest) *pb.RpcObjectDateByTimestampResponse {
+	spaceService := mustService[space.Service](mw)
+	details, err := date.BuildDetailsFromTimestamp(ctx, spaceService, req.SpaceId, req.Timestamp)
+
+	if err != nil {
+		return &pb.RpcObjectDateByTimestampResponse{
+			Error: &pb.RpcObjectDateByTimestampResponseError{
+				Code:        pb.RpcObjectDateByTimestampResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return &pb.RpcObjectDateByTimestampResponse{
+		Details: details.ToProto(),
+	}
 }

@@ -1,6 +1,6 @@
 # Anytype Heart
 Middleware library for Anytype, distributed as part of the Anytype clients.
- 
+
 ## Docs
 - [Build instructions](docs/Build.md)
 - [Protobuf generation](docs/Protogen.md)

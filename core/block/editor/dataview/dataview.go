@@ -18,11 +18,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -50,7 +49,7 @@ type Dataview interface {
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
-func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) Dataview {
+func NewDataview(sb smartblock.SmartBlock, objectStore spaceindex.Store) Dataview {
 	dv := &sdataview{
 		SmartBlock:  sb,
 		objectStore: objectStore,
@@ -62,7 +61,7 @@ func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) 
 
 type sdataview struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
@@ -90,7 +89,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 
 	if len(source) == 0 {
 		s.Unlink(blockId)
-		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		s.SetLocalDetail(bundle.RelationKeySetOf, domain.StringList(source))
 		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
@@ -108,7 +107,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		s.InsertTo("", 0, blockId)
 	}
 
-	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+	s.SetLocalDetail(bundle.RelationKeySetOf, domain.StringList(source))
 	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
@@ -127,7 +126,7 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
 		}
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(source))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, domain.StringList(source))
 
 	flags := internalflag.NewFromState(s)
 	// set with source is no longer empty
@@ -144,7 +143,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.objectStore.FetchRelationByKey(d.SpaceID(), key)
+		relation, err2 := d.objectStore.FetchRelationByKey(key)
 		if err2 != nil {
 			return err2
 		}
@@ -457,7 +456,7 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func BlockBySource(objectStore objectstore.ObjectStore, sources []string) (*model.BlockContentOfDataview, error) {
+func BlockBySource(objectStore spaceindex.Store, sources []string) (*model.BlockContentOfDataview, error) {
 	// Empty schema
 	if len(sources) == 0 {
 		return template.MakeDataviewContent(false, nil, nil), nil
@@ -472,7 +471,7 @@ func BlockBySource(objectStore objectstore.ObjectStore, sources []string) (*mode
 	// Finally, try relations
 	relations := make([]*model.RelationLink, 0, len(sources))
 	for _, relId := range sources {
-		rel, err := objectStore.GetRelationByID(relId)
+		rel, err := objectStore.GetRelationById(relId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 		}

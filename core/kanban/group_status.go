@@ -1,21 +1,26 @@
 package kanban
 
 import (
+	"fmt"
 	"sort"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type GroupStatus struct {
-	key     string
+	key     domain.RelationKey
 	store   objectstore.ObjectStore
 	Options []*model.RelationOption
 }
 
 func (gs *GroupStatus) InitGroups(spaceID string, f *database.Filters) error {
-	options, err := database.ListRelationOptions(gs.store, spaceID, gs.key)
+	if spaceID == "" {
+		return fmt.Errorf("spaceId is required")
+	}
+	options, err := gs.store.SpaceIndex(spaceID).ListRelationOptions(gs.key)
 	if err != nil {
 		return err
 	}

@@ -14,12 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/debug"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) DebugRouter(r chi.Router) {
@@ -51,14 +48,8 @@ type debugObject struct {
 
 func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, error) {
 	spaceId := chi.URLParam(req, "spaceId")
-	ids, _, err := s.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceId),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-			},
-		},
+	ids, _, err := s.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
+		Filters: nil,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list ids: %w", err)
@@ -78,7 +69,7 @@ func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, er
 }
 
 func (s *Service) debugListObjects(req *http.Request) ([]debugObject, error) {
-	ids, err := s.objectStore.ListIds()
+	ids, err := s.objectStore.ListIdsCrossSpace()
 	if err != nil {
 		return nil, fmt.Errorf("list ids: %w", err)
 	}
@@ -137,7 +128,7 @@ func (s *Service) getDebugObject(id string) (debugObject, error) {
 		st := sb.NewState()
 		root := blockbuilder.BuildAST(st.Blocks())
 		marshaller := jsonpb.Marshaler{}
-		detailsRaw, err := marshaller.MarshalToString(st.CombinedDetails())
+		detailsRaw, err := marshaller.MarshalToString(st.CombinedDetails().ToProto())
 		if err != nil {
 			return fmt.Errorf("marshal details: %w", err)
 		}

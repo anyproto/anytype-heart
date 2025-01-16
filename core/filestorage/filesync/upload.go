@@ -14,10 +14,12 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
@@ -163,10 +165,12 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 			}
 		}
 		if limitErr == nil || !limitErrorIsLogged {
-			log.Error("retry uploading file error",
-				zap.String("fileId", fileId.String()), zap.Error(err),
-				zap.String("objectId", it.ObjectId),
-			)
+			if !format.IsNotFound(err) && !strings.Contains(err.Error(), "failed to fetch all nodes") {
+				log.Error("retry uploading file error",
+					zap.String("fileId", fileId.String()), zap.Error(err),
+					zap.String("objectId", it.ObjectId),
+				)
+			}
 		}
 
 		return persistentqueue.ActionRetry, nil
@@ -351,33 +355,20 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 }
 
 func (s *fileSync) sendLimitReachedEvent(spaceID string) {
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfFileLimitReached{
-					FileLimitReached: &pb.EventFileLimitReached{
-						SpaceId: spaceID,
-					},
-				},
-			},
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfFileLimitReached{
+		FileLimitReached: &pb.EventFileLimitReached{
+			SpaceId: spaceID,
 		},
-	})
+	}))
 }
 
 func (s *fileSync) addImportEvent(spaceID string) {
 	s.importEventsMutex.Lock()
 	defer s.importEventsMutex.Unlock()
-	s.importEvents = append(s.importEvents, &pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfFileLimitReached{
-					FileLimitReached: &pb.EventFileLimitReached{
-						SpaceId: spaceID,
-					},
-				},
-			},
-		},
-	})
+	s.importEvents = append(s.importEvents, event.NewEventSingleMessage("", &pb.EventMessageValueOfFileLimitReached{
+		FileLimitReached: &pb.EventFileLimitReached{
+			SpaceId: spaceID,
+		}}))
 }
 
 type blocksAvailabilityResponse struct {

@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer/mock_treesyncer"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -21,19 +20,20 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ctx = context.Background()
 
 const (
 	testTechSpaceId = "techspaceId"
+	accountObjectId = "accountObjectId"
 )
 
-func TestTechSpace_Init(t *testing.T) {
+func TestTechSpace_Run(t *testing.T) {
 	var initIDs = []string{"1", "2", "3"}
 	fx := newFixture(t, initIDs)
 	defer fx.finish(t)
@@ -41,7 +41,7 @@ func TestTechSpace_Init(t *testing.T) {
 
 type spaceViewStub struct {
 	*smarttest.SmartTest
-	data *types.Struct
+	data *domain.Details
 }
 
 var _ SpaceView = (*spaceViewStub)(nil)
@@ -55,6 +55,10 @@ func (s *spaceViewStub) SetSharedSpacesLimit(limits int) (err error) {
 }
 
 func (s *spaceViewStub) GetSharedSpacesLimit() (limits int) {
+	return
+}
+
+func (s *spaceViewStub) SetOwner(owner string, createdDate int64) (err error) {
 	return
 }
 
@@ -86,7 +90,7 @@ func (s *spaceViewStub) GetExistingInviteInfo() (fileCid string, fileKey string)
 	return
 }
 
-func (s *spaceViewStub) SetSpaceData(details *types.Struct) error {
+func (s *spaceViewStub) SetSpaceData(details *domain.Details) error {
 	s.data = details
 	return nil
 }
@@ -115,7 +119,7 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		defer fx.finish(t)
 
 		fx.expectDeriveTreePayload(viewId)
-		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(nil, fmt.Errorf("not found"))
+		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(nil, fmt.Errorf("not found")).Times(1)
 		fx.objectCache.EXPECT().DeriveTreeObject(ctx, mock.Anything).Return(view, nil)
 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
@@ -184,8 +188,8 @@ func TestTechSpace_SpaceViewSetData(t *testing.T) {
 		fx.expectDeriveTreePayload(viewId)
 		fx.objectCache.EXPECT().GetObject(mock.Anything, viewId).Return(view, nil)
 
-		details := pbtypes.ToStruct(map[string]interface{}{
-			"key": "value",
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"key": domain.String("value"),
 		})
 		err := fx.SpaceViewSetData(ctx, spaceId, details)
 		require.NoError(t, err)
@@ -341,9 +345,20 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 
 	// expect wakeUpIds
 	fx.techCore.EXPECT().Id().Return(testTechSpaceId).AnyTimes()
+	fx.objectCache.EXPECT().DeriveTreePayload(ctx, mock.Anything).Return(treestorage.TreeStorageCreatePayload{
+		RootRawChange: &treechangeproto.RawTreeChangeWithId{
+			Id: accountObjectId,
+		},
+	}, nil).Times(1)
 
+	fx.objectCache.EXPECT().GetObject(mock.Anything, accountObjectId).RunAndReturn(func(ctx context.Context, id string) (smartblock.SmartBlock, error) {
+		peerId, err := peer.CtxPeerId(ctx)
+		require.NoError(t, err)
+		require.Equal(t, peer.CtxResponsiblePeers, peerId)
+		return nil, nil
+	}).Times(1)
 	require.NoError(t, fx.a.Start(ctx))
-	err := fx.TechSpace.Run(fx.techCore, fx.objectCache)
+	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
 	require.NoError(t, err)
 
 	// do not cancel wakeUpIds func
@@ -357,7 +372,7 @@ func (fx *fixture) expectDeriveTreePayload(viewId string) {
 		RootRawChange: &treechangeproto.RawTreeChangeWithId{
 			Id: viewId,
 		},
-	}, nil)
+	}, nil).Times(1)
 }
 
 func (fx *fixture) finish(t *testing.T) {

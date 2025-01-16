@@ -56,17 +56,17 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	}
 
 	e.log.Printf("exported tree for a %v", time.Since(st))
-	data, err := e.s.GetByIDs(e.id.SpaceID, []string{e.id.ObjectID})
+	data, err := e.s.SpaceIndex(e.id.SpaceID).GetInfosByIds([]string{e.id.ObjectID})
 	if err != nil {
 		e.log.Printf("can't fetch localstore info: %v", err)
 	} else {
 		if len(data) > 0 {
-			data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Struct)
+			data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Details)
 			data[0].Snippet = transform(data[0].Snippet, e.anonymized, anonymize.Text)
 			for i, r := range data[0].Relations {
 				data[0].Relations[i] = transform(r, e.anonymized, anonymize.Relation)
 			}
-			osData := pbtypes.Sprint(data[0])
+			osData := pbtypes.Sprint(data[0].ToProto())
 			lsWr, er := e.zw.Create("localstore.json")
 			if er != nil {
 				e.log.Printf("create file in zip error: %v", er)

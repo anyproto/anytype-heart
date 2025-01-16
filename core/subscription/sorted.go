@@ -3,12 +3,11 @@ package subscription
 import (
 	"errors"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 var (
@@ -17,9 +16,10 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *service) newSortedSub(id string, keys []string, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
+func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
+		spaceId:     spaceId,
 		keys:        keys,
 		filter:      filter,
 		order:       order,
@@ -33,10 +33,11 @@ func (s *service) newSortedSub(id string, keys []string, filter database.Filter,
 }
 
 type sortedSub struct {
-	id     string
-	keys   []string
-	filter database.Filter
-	order  database.Order
+	id      string
+	spaceId string
+	keys    []domain.RelationKey
+	filter  database.Filter
+	order   database.Order
 
 	afterId, beforeId string
 	limit, offset     int
@@ -45,7 +46,7 @@ type sortedSub struct {
 	afterEl, beforeEl *skiplist.Element
 
 	depSub           *simpleSub
-	depKeys          []string
+	depKeys          []domain.RelationKey
 	activeEntriesBuf []*entry
 
 	forceSubIds []string
@@ -59,7 +60,7 @@ type sortedSub struct {
 	ds    *dependencyService
 
 	// for nested subscriptions
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 	// parent is used to run onChange callback when any child subscriptions receive changes
 	parent       *sortedSub
 	parentFilter *database.FilterNestedIn
@@ -124,7 +125,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	activeEntries := s.getActiveEntries()
 	var activeIds = make([]string, len(activeEntries))
 	for i, ae := range activeEntries {
-		ae.SetSub(s.id, true, false)
+		ae.SetSub(s.id, true, true)
 		activeIds[i] = ae.id
 	}
 	s.diff = newListDiff(activeIds)
@@ -133,9 +134,9 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	s.compCountBefore.total = s.skl.Len()
 
 	if s.ds != nil && !s.disableDep {
-		s.depKeys = s.ds.depKeys(s.keys)
+		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
 		if len(s.depKeys) > 0 || len(s.forceSubIds) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
 		}
 	}
 	return nil
@@ -292,9 +293,9 @@ func (s *sortedSub) counters() (prev, next int) {
 	return
 }
 
-func (s *sortedSub) getActiveRecords() (res []*types.Struct) {
+func (s *sortedSub) getActiveRecords() (res []*domain.Details) {
 	reverse := s.iterateActive(func(e *entry) {
-		res = append(res, pbtypes.StructFilterKeys(e.data, s.keys))
+		res = append(res, e.data.CopyOnlyKeys(s.keys...))
 	})
 	if reverse {
 		for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {

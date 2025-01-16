@@ -2,8 +2,7 @@ package state
 
 import (
 	"fmt"
-
-	"github.com/gogo/protobuf/types"
+	"sort"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -16,6 +15,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/simple/widget"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -313,13 +314,13 @@ func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMess
 	return wmsgs
 }
 
-func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.EventMessage) {
-	return StructDiffIntoEventsWithSubIds(contextId, diff, nil, nil)
+func StructDiffIntoEvents(spaceId string, contextId string, diff *domain.Details) (msgs []*pb.EventMessage) {
+	return StructDiffIntoEventsWithSubIds(spaceId, contextId, diff, nil, nil)
 }
 
 // StructDiffIntoEvents converts map into events. nil map value converts to Remove event
-func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys []string, subIds []string) (msgs []*pb.EventMessage) {
-	if diff == nil || len(diff.Fields) == 0 {
+func StructDiffIntoEventsWithSubIds(spaceId string, contextId string, diff *domain.Details, keys []domain.RelationKey, subIds []string) (msgs []*pb.EventMessage) {
+	if diff.Len() == 0 {
 		return nil
 	}
 	var (
@@ -327,38 +328,66 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys [
 		details []*pb.EventObjectDetailsAmendKeyValue
 	)
 
-	for k, v := range diff.Fields {
+	for k, v := range diff.Iterate() {
+		key := string(k)
 		if len(keys) > 0 && slice.FindPos(keys, k) == -1 {
 			continue
 		}
-		if v == nil {
-			removed = append(removed, k)
+		// TODO This is not correct! Rewrite this code to use separate diff structures
+		if v.IsNull() {
+			removed = append(removed, key)
 			continue
 		}
-		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: k, Value: v})
-	}
-	if len(details) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsAmend{
-				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-					Id:      contextId,
-					Details: details,
-					SubIds:  subIds,
-				},
-			},
-		})
-	}
-	if len(removed) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsUnset{
-				ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
-					Id:     contextId,
-					Keys:   removed,
-					SubIds: subIds,
-				},
-			},
-		})
+		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: key, Value: v.ToProto()})
 	}
 
+	if len(details) > 0 {
+		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsAmend{
+			ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+				Id:      contextId,
+				Details: details,
+				SubIds:  subIds,
+			},
+		}))
+	}
+	if len(removed) > 0 {
+		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsUnset{
+			ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+				Id:     contextId,
+				Keys:   removed,
+				SubIds: subIds,
+			},
+		}))
+	}
 	return
+}
+
+func sortEventMessages(msgs []simple.EventMessage) {
+	eventGroup := func(msg simple.EventMessage) int {
+		switch msg.Msg.Value.(type) {
+		case *pb.EventMessageValueOfBlockAdd:
+			return 0
+		case *pb.EventMessageValueOfBlockDelete:
+			return 1
+		case *pb.EventMessageValueOfBlockSetChildrenIds:
+			return 2
+		case *pb.EventMessageValueOfObjectDetailsSet:
+			return 3
+		case *pb.EventMessageValueOfObjectDetailsAmend:
+			return 4
+		case *pb.EventMessageValueOfObjectDetailsUnset:
+			return 5
+		case *pb.EventMessageValueOfBlockDataviewViewSet:
+			return 6
+		case *pb.EventMessageValueOfBlockDataviewViewDelete:
+			return 7
+		default:
+			return 1000
+		}
+	}
+
+	sort.SliceStable(msgs, func(i, j int) bool {
+		a, b := msgs[i], msgs[j]
+		return eventGroup(a) < eventGroup(b)
+	})
 }

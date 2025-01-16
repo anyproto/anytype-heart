@@ -6,19 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -39,7 +38,7 @@ type Text interface {
 
 func NewText(
 	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
+	objectStore spaceindex.Store,
 	eventSender event.Sender,
 ) Text {
 	t := &textImpl{
@@ -57,7 +56,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 type textImpl struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 	eventSender event.Sender
 
 	lastSetTextId    string
@@ -448,10 +447,10 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 		textBlock, ok = b.(text.Block)
 		if !ok {
 			if linkBlock, ok := b.(link.Block); ok {
-				var targetDetails *types.Struct
+				var targetDetails *domain.Details
 				if targetId := linkBlock.Model().GetLink().TargetBlockId; targetId != "" {
 					// nolint:errcheck
-					result, _ := t.objectStore.QueryByID([]string{targetId})
+					result, _ := t.objectStore.QueryByIds([]string{targetId})
 					if len(result) > 0 {
 						targetDetails = result[0].Details
 					}
@@ -480,7 +479,7 @@ func (t *textImpl) isLastTextBlockChanged() (bool, error) {
 		return true, err
 	}
 	oldTextBlock := t.lastSetTextState.PickOrigin(t.lastSetTextId)
-	messages, err := oldTextBlock.Diff(newTextBlock)
+	messages, err := oldTextBlock.Diff(t.SpaceID(), newTextBlock)
 	return len(messages) != 0, err
 }
 

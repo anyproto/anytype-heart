@@ -474,6 +474,9 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	fileInfo.MetaHash = metaNode.Cid().String()
 
 	pairNode, err := s.addFilePairNode(ctx, spaceID, fileInfo)
+	if err != nil {
+		return nil, err
+	}
 	err = res.File.Close()
 	if err != nil {
 		log.Warnf("failed to close file: %s", err)
@@ -643,7 +646,6 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullFileId) (File, e
 		// info from ipfs
 		fileList, err = s.fileIndexInfo(ctx, id, false)
 		if err != nil {
-			log.With("fileId", id.FileId.String()).Errorf("FileByHash: failed to retrieve from IPFS: %s", err)
 			return nil, err
 		}
 		ok, err := s.fileStore.IsFileImported(id.FileId)

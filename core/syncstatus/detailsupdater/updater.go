@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -22,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -98,9 +96,6 @@ func (u *syncStatusUpdater) Name() (name string) {
 }
 
 func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectSyncStatus, spaceId string) {
-	if spaceId == u.spaceService.TechSpaceId() {
-		return
-	}
 	err := u.addToQueue(&syncStatusDetails{
 		objectId: objectId,
 		status:   status,
@@ -145,9 +140,6 @@ func (u *syncStatusUpdater) updateSpecificObject(objectId string) {
 }
 
 func (u *syncStatusUpdater) UpdateSpaceDetails(existing, missing []string, spaceId string) {
-	if spaceId == u.spaceService.TechSpaceId() {
-		return
-	}
 	u.spaceSyncStatus.UpdateMissingIds(spaceId, missing)
 	ids := u.getSyncingObjects(spaceId)
 
@@ -202,19 +194,19 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 	}
 	defer u.spaceSyncStatus.Refresh(syncStatusDetails.spaceId)
 	err = spc.DoLockedIfNotExists(objectId, func() error {
-		return u.objectStore.ModifyObjectDetails(objectId, func(details *types.Struct) (*types.Struct, bool, error) {
-			if details == nil || details.Fields == nil {
-				details = &types.Struct{Fields: map[string]*types.Value{}}
+		return u.objectStore.SpaceIndex(syncStatusDetails.spaceId).ModifyObjectDetails(objectId, func(details *domain.Details) (*domain.Details, bool, error) {
+			if details == nil {
+				details = domain.NewDetails()
 			}
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
 			}
-			if fileStatus, ok := details.GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+			if fileStatus, ok := details.TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
+				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 			}
-			details.Fields[bundle.RelationKeySyncStatus.String()] = pbtypes.Int64(int64(status))
-			details.Fields[bundle.RelationKeySyncError.String()] = pbtypes.Int64(int64(syncError))
-			details.Fields[bundle.RelationKeySyncDate.String()] = pbtypes.Int64(time.Now().Unix())
+			details.SetInt64(bundle.RelationKeySyncStatus, int64(status))
+			details.SetInt64(bundle.RelationKeySyncError, int64(syncError))
+			details.SetInt64(bundle.RelationKeySyncDate, time.Now().Unix())
 			return details, true, nil
 		})
 	})
@@ -233,16 +225,16 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		return nil
 	}
+	st := sb.NewState()
 	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
 		return nil
 	}
-	st := sb.NewState()
-	if fileStatus, ok := st.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus.GetNumberValue())))
+	if fileStatus, ok := st.Details().TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
+		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, pbtypes.Int64(int64(status)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, pbtypes.Int64(int64(syncError)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, pbtypes.Int64(time.Now().Unix()))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, domain.Int64(status))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, domain.Int64(syncError))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, domain.Int64(time.Now().Unix()))
 
 	return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
 }
@@ -263,10 +255,12 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_audio:          {},
 	model.ObjectType_video:          {},
 	model.ObjectType_pdf:            {},
+	model.ObjectType_chat:           {},
+	model.ObjectType_spaceView:      {},
 }
 
-func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *types.Struct) bool {
-	layout := model.ObjectTypeLayout(pbtypes.GetInt64(details, bundle.RelationKeyLayout.String()))
+func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout))
 	_, ok := suitableLayouts[layout]
 	return ok
 }

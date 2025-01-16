@@ -11,15 +11,17 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestRunner(t *testing.T) {
@@ -46,6 +48,9 @@ func TestRunner(t *testing.T) {
 
 	t.Run("context exceeds + space operation in progress -> context.Canceled", func(t *testing.T) {
 		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, "spaceId", []spaceindex.TestObject{})
+		store.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []spaceindex.TestObject{})
 		ctx, cancel := context.WithCancel(context.Background())
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().Id().Times(1).Return("")
@@ -60,7 +65,7 @@ func TestRunner(t *testing.T) {
 				}
 			},
 		)
-		runner := Runner{ctx: ctx, spc: space}
+		runner := Runner{ctx: ctx, spc: space, store: store}
 
 		// when
 		go func() {
@@ -77,9 +82,11 @@ func TestRunner(t *testing.T) {
 	t.Run("context exceeds + migration is finished -> no error", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, "spaceId", []spaceindex.TestObject{})
+		store.AddObjects(t, addr.AnytypeMarketplaceWorkspace, []spaceindex.TestObject{})
 		ctx, cancel := context.WithCancel(context.Background())
 		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().Id().Times(1).Return("spaceId")
 		runner := Runner{ctx: ctx, store: store, spc: space}
 
 		// when
@@ -97,7 +104,7 @@ func TestRunner(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		space := mock_space.NewMockSpace(t)
-		space.EXPECT().Id().Return("").Maybe()
+		space.EXPECT().Id().Return("spaceId").Maybe()
 		runner := Runner{ctx: context.Background(), store: store, spc: space}
 
 		// when
@@ -110,11 +117,11 @@ func TestRunner(t *testing.T) {
 	t.Run("no ctx exceed + migration failure -> error", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
-		store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeySpaceId:               pbtypes.String("space1"),
-			bundle.RelationKeyRelationFormat:        pbtypes.Int64(int64(model.RelationFormat_status)),
-			bundle.RelationKeyId:                    pbtypes.String("rel-tag"),
-			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(true),
+		store.AddObjects(t, "space1", []objectstore.TestObject{{
+			bundle.RelationKeySpaceId:               domain.String("space1"),
+			bundle.RelationKeyRelationFormat:        domain.Int64(int64(model.RelationFormat_status)),
+			bundle.RelationKeyId:                    domain.String("rel-tag"),
+			bundle.RelationKeyRelationReadonlyValue: domain.Bool(true),
 		}})
 		spaceErr := errors.New("failed to get object")
 		space := mock_space.NewMockSpace(t)
@@ -137,7 +144,7 @@ func (longStoreMigration) Name() string {
 	return "long migration"
 }
 
-func (longStoreMigration) Run(ctx context.Context, _ logger.CtxLogger, store dependencies.QueryableStore, _ dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (longStoreMigration) Run(ctx context.Context, _ logger.CtxLogger, store, queryableStore dependencies.QueryableStore, _ dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
 		if _, err = store.Query(database.Query{}); err != nil {
 			return 0, 0, err
@@ -151,7 +158,7 @@ func (longSpaceMigration) Name() string {
 	return "long migration"
 }
 
-func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, _ dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, _, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
 		if err = space.DoCtx(ctx, "", func(smartblock.SmartBlock) error {
 			// do smth
@@ -168,6 +175,6 @@ func (instantMigration) Name() string {
 	return "instant migration"
 }
 
-func (instantMigration) Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (instantMigration) Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	return 0, 0, nil
 }

@@ -2,32 +2,34 @@ package objectgraph
 
 import (
 	"testing"
+	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/dateutil"
 )
 
 type fixture struct {
 	Builder
-	objectStoreMock         *mock_objectstore.MockObjectStore
+	objectStoreMock         *objectstore.StoreFixture
 	sbtProviderMock         *mock_typeprovider.MockSmartBlockTypeProvider
 	subscriptionServiceMock *mock_subscription.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
-	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore := objectstore.NewStoreFixture(t)
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	subscriptionService := mock_subscription.NewMockService(t)
 
@@ -45,62 +47,121 @@ func newFixture(t *testing.T) *fixture {
 
 func Test(t *testing.T) {
 	t.Run("sub request - added proper relations", func(t *testing.T) {
-		fixture := newFixture(t)
-		fixture.objectStoreMock.EXPECT().ListAllRelations(mock.Anything).Return([]*relationutils.Relation{
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyId)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyName)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyAuthor)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyLinkedProjects)},
+		fx := newFixture(t)
+		spaceId := "space1"
+		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel2"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel3"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyAuthor.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel4"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLinkedProjects.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+		})
+		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
 		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*types.Struct{},
-		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
+		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
 
-		req := &pb.RpcObjectGraphRequest{}
-		graph, edges, err := fixture.ObjectGraph(req)
+		req := ObjectGraphRequest{
+			SpaceId: spaceId,
+		}
+		graph, edges, err := fx.ObjectGraph(req)
 		assert.NoError(t, err)
-		assert.Equal(t, req.Keys[0], "links")
-		assert.Equal(t, len(req.Keys), 4)
-		assert.True(t, len(graph) == 0)
-		assert.True(t, len(edges) == 0)
+		assert.Empty(t, graph)
+		assert.Empty(t, edges)
 	})
 
 	t.Run("graph", func(t *testing.T) {
-		fixture := newFixture(t)
-		fixture.objectStoreMock.EXPECT().ListAllRelations(mock.Anything).Return([]*relationutils.Relation{
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyId)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyName)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyAssignee)},
-			{Relation: bundle.MustGetRelation(bundle.RelationKeyLinkedProjects)},
-		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*types.Struct{
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():       pbtypes.String("id1"),
-					bundle.RelationKeyAssignee.String(): pbtypes.String("id2"),
-					bundle.RelationKeyLinks.String():    pbtypes.StringList([]string{"id2", "id3"}),
-				}},
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String(): pbtypes.String("id2"),
-				}},
-				{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String(): pbtypes.String("id3"),
-				}},
+		fx := newFixture(t)
+		spaceId := "space1"
+		dateObject := dateutil.NewDateObject(time.Now(), false)
+		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel2"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel3"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyAuthor.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel4"),
+				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyLinkedProjects.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+		})
+		fx.objectStoreMock.AddVirtualDetails(dateObject.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String(dateObject.Id()),
+			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_date)),
+			bundle.RelationKeyName:      domain.String(dateObject.Name()),
+			bundle.RelationKeyTimestamp: domain.Int64(dateObject.Time().Unix()),
+		}))
+		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:       domain.String("id1"),
+					bundle.RelationKeyAssignee: domain.String("id2"),
+					bundle.RelationKeyLinks:    domain.StringList([]string{"id2", "id3", dateObject.Id()}),
+				}),
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId: domain.String("id2"),
+				}),
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId: domain.String("id3"),
+				}),
 			},
 		}, nil)
-		fixture.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
-		fixture.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
+		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
+		fx.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).RunAndReturn(func(spcId string, id string) (smartblock.SmartBlockType, error) {
+			require.Equal(t, spcId, spaceId)
+			if _, err := dateutil.BuildDateObjectFromId(id); err == nil {
+				return smartblock.SmartBlockTypeDate, err
+			}
+			return smartblock.SmartBlockTypePage, nil
+		})
 
-		req := &pb.RpcObjectGraphRequest{}
-		graph, edges, err := fixture.ObjectGraph(req)
+		req := ObjectGraphRequest{
+			SpaceId: spaceId,
+		}
+		graph, edges, err := fx.ObjectGraph(req)
 		assert.NoError(t, err)
-		assert.True(t, len(graph) == 3)
-		assert.True(t, len(edges) == 2)
+		require.Len(t, graph, 4)
+		require.Len(t, edges, 3)
 		assert.Equal(t, "id1", edges[0].Source)
 		assert.Equal(t, "id2", edges[0].Target)
 		assert.Equal(t, "id1", edges[1].Source)
 		assert.Equal(t, "id3", edges[1].Target)
+		assert.Equal(t, "id1", edges[2].Source)
+		assert.Equal(t, dateObject.Id(), edges[2].Target)
 	})
 
 }

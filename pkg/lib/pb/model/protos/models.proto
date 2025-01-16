@@ -51,9 +51,9 @@ enum SmartBlockType {
 
     NotificationObject = 0x217;
     DevicesObject = 0x218;
-
     ChatObject = 0x219; // Container for any-store based chats
     ChatDerivedObject = 0x220; // Any-store based object for chat
+    AccountObject = 0x221; // Container for account data in tech space
 }
 
 message Search {
@@ -389,6 +389,8 @@ message Block {
                 bool dateIncludeTime = 5;
                 TimeFormat timeFormat = 6;
                 DateFormat dateFormat = 7;
+                FormulaType formula = 8;
+                Block.Align align = 9;
 
                 enum DateFormat {
                     MonthAbbrBeforeDay = 0; // Jul 30, 2020
@@ -402,6 +404,23 @@ message Block {
                     Format12 = 0;
                     Format24 = 1;
                 }
+
+                enum FormulaType {
+                    None				    = 0;
+                    Count				    = 1;
+                    CountValue      = 2;
+                    CountDistinct		= 3;
+                    CountEmpty			= 4;
+                    CountNotEmpty		= 5;
+                    PercentEmpty		= 6;
+                    PercentNotEmpty	= 7;
+                    MathSum				  = 8;
+                    MathAverage			= 9;
+                    MathMedian			= 10;
+                    MathMin				  = 11;
+                    MathMax				  = 12;
+                    Range				    = 13;
+                }
             }
 
             message Sort {
@@ -412,6 +431,7 @@ message Block {
                 bool includeTime = 5;
                 string id = 6;
                 EmptyType emptyPlacement = 7;
+                bool noCollate = 8;
 
                 enum Type {
                     Asc = 0;
@@ -639,9 +659,10 @@ message Account {
         string archiveObjectId = 3; // archive block id
         string profileObjectId = 4; // profile block id
         string marketplaceWorkspaceId = 11; // marketplace workspace id
+        string workspaceObjectId = 15; // workspace object id. used for space-level chat
 
         string deviceId = 8;
-        string accountSpaceId = 9;
+        string accountSpaceId = 9; // the first created private space. It's filled only when account is created
         string widgetsId = 10;
         string spaceViewId = 13;
         string techSpaceId = 14;
@@ -762,7 +783,7 @@ message ObjectType {
         participant = 19;
 
         pdf = 20;
-        chat = 21;
+        chat = 21; // deprecated
         chatDerived = 22;
         tag = 23;
     }
@@ -805,7 +826,7 @@ message Relation {
     string description = 14;
 
     // on-store fields, injected only locally
-    Scope scope = 20; // scope from which this relation have been aggregated
+    Scope scope = 20; // deprecated, to be removed
     string creator = 21; // creator profile id
     int64 revision = 22; // revision of system relation. Used to check if we should change relation content or not
 
@@ -1121,15 +1142,27 @@ message Import {
     }
 
     enum ErrorCode {
-        NULL = 0;
-        UNKNOWN_ERROR = 1;
-        BAD_INPUT = 2;
-        INTERNAL_ERROR = 3;
-        NO_OBJECTS_TO_IMPORT = 5;
-        IMPORT_IS_CANCELED = 6;
-        LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
-        FILE_LOAD_ERROR = 8;
-        INSUFFICIENT_PERMISSIONS = 9;
+      NULL = 0;
+      UNKNOWN_ERROR = 1;
+      BAD_INPUT = 2;
+      INTERNAL_ERROR = 3;
+      FILE_LOAD_ERROR = 8;
+      IMPORT_IS_CANCELED = 6;
+
+      NOTION_NO_OBJECTS_IN_INTEGRATION= 5;
+      NOTION_SERVER_IS_UNAVAILABLE = 12;
+      NOTION_RATE_LIMIT_EXCEEDED= 13;
+
+      FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE = 14;
+      FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY = 17;
+
+      HTML_WRONG_HTML_STRUCTURE = 10;
+
+      PB_NOT_ANYBLOCK_FORMAT = 11;
+
+      CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
+
+      INSUFFICIENT_PERMISSIONS = 9;
     }
 }
 
@@ -1171,6 +1204,7 @@ enum ImageKind {
     Basic = 0;
     Cover = 1;
     Icon = 2;
+    AutomaticallyAdded = 3;
 }
 
 enum FileIndexingStatus {

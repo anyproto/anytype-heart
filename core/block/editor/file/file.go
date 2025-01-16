@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,9 +17,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -47,7 +50,7 @@ func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.O
 }
 
 type BlockService interface {
-	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, details *types.Struct, err error)
+	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, details *domain.Details, err error)
 }
 
 type File interface {
@@ -62,12 +65,13 @@ type File interface {
 }
 
 type FileSource struct {
-	Path    string
-	Url     string // nolint:revive
-	Bytes   []byte
-	Name    string
-	GroupID string
-	Origin  objectorigin.ObjectOrigin
+	Path      string
+	Url       string // nolint:revive
+	Bytes     []byte
+	Name      string
+	GroupID   string
+	Origin    objectorigin.ObjectOrigin
+	ImageKind model.ImageKind
 }
 
 type sfile struct {
@@ -123,7 +127,7 @@ func (sf *sfile) SetFileTargetObjectId(ctx session.Context, blockId, targetObjec
 		return err
 	}
 	var blockContentFileType model.BlockContentFileType
-	switch model.ObjectTypeLayout(pbtypes.GetInt64(sb.Details(), bundle.RelationKeyLayout.String())) {
+	switch model.ObjectTypeLayout(sb.Details().GetInt64(bundle.RelationKeyLayout)) {
 	case model.ObjectType_image:
 		blockContentFileType = model.BlockContentFile_Image
 	case model.ObjectType_audio:
@@ -160,8 +164,9 @@ func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateA
 		return
 	}
 	if err = sf.upload(s, newId, FileSource{
-		Path: req.LocalPath,
-		Url:  req.Url,
+		Path:      req.LocalPath,
+		Url:       req.Url,
+		ImageKind: req.ImageKind,
 	}, false).Err; err != nil {
 		return
 	}
@@ -179,6 +184,9 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 		return fileuploader.UploadResult{Err: fmt.Errorf("not a file block")}
 	}
 	upl := sf.newUploader(source.Origin).SetBlock(f)
+	if source.ImageKind != model.ImageKind_Basic {
+		upl.SetImageKind(source.ImageKind)
+	}
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {
@@ -220,8 +228,10 @@ func (sf *sfile) updateFile(ctx session.Context, id, groupId string, apply func(
 }
 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
-	if err = sf.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
-		return err
+	if !isCollection(sf) {
+		if err = sf.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+			return err
+		}
 	}
 	proc := &dropFilesProcess{
 		spaceID:             sf.SpaceID(),
@@ -233,7 +243,7 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 		return
 	}
 	var ch = make(chan error)
-	go proc.Start(sf.RootId(), req.DropTargetId, req.Position, ch)
+	go proc.Start(sf, req.DropTargetId, req.Position, ch)
 	err = <-ch
 	return
 }
@@ -247,7 +257,6 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 	for _, entry := range entries {
 		var blockId, pageId string
 		if entry.isDir {
-
 			if err = sf.Apply(s); err != nil {
 				return
 			}
@@ -298,9 +307,19 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 }
 
 func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
-	if info.err == context.Canceled {
+	if errors.Is(info.err, context.Canceled) {
 		s := sf.NewState().SetGroupId(info.groupId)
 		s.Unlink(info.blockId)
+		return sf.Apply(s)
+	}
+	if info.err != nil {
+		return fmt.Errorf("drop file: %w", info.err)
+	}
+	if isCollection(sf) {
+		s := sf.NewState()
+		if !s.HasInStore([]string{info.file.TargetObjectId}) {
+			s.UpdateStoreSlice(template.CollectionStoreKey, append(s.GetStoreSlice(template.CollectionStoreKey), info.file.TargetObjectId))
+		}
 		return sf.Apply(s)
 	}
 	return sf.UpdateFile(info.blockId, info.groupId, func(f file.Block) error {
@@ -377,12 +396,12 @@ func (dp *dropFilesProcess) Info() pb.ModelProcess {
 	}
 	return pb.ModelProcess{
 		Id:    dp.id,
-		Type:  pb.ModelProcess_DropFiles,
 		State: state,
 		Progress: &pb.ModelProcessProgress{
 			Total: atomic.LoadInt64(&dp.total),
 			Done:  atomic.LoadInt64(&dp.done),
 		},
+		Message: &pb.ModelProcessMessageOfDropFiles{DropFiles: &pb.ModelProcessDropFiles{}},
 	}
 }
 
@@ -450,7 +469,7 @@ func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (o
 	return true, nil
 }
 
-func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPosition, rootDone chan error) {
+func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, targetId string, pos model.BlockPosition, rootDone chan error) {
 	dp.id = uuid.New().String()
 	dp.doneCh = make(chan struct{})
 	dp.cancel = make(chan struct{})
@@ -469,6 +488,46 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		go dp.addFilesWorker(wg, in)
 	}
 
+	if isCollection(file) {
+		dp.handleDragAndDropInCollection(file.RootId(), dp.root.child, rootDone, in)
+	} else {
+		dp.handleDragAndDropInDocument(file.RootId(), targetId, pos, rootDone, in)
+	}
+	wg.Wait()
+}
+
+func (dp *dropFilesProcess) handleDragAndDropInCollection(rootId string, droppedFiles []*dropFileEntry, rootDone chan error, in chan *dropFileInfo) {
+	close(rootDone)
+	filesToUpload := dp.getFilesToUploadFromDirs(droppedFiles)
+	for _, entry := range filesToUpload {
+		in <- &dropFileInfo{
+			pageId: rootId,
+			path:   entry.path,
+			name:   entry.name,
+		}
+	}
+	close(in)
+}
+
+func (dp *dropFilesProcess) getFilesToUploadFromDirs(droppedFiles []*dropFileEntry) []*dropFileEntry {
+	var (
+		stack      []*dropFileEntry
+		totalFiles []*dropFileEntry
+	)
+	stack = append(stack, droppedFiles...)
+	for len(stack) > 0 {
+		entry := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if entry.isDir {
+			stack = append(stack, entry.child...)
+		} else {
+			totalFiles = append(totalFiles, entry)
+		}
+	}
+	return totalFiles
+}
+
+func (dp *dropFilesProcess) handleDragAndDropInDocument(rootId, targetId string, pos model.BlockPosition, rootDone chan error, in chan *dropFileInfo) {
 	var flatEntries = [][]*dropFileEntry{dp.root.child}
 	var smartBlockIds = []string{rootId}
 	var handleLevel = func(idx int) (isContinue bool, err error) {
@@ -533,8 +592,6 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		idx++
 	}
 	close(in)
-	wg.Wait()
-	return
 }
 
 func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFileInfo) {
@@ -589,4 +646,9 @@ func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 		}
 		return sbHandler.dropFilesSetInfo(*f)
 	})
+}
+
+func isCollection(smartBlock smartblock.SmartBlock) bool {
+	layout, ok := smartBlock.Layout()
+	return ok && layout == model.ObjectType_collection
 }

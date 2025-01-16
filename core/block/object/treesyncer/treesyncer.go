@@ -8,12 +8,15 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 )
 
@@ -72,6 +75,7 @@ type treeSyncer struct {
 	requests           int
 	spaceId            string
 	timeout            time.Duration
+	spaceSettingsId    string
 	requestPools       map[string]*executor
 	headPools          map[string]*executor
 	treeManager        treemanager.TreeManager
@@ -97,6 +101,8 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 
 func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
+	spaceStorage := app.MustComponent[spacestorage.SpaceStorage](a)
+	t.spaceSettingsId = spaceStorage.SpaceSettingsId()
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
@@ -157,7 +163,9 @@ func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing
 	defer t.Unlock()
 	peerId := p.Id()
 	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
-	t.sendSyncEvents(existing, missing, isResponsible)
+	t.sendSyncEvents(lo.Filter(existing, func(id string, index int) bool {
+		return id != t.spaceSettingsId
+	}), missing, isResponsible)
 	reqExec, exists := t.requestPools[peerId]
 	if !exists {
 		reqExec = newExecutor(t.requests, 0)
@@ -186,7 +194,7 @@ func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing
 	for _, id := range missing {
 		idCopy := id
 		err = reqExec.tryAdd(idCopy, func() {
-			t.requestTree(peerId, idCopy)
+			t.requestTree(p, idCopy)
 		})
 		if err != nil {
 			log.Error("failed to add to request queue", zap.Error(err))
@@ -207,34 +215,43 @@ func (t *treeSyncer) sendDetailsUpdates(existing, missing []string) {
 	t.syncDetailsUpdater.UpdateSpaceDetails(existing, missing, t.spaceId)
 }
 
-func (t *treeSyncer) requestTree(peerId, id string) {
+func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 	log := log.With(zap.String("treeId", id))
+	peerId := p.Id()
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	ctx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
-	_, err := t.treeManager.GetTree(ctx, t.spaceId, id)
+	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
 		log.Warn("can't load missing tree", zap.Error(err))
+		return
 	} else {
 		log.Debug("loaded missing tree")
+	}
+	if objecttree.IsEmptyDerivedTree(tr) {
+		t.pingTree(p, tr)
 	}
 }
 
 func (t *treeSyncer) updateTree(p peer.Peer, id string) {
-	peerId := p.Id()
 	log := log.With(zap.String("treeId", id), zap.String("spaceId", t.spaceId))
+	peerId := p.Id()
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
 		log.Warn("can't load existing tree", zap.Error(err))
 		return
 	}
+	t.pingTree(p, tr)
+}
+
+func (t *treeSyncer) pingTree(p peer.Peer, tr objecttree.ObjectTree) {
 	syncTree, ok := tr.(synctree.SyncTree)
 	if !ok {
 		log.Warn("not a sync tree")
 		return
 	}
-	if err = syncTree.SyncWithPeer(ctx, p); err != nil {
+	if err := syncTree.SyncWithPeer(p.Context(), p); err != nil {
 		log.Warn("synctree.SyncWithPeer error", zap.Error(err))
 	} else {
 		log.Debug("success synctree.SyncWithPeer")

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
@@ -25,7 +27,7 @@ const (
 var log = logger.NewNamed(CName)
 
 type Migration interface {
-	Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error)
+	Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error)
 	Name() string
 }
 
@@ -54,7 +56,6 @@ func (r *Runner) Name() string {
 func (r *Runner) Init(a *app.App) error {
 	r.store = app.MustComponent[objectstore.ObjectStore](a)
 	r.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](a)
-
 	r.waitLoad = make(chan struct{})
 	return nil
 }
@@ -91,7 +92,12 @@ func (r *Runner) runMigrations() {
 		break
 	}
 
-	if err := r.run(systemobjectreviser.Migration{}, readonlyfixer.Migration{}); err != nil {
+	migrations := []Migration{
+		systemobjectreviser.Migration{},
+		readonlyfixer.Migration{},
+	}
+
+	if err := r.run(migrations...); err != nil {
 		log.Error("failed to run default migrations", zap.String("spaceId", r.spc.Id()), zap.Error(err))
 	}
 }
@@ -99,18 +105,23 @@ func (r *Runner) runMigrations() {
 func (r *Runner) run(migrations ...Migration) (err error) {
 	spaceId := r.spc.Id()
 
+	start := time.Now()
+	store := r.store.SpaceIndex(spaceId)
+	marketPlaceStore := r.store.SpaceIndex(addr.AnytypeMarketplaceWorkspace)
+	spent := time.Since(start)
+
 	for _, m := range migrations {
 		if e := r.ctx.Err(); e != nil {
 			err = errors.Join(err, e)
 			return
 		}
-		toMigrate, migrated, e := m.Run(r.ctx, log, r.store, r.spc)
+		toMigrate, migrated, e := m.Run(r.ctx, log, store, marketPlaceStore, r.spc)
 		if e != nil {
 			err = errors.Join(err, wrapError(e, m.Name(), spaceId, migrated, toMigrate))
 			continue
 		}
-		log.Debug(fmt.Sprintf("migration '%s' in space '%s' is successful. %d out of %d objects were migrated",
-			m.Name(), spaceId, migrated, toMigrate))
+		log.Debug(fmt.Sprintf("migration '%s' in space '%s' is successful. %d out of %d objects were migrated. Spent: %d micros",
+			m.Name(), spaceId, migrated, toMigrate, spent.Microseconds()))
 	}
 	return
 }

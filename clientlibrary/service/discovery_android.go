@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -30,20 +31,26 @@ func SetDiscoveryProxy(proxy AndroidDiscoveryProxy) {
 }
 
 type notifierProvider struct {
-	proxy AndroidDiscoveryProxy
+	proxy  AndroidDiscoveryProxy
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func newNotifierProvider(proxy AndroidDiscoveryProxy) *notifierProvider {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &notifierProvider{
-		proxy: proxy,
+		proxy:  proxy,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 }
 
 func (n *notifierProvider) Provide(notifier localdiscovery.Notifier, port int, peerId, serviceName string) {
-	n.proxy.SetObserver(newDiscoveryObserver(port, peerId, serviceName, notifier))
+	n.proxy.SetObserver(newDiscoveryObserver(n.ctx, port, peerId, serviceName, notifier))
 }
 
 func (n *notifierProvider) Remove() {
+	n.cancel() // in order to cancel undergoing peers' space exchange requests
 	n.proxy.RemoveObserver()
 }
 
@@ -52,11 +59,13 @@ type discoveryObserver struct {
 	peerId      string
 	serviceType string
 
+	ctx      context.Context
 	notifier localdiscovery.Notifier
 }
 
-func newDiscoveryObserver(port int, peerId, serviceType string, notifier localdiscovery.Notifier) *discoveryObserver {
+func newDiscoveryObserver(ctx context.Context, port int, peerId, serviceType string, notifier localdiscovery.Notifier) *discoveryObserver {
 	return &discoveryObserver{
+		ctx:         ctx,
 		port:        port,
 		peerId:      peerId,
 		notifier:    notifier,
@@ -89,6 +98,6 @@ func (d *discoveryObserver) ObserveChange(result ObservationResult) {
 		PeerId: result.PeerId(),
 	}
 	if d.notifier != nil {
-		d.notifier.PeerDiscovered(peer, localdiscovery.OwnAddresses{})
+		d.notifier.PeerDiscovered(d.ctx, peer, localdiscovery.OwnAddresses{})
 	}
 }

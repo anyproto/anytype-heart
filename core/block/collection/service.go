@@ -4,9 +4,9 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -21,17 +21,17 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("collection-service")
 
 type Service struct {
-	lock        *sync.RWMutex
-	collections map[string]map[string]chan []string
-	picker      cache.ObjectGetter
-	objectStore objectstore.ObjectStore
+	lock             *sync.RWMutex
+	collections      map[string]map[string]chan []string
+	picker           cache.ObjectGetter
+	objectStore      objectstore.ObjectStore
+	backlinksUpdater backlinks.UpdateWatcher
 }
 
 func New() *Service {
@@ -44,6 +44,7 @@ func New() *Service {
 func (s *Service) Init(a *app.App) (err error) {
 	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	return nil
 }
 
@@ -56,8 +57,9 @@ func (s *Service) CollectionType() string {
 }
 
 func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest) error {
-	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
-		toAdd := slice.Difference(req.ObjectIds, col)
+	var toAdd []string
+	err := s.updateCollection(ctx, req.ContextId, func(col []string) []string {
+		toAdd = slice.Difference(req.ObjectIds, col)
 		pos := slice.FindPos(col, req.AfterId)
 		if pos >= 0 {
 			col = slice.Insert(col, pos+1, toAdd...)
@@ -66,6 +68,16 @@ func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest
 		}
 		return col
 	})
+	if err != nil {
+		return err
+	}
+
+	// we update backlinks of objects added to collection synchronously to avoid object rerender after backlinks accumulation interval
+	if len(toAdd) != 0 {
+		s.backlinksUpdater.FlushUpdates()
+	}
+
+	return nil
 }
 
 func (s *Service) Remove(ctx session.Context, req *pb.RpcObjectCollectionRemoveRequest) error {
@@ -99,7 +111,9 @@ func (s *Service) updateCollection(ctx session.Context, contextID string, modifi
 		lst := s.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)
 		s.UpdateStoreSlice(template.CollectionStoreKey, lst)
-		internalflag.Set{}.AddToState(s)
+		// TODO why we're adding empty list of flags?
+		flags := internalflag.Set{}
+		flags.AddToState(s)
 		return nil
 	}, smartblock.KeepInternalFlags)
 }
@@ -185,7 +199,7 @@ func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID 
 	}
 }
 
-func (s *Service) CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error) {
+func (s *Service) CreateCollection(details *domain.Details, flags []*model.InternalFlag) (coresb.SmartBlockType, *domain.Details, *state.State, error) {
 	details = internalflag.PutToDetails(details, flags)
 
 	newState := state.NewDoc("", nil).NewState().SetDetails(details)
@@ -203,22 +217,23 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 
 func (s *Service) ObjectToCollection(id string) error {
 	return cache.DoState(s.picker, id, func(st *state.State, b basic.CommonOperations) error {
-		s.setDefaultObjectTypeToViews(st)
+		sb := b.(smartblock.SmartBlock)
+		s.setDefaultObjectTypeToViews(sb.SpaceID(), st)
 		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeyCollection}, true)
 	})
 }
 
-func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
+func (s *Service) setDefaultObjectTypeToViews(spaceId string, st *state.State) {
 	if !lo.Contains(st.ParentState().ObjectTypeKeys(), bundle.TypeKeySet) {
 		return
 	}
 
-	setOfValue := pbtypes.GetStringList(st.ParentState().Details(), bundle.RelationKeySetOf.String())
+	setOfValue := st.ParentState().Details().GetStringList(bundle.RelationKeySetOf)
 	if len(setOfValue) == 0 {
 		return
 	}
 
-	if s.isNotCreatableType(setOfValue[0]) {
+	if s.isNotCreatableType(spaceId, setOfValue[0]) {
 		return
 	}
 
@@ -236,8 +251,8 @@ func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
 	}
 }
 
-func (s *Service) isNotCreatableType(id string) bool {
-	uk, err := s.objectStore.GetUniqueKeyById(id)
+func (s *Service) isNotCreatableType(spaceId string, id string) bool {
+	uk, err := s.objectStore.SpaceIndex(spaceId).GetUniqueKeyById(id)
 	if err != nil {
 		return true
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -22,11 +21,9 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func New(id string) *SmartTest {
@@ -62,7 +59,7 @@ type SmartTest struct {
 	App              *app.App
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
-	os               *testMock.MockObjectStore
+	os               *spaceindex.StoreFixture
 	space            smartblock.Space
 
 	// Rudimentary hooks
@@ -142,10 +139,6 @@ func (st *SmartTest) Locked() bool {
 	return false
 }
 
-func (st *SmartTest) ObjectStore() objectstore.ObjectStore {
-	return st.os
-}
-
 func (st *SmartTest) SetIsDeleted() {
 	st.isDeleted = true
 }
@@ -222,17 +215,17 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
+func (st *SmartTest) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error) {
 	for _, key := range relationKeys {
 		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-			Key:    key,
+			Key:    key.String(),
 			Format: 0, // todo
 		})
 	}
 	return nil
 }
 
-func (st *SmartTest) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
+func (st *SmartTest) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
 	return st.AddRelationLinks(nil, relationKeys...)
 }
 
@@ -244,7 +237,7 @@ func (st *SmartTest) RefreshLocalDetails(ctx session.Context) error {
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []string) (err error) {
+func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error) {
 	return nil
 }
 
@@ -260,26 +253,26 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
-	dets := &types.Struct{Fields: map[string]*types.Value{}}
+func (st *SmartTest) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
+	dets := domain.NewDetails()
 	for _, d := range details {
-		dets.Fields[d.Key] = d.Value
+		dets.Set(d.Key, d.Value)
 	}
 	st.Doc.(*state.State).SetDetails(dets)
 	return
 }
 
-func (st *SmartTest) SetDetailsAndUpdateLastUsed(ctx session.Context, details []*model.Detail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	for _, detail := range details {
-		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, detail.Key)
+		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, string(detail.Key))
 	}
 	return st.SetDetails(ctx, details, showEvent)
 }
 
-func (st *SmartTest) UpdateDetails(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+func (st *SmartTest) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	details := st.Doc.(*state.State).CombinedDetails()
-	if details == nil || details.Fields == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
+	if details == nil {
+		details = domain.NewDetails()
 	}
 	newDetails, err := update(details)
 	if err != nil {
@@ -289,25 +282,27 @@ func (st *SmartTest) UpdateDetails(update func(current *types.Struct) (*types.St
 	return nil
 }
 
-func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *types.Struct) (*types.Struct, error)) (err error) {
+func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	details := st.Doc.(*state.State).CombinedDetails()
-	if details == nil || details.Fields == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
+	if details == nil {
+		details = domain.NewDetails()
 	}
-	oldDetails := pbtypes.CopyStruct(details, true)
+	oldDetails := details.Copy()
 
 	newDetails, err := update(details)
 	if err != nil {
 		return err
 	}
 
-	diff := pbtypes.StructDiff(oldDetails, newDetails)
-	if diff == nil || diff.Fields == nil {
+	diff := domain.StructDiff(oldDetails, newDetails)
+	if diff == nil {
 		return nil
 	}
 
-	for key := range diff.Fields {
-		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, key)
+	st.Doc.(*state.State).SetDetails(newDetails)
+
+	for k, _ := range diff.Iterate() {
+		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, string(k))
 	}
 	return nil
 }
@@ -363,10 +358,10 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 	}
 
 	if !keepInternalFlags {
-		s.RemoveDetail(bundle.RelationKeyInternalFlags.String())
+		s.RemoveDetail(bundle.RelationKeyInternalFlags)
 	}
 
-	msgs, act, err := state.ApplyState(s, true)
+	msgs, act, err := state.ApplyState(st.SpaceID(), s, true)
 	if err != nil {
 		return
 	}
@@ -393,6 +388,16 @@ func (st *SmartTest) History() undo.History {
 	return st.hist
 }
 
+func (st *SmartTest) StateRebuild(d state.Doc) (err error) {
+	d.(*state.State).SetParent(st.Doc.(*state.State))
+	_, _, err = state.ApplyState(st.SpaceID(), d.(*state.State), false)
+	return err
+}
+
+func (st *SmartTest) StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
+	panic("not implemented")
+}
+
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 	st.Doc.(*state.State).Add(b)
 	return st
@@ -416,10 +421,6 @@ func (st *SmartTest) Close() (err error) {
 
 func (st *SmartTest) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return
-}
-
-func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
-	st.os = os
 }
 
 func (st *SmartTest) Inner() smartblock.SmartBlock {

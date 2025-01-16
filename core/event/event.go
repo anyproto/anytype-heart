@@ -13,6 +13,8 @@ type Sender interface {
 	Broadcast(event *pb.Event)
 	SendToSession(token string, event *pb.Event)
 	BroadcastToOtherSessions(token string, e *pb.Event)
+	BroadcastExceptSessions(event *pb.Event, exceptTokens []string)
+
 	app.Component
 }
 
@@ -48,4 +50,21 @@ func (es *CallbackSender) SendToSession(token string, event *pb.Event) {
 
 func (es *CallbackSender) Broadcast(event *pb.Event) {
 	es.callback(event)
+}
+
+func (es *CallbackSender) BroadcastExceptSessions(event *pb.Event, exceptTokens []string) {
+	es.callback(event)
+}
+
+func NewMessage(spaceId string, value pb.IsEventMessageValue) *pb.EventMessage {
+	return &pb.EventMessage{
+		SpaceId: spaceId,
+		Value:   value,
+	}
+}
+
+func NewEventSingleMessage(spaceId string, value pb.IsEventMessageValue) *pb.Event {
+	return &pb.Event{
+		Messages: []*pb.EventMessage{NewMessage(spaceId, value)},
+	}
 }

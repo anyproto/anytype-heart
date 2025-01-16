@@ -5,18 +5,17 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestSpaceView_AccessType(t *testing.T) {
@@ -120,20 +119,153 @@ func TestSpaceView_SharedSpacesLimit(t *testing.T) {
 	require.Equal(t, 10, fx.GetSharedSpacesLimit())
 }
 
+func TestSpaceView_SetOwner(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	err := fx.SetOwner("ownerId", 125)
+	require.NoError(t, err)
+	require.Equal(t, "ownerId", fx.CombinedDetails().GetString(bundle.RelationKeyCreator))
+	require.Equal(t, int64(125), fx.CombinedDetails().GetInt64(bundle.RelationKeyCreatedDate))
+}
+
+func TestSpaceView_SetAfterGivenView(t *testing.T) {
+	t.Run("set view after given id", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		err := fx.SetAfterGivenView("viewOrderId")
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+	})
+	t.Run("set view after given id, order exist", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		state := fx.NewState()
+		state.SetDetail(bundle.RelationKeySpaceOrder, domain.String("spaceViewOrderId"))
+		err := fx.Apply(state)
+		require.NoError(t, err)
+
+		// when
+		err = fx.SetAfterGivenView("viewOrderId")
+
+		// then
+		require.NoError(t, err)
+		assert.NotEqual(t, "spaceViewOrderId", fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > "viewOrderId")
+	})
+	t.Run("set view after given id, order exist, but already less than given view", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		state := fx.NewState()
+		state.SetDetail(bundle.RelationKeySpaceOrder, domain.String("viewOrderId"))
+		err := fx.Apply(state)
+		require.NoError(t, err)
+
+		// when
+		err = fx.SetAfterGivenView("spaceViewOrderId")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "viewOrderId", fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > "spaceViewOrderId")
+	})
+}
+
+func TestSpaceView_SetBetweenViews(t *testing.T) {
+	t.Run("set view in the beginning", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		err := fx.SetBetweenViews("", "afterId")
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+	})
+	t.Run("set view between", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		firstSpaceView := lx.Next("")
+		secondSpaceView := lx.Next(firstSpaceView)
+		thirdSpaceView := lx.Next(secondSpaceView)
+
+		// when
+		err := fx.SetBetweenViews(secondSpaceView, thirdSpaceView)
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+	})
+	t.Run("after id is empty", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		err := fx.SetBetweenViews("afterId", "")
+
+		// then
+		require.Error(t, err)
+	})
+}
+
+func TestSpaceView_SetOrder(t *testing.T) {
+	t.Run("set order", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		prevViewOrderId := ""
+		order, err := fx.SetOrder(prevViewOrderId)
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.Equal(t, order, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > prevViewOrderId)
+	})
+	t.Run("set order, previous id not empty", func(t *testing.T) {
+		// given
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+
+		// when
+		prevViewOrderId := "previous"
+		order, err := fx.SetOrder(prevViewOrderId)
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.Equal(t, order, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > prevViewOrderId)
+	})
+}
+
 type spaceServiceStub struct {
+}
+
+func (s *spaceServiceStub) PersonalSpaceId() string {
+	return ""
 }
 
 func (s *spaceServiceStub) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 }
 
-func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *types.Struct) {
+func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.Details) {
 }
 
-func NewSpaceViewTest(t *testing.T, ctrl *gomock.Controller, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
+func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
-	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
-	objectStore.EXPECT().Query(gomock.Any()).AnyTimes()
 	a := &SpaceView{
 		SmartBlock:   sb,
 		spaceService: &spaceServiceStub{},
@@ -171,7 +303,7 @@ type spaceViewFixture struct {
 func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 	ctrl := gomock.NewController(t)
 	objectTree := mock_objecttree.NewMockObjectTree(ctrl)
-	a, err := NewSpaceViewTest(t, ctrl, "spaceId", objectTree)
+	a, err := NewSpaceViewTest(t, "spaceId", objectTree)
 	require.NoError(t, err)
 	return &spaceViewFixture{
 		SpaceView:  a,
@@ -181,7 +313,7 @@ func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 }
 
 func (f *spaceViewFixture) getAccessType() spaceinfo.AccessType {
-	return spaceinfo.AccessType(pbtypes.GetInt64(f.CombinedDetails(), bundle.RelationKeySpaceAccessType.String()))
+	return spaceinfo.AccessType(f.CombinedDetails().GetInt64(bundle.RelationKeySpaceAccessType))
 }
 
 func (f *spaceViewFixture) finish() {

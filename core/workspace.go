@@ -10,13 +10,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
-	response := func(workspaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
-		m := &pb.RpcWorkspaceCreateResponse{SpaceId: workspaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
+	response := func(spaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
+		m := &pb.RpcWorkspaceCreateResponse{SpaceId: spaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
@@ -24,16 +25,26 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		return m
 	}
 
-	var workspaceId string
+	var spaceId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		workspaceId, err = bs.CreateWorkspace(cctx, req)
+		spaceId, err = bs.CreateWorkspace(cctx, req)
+		if err != nil {
+			return
+		}
+		if req.WithChat {
+			// todo: as soon as it will be released for all users, we need to make it async inside the space init
+			err = bs.SpaceInitChat(cctx, spaceId)
+			if err != nil {
+				log.With("error", err).Warn("failed to init space level chat")
+			}
+		}
 		return
 	})
 	if err != nil {
 		return response("", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(workspaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
+	return response(spaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
@@ -47,17 +58,24 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		}
 		return m
 	}
-	// TODO: [MR] this should probably be related only to account
-	info, err := getService[account.Service](mw).GetInfo(cctx, req.SpaceId)
+	info, err := mustService[account.Service](mw).GetSpaceInfo(cctx, req.SpaceId)
 	if err != nil {
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
+		if req.WithChat {
+			// todo: as soon as it will be released for all users, we need to make it async inside the space init
+			err = bs.SpaceInitChat(cctx, req.SpaceId)
+			if err != nil {
+				log.With("error", err).Warn("failed to init space level chat")
+			}
+		}
 		return cache.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
 			return sv.UpdateLastOpenedDate()
 		})
 	})
+
 	if err != nil {
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
 	}
@@ -75,7 +93,7 @@ func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspac
 		return m
 	}
 
-	err := getService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, req.Details)
+	err := mustService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromProto(req.Details))
 	if err != nil {
 		return response(pb.RpcWorkspaceSetInfoResponseError_UNKNOWN_ERROR, err)
 	}
@@ -186,7 +204,7 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 
 	var (
 		id      string
-		details *types.Struct
+		details *domain.Details
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
@@ -195,10 +213,10 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 	})
 
 	if err != nil {
-		return response(id, details, pb.RpcWorkspaceObjectAddResponseError_UNKNOWN_ERROR, err)
+		return response(id, nil, pb.RpcWorkspaceObjectAddResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(id, details, pb.RpcWorkspaceObjectAddResponseError_NULL, nil)
+	return response(id, details.ToProto(), pb.RpcWorkspaceObjectAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.RpcWorkspaceObjectListRemoveRequest) *pb.RpcWorkspaceObjectListRemoveResponse {

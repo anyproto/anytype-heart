@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/linkpreview/mock_linkpreview"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -29,7 +27,7 @@ const (
 
 type detailsSetter struct{}
 
-func (ds *detailsSetter) SetDetails(session.Context, string, []*model.Detail) error {
+func (ds *detailsSetter) SetDetails(session.Context, string, []domain.Detail) error {
 	return nil
 }
 
@@ -71,9 +69,9 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 	t.Run("new bookmark object creation", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		details := &types.Struct{Fields: map[string]*types.Value{}}
+		details := domain.NewDetails()
 		fx.creator.EXPECT().CreateSmartBlockFromState(mock.Anything, mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
-			func(_ context.Context, spcId string, keys []domain.TypeKey, state *state.State) (string, *types.Struct, error) {
+			func(_ context.Context, spcId string, keys []domain.TypeKey, state *state.State) (string, *domain.Details, error) {
 				assert.Equal(t, spaceId, spcId)
 				assert.Equal(t, []domain.TypeKey{bundle.TypeKeyBookmark}, keys)
 				assert.Equal(t, details, state.Details())
@@ -93,13 +91,13 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		url := "https://url.com"
-		details := &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeySource.String(): pbtypes.String(url),
-		}}
-		fx.store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeyId:     pbtypes.String("bk"),
-			bundle.RelationKeySource: pbtypes.String(url),
-			bundle.RelationKeyType:   pbtypes.String(bookmarkId),
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeySource: domain.String(url),
+		})
+		fx.store.AddObjects(t, "space1", []objectstore.TestObject{{
+			bundle.RelationKeyId:     domain.String("bk"),
+			bundle.RelationKeySource: domain.String(url),
+			bundle.RelationKeyType:   domain.String(bookmarkId),
 		}})
 
 		// when

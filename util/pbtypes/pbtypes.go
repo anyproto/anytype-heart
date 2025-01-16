@@ -65,6 +65,17 @@ func IntList(ints ...int) *types.Value {
 	}
 }
 
+func Float64List(floats []float64) *types.Value {
+	var vals = make([]*types.Value, 0, len(floats))
+	for _, f := range floats {
+		vals = append(vals, Float64(f))
+	}
+
+	return &types.Value{
+		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+	}
+}
+
 func NilToNullWrapper(v *types.Value) *types.Value {
 	if v == nil || v.Kind == nil {
 		return Null()
@@ -120,8 +131,9 @@ func IsEmptyValueOrAbsent(s *types.Struct, name string) bool {
 	return IsEmptyValue(value)
 }
 
+// IsEmptyValue returns true for nil, null value, unknown kind of value, empty strings and empty lists
 func IsEmptyValue(value *types.Value) bool {
-	if value == nil {
+	if IsNullValue(value) {
 		return true
 	}
 
@@ -129,20 +141,16 @@ func IsEmptyValue(value *types.Value) bool {
 		return len(v.StringValue) == 0
 	}
 
-	if v, ok := value.Kind.(*types.Value_NumberValue); ok {
-		return v.NumberValue == 0
+	if _, ok := value.Kind.(*types.Value_NumberValue); ok {
+		return false
 	}
 
-	if v, ok := value.Kind.(*types.Value_BoolValue); ok {
-		return !v.BoolValue
+	if _, ok := value.Kind.(*types.Value_BoolValue); ok {
+		return false
 	}
 
 	if _, ok := value.Kind.(*types.Value_ListValue); ok {
 		return len(GetStringListValue(value)) == 0
-	}
-
-	if _, ok := value.Kind.(*types.Value_NullValue); ok {
-		return true
 	}
 
 	if _, ok := value.Kind.(*types.Value_StructValue); ok {
@@ -150,6 +158,16 @@ func IsEmptyValue(value *types.Value) bool {
 	}
 
 	return true
+}
+
+func IsNullValue(value *types.Value) bool {
+	if value == nil {
+		return true
+	}
+	if _, ok := value.Kind.(*types.Value_NullValue); ok {
+		return true
+	}
+	return false
 }
 
 func GetStruct(s *types.Struct, name string) *types.Struct {
@@ -299,6 +317,19 @@ func ListValueToStrings(list *types.ListValue) []string {
 	return stringsSlice
 }
 
+func ListValueToFloats(list *types.ListValue) []float64 {
+	if list == nil {
+		return nil
+	}
+	res := make([]float64, 0, len(list.Values))
+	for _, v := range list.Values {
+		if _, ok := v.GetKind().(*types.Value_NumberValue); ok {
+			res = append(res, v.GetNumberValue())
+		}
+	}
+	return res
+}
+
 func HasField(st *types.Struct, key string) bool {
 	if st == nil || st.Fields == nil {
 		return false
@@ -398,6 +429,85 @@ func ValueToInterface(v *types.Value) interface{} {
 	}
 }
 
+func InterfaceToValue(i any) *types.Value {
+	switch v := i.(type) {
+	case nil:
+		return Null()
+	case float64:
+		return Float64(v)
+	case float32:
+		return Float64(float64(v))
+	case int:
+		return Int64(int64(v))
+	case int64:
+		return Int64(v)
+	case int32:
+		return Int64(int64(v))
+	case uint:
+		return Int64(int64(v))
+	case uint64:
+		return Int64(int64(v))
+	case uint32:
+		return Int64(int64(v))
+	case string:
+		return String(v)
+	case bool:
+		return Bool(v)
+	case map[string]any:
+		fields := make(map[string]*types.Value)
+		for k, val := range v {
+			fields[k] = InterfaceToValue(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_StructValue{StructValue: &types.Struct{Fields: fields}},
+		}
+	case []string:
+		return StringList(v)
+	case []int:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = Int64(int64(val))
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	case []int64:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = Int64(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	case []float64:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = Float64(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	case []bool:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = Bool(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	case []any:
+		vals := make([]*types.Value, len(v))
+		for i, val := range v {
+			vals[i] = InterfaceToValue(val)
+		}
+		return &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+		}
+	default:
+		panic(fmt.Sprintf("InterfaceToValue: unsupported type %T", v))
+	}
+}
+
 // deprecated
 func BundledRelationIdToKey(id string) (string, error) {
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
@@ -405,26 +515,6 @@ func BundledRelationIdToKey(id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("incorrect id format")
-}
-
-func Map(s *types.Struct, keys ...string) *types.Struct {
-	if len(keys) == 0 {
-		return s
-	}
-	if s == nil {
-		return nil
-	}
-	ns := new(types.Struct)
-	if s.Fields == nil {
-		return ns
-	}
-	ns.Fields = make(map[string]*types.Value)
-	for _, key := range keys {
-		if value, ok := s.Fields[key]; ok {
-			ns.Fields[key] = value
-		}
-	}
-	return ns
 }
 
 func StructIterate(st *types.Struct, f func(path []string, v *types.Value)) {
@@ -611,4 +701,34 @@ func RelationIdToKey(id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("incorrect id format")
+}
+
+func ProtoToAny(v *types.Value) any {
+	if v == nil {
+		return nil
+	}
+	switch v.Kind.(type) {
+	case *types.Value_StringValue:
+		return v.GetStringValue()
+	case *types.Value_NumberValue:
+		return v.GetNumberValue()
+	case *types.Value_BoolValue:
+		return v.GetBoolValue()
+	case *types.Value_ListValue:
+		listValue := v.GetListValue()
+		if listValue == nil || len(listValue.Values) == 0 {
+			return []string{}
+		}
+
+		firstValue := listValue.Values[0]
+		if _, ok := firstValue.GetKind().(*types.Value_StringValue); ok {
+			return ListValueToStrings(listValue)
+		}
+		if _, ok := firstValue.GetKind().(*types.Value_NumberValue); ok {
+			return ListValueToFloats(listValue)
+		}
+		return []string{}
+	default:
+		return nil
+	}
 }

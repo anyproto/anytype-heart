@@ -14,17 +14,16 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
 	return objectstore.TestObject{
-		bundle.RelationKeyId:         pbtypes.String(id),
-		bundle.RelationKeySyncStatus: pbtypes.Int64(int64(syncStatus)),
-		bundle.RelationKeyLayout:     pbtypes.Int64(int64(model.ObjectType_basic)),
-		bundle.RelationKeyName:       pbtypes.String("name" + id),
-		bundle.RelationKeySpaceId:    pbtypes.String(spaceId),
+		bundle.RelationKeyId:         domain.String(id),
+		bundle.RelationKeySyncStatus: domain.Int64(int64(syncStatus)),
+		bundle.RelationKeyLayout:     domain.Int64(int64(model.ObjectType_basic)),
+		bundle.RelationKeyName:       domain.String("name" + id),
+		bundle.RelationKeySpaceId:    domain.String(spaceId),
 	}
 }
 
@@ -35,12 +34,12 @@ func TestSyncSubscriptions(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		obj := genObject(domain.ObjectSyncStatusSyncing, "spaceId")
 		objects = append(objects, obj)
-		objs[obj[bundle.RelationKeyId].GetStringValue()] = struct{}{}
+		objs[obj[bundle.RelationKeyId].String()] = struct{}{}
 	}
 	for i := 0; i < 10; i++ {
 		objects = append(objects, genObject(domain.ObjectSyncStatusSynced, "spaceId"))
 	}
-	testSubs.AddObjects(t, objects)
+	testSubs.AddObjects(t, "spaceId", objects)
 	subs := New()
 	subs.(*syncSubscriptions).service = testSubs
 	err := subs.Run(context.Background())
@@ -57,8 +56,8 @@ func TestSyncSubscriptions(t *testing.T) {
 	})
 	require.Empty(t, objs)
 	for i := 0; i < 10; i++ {
-		objects[i][bundle.RelationKeySyncStatus] = pbtypes.Int64(int64(domain.ObjectSyncStatusSynced))
-		testSubs.AddObjects(t, []objectstore.TestObject{objects[i]})
+		objects[i][bundle.RelationKeySyncStatus] = domain.Int64(int64(domain.ObjectSyncStatusSynced))
+		testSubs.AddObjects(t, "spaceId", []objectstore.TestObject{objects[i]})
 	}
 	time.Sleep(100 * time.Millisecond)
 	syncCnt = spaceSub.SyncingObjectsCount([]string{"1", "2"})

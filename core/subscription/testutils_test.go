@@ -5,11 +5,10 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var testOrder = &database.KeyOrder{
@@ -30,13 +29,10 @@ func genEntries(n int, backord bool) (res []*entry) {
 }
 
 func genEntry(id string, ord int64) *entry {
-	return &entry{
-		id: id,
-		data: &types.Struct{Fields: map[string]*types.Value{
-			"id":    pbtypes.String(id),
-			"order": pbtypes.Int64(ord),
-		}},
-	}
+	return newEntry(id, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		"id":    domain.String(id),
+		"order": domain.Int64(ord),
+	}))
 }
 
 func assertCtxAdd(t *testing.T, ctx *opCtx, id, afterId string) {

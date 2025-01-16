@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"go.uber.org/zap"
 
@@ -79,6 +80,16 @@ func (m *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objec
 	return sb.Tree(), nil
 }
 
+func (m *treeManager) ValidateAndPutTree(ctx context.Context, spaceId string, payload treestorage.TreeStorageCreatePayload) error {
+	// TODO: this should be better done inside cache
+	spc, err := m.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	_, err = spc.TreeBuilder().PutTree(ctx, payload, nil)
+	return err
+}
+
 func (m *treeManager) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
 	err := m.onDelete(domain.FullID{
 		SpaceID:  spaceId,
@@ -108,21 +119,15 @@ func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 		return
 	}
 
-	m.sendOnRemoveEvent(treeId)
+	m.sendOnRemoveEvent(spaceId, []string{treeId})
 	err = spc.Remove(ctx, treeId)
 	return
 }
 
-func (m *treeManager) sendOnRemoveEvent(ids ...string) {
-	m.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectRemove{
-					ObjectRemove: &pb.EventObjectRemove{
-						Ids: ids,
-					},
-				},
-			},
+func (m *treeManager) sendOnRemoveEvent(spaceId string, ids []string) {
+	m.eventSender.Broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfObjectRemove{
+		ObjectRemove: &pb.EventObjectRemove{
+			Ids: ids,
 		},
-	})
+	}))
 }

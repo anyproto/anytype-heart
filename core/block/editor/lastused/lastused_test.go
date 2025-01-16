@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -18,12 +17,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSetLastUsedDateForInitialType(t *testing.T) {
-	isLastUsedDateGreater := func(details1, details2 *types.Struct) bool {
-		return pbtypes.GetInt64(details1, bundle.RelationKeyLastUsedDate.String()) > pbtypes.GetInt64(details2, bundle.RelationKeyLastUsedDate.String())
+	isLastUsedDateGreater := func(details1, details2 *domain.Details) bool {
+		return details1.GetInt64(bundle.RelationKeyLastUsedDate) > details2.GetInt64(bundle.RelationKeyLastUsedDate)
 	}
 
 	t.Run("object types are sorted by lastUsedDate in correct order", func(t *testing.T) {
@@ -40,11 +38,11 @@ func TestSetLastUsedDateForInitialType(t *testing.T) {
 		rand.Shuffle(len(ots), func(i, j int) {
 			ots[i], ots[j] = ots[j], ots[i]
 		})
-		detailMap := map[string]*types.Struct{}
+		detailMap := map[string]*domain.Details{}
 
 		// when
 		for _, id := range ots {
-			details := &types.Struct{Fields: make(map[string]*types.Value)}
+			details := domain.NewDetails()
 			SetLastUsedDateForInitialObjectType(id, details)
 			detailMap[id] = details
 		}
@@ -64,31 +62,31 @@ func TestUpdateLastUsedDate(t *testing.T) {
 
 	ts := time.Now().Unix()
 
-	isLastUsedDateRecent := func(details *types.Struct, deltaSeconds int64) bool {
-		return pbtypes.GetInt64(details, bundle.RelationKeyLastUsedDate.String())+deltaSeconds > time.Now().Unix()
+	isLastUsedDateRecent := func(details *domain.Details, deltaSeconds int64) bool {
+		return details.GetInt64(bundle.RelationKeyLastUsedDate)+deltaSeconds > time.Now().Unix()
 	}
 
 	store := objectstore.NewStoreFixture(t)
-	store.AddObjects(t, []objectstore.TestObject{
+	store.AddObjects(t, spaceId, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:        pbtypes.String(bundle.RelationKeyCamera.URL()),
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-			bundle.RelationKeyUniqueKey: pbtypes.String(bundle.RelationKeyCamera.URL()),
+			bundle.RelationKeyId:        domain.String(bundle.RelationKeyCamera.URL()),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyUniqueKey: domain.String(bundle.RelationKeyCamera.URL()),
 		},
 		{
-			bundle.RelationKeyId:        pbtypes.String(bundle.TypeKeyDiaryEntry.URL()),
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-			bundle.RelationKeyUniqueKey: pbtypes.String(bundle.TypeKeyDiaryEntry.URL()),
+			bundle.RelationKeyId:        domain.String(bundle.TypeKeyDiaryEntry.URL()),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyDiaryEntry.URL()),
 		},
 		{
-			bundle.RelationKeyId:        pbtypes.String("rel-custom"),
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-			bundle.RelationKeyUniqueKey: pbtypes.String("rel-custom"),
+			bundle.RelationKeyId:        domain.String("rel-custom"),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyUniqueKey: domain.String("rel-custom"),
 		},
 		{
-			bundle.RelationKeyId:        pbtypes.String("opt-done"),
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-			bundle.RelationKeyUniqueKey: pbtypes.String("opt-done"),
+			bundle.RelationKeyId:        domain.String("opt-done"),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyUniqueKey: domain.String("opt-done"),
 		},
 	})
 

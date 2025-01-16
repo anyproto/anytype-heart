@@ -36,6 +36,15 @@
     - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
     - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
     - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
+    - [ChangeNoSnapshot](#anytype-ChangeNoSnapshot)
+    - [DocumentCreate](#anytype-DocumentCreate)
+    - [DocumentDelete](#anytype-DocumentDelete)
+    - [DocumentModify](#anytype-DocumentModify)
+    - [KeyModify](#anytype-KeyModify)
+    - [StoreChange](#anytype-StoreChange)
+    - [StoreChangeContent](#anytype-StoreChangeContent)
+  
+    - [ModifyOp](#anytype-ModifyOp)
   
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
@@ -560,10 +569,23 @@
     - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
     - [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response)
     - [Rpc.Debug.AccountSelectTrace.Response.Error](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error)
+    - [Rpc.Debug.AnystoreObjectChanges](#anytype-Rpc-Debug-AnystoreObjectChanges)
+    - [Rpc.Debug.AnystoreObjectChanges.Request](#anytype-Rpc-Debug-AnystoreObjectChanges-Request)
+    - [Rpc.Debug.AnystoreObjectChanges.Response](#anytype-Rpc-Debug-AnystoreObjectChanges-Response)
+    - [Rpc.Debug.AnystoreObjectChanges.Response.Change](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Change)
+    - [Rpc.Debug.AnystoreObjectChanges.Response.Error](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
     - [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response)
     - [Rpc.Debug.ExportLocalstore.Response.Error](#anytype-Rpc-Debug-ExportLocalstore-Response-Error)
+    - [Rpc.Debug.ExportLog](#anytype-Rpc-Debug-ExportLog)
+    - [Rpc.Debug.ExportLog.Request](#anytype-Rpc-Debug-ExportLog-Request)
+    - [Rpc.Debug.ExportLog.Response](#anytype-Rpc-Debug-ExportLog-Response)
+    - [Rpc.Debug.ExportLog.Response.Error](#anytype-Rpc-Debug-ExportLog-Response-Error)
+    - [Rpc.Debug.NetCheck](#anytype-Rpc-Debug-NetCheck)
+    - [Rpc.Debug.NetCheck.Request](#anytype-Rpc-Debug-NetCheck-Request)
+    - [Rpc.Debug.NetCheck.Response](#anytype-Rpc-Debug-NetCheck-Response)
+    - [Rpc.Debug.NetCheck.Response.Error](#anytype-Rpc-Debug-NetCheck-Response-Error)
     - [Rpc.Debug.OpenedObjects](#anytype-Rpc-Debug-OpenedObjects)
     - [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request)
     - [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response)
@@ -685,6 +707,11 @@
     - [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response)
     - [Rpc.History.ShowVersion.Response.Error](#anytype-Rpc-History-ShowVersion-Response-Error)
     - [Rpc.History.Version](#anytype-Rpc-History-Version)
+    - [Rpc.Initial](#anytype-Rpc-Initial)
+    - [Rpc.Initial.SetParameters](#anytype-Rpc-Initial-SetParameters)
+    - [Rpc.Initial.SetParameters.Request](#anytype-Rpc-Initial-SetParameters-Request)
+    - [Rpc.Initial.SetParameters.Response](#anytype-Rpc-Initial-SetParameters-Response)
+    - [Rpc.Initial.SetParameters.Response.Error](#anytype-Rpc-Initial-SetParameters-Response-Error)
     - [Rpc.LinkPreview](#anytype-Rpc-LinkPreview)
     - [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request)
     - [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response)
@@ -735,11 +762,6 @@
     - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
     - [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error)
-    - [Rpc.Metrics](#anytype-Rpc-Metrics)
-    - [Rpc.Metrics.SetParameters](#anytype-Rpc-Metrics-SetParameters)
-    - [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request)
-    - [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response)
-    - [Rpc.Metrics.SetParameters.Response.Error](#anytype-Rpc-Metrics-SetParameters-Response-Error)
     - [Rpc.NameService](#anytype-Rpc-NameService)
     - [Rpc.NameService.ResolveAnyId](#anytype-Rpc-NameService-ResolveAnyId)
     - [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request)
@@ -825,6 +847,18 @@
     - [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request)
     - [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response)
     - [Rpc.Object.CreateSet.Response.Error](#anytype-Rpc-Object-CreateSet-Response-Error)
+    - [Rpc.Object.CrossSpaceSearchSubscribe](#anytype-Rpc-Object-CrossSpaceSearchSubscribe)
+    - [Rpc.Object.CrossSpaceSearchSubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request)
+    - [Rpc.Object.CrossSpaceSearchSubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response)
+    - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error)
+    - [Rpc.Object.DateByTimestamp](#anytype-Rpc-Object-DateByTimestamp)
+    - [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request)
+    - [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response)
+    - [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error)
     - [Rpc.Object.Duplicate](#anytype-Rpc-Object-Duplicate)
     - [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request)
     - [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response)
@@ -1043,6 +1077,14 @@
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
     - [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response)
     - [Rpc.Process.Cancel.Response.Error](#anytype-Rpc-Process-Cancel-Response-Error)
+    - [Rpc.Process.Subscribe](#anytype-Rpc-Process-Subscribe)
+    - [Rpc.Process.Subscribe.Request](#anytype-Rpc-Process-Subscribe-Request)
+    - [Rpc.Process.Subscribe.Response](#anytype-Rpc-Process-Subscribe-Response)
+    - [Rpc.Process.Subscribe.Response.Error](#anytype-Rpc-Process-Subscribe-Response-Error)
+    - [Rpc.Process.Unsubscribe](#anytype-Rpc-Process-Unsubscribe)
+    - [Rpc.Process.Unsubscribe.Request](#anytype-Rpc-Process-Unsubscribe-Request)
+    - [Rpc.Process.Unsubscribe.Response](#anytype-Rpc-Process-Unsubscribe-Response)
+    - [Rpc.Process.Unsubscribe.Response.Error](#anytype-Rpc-Process-Unsubscribe-Response-Error)
     - [Rpc.Relation](#anytype-Rpc-Relation)
     - [Rpc.Relation.ListRemoveOption](#anytype-Rpc-Relation-ListRemoveOption)
     - [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request)
@@ -1052,6 +1094,7 @@
     - [Rpc.Relation.ListWithValue.Request](#anytype-Rpc-Relation-ListWithValue-Request)
     - [Rpc.Relation.ListWithValue.Response](#anytype-Rpc-Relation-ListWithValue-Response)
     - [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error)
+    - [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem)
     - [Rpc.Relation.Options](#anytype-Rpc-Relation-Options)
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
@@ -1109,10 +1152,18 @@
     - [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request)
     - [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response)
     - [Rpc.Space.RequestDecline.Response.Error](#anytype-Rpc-Space-RequestDecline-Response-Error)
+    - [Rpc.Space.SetOrder](#anytype-Rpc-Space-SetOrder)
+    - [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request)
+    - [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response)
+    - [Rpc.Space.SetOrder.Response.Error](#anytype-Rpc-Space-SetOrder-Response-Error)
     - [Rpc.Space.StopSharing](#anytype-Rpc-Space-StopSharing)
     - [Rpc.Space.StopSharing.Request](#anytype-Rpc-Space-StopSharing-Request)
     - [Rpc.Space.StopSharing.Response](#anytype-Rpc-Space-StopSharing-Response)
     - [Rpc.Space.StopSharing.Response.Error](#anytype-Rpc-Space-StopSharing-Response-Error)
+    - [Rpc.Space.UnsetOrder](#anytype-Rpc-Space-UnsetOrder)
+    - [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request)
+    - [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response)
+    - [Rpc.Space.UnsetOrder.Response.Error](#anytype-Rpc-Space-UnsetOrder-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -1326,7 +1377,11 @@
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
+    - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
+    - [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
+    - [Rpc.Debug.ExportLog.Response.Error.Code](#anytype-Rpc-Debug-ExportLog-Response-Error-Code)
+    - [Rpc.Debug.NetCheck.Response.Error.Code](#anytype-Rpc-Debug-NetCheck-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.RunProfiler.Response.Error.Code](#anytype-Rpc-Debug-RunProfiler-Response-Error-Code)
@@ -1355,6 +1410,7 @@
     - [Rpc.History.GetVersions.Response.Error.Code](#anytype-Rpc-History-GetVersions-Response-Error-Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype-Rpc-History-SetVersion-Response-Error-Code)
     - [Rpc.History.ShowVersion.Response.Error.Code](#anytype-Rpc-History-ShowVersion-Response-Error-Code)
+    - [Rpc.Initial.SetParameters.Response.Error.Code](#anytype-Rpc-Initial-SetParameters-Response-Error-Code)
     - [Rpc.LinkPreview.Response.Error.Code](#anytype-Rpc-LinkPreview-Response-Error-Code)
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
@@ -1368,7 +1424,6 @@
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
-    - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
     - [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code)
@@ -1390,6 +1445,9 @@
     - [Rpc.Object.CreateRelation.Response.Error.Code](#anytype-Rpc-Object-CreateRelation-Response-Error-Code)
     - [Rpc.Object.CreateRelationOption.Response.Error.Code](#anytype-Rpc-Object-CreateRelationOption-Response-Error-Code)
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code)
+    - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
+    - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
+    - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
@@ -1446,6 +1504,8 @@
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
+    - [Rpc.Process.Subscribe.Response.Error.Code](#anytype-Rpc-Process-Subscribe-Response-Error-Code)
+    - [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1462,7 +1522,9 @@
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
+    - [Rpc.Space.SetOrder.Response.Error.Code](#anytype-Rpc-Space-SetOrder-Response-Error-Code)
     - [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code)
+    - [Rpc.Space.UnsetOrder.Response.Error.Code](#anytype-Rpc-Space-UnsetOrder-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
@@ -1688,7 +1750,12 @@
     - [Event.User.Block.TextRange](#anytype-Event-User-Block-TextRange)
     - [Model](#anytype-Model)
     - [Model.Process](#anytype-Model-Process)
+    - [Model.Process.DropFiles](#anytype-Model-Process-DropFiles)
+    - [Model.Process.Export](#anytype-Model-Process-Export)
+    - [Model.Process.Import](#anytype-Model-Process-Import)
+    - [Model.Process.Migration](#anytype-Model-Process-Migration)
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
+    - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
@@ -1698,7 +1765,6 @@
     - [Event.Space.SyncError](#anytype-Event-Space-SyncError)
     - [Event.Status.Thread.SyncStatus](#anytype-Event-Status-Thread-SyncStatus)
     - [Model.Process.State](#anytype-Model-Process-State)
-    - [Model.Process.Type](#anytype-Model-Process-Type)
   
 - [pb/protos/snapshot.proto](#pb_protos_snapshot-proto)
     - [Profile](#anytype-Profile)
@@ -1821,6 +1887,7 @@
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
     - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
+    - [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
@@ -1941,18 +2008,21 @@
 | SpaceMakeShareable | [Rpc.Space.MakeShareable.Request](#anytype-Rpc-Space-MakeShareable-Request) | [Rpc.Space.MakeShareable.Response](#anytype-Rpc-Space-MakeShareable-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
+| SpaceSetOrder | [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request) | [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response) |  |
+| SpaceUnsetOrder | [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request) | [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
 | ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
 | ObjectCreateFromUrl | [Rpc.Object.CreateFromUrl.Request](#anytype-Rpc-Object-CreateFromUrl-Request) | [Rpc.Object.CreateFromUrl.Response](#anytype-Rpc-Object-CreateFromUrl-Response) |  |
-| ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ObjectCreateSet | [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request) | [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response) | ObjectCreateSet just creates the new set, without adding the link to it from some other page |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
 | ObjectSearchWithMeta | [Rpc.Object.SearchWithMeta.Request](#anytype-Rpc-Object-SearchWithMeta-Request) | [Rpc.Object.SearchWithMeta.Response](#anytype-Rpc-Object-SearchWithMeta-Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
+| ObjectCrossSpaceSearchSubscribe | [Rpc.Object.CrossSpaceSearchSubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request) | [Rpc.Object.CrossSpaceSearchSubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response) |  |
+| ObjectCrossSpaceSearchUnsubscribe | [Rpc.Object.CrossSpaceSearchUnsubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request) | [Rpc.Object.CrossSpaceSearchUnsubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
 | ObjectGroupsSubscribe | [Rpc.Object.GroupsSubscribe.Request](#anytype-Rpc-Object-GroupsSubscribe-Request) | [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response) |  |
@@ -1986,6 +2056,7 @@
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
 | ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
 | ObjectImportExperience | [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request) | [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response) |  |
+| ObjectDateByTimestamp | [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request) | [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response) |  |
 | ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
 | ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
 | ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
@@ -2114,6 +2185,8 @@
 | BlockDivListSetStyle | [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request) | [Rpc.BlockDiv.ListSetStyle.Response](#anytype-Rpc-BlockDiv-ListSetStyle-Response) |  |
 | BlockLatexSetText | [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request) | [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request) | [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response) |  |
+| ProcessSubscribe | [Rpc.Process.Subscribe.Request](#anytype-Rpc-Process-Subscribe-Request) | [Rpc.Process.Subscribe.Response](#anytype-Rpc-Process-Subscribe-Response) |  |
+| ProcessUnsubscribe | [Rpc.Process.Unsubscribe.Request](#anytype-Rpc-Process-Unsubscribe-Request) | [Rpc.Process.Unsubscribe.Response](#anytype-Rpc-Process-Unsubscribe-Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request) | [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response) |  |
 | DebugStat | [Rpc.Debug.Stat.Request](#anytype-Rpc-Debug-Stat-Request) | [Rpc.Debug.Stat.Response](#anytype-Rpc-Debug-Stat-Response) |  |
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
@@ -2126,7 +2199,10 @@
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
 | DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) |  |
 | DebugAccountSelectTrace | [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request) | [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response) |  |
-| MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
+| DebugAnystoreObjectChanges | [Rpc.Debug.AnystoreObjectChanges.Request](#anytype-Rpc-Debug-AnystoreObjectChanges-Request) | [Rpc.Debug.AnystoreObjectChanges.Response](#anytype-Rpc-Debug-AnystoreObjectChanges-Response) |  |
+| DebugNetCheck | [Rpc.Debug.NetCheck.Request](#anytype-Rpc-Debug-NetCheck-Request) | [Rpc.Debug.NetCheck.Response](#anytype-Rpc-Debug-NetCheck-Response) |  |
+| DebugExportLog | [Rpc.Debug.ExportLog.Request](#anytype-Rpc-Debug-ExportLog-Request) | [Rpc.Debug.ExportLog.Response](#anytype-Rpc-Debug-ExportLog-Response) |  |
+| InitialSetParameters | [Rpc.Initial.SetParameters.Request](#anytype-Rpc-Initial-SetParameters-Request) | [Rpc.Initial.SetParameters.Response](#anytype-Rpc-Initial-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
 | NotificationReply | [Rpc.Notification.Reply.Request](#anytype-Rpc-Notification-Reply-Request) | [Rpc.Notification.Reply.Response](#anytype-Rpc-Notification-Reply-Response) |  |
@@ -2148,7 +2224,7 @@
 | DeviceSetName | [Rpc.Device.SetName.Request](#anytype-Rpc-Device-SetName-Request) | [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response) |  |
 | DeviceList | [Rpc.Device.List.Request](#anytype-Rpc-Device-List-Request) | [Rpc.Device.List.Response](#anytype-Rpc-Device-List-Response) |  |
 | DeviceNetworkStateSet | [Rpc.Device.NetworkState.Set.Request](#anytype-Rpc-Device-NetworkState-Set-Request) | [Rpc.Device.NetworkState.Set.Response](#anytype-Rpc-Device-NetworkState-Set-Response) |  |
-| ChatAddMessage | [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request) | [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response) | Chats dummy impl |
+| ChatAddMessage | [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request) | [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response) | Chats |
 | ChatEditMessageContent | [Rpc.Chat.EditMessageContent.Request](#anytype-Rpc-Chat-EditMessageContent-Request) | [Rpc.Chat.EditMessageContent.Response](#anytype-Rpc-Chat-EditMessageContent-Response) |  |
 | ChatToggleMessageReaction | [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request) | [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response) |  |
 | ChatDeleteMessage | [Rpc.Chat.DeleteMessage.Request](#anytype-Rpc-Chat-DeleteMessage-Request) | [Rpc.Chat.DeleteMessage.Response](#anytype-Rpc-Chat-DeleteMessage-Response) |  |
@@ -2156,6 +2232,7 @@
 | ChatGetMessagesByIds | [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request) | [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response) |  |
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
+| ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 
  
 
@@ -2176,9 +2253,6 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| previous_ids | [string](#string) | repeated | ids of previous changes |
-| last_snapshot_id | [string](#string) |  | id of the last snapshot |
-| previous_meta_ids | [string](#string) | repeated | ids of the last changes with details/relations content |
 | content | [Change.Content](#anytype-Change-Content) | repeated | set of actions to apply |
 | snapshot | [Change.Snapshot](#anytype-Change-Snapshot) |  | snapshot - when not null, the Content will be ignored |
 | fileKeys | [Change.FileKeys](#anytype-Change-FileKeys) | repeated | file keys related to changes content |
@@ -2650,7 +2724,139 @@ the element of change tree used to store and internal apply smartBlock history
 
 
 
+
+<a name="anytype-ChangeNoSnapshot"></a>
+
+### ChangeNoSnapshot
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [Change.Content](#anytype-Change-Content) | repeated | set of actions to apply |
+| fileKeys | [Change.FileKeys](#anytype-Change-FileKeys) | repeated | file keys related to changes content |
+| timestamp | [int64](#int64) |  | creation timestamp |
+| version | [uint32](#uint32) |  | version of business logic |
+
+
+
+
+
+
+<a name="anytype-DocumentCreate"></a>
+
+### DocumentCreate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+| value | [string](#string) |  | json |
+
+
+
+
+
+
+<a name="anytype-DocumentDelete"></a>
+
+### DocumentDelete
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-DocumentModify"></a>
+
+### DocumentModify
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collection | [string](#string) |  |  |
+| documentId | [string](#string) |  |  |
+| keys | [KeyModify](#anytype-KeyModify) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-KeyModify"></a>
+
+### KeyModify
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| keyPath | [string](#string) | repeated | key path; example: [user, email] |
+| modifyOp | [ModifyOp](#anytype-ModifyOp) |  | modify op: set, unset, inc, etc. |
+| modifyValue | [string](#string) |  | json value; example: &#39;&#34;new@email.com&#34;&#39; |
+
+
+
+
+
+
+<a name="anytype-StoreChange"></a>
+
+### StoreChange
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| changeSet | [StoreChangeContent](#anytype-StoreChangeContent) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-StoreChangeContent"></a>
+
+### StoreChangeContent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| create | [DocumentCreate](#anytype-DocumentCreate) |  |  |
+| modify | [DocumentModify](#anytype-DocumentModify) |  |  |
+| delete | [DocumentDelete](#anytype-DocumentDelete) |  |  |
+
+
+
+
+
  
+
+
+<a name="anytype-ModifyOp"></a>
+
+### ModifyOp
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Set | 0 |  |
+| Unset | 1 |  |
+| Inc | 2 |  |
+| AddToSet | 3 |  |
+| Pull | 4 |  |
+
 
  
 
@@ -7034,6 +7240,7 @@ set the current active view locally
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | fileType | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -9928,6 +10135,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  |  |
+| afterOrderId | [string](#string) |  | OrderId of the message after which to get messages |
 | beforeOrderId | [string](#string) |  | OrderId of the message before which to get messages |
 | limit | [int32](#int32) |  |  |
 
@@ -10266,6 +10474,83 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-AnystoreObjectChanges"></a>
+
+### Rpc.Debug.AnystoreObjectChanges
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AnystoreObjectChanges-Request"></a>
+
+### Rpc.Debug.AnystoreObjectChanges.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| orderBy | [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AnystoreObjectChanges-Response"></a>
+
+### Rpc.Debug.AnystoreObjectChanges.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.AnystoreObjectChanges.Response.Error](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error) |  |  |
+| changes | [Rpc.Debug.AnystoreObjectChanges.Response.Change](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Change) | repeated |  |
+| wrongOrder | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AnystoreObjectChanges-Response-Change"></a>
+
+### Rpc.Debug.AnystoreObjectChanges.Response.Change
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| changeId | [string](#string) |  |  |
+| orderId | [string](#string) |  |  |
+| error | [string](#string) |  |  |
+| change | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error"></a>
+
+### Rpc.Debug.AnystoreObjectChanges.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore"></a>
 
 ### Rpc.Debug.ExportLocalstore
@@ -10319,6 +10604,120 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ExportLog"></a>
+
+### Rpc.Debug.ExportLog
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ExportLog-Request"></a>
+
+### Rpc.Debug.ExportLog.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| dir | [string](#string) |  | empty means using OS-provided temp dir |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ExportLog-Response"></a>
+
+### Rpc.Debug.ExportLog.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.ExportLog.Response.Error](#anytype-Rpc-Debug-ExportLog-Response-Error) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-ExportLog-Response-Error"></a>
+
+### Rpc.Debug.ExportLog.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.ExportLog.Response.Error.Code](#anytype-Rpc-Debug-ExportLog-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck"></a>
+
+### Rpc.Debug.NetCheck
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck-Request"></a>
+
+### Rpc.Debug.NetCheck.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| clientYml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck-Response"></a>
+
+### Rpc.Debug.NetCheck.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.NetCheck.Response.Error](#anytype-Rpc-Debug-NetCheck-Response-Error) |  |  |
+| result | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck-Response-Error"></a>
+
+### Rpc.Debug.NetCheck.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.NetCheck.Response.Error.Code](#anytype-Rpc-Debug-NetCheck-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11578,6 +11977,7 @@ Get marks list in the selected range in text block.
 | style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -12054,6 +12454,78 @@ returns blockShow event for given version
 
 
 
+<a name="anytype-Rpc-Initial"></a>
+
+### Rpc.Initial
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Initial-SetParameters"></a>
+
+### Rpc.Initial.SetParameters
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Initial-SetParameters-Request"></a>
+
+### Rpc.Initial.SetParameters.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| platform | [string](#string) |  |  |
+| version | [string](#string) |  |  |
+| workdir | [string](#string) |  |  |
+| logLevel | [string](#string) |  |  |
+| doNotSendLogs | [bool](#bool) |  |  |
+| doNotSaveLogs | [bool](#bool) |  |  |
+| doNotSendTelemetry | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Initial-SetParameters-Response"></a>
+
+### Rpc.Initial.SetParameters.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Initial.SetParameters.Response.Error](#anytype-Rpc-Initial-SetParameters-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Initial-SetParameters-Response-Error"></a>
+
+### Rpc.Initial.SetParameters.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Initial.SetParameters.Response.Error.Code](#anytype-Rpc-Initial-SetParameters-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-LinkPreview"></a>
 
 ### Rpc.LinkPreview
@@ -12441,6 +12913,8 @@ can be called multiple times but with some timeout (N seconds) between calls
 | ----- | ---- | ----- | ----------- |
 | email | [string](#string) |  |  |
 | subscribeToNewsletter | [bool](#bool) |  |  |
+| insiderTipsAndTutorials | [bool](#bool) |  |  |
+| isOnboardingList | [bool](#bool) |  | if we are coming from the onboarding list |
 
 
 
@@ -12759,73 +13233,6 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics"></a>
-
-### Rpc.Metrics
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters"></a>
-
-### Rpc.Metrics.SetParameters
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters-Request"></a>
-
-### Rpc.Metrics.SetParameters.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| platform | [string](#string) |  |  |
-| version | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters-Response"></a>
-
-### Rpc.Metrics.SetParameters.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Metrics.SetParameters.Response.Error](#anytype-Rpc-Metrics-SetParameters-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters-Response-Error"></a>
-
-### Rpc.Metrics.SetParameters.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -13656,6 +14063,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | templateId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13716,6 +14124,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | spaceId | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13778,6 +14187,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | url | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | addPageContent | [bool](#bool) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -13795,6 +14205,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | error | [Rpc.Object.CreateFromUrl.Response.Error](#anytype-Rpc-Object-CreateFromUrl-Response-Error) |  |  |
 | objectId | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| chatId | [string](#string) |  |  |
 
 
 
@@ -14019,6 +14430,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | spaceId | [string](#string) |  |  |
+| withChat | [bool](#bool) |  |  |
 
 
 
@@ -14052,6 +14464,186 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated | filters |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated | sorts |
+| keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
+| source | [string](#string) | repeated |  |
+| noDepSubscription | [bool](#bool) |  | disable dependent subscription |
+| collectionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error) |  |  |
+| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| dependencies | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| subId | [string](#string) |  |  |
+| counters | [Event.Object.Subscription.Counters](#anytype-Event-Object-Subscription-Counters) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp"></a>
+
+### Rpc.Object.DateByTimestamp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Request"></a>
+
+### Rpc.Object.DateByTimestamp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| timestamp | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Response"></a>
+
+### Rpc.Object.DateByTimestamp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Response-Error"></a>
+
+### Rpc.Object.DateByTimestamp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14859,6 +15451,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | includeFiles | [bool](#bool) |  | include all files |
 | isJson | [bool](#bool) |  | for protobuf export |
 | includeArchived | [bool](#bool) |  | for migration |
+| noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
 
 
 
@@ -15403,6 +15996,7 @@ deprecated in favor of SearchWithMeta
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |
@@ -15468,6 +16062,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated | filters |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated | sorts |
@@ -15477,7 +16072,6 @@ DEPRECATED, GO-1926 |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
 | source | [string](#string) | repeated |  |
-| ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 | collectionId | [string](#string) |  |  |
 
@@ -15595,6 +16189,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |
@@ -15606,7 +16201,7 @@ DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 | returnMeta | [bool](#bool) |  | add ResultMeta to each result |
 | returnMetaRelationDetails | [bool](#bool) |  | add relation option details to meta |
-| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  |  |
+| returnHTMLHighlightsInsteadOfRanges | [bool](#bool) |  | DEPRECATED |
 
 
 
@@ -16244,10 +16839,10 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | ids | [string](#string) | repeated | ids for subscribe |
 | keys | [string](#string) | repeated | sorts (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
-| ignoreWorkspace | [string](#string) |  |  |
 | noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 
 
@@ -17280,6 +17875,108 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Process-Subscribe"></a>
+
+### Rpc.Process.Subscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Subscribe-Request"></a>
+
+### Rpc.Process.Subscribe.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Subscribe-Response"></a>
+
+### Rpc.Process.Subscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Process.Subscribe.Response.Error](#anytype-Rpc-Process-Subscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Subscribe-Response-Error"></a>
+
+### Rpc.Process.Subscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Process.Subscribe.Response.Error.Code](#anytype-Rpc-Process-Subscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe"></a>
+
+### Rpc.Process.Unsubscribe
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe-Request"></a>
+
+### Rpc.Process.Unsubscribe.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe-Response"></a>
+
+### Rpc.Process.Unsubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Process.Unsubscribe.Response.Error](#anytype-Rpc-Process-Unsubscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe-Response-Error"></a>
+
+### Rpc.Process.Unsubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Relation"></a>
 
 ### Rpc.Relation
@@ -17382,8 +18079,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Relation.ListWithValue.Response.Error](#anytype-Rpc-Relation-ListWithValue-Response-Error) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-| counters | [int64](#int64) | repeated |  |
+| list | [Rpc.Relation.ListWithValue.Response.ResponseItem](#anytype-Rpc-Relation-ListWithValue-Response-ResponseItem) | repeated |  |
 
 
 
@@ -17400,6 +18096,22 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Relation-ListWithValue-Response-ResponseItem"></a>
+
+### Rpc.Relation.ListWithValue.Response.ResponseItem
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| counter | [int64](#int64) |  |  |
 
 
 
@@ -18220,6 +18932,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-SetOrder"></a>
+
+### Rpc.Space.SetOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Request"></a>
+
+### Rpc.Space.SetOrder.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceViewId | [string](#string) |  |  |
+| spaceViewOrder | [string](#string) | repeated | result order of space view ids |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Response"></a>
+
+### Rpc.Space.SetOrder.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.SetOrder.Response.Error](#anytype-Rpc-Space-SetOrder-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-SetOrder-Response-Error"></a>
+
+### Rpc.Space.SetOrder.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.SetOrder.Response.Error.Code](#anytype-Rpc-Space-SetOrder-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-StopSharing"></a>
 
 ### Rpc.Space.StopSharing
@@ -18269,6 +19038,62 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Space.StopSharing.Response.Error.Code](#anytype-Rpc-Space-StopSharing-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder"></a>
+
+### Rpc.Space.UnsetOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Request"></a>
+
+### Rpc.Space.UnsetOrder.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceViewId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response"></a>
+
+### Rpc.Space.UnsetOrder.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.UnsetOrder.Response.Error](#anytype-Rpc-Space-UnsetOrder-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response-Error"></a>
+
+### Rpc.Space.UnsetOrder.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.UnsetOrder.Response.Error.Code](#anytype-Rpc-Space-UnsetOrder-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -18489,6 +19314,7 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | pictureId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
+| imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 
 
 
@@ -18932,6 +19758,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
+| withChat | [bool](#bool) |  | create space-level chat; temporary solution, should be removed after chats released for all users |
 
 
 
@@ -19336,6 +20163,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
+| withChat | [bool](#bool) |  | create space-level chat if not exists; temporary solution, should be removed after chats released for all users |
 
 
 
@@ -21206,6 +22034,31 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy"></a>
+
+### Rpc.Debug.AnystoreObjectChanges.Request.OrderBy
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ORDER_ID | 0 |  |
+| ITERATION_ORDER | 1 |  |
+
+
+
+<a name="anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code"></a>
+
+### Rpc.Debug.AnystoreObjectChanges.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -21216,6 +22069,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Debug-ExportLog-Response-Error-Code"></a>
+
+### Rpc.Debug.ExportLog.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_FOLDER | 3 |  |
+
+
+
+<a name="anytype-Rpc-Debug-NetCheck-Response-Error-Code"></a>
+
+### Rpc.Debug.NetCheck.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -21589,6 +22469,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Initial-SetParameters-Response-Error-Code"></a>
+
+### Rpc.Initial.SetParameters.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-LinkPreview-Response-Error-Code"></a>
 
 ### Rpc.LinkPreview.Response.Error.Code
@@ -21827,19 +22720,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 9 |  |
 | MEMBERSHIP_ALREADY_ACTIVE | 10 |  |
 | CAN_NOT_CONNECT | 11 |  |
-
-
-
-<a name="anytype-Rpc-Metrics-SetParameters-Response-Error-Code"></a>
-
-### Rpc.Metrics.SetParameters.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 
@@ -22126,6 +23006,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code"></a>
+
+### Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code"></a>
+
+### Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-DateByTimestamp-Response-Error-Code"></a>
+
+### Rpc.Object.DateByTimestamp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Object-Duplicate-Response-Error-Code"></a>
 
 ### Rpc.Object.Duplicate.Response.Error.Code
@@ -22301,11 +23220,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
-| PERSONAL_PROJECTS | 2 |  |
-| KNOWLEDGE_BASE | 3 |  |
-| NOTES_DIARY | 4 |  |
-| STRATEGIC_WRITING | 5 |  |
-| EMPTY | 6 |  |
+| EMPTY | 2 |  |
 
 
 
@@ -22878,6 +23793,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Process-Subscribe-Response-Error-Code"></a>
+
+### Rpc.Process.Subscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Process-Unsubscribe-Response-Error-Code"></a>
+
+### Rpc.Process.Unsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code"></a>
 
 ### Rpc.Relation.ListRemoveOption.Response.Error.Code
@@ -23156,6 +24097,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Space-SetOrder-Response-Error-Code"></a>
+
+### Rpc.Space.SetOrder.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Space-StopSharing-Response-Error-Code"></a>
 
 ### Rpc.Space.StopSharing.Response.Error.Code
@@ -23170,6 +24124,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
+
+
+
+<a name="anytype-Rpc-Space-UnsetOrder-Response-Error-Code"></a>
+
+### Rpc.Space.UnsetOrder.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -25839,6 +26806,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | accountShow | [Event.Account.Show](#anytype-Event-Account-Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype-Event-Account-Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
@@ -26631,9 +27599,55 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| type | [Model.Process.Type](#anytype-Model-Process-Type) |  |  |
 | state | [Model.Process.State](#anytype-Model-Process-State) |  |  |
 | progress | [Model.Process.Progress](#anytype-Model-Process-Progress) |  |  |
+| spaceId | [string](#string) |  |  |
+| dropFiles | [Model.Process.DropFiles](#anytype-Model-Process-DropFiles) |  |  |
+| import | [Model.Process.Import](#anytype-Model-Process-Import) |  |  |
+| export | [Model.Process.Export](#anytype-Model-Process-Export) |  |  |
+| saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
+| migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
+| error | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Model-Process-DropFiles"></a>
+
+### Model.Process.DropFiles
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-Export"></a>
+
+### Model.Process.Export
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-Import"></a>
+
+### Model.Process.Import
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-Migration"></a>
+
+### Model.Process.Migration
+
 
 
 
@@ -26651,6 +27665,16 @@ Precondition: user A and user B opened the same block
 | total | [int64](#int64) |  |  |
 | done | [int64](#int64) |  |  |
 | message | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Model-Process-SaveFile"></a>
+
+### Model.Process.SaveFile
+
 
 
 
@@ -26776,22 +27800,6 @@ Precondition: user A and user B opened the same block
 | Done | 2 |  |
 | Canceled | 3 |  |
 | Error | 4 |  |
-
-
-
-<a name="anytype-Model-Process-Type"></a>
-
-### Model.Process.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| DropFiles | 0 |  |
-| Import | 1 |  |
-| Export | 2 |  |
-| SaveFile | 3 |  |
-| RecoverAccount | 4 |  |
-| Migration | 5 |  |
 
 
  
@@ -26999,9 +28007,10 @@ Precondition: user A and user B opened the same block
 | bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 | filestoreKeysForceReindexCounter | [int32](#int32) |  |  |
 | areOldFilesRemoved | [bool](#bool) |  |  |
-| areDeletedObjectsReindexed | [bool](#bool) |  |  |
+| areDeletedObjectsReindexed | [bool](#bool) |  | DEPRECATED |
 | linksErase | [int32](#int32) |  |  |
 | marketplaceForceReindexCounter | [int32](#int32) |  |  |
+| reindexDeletedObjects | [int32](#int32) |  |  |
 
 
 
@@ -27073,8 +28082,9 @@ Contains basic information about a user account
 | archiveObjectId | [string](#string) |  | archive block id |
 | profileObjectId | [string](#string) |  | profile block id |
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
+| workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
 | deviceId | [string](#string) |  |  |
-| accountSpaceId | [string](#string) |  |  |
+| accountSpaceId | [string](#string) |  | the first created private space. It&#39;s filled only when account is created |
 | widgetsId | [string](#string) |  |  |
 | spaceViewId | [string](#string) |  |  |
 | techSpaceId | [string](#string) |  |  |
@@ -27324,6 +28334,8 @@ Bookmark is to keep a web-link and to preview a content.
 | dateIncludeTime | [bool](#bool) |  |  |
 | timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
 | dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
+| formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
+| align | [Block.Align](#anytype-model-Block-Align) |  |  |
 
 
 
@@ -27345,6 +28357,7 @@ Bookmark is to keep a web-link and to preview a content.
 | includeTime | [bool](#bool) |  |  |
 | id | [string](#string) |  |  |
 | emptyPlacement | [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType) |  |  |
+| noCollate | [bool](#bool) |  |  |
 
 
 
@@ -28542,7 +29555,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | description | [string](#string) |  |  |
 | scope | [Relation.Scope](#anytype-model-Relation-Scope) |  | on-store fields, injected only locally
 
-scope from which this relation have been aggregated |
+deprecated, to be removed |
 | creator | [string](#string) |  | creator profile id |
 | revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
 
@@ -28870,6 +29883,30 @@ stored |
 | Short | 2 | 30/07/2020 |
 | ShortUS | 3 | 07/30/2020 |
 | ISO | 4 | 2020-07-30 |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Relation-FormulaType"></a>
+
+### Block.Content.Dataview.Relation.FormulaType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Count | 1 |  |
+| CountValue | 2 |  |
+| CountDistinct | 3 |  |
+| CountEmpty | 4 |  |
+| CountNotEmpty | 5 |  |
+| PercentEmpty | 6 |  |
+| PercentNotEmpty | 7 |  |
+| MathSum | 8 |  |
+| MathAverage | 9 |  |
+| MathMedian | 10 |  |
+| MathMin | 11 |  |
+| MathMax | 12 |  |
+| Range | 13 |  |
 
 
 
@@ -29253,6 +30290,7 @@ stored |
 | Basic | 0 |  |
 | Cover | 1 |  |
 | Icon | 2 |  |
+| AutomaticallyAdded | 3 |  |
 
 
 
@@ -29267,10 +30305,16 @@ stored |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | INTERNAL_ERROR | 3 |  |
-| NO_OBJECTS_TO_IMPORT | 5 |  |
-| IMPORT_IS_CANCELED | 6 |  |
-| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | FILE_LOAD_ERROR | 8 |  |
+| IMPORT_IS_CANCELED | 6 |  |
+| NOTION_NO_OBJECTS_IN_INTEGRATION | 5 |  |
+| NOTION_SERVER_IS_UNAVAILABLE | 12 |  |
+| NOTION_RATE_LIMIT_EXCEEDED | 13 |  |
+| FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE | 14 |  |
+| FILE_IMPORT_NO_OBJECTS_IN_DIRECTORY | 17 |  |
+| HTML_WRONG_HTML_STRUCTURE | 10 |  |
+| PB_NOT_ANYBLOCK_FORMAT | 11 |  |
+| CSV_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 | INSUFFICIENT_PERMISSIONS | 9 |  |
 
 
@@ -29475,7 +30519,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | spaceView | 18 |  |
 | participant | 19 |  |
 | pdf | 20 |  |
-| chat | 21 |  |
+| chat | 21 | deprecated |
 | chatDerived | 22 |  |
 | tag | 23 |  |
 
@@ -29632,6 +30676,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | DevicesObject | 536 |  |
 | ChatObject | 537 | Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
+| AccountObject | 545 | Container for account data in tech space |
 
 
 

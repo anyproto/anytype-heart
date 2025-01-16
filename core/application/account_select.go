@@ -57,10 +57,9 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		// objectCache := app.MustComponent[objectcache.Cache](s.app)
 		// objectCache.CloseBlocks()
 
-		spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 		acc := &model.Account{Id: req.Id}
 		var err error
-		acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
+		acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -100,6 +99,11 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 		}
 	}
 
+	defer func() {
+		if repoWasMissing && err != nil {
+			os.RemoveAll(filepath.Join(s.rootPath, id))
+		}
+	}()
 	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
@@ -154,7 +158,6 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	}
 
 	acc := &model.Account{Id: id}
-	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
-	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
+	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
 	return acc, err
 }

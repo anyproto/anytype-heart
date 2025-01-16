@@ -5,27 +5,24 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type GroupTag struct {
-	Key     string
+	Key     domain.RelationKey
 	store   objectstore.ObjectStore
 	Records []database.Record
 }
 
 func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
-	spaceFilter := database.FilterEq{
-		Key:   bundle.RelationKeySpaceId.String(),
-		Cond:  model.BlockContentDataviewFilter_Equal,
-		Value: pbtypes.String(spaceID),
+	if spaceID == "" {
+		return fmt.Errorf("spaceId is required")
 	}
-
 	filterTag := database.FiltersAnd{
 		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
 	}
@@ -38,22 +35,29 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 
 	relationOptionFilter := database.FiltersAnd{
 		database.FilterEq{
-			Key:   bundle.RelationKeyRelationKey.String(),
+			Key:   bundle.RelationKeyRelationKey,
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(t.Key),
+			Value: domain.String(string(t.Key)),
 		},
 		database.FilterEq{
-			Key:   bundle.RelationKeyLayout.String(),
+			Key:   bundle.RelationKeyLayout,
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			Value: domain.Int64(model.ObjectType_relationOption),
 		},
-	}
-	if spaceID != "" {
-		relationOptionFilter = append(relationOptionFilter, spaceFilter)
+		database.FilterEq{
+			Key:   bundle.RelationKeyIsArchived,
+			Cond:  model.BlockContentDataviewFilter_NotEqual,
+			Value: domain.Bool(true),
+		},
+		database.FilterEq{
+			Key:   bundle.RelationKeyIsDeleted,
+			Cond:  model.BlockContentDataviewFilter_NotEqual,
+			Value: domain.Bool(true),
+		},
 	}
 	f.FilterObj = database.FiltersOr{f.FilterObj, relationOptionFilter}
 
-	records, err := t.store.QueryRaw(f, 0, 0)
+	records, err := t.store.SpaceIndex(spaceID).QueryRaw(f, 0, 0)
 	if err != nil {
 		return fmt.Errorf("init kanban by tag, objectStore query error: %w", err)
 	}
@@ -70,8 +74,8 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	// single tag groups
 	for _, v := range t.Records {
-		if tagOption := pbtypes.GetString(v.Details, bundle.RelationKeyRelationKey.String()); tagOption == t.Key {
-			optionID := pbtypes.GetString(v.Details, bundle.RelationKeyId.String())
+		if tagOption := v.Details.GetString(bundle.RelationKeyRelationKey); tagOption == string(t.Key) {
+			optionID := v.Details.GetString(bundle.RelationKeyId)
 			if !uniqMap[optionID] {
 				uniqMap[optionID] = true
 				groups = append(groups, Group{
@@ -84,7 +88,7 @@ func (t *GroupTag) MakeGroups() (GroupSlice, error) {
 
 	// multiple tag groups
 	for _, rec := range t.Records {
-		tagIDs := slice.Filter(pbtypes.GetStringList(rec.Details, t.Key), func(tagID string) bool { // filter removed options
+		tagIDs := slice.Filter(rec.Details.GetStringList(t.Key), func(tagID string) bool { // filter removed options
 			return uniqMap[tagID]
 		})
 

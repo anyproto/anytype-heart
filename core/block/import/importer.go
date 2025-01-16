@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -50,7 +49,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/conc"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import")
@@ -219,7 +217,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequ
 	return rootCollectionID, i.getObjectCount(details, rootCollectionID), resultErr
 }
 
-func (i *Import) getObjectCount(details map[string]*types.Struct, rootCollectionID string) int64 {
+func (i *Import) getObjectCount(details map[string]*domain.Details, rootCollectionID string) int64 {
 	objectsCount := int64(len(details))
 	if rootCollectionID != "" && objectsCount > 0 {
 		objectsCount-- // exclude root collection object from counter
@@ -233,8 +231,10 @@ func (i *Import) importFromExternalSource(ctx context.Context, req *ImportReques
 		sn := make([]*common.Snapshot, len(req.Snapshots))
 		for i, s := range req.Snapshots {
 			sn[i] = &common.Snapshot{
-				Id:       s.GetId(),
-				Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
+				Id: s.GetId(),
+				Snapshot: &common.SnapshotModel{
+					Data: common.NewStateSnapshotFromProto(s.Snapshot),
+				},
 			}
 		}
 		res := &common.Response{
@@ -248,7 +248,7 @@ func (i *Import) importFromExternalSource(ctx context.Context, req *ImportReques
 		}
 		return int64(len(details)), nil
 	}
-	return 0, common.ErrNoObjectsToImport
+	return 0, common.ErrNoSnapshotToImport
 }
 
 func (i *Import) finishImportProcess(returnedErr error, req *ImportRequest) {
@@ -261,12 +261,13 @@ func (i *Import) finishImportProcess(returnedErr error, req *ImportRequest) {
 
 func (i *Import) provideNotification(returnedErr error, progress process.Progress, req *ImportRequest) *model.Notification {
 	return &model.Notification{
+		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Space:   req.SpaceId,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
 			ProcessId:  progress.Id(),
-			ErrorCode:  common.GetImportErrorCode(returnedErr),
+			ErrorCode:  common.GetImportNotificationErrorCode(returnedErr),
 			ImportType: req.Type,
 			SpaceId:    req.SpaceId,
 		}},
@@ -275,15 +276,15 @@ func (i *Import) provideNotification(returnedErr error, progress process.Progres
 
 func shouldReturnError(e error, res *common.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		errors.Is(e, common.ErrFailedToReceiveListOfObjects) || errors.Is(e, common.ErrLimitExceeded) ||
-		(errors.Is(e, common.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
+		errors.Is(e, common.ErrNotionServerExceedRateLimit) || errors.Is(e, common.ErrCsvLimitExceeded) ||
+		(common.IsNoObjectError(e) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
 		errors.Is(e, common.ErrCancel)
 }
 
 func (i *Import) setupProgressBar(req *ImportRequest) {
-	progressBarType := pb.ModelProcess_Import
+	var progressBarType pb.IsModelProcessMessage = &pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}
 	if req.IsMigration {
-		progressBarType = pb.ModelProcess_Migration
+		progressBarType = &pb.ModelProcessMessageOfMigration{Migration: &pb.ModelProcessMigration{}}
 	}
 	var progress process.Progress
 	if req.GetNoProgress() {
@@ -320,14 +321,22 @@ func (i *Import) ValidateNotionToken(
 	return tv.Validate(ctx, req.GetToken())
 }
 
-func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
-	defer progress.Finish(nil)
+func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *domain.Details, error) {
+	if req.Progress == nil {
+		i.setupProgressBar(req)
+	}
+	defer req.Progress.Finish(nil)
+	if i.s != nil {
+		err := i.s.ProcessAdd(req.Progress)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to add process")
+		}
+	}
 	allErrors := common.NewError(0)
 
-	progress.SetProgressMessage("Parse url")
+	req.Progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(ctx, req, progress)
+	res, err := w.GetSnapshots(ctx, req.RpcObjectImportRequest, req.Progress)
 
 	if err != nil {
 		return "", nil, err.Error()
@@ -336,8 +345,8 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 		return "", nil, fmt.Errorf("snpashots are empty")
 	}
 
-	progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, progress, req, allErrors, objectorigin.None())
+	req.Progress.SetProgressMessage("Create objects")
+	details, _ := i.createObjects(ctx, res, req.Progress, req.RpcObjectImportRequest, allErrors, objectorigin.None())
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
@@ -350,7 +359,7 @@ func (i *Import) createObjects(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	allErrors *common.ConvertError,
 	origin objectorigin.ObjectOrigin,
-) (map[string]*types.Struct, string) {
+) (map[string]*domain.Details, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req, origin)
 	if err != nil {
 		return nil, ""
@@ -379,7 +388,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
 	for _, snapshot := range res.Snapshots {
 		// we will get id of relation options after we figure out according relations keys
-		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.String()) {
+		if lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
@@ -407,14 +416,14 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 }
 
 func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew map[string]string) {
-	if option.Snapshot.Data.Details == nil || len(option.Snapshot.Data.Details.Fields) == 0 {
+	if option.Snapshot.Data.Details == nil || option.Snapshot.Data.Details.Len() == 0 {
 		return
 	}
-	key := pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	key := option.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey)
 	if newRelationID, ok := oldIDToNew[key]; ok {
 		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
 	}
-	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	option.Snapshot.Data.Details.SetString(bundle.RelationKeyRelationKey, key)
 }
 
 func (i *Import) getObjectID(
@@ -428,7 +437,7 @@ func (i *Import) getObjectID(
 ) error {
 
 	// Preload file keys
-	for _, fileKeys := range snapshot.Snapshot.GetFileKeys() {
+	for _, fileKeys := range snapshot.Snapshot.FileKeys {
 		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         domain.FileId(fileKeys.Hash),
 			EncryptionKeys: fileKeys.Keys,
@@ -437,7 +446,7 @@ func (i *Import) getObjectID(
 			return fmt.Errorf("add file keys: %w", err)
 		}
 	}
-	if fileInfo := snapshot.Snapshot.GetData().GetFileInfo(); fileInfo != nil {
+	if fileInfo := snapshot.Snapshot.Data.FileInfo; fileInfo != nil {
 		keys := make(map[string]string, len(fileInfo.EncryptionKeys))
 		for _, key := range fileInfo.EncryptionKeys {
 			keys[key.Path] = key.Key
@@ -467,9 +476,9 @@ func (i *Import) getObjectID(
 }
 
 func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[string]string) error {
-	newUniqueKey := i.idProvider.GetInternalKey(snapshot.SbType)
+	newUniqueKey := i.idProvider.GetInternalKey(snapshot.Snapshot.SbType)
 	if newUniqueKey != "" {
-		oldUniqueKey := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+		oldUniqueKey := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey)
 		if oldUniqueKey == "" {
 			oldUniqueKey = snapshot.Snapshot.Data.Key
 		}
@@ -495,8 +504,8 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	mode pb.RpcObjectImportRequestMode,
 	allErrors *common.ConvertError,
 	progress process.Progress,
-) map[string]*types.Struct {
-	details := make(map[string]*types.Struct, 0)
+) map[string]*domain.Details {
+	details := make(map[string]*domain.Details, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(fmt.Errorf("%w: %s", common.ErrCancel, err.Error()))
@@ -524,19 +533,13 @@ func (i *Import) sendImportFinishEventToClient(rootCollectionID string, isSync b
 	if isSync {
 		return
 	}
-	i.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfImportFinish{
-					ImportFinish: &pb.EventImportFinish{
-						RootCollectionID: rootCollectionID,
-						ObjectsCount:     objectsCount,
-						ImportType:       importType,
-					},
-				},
-			},
+	i.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfImportFinish{
+		ImportFinish: &pb.EventImportFinish{
+			RootCollectionID: rootCollectionID,
+			ObjectsCount:     objectsCount,
+			ImportType:       importType,
 		},
-	})
+	}))
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

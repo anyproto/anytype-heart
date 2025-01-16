@@ -15,29 +15,28 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/debug"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) initDebugger() {
+func (s *spaceSubscriptions) initDebugger() {
 	s.subDebugger = newSubDebugger()
 }
 
-func (s *service) debugEvents(ev *pb.Event) {
+func (s *spaceSubscriptions) debugEvents(ev *pb.Event) {
 	for _, msg := range ev.Messages {
 		s.subDebugger.addEvent(msg)
 	}
 }
 
-func (s *service) DebugRouter(r chi.Router) {
+func (s *spaceSubscriptions) DebugRouter(r chi.Router) {
 	r.Get("/per_object", debug.PlaintextHandler(s.debugPerObject))
 	r.Get("/per_subscription", debug.PlaintextHandler(s.debugPerSubscription))
 }
 
-func (s *service) debugPerObject(w io.Writer, req *http.Request) error {
+func (s *spaceSubscriptions) debugPerObject(w io.Writer, req *http.Request) error {
 	return s.subDebugger.printPerObject(w, req)
 }
 
-func (s *service) debugPerSubscription(w io.Writer, req *http.Request) error {
+func (s *spaceSubscriptions) debugPerSubscription(w io.Writer, req *http.Request) error {
 	return s.subDebugger.printPerSubscription(w, req)
 }
 
@@ -320,7 +319,7 @@ func newSubDebugger() *subDebugger {
 func (d *subDebugger) addEvent(msg *pb.EventMessage) {
 	var name string
 	if v := msg.GetObjectDetailsSet(); v != nil {
-		name = pbtypes.GetString(v.Details, bundle.RelationKeyName.String())
+		name = v.Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
 	}
 
 	ent := newDebugEntry(msg)

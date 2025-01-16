@@ -5,18 +5,17 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-var ErrObjectNotFound = fmt.Errorf("object not found")
+var ErrObjectNotFound = fmt.Errorf("collection object not found")
 
-func NewCollection(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) Collection {
+func NewCollection(sb smartblock.SmartBlock, objectStore spaceindex.Store) Collection {
 	return &objectLinksCollection{SmartBlock: sb, objectStore: objectStore}
 }
 
@@ -27,13 +26,13 @@ type Collection interface {
 	GetIds() (ids []string, err error)
 	ModifyLocalDetails(
 		objectId string,
-		modifier func(current *types.Struct) (*types.Struct, error),
+		modifier func(current *domain.Details) (*domain.Details, error),
 	) (err error)
 }
 
 type objectLinksCollection struct {
 	smartblock.SmartBlock
-	objectStore objectstore.ObjectStore
+	objectStore spaceindex.Store
 }
 
 func (p *objectLinksCollection) AddObject(id string) (err error) {
@@ -112,7 +111,7 @@ func (p *objectLinksCollection) GetIds() (ids []string, err error) {
 // and if it is not found, sets pending details in object store
 func (p *objectLinksCollection) ModifyLocalDetails(
 	objectId string,
-	modifier func(current *types.Struct) (*types.Struct, error),
+	modifier func(current *domain.Details) (*domain.Details, error),
 ) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
@@ -127,7 +126,7 @@ func (p *objectLinksCollection) ModifyLocalDetails(
 		return err
 	}
 	err = p.Space().Do(objectId, func(b smartblock.SmartBlock) error {
-		// we just need to invoke the smartblock so it reads from pending details
+		// we just need to invoke the smartblock, so it reads from pending details
 		// no need to call modify twice
 		if err == nil {
 			return b.Apply(b.NewState())
@@ -140,9 +139,5 @@ func (p *objectLinksCollection) ModifyLocalDetails(
 
 		return b.Apply(b.NewState().SetDetails(dets), smartblock.KeepInternalFlags)
 	})
-	// that means that we will apply the change later as soon as the block is loaded by thread queue
-	if errors.Is(err, source.ErrObjectNotFound) {
-		return nil
-	}
 	return err
 }

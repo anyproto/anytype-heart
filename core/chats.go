@@ -3,97 +3,122 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/block/chats"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-// TODO: chats are temporary done as dummy API for clients to merge the API
+func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse {
+	ctx := mw.newContext(cctx)
+	chatService := mustService[chats.Service](mw)
 
-func (mw *Middleware) ObjectChatAdd(ctx context.Context, request *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
-	// TODO implement me
-	return &pb.RpcObjectChatAddResponse{
-		Error: &pb.RpcObjectChatAddResponseError{
-			Code:        pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
-		},
-	}
-}
-
-func (mw *Middleware) ChatAddMessage(ctx context.Context, request *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse {
-	// TODO implement me
+	messageId, err := chatService.AddMessage(cctx, ctx, req.ChatObjectId, req.Message)
+	code := mapErrorCode[pb.RpcChatAddMessageResponseErrorCode](err)
 	return &pb.RpcChatAddMessageResponse{
+		MessageId: messageId,
+		Event:     ctx.GetResponseEvent(),
 		Error: &pb.RpcChatAddMessageResponseError{
-			Code:        pb.RpcChatAddMessageResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
 
-func (mw *Middleware) ChatEditMessageContent(ctx context.Context, request *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse {
-	// TODO implement me
+func (mw *Middleware) ChatEditMessageContent(cctx context.Context, req *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.EditMessage(cctx, req.ChatObjectId, req.MessageId, req.EditedMessage)
+	code := mapErrorCode[pb.RpcChatEditMessageContentResponseErrorCode](err)
 	return &pb.RpcChatEditMessageContentResponse{
 		Error: &pb.RpcChatEditMessageContentResponseError{
-			Code:        pb.RpcChatEditMessageContentResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
 
-func (mw *Middleware) ChatToggleMessageReaction(ctx context.Context, request *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse {
-	// TODO implement me
+func (mw *Middleware) ChatToggleMessageReaction(cctx context.Context, req *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.ToggleMessageReaction(cctx, req.ChatObjectId, req.MessageId, req.Emoji)
+	code := mapErrorCode[pb.RpcChatToggleMessageReactionResponseErrorCode](err)
 	return &pb.RpcChatToggleMessageReactionResponse{
 		Error: &pb.RpcChatToggleMessageReactionResponseError{
-			Code:        pb.RpcChatToggleMessageReactionResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
 
-func (mw *Middleware) ChatDeleteMessage(ctx context.Context, request *pb.RpcChatDeleteMessageRequest) *pb.RpcChatDeleteMessageResponse {
-	// TODO implement me
+func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDeleteMessageRequest) *pb.RpcChatDeleteMessageResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.DeleteMessage(cctx, req.ChatObjectId, req.MessageId)
+	code := mapErrorCode[pb.RpcChatDeleteMessageResponseErrorCode](err)
 	return &pb.RpcChatDeleteMessageResponse{
 		Error: &pb.RpcChatDeleteMessageResponseError{
-			Code:        pb.RpcChatDeleteMessageResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
 
-func (mw *Middleware) ChatGetMessages(ctx context.Context, request *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
-	// TODO implement me
+func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
+	chatService := mustService[chats.Service](mw)
+
+	messages, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
+		AfterOrderId:  req.AfterOrderId,
+		BeforeOrderId: req.BeforeOrderId,
+		Limit:         int(req.Limit),
+	})
+	code := mapErrorCode[pb.RpcChatGetMessagesResponseErrorCode](err)
 	return &pb.RpcChatGetMessagesResponse{
+		Messages: messages,
 		Error: &pb.RpcChatGetMessagesResponseError{
-			Code:        pb.RpcChatGetMessagesResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
 
-func (mw *Middleware) ChatGetMessagesByIds(ctx context.Context, request *pb.RpcChatGetMessagesByIdsRequest) *pb.RpcChatGetMessagesByIdsResponse {
-	// TODO implement me
+func (mw *Middleware) ChatGetMessagesByIds(cctx context.Context, req *pb.RpcChatGetMessagesByIdsRequest) *pb.RpcChatGetMessagesByIdsResponse {
+	chatService := mustService[chats.Service](mw)
+
+	messages, err := chatService.GetMessagesByIds(cctx, req.ChatObjectId, req.MessageIds)
+	code := mapErrorCode[pb.RpcChatGetMessagesByIdsResponseErrorCode](err)
 	return &pb.RpcChatGetMessagesByIdsResponse{
+		Messages: messages,
 		Error: &pb.RpcChatGetMessagesByIdsResponseError{
-			Code:        pb.RpcChatGetMessagesByIdsResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
 
-func (mw *Middleware) ChatSubscribeLastMessages(ctx context.Context, request *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
-	// TODO implement me
+func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
+	chatService := mustService[chats.Service](mw)
+
+	messages, numBefore, err := chatService.SubscribeLastMessages(cctx, req.ChatObjectId, int(req.Limit))
+	code := mapErrorCode[pb.RpcChatSubscribeLastMessagesResponseErrorCode](err)
 	return &pb.RpcChatSubscribeLastMessagesResponse{
+		Messages:          messages,
+		NumMessagesBefore: int32(numBefore),
 		Error: &pb.RpcChatSubscribeLastMessagesResponseError{
-			Code:        pb.RpcChatSubscribeLastMessagesResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
 
-func (mw *Middleware) ChatUnsubscribe(ctx context.Context, request *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse {
-	// TODO implement me
+func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.Unsubscribe(req.ChatObjectId)
+	code := mapErrorCode[pb.RpcChatUnsubscribeResponseErrorCode](err)
 	return &pb.RpcChatUnsubscribeResponse{
 		Error: &pb.RpcChatUnsubscribeResponseError{
-			Code:        pb.RpcChatUnsubscribeResponseError_UNKNOWN_ERROR,
-			Description: "not implemented",
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }

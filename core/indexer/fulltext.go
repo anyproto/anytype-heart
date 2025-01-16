@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -40,15 +41,7 @@ func (i *indexer) ForceFTIndex() {
 // MUST NOT be called more than once
 func (i *indexer) ftLoopRoutine() {
 	ticker := time.NewTicker(ftIndexInterval)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		select {
-		case <-i.quit:
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
+	ctx := i.runCtx
 
 	i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
@@ -69,11 +62,11 @@ func (i *indexer) ftLoopRoutine() {
 }
 
 func (i *indexer) runFullTextIndexer(ctx context.Context) {
-	batcher := i.ftsearch.NewAutoBatcher(ftsearch.AutoBatcherRecommendedMaxDocs, ftsearch.AutoBatcherRecommendedMaxSize)
+	batcher := i.ftsearch.NewAutoBatcher()
 	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
 		for _, objectId := range objectIds {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
-			if err != nil {
+			if err != nil && !errors.Is(err, domain.ErrObjectNotFound) && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
 				if errors.Is(err, context.Canceled) {
 					return err
@@ -148,6 +141,14 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	return changedDocs, removeDocs, nil
 }
 
+var filesLayouts = map[model.ObjectTypeLayout]struct{}{
+	model.ObjectType_file:  {},
+	model.ObjectType_image: {},
+	model.ObjectType_audio: {},
+	model.ObjectType_video: {},
+	model.ObjectType_pdf:   {},
+}
+
 func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []ftsearch.SearchDoc, err error) {
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
 	err = cache.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
@@ -160,26 +161,46 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
 				continue
 			}
-			val := pbtypes.GetString(sb.Details(), rel.Key)
+			val := sb.Details().GetString(domain.RelationKey(rel.Key))
 			if val == "" {
-				continue
+				val = sb.LocalDetails().GetString(domain.RelationKey(rel.Key))
+				if val == "" {
+					continue
+				}
 			}
 			// skip readonly and hidden system relations
 			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
-				if bundledRel.ReadOnly || bundledRel.Hidden && rel.Key != bundle.RelationKeyName.String() {
+				layout, _ := sb.Layout()
+				skip := bundledRel.ReadOnly || bundledRel.Hidden
+				if rel.Key == bundle.RelationKeyName.String() {
+					skip = false
+				}
+				if layout == model.ObjectType_note && rel.Key == bundle.RelationKeySnippet.String() {
+					// index snippet only for notes, so we will be able to do fast prefix queries
+					skip = false
+				}
+
+				if skip {
 					continue
 				}
 			}
 
 			doc := ftsearch.SearchDoc{
 				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
-				SpaceID: sb.SpaceID(),
+				SpaceId: sb.SpaceID(),
 				Text:    val,
 			}
 
 			if rel.Key == bundle.RelationKeyName.String() {
-				doc.Title = val
+				layout, layoutValid := sb.Layout()
+				if layoutValid {
+					if _, contains := filesLayouts[layout]; !contains {
+						doc.Title = val
+						doc.Text = ""
+					}
+				}
 			}
+
 			docs = append(docs, doc)
 		}
 
@@ -198,7 +219,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 				}
 				doc := ftsearch.SearchDoc{
 					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
-					SpaceID: sb.SpaceID(),
+					SpaceId: sb.SpaceID(),
 				}
 				if len(tb.Text) > ftBlockMaxSize {
 					doc.Text = tb.Text[:ftBlockMaxSize]
@@ -218,21 +239,22 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 }
 
 func (i *indexer) ftInit() error {
-	if ft := i.store.FTSearch(); ft != nil {
+	if ft := i.ftsearch; ft != nil {
 		docCount, err := ft.DocCount()
 		if err != nil {
 			return err
 		}
 		if docCount == 0 {
-			ids, err := i.store.ListIds()
+			// query objects that are existing in the store
+			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
+			ids, err := i.store.ListIdsCrossSpace()
 			if err != nil {
 				return err
 			}
-			for _, id := range ids {
-				if err := i.store.AddToIndexQueue(id); err != nil {
-					return err
-				}
+			if err := i.store.AddToIndexQueue(i.runCtx, ids...); err != nil {
+				return err
 			}
+
 		}
 	}
 	return nil

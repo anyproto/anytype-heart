@@ -1,14 +1,13 @@
 package converter
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -19,14 +18,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const DefaultSetSource = bundle.TypeKeyPage
-
 type LayoutConverter interface {
-	Convert(space smartblock.Space, st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
 	app.Component
 }
 
@@ -49,9 +45,16 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
 	if fromLayout == toLayout {
 		return nil
+	}
+
+	if fromLayout == model.ObjectType_chat || fromLayout == model.ObjectType_chatDerived {
+		return fmt.Errorf("can't convert from chat")
+	}
+	if toLayout == model.ObjectType_chat || toLayout == model.ObjectType_chatDerived {
+		return fmt.Errorf("can't convert to chat")
 	}
 
 	if fromLayout == model.ObjectType_note && toLayout == model.ObjectType_collection {
@@ -65,10 +68,10 @@ func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromL
 	}
 
 	if fromLayout == model.ObjectType_note && toLayout == model.ObjectType_set {
-		return c.fromNoteToSet(space, st)
+		return c.fromNoteToSet(st)
 	}
 	if toLayout == model.ObjectType_set {
-		return c.fromAnyToSet(space, st)
+		return c.fromAnyToSet(st)
 	}
 
 	if toLayout == model.ObjectType_note {
@@ -120,7 +123,7 @@ func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	return nil
 }
 
-func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State) error {
+func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
@@ -128,25 +131,14 @@ func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State)
 	template.InitTemplate(st,
 		template.WithTitle,
 	)
-	err2 := c.fromAnyToSet(space, st)
-	if err2 != nil {
-		return err2
-	}
-	return nil
+	return c.fromAnyToSet(st)
 }
 
-func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) error {
-	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
-	if len(source) == 0 && space != nil {
-		defaultTypeID, err := space.GetTypeIdByKey(context.Background(), DefaultSetSource)
-		if err != nil {
-			return fmt.Errorf("get default type id: %w", err)
-		}
-		source = []string{defaultTypeID}
-	}
+func (c *layoutConverter) fromAnyToSet(st *state.State) error {
+	source := st.Details().GetStringList(bundle.RelationKeySetOf)
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, err := dataview.BlockBySource(c.objectStore, source)
+	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source)
 	if err != nil {
 		return err
 	}
@@ -155,11 +147,11 @@ func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) 
 }
 
 func addFeaturedRelationSetOf(st *state.State) {
-	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
 		fr = append(fr, bundle.RelationKeySetOf.String())
 	}
-	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 }
 
 func (c *layoutConverter) fromSetToCollection(st *state.State) error {
@@ -168,7 +160,11 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 		return fmt.Errorf("dataview block is not found")
 	}
 	details := st.Details()
-	setSourceIds := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	err := c.addDefaultCollectionRelationIfNotPresent(st)
+	if err != nil {
+		return err
+	}
+	setSourceIds := details.GetStringList(bundle.RelationKeySetOf)
 	spaceId := st.SpaceID()
 
 	c.removeRelationSetOf(st)
@@ -183,6 +179,38 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 	return nil
 }
 
+func (c *layoutConverter) addDefaultCollectionRelationIfNotPresent(st *state.State) error {
+	relationExists := func(relations []*model.BlockContentDataviewRelation, relationKey domain.RelationKey) bool {
+		return lo.ContainsBy(relations, func(item *model.BlockContentDataviewRelation) bool {
+			return item.Key == relationKey.String()
+		})
+	}
+
+	addRelationToView := func(view *model.BlockContentDataviewView, dv *model.BlockContentDataview, relationKey domain.RelationKey) {
+		if !relationExists(view.Relations, relationKey) {
+			bundleRelation := bundle.MustGetRelation(relationKey)
+			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: bundleRelation.Key})
+			dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{
+				Key:    bundleRelation.Key,
+				Format: bundleRelation.Format,
+			})
+		}
+	}
+
+	return st.Iterate(func(block simple.Block) (isContinue bool) {
+		dataview := block.Model().GetDataview()
+		if dataview == nil {
+			return true
+		}
+		for _, view := range dataview.Views {
+			for _, defaultRelation := range template.DefaultCollectionRelations() {
+				addRelationToView(view, dataview, defaultRelation)
+			}
+		}
+		return false
+	})
+}
+
 func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) ([]string, error) {
 	filters, err := c.generateFilters(spaceID, typesFromSet)
 	if err != nil {
@@ -192,7 +220,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 		return []string{}, nil
 	}
 
-	records, err := c.objectStore.Query(
+	records, err := c.objectStore.SpaceIndex(spaceID).Query(
 		database.Query{
 			Filters: filters,
 		},
@@ -202,7 +230,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 	}
 	ids := make([]string, 0, len(records))
 	for _, record := range records {
-		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+		ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 	}
 	return ids, nil
 }
@@ -226,9 +254,9 @@ func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromNoteToAny(st *state.State) error {
-	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
+	name, ok := st.Details().TryString(bundle.RelationKeyName)
 
-	if !ok || name.GetStringValue() == "" {
+	if !ok || name == "" {
 		textBlock, err := getFirstTextBlock(st)
 		if err != nil {
 			return err
@@ -236,7 +264,7 @@ func (c *layoutConverter) fromNoteToAny(st *state.State) error {
 		if textBlock == nil {
 			return nil
 		}
-		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Model().GetText().GetText()))
+		st.SetDetail(bundle.RelationKeyName, domain.String(textBlock.Model().GetText().GetText()))
 
 		for _, id := range textBlock.Model().ChildrenIds {
 			st.Unlink(id)
@@ -260,11 +288,11 @@ func (c *layoutConverter) fromAnyToNote(st *state.State) error {
 }
 
 func (c *layoutConverter) removeRelationSetOf(st *state.State) {
-	st.RemoveDetail(bundle.RelationKeySetOf.String())
+	st.RemoveDetail(bundle.RelationKeySetOf)
 
-	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())
-	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 }
 
 func getFirstTextBlock(st *state.State) (simple.Block, error) {
@@ -282,42 +310,40 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 	return res, nil
 }
 
-func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]*model.BlockContentDataviewFilter, error) {
-	var filters []*model.BlockContentDataviewFilter
+func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]database.FilterRequest, error) {
+	var filters []database.FilterRequest
 	m, err := c.sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
 	if err != nil {
 		return nil, fmt.Errorf("partition ids by sb type: %w", err)
 	}
 	filters = c.appendTypesFilter(m[coresb.SmartBlockTypeObjectType], filters)
-	filters, err = c.appendRelationFilters(m[coresb.SmartBlockTypeRelation], filters)
+	filters, err = c.appendRelationFilters(spaceId, m[coresb.SmartBlockTypeRelation], filters)
 	if err != nil {
 		return nil, fmt.Errorf("append relation filters: %w", err)
 	}
 	return filters, nil
 }
 
-func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
-	if len(relationIDs) != 0 {
-		for _, relationID := range relationIDs {
-			relation, err := c.objectStore.GetRelationByID(relationID)
-			if err != nil {
-				return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
-			}
-			filters = append(filters, &model.BlockContentDataviewFilter{
-				RelationKey: relation.Key,
-				Condition:   model.BlockContentDataviewFilter_Exists,
-			})
+func (c *layoutConverter) appendRelationFilters(spaceId string, relationIDs []string, filters []database.FilterRequest) ([]database.FilterRequest, error) {
+	for _, relationID := range relationIDs {
+		relation, err := c.objectStore.SpaceIndex(spaceId).GetRelationById(relationID)
+		if err != nil {
+			return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
 		}
+		filters = append(filters, database.FilterRequest{
+			RelationKey: domain.RelationKey(relation.Key),
+			Condition:   model.BlockContentDataviewFilter_Exists,
+		})
 	}
 	return filters, nil
 }
 
-func (c *layoutConverter) appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+func (c *layoutConverter) appendTypesFilter(types []string, filters []database.FilterRequest) []database.FilterRequest {
 	if len(types) != 0 {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeyType.String(),
+		filters = append(filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeyType,
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.StringList(types),
+			Value:       domain.StringList(types),
 		})
 	}
 	return filters

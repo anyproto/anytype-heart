@@ -24,22 +24,25 @@ func Test_processFiles(t *testing.T) {
 	t.Run("imported directory include mov and pdf files - md file has file blocks", func(t *testing.T) {
 		// given
 		converter := newMDConverter(&MockTempDir{})
-		_, err := os.Create("./testdata/test.pdf")
+		pdfFile := filepath.Join("testdata", "test.pdf")
+		_, err := os.Create(pdfFile)
 		assert.Nil(t, err)
-		defer os.Remove("./testdata/test.pdf")
-		_, err = os.Create("./testdata/test.mov")
+		defer os.Remove(pdfFile)
+
+		movFile := filepath.Join("testdata", "test.mov")
+		_, err = os.Create(movFile)
 		assert.Nil(t, err)
-		defer os.Remove("./testdata/test.mov")
+		defer os.Remove(movFile)
 
 		workingDir, err := os.Getwd()
-		absolutePath := filepath.Join(workingDir, "./testdata")
+		absolutePath := filepath.Join(workingDir, "testdata")
 		source := source.GetSource(absolutePath)
 
 		// when
 		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
-		assert.Len(t, files, 6)
+		assert.Len(t, files, 9)
 
 		pdfFilePath := filepath.Join(absolutePath, "test.pdf")
 		assert.Contains(t, files, pdfFilePath)
@@ -62,16 +65,16 @@ func Test_processFiles(t *testing.T) {
 	t.Run("imported directory include without mov and pdf files - no file blocks", func(t *testing.T) {
 		// given
 		converter := newMDConverter(&MockTempDir{})
-		source := source.GetSource("./testdata")
+		source := source.GetSource("testdata")
 		workingDir, err := os.Getwd()
 		assert.Nil(t, err)
-		absolutePath := filepath.Join(workingDir, "./testdata")
+		absolutePath := filepath.Join(workingDir, "testdata")
 
 		// when
 		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
-		assert.Len(t, files, 4)
+		assert.Len(t, files, 7)
 
 		pdfFilePath := filepath.Join(absolutePath, "test.pdf")
 		assert.NotContains(t, files, pdfFilePath)
