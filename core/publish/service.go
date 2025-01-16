@@ -319,7 +319,6 @@ func (s *service) createIndexFile(tempPublishDir string, uberSnapshot Publishing
 	return nil
 }
 
-// Публикует данные на сервере.
 func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, version, tempPublishDir string) error {
 	publishReq := &publishapi.PublishRequest{
 		SpaceId:  spaceId,
