@@ -48,7 +48,7 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	details.SetString(bundle.RelationKeyIconEmoji, emoji)
 	details.SetInt64(bundle.RelationKeyCreatedDate, creationTime)
 	details.SetInt64(bundle.RelationKeyLastModifiedDate, modTime)
-	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(layout))
 	return details
 }
 
@@ -91,6 +91,10 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 
 		if view.DefaultTemplateId != "" {
 			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
+		}
+
+		if view.DefaultObjectTypeId != "" {
+			view.DefaultObjectTypeId = oldIDtoNew[view.DefaultObjectTypeId]
 		}
 
 		updateRelationsInView(view, oldIDtoNew)

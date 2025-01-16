@@ -41,6 +41,7 @@ func (s *service) createChatDerived(ctx context.Context, space clientspace.Space
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, key).(*state.State)
+	details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
 	details.Set(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
 	createState.SetDetails(details)
 

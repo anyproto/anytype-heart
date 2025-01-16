@@ -124,7 +124,7 @@ func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
 				Value:       domain.String(relationKey),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
@@ -172,8 +172,8 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 
 			templates := []template.StateTransformer{
 				template.WithEmpty,
-				template.WithObjectTypesAndLayout(ctx.State.ObjectTypeKeys(), layout),
-				template.WithLayout(layout),
+				template.WithObjectTypes(ctx.State.ObjectTypeKeys()),
+				template.WithResolvedLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,
 				template.WithLinkFieldsMigration,
@@ -204,27 +204,33 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				templates = append(templates,
 					template.WithTitle,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+					template.WithLayout(layout),
 				)
 			case model.ObjectType_objectType:
 				templates = append(templates,
 					template.WithTitle,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+					template.WithLayout(layout),
 				)
 			case model.ObjectType_chat:
 				templates = append(templates,
 					template.WithTitle,
 					template.WithBlockChat,
+					template.WithLayout(layout),
 				)
 			case model.ObjectType_chatDerived:
 				templates = append(templates,
 					template.WithTitle,
 					template.WithBlockChat,
+					template.WithLayout(layout),
 				)
 				// TODO case for relationOption?
 			case model.ObjectType_tag:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithNoDescription)
+					template.WithNoDescription,
+					template.WithLayout(layout),
+				)
 			default:
 				templates = append(templates,
 					template.WithTitle,

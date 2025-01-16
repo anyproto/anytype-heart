@@ -37,6 +37,11 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+      Space:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/editor/lastused:
     interfaces:
       ObjectUsageUpdater:

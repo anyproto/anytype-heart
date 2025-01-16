@@ -32,9 +32,9 @@ func TestTextSort(t *testing.T) {
 			bundle.RelationKeyName: domain.String("b"),
 		})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("a"),
-			bundle.RelationKeySnippet: domain.String("b"),
-			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyName:           domain.String("a"),
+			bundle.RelationKeySnippet:        domain.String("b"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 		})
 		asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
@@ -47,8 +47,8 @@ func TestTextSort(t *testing.T) {
 				bundle.RelationKeyName: domain.String("a"),
 			})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeySnippet: domain.String("b"),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_note)),
+				bundle.RelationKeySnippet:        domain.String("b"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 			})
 			asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 			assertCompare(t, asc, a, b, -1)
@@ -60,8 +60,8 @@ func TestTextSort(t *testing.T) {
 				bundle.RelationKeyName: domain.String("a"),
 			})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeySnippet: domain.String("a"),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_note)),
+				bundle.RelationKeySnippet:        domain.String("a"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 			})
 			asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 			assertCompare(t, asc, a, b, 0)
