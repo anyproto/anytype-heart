@@ -326,7 +326,7 @@ func StructDiffIntoEventsWithSubIds(
 	filterKeys, keysToUnset []domain.RelationKey,
 	subIds []string,
 ) (msgs []*pb.EventMessage) {
-	if diff.Len() == 0 {
+	if diff.Len() == 0 && len(keysToUnset) == 0 {
 		return nil
 	}
 	var (
@@ -351,10 +351,13 @@ func StructDiffIntoEventsWithSubIds(
 		}))
 	}
 
-	filteredKeys := slices.DeleteFunc(keysToUnset, func(key domain.RelationKey) bool {
-		return !slices.Contains(filterKeys, key)
-	})
-	if len(filteredKeys) > 0 {
+	if len(filterKeys) != 0 {
+		keysToUnset = slices.DeleteFunc(keysToUnset, func(key domain.RelationKey) bool {
+			return !slices.Contains(filterKeys, key)
+		})
+	}
+
+	if len(keysToUnset) > 0 {
 		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsUnset{
 			ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
 				Id:     contextId,
