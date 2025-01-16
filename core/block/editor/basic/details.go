@@ -298,9 +298,10 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.Int64()), false)
 	}
 	if detail.Key == bundle.RelationKeyRecommendedLayout {
-		fromLayout := model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyRecommendedLayout))
-		toLayout := model.ObjectTypeLayout(detail.Value.Int64())
-		if !isLayoutConversionAllowed(fromLayout, toLayout) {
+		fromLayout := st.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
+		toLayout := detail.Value.Int64()
+		// nolint:gosec
+		if !isLayoutConversionAllowed(model.ObjectTypeLayout(fromLayout), model.ObjectTypeLayout(toLayout)) {
 			return fmt.Errorf("can't change object type recommended layout from '%s' to '%s'",
 				model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 		}
