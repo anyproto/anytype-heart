@@ -18,6 +18,7 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/identity"
@@ -27,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/hash"
 )
 
 var (
@@ -60,6 +60,10 @@ type PublishingUberSnapshotMeta struct {
 	InviteLink string `json:"inviteLink,omitempty"`
 }
 
+type Heads struct {
+	Heads []string `json:"heads"`
+}
+
 // Contains all publishing .pb files
 // and publishing meta info
 type PublishingUberSnapshot struct {
@@ -78,17 +82,12 @@ type Service interface {
 	GetStatus(ctx context.Context, spaceId string, objectId string) (*pb.RpcPublishingPublishState, error)
 }
 
-type MembershipStatusProvider interface {
-	MembershipStatus() model.MembershipStatus
-}
-
 type service struct {
-	spaceService             space.Service
-	exportService            export.Export
-	publishClientService     publishclient.Client
-	membershipStatusProvider MembershipStatusProvider
-	identityService          identity.Service
-	inviteService            inviteservice.InviteService
+	spaceService         space.Service
+	exportService        export.Export
+	publishClientService publishclient.Client
+	identityService      identity.Service
+	inviteService        inviteservice.InviteService
 }
 
 func New() Service {
@@ -99,7 +98,6 @@ func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.exportService = app.MustComponent[export.Export](a)
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
-	s.membershipStatusProvider = app.MustComponent[MembershipStatusProvider](a)
 	s.identityService = app.MustComponent[identity.Service](a)
 	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
 	return nil
@@ -144,14 +142,18 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 	return
 }
 
-func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (err error) {
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (err error) {
+	joinSpace = true
 	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(exportPath)
 
-	limit := s.getPublishLimit()
+	limit, err := s.getPublishLimit(globalName)
+	if err != nil {
+		return err
+	}
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
@@ -159,16 +161,20 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	spc, inviteLink, err := s.getSpaceAndInviteLink(ctx, spaceId, joinSpace)
+	uberSnapshot, size, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId)
 	if err != nil {
 		return err
 	}
 
-	uberSnapshot, size, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId, inviteLink)
+	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
 	}
 
+	err = s.applyInviteLink(ctx, spc, &uberSnapshot, joinSpace)
+	if err != nil {
+		return err
+	}
 	if err := s.createIndexFile(tempPublishDir, uberSnapshot, &size, limit); err != nil {
 		return err
 	}
@@ -185,26 +191,20 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	return nil
 }
 
-func (s *service) getSpaceAndInviteLink(ctx context.Context, spaceId string, joinSpace bool) (clientspace.Space, string, error) {
-	spc, err := s.spaceService.Get(ctx, spaceId)
+func (s *service) applyInviteLink(ctx context.Context, spc clientspace.Space, snapshot *PublishingUberSnapshot, joinSpace bool) error {
+	inviteLink, err := s.extractInviteLink(ctx, spc.Id(), joinSpace, spc.IsPersonal())
 	if err != nil {
-		return nil, "", err
+		return err
 	}
-
-	inviteLink, err := s.extractInviteLink(ctx, spaceId, joinSpace, spc.IsPersonal())
-	if err != nil {
-		return nil, "", err
-	}
-
-	return spc, inviteLink, nil
+	snapshot.Meta.InviteLink = inviteLink
+	return nil
 }
 
-func (s *service) processExportedData(dirEntries []fs.DirEntry, exportPath, tempPublishDir string, limit int64, spaceId, pageId, inviteLink string) (PublishingUberSnapshot, int64, error) {
+func (s *service) processExportedData(dirEntries []fs.DirEntry, exportPath, tempPublishDir string, limit int64, spaceId, pageId string) (PublishingUberSnapshot, int64, error) {
 	uberSnapshot := PublishingUberSnapshot{
 		Meta: PublishingUberSnapshotMeta{
 			SpaceId:    spaceId,
 			RootPageId: pageId,
-			InviteLink: inviteLink,
 		},
 		PbFiles: make(map[string]string),
 	}
@@ -365,35 +365,40 @@ func (s *service) evaluateDocumentVersion(spc clientspace.Space, pageId string) 
 	if err != nil {
 		return "", err
 	}
-	version := hash.HeadsHash(heads)
-	return version, nil
+	slices.Sort(heads)
+	h := &Heads{Heads: heads}
+	jsonData, err := json.Marshal(h)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
 }
 
-func (s *service) getPublishLimit() int64 {
-	status := s.membershipStatusProvider.MembershipStatus()
-	limit := defaultLimit
-	if status == model.Membership_StatusActive {
-		limit = membershipLimit
+func (s *service) getPublishLimit(globalName string) (int64, error) {
+	if globalName != "" {
+		return membershipLimit, nil
 	}
-	return int64(limit)
+	return defaultLimit, nil
 }
 
 func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
 	log.Info("Publish called", zap.String("pageId", pageId))
-	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, joinSpace)
+
+	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
+	globalName := details.GetString(bundle.RelationKeyGlobalName)
+
+	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 		return
 	}
-	url := s.makeUrl(ctx, uri)
+	url := s.makeUrl(uri, identity, globalName)
 
 	return PublishResult{Cid: url}, nil
 }
 
-func (s *service) makeUrl(ctx context.Context, uri string) string {
-	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
-	globalName := details.GetString(bundle.RelationKeyGlobalName)
+func (s *service) makeUrl(uri, identity, globalName string) string {
 	var domain string
 	if globalName != "" {
 		domain = fmt.Sprintf(memberUrlTemplate, globalName)

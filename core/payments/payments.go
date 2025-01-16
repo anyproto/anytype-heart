@@ -3,7 +3,6 @@ package payments
 import (
 	"context"
 	"errors"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -138,8 +137,6 @@ type service struct {
 
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
-	membershipStatus         model.MembershipStatus
-	membershipStatusMu       sync.Mutex
 }
 
 func (s *service) Name() (name string) {
@@ -187,20 +184,8 @@ func (s *service) getPeriodicStatus(ctx context.Context) error {
 
 	// get subscription status (from cache or from the PP node)
 	// if status has changed -> it will send events, etc
-	status, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-	if err == nil {
-		membershipStatus := status.GetData().Status
-		s.membershipStatusMu.Lock()
-		s.membershipStatus = membershipStatus
-		s.membershipStatusMu.Unlock()
-	}
+	_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 	return err
-}
-
-func (s *service) MembershipStatus() model.MembershipStatus {
-	s.membershipStatusMu.Lock()
-	defer s.membershipStatusMu.Unlock()
-	return s.membershipStatus
 }
 
 func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusResponse) {
