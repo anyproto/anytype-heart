@@ -11,19 +11,15 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/anytype-publish-server/publishclient"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
-	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,6 +42,7 @@ const (
 	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
 	memberUrlTemplate     = "https://%s.coop"
 	defaultUrlTemplate    = "https://any.coop/%s"
+	indexFileName         = "index.json.gz"
 )
 
 var log = logger.NewNamed(CName)
@@ -86,13 +83,9 @@ type MembershipStatusProvider interface {
 }
 
 type service struct {
-	commonFile               fileservice.FileService
-	fileSyncService          filesync.FileSync
 	spaceService             space.Service
-	dagService               ipld.DAGService
 	exportService            export.Export
 	publishClientService     publishclient.Client
-	accountService           accountservice.Service
 	membershipStatusProvider MembershipStatusProvider
 	identityService          identity.Service
 	inviteService            inviteservice.InviteService
@@ -103,13 +96,9 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.commonFile = app.MustComponent[fileservice.FileService](a)
-	s.dagService = s.commonFile.DAGService()
-	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.exportService = app.MustComponent[export.Export](a)
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
-	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.membershipStatusProvider = app.MustComponent[MembershipStatusProvider](a)
 	s.identityService = app.MustComponent[identity.Service](a)
 	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
@@ -156,26 +145,11 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 }
 
 func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (err error) {
-
 	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
 	if err != nil {
-		return
+		return err
 	}
 	defer os.RemoveAll(exportPath)
-
-	// go through dir dirs
-	// if files/, copy them to `publishTmpFolder`
-	// else
-	// for each file in $dir
-	// create a json in "main" map like
-	// {
-	//   pbfiles: {
-	//     "objects/arstoarseitnwfuy.pb": <jsonpb content of this file>,
-	//   }
-	// }
-	// after that, also add
-	// "meta": { "root-page", "inviteLink", and other things}
-	// then, add this `index.json` in `publishTmpFolder`
 
 	limit := s.getPublishLimit()
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
@@ -185,14 +159,47 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
+	spc, inviteLink, err := s.getSpaceAndInviteLink(ctx, spaceId, joinSpace)
+	if err != nil {
+		return err
+	}
+
+	uberSnapshot, size, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId, inviteLink)
+	if err != nil {
+		return err
+	}
+
+	if err := s.createIndexFile(tempPublishDir, uberSnapshot, &size, limit); err != nil {
+		return err
+	}
+
+	version, err := s.evaluateDocumentVersion(spc, pageId)
+	if err != nil {
+		return err
+	}
+
+	if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *service) getSpaceAndInviteLink(ctx context.Context, spaceId string, joinSpace bool) (clientspace.Space, string, error) {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
+
 	inviteLink, err := s.extractInviteLink(ctx, spaceId, joinSpace, spc.IsPersonal())
 	if err != nil {
-		return err
+		return nil, "", err
 	}
+
+	return spc, inviteLink, nil
+}
+
+func (s *service) processExportedData(dirEntries []fs.DirEntry, exportPath, tempPublishDir string, limit int64, spaceId, pageId, inviteLink string) (PublishingUberSnapshot, int64, error) {
 	uberSnapshot := PublishingUberSnapshot{
 		Meta: PublishingUberSnapshotMeta{
 			SpaceId:    spaceId,
@@ -205,105 +212,116 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	var size int64
 	for _, entry := range dirEntries {
 		if entry.IsDir() {
-			var dirFiles []fs.DirEntry
-			dirName := entry.Name()
-
-			if dirName == export.Files {
-				fileDir := filepath.Join(tempPublishDir, export.Files)
-				err = os.CopyFS(fileDir, os.DirFS(filepath.Join(exportPath, export.Files)))
-				if err != nil {
-					return
-				}
-				err = filepath.Walk(fileDir, func(path string, info os.FileInfo, err error) error {
-					if !info.IsDir() {
-						size = size + info.Size()
-						if size > limit {
-							return ErrLimitExceeded
-						}
-					}
-					return nil
-				})
-				if err != nil {
-					return err
-				}
-				continue
-			}
-
-			dirFiles, err = os.ReadDir(filepath.Join(exportPath, dirName))
-			if err != nil {
-				return
-			}
-
-			for _, file := range dirFiles {
-				withDirName := filepath.Join(dirName, file.Name())
-				var snapshotData []byte
-				snapshotData, err = os.ReadFile(filepath.Join(exportPath, withDirName))
-				if err != nil {
-					return
-				}
-
-				snapshot := pb.SnapshotWithType{}
-				err = proto.Unmarshal(snapshotData, &snapshot)
-				if err != nil {
-					return
-				}
-
-				var jsonData string
-				jsonData, err = jsonM.MarshalToString(&snapshot)
-				if err != nil {
-					return
-				}
-
-				fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
-				uberSnapshot.PbFiles[fileNameKey] = jsonData
-
+			if err := s.processDirectory(entry, exportPath, tempPublishDir, &uberSnapshot, &size, limit); err != nil {
+				return PublishingUberSnapshot{}, 0, err
 			}
 		} else {
-			err = fmt.Errorf("unexpeted file on export root level: %s", entry.Name())
-			return
+			return PublishingUberSnapshot{}, 0, fmt.Errorf("unexpected file on export root level: %s", entry.Name())
 		}
-
 	}
 
-	var jsonData []byte
-	jsonData, err = json.Marshal(&uberSnapshot)
+	return uberSnapshot, size, nil
+}
+
+func (s *service) processDirectory(entry fs.DirEntry, exportPath, tempPublishDir string, uberSnapshot *PublishingUberSnapshot, size *int64, limit int64) error {
+	dirName := entry.Name()
+	if dirName == export.Files {
+		return s.processFilesDirectory(exportPath, tempPublishDir, size, limit)
+	}
+
+	dirFiles, err := os.ReadDir(filepath.Join(exportPath, dirName))
 	if err != nil {
-		return
+		return err
 	}
 
-	outputFile := filepath.Join(tempPublishDir, "index.json.gz")
+	for _, file := range dirFiles {
+		if err := s.processSnapshotFile(exportPath, dirName, file, uberSnapshot); err != nil {
+			return err
+		}
+	}
 
-	var file *os.File
-	file, err = os.Create(outputFile)
+	return nil
+}
+
+func (s *service) processFilesDirectory(exportPath, tempPublishDir string, size *int64, limit int64) error {
+	originalPath := filepath.Join(exportPath, export.Files)
+	err := filepath.Walk(originalPath, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			*size += info.Size()
+			if *size > limit {
+				return ErrLimitExceeded
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		return
+		return err
 	}
+	fileDir := filepath.Join(tempPublishDir, export.Files)
+	if err := os.CopyFS(fileDir, os.DirFS(originalPath)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEntry, uberSnapshot *PublishingUberSnapshot) error {
+	withDirName := filepath.Join(dirName, file.Name())
+	snapshotData, err := os.ReadFile(filepath.Join(exportPath, withDirName))
+	if err != nil {
+		return err
+	}
+
+	snapshot := pb.SnapshotWithType{}
+	if err := proto.Unmarshal(snapshotData, &snapshot); err != nil {
+		return err
+	}
+
+	jsonData, err := jsonM.MarshalToString(&snapshot)
+	if err != nil {
+		return err
+	}
+
+	fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
+	uberSnapshot.PbFiles[fileNameKey] = jsonData
+	return nil
+}
+
+func (s *service) createIndexFile(tempPublishDir string, uberSnapshot PublishingUberSnapshot, size *int64, limit int64) error {
+	jsonData, err := json.Marshal(&uberSnapshot)
+	if err != nil {
+		return err
+	}
+
+	outputFile := filepath.Join(tempPublishDir, indexFileName)
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
 	writer := gzip.NewWriter(file)
-	_, err = writer.Write(jsonData)
-	err = writer.Close()
-	if err != nil {
-		file.Close()
-		return
+	if _, err := writer.Write(jsonData); err != nil {
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		return err
 	}
 
 	stat, err := file.Stat()
 	if err != nil {
 		return err
 	}
-	err = file.Close()
-	if err != nil {
-		return
-	}
-	size = size + stat.Size()
-	if size > limit {
+
+	*size += stat.Size()
+	if *size > limit {
 		return ErrLimitExceeded
 	}
 
-	version, err := s.evaluateDocumentVersion(spc, pageId)
-	if err != nil {
-		return err
-	}
+	return nil
+}
+
+// Публикует данные на сервере.
+func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, version, tempPublishDir string) error {
 	publishReq := &publishapi.PublishRequest{
 		SpaceId:  spaceId,
 		ObjectId: pageId,
@@ -313,15 +331,14 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
 	if err != nil {
-		return
+		return err
 	}
 
-	err = s.publishClientService.UploadDir(ctx, uploadUrl, tempPublishDir)
-	if err != nil {
-		return
+	if err := s.publishClientService.UploadDir(ctx, uploadUrl, tempPublishDir); err != nil {
+		return err
 	}
+
 	return nil
-
 }
 
 func (s *service) extractInviteLink(ctx context.Context, spaceId string, joinSpace, isPersonal bool) (string, error) {
