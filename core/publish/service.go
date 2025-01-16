@@ -34,8 +34,7 @@ const CName = "common.core.publishservice"
 var log = logger.NewNamed(CName)
 
 type PublishResult struct {
-	Cid string
-	Key string
+	Url string
 }
 
 type PublishingUberSnapshotMeta struct {
@@ -270,8 +269,7 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string) (res
 	url := fmt.Sprintf("%s/%s/%s", stagingUrl, identity, uri)
 
 	return PublishResult{
-		Cid: url,
-		Key: "fakekey",
+		Url: url,
 	}, nil
 
 }

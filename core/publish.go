@@ -29,7 +29,7 @@ func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishin
 			Code:        code,
 			Description: getErrorDescription(nil),
 		},
-		Uri: res.Cid,
+		Uri: res.Url,
 		// PublishCid:     res.Cid,
 		// PublishFileKey: res.Key,
 
