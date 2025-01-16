@@ -30,6 +30,8 @@ type migrator struct {
 	oldPath         string
 	objectStorePath string
 	finisher        migratorfinisher.Service
+
+	anyStoreConfig *anystore.Config
 }
 
 type pathProvider interface {
@@ -52,6 +54,7 @@ func (m *migrator) Init(a *app.App) (err error) {
 	m.newStorage = app.MustComponent[storage.ClientStorage](a)
 	m.process = app.MustComponent[process.Service](a)
 	m.finisher = app.MustComponent[migratorfinisher.Service](a)
+	m.anyStoreConfig = cfg.GetAnyStoreConfig()
 	return nil
 }
 
@@ -148,24 +151,35 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 }
 
 func (m *migrator) verify(ctx context.Context, fast bool) ([]*verificationReport, error) {
-	v := &verifier{
-		fast:       fast,
-		oldStorage: m.oldStorage,
-		newStorage: m.newStorage,
+	var reports []*verificationReport
+	err := m.doObjectStoreDb(ctx, func(db anystore.DB) error {
+		resolverStore, err := spaceresolverstore.New(ctx, db)
+		if err != nil {
+			return fmt.Errorf("new resolver store: %w", err)
+		}
+
+		v := &verifier{
+			fast:          fast,
+			oldStorage:    m.oldStorage,
+			newStorage:    m.newStorage,
+			resolverStore: resolverStore,
+		}
+		reports, err = v.verify(ctx)
+		return err
+	})
+	if err != nil {
+		return nil, err
 	}
-	return v.verify(ctx)
+	return reports, nil
 }
 
 func (m *migrator) doObjectStoreDb(ctx context.Context, proc func(db anystore.DB) error) error {
-	// TODO cfg
-	cfg := &anystore.Config{}
-
 	err := ensureDirExists(m.objectStorePath)
 	if err != nil {
 		return fmt.Errorf("ensure dir exists: %w", err)
 	}
 
-	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, filepath.Join(m.objectStorePath, "objects.db"), cfg)
+	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, filepath.Join(m.objectStorePath, "objects.db"), m.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
