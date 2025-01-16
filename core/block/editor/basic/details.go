@@ -62,13 +62,13 @@ func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEv
 	return updatedKeys, nil
 }
 
-func (bs *basic) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
-	_, _, err = bs.updateDetails(update)
+func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
+	_, _, err = bs.updateDetails(ctx, update)
 	return err
 }
 
-func (bs *basic) UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) error {
-	oldDetails, newDetails, err := bs.updateDetails(update)
+func (bs *basic) UpdateDetailsAndLastUsed(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) error {
+	oldDetails, newDetails, err := bs.updateDetails(ctx, update)
 	if err != nil {
 		return err
 	}
@@ -84,11 +84,11 @@ func (bs *basic) UpdateDetailsAndLastUsed(update func(current *domain.Details) (
 	return nil
 }
 
-func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
+func (bs *basic) updateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
 	if update == nil {
 		return nil, nil, fmt.Errorf("update function is nil")
 	}
-	s := bs.NewState()
+	s := bs.NewStateCtx(ctx)
 
 	oldDetails = s.CombinedDetails()
 	oldDetailsCopy := oldDetails.Copy()
