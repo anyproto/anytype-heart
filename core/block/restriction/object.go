@@ -47,6 +47,7 @@ var (
 		model.Restrictions_Template,
 		model.Restrictions_Details,
 		model.Restrictions_Delete,
+		model.Restrictions_Publish,
 	}
 	sysRelationsRestrictions = ObjectRestrictions{
 		model.Restrictions_Blocks,
@@ -56,6 +57,7 @@ var (
 		model.Restrictions_Delete,
 		model.Restrictions_Relations,
 		model.Restrictions_Details,
+		model.Restrictions_Publish,
 	}
 
 	objectRestrictionsByLayout = map[model.ObjectTypeLayout]ObjectRestrictions{
