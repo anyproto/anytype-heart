@@ -12,8 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestPage_CreationStateMigration(t *testing.T) {
@@ -26,13 +26,13 @@ func TestPage_CreationStateMigration(t *testing.T) {
 			ObjectTypeKeys: []domain.TypeKey{bundle.TypeKeyTask},
 		}
 
-		storeFixture := objectstore.NewStoreFixture(t)
+		storeFixture := spaceindex.NewStoreFixture(t)
 		storeFixture.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                pbtypes.String("task"),
-				bundle.RelationKeyUniqueKey:         pbtypes.String(bundle.TypeKeyTask.URL()),
-				bundle.RelationKeyRecommendedLayout: pbtypes.Int64(int64(model.ObjectType_todo)),
-				bundle.RelationKeySpaceId:           pbtypes.String("spaceId"),
+				bundle.RelationKeyId:                domain.String("task"),
+				bundle.RelationKeyUniqueKey:         domain.String(bundle.TypeKeyTask.URL()),
+				bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_todo)),
+				bundle.RelationKeySpaceId:           domain.String("spaceId"),
 			},
 		})
 
@@ -46,8 +46,7 @@ func TestPage_CreationStateMigration(t *testing.T) {
 		migration.RunMigrations(p, initContext)
 
 		// then
-		done := pbtypes.Get(initContext.State.Details(), bundle.RelationKeyDone.String())
-		assert.NotNil(t, done)
-		assert.False(t, done.GetBoolValue())
+		done := initContext.State.Details().GetBool(bundle.RelationKeyDone)
+		assert.False(t, done)
 	})
 }

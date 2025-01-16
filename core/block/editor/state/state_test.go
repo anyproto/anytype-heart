@@ -2991,8 +2991,8 @@ func TestState_AddRelationLinks(t *testing.T) {
 		relLinks := s.GetRelationLinks()
 		assert.Equal(t, 1, len(relLinks))
 		assert.True(t, relLinks.Has("checkboxLink"))
-		detailValue := s.Details().GetFields()["checkboxLink"]
-		assert.Equal(t, pbtypes.Bool(false), detailValue)
+		detailValue := s.Details().Get("checkboxLink")
+		assert.Equal(t, domain.Bool(false), detailValue)
 	})
 	t.Run("multi links", func(t *testing.T) {
 		// given

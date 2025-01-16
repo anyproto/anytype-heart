@@ -1702,7 +1702,7 @@ func (s *State) AddRelationLinks(links ...*model.RelationLink) {
 		if !relLinks.Has(l.Key) {
 			relLinks = append(relLinks, l)
 			if l.Format == model.RelationFormat_checkbox {
-				s.SetDetail(l.Key, pbtypes.Bool(false))
+				s.SetDetail(domain.RelationKey(l.Key), domain.Bool(false))
 			}
 		}
 	}
