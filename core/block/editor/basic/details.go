@@ -73,7 +73,7 @@ func (bs *basic) UpdateDetailsAndLastUsed(update func(current *domain.Details) (
 		return err
 	}
 
-	diff := domain.StructDiff(oldDetails, newDetails)
+	diff, _ := domain.StructDiff(oldDetails, newDetails)
 	if diff.Len() == 0 {
 		return nil
 	}
