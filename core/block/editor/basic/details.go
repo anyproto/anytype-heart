@@ -45,9 +45,13 @@ func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []doma
 func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
 	s := bs.NewStateCtx(ctx)
 
+	var updates []domain.Detail
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
-	updates, updatedKeys := bs.collectDetailUpdates(details, s)
+	updates, updatedKeys, err = bs.collectDetailUpdates(details, s)
+	if err != nil {
+		return nil, err
+	}
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
@@ -107,19 +111,18 @@ func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Det
 	return oldDetails, newDetails, bs.Apply(s)
 }
 
-func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]domain.Detail, []domain.RelationKey) {
+func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]domain.Detail, []domain.RelationKey, error) {
 	updates := make([]domain.Detail, 0, len(details))
 	keys := make([]domain.RelationKey, 0, len(details))
 	for _, detail := range details {
 		update, err := bs.createDetailUpdate(s, detail)
-		if err == nil {
-			updates = append(updates, update)
-			keys = append(keys, update.Key)
-		} else {
-			log.Errorf("can't set detail %s: %s", detail.Key, err)
+		if err != nil {
+			return nil, nil, err
 		}
+		updates = append(updates, update)
+		keys = append(keys, update.Key)
 	}
-	return updates, keys
+	return updates, keys, nil
 }
 
 func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *domain.Details {
@@ -293,6 +296,14 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 	if detail.Key == bundle.RelationKeyResolvedLayout {
 		// special case when client sets the layout detail directly instead of using SetLayoutInState command
 		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.Int64()), false)
+	}
+	if detail.Key == bundle.RelationKeyRecommendedLayout {
+		fromLayout := model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyRecommendedLayout))
+		toLayout := model.ObjectTypeLayout(detail.Value.Int64())
+		if !isLayoutConversionAllowed(fromLayout, toLayout) {
+			return fmt.Errorf("can't change object type recommended layout from '%s' to '%s'",
+				model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
+		}
 	}
 	return nil
 }
