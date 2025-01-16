@@ -154,7 +154,6 @@ type SmartBlock interface {
 	History() undo.History
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error)
 	AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error)
 	RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
@@ -565,13 +564,13 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 	id := details.GetString(bundle.RelationKeyId)
 	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
-		diff := domain.StructDiff(v, details)
+		diff, keysToUnset := domain.StructDiff(v, details)
 		if id == sb.Id() {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 			diff = diff.CopyOnlyKeys(bundle.LocalRelationsKeys...)
 		}
 
-		msgs = append(msgs, state.StructDiffIntoEvents(sb.SpaceID(), id, diff)...)
+		msgs = append(msgs, state.StructDiffIntoEvents(sb.SpaceID(), id, diff, keysToUnset)...)
 	} else {
 		msgs = append(msgs, event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectDetailsSet{
 			ObjectDetailsSet: &pb.EventObjectDetailsSet{
@@ -902,14 +901,6 @@ func (sb *smartBlock) NewStateCtx(ctx session.Context) *state.State {
 
 func (sb *smartBlock) History() undo.History {
 	return sb.undo
-}
-
-func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error) {
-	s := sb.NewStateCtx(ctx)
-	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
-		return
-	}
-	return sb.Apply(s)
 }
 
 func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
