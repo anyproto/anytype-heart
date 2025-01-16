@@ -31,11 +31,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/identity"
+	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/encode"
+	"github.com/anyproto/anytype-heart/util/hash"
 )
 
 var (
@@ -45,8 +50,11 @@ var (
 const CName = "common.core.publishservice"
 
 const (
-	membershipLimit = 100 << 20
-	defaultLimit    = 10 << 20
+	membershipLimit       = 100 << 20
+	defaultLimit          = 10 << 20
+	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
+	memberUrlTemplate     = "https://%s.coop"
+	defaultUrlTemplate    = "https://any.coop/%s"
 )
 
 var log = logger.NewNamed(CName)
@@ -76,7 +84,10 @@ type PublishingUberSnapshot struct {
 
 type Service interface {
 	app.ComponentRunnable
-	Publish(ctx context.Context, spaceId, pageObjId, uri string) (res PublishResult, err error)
+	Publish(ctx context.Context, spaceId, pageObjId, uri string, joinSpace bool) (res PublishResult, err error)
+	Unpublish(ctx context.Context, spaceId, pageObjId string) error
+	PublishList(ctx context.Context, id string) ([]*pb.RpcPublishingPublishState, error)
+	ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishingPublishState, error)
 }
 
 type MembershipStatusProvider interface {
@@ -92,6 +103,8 @@ type service struct {
 	publishClientService     publishclient.Client
 	accountService           accountservice.Service
 	membershipStatusProvider MembershipStatusProvider
+	identityService          identity.Service
+	inviteService            inviteservice.InviteService
 }
 
 func New() Service {
@@ -107,6 +120,8 @@ func (s *service) Init(a *app.App) error {
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.membershipStatusProvider = app.MustComponent[MembershipStatusProvider](a)
+	s.identityService = app.MustComponent[identity.Service](a)
+	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
 	return nil
 }
 
@@ -359,7 +374,7 @@ func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res P
 	return
 }
 
-func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri string) (err error) {
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (err error) {
 
 	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
 	if err != nil {
@@ -389,10 +404,19 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	inviteLink, err := s.extractInviteLink(ctx, spaceId, joinSpace, spc.IsPersonal())
+	if err != nil {
+		return err
+	}
 	uberSnapshot := PublishingUberSnapshot{
 		Meta: PublishingUberSnapshotMeta{
 			SpaceId:    spaceId,
 			RootPageId: pageId,
+			InviteLink: inviteLink,
 		},
 		PbFiles: make(map[string]string),
 	}
@@ -496,11 +520,15 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	}
 
 	log.Error("publishing started", zap.String("pageid", pageId), zap.String("uri", uri))
+	version, err := s.evaluateDocumentVersion(spc, pageId)
+	if err != nil {
+		return err
+	}
 	publishReq := &publishapi.PublishRequest{
 		SpaceId:  spaceId,
 		ObjectId: pageId,
 		Uri:      uri,
-		Version:  "fake-ver-" + uniqName(),
+		Version:  version,
 	}
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
@@ -519,6 +547,31 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 
 }
 
+func (s *service) extractInviteLink(ctx context.Context, spaceId string, joinSpace, isPersonal bool) (string, error) {
+	var inviteLink string
+	if joinSpace && !isPersonal {
+		inviteInfo, err := s.inviteService.GetCurrent(ctx, spaceId)
+		if err != nil {
+			return "", err
+		}
+		inviteLink = fmt.Sprintf(inviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
+	}
+	return inviteLink, nil
+}
+
+func (s *service) evaluateDocumentVersion(spc clientspace.Space, pageId string) (string, error) {
+	treeStorage, err := spc.Storage().TreeStorage(pageId)
+	if err != nil {
+		return "", err
+	}
+	heads, err := treeStorage.Heads()
+	if err != nil {
+		return "", err
+	}
+	version := hash.HeadsHash(heads)
+	return version, nil
+}
+
 func (s *service) getPublishLimit() int64 {
 	status := s.membershipStatusProvider.MembershipStatus()
 	limit := defaultLimit
@@ -528,24 +581,35 @@ func (s *service) getPublishLimit() int64 {
 	return int64(limit)
 }
 
-func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string) (res PublishResult, err error) {
+func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
 	log.Info("Publish called", zap.String("pageId", pageId))
-	err = s.publishToPublishServer(ctx, spaceId, pageId, uri)
+	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, joinSpace)
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 		return
 	}
+	url := s.makeUrl(ctx, uri)
 
-	// for now: staging-url/identity/pageid
-	// will be fixed in GO-4758
-	stagingUrl := "https://any.coop"
-	identity := s.accountService.Account().SignKey.GetPublic().Account()
-	url := fmt.Sprintf("%s/%s/%s", stagingUrl, identity, uri)
+	return PublishResult{Cid: url}, nil
+}
 
-	return PublishResult{
-		Cid: url,
-		Key: "fakekey",
-	}, nil
+func (s *service) makeUrl(ctx context.Context, uri string) string {
+	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
+	globalName := details.GetString(bundle.RelationKeyGlobalName)
+	var domain string
+	if globalName != "" {
+		domain = fmt.Sprintf(memberUrlTemplate, globalName)
+	} else {
+		domain = fmt.Sprintf(defaultUrlTemplate, identity)
+	}
+	url := fmt.Sprintf("%s/%s", domain, uri)
+	return url
+}
 
+func (s *service) Unpublish(ctx context.Context, spaceId, pageObjId string) error {
+	return s.publishClientService.UnPublish(ctx, &publishapi.UnPublishRequest{
+		SpaceId:  spaceId,
+		ObjectId: pageObjId,
+	})
 }

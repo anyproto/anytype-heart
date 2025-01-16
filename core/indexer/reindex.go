@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/hash"
 )
 
 const (
@@ -448,7 +449,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 			continue
 		}
 
-		hh := headsHash(heads)
+		hh := hash.HeadsHash(heads)
 		if lastHash != hh {
 			if lastHash != "" {
 				log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))

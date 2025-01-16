@@ -2,20 +2,17 @@ package indexer
 
 import (
 	"context"
-	"crypto/sha256"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/util/hash"
 )
 
 type spaceIndexer struct {
@@ -130,7 +127,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
 		return err
 	}
-	headHashToIndex := headsHash(info.Heads)
+	headHashToIndex := hash.HeadsHash(info.Heads)
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
 			return
@@ -215,14 +212,4 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 	})
 
 	return nil
-}
-
-func headsHash(heads []string) string {
-	if len(heads) == 0 {
-		return ""
-	}
-	slices.Sort(heads)
-
-	sum := sha256.Sum256([]byte(strings.Join(heads, ",")))
-	return fmt.Sprintf("%x", sum)
 }
