@@ -16,6 +16,7 @@
           pkgs.protoc-gen-grpc-web
           pkgs.protoc-gen-js
           pkgs.go_1_23
+          pkgs.golint
           pkgs.gox
           pkgs.protobuf3_21
           pkgs.pkg-config
