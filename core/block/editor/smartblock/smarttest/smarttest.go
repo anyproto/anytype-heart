@@ -294,7 +294,7 @@ func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *domain.Detail
 		return err
 	}
 
-	diff := domain.StructDiff(oldDetails, newDetails)
+	diff, _ := domain.StructDiff(oldDetails, newDetails)
 	if diff == nil {
 		return nil
 	}
