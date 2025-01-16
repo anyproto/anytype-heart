@@ -52,6 +52,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/auth.DisplayCodeResponse"
                         }
                     },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/util.ValidationError"
+                        }
+                    },
                     "502": {
                         "description": "Internal server error",
                         "schema": {

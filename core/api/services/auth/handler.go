@@ -14,16 +14,19 @@ import (
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
-//	@Param		app_name	query		string				true	"The name of the app that requests the code"
-//	@Success	200			{object}	DisplayCodeResponse	"Challenge ID"
-//	@Failure	502			{object}	util.ServerError	"Internal server error"
+//	@Param		app_name	query		string					true	"The name of the app that requests the code"
+//	@Success	200			{object}	DisplayCodeResponse		"Challenge ID"
+//	@Failure	400			{object}	util.ValidationError	"Invalid input"
+//	@Failure	502			{object}	util.ServerError		"Internal server error"
 //	@Router		/auth/display_code [post]
 func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := c.Query("app_name")
 
-		challengeId, err := s.GenerateNewChallenge(c.Request.Context(), appName)
-		code := util.MapErrorCode(err, util.ErrToCode(ErrFailedGenerateChallenge, http.StatusInternalServerError))
+		challengeId, err := s.NewChallenge(c.Request.Context(), appName)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrMissingAppName, http.StatusBadRequest),
+			util.ErrToCode(ErrFailedGenerateChallenge, http.StatusInternalServerError))
 
 		if code != http.StatusOK {
 			apiErr := util.CodeToAPIError(code, err.Error())
@@ -52,7 +55,7 @@ func TokenHandler(s *AuthService) gin.HandlerFunc {
 		challengeId := c.Query("challenge_id")
 		code := c.Query("code")
 
-		sessionToken, appKey, err := s.SolveChallengeForToken(c.Request.Context(), challengeId, code)
+		sessionToken, appKey, err := s.SolveChallenge(c.Request.Context(), challengeId, code)
 		errCode := util.MapErrorCode(err,
 			util.ErrToCode(ErrInvalidInput, http.StatusBadRequest),
 			util.ErrToCode(ErrFailedAuthenticate, http.StatusInternalServerError),

@@ -47,11 +47,25 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 			}).Once()
 
 		// when
-		challengeId, err := fx.GenerateNewChallenge(ctx, mockedAppName)
+		challengeId, err := fx.NewChallenge(ctx, mockedAppName)
 
 		// then
 		require.NoError(t, err)
 		require.Equal(t, mockedChallengeId, challengeId)
+	})
+
+	t.Run("bad request - missing app name", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// when
+		challengeId, err := fx.NewChallenge(ctx, "")
+
+		// then
+		require.Error(t, err)
+		require.Equal(t, ErrMissingAppName, err)
+		require.Empty(t, challengeId)
 	})
 
 	t.Run("failed challenge creation", func(t *testing.T) {
@@ -65,7 +79,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 			}).Once()
 
 		// when
-		challengeId, err := fx.GenerateNewChallenge(ctx, mockedAppName)
+		challengeId, err := fx.NewChallenge(ctx, mockedAppName)
 
 		// then
 		require.Error(t, err)
@@ -91,7 +105,7 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 			}).Once()
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallengeForToken(ctx, mockedChallengeId, mockedCode)
+		sessionToken, appKey, err := fx.SolveChallenge(ctx, mockedChallengeId, mockedCode)
 
 		// then
 		require.NoError(t, err)
@@ -100,13 +114,13 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 
 	})
 
-	t.Run("bad request", func(t *testing.T) {
+	t.Run("bad request - missing challenge id or code", func(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallengeForToken(ctx, "", "")
+		sessionToken, appKey, err := fx.SolveChallenge(ctx, "", "")
 
 		// then
 		require.Error(t, err)
@@ -129,7 +143,7 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 			}).Once()
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallengeForToken(ctx, mockedChallengeId, mockedCode)
+		sessionToken, appKey, err := fx.SolveChallenge(ctx, mockedChallengeId, mockedCode)
 
 		// then
 		require.Error(t, err)
