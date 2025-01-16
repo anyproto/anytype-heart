@@ -32,9 +32,6 @@ func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishin
 			Description: getErrorDescription(err),
 		},
 		Uri: res.Cid,
-		// PublishCid:     res.Cid,
-		// PublishFileKey: res.Key,
-
 	}
 
 	return r
@@ -53,9 +50,7 @@ func (mw *Middleware) PublishingRemove(ctx context.Context, req *pb.RpcPublishin
 			Description: getErrorDescription(err),
 		},
 	}
-
 	return r
-
 }
 
 func (mw *Middleware) PublishingList(ctx context.Context, req *pb.RpcPublishingListRequest) *pb.RpcPublishingListResponse {
@@ -72,9 +67,7 @@ func (mw *Middleware) PublishingList(ctx context.Context, req *pb.RpcPublishingL
 		},
 		Publishes: publishes,
 	}
-
 	return r
-
 }
 
 func (mw *Middleware) PublishingResolveUri(ctx context.Context, req *pb.RpcPublishingResolveUriRequest) *pb.RpcPublishingResolveUriResponse {
@@ -91,26 +84,22 @@ func (mw *Middleware) PublishingResolveUri(ctx context.Context, req *pb.RpcPubli
 		},
 		Publish: publish,
 	}
-
 	return r
-
 }
 
 func (mw *Middleware) PublishingGetStatus(ctx context.Context, req *pb.RpcPublishingGetStatusRequest) *pb.RpcPublishingGetStatusResponse {
-	// publishService := getService[publish.Service](mw)
+	publishService := mustService[publish.Service](mw)
 
-	// _, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
+	publish, err := publishService.GetStatus(ctx, req.SpaceId, req.ObjectId)
 	code := mapErrorCode(nil,
-		errToCode(nil, pb.RpcPublishingGetStatusResponseError_NULL))
+		errToCode(err, pb.RpcPublishingGetStatusResponseError_NULL))
 
 	r := &pb.RpcPublishingGetStatusResponse{
 		Error: &pb.RpcPublishingGetStatusResponseError{
 			Code:        code,
-			Description: getErrorDescription(nil),
+			Description: getErrorDescription(err),
 		},
-		// Publish: {},
+		Publish: publish,
 	}
-
 	return r
-
 }
