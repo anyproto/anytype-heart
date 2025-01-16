@@ -143,7 +143,6 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 }
 
 func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (err error) {
-	joinSpace = true
 	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
 	if err != nil {
 		return err
