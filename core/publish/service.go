@@ -137,6 +137,7 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 		Zip:          false,
 		Path:         tempDir,
 		ObjectIds:    []string{pageId},
+		NoProgress:   true,
 	})
 	if err != nil {
 		return
