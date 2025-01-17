@@ -43,7 +43,7 @@ func TestBuildDetailsFromTimestamp(t *testing.T) {
 			assert.Zero(t, tt.Hour())
 			assert.Zero(t, tt.Minute())
 			assert.Zero(t, tt.Second())
-			assert.Len(t, details.GetInt64List(bundle.RelationKeyRestrictions), 8)
+			assert.Len(t, details.GetInt64List(bundle.RelationKeyRestrictions), 9)
 		})
 	}
 }

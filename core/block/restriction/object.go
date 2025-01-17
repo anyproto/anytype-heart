@@ -23,19 +23,22 @@ var (
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 		model.Restrictions_Duplicate,
+		model.Restrictions_Publish,
 	}
-	objRestrictEditAndDuplicate = ObjectRestrictions{
+	objRestrictEditPublishAndDuplicate = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 		model.Restrictions_Duplicate,
+		model.Restrictions_Publish,
 	}
-	objRestrictEdit = ObjectRestrictions{
+	objRestrictEditAndPublish = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
+		model.Restrictions_Publish,
 	}
 	sysTypesRestrictions = ObjectRestrictions{
 		model.Restrictions_Blocks,
@@ -44,6 +47,7 @@ var (
 		model.Restrictions_Template,
 		model.Restrictions_Details,
 		model.Restrictions_Delete,
+		model.Restrictions_Publish,
 	}
 	sysRelationsRestrictions = ObjectRestrictions{
 		model.Restrictions_Blocks,
@@ -53,17 +57,18 @@ var (
 		model.Restrictions_Delete,
 		model.Restrictions_Relations,
 		model.Restrictions_Details,
+		model.Restrictions_Publish,
 	}
 
 	objectRestrictionsByLayout = map[model.ObjectTypeLayout]ObjectRestrictions{
 		model.ObjectType_basic:      {},
 		model.ObjectType_profile:    {},
 		model.ObjectType_todo:       {},
-		model.ObjectType_set:        objRestrictEdit,
-		model.ObjectType_collection: objRestrictEdit,
-		model.ObjectType_objectType: objRestrictEdit,
-		model.ObjectType_relation:   objRestrictEdit,
-		model.ObjectType_file:       objRestrictEditAndDuplicate,
+		model.ObjectType_set:        objRestrictEditAndPublish,
+		model.ObjectType_collection: objRestrictEditAndPublish,
+		model.ObjectType_objectType: objRestrictEditAndPublish,
+		model.ObjectType_relation:   objRestrictEditAndPublish,
+		model.ObjectType_file:       objRestrictEditPublishAndDuplicate,
 		model.ObjectType_dashboard: {
 			model.Restrictions_Details,
 			model.Restrictions_Relations,
@@ -80,14 +85,14 @@ var (
 		},
 
 		model.ObjectType_bookmark:       {},
-		model.ObjectType_relationOption: objRestrictEdit,
+		model.ObjectType_relationOption: objRestrictEditAndPublish,
 		model.ObjectType_relationOptionsList: {
 			model.Restrictions_Template,
 		},
 		model.ObjectType_participant: objRestrictAll,
-		model.ObjectType_chat:        objRestrictEditAndDuplicate,
-		model.ObjectType_chatDerived: objRestrictEditAndDuplicate,
-		model.ObjectType_tag:         objRestrictEdit,
+		model.ObjectType_chat:        objRestrictEditPublishAndDuplicate,
+		model.ObjectType_chatDerived: objRestrictEditPublishAndDuplicate,
+		model.ObjectType_tag:         objRestrictEditAndPublish,
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
@@ -107,6 +112,7 @@ var (
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
+			model.Restrictions_Publish,
 		},
 		smartblock.SmartBlockTypeWorkspace: {
 			model.Restrictions_Blocks,
@@ -116,18 +122,20 @@ var (
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
+			model.Restrictions_Publish,
 		},
-		smartblock.SmartBlockTypeFileObject:        objRestrictEditAndDuplicate,
+		smartblock.SmartBlockTypeFileObject:        objRestrictEditPublishAndDuplicate,
 		smartblock.SmartBlockTypeArchive:           objRestrictAll,
 		smartblock.SmartBlockTypeBundledRelation:   objRestrictAll,
-		smartblock.SmartBlockTypeSubObject:         objRestrictEdit,
-		smartblock.SmartBlockTypeObjectType:        objRestrictEdit,
-		smartblock.SmartBlockTypeRelation:          objRestrictEdit,
+		smartblock.SmartBlockTypeSubObject:         objRestrictEditAndPublish,
+		smartblock.SmartBlockTypeObjectType:        objRestrictEditAndPublish,
+		smartblock.SmartBlockTypeRelation:          objRestrictEditAndPublish,
 		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
 		smartblock.SmartBlockTypeBundledTemplate:   objRestrictAll,
 		smartblock.SmartBlockTypeTemplate: {
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
+			model.Restrictions_Publish,
 		},
 		smartblock.SmartBlockTypeWidget: {
 			model.Restrictions_Relations,
@@ -137,6 +145,7 @@ var (
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
+			model.Restrictions_Publish,
 		},
 		smartblock.SmartBlockTypeMissingObject: objRestrictAll,
 		smartblock.SmartBlockTypeDate:          objRestrictAll,
@@ -144,8 +153,8 @@ var (
 			model.Restrictions_Template,
 		},
 		smartblock.SmartBlockTypeParticipant:       objRestrictAll,
-		smartblock.SmartBlockTypeChatObject:        objRestrictEditAndDuplicate,
-		smartblock.SmartBlockTypeChatDerivedObject: objRestrictEditAndDuplicate,
+		smartblock.SmartBlockTypeChatObject:        objRestrictEditPublishAndDuplicate,
+		smartblock.SmartBlockTypeChatDerivedObject: objRestrictEditPublishAndDuplicate,
 	}
 )
 

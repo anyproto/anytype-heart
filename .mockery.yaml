@@ -225,6 +225,9 @@ packages:
   github.com/anyproto/anytype-heart/core/kanban:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/pb/service:
+  github.com/anyproto/anytype-heart/core/core/inviteservice:
     interfaces:
-      ClientCommandsServer:
+      InviteService:
+  github.com/anyproto/anytype-heart/core/identity:
+    interfaces:
+      Service:
