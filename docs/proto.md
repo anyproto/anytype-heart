@@ -1595,6 +1595,7 @@
     - [Event.Account.Details](#anytype-Event-Account-Details)
     - [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge)
     - [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo)
+    - [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide)
     - [Event.Account.Show](#anytype-Event-Account-Show)
     - [Event.Account.Update](#anytype-Event-Account-Update)
     - [Event.Block](#anytype-Event-Block)
@@ -1821,6 +1822,7 @@
   
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
+    - [Account.Auth](#anytype-model-Account-Auth)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
     - [Account.Status](#anytype-model-Account-Status)
@@ -1919,6 +1921,7 @@
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
+    - [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope)
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
     - [Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State)
@@ -3311,6 +3314,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | appName | [string](#string) |  | just for info, not secure to rely on |
+| scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
 
 
 
@@ -25100,6 +25104,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | ----- | ---- | ----- | ----------- |
 | challenge | [string](#string) |  |  |
 | clientInfo | [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo) |  |  |
+| scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
 
 
 
@@ -25117,6 +25122,21 @@ Event – type of message, that could be sent from a middleware to the correspon
 | processName | [string](#string) |  |  |
 | processPath | [string](#string) |  |  |
 | signatureVerified | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-LinkChallengeHide"></a>
+
+### Event.Account.LinkChallengeHide
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| challenge | [string](#string) |  | verify code before hiding to protect from MITM attacks |
 
 
 
@@ -27405,6 +27425,7 @@ Precondition: user A opened a block
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
 | accountUpdate | [Event.Account.Update](#anytype-Event-Account-Update) |  |  |
 | accountLinkChallenge | [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge) |  |  |
+| accountLinkChallengeHide | [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |
@@ -28638,6 +28659,16 @@ Contains basic information about a user account
 | config | [Account.Config](#anytype-model-Account-Config) |  |  |
 | status | [Account.Status](#anytype-model-Account-Status) |  |  |
 | info | [Account.Info](#anytype-model-Account-Info) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Account-Auth"></a>
+
+### Account.Auth
+
 
 
 
@@ -30357,6 +30388,19 @@ stored |
 
 
  
+
+
+<a name="anytype-model-Account-Auth-LocalApiScope"></a>
+
+### Account.Auth.LocalApiScope
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Limited | 0 | Used in WebClipper; AccountSelect(to be deprecated), ObjectSearch, ObjectShow, ObjectCreate, ObjectCreateFromURL, BlockPreview, BlockPaste, BroadcastPayloadEvent |
+| JsonAPI | 1 | JSON API only, no direct grpc api calls allowed |
+| Full | 2 | Full access, not available via LocalLink |
+
 
 
 <a name="anytype-model-Account-StatusType"></a>
