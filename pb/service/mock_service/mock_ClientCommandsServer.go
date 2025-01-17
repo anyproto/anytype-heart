@@ -11426,6 +11426,251 @@ func (_c *MockClientCommandsServer_ProcessUnsubscribe_Call) RunAndReturn(run fun
 	return _c
 }
 
+// PublishingCreate provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) PublishingCreate(_a0 context.Context, _a1 *pb.RpcPublishingCreateRequest) *pb.RpcPublishingCreateResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PublishingCreate")
+	}
+
+	var r0 *pb.RpcPublishingCreateResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcPublishingCreateRequest) *pb.RpcPublishingCreateResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcPublishingCreateResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_PublishingCreate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PublishingCreate'
+type MockClientCommandsServer_PublishingCreate_Call struct {
+	*mock.Call
+}
+
+// PublishingCreate is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcPublishingCreateRequest
+func (_e *MockClientCommandsServer_Expecter) PublishingCreate(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_PublishingCreate_Call {
+	return &MockClientCommandsServer_PublishingCreate_Call{Call: _e.mock.On("PublishingCreate", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_PublishingCreate_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcPublishingCreateRequest)) *MockClientCommandsServer_PublishingCreate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcPublishingCreateRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingCreate_Call) Return(_a0 *pb.RpcPublishingCreateResponse) *MockClientCommandsServer_PublishingCreate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingCreate_Call) RunAndReturn(run func(context.Context, *pb.RpcPublishingCreateRequest) *pb.RpcPublishingCreateResponse) *MockClientCommandsServer_PublishingCreate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PublishingGetStatus provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) PublishingGetStatus(_a0 context.Context, _a1 *pb.RpcPublishingGetStatusRequest) *pb.RpcPublishingGetStatusResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PublishingGetStatus")
+	}
+
+	var r0 *pb.RpcPublishingGetStatusResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcPublishingGetStatusRequest) *pb.RpcPublishingGetStatusResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcPublishingGetStatusResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_PublishingGetStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PublishingGetStatus'
+type MockClientCommandsServer_PublishingGetStatus_Call struct {
+	*mock.Call
+}
+
+// PublishingGetStatus is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcPublishingGetStatusRequest
+func (_e *MockClientCommandsServer_Expecter) PublishingGetStatus(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_PublishingGetStatus_Call {
+	return &MockClientCommandsServer_PublishingGetStatus_Call{Call: _e.mock.On("PublishingGetStatus", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_PublishingGetStatus_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcPublishingGetStatusRequest)) *MockClientCommandsServer_PublishingGetStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcPublishingGetStatusRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingGetStatus_Call) Return(_a0 *pb.RpcPublishingGetStatusResponse) *MockClientCommandsServer_PublishingGetStatus_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingGetStatus_Call) RunAndReturn(run func(context.Context, *pb.RpcPublishingGetStatusRequest) *pb.RpcPublishingGetStatusResponse) *MockClientCommandsServer_PublishingGetStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PublishingList provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) PublishingList(_a0 context.Context, _a1 *pb.RpcPublishingListRequest) *pb.RpcPublishingListResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PublishingList")
+	}
+
+	var r0 *pb.RpcPublishingListResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcPublishingListRequest) *pb.RpcPublishingListResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcPublishingListResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_PublishingList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PublishingList'
+type MockClientCommandsServer_PublishingList_Call struct {
+	*mock.Call
+}
+
+// PublishingList is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcPublishingListRequest
+func (_e *MockClientCommandsServer_Expecter) PublishingList(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_PublishingList_Call {
+	return &MockClientCommandsServer_PublishingList_Call{Call: _e.mock.On("PublishingList", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_PublishingList_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcPublishingListRequest)) *MockClientCommandsServer_PublishingList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcPublishingListRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingList_Call) Return(_a0 *pb.RpcPublishingListResponse) *MockClientCommandsServer_PublishingList_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingList_Call) RunAndReturn(run func(context.Context, *pb.RpcPublishingListRequest) *pb.RpcPublishingListResponse) *MockClientCommandsServer_PublishingList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PublishingRemove provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) PublishingRemove(_a0 context.Context, _a1 *pb.RpcPublishingRemoveRequest) *pb.RpcPublishingRemoveResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PublishingRemove")
+	}
+
+	var r0 *pb.RpcPublishingRemoveResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcPublishingRemoveRequest) *pb.RpcPublishingRemoveResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcPublishingRemoveResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_PublishingRemove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PublishingRemove'
+type MockClientCommandsServer_PublishingRemove_Call struct {
+	*mock.Call
+}
+
+// PublishingRemove is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcPublishingRemoveRequest
+func (_e *MockClientCommandsServer_Expecter) PublishingRemove(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_PublishingRemove_Call {
+	return &MockClientCommandsServer_PublishingRemove_Call{Call: _e.mock.On("PublishingRemove", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_PublishingRemove_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcPublishingRemoveRequest)) *MockClientCommandsServer_PublishingRemove_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcPublishingRemoveRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingRemove_Call) Return(_a0 *pb.RpcPublishingRemoveResponse) *MockClientCommandsServer_PublishingRemove_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingRemove_Call) RunAndReturn(run func(context.Context, *pb.RpcPublishingRemoveRequest) *pb.RpcPublishingRemoveResponse) *MockClientCommandsServer_PublishingRemove_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PublishingResolveUri provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) PublishingResolveUri(_a0 context.Context, _a1 *pb.RpcPublishingResolveUriRequest) *pb.RpcPublishingResolveUriResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PublishingResolveUri")
+	}
+
+	var r0 *pb.RpcPublishingResolveUriResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcPublishingResolveUriRequest) *pb.RpcPublishingResolveUriResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcPublishingResolveUriResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_PublishingResolveUri_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PublishingResolveUri'
+type MockClientCommandsServer_PublishingResolveUri_Call struct {
+	*mock.Call
+}
+
+// PublishingResolveUri is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcPublishingResolveUriRequest
+func (_e *MockClientCommandsServer_Expecter) PublishingResolveUri(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_PublishingResolveUri_Call {
+	return &MockClientCommandsServer_PublishingResolveUri_Call{Call: _e.mock.On("PublishingResolveUri", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_PublishingResolveUri_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcPublishingResolveUriRequest)) *MockClientCommandsServer_PublishingResolveUri_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcPublishingResolveUriRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingResolveUri_Call) Return(_a0 *pb.RpcPublishingResolveUriResponse) *MockClientCommandsServer_PublishingResolveUri_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_PublishingResolveUri_Call) RunAndReturn(run func(context.Context, *pb.RpcPublishingResolveUriRequest) *pb.RpcPublishingResolveUriResponse) *MockClientCommandsServer_PublishingResolveUri_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RelationListRemoveOption provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) RelationListRemoveOption(_a0 context.Context, _a1 *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
 	ret := _m.Called(_a0, _a1)
