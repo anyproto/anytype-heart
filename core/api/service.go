@@ -27,7 +27,7 @@ var (
 	ErrServerNotStarted     = fmt.Errorf("server not started")
 )
 
-type Api interface {
+type Service interface {
 	Start() error
 	Stop() error
 	app.ComponentRunnable
@@ -39,7 +39,7 @@ type apiService struct {
 	mw      service.ClientCommandsServer
 }
 
-func New() Api {
+func New() Service {
 	return &apiService{
 		mw: mwSrv,
 	}
