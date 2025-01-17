@@ -25,7 +25,8 @@ import (
 )
 
 type LayoutConverter interface {
-	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error
+	IsConversionAllowed(from, to model.ObjectTypeLayout) bool
 	app.Component
 }
 
@@ -50,9 +51,44 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+// IsConversionAllowed provides more strict check of layout conversion with introduction of primitives.
+// Only conversion between page layouts (page/note/task/profile) and list layouts (set/collection) is allowed
+func (c *layoutConverter) IsConversionAllowed(from, to model.ObjectTypeLayout) bool {
+	if from == to {
+		return true
+	}
+
+	if isPageLayout(from) && isPageLayout(to) {
+		return true
+	}
+
+	if isSetLayout(from) && isSetLayout(to) {
+		return true
+	}
+
+	return false
+}
+
+func isPageLayout(layout model.ObjectTypeLayout) bool {
+	return slices.Contains([]model.ObjectTypeLayout{
+		model.ObjectType_basic,
+		model.ObjectType_todo,
+		model.ObjectType_note,
+		model.ObjectType_profile,
+	}, layout)
+}
+
+func isSetLayout(layout model.ObjectTypeLayout) bool {
+	return slices.Contains([]model.ObjectTypeLayout{model.ObjectType_collection, model.ObjectType_set}, layout)
+}
+
+func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error {
 	if fromLayout == toLayout {
 		return nil
+	}
+
+	if !ignoreIntergroupConversion && !c.IsConversionAllowed(fromLayout, toLayout) {
+		return fmt.Errorf("layout conversion from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 	}
 
 	if fromLayout == model.ObjectType_chat || fromLayout == model.ObjectType_chatDerived {

@@ -3,7 +3,6 @@ package basic
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -48,10 +47,7 @@ func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEv
 	var updates []domain.Detail
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
-	updates, updatedKeys, err = bs.collectDetailUpdates(details, s)
-	if err != nil {
-		return nil, err
-	}
+	updates, updatedKeys = bs.collectDetailUpdates(details, s)
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
@@ -111,18 +107,19 @@ func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Det
 	return oldDetails, newDetails, bs.Apply(s)
 }
 
-func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]domain.Detail, []domain.RelationKey, error) {
+func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]domain.Detail, []domain.RelationKey) {
 	updates := make([]domain.Detail, 0, len(details))
 	keys := make([]domain.RelationKey, 0, len(details))
 	for _, detail := range details {
 		update, err := bs.createDetailUpdate(s, detail)
-		if err != nil {
-			return nil, nil, err
+		if err == nil {
+			updates = append(updates, update)
+			keys = append(keys, update.Key)
+		} else {
+			log.Errorf("can't set detail %s: %s", detail.Key, err)
 		}
-		updates = append(updates, update)
-		keys = append(keys, update.Key)
 	}
-	return updates, keys, nil
+	return updates, keys
 }
 
 func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *domain.Details {
@@ -301,7 +298,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 		fromLayout := st.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
 		toLayout := detail.Value.Int64()
 		// nolint:gosec
-		if !isLayoutConversionAllowed(model.ObjectTypeLayout(fromLayout), model.ObjectTypeLayout(toLayout)) {
+		if !bs.layoutConverter.IsConversionAllowed(model.ObjectTypeLayout(fromLayout), model.ObjectTypeLayout(toLayout)) {
 			return fmt.Errorf("can't change object type recommended layout from '%s' to '%s'",
 				model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 		}
@@ -422,13 +419,9 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
 			return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
 		}
-
-		if !isLayoutConversionAllowed(fromLayout, toLayout) {
-			return fmt.Errorf("layout change from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
-		}
 	}
 	s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(toLayout))
-	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
+	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout, ignoreRestriction); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil
@@ -439,33 +432,4 @@ func removeInternalFlags(s *state.State) {
 	flags.Remove(model.InternalFlag_editorSelectType)
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(s)
-}
-
-func isLayoutConversionAllowed(from, to model.ObjectTypeLayout) bool {
-	if from == to {
-		return true
-	}
-
-	if isPageLayout(from) && isPageLayout(to) {
-		return true
-	}
-
-	if isSetLayout(from) && isSetLayout(to) {
-		return true
-	}
-
-	return false
-}
-
-func isPageLayout(layout model.ObjectTypeLayout) bool {
-	return slices.Contains([]model.ObjectTypeLayout{
-		model.ObjectType_basic,
-		model.ObjectType_todo,
-		model.ObjectType_note,
-		model.ObjectType_profile,
-	}, layout)
-}
-
-func isSetLayout(layout model.ObjectTypeLayout) bool {
-	return slices.Contains([]model.ObjectTypeLayout{model.ObjectType_collection, model.ObjectType_set}, layout)
 }
