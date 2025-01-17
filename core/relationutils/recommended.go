@@ -34,9 +34,23 @@ var (
 		bundle.RelationKeyLinks,
 	}
 
-	nonFileSpecificRelationKeys = []domain.RelationKey{
-		bundle.RelationKeyAddedDate,
-		bundle.RelationKeyOrigin,
+	fileSpecificRelationKeysMap = map[domain.RelationKey]struct{}{
+		bundle.RelationKeyFileExt:               {},
+		bundle.RelationKeySizeInBytes:           {},
+		bundle.RelationKeyFileMimeType:          {},
+		bundle.RelationKeyArtist:                {},
+		bundle.RelationKeyAudioAlbum:            {},
+		bundle.RelationKeyAudioGenre:            {},
+		bundle.RelationKeyAudioAlbumTrackNumber: {},
+		bundle.RelationKeyAudioLyrics:           {},
+		bundle.RelationKeyReleasedYear:          {},
+		bundle.RelationKeyHeightInPixels:        {},
+		bundle.RelationKeyWidthInPixels:         {},
+		bundle.RelationKeyCamera:                {},
+		bundle.RelationKeyCameraIso:             {},
+		bundle.RelationKeyAperture:              {},
+		bundle.RelationKeyExposure:              {},
+		bundle.RelationKeyFocalRatio:            {},
 	}
 
 	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
@@ -55,15 +69,20 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 
 	if isFileType(details) {
 		// for file types we need to fill separate relation list with file-specific recommended relations
-		fileRecommendedRelationKeys := slices.DeleteFunc(keys, func(key domain.RelationKey) bool {
-			return slices.Contains(nonFileSpecificRelationKeys, key)
-		})
+		var fileRecommendedRelationKeys, other []domain.RelationKey
+		for _, key := range keys {
+			if _, found := fileSpecificRelationKeysMap[key]; found {
+				fileRecommendedRelationKeys = append(fileRecommendedRelationKeys, key)
+				continue
+			}
+			other = append(other, key)
+		}
 		fileRelationIds, err := prepareRelationIds(ctx, deriver, fileRecommendedRelationKeys)
 		if err != nil {
 			return nil, false, fmt.Errorf("prepare file recommended relation ids: %w", err)
 		}
 		details.SetStringList(bundle.RelationKeyRecommendedFileRelations, fileRelationIds)
-		keys = nonFileSpecificRelationKeys
+		keys = other
 	}
 
 	// we should include default system recommended relations and exclude default recommended featured relations

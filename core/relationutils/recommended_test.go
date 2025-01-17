@@ -158,7 +158,10 @@ func TestFillRecommendedRelations(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.False(t, isAlreadyFilled)
-		assert.Equal(t, buildRelationIds(append(nonFileSpecificRelationKeys, defaultRecommendedRelationKeys...)), details.GetStringList(bundle.RelationKeyRecommendedRelations))
+		assert.Equal(t, append([]string{
+			bundle.RelationKeyOrigin.URL(),
+			bundle.RelationKeyAddedDate.URL(),
+		}, buildRelationIds(defaultRecommendedRelationKeys)...), details.GetStringList(bundle.RelationKeyRecommendedRelations))
 		assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
 		assert.Equal(t, []string{
 			bundle.RelationKeyFileExt.URL(),
