@@ -19,97 +19,87 @@ func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishin
 	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))
 	publishService := mustService[publish.Service](mw)
 
-	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId, req.Uri)
+	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId, req.Uri, req.JoinSpace)
 	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))
 	code := mapErrorCode(err,
-		errToCode(nil, pb.RpcPublishingCreateResponseError_NULL))
+		errToCode(nil, pb.RpcPublishingCreateResponseError_NULL),
+		errToCode(err, pb.RpcPublishingCreateResponseError_UNKNOWN_ERROR),
+		errToCode(publish.ErrLimitExceeded, pb.RpcPublishingCreateResponseError_LIMIT_EXCEEDED))
 
 	r := &pb.RpcPublishingCreateResponse{
 		Error: &pb.RpcPublishingCreateResponseError{
 			Code:        code,
-			Description: getErrorDescription(nil),
+			Description: getErrorDescription(err),
 		},
-		Uri: res.Cid,
-		// PublishCid:     res.Cid,
-		// PublishFileKey: res.Key,
-
+		Uri: res.Url,
 	}
 
 	return r
 }
 
 func (mw *Middleware) PublishingRemove(ctx context.Context, req *pb.RpcPublishingRemoveRequest) *pb.RpcPublishingRemoveResponse {
-	// publishService := getService[publish.Service](mw)
+	publishService := mustService[publish.Service](mw)
 
-	// _, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
+	err := publishService.Unpublish(ctx, req.SpaceId, req.ObjectId)
 	code := mapErrorCode(nil,
-		errToCode(nil, pb.RpcPublishingRemoveResponseError_NULL))
+		errToCode(err, pb.RpcPublishingRemoveResponseError_NULL))
 
 	r := &pb.RpcPublishingRemoveResponse{
 		Error: &pb.RpcPublishingRemoveResponseError{
 			Code:        code,
-			Description: getErrorDescription(nil),
+			Description: getErrorDescription(err),
 		},
 	}
-
 	return r
-
 }
 
 func (mw *Middleware) PublishingList(ctx context.Context, req *pb.RpcPublishingListRequest) *pb.RpcPublishingListResponse {
-	// publishService := getService[publish.Service](mw)
+	publishService := mustService[publish.Service](mw)
 
-	// _, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
+	publishes, err := publishService.PublishList(ctx, req.SpaceId)
 	code := mapErrorCode(nil,
-		errToCode(nil, pb.RpcPublishingListResponseError_NULL))
+		errToCode(err, pb.RpcPublishingListResponseError_NULL))
 
 	r := &pb.RpcPublishingListResponse{
 		Error: &pb.RpcPublishingListResponseError{
 			Code:        code,
-			Description: getErrorDescription(nil),
+			Description: getErrorDescription(err),
 		},
-
-		// Publishes: [],
+		Publishes: publishes,
 	}
-
 	return r
-
 }
 
 func (mw *Middleware) PublishingResolveUri(ctx context.Context, req *pb.RpcPublishingResolveUriRequest) *pb.RpcPublishingResolveUriResponse {
-	// publishService := getService[publish.Service](mw)
+	publishService := mustService[publish.Service](mw)
 
-	// _, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
+	publish, err := publishService.ResolveUri(ctx, req.Uri)
 	code := mapErrorCode(nil,
-		errToCode(nil, pb.RpcPublishingResolveUriResponseError_NULL))
+		errToCode(err, pb.RpcPublishingResolveUriResponseError_NULL))
 
 	r := &pb.RpcPublishingResolveUriResponse{
 		Error: &pb.RpcPublishingResolveUriResponseError{
 			Code:        code,
-			Description: getErrorDescription(nil),
+			Description: getErrorDescription(err),
 		},
-		// Publish: {},
+		Publish: publish,
 	}
-
 	return r
-
 }
 
 func (mw *Middleware) PublishingGetStatus(ctx context.Context, req *pb.RpcPublishingGetStatusRequest) *pb.RpcPublishingGetStatusResponse {
-	// publishService := getService[publish.Service](mw)
+	publishService := mustService[publish.Service](mw)
 
-	// _, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId)
+	publish, err := publishService.GetStatus(ctx, req.SpaceId, req.ObjectId)
 	code := mapErrorCode(nil,
-		errToCode(nil, pb.RpcPublishingGetStatusResponseError_NULL))
+		errToCode(err, pb.RpcPublishingGetStatusResponseError_NULL))
 
 	r := &pb.RpcPublishingGetStatusResponse{
 		Error: &pb.RpcPublishingGetStatusResponseError{
 			Code:        code,
-			Description: getErrorDescription(nil),
+			Description: getErrorDescription(err),
 		},
-		// Publish: {},
+		Publish: publish,
 	}
-
 	return r
-
 }

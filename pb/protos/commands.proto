@@ -1381,6 +1381,7 @@ message Rpc {
                 string spaceId = 1;
                 string objectId = 2;
                 string uri = 3;
+                bool joinSpace = 4;
             }
             message Response {
                 Error error = 1;
@@ -1395,6 +1396,7 @@ message Rpc {
                         BAD_INPUT = 2;
                         NO_SUCH_OBJECT = 101;
                         NO_SUCH_SPACE = 102;
+                        LIMIT_EXCEEDED = 103;
                     }
                 }
             }

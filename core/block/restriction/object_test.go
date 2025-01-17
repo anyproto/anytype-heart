@@ -21,9 +21,9 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 
 	t.Run("sets and collections should have edit restrictions", func(t *testing.T) {
 		collection := givenRestrictionHolder(coresb.SmartBlockTypePage, bundle.TypeKeyCollection)
-		assert.ErrorIs(t, rs.GetRestrictions(collection).Object.Check(objRestrictEdit...), ErrRestricted)
+		assert.ErrorIs(t, rs.GetRestrictions(collection).Object.Check(objRestrictEditAndPublish...), ErrRestricted)
 		set := givenRestrictionHolder(coresb.SmartBlockTypePage, bundle.TypeKeySet)
-		assert.ErrorIs(t, rs.GetRestrictions(set).Object.Check(objRestrictEdit...), ErrRestricted)
+		assert.ErrorIs(t, rs.GetRestrictions(set).Object.Check(objRestrictEditAndPublish...), ErrRestricted)
 	})
 
 	t.Run("plain pages should not have any restrictions", func(t *testing.T) {
@@ -95,7 +95,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 
 	t.Run("chat should have edit and duplication restrictions", func(t *testing.T) {
 		assert.ErrorIs(t, rs.GetRestrictions(givenRestrictionHolder(coresb.SmartBlockTypeChatObject, bundle.TypeKeyChat)).Object.Check(
-			objRestrictEditAndDuplicate...,
+			objRestrictEditPublishAndDuplicate...,
 		), ErrRestricted)
 	})
 }

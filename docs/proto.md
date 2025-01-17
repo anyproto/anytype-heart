@@ -18041,6 +18041,7 @@ Available undo/redo operations
 | spaceId | [string](#string) |  |  |
 | objectId | [string](#string) |  |  |
 | uri | [string](#string) |  |  |
+| joinSpace | [bool](#bool) |  |  |
 
 
 
@@ -24183,6 +24184,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NO_SUCH_OBJECT | 101 |  |
 | NO_SUCH_SPACE | 102 |  |
+| LIMIT_EXCEEDED | 103 |  |
 
 
 
@@ -31076,6 +31078,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Template | 7 | restricts template creation from this object |
 | Duplicate | 8 | restricts duplicate object |
 | CreateObjectOfThisType | 9 | can be set only for types. Restricts creating objects of this type |
+| Publish | 10 | object is not allowed to publish |
 
 
 

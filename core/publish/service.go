@@ -1,40 +1,33 @@
 package publish
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-publish-server/publishclient"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
-	uio "github.com/ipfs/boxo/ipld/unixfs/io"
-	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
-	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/filehelper"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/identity"
+	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/encode"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
 var (
@@ -43,18 +36,31 @@ var (
 
 const CName = "common.core.publishservice"
 
+const (
+	membershipLimit       = 100 << 20
+	defaultLimit          = 10 << 20
+	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
+	memberUrlTemplate     = "https://%s.coop"
+	defaultUrlTemplate    = "https://any.coop/%s"
+	indexFileName         = "index.json.gz"
+)
+
 var log = logger.NewNamed(CName)
-var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
+
+var ErrLimitExceeded = errors.New("limit exceeded")
 
 type PublishResult struct {
-	Cid string
-	Key string
+	Url string
 }
 
 type PublishingUberSnapshotMeta struct {
 	SpaceId    string `json:"spaceId,omitempty"`
 	RootPageId string `json:"rootPageId,omitempty"`
 	InviteLink string `json:"inviteLink,omitempty"`
+}
+
+type Heads struct {
+	Heads []string `json:"heads"`
 }
 
 // Contains all publishing .pb files
@@ -68,17 +74,19 @@ type PublishingUberSnapshot struct {
 
 type Service interface {
 	app.ComponentRunnable
-	Publish(ctx context.Context, spaceId, pageObjId, uri string) (res PublishResult, err error)
+	Publish(ctx context.Context, spaceId, pageObjId, uri string, joinSpace bool) (res PublishResult, err error)
+	Unpublish(ctx context.Context, spaceId, pageObjId string) error
+	PublishList(ctx context.Context, id string) ([]*pb.RpcPublishingPublishState, error)
+	ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishingPublishState, error)
+	GetStatus(ctx context.Context, spaceId string, objectId string) (*pb.RpcPublishingPublishState, error)
 }
 
 type service struct {
-	commonFile           fileservice.FileService
-	fileSyncService      filesync.FileSync
 	spaceService         space.Service
-	dagService           ipld.DAGService
 	exportService        export.Export
 	publishClientService publishclient.Client
-	accountService       accountservice.Service
+	identityService      identity.Service
+	inviteService        inviteservice.InviteService
 }
 
 func New() Service {
@@ -86,14 +94,11 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.commonFile = app.MustComponent[fileservice.FileService](a)
-	s.dagService = s.commonFile.DAGService()
-	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.exportService = app.MustComponent[export.Export](a)
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
-	s.accountService = app.MustComponent[accountservice.Service](a)
-
+	s.identityService = app.MustComponent[identity.Service](a)
+	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
 	return nil
 }
 
@@ -107,20 +112,6 @@ func (s *service) Close(_ context.Context) error {
 
 func (s *service) Name() (name string) {
 	return CName
-}
-
-func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
-	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
-}
-
-type keyObject struct {
-	Cid string `json:"cid"`
-	Key string `json:"key"`
-}
-
-type fileObject struct {
-	FileName string
-	Content  []byte
 }
 
 func uniqName() string {
@@ -150,224 +141,17 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 	return
 }
 
-func makeFileObject(dirPath, fileName string) (asset fileObject, err error) {
-	var content []byte
-
-	content, err = os.ReadFile(filepath.Join(dirPath, fileName))
-	if err != nil {
-		return
-	}
-	asset = fileObject{
-		FileName: fileName,
-		Content:  content,
-	}
-
-	return
-
-}
-
-// current structure of published ufs dir:
-// ```
-//   - keys.json <- encrypted with main key, has keys for all the other files
-//   - rootPath  <- contains path to root object
-//   - encrypted asset1
-//   - encrypted asset2
-//     ...
-//
-// ```
-func (s *service) publishUfs(ctx context.Context, spaceId, pageId string) (res PublishResult, err error) {
-	dagService := s.dagServiceForSpace(spaceId)
-	outer := uio.NewDirectory(dagService)
-	outer.SetCidBuilder(cidBuilder)
-
-	mainKey, err := crypto.NewRandomAES()
-	if err != nil {
-		return
-	}
-	// will be converted to json and encrypted by main key
-	keys := make(map[string]keyObject, 0)
-
-	// will be added via commonFile.AddFile
-	files := make([]fileObject, 0)
-
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (err error) {
 	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
 	if err != nil {
-		return
-	}
-
-	for _, entry := range dirEntries {
-		var asset fileObject
-		if entry.IsDir() {
-			var dirFiles []fs.DirEntry
-			dirName := entry.Name()
-
-			dirFiles, err = os.ReadDir(filepath.Join(exportPath, dirName))
-			if err != nil {
-				return
-			}
-
-			for _, file := range dirFiles {
-				withDirName := filepath.Join(dirName, file.Name())
-				asset, err = makeFileObject(exportPath, withDirName)
-				if err != nil {
-					return
-				}
-
-				files = append(files, asset)
-			}
-		} else {
-			asset, err = makeFileObject(exportPath, entry.Name())
-			if err != nil {
-				return
-			}
-
-			files = append(files, asset)
-		}
-	}
-
-	// add all files via common file, to outer ipfs dir and to keys
-	for _, file := range files {
-		var key *crypto.AESKey
-		key, err = crypto.NewRandomAES()
-		if err != nil {
-			return
-		}
-
-		var encContent []byte
-		encContent, err = key.Encrypt(file.Content)
-		if err != nil {
-			return
-		}
-
-		var node ipld.Node
-		node, err = s.commonFile.AddFile(ctx, bytes.NewReader(encContent))
-		if err != nil {
-			return
-		}
-
-		err = dagService.Add(ctx, node)
-		if err != nil {
-			return
-		}
-
-		cid := node.Cid().String()
-		err = helpers.AddLinkToDirectory(ctx, dagService, outer, file.FileName, cid)
-		if err != nil {
-			return
-		}
-
-		var keyStr string
-		keyStr, err = encode.EncodeKeyToBase58(key)
-		if err != nil {
-			return
-		}
-
-		keys[file.FileName] = keyObject{
-			Cid: cid,
-			Key: keyStr,
-		}
-	}
-
-	// now, add keys to files and encrypt with the main key which will be returned
-	var keysJson []byte
-	keysJson, err = json.Marshal(keys)
-	if err != nil {
-		return
-	}
-
-	var encKeys []byte
-	encKeys, err = mainKey.Encrypt(keysJson)
-	if err != nil {
-		return
-	}
-
-	var node ipld.Node
-	node, err = s.commonFile.AddFile(ctx, bytes.NewReader(encKeys))
-	if err != nil {
-		return
-	}
-
-	err = dagService.Add(ctx, node)
-	if err != nil {
-		return
-	}
-
-	cid := node.Cid().String()
-	err = helpers.AddLinkToDirectory(ctx, dagService, outer, "keys.json", cid)
-	if err != nil {
-		return
-	}
-
-	rootPath := filepath.Join("objects", pageId+".pb")
-	node, err = s.commonFile.AddFile(ctx, bytes.NewReader([]byte(rootPath)))
-	if err != nil {
-		return
-	}
-
-	err = dagService.Add(ctx, node)
-	if err != nil {
-		return
-	}
-
-	cid = node.Cid().String()
-	err = helpers.AddLinkToDirectory(ctx, dagService, outer, "rootPath", cid)
-	if err != nil {
-		return
-	}
-
-	var mainKeyStr string
-	mainKeyStr, err = encode.EncodeKeyToBase58(mainKey)
-	if err != nil {
-		return
-	}
-
-	var outerNode ipld.Node
-	outerNode, err = outer.GetNode()
-	if err != nil {
-		return
-	}
-
-	err = dagService.Add(ctx, outerNode)
-	if err != nil {
-		return
-	}
-
-	outerNodeCid := outerNode.Cid().String()
-
-	// upload ufs root node Cid
-	err = s.fileSyncService.UploadSynchronously(ctx, spaceId, domain.FileId(outerNodeCid))
-	if err != nil {
-		return
-	}
-
-	// and return node Cid and mainKey
-	res.Cid = outerNodeCid
-	res.Key = mainKeyStr
-	return
-}
-
-func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri string) (err error) {
-
-	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
-	if err != nil {
-		return
+		return err
 	}
 	defer os.RemoveAll(exportPath)
 
-	// go through dir dirs
-	// if files/, copy them to `publishTmpFolder`
-	// else
-	// for each file in $dir
-	// create a json in "main" map like
-	// {
-	//   pbfiles: {
-	//     "objects/arstoarseitnwfuy.pb": <jsonpb content of this file>,
-	//   }
-	// }
-	// after that, also add
-	// "meta": { "root-page", "inviteLink", and other things}
-	// then, add this `index.json` in `publishTmpFolder`
-
+	limit, err := s.getPublishLimit(globalName)
+	if err != nil {
+		return err
+	}
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
@@ -375,6 +159,46 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
+	uberSnapshot, totalSize, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId)
+	if err != nil {
+		return err
+	}
+
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+
+	err = s.applyInviteLink(ctx, spc, &uberSnapshot, joinSpace)
+	if err != nil {
+		return err
+	}
+	if err := s.createIndexFile(tempPublishDir, uberSnapshot, totalSize, limit); err != nil {
+		return err
+	}
+
+	version, err := s.evaluateDocumentVersion(spc, pageId)
+	if err != nil {
+		return err
+	}
+
+	if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *service) applyInviteLink(ctx context.Context, spc clientspace.Space, snapshot *PublishingUberSnapshot, joinSpace bool) error {
+	inviteLink, err := s.extractInviteLink(ctx, spc.Id(), joinSpace, spc.IsPersonal())
+	if err != nil {
+		return err
+	}
+	snapshot.Meta.InviteLink = inviteLink
+	return nil
+}
+
+func (s *service) processExportedData(dirEntries []fs.DirEntry, exportPath, tempPublishDir string, limit int64, spaceId, pageId string) (PublishingUberSnapshot, int64, error) {
 	uberSnapshot := PublishingUberSnapshot{
 		Meta: PublishingUberSnapshotMeta{
 			SpaceId:    spaceId,
@@ -383,126 +207,263 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		PbFiles: make(map[string]string),
 	}
 
+	var totalSize int64
 	for _, entry := range dirEntries {
 		if entry.IsDir() {
-			var dirFiles []fs.DirEntry
-			dirName := entry.Name()
-
-			if dirName == "files" {
-				err = os.CopyFS(filepath.Join(tempPublishDir, "files"), os.DirFS(filepath.Join(exportPath, "files")))
-				if err != nil {
-					return
-				}
-
-				continue
-			}
-
-			dirFiles, err = os.ReadDir(filepath.Join(exportPath, dirName))
-			if err != nil {
-				return
-			}
-
-			for _, file := range dirFiles {
-				withDirName := filepath.Join(dirName, file.Name())
-
-				var snapshotData []byte
-				snapshotData, err = os.ReadFile(filepath.Join(exportPath, withDirName))
-				if err != nil {
-					return
-				}
-
-				snapshot := pb.SnapshotWithType{}
-				err = proto.Unmarshal(snapshotData, &snapshot)
-				if err != nil {
-					return
-				}
-
-				var jsonData string
-				jsonData, err = jsonM.MarshalToString(&snapshot)
-				if err != nil {
-					return
-				}
-
-				fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
-				uberSnapshot.PbFiles[fileNameKey] = jsonData
-
+			if size, err := s.processDirectory(entry, exportPath, tempPublishDir, &uberSnapshot, limit); err != nil {
+				return PublishingUberSnapshot{}, 0, err
+			} else {
+				totalSize += size
 			}
 		} else {
-			err = fmt.Errorf("unexpeted file on export root level: %s", entry.Name())
-			return
+			return PublishingUberSnapshot{}, 0, fmt.Errorf("unexpected file on export root level: %s", entry.Name())
 		}
-
 	}
 
-	var jsonData []byte
-	jsonData, err = json.Marshal(&uberSnapshot)
+	return uberSnapshot, totalSize, nil
+}
+
+func (s *service) processDirectory(entry fs.DirEntry, exportPath, tempPublishDir string, uberSnapshot *PublishingUberSnapshot, limit int64) (int64, error) {
+	dirName := entry.Name()
+	if dirName == export.Files {
+		return s.processFilesDirectory(exportPath, tempPublishDir, limit)
+	}
+
+	dirFiles, err := os.ReadDir(filepath.Join(exportPath, dirName))
 	if err != nil {
-		return
+		return 0, err
 	}
 
-	outputFile := filepath.Join(tempPublishDir, "index.json.gz")
+	for _, file := range dirFiles {
+		if err := s.processSnapshotFile(exportPath, dirName, file, uberSnapshot); err != nil {
+			return 0, err
+		}
+	}
 
-	var file *os.File
-	file, err = os.Create(outputFile)
+	return 0, nil
+}
+
+func (s *service) processFilesDirectory(exportPath, tempPublishDir string, limit int64) (int64, error) {
+	var size int64
+	originalPath := filepath.Join(exportPath, export.Files)
+	err := filepath.Walk(originalPath, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			size += info.Size()
+			if size > limit {
+				return ErrLimitExceeded
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		return
+		return size, err
 	}
+	fileDir := filepath.Join(tempPublishDir, export.Files)
+	if err := os.CopyFS(fileDir, os.DirFS(originalPath)); err != nil {
+		return size, err
+	}
+	return size, nil
+}
+
+func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEntry, uberSnapshot *PublishingUberSnapshot) error {
+	withDirName := filepath.Join(dirName, file.Name())
+	snapshotData, err := os.ReadFile(filepath.Join(exportPath, withDirName))
+	if err != nil {
+		return err
+	}
+
+	snapshot := pb.SnapshotWithType{}
+	if err := proto.Unmarshal(snapshotData, &snapshot); err != nil {
+		return err
+	}
+
+	jsonData, err := jsonM.MarshalToString(&snapshot)
+	if err != nil {
+		return err
+	}
+
+	fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
+	uberSnapshot.PbFiles[fileNameKey] = jsonData
+	return nil
+}
+
+func (s *service) createIndexFile(tempPublishDir string, uberSnapshot PublishingUberSnapshot, totalSize int64, limit int64) error {
+	jsonData, err := json.Marshal(&uberSnapshot)
+	if err != nil {
+		return err
+	}
+
+	outputFile := filepath.Join(tempPublishDir, indexFileName)
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
 	writer := gzip.NewWriter(file)
-	_, err = writer.Write(jsonData)
-	err = writer.Close()
-	if err != nil {
-		file.Close()
-		return
+	if _, err := writer.Write(jsonData); err != nil {
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		return err
 	}
 
-	err = file.Close()
+	stat, err := file.Stat()
 	if err != nil {
-		return
+		return err
 	}
 
-	log.Error("publishing started", zap.String("pageid", pageId), zap.String("uri", uri))
+	totalSize += stat.Size()
+	if totalSize > limit {
+		return ErrLimitExceeded
+	}
+
+	return nil
+}
+
+func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, version, tempPublishDir string) error {
 	publishReq := &publishapi.PublishRequest{
 		SpaceId:  spaceId,
 		ObjectId: pageId,
 		Uri:      uri,
-		Version:  "fake-ver-" + uniqName(),
+		Version:  version,
 	}
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
 	if err != nil {
-		return
+		return err
 	}
 
-	log.Error("publishing upload started", zap.String("pageid", pageId), zap.String("uploadUrl", uploadUrl))
-	err = s.publishClientService.UploadDir(ctx, uploadUrl, tempPublishDir)
-	if err != nil {
-		return
+	if err := s.publishClientService.UploadDir(ctx, uploadUrl, tempPublishDir); err != nil {
+		return err
 	}
 
-	log.Error("publishing finished", zap.String("pageid", pageId))
 	return nil
-
 }
 
-func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string) (res PublishResult, err error) {
+func (s *service) extractInviteLink(ctx context.Context, spaceId string, joinSpace, isPersonal bool) (string, error) {
+	var inviteLink string
+	if joinSpace && !isPersonal {
+		inviteInfo, err := s.inviteService.GetCurrent(ctx, spaceId)
+		if err != nil && errors.Is(err, inviteservice.ErrInviteNotExists) {
+			return "", nil
+		}
+		if err != nil {
+			return "", err
+		}
+		inviteLink = fmt.Sprintf(inviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
+	}
+	return inviteLink, nil
+}
+
+func (s *service) evaluateDocumentVersion(spc clientspace.Space, pageId string) (string, error) {
+	treeStorage, err := spc.Storage().TreeStorage(pageId)
+	if err != nil {
+		return "", err
+	}
+	heads, err := treeStorage.Heads()
+	if err != nil {
+		return "", err
+	}
+	slices.Sort(heads)
+	h := &Heads{Heads: heads}
+	jsonData, err := json.Marshal(h)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
+}
+
+func (s *service) getPublishLimit(globalName string) (int64, error) {
+	if globalName != "" {
+		return membershipLimit, nil
+	}
+	return defaultLimit, nil
+}
+
+func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
 	log.Info("Publish called", zap.String("pageId", pageId))
-	err = s.publishToPublishServer(ctx, spaceId, pageId, uri)
+
+	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
+	globalName := details.GetString(bundle.RelationKeyGlobalName)
+
+	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 		return
 	}
+	url := s.makeUrl(uri, identity, globalName)
 
-	// for now: staging-url/identity/pageid
-	// will be fixed in GO-4758
-	stagingUrl := "https://any.coop"
-	identity := s.accountService.Account().SignKey.GetPublic().Account()
-	url := fmt.Sprintf("%s/%s/%s", stagingUrl, identity, uri)
+	return PublishResult{Url: url}, nil
+}
 
-	return PublishResult{
-		Cid: url,
-		Key: "fakekey",
+func (s *service) makeUrl(uri, identity, globalName string) string {
+	var domain string
+	if globalName != "" {
+		domain = fmt.Sprintf(memberUrlTemplate, globalName)
+	} else {
+		domain = fmt.Sprintf(defaultUrlTemplate, identity)
+	}
+	url := fmt.Sprintf("%s/%s", domain, uri)
+	return url
+}
+
+func (s *service) Unpublish(ctx context.Context, spaceId, pageObjId string) error {
+	return s.publishClientService.UnPublish(ctx, &publishapi.UnPublishRequest{
+		SpaceId:  spaceId,
+		ObjectId: pageObjId,
+	})
+}
+
+func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPublishingPublishState, error) {
+	publishes, err := s.publishClientService.ListPublishes(ctx, spaceId)
+	if err != nil {
+		return nil, err
+	}
+	pbPublishes := make([]*pb.RpcPublishingPublishState, 0, len(publishes))
+	for _, publish := range publishes {
+		pbPublishes = append(pbPublishes, &pb.RpcPublishingPublishState{
+			SpaceId:   publish.SpaceId,
+			ObjectId:  publish.ObjectId,
+			Uri:       publish.Uri,
+			Status:    pb.RpcPublishingPublishStatus(publish.Status),
+			Version:   publish.Version,
+			Timestamp: publish.Timestamp,
+			Size_:     publish.Size_,
+		})
+	}
+	return pbPublishes, nil
+}
+
+func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishingPublishState, error) {
+	publish, err := s.publishClientService.ResolveUri(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.RpcPublishingPublishState{
+		SpaceId:   publish.SpaceId,
+		ObjectId:  publish.ObjectId,
+		Uri:       publish.Uri,
+		Status:    pb.RpcPublishingPublishStatus(publish.Status),
+		Version:   publish.Version,
+		Timestamp: publish.Timestamp,
+		Size_:     publish.Size_,
 	}, nil
+}
 
+func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string) (*pb.RpcPublishingPublishState, error) {
+	status, err := s.publishClientService.GetPublishStatus(ctx, spaceId, objectId)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.RpcPublishingPublishState{
+		SpaceId:   status.SpaceId,
+		ObjectId:  status.ObjectId,
+		Uri:       status.Uri,
+		Status:    pb.RpcPublishingPublishStatus(status.Status),
+		Version:   status.Version,
+		Timestamp: status.Timestamp,
+		Size_:     status.Size_,
+	}, nil
 }
