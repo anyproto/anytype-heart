@@ -26,7 +26,7 @@ import (
 
 type LayoutConverter interface {
 	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error
-	IsConversionAllowed(from, to model.ObjectTypeLayout) bool
+	CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error
 	app.Component
 }
 
@@ -51,21 +51,27 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-// IsConversionAllowed provides more strict check of layout conversion with introduction of primitives.
-// Only conversion between page layouts (page/note/task/profile) and list layouts (set/collection) is allowed
-func (c *layoutConverter) IsConversionAllowed(from, to model.ObjectTypeLayout) bool {
+func (c *layoutConverter) CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error {
+	fromLayout := st.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
+	if !c.isConversionAllowed(model.ObjectTypeLayout(fromLayout), layout) { //nolint:gosec
+		return fmt.Errorf("can't change object type recommended layout from '%s' to '%s'",
+			model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(layout)])
+	}
+	return nil
+}
+
+// isConversionAllowed provides more strict check of layout conversion with introduction of primitives.
+// Only conversion between page layouts (page/note/task/profile) and list layouts (set->collection) is allowed
+func (c *layoutConverter) isConversionAllowed(from, to model.ObjectTypeLayout) bool {
 	if from == to {
 		return true
 	}
-
 	if isPageLayout(from) && isPageLayout(to) {
 		return true
 	}
-
-	if isSetLayout(from) && isSetLayout(to) {
+	if from == model.ObjectType_set && to == model.ObjectType_collection {
 		return true
 	}
-
 	return false
 }
 
@@ -78,16 +84,12 @@ func isPageLayout(layout model.ObjectTypeLayout) bool {
 	}, layout)
 }
 
-func isSetLayout(layout model.ObjectTypeLayout) bool {
-	return slices.Contains([]model.ObjectTypeLayout{model.ObjectType_collection, model.ObjectType_set}, layout)
-}
-
 func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error {
 	if fromLayout == toLayout {
 		return nil
 	}
 
-	if !ignoreIntergroupConversion && !c.IsConversionAllowed(fromLayout, toLayout) {
+	if !ignoreIntergroupConversion && !c.isConversionAllowed(fromLayout, toLayout) {
 		return fmt.Errorf("layout conversion from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 	}
 
