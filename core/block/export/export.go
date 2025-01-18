@@ -107,39 +107,31 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		Id:      bson.NewObjectId().Hex(),
 		State:   0,
 		Message: &pb.ModelProcessMessageOfExport{Export: &pb.ModelProcessExport{}},
-	}, 4)
+	}, 4, req.NoProgress, e.notificationService)
 	queue.SetMessage("prepare")
 
 	if err = queue.Start(); err != nil {
 		return
 	}
-	defer func() {
-		queue.Stop(err)
-		e.sendNotification(err, req)
-	}()
-
 	exportCtx := newExportContext(e, req)
 	return exportCtx.exportObjects(ctx, queue)
 }
 
-func (e *export) sendNotification(err error, req pb.RpcObjectListExportRequest) {
+func (e *export) finishWithNotification(spaceId string, exportFormat model.ExportFormat, queue process.Queue, err error) {
 	errCode := model.NotificationExport_NULL
 	if err != nil {
 		errCode = model.NotificationExport_UNKNOWN_ERROR
 	}
-	notificationSendErr := e.notificationService.CreateAndSend(&model.Notification{
+	queue.FinishWithNotification(&model.Notification{
 		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
 		IsLocal: true,
 		Payload: &model.NotificationPayloadOfExport{Export: &model.NotificationExport{
 			ErrorCode:  errCode,
-			ExportType: req.Format,
+			ExportType: exportFormat,
 		}},
-		Space: req.SpaceId,
-	})
-	if notificationSendErr != nil {
-		log.Errorf("failed to send notification: %v", notificationSendErr)
-	}
+		Space: spaceId,
+	}, nil)
 }
 
 type exportContext struct {
@@ -188,11 +180,21 @@ func (e *exportContext) copy() *exportContext {
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {
-	err := e.docsForExport()
+	var (
+		err  error
+		wr   writer
+		path string
+	)
+	defer func() {
+		e.finishWithNotification(e.spaceId, e.format, queue, err)
+		if err = queue.Finalize(); err != nil {
+			cleanupFile(wr)
+		}
+	}()
+	err = e.docsForExport()
 	if err != nil {
 		return "", 0, err
 	}
-	var wr writer
 	wr, err = e.getWriter()
 	if err != nil {
 		return "", 0, err
@@ -203,7 +205,8 @@ func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) 
 	}
 	wr.Close()
 	if e.zip {
-		return e.renameZipArchive(wr, succeed)
+		path, succeed, err = e.renameZipArchive(wr, succeed)
+		return path, succeed, err
 	}
 	return wr.Path(), succeed, nil
 }
@@ -249,10 +252,6 @@ func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue pro
 			return 0, nil
 		}
 		succeed += int(succeedAsync)
-	}
-	if err := queue.Finalize(); err != nil {
-		cleanupFile(wr)
-		return 0, err
 	}
 	return succeed, nil
 }
@@ -305,7 +304,7 @@ func (e *exportContext) renameZipArchive(wr writer, succeed int) (string, int, e
 	err := os.Rename(wr.Path(), zipName)
 	if err != nil {
 		os.Remove(wr.Path())
-		return "", 0, nil
+		return "", 0, err
 	}
 	return zipName, succeed, nil
 }
@@ -1192,6 +1191,9 @@ func validLayoutForNonProtobuf(details *domain.Details) bool {
 }
 
 func cleanupFile(wr writer) {
+	if wr == nil {
+		return
+	}
 	wr.Close()
 	os.Remove(wr.Path())
 }

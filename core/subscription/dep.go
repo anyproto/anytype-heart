@@ -97,6 +97,9 @@ var ignoredKeys = map[domain.RelationKey]struct{}{
 }
 
 func (ds *dependencyService) isRelationObject(spaceId string, key domain.RelationKey) bool {
+	if key == "" {
+		return false
+	}
 	if _, ok := ignoredKeys[key]; ok {
 		return false
 	}
