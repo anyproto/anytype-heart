@@ -50,14 +50,18 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer, tv interfa
 		}
 
 		key := strings.TrimPrefix(authHeader, "Bearer ")
+		s.mu.Lock()
 		token, exists := s.KeyToToken[key]
+		s.mu.Unlock()
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Failed to create session"})
 				return
 			}
+			s.mu.Lock()
 			s.KeyToToken[key] = response.Token
+			s.mu.Unlock()
 		} else {
 			_, err := tv.ValidateApiToken(token)
 			if err != nil {

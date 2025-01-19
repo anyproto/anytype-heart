@@ -1,6 +1,8 @@
 package server
 
 import (
+	"sync"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/gin-gonic/gin"
 
@@ -23,6 +25,7 @@ type Server struct {
 	spaceService  *space.SpaceService
 	searchService *search.SearchService
 
+	mu         sync.Mutex
 	KeyToToken map[string]string // appKey -> token
 }
 
