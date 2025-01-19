@@ -12,6 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/services/object"
 	"github.com/anyproto/anytype-heart/core/api/services/search"
 	"github.com/anyproto/anytype-heart/core/api/services/space"
+	"github.com/anyproto/anytype-heart/core/interfaces"
+	"github.com/anyproto/anytype-heart/pb/service"
 )
 
 const (
@@ -23,7 +25,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(a *app.App) *gin.Engine {
+func (s *Server) NewRouter(a *app.App, mw service.ClientCommandsServer, tv interfaces.TokenValidator) *gin.Engine {
 	router := gin.Default()
 
 	paginator := pagination.New(pagination.Config{
@@ -36,16 +38,19 @@ func (s *Server) NewRouter(a *app.App) *gin.Engine {
 	// Swagger route
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// Auth routes (no authentication required)
+	authGroup := router.Group("/v1/auth")
+	{
+		authGroup.POST("/display_code", auth.DisplayCodeHandler(s.authService))
+		authGroup.POST("/token", auth.TokenHandler(s.authService))
+	}
+
 	// API routes
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
-	v1.Use(s.ensureAuthenticated())
+	v1.Use(s.ensureAuthenticated(mw, tv))
 	v1.Use(s.ensureAccountInfo(a))
 	{
-		// Auth
-		v1.POST("/auth/display_code", auth.DisplayCodeHandler(s.authService))
-		v1.POST("/auth/token", auth.TokenHandler(s.authService))
-
 		// Export
 		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
 

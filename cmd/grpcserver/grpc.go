@@ -226,7 +226,7 @@ func main() {
 	}()
 
 	startReportMemory(mw)
-	api.SetMiddlewareParams(mw)
+	api.SetMiddlewareParams(mw, mw)
 
 	shutdown := func() {
 		server.Stop()
