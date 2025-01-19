@@ -157,14 +157,15 @@ func TestSearchService_Search(t *testing.T) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
-			Limit: int32(limit),
+			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeyLastModifiedDate.String(), bundle.RelationKeySpaceId.String()},
+			Limit: int32(offset + limit),
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():   pbtypes.String("obj-global-1"),
-						bundle.RelationKeyName.String(): pbtypes.String("Global Object"),
+						bundle.RelationKeyId.String():      pbtypes.String("obj-global-1"),
+						bundle.RelationKeyName.String():    pbtypes.String("Global Object"),
+						bundle.RelationKeySpaceId.String(): pbtypes.String("space-1"),
 					},
 				},
 			},

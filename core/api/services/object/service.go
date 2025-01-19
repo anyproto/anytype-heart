@@ -80,11 +80,7 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 			IncludeTime:    true,
 			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}},
-		FullText:         "",
-		Offset:           0,
-		Limit:            0,
-		ObjectTypeFilter: []string{},
-		Keys:             []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {

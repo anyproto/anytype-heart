@@ -18,11 +18,12 @@ import (
 )
 
 var (
+	spaceLimit             = 64
 	ErrFailedSearchObjects = errors.New("failed to retrieve objects from space")
 )
 
 type Service interface {
-	Search(ctx context.Context, searchQuery string, objectTypes []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error)
+	Search(ctx context.Context, searchQuery string, types []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error)
 }
 
 type SearchService struct {
@@ -37,8 +38,8 @@ func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceServic
 }
 
 // Search retrieves a paginated list of objects from all spaces that match the search parameters.
-func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTypes []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error) {
-	spaces, _, _, err := s.spaceService.ListSpaces(ctx, 0, 100)
+func (s *SearchService) Search(ctx context.Context, searchQuery string, types []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error) {
+	spaces, _, _, err := s.spaceService.ListSpaces(ctx, 0, spaceLimit)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -46,11 +47,11 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(searchQuery)
 
-	results := make([]object.Object, 0)
+	allResponses := make([]*pb.RpcObjectSearchResponse, 0, len(spaces))
 	for _, space := range spaces {
 		// Resolve object type IDs per space, as they are unique per space
-		objectTypeFilters := s.prepareObjectTypeFilters(space.Id, objectTypes)
-		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, objectTypeFilters)
+		typeFilters := s.prepareObjectTypeFilters(space.Id, types)
+		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, typeFilters)
 
 		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 			SpaceId: space.Id,
@@ -62,37 +63,54 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
-			Limit: int32(limit), // nolint: gosec
+			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeyLastModifiedDate.String(), bundle.RelationKeySpaceId.String()},
+			Limit: int32(offset + limit), // nolint: gosec
 		})
 
 		if objResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 			return nil, 0, false, ErrFailedSearchObjects
 		}
 
-		if len(objResp.Records) == 0 {
-			continue
-		}
+		allResponses = append(allResponses, objResp)
+	}
 
+	combinedRecords := make([]struct {
+		Id               string
+		SpaceId          string
+		LastModifiedDate float64
+	}, 0)
+	for _, objResp := range allResponses {
 		for _, record := range objResp.Records {
-			object, err := s.objectService.GetObject(ctx, space.Id, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
-			if err != nil {
-				return nil, 0, false, err
-			}
-			results = append(results, object)
+			combinedRecords = append(combinedRecords, struct {
+				Id               string
+				SpaceId          string
+				LastModifiedDate float64
+			}{
+				Id:               record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+				SpaceId:          record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+				LastModifiedDate: record.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue(),
+			})
 		}
 	}
 
-	// sort after ISO 8601 last_modified_date to achieve descending sort order across all spaces
-	sort.Slice(results, func(i, j int) bool {
-		dateStrI := results[i].Details[0].Details["last_modified_date"].(string)
-		dateStrJ := results[j].Details[0].Details["last_modified_date"].(string)
-		return dateStrI > dateStrJ
+	// sort after posix last_modified_date to achieve descending sort order across all spaces
+	sort.Slice(combinedRecords, func(i, j int) bool {
+		return combinedRecords[i].LastModifiedDate > combinedRecords[j].LastModifiedDate
 	})
 
-	total = len(results)
-	paginatedResults, hasMore := pagination.Paginate(results, offset, limit)
-	return paginatedResults, total, hasMore, nil
+	total = len(combinedRecords)
+	paginatedRecords, hasMore := pagination.Paginate(combinedRecords, offset, limit)
+
+	results := make([]object.Object, 0, len(paginatedRecords))
+	for _, record := range paginatedRecords {
+		object, err := s.objectService.GetObject(ctx, record.SpaceId, record.Id)
+		if err != nil {
+			return nil, 0, false, err
+		}
+		results = append(results, object)
+	}
+
+	return results, total, hasMore, nil
 }
 
 // makeAndCondition combines multiple filter groups with the given operator.
