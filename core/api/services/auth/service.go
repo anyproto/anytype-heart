@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
@@ -34,7 +35,10 @@ func (s *AuthService) NewChallenge(ctx context.Context, appName string) (string,
 		return "", ErrMissingAppName
 	}
 
-	resp := s.mw.AccountLocalLinkNewChallenge(ctx, &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: appName})
+	resp := s.mw.AccountLocalLinkNewChallenge(ctx, &pb.RpcAccountLocalLinkNewChallengeRequest{
+		AppName: appName,
+		Scope:   model.AccountAuth_JsonAPI,
+	})
 
 	if resp.Error.Code != pb.RpcAccountLocalLinkNewChallengeResponseError_NULL {
 		return "", ErrFailedGenerateChallenge
@@ -43,7 +47,7 @@ func (s *AuthService) NewChallenge(ctx context.Context, appName string) (string,
 	return resp.ChallengeId, nil
 }
 
-// SolveChallengeForToken calls AccountLocalLinkSolveChallenge and returns the session token + app key, or an error if it fails.
+// SolveChallenge calls AccountLocalLinkSolveChallenge and returns the session token + app key, or an error if it fails.
 func (s *AuthService) SolveChallenge(ctx context.Context, challengeId string, code string) (sessionToken string, appKey string, err error) {
 	if challengeId == "" || code == "" {
 		return "", "", ErrInvalidInput
