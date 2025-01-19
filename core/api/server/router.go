@@ -53,8 +53,8 @@ func (s *Server) NewRouter(a *app.App) *gin.Engine {
 		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
 		v1.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
 		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteObjectHandler(s.objectService))
-		v1.GET("/spaces/:space_id/object_types", object.GetTypesHandler(s.objectService))
-		v1.GET("/spaces/:space_id/object_types/:type_id/templates", object.GetTemplatesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types", object.GetTypesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types/:type_id/templates", object.GetTemplatesHandler(s.objectService))
 		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), object.CreateObjectHandler(s.objectService))
 
 		// Search

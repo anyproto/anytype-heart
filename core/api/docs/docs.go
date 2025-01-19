@@ -35,7 +35,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Start a new challenge",
+                "summary": "Start new challenge",
                 "parameters": [
                     {
                         "type": "string",
@@ -78,7 +78,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Retrieve a token",
+                "summary": "Retrieve token",
                 "parameters": [
                     {
                         "type": "string",
@@ -143,7 +143,7 @@ const docTemplate = `{
                         },
                         "collectionFormat": "csv",
                         "description": "Types to filter objects by",
-                        "name": "object_types",
+                        "name": "types",
                         "in": "query"
                     },
                     {
@@ -325,125 +325,6 @@ const docTemplate = `{
                         "description": "List of members",
                         "schema": {
                             "$ref": "#/definitions/pagination.PaginatedResponse-space_Member"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/util.UnauthorizedError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/util.ServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/spaces/{space_id}/object_types": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "objects"
-                ],
-                "summary": "List types",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Space ID",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "The number of items to skip before starting to collect the result set",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 100,
-                        "description": "The number of items to return",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of types",
-                        "schema": {
-                            "$ref": "#/definitions/pagination.PaginatedResponse-object_ObjectType"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/util.UnauthorizedError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/util.ServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/spaces/{space_id}/object_types/{type_id}/templates": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "objects"
-                ],
-                "summary": "List templates",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Space ID",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Type ID",
-                        "name": "type_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "The number of items to skip before starting to collect the result set",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 100,
-                        "description": "The number of items to return",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of templates",
-                        "schema": {
-                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Template"
                         }
                     },
                     "401": {
@@ -751,6 +632,125 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/spaces/{space_id}/types": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "objects"
+                ],
+                "summary": "List types",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "The number of items to skip before starting to collect the result set",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "The number of items to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of types",
+                        "schema": {
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Type"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/spaces/{space_id}/types/{type_id}/templates": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "objects"
+                ],
+                "summary": "List templates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type ID",
+                        "name": "type_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "The number of items to skip before starting to collect the result set",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "The number of items to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of templates",
+                        "schema": {
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Template"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -941,35 +941,6 @@ const docTemplate = `{
                 }
             }
         },
-        "object.ObjectType": {
-            "type": "object",
-            "properties": {
-                "icon": {
-                    "type": "string",
-                    "example": "📄"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Page"
-                },
-                "recommended_layout": {
-                    "type": "string",
-                    "example": "todo"
-                },
-                "type": {
-                    "type": "string",
-                    "example": "object_type"
-                },
-                "unique_key": {
-                    "type": "string",
-                    "example": "ot-page"
-                }
-            }
-        },
         "object.Template": {
             "type": "object",
             "properties": {
@@ -983,11 +954,11 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string",
-                    "example": "Object Template Name"
+                    "example": "Template Name"
                 },
                 "type": {
                     "type": "string",
-                    "example": "object_template"
+                    "example": "template"
                 }
             }
         },
@@ -1011,6 +982,35 @@ const docTemplate = `{
                 }
             }
         },
+        "object.Type": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "type": "string",
+                    "example": "📄"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Page"
+                },
+                "recommended_layout": {
+                    "type": "string",
+                    "example": "todo"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "type"
+                },
+                "unique_key": {
+                    "type": "string",
+                    "example": "ot-page"
+                }
+            }
+        },
         "pagination.PaginatedResponse-object_Object": {
             "type": "object",
             "properties": {
@@ -1025,20 +1025,6 @@ const docTemplate = `{
                 }
             }
         },
-        "pagination.PaginatedResponse-object_ObjectType": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/object.ObjectType"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/pagination.PaginationMeta"
-                }
-            }
-        },
         "pagination.PaginatedResponse-object_Template": {
             "type": "object",
             "properties": {
@@ -1046,6 +1032,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/object.Template"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
+                }
+            }
+        },
+        "pagination.PaginatedResponse-object_Type": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/object.Type"
                     }
                 },
                 "pagination": {

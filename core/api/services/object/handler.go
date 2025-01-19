@@ -165,13 +165,13 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Tags		objects
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string										true	"Space ID"
-//	@Param		offset		query		int											false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int											false	"The number of items to return"	default(100)
-//	@Success	200			{object}	pagination.PaginatedResponse[ObjectType]	"List of types"
-//	@Failure	401			{object}	util.UnauthorizedError						"Unauthorized"
-//	@Failure	500			{object}	util.ServerError							"Internal server error"
-//	@Router		/spaces/{space_id}/object_types [get]
+//	@Param		space_id	path		string								true	"Space ID"
+//	@Param		offset		query		int									false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int									false	"The number of items to return"	default(100)
+//	@Success	200			{object}	pagination.PaginatedResponse[Type]	"List of types"
+//	@Failure	401			{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure	500			{object}	util.ServerError					"Internal server error"
+//	@Router		/spaces/{space_id}/types [get]
 func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -206,7 +206,7 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Success	200			{object}	pagination.PaginatedResponse[Template]	"List of templates"
 //	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
 //	@Failure	500			{object}	util.ServerError						"Internal server error"
-//	@Router		/spaces/{space_id}/object_types/{type_id}/templates [get]
+//	@Router		/spaces/{space_id}/types/{type_id}/templates [get]
 func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

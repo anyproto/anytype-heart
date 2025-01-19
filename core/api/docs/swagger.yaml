@@ -126,27 +126,6 @@ definitions:
       object:
         $ref: '#/definitions/object.Object'
     type: object
-  object.ObjectType:
-    properties:
-      icon:
-        example: "\U0001F4C4"
-        type: string
-      id:
-        example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
-        type: string
-      name:
-        example: Page
-        type: string
-      recommended_layout:
-        example: todo
-        type: string
-      type:
-        example: object_type
-        type: string
-      unique_key:
-        example: ot-page
-        type: string
-    type: object
   object.Template:
     properties:
       icon:
@@ -156,10 +135,10 @@ definitions:
         example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
         type: string
       name:
-        example: Object Template Name
+        example: Template Name
         type: string
       type:
-        example: object_template
+        example: template
         type: string
     type: object
   object.Text:
@@ -175,6 +154,27 @@ definitions:
       text:
         type: string
     type: object
+  object.Type:
+    properties:
+      icon:
+        example: "\U0001F4C4"
+        type: string
+      id:
+        example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
+        type: string
+      name:
+        example: Page
+        type: string
+      recommended_layout:
+        example: todo
+        type: string
+      type:
+        example: type
+        type: string
+      unique_key:
+        example: ot-page
+        type: string
+    type: object
   pagination.PaginatedResponse-object_Object:
     properties:
       data:
@@ -184,20 +184,20 @@ definitions:
       pagination:
         $ref: '#/definitions/pagination.PaginationMeta'
     type: object
-  pagination.PaginatedResponse-object_ObjectType:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/object.ObjectType'
-        type: array
-      pagination:
-        $ref: '#/definitions/pagination.PaginationMeta'
-    type: object
   pagination.PaginatedResponse-object_Template:
     properties:
       data:
         items:
           $ref: '#/definitions/object.Template'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
+    type: object
+  pagination.PaginatedResponse-object_Type:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/object.Type'
         type: array
       pagination:
         $ref: '#/definitions/pagination.PaginationMeta'
@@ -411,7 +411,7 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Start a new challenge
+      summary: Start new challenge
       tags:
       - auth
   /auth/token:
@@ -444,7 +444,7 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Retrieve a token
+      summary: Retrieve token
       tags:
       - auth
   /search:
@@ -461,7 +461,7 @@ paths:
         in: query
         items:
           type: string
-        name: object_types
+        name: types
         type: array
       - description: The number of items to skip before starting to collect the result
           set
@@ -598,87 +598,6 @@ paths:
       summary: List members
       tags:
       - spaces
-  /spaces/{space_id}/object_types:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: Space ID
-        in: path
-        name: space_id
-        required: true
-        type: string
-      - description: The number of items to skip before starting to collect the result
-          set
-        in: query
-        name: offset
-        type: integer
-      - default: 100
-        description: The number of items to return
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of types
-          schema:
-            $ref: '#/definitions/pagination.PaginatedResponse-object_ObjectType'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/util.UnauthorizedError'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/util.ServerError'
-      summary: List types
-      tags:
-      - objects
-  /spaces/{space_id}/object_types/{type_id}/templates:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: Space ID
-        in: path
-        name: space_id
-        required: true
-        type: string
-      - description: Type ID
-        in: path
-        name: type_id
-        required: true
-        type: string
-      - description: The number of items to skip before starting to collect the result
-          set
-        in: query
-        name: offset
-        type: integer
-      - default: 100
-        description: The number of items to return
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of templates
-          schema:
-            $ref: '#/definitions/pagination.PaginatedResponse-object_Template'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/util.UnauthorizedError'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/util.ServerError'
-      summary: List templates
-      tags:
-      - objects
   /spaces/{space_id}/objects:
     get:
       consumes:
@@ -873,6 +792,87 @@ paths:
       summary: Export object
       tags:
       - export
+  /spaces/{space_id}/types:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of types
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Type'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: List types
+      tags:
+      - objects
+  /spaces/{space_id}/types/{type_id}/templates:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Type ID
+        in: path
+        name: type_id
+        required: true
+        type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of templates
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Template'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: List templates
+      tags:
+      - objects
 securityDefinitions:
   BasicAuth:
     type: basic

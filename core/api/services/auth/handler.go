@@ -10,7 +10,7 @@ import (
 
 // DisplayCodeHandler starts a new challenge and returns the challenge ID
 //
-//	@Summary	Start a new challenge
+//	@Summary	Start new challenge
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
@@ -40,7 +40,7 @@ func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 
 // TokenHandler retrieves an authentication token using a code and challenge ID
 //
-//	@Summary	Retrieve a token
+//	@Summary	Retrieve token
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json

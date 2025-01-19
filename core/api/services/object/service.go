@@ -39,7 +39,7 @@ type Service interface {
 	GetObject(ctx context.Context, spaceId string, objectId string) (Object, error)
 	DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error)
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error)
-	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]ObjectType, int, bool, error)
+	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
 }
 
@@ -261,7 +261,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 }
 
 // ListTypes returns a paginated list of types in a specific space.
-func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []ObjectType, total int, hasMore bool, err error) {
+func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []Type, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -291,11 +291,11 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 
 	total = len(resp.Records)
 	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	objectTypes := make([]ObjectType, 0, len(paginatedTypes))
+	types = make([]Type, 0, len(paginatedTypes))
 
 	for _, record := range paginatedTypes {
-		objectTypes = append(objectTypes, ObjectType{
-			Type:              "object_type",
+		types = append(types, Type{
+			Type:              "type",
 			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			UniqueKey:         record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -303,7 +303,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 		})
 	}
-	return objectTypes, total, hasMore, nil
+	return types, total, hasMore, nil
 }
 
 // ListTemplates returns a paginated list of templates in a specific space.
@@ -370,7 +370,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		}
 
 		templates = append(templates, Template{
-			Type: "object_template",
+			Type: "template",
 			Id:   templateId,
 			Name: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
