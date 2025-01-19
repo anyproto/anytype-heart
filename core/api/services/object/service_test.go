@@ -78,11 +78,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			FullText:         "",
-			Offset:           0,
-			Limit:            0,
-			ObjectTypeFilter: []string{},
-			Keys:             []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
