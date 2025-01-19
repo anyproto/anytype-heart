@@ -8,7 +8,6 @@ type CreateObjectRequest struct {
 	Source              string `json:"source"`
 	TemplateId          string `json:"template_id"`
 	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
-	WithChat            bool   `json:"with_chat"`
 }
 
 type ObjectResponse struct {
@@ -78,7 +77,7 @@ type ObjectType struct {
 	RecommendedLayout string `json:"recommended_layout" example:"todo"`
 }
 
-type ObjectTemplate struct {
+type Template struct {
 	Type string `json:"type" example:"object_template"`
 	Id   string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"`
 	Name string `json:"name" example:"Object Template Name"`

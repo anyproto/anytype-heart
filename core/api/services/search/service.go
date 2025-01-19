@@ -19,7 +19,6 @@ import (
 
 var (
 	ErrFailedSearchObjects = errors.New("failed to retrieve objects from space")
-	ErrNoObjectsFound      = errors.New("no objects found")
 )
 
 type Service interface {
@@ -82,10 +81,6 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, objectTy
 			}
 			results = append(results, object)
 		}
-	}
-
-	if len(results) == 0 {
-		return nil, 0, false, ErrNoObjectsFound
 	}
 
 	// sort after ISO 8601 last_modified_date to achieve descending sort order across all spaces

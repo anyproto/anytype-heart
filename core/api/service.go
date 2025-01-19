@@ -47,7 +47,7 @@ func (s *apiService) Name() (name string) {
 //
 //	@title						Anytype API
 //	@version					1.0
-//	@description				This API allows interaction with Anytype resources such as spaces, objects, and object types.
+//	@description				This API allows interaction with Anytype resources such as spaces, objects and types.
 //	@termsOfService				https://anytype.io/terms_of_use
 //	@contact.name				Anytype Support
 //	@contact.url				https://anytype.io/contact

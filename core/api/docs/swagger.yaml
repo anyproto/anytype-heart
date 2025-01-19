@@ -41,6 +41,23 @@ definitions:
         example: VerticalAlignTop
         type: string
     type: object
+  object.CreateObjectRequest:
+    properties:
+      body:
+        type: string
+      description:
+        type: string
+      icon:
+        type: string
+      name:
+        type: string
+      object_type_unique_key:
+        type: string
+      source:
+        type: string
+      template_id:
+        type: string
+    type: object
   object.Detail:
     properties:
       details:
@@ -109,21 +126,6 @@ definitions:
       object:
         $ref: '#/definitions/object.Object'
     type: object
-  object.ObjectTemplate:
-    properties:
-      icon:
-        example: "\U0001F4C4"
-        type: string
-      id:
-        example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
-        type: string
-      name:
-        example: Object Template Name
-        type: string
-      type:
-        example: object_template
-        type: string
-    type: object
   object.ObjectType:
     properties:
       icon:
@@ -145,6 +147,21 @@ definitions:
         example: ot-page
         type: string
     type: object
+  object.Template:
+    properties:
+      icon:
+        example: "\U0001F4C4"
+        type: string
+      id:
+        example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
+        type: string
+      name:
+        example: Object Template Name
+        type: string
+      type:
+        example: object_template
+        type: string
+    type: object
   object.Text:
     properties:
       checked:
@@ -157,6 +174,33 @@ definitions:
         type: string
       text:
         type: string
+    type: object
+  pagination.PaginatedResponse-object_Object:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/object.Object'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
+    type: object
+  pagination.PaginatedResponse-object_ObjectType:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/object.ObjectType'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
+    type: object
+  pagination.PaginatedResponse-object_Template:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/object.Template'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
     type: object
   pagination.PaginatedResponse-space_Member:
     properties:
@@ -284,6 +328,14 @@ definitions:
         example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
         type: string
     type: object
+  util.ForbiddenError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
   util.NotFoundError:
     properties:
       error:
@@ -326,7 +378,7 @@ info:
     name: Anytype Support
     url: https://anytype.io/contact
   description: This API allows interaction with Anytype resources such as spaces,
-    objects, and object types.
+    objects and types.
   license:
     name: Any Source Available License 1.0
     url: https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
@@ -339,7 +391,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The name of the app that requests the code
+      - description: App name requesting the challenge
         in: query
         name: app_name
         required: true
@@ -355,11 +407,11 @@ paths:
           description: Invalid input
           schema:
             $ref: '#/definitions/util.ValidationError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Open a modal window with a code in Anytype Desktop app
+      summary: Start a new challenge
       tags:
       - auth
   /auth/token:
@@ -367,12 +419,12 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The challenge ID
+      - description: Challenge ID
         in: query
         name: challenge_id
         required: true
         type: string
-      - description: The 4-digit code retrieved from Anytype Desktop app
+      - description: 4-digit code retrieved from Anytype Desktop app
         in: query
         name: code
         required: true
@@ -388,11 +440,11 @@ paths:
           description: Invalid input
           schema:
             $ref: '#/definitions/util.ValidationError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Retrieve an authentication token using a code
+      summary: Retrieve a token
       tags:
       - auth
   /search:
@@ -400,12 +452,12 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The search term to filter objects by name
+      - description: Search query
         in: query
         name: query
         type: string
       - collectionFormat: csv
-        description: Specify object types for search
+        description: Types to filter objects by
         in: query
         items:
           type: string
@@ -432,19 +484,15 @@ paths:
                 $ref: '#/definitions/object.Object'
               type: array
             type: object
-        "403":
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "404":
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Search and retrieve objects across all the spaces
+      summary: Search objects across all spaces
       tags:
       - search
   /spaces:
@@ -469,19 +517,15 @@ paths:
           description: List of spaces
           schema:
             $ref: '#/definitions/pagination.PaginatedResponse-space_Space'
-        "403":
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "404":
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Retrieve a list of spaces
+      summary: List spaces
       tags:
       - spaces
     post:
@@ -505,15 +549,15 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/util.ValidationError'
-        "403":
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Create a new Space
+      summary: Create space
       tags:
       - spaces
   /spaces/{space_id}/members:
@@ -521,7 +565,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The ID of the space
+      - description: Space ID
         in: path
         name: space_id
         required: true
@@ -543,19 +587,15 @@ paths:
           description: List of members
           schema:
             $ref: '#/definitions/pagination.PaginatedResponse-space_Member'
-        "403":
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "404":
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Retrieve a list of members for the specified Space
+      summary: List members
       tags:
       - spaces
   /spaces/{space_id}/object_types:
@@ -563,7 +603,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The ID of the space
+      - description: Space ID
         in: path
         name: space_id
         required: true
@@ -582,24 +622,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: List of object types
+          description: List of types
           schema:
-            additionalProperties:
-              $ref: '#/definitions/object.ObjectType'
-            type: object
-        "403":
+            $ref: '#/definitions/pagination.PaginatedResponse-object_ObjectType'
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "404":
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Retrieve object types in a specific space
+      summary: List types
       tags:
       - objects
   /spaces/{space_id}/object_types/{type_id}/templates:
@@ -607,12 +641,12 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The ID of the space
+      - description: Space ID
         in: path
         name: space_id
         required: true
         type: string
-      - description: The ID of the object type
+      - description: Type ID
         in: path
         name: type_id
         required: true
@@ -633,24 +667,16 @@ paths:
         "200":
           description: List of templates
           schema:
-            additionalProperties:
-              items:
-                $ref: '#/definitions/object.ObjectTemplate'
-              type: array
-            type: object
-        "403":
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Template'
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "404":
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Retrieve a list of templates for a specific object type in a space
+      summary: List templates
       tags:
       - objects
   /spaces/{space_id}/objects:
@@ -658,7 +684,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The ID of the space
+      - description: Space ID
         in: path
         name: space_id
         required: true
@@ -679,43 +705,33 @@ paths:
         "200":
           description: List of objects
           schema:
-            additionalProperties:
-              items:
-                $ref: '#/definitions/object.Object'
-              type: array
-            type: object
-        "403":
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Object'
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "404":
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Retrieve objects in a specific space
+      summary: List objects
       tags:
       - objects
     post:
       consumes:
       - application/json
       parameters:
-      - description: The ID of the space
+      - description: Space ID
         in: path
         name: space_id
         required: true
         type: string
-      - description: Object details (e.g., name)
+      - description: Object to create
         in: body
         name: object
         required: true
         schema:
-          additionalProperties:
-            type: string
-          type: object
+          $ref: '#/definitions/object.CreateObjectRequest'
       produces:
       - application/json
       responses:
@@ -727,15 +743,15 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/util.ValidationError'
-        "403":
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Create a new object in a specific space
+      summary: Create object
       tags:
       - objects
   /spaces/{space_id}/objects/{object_id}:
@@ -743,12 +759,12 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The ID of the space
+      - description: Space ID
         in: path
         name: space_id
         required: true
         type: string
-      - description: The ID of the object
+      - description: Object ID
         in: path
         name: object_id
         required: true
@@ -760,31 +776,35 @@ paths:
           description: The deleted object
           schema:
             $ref: '#/definitions/object.ObjectResponse'
-        "403":
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/util.ForbiddenError'
         "404":
           description: Resource not found
           schema:
             $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Delete a specific object in a space
+      summary: Delete object
       tags:
       - objects
     get:
       consumes:
       - application/json
       parameters:
-      - description: The ID of the space
+      - description: Space ID
         in: path
         name: space_id
         required: true
         type: string
-      - description: The ID of the object
+      - description: Object ID
         in: path
         name: object_id
         required: true
@@ -796,7 +816,7 @@ paths:
           description: The requested object
           schema:
             $ref: '#/definitions/object.ObjectResponse'
-        "403":
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
@@ -804,11 +824,11 @@ paths:
           description: Resource not found
           schema:
             $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Retrieve a specific object in a space
+      summary: Get object
       tags:
       - objects
   /spaces/{space_id}/objects/{object_id}/export/{format}:
@@ -827,7 +847,7 @@ paths:
         required: true
         type: string
       - description: Export format
-        in: query
+        in: path
         name: format
         required: true
         type: string
@@ -842,19 +862,15 @@ paths:
           description: Bad request
           schema:
             $ref: '#/definitions/util.ValidationError'
-        "403":
+        "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
-        "404":
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/util.NotFoundError'
-        "502":
+        "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/util.ServerError'
-      summary: Export an object
+      summary: Export object
       tags:
       - export
 securityDefinitions:

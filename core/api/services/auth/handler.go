@@ -8,16 +8,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
-// DisplayCodeHandler generates a new challenge and returns the challenge ID
+// DisplayCodeHandler starts a new challenge and returns the challenge ID
 //
-//	@Summary	Open a modal window with a code in Anytype Desktop app
+//	@Summary	Start a new challenge
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
-//	@Param		app_name	query		string					true	"The name of the app that requests the code"
+//	@Param		app_name	query		string					true	"App name requesting the challenge"
 //	@Success	200			{object}	DisplayCodeResponse		"Challenge ID"
 //	@Failure	400			{object}	util.ValidationError	"Invalid input"
-//	@Failure	502			{object}	util.ServerError		"Internal server error"
+//	@Failure	500			{object}	util.ServerError		"Internal server error"
 //	@Router		/auth/display_code [post]
 func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -40,15 +40,15 @@ func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 
 // TokenHandler retrieves an authentication token using a code and challenge ID
 //
-//	@Summary	Retrieve an authentication token using a code
+//	@Summary	Retrieve a token
 //	@Tags		auth
 //	@Accept		json
 //	@Produce	json
-//	@Param		challenge_id	query		string					true	"The challenge ID"
-//	@Param		code			query		string					true	"The 4-digit code retrieved from Anytype Desktop app"
+//	@Param		challenge_id	query		string					true	"Challenge ID"
+//	@Param		code			query		string					true	"4-digit code retrieved from Anytype Desktop app"
 //	@Success	200				{object}	TokenResponse			"Authentication token"
 //	@Failure	400				{object}	util.ValidationError	"Invalid input"
-//	@Failure	502				{object}	util.ServerError		"Internal server error"
+//	@Failure	500				{object}	util.ServerError		"Internal server error"
 //	@Router		/auth/token [post]
 func TokenHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -35,11 +35,11 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Open a modal window with a code in Anytype Desktop app",
+                "summary": "Start a new challenge",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The name of the app that requests the code",
+                        "description": "App name requesting the challenge",
                         "name": "app_name",
                         "in": "query",
                         "required": true
@@ -58,7 +58,7 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -78,18 +78,18 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Retrieve an authentication token using a code",
+                "summary": "Retrieve a token",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The challenge ID",
+                        "description": "Challenge ID",
                         "name": "challenge_id",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The 4-digit code retrieved from Anytype Desktop app",
+                        "description": "4-digit code retrieved from Anytype Desktop app",
                         "name": "code",
                         "in": "query",
                         "required": true
@@ -108,7 +108,7 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -128,11 +128,11 @@ const docTemplate = `{
                 "tags": [
                     "search"
                 ],
-                "summary": "Search and retrieve objects across all the spaces",
+                "summary": "Search objects across all spaces",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The search term to filter objects by name",
+                        "description": "Search query",
                         "name": "query",
                         "in": "query"
                     },
@@ -142,7 +142,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "csv",
-                        "description": "Specify object types for search",
+                        "description": "Types to filter objects by",
                         "name": "object_types",
                         "in": "query"
                     },
@@ -173,19 +173,13 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -205,7 +199,7 @@ const docTemplate = `{
                 "tags": [
                     "spaces"
                 ],
-                "summary": "Retrieve a list of spaces",
+                "summary": "List spaces",
                 "parameters": [
                     {
                         "type": "integer",
@@ -228,19 +222,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/pagination.PaginatedResponse-space_Space"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -258,7 +246,7 @@ const docTemplate = `{
                 "tags": [
                     "spaces"
                 ],
-                "summary": "Create a new Space",
+                "summary": "Create space",
                 "parameters": [
                     {
                         "description": "Space Name",
@@ -283,13 +271,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -309,11 +297,11 @@ const docTemplate = `{
                 "tags": [
                     "spaces"
                 ],
-                "summary": "Retrieve a list of members for the specified Space",
+                "summary": "List members",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
@@ -339,19 +327,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/pagination.PaginatedResponse-space_Member"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -371,11 +353,11 @@ const docTemplate = `{
                 "tags": [
                     "objects"
                 ],
-                "summary": "Retrieve object types in a specific space",
+                "summary": "List types",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
@@ -396,27 +378,18 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of object types",
+                        "description": "List of types",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "$ref": "#/definitions/object.ObjectType"
-                            }
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_ObjectType"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -436,18 +409,18 @@ const docTemplate = `{
                 "tags": [
                     "objects"
                 ],
-                "summary": "Retrieve a list of templates for a specific object type in a space",
+                "summary": "List templates",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The ID of the object type",
+                        "description": "Type ID",
                         "name": "type_id",
                         "in": "path",
                         "required": true
@@ -470,28 +443,16 @@ const docTemplate = `{
                     "200": {
                         "description": "List of templates",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/object.ObjectTemplate"
-                                }
-                            }
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Template"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -511,11 +472,11 @@ const docTemplate = `{
                 "tags": [
                     "objects"
                 ],
-                "summary": "Retrieve objects in a specific space",
+                "summary": "List objects",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
@@ -538,28 +499,16 @@ const docTemplate = `{
                     "200": {
                         "description": "List of objects",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/object.Object"
-                                }
-                            }
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Object"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -577,25 +526,22 @@ const docTemplate = `{
                 "tags": [
                     "objects"
                 ],
-                "summary": "Create a new object in a specific space",
+                "summary": "Create object",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Object details (e.g., name)",
+                        "description": "Object to create",
                         "name": "object",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/object.CreateObjectRequest"
                         }
                     }
                 ],
@@ -612,13 +558,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -638,18 +584,18 @@ const docTemplate = `{
                 "tags": [
                     "objects"
                 ],
-                "summary": "Retrieve a specific object in a space",
+                "summary": "Get object",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The ID of the object",
+                        "description": "Object ID",
                         "name": "object_id",
                         "in": "path",
                         "required": true
@@ -662,7 +608,7 @@ const docTemplate = `{
                             "$ref": "#/definitions/object.ObjectResponse"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
@@ -674,7 +620,7 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -692,18 +638,18 @@ const docTemplate = `{
                 "tags": [
                     "objects"
                 ],
-                "summary": "Delete a specific object in a space",
+                "summary": "Delete object",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The ID of the object",
+                        "description": "Object ID",
                         "name": "object_id",
                         "in": "path",
                         "required": true
@@ -716,10 +662,16 @@ const docTemplate = `{
                             "$ref": "#/definitions/object.ObjectResponse"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/util.ForbiddenError"
                         }
                     },
                     "404": {
@@ -728,7 +680,7 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -748,7 +700,7 @@ const docTemplate = `{
                 "tags": [
                     "export"
                 ],
-                "summary": "Export an object",
+                "summary": "Export object",
                 "parameters": [
                     {
                         "type": "string",
@@ -768,7 +720,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Export format",
                         "name": "format",
-                        "in": "query",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -785,19 +737,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -866,6 +812,32 @@ const docTemplate = `{
                 "vertical_align": {
                     "type": "string",
                     "example": "VerticalAlignTop"
+                }
+            }
+        },
+        "object.CreateObjectRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "object_type_unique_key": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "template_id": {
+                    "type": "string"
                 }
             }
         },
@@ -969,27 +941,6 @@ const docTemplate = `{
                 }
             }
         },
-        "object.ObjectTemplate": {
-            "type": "object",
-            "properties": {
-                "icon": {
-                    "type": "string",
-                    "example": "📄"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Object Template Name"
-                },
-                "type": {
-                    "type": "string",
-                    "example": "object_template"
-                }
-            }
-        },
         "object.ObjectType": {
             "type": "object",
             "properties": {
@@ -1019,6 +970,27 @@ const docTemplate = `{
                 }
             }
         },
+        "object.Template": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "type": "string",
+                    "example": "📄"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Object Template Name"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "object_template"
+                }
+            }
+        },
         "object.Text": {
             "type": "object",
             "properties": {
@@ -1036,6 +1008,48 @@ const docTemplate = `{
                 },
                 "text": {
                     "type": "string"
+                }
+            }
+        },
+        "pagination.PaginatedResponse-object_Object": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/object.Object"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
+                }
+            }
+        },
+        "pagination.PaginatedResponse-object_ObjectType": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/object.ObjectType"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
+                }
+            }
+        },
+        "pagination.PaginatedResponse-object_Template": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/object.Template"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
                 }
             }
         },
@@ -1214,6 +1228,19 @@ const docTemplate = `{
                 }
             }
         },
+        "util.ForbiddenError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "util.NotFoundError": {
             "type": "object",
             "properties": {
@@ -1285,7 +1312,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/v1",
 	Schemes:          []string{},
 	Title:            "Anytype API",
-	Description:      "This API allows interaction with Anytype resources such as spaces, objects, and object types.",
+	Description:      "This API allows interaction with Anytype resources such as spaces, objects and types.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
