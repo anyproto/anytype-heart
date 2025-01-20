@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -18,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -103,12 +100,12 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	}
 	details := buildDiffDetails(bundleObject, localObject)
 
-	recRelsDetail, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
+	recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
 	if err != nil {
 		log.Error("failed to check recommended relations", zap.Error(err))
 	}
 
-	if recRelsDetail != nil {
+	for _, recRelsDetail := range recRelsDetails {
 		details.Set(recRelsDetail.Key, recRelsDetail.Value)
 	}
 
@@ -179,43 +176,40 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 	return details
 }
 
-func checkRecommendedRelations(ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details) (newValue *domain.Detail, err error) {
-	localIds := current.GetStringList(bundle.RelationKeyRecommendedRelations)
-	bundledIds := origin.GetStringList(bundle.RelationKeyRecommendedRelations)
+func checkRecommendedRelations(
+	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details,
+) (newValues []*domain.Detail, err error) {
+	details := origin.CopyOnlyKeys(
+		bundle.RelationKeyRecommendedRelations,
+		bundle.RelationKeyRecommendedLayout,
+		bundle.RelationKeyUniqueKey,
+	)
 
-	newIds := make([]string, 0, len(bundledIds))
-	for _, bundledId := range bundledIds {
-		if !strings.HasPrefix(bundledId, addr.BundledRelationURLPrefix) {
-			return nil, fmt.Errorf("invalid recommended bundled relation id: %s. %s prefix is expected",
-				bundledId, addr.BundledRelationURLPrefix)
-		}
-		key := strings.TrimPrefix(bundledId, addr.BundledRelationURLPrefix)
-		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key)
-		if err != nil {
-			return nil, err
-		}
-
-		// we should add only system relations to object types, because non-system could be not installed to space yet
-		if !lo.Contains(bundle.SystemRelations, domain.RelationKey(uk.InternalKey())) {
-			log.Debug("recommended relation is not system, so we are not adding it to the type object", zap.String("relation key", key))
-			continue
-		}
-
-		id, err := space.DeriveObjectID(ctx, uk)
-		if err != nil {
-			return nil, fmt.Errorf("failed to derive recommended relation with key '%s': %w", key, err)
-		}
-
-		newIds = append(newIds, id)
-	}
-
-	_, added := slice.DifferenceRemovedAdded(localIds, newIds)
-	if len(added) == 0 {
+	_, filled, err := relationutils.FillRecommendedRelations(ctx, space, details)
+	if filled {
 		return nil, nil
 	}
 
-	return &domain.Detail{
-		Key:   bundle.RelationKeyRecommendedRelations,
-		Value: domain.StringList(append(localIds, added...)),
-	}, nil
+	if err != nil {
+		return nil, err
+	}
+
+	for _, key := range []domain.RelationKey{
+		bundle.RelationKeyRecommendedRelations,
+		bundle.RelationKeyRecommendedFeaturedRelations,
+		bundle.RelationKeyRecommendedFileRelations,
+	} {
+		localIds := current.GetStringList(key)
+		newIds := details.GetStringList(key)
+
+		removed, added := slice.DifferenceRemovedAdded(localIds, newIds)
+		if len(added) != 0 || len(removed) != 0 {
+			newValues = append(newValues, &domain.Detail{
+				Key:   key,
+				Value: domain.StringList(newIds),
+			})
+		}
+	}
+
+	return newValues, nil
 }

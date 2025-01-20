@@ -1,4 +1,4 @@
-package objectcreator
+package relationutils
 
 import (
 	"context"
@@ -7,20 +7,19 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
+type mockDeriver struct{}
+
+func (d *mockDeriver) DeriveObjectID(ctx context.Context, key domain.UniqueKey) (string, error) {
+	return domain.RelationKey(key.InternalKey()).URL(), nil
+}
+
 func TestFillRecommendedRelations(t *testing.T) {
-	spc := mock_clientspace.NewMockSpace(t)
-	spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.UniqueKey) (string, error) {
-		return domain.RelationKey(key.InternalKey()).URL(), nil
-	}).Maybe()
-	spc.EXPECT().IsReadOnly().Return(true).Maybe()
 	defaultRecFeatRelIds := buildRelationIds(defaultRecommendedFeaturedRelationKeys)
 	defaultRecRelIds := buildRelationIds(defaultRecommendedRelationKeys)
 
@@ -70,7 +69,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			})
 
 			// when
-			keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
 
 			// then
 			assert.NoError(t, err)
@@ -90,7 +89,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 		})
 
 		// when
-		keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
 
 		// then
 		assert.NoError(t, err)
@@ -129,7 +128,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			})
 
 			// when
-			keys, isAlreadyFilled, err := fillRecommendedRelations(nil, spc, details)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
 
 			// then
 			assert.NoError(t, err)
@@ -139,6 +138,38 @@ func TestFillRecommendedRelations(t *testing.T) {
 			assert.Len(t, keys, len(tc.expected)+3)
 		})
 	}
+
+	t.Run("recommendedRelations of file types", func(t *testing.T) {
+		// given
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
+				bundle.RelationKeyOrigin.BundledURL(),
+				bundle.RelationKeyFileExt.BundledURL(),
+				bundle.RelationKeyAddedDate.BundledURL(),
+				bundle.RelationKeyCameraIso.BundledURL(),
+				bundle.RelationKeyAperture.BundledURL(),
+			}),
+			bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyImage.URL()),
+		})
+
+		// when
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, isAlreadyFilled)
+		assert.Equal(t, append([]string{
+			bundle.RelationKeyOrigin.URL(),
+			bundle.RelationKeyAddedDate.URL(),
+		}, buildRelationIds(defaultRecommendedRelationKeys)...), details.GetStringList(bundle.RelationKeyRecommendedRelations))
+		assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+		assert.Equal(t, []string{
+			bundle.RelationKeyFileExt.URL(),
+			bundle.RelationKeyCameraIso.URL(),
+			bundle.RelationKeyAperture.URL(),
+		}, details.GetStringList(bundle.RelationKeyRecommendedFileRelations))
+		assert.Len(t, keys, 11)
+	})
 }
 
 func buildRelationIds(keys []domain.RelationKey) []string {

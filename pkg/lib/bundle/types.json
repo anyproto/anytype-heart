@@ -143,21 +143,21 @@
     "hidden": false,
     "layout": "file",
     "relations": [
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
-      "fileMimeType",
-      "camera",
       "heightInPixels",
       "widthInPixels",
+      "fileMimeType",
+      "camera",
       "cameraIso",
       "aperture",
-      "exposure",
-      "addedDate",
-      "fileExt",
-      "origin"
+      "exposure"
     ],
     "description": "The recording of moving visual images",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "dashboard",
@@ -346,22 +346,22 @@
     "hidden": false,
     "layout": "image",
     "relations": [
-      "fileMimeType",
-      "widthInPixels",
-      "camera",
-      "heightInPixels",
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
+      "heightInPixels",
+      "widthInPixels",
+      "fileMimeType",
+      "camera",
       "cameraIso",
       "aperture",
       "exposure",
-      "addedDate",
-      "focalRatio",
-      "fileExt",
-      "origin"
+      "focalRatio"
     ],
     "description": "A representation of the external form of a person or thing in art",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "profile",
@@ -388,21 +388,21 @@
     "hidden": false,
     "layout": "file",
     "relations": [
-      "artist",
-      "audioAlbum",
-      "audioAlbumTrackNumber",
-      "audioGenre",
-      "audioLyrics",
-      "releasedYear",
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
       "fileMimeType",
-      "addedDate",
-      "fileExt",
-      "origin"
+      "artist",
+      "audioAlbum",
+      "audioGenre",
+      "releasedYear",
+      "audioAlbumTrackNumber",
+      "audioLyrics"
     ],
     "description": "Sound when recorded, with ability to reproduce",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "goal",
@@ -432,15 +432,15 @@
     "hidden": false,
     "layout": "file",
     "relations": [
-      "fileMimeType",
-      "sizeInBytes",
       "addedDate",
+      "origin",
       "fileExt",
-      "origin"
+      "sizeInBytes",
+      "fileMimeType"
     ],
     "description": "Computer resource for recording data in a computer storage device",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "project",
