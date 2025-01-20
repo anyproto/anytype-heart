@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -15,8 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/simple/widget"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -314,28 +315,27 @@ func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMess
 	return wmsgs
 }
 
-func StructDiffIntoEvents(spaceId string, contextId string, diff *domain.Details) (msgs []*pb.EventMessage) {
-	return StructDiffIntoEventsWithSubIds(spaceId, contextId, diff, nil, nil)
+// StructDiffIntoEvents converts diff details and relation keys to unset into events
+func StructDiffIntoEvents(spaceId string, contextId string, diff *domain.Details, keysToUnset []domain.RelationKey) (msgs []*pb.EventMessage) {
+	return StructDiffIntoEventsWithSubIds(spaceId, contextId, diff, nil, keysToUnset, nil)
 }
 
-// StructDiffIntoEvents converts map into events. nil map value converts to Remove event
-func StructDiffIntoEventsWithSubIds(spaceId string, contextId string, diff *domain.Details, keys []domain.RelationKey, subIds []string) (msgs []*pb.EventMessage) {
-	if diff.Len() == 0 {
+func StructDiffIntoEventsWithSubIds(
+	spaceId, contextId string,
+	diff *domain.Details,
+	filterKeys, keysToUnset []domain.RelationKey,
+	subIds []string,
+) (msgs []*pb.EventMessage) {
+	if diff.Len() == 0 && len(keysToUnset) == 0 {
 		return nil
 	}
 	var (
-		removed []string
 		details []*pb.EventObjectDetailsAmendKeyValue
 	)
 
 	for k, v := range diff.Iterate() {
 		key := string(k)
-		if len(keys) > 0 && slice.FindPos(keys, k) == -1 {
-			continue
-		}
-		// TODO This is not correct! Rewrite this code to use separate diff structures
-		if v.IsNull() {
-			removed = append(removed, key)
+		if len(filterKeys) > 0 && slice.FindPos(filterKeys, k) == -1 {
 			continue
 		}
 		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: key, Value: v.ToProto()})
@@ -350,11 +350,18 @@ func StructDiffIntoEventsWithSubIds(spaceId string, contextId string, diff *doma
 			},
 		}))
 	}
-	if len(removed) > 0 {
+
+	if len(filterKeys) != 0 {
+		keysToUnset = slices.DeleteFunc(keysToUnset, func(key domain.RelationKey) bool {
+			return !slices.Contains(filterKeys, key)
+		})
+	}
+
+	if len(keysToUnset) > 0 {
 		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsUnset{
 			ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
 				Id:     contextId,
-				Keys:   removed,
+				Keys:   slice.IntoStrings(keysToUnset),
 				SubIds: subIds,
 			},
 		}))

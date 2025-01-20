@@ -620,9 +620,9 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 	}
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
-		if diff := domain.StructDiff(prev, s.details); diff != nil {
+		if diff, keysToUnset := domain.StructDiff(prev, s.details); diff != nil || len(keysToUnset) != 0 {
 			action.Details = &undo.Details{Before: prev.Copy(), After: s.details.Copy()}
-			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.SpaceID(), s.RootId(), diff))...)
+			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.SpaceID(), s.RootId(), diff, keysToUnset))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
 			s.parent.details = s.details
@@ -651,8 +651,8 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
-		if diff := domain.StructDiff(prev, s.localDetails); diff != nil {
-			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(spaceId, s.RootId(), diff))...)
+		if diff, keysToUnset := domain.StructDiff(prev, s.localDetails); diff != nil || len(keysToUnset) != 0 {
+			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(spaceId, s.RootId(), diff, keysToUnset))...)
 			s.parent.localDetails = s.localDetails
 		} else if !s.localDetails.Equal(s.parent.localDetails) {
 			s.parent.localDetails = s.localDetails
@@ -1701,6 +1701,9 @@ func (s *State) AddRelationLinks(links ...*model.RelationLink) {
 	for _, l := range links {
 		if !relLinks.Has(l.Key) {
 			relLinks = append(relLinks, l)
+			if l.Format == model.RelationFormat_checkbox {
+				s.SetDetail(domain.RelationKey(l.Key), domain.Bool(false))
+			}
 		}
 	}
 	s.relationLinks = relLinks

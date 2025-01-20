@@ -33,7 +33,7 @@ type Service interface {
 	SetDetails(ctx session.Context, objectId string, details []domain.Detail) error
 	SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []domain.Detail) error
 	SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) error
-	ModifyDetails(objectId string, modifier func(current *domain.Details) (*domain.Details, error)) error
+	ModifyDetails(ctx session.Context, objectId string, modifier func(current *domain.Details) (*domain.Details, error)) error
 	ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) error
 
 	ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
@@ -114,15 +114,15 @@ func (s *service) SetDetailsList(ctx session.Context, objectIds []string, detail
 }
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
-func (s *service) ModifyDetails(objectId string, modifier func(current *domain.Details) (*domain.Details, error)) (err error) {
+func (s *service) ModifyDetails(ctx session.Context, objectId string, modifier func(current *domain.Details) (*domain.Details, error)) (err error) {
 	return cache.Do(s.objectGetter, objectId, func(du basic.DetailsUpdatable) error {
-		return du.UpdateDetails(modifier)
+		return du.UpdateDetails(ctx, modifier)
 	})
 }
 
-func (s *service) ModifyDetailsAndUpdateLastUsed(objectId string, modifier func(current *domain.Details) (*domain.Details, error)) (err error) {
+func (s *service) ModifyDetailsAndUpdateLastUsed(ctx session.Context, objectId string, modifier func(current *domain.Details) (*domain.Details, error)) (err error) {
 	return cache.Do(s.objectGetter, objectId, func(du basic.DetailsUpdatable) error {
-		return du.UpdateDetailsAndLastUsed(modifier)
+		return du.UpdateDetailsAndLastUsed(ctx, modifier)
 	})
 }
 
@@ -133,7 +133,7 @@ func (s *service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 		if i == 0 {
 			modifyDetailsFunc = s.ModifyDetailsAndUpdateLastUsed
 		}
-		err := modifyDetailsFunc(objectId, func(current *domain.Details) (*domain.Details, error) {
+		err := modifyDetailsFunc(nil, objectId, func(current *domain.Details) (*domain.Details, error) {
 			for _, op := range req.Operations {
 				if !pbtypes.IsNullValue(op.Set) {
 					// Set operation has higher priority than Add and Remove, because it modifies full value
