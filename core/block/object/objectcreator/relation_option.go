@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -25,7 +26,9 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	if details.GetString(bundle.RelationKeyRelationKey) == "" {
 		return "", nil, fmt.Errorf("relation key is empty")
 	}
-
+	if !details.Has(bundle.RelationKeyCreatedDate) {
+		details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
+	}
 	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeRelationOption, details)
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)

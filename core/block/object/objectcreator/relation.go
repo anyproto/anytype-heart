@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -30,6 +31,9 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 
 	if details.GetString(bundle.RelationKeyName) == "" {
 		return "", nil, fmt.Errorf("missing relation name")
+	}
+	if !details.Has(bundle.RelationKeyCreatedDate) {
+		details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	}
 
 	object = details.Copy()

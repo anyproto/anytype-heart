@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"golang.org/x/exp/slices"
 
@@ -34,6 +35,9 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		if err != nil {
 			return "", nil, fmt.Errorf("fill recommended relations: %w", err)
 		}
+	}
+	if !object.Has(bundle.RelationKeyCreatedDate) {
+		object.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	}
 
 	object.SetString(bundle.RelationKeyId, id)
