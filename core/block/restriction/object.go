@@ -23,6 +23,7 @@ var (
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 		model.Restrictions_Duplicate,
+		model.Restrictions_Publish,
 	}
 	objRestrictEditAndDuplicate = ObjectRestrictions{
 		model.Restrictions_Blocks,
@@ -30,17 +31,20 @@ var (
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 		model.Restrictions_Duplicate,
+		model.Restrictions_Publish,
 	}
 	objRestrictEdit = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
+		model.Restrictions_Publish,
 	}
 	objRestrictEditAndTemplate = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
+		model.Restrictions_Publish,
 	}
 	sysTypesRestrictions = ObjectRestrictions{
 		model.Restrictions_Blocks,
@@ -49,6 +53,7 @@ var (
 		model.Restrictions_Template,
 		model.Restrictions_Details,
 		model.Restrictions_Delete,
+		model.Restrictions_Publish,
 	}
 	sysRelationsRestrictions = ObjectRestrictions{
 		model.Restrictions_Blocks,
@@ -58,6 +63,7 @@ var (
 		model.Restrictions_Delete,
 		model.Restrictions_Relations,
 		model.Restrictions_Details,
+		model.Restrictions_Publish,
 	}
 
 	objectRestrictionsByLayout = map[model.ObjectTypeLayout]ObjectRestrictions{
@@ -112,6 +118,7 @@ var (
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
+			model.Restrictions_Publish,
 		},
 		smartblock.SmartBlockTypeWorkspace: {
 			model.Restrictions_Blocks,
@@ -121,6 +128,7 @@ var (
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
+			model.Restrictions_Publish,
 		},
 		smartblock.SmartBlockTypeFileObject:        objRestrictEditAndDuplicate,
 		smartblock.SmartBlockTypeArchive:           objRestrictAll,
@@ -133,6 +141,7 @@ var (
 		smartblock.SmartBlockTypeTemplate: {
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
+			model.Restrictions_Publish,
 		},
 		smartblock.SmartBlockTypeWidget: {
 			model.Restrictions_Relations,
@@ -142,6 +151,7 @@ var (
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
+			model.Restrictions_Publish,
 		},
 		smartblock.SmartBlockTypeMissingObject: objRestrictAll,
 		smartblock.SmartBlockTypeDate:          objRestrictAll,

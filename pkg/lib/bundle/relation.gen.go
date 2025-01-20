@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b11da33964518961375918da989f595981c3d4a4056853c79a60883c22c10958"
+const RelationChecksum = "2cd8997ed52909b8c95269a2b2b5c27f6797d97df03b532576b9fa662acb4c62"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -150,6 +150,8 @@ const (
 	RelationKeySpaceOrder                   domain.RelationKey = "spaceOrder"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
+	RelationKeyRecommendedHiddenRelations   domain.RelationKey = "recommendedHiddenRelations"
+	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 )
 
 var (
@@ -1350,6 +1352,34 @@ var (
 			Id:               "_brrecommendedFeaturedRelations",
 			Key:              "recommendedFeaturedRelations",
 			Name:             "Recommended featured relations",
+			ObjectTypes:      []string{TypePrefix + "relation"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRecommendedFileRelations: {
+
+			DataSource:       model.Relation_details,
+			Description:      "List of recommended file-specific relations",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brrecommendedFileRelations",
+			Key:              "recommendedFileRelations",
+			Name:             "Recommended file relations",
+			ObjectTypes:      []string{TypePrefix + "relation"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRecommendedHiddenRelations: {
+
+			DataSource:       model.Relation_details,
+			Description:      "List of recommended relations that are hidden in layout",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brrecommendedHiddenRelations",
+			Key:              "recommendedHiddenRelations",
+			Name:             "Recommended hidden relations",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,

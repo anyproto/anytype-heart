@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -267,7 +268,7 @@ func (s *service) prepareDetailsForInstallingObject(
 
 	switch uk.SmartblockType() {
 	case coresb.SmartBlockTypeBundledObjectType, coresb.SmartBlockTypeObjectType:
-		relationKeys, isAlreadyFilled, err := fillRecommendedRelations(ctx, spc, details)
+		relationKeys, isAlreadyFilled, err := relationutils.FillRecommendedRelations(ctx, spc, details)
 		if err != nil {
 			return nil, fmt.Errorf("fill recommended relations: %w", err)
 		}

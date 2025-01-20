@@ -67,7 +67,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		}})
 
 		// when
-		err := f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+		err := f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 			current.Set(bundle.RelationKeyAperture, domain.String("aperture"))
 			current.Set(bundle.RelationKeyRelationMaxCount, domain.Int64(5))
 			return current, nil
@@ -106,7 +106,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		}})
 
 		// when
-		err = f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+		err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 			current.Set(bundle.RelationKeySpaceDashboardId, domain.String("new123"))
 			return current, nil
 		})
@@ -130,7 +130,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		assert.NoError(t, err)
 
 		// when
-		err = f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+		err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 			current.Delete(bundle.RelationKeyTargetObjectType)
 			return current, nil
 		})

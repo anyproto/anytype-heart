@@ -161,9 +161,12 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
 				continue
 			}
-			val := sb.CombinedDetails().GetString(domain.RelationKey(rel.Key))
+			val := sb.Details().GetString(domain.RelationKey(rel.Key))
 			if val == "" {
-				continue
+				val = sb.LocalDetails().GetString(domain.RelationKey(rel.Key))
+				if val == "" {
+					continue
+				}
 			}
 			// skip readonly and hidden system relations
 			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
