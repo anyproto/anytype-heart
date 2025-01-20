@@ -53,7 +53,7 @@ func (c *layoutConverter) Name() string {
 
 func (c *layoutConverter) CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error {
 	fromLayout := st.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
-	if !c.isConversionAllowed(model.ObjectTypeLayout(fromLayout), layout) {
+	if !c.isConversionAllowed(model.ObjectTypeLayout(fromLayout), layout) { //nolint:gosec
 		return fmt.Errorf("can't change object type recommended layout from '%s' to '%s'",
 			model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(layout)]) //nolint:gosec
 	}
