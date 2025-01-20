@@ -134,17 +134,17 @@ func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string,
 	return _c
 }
 
-// ModifyDetails provides a mock function with given fields: objectId, modifier
-func (_m *MockService) ModifyDetails(objectId string, modifier func(*domain.Details) (*domain.Details, error)) error {
-	ret := _m.Called(objectId, modifier)
+// ModifyDetails provides a mock function with given fields: ctx, objectId, modifier
+func (_m *MockService) ModifyDetails(ctx session.Context, objectId string, modifier func(*domain.Details) (*domain.Details, error)) error {
+	ret := _m.Called(ctx, objectId, modifier)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ModifyDetails")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, func(*domain.Details) (*domain.Details, error)) error); ok {
-		r0 = rf(objectId, modifier)
+	if rf, ok := ret.Get(0).(func(session.Context, string, func(*domain.Details) (*domain.Details, error)) error); ok {
+		r0 = rf(ctx, objectId, modifier)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -158,15 +158,16 @@ type MockService_ModifyDetails_Call struct {
 }
 
 // ModifyDetails is a helper method to define mock.On call
+//   - ctx session.Context
 //   - objectId string
 //   - modifier func(*domain.Details)(*domain.Details , error)
-func (_e *MockService_Expecter) ModifyDetails(objectId interface{}, modifier interface{}) *MockService_ModifyDetails_Call {
-	return &MockService_ModifyDetails_Call{Call: _e.mock.On("ModifyDetails", objectId, modifier)}
+func (_e *MockService_Expecter) ModifyDetails(ctx interface{}, objectId interface{}, modifier interface{}) *MockService_ModifyDetails_Call {
+	return &MockService_ModifyDetails_Call{Call: _e.mock.On("ModifyDetails", ctx, objectId, modifier)}
 }
 
-func (_c *MockService_ModifyDetails_Call) Run(run func(objectId string, modifier func(*domain.Details) (*domain.Details, error))) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) Run(run func(ctx session.Context, objectId string, modifier func(*domain.Details) (*domain.Details, error))) *MockService_ModifyDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(func(*domain.Details) (*domain.Details, error)))
+		run(args[0].(session.Context), args[1].(string), args[2].(func(*domain.Details) (*domain.Details, error)))
 	})
 	return _c
 }
@@ -176,7 +177,7 @@ func (_c *MockService_ModifyDetails_Call) Return(_a0 error) *MockService_ModifyD
 	return _c
 }
 
-func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(string, func(*domain.Details) (*domain.Details, error)) error) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(session.Context, string, func(*domain.Details) (*domain.Details, error)) error) *MockService_ModifyDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

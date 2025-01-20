@@ -12,6 +12,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/anytype-publish-server/publishclient"
 
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
@@ -454,4 +455,15 @@ func (c *Config) GetSpaceStorageMode() storage.SpaceStorageMode {
 
 func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
 	return c.NetworkMode
+}
+
+func (c *Config) GetPublishServer() publishclient.Config {
+	return publishclient.Config{
+		Addrs: []publishclient.PublishServerAddr{
+			{
+				PeerId: "12D3KooWEQPgbxGPvkny8kikS3zqfziM7JsQBnJHXHL9ByCcATs7",
+				Addrs:  []string{"yamux://anytype-publish-server-yamux-fb3a0765ead8fc08.elb.eu-central-2.amazonaws.com:443"},
+			},
+		},
+	}
 }
