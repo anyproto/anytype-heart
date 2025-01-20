@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/interfaces"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
@@ -36,7 +35,7 @@ func (s *Server) rateLimit(max float64) gin.HandlerFunc {
 }
 
 // ensureAuthenticated is a middleware that ensures the request is authenticated.
-func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer, tv interfaces.TokenValidator) gin.HandlerFunc {
+func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -48,28 +47,29 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer, tv interfa
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
 			return
 		}
-
 		key := strings.TrimPrefix(authHeader, "Bearer ")
+
+		// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
+		// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
 		s.mu.Lock()
 		token, exists := s.KeyToToken[key]
 		s.mu.Unlock()
+
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Failed to create session"})
-				return
-			}
-			s.mu.Lock()
-			s.KeyToToken[key] = response.Token
-			s.mu.Unlock()
-		} else {
-			_, err := tv.ValidateApiToken(token)
-			if err != nil {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 				return
 			}
+			token = response.Token
+
+			s.mu.Lock()
+			s.KeyToToken[key] = token
+			s.mu.Unlock()
 		}
 
+		// Add token to request context for downstream services (subscriptions, events, etc.)
+		c.Set("token", token)
 		c.Next()
 	}
 }

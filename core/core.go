@@ -11,11 +11,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/interfaces"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
 
@@ -128,10 +126,3 @@ func (mw *Middleware) SaveGoroutinesStack(path string) (err error) {
 	}
 	return utildebug.SaveStackToRepo(path, true)
 }
-
-// ValidateApiToken exposes ValidateToken logic from core to the JSON API
-func (mw *Middleware) ValidateApiToken(token string) (model.AccountAuthLocalApiScope, error) {
-	return mw.applicationService.ValidateSessionToken(token)
-}
-
-var _ interfaces.TokenValidator = (*Middleware)(nil)

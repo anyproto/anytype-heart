@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/services/object"
 	"github.com/anyproto/anytype-heart/core/api/services/search"
 	"github.com/anyproto/anytype-heart/core/api/services/space"
-	"github.com/anyproto/anytype-heart/core/interfaces"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
 
@@ -30,7 +29,7 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with default config and sets up the routes.
-func NewServer(a *app.App, mw service.ClientCommandsServer, tv interfaces.TokenValidator) *Server {
+func NewServer(a *app.App, mw service.ClientCommandsServer) *Server {
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw),
@@ -39,7 +38,7 @@ func NewServer(a *app.App, mw service.ClientCommandsServer, tv interfaces.TokenV
 
 	s.objectService = object.NewService(mw, s.spaceService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
-	s.engine = s.NewRouter(a, mw, tv)
+	s.engine = s.NewRouter(a, mw)
 	s.KeyToToken = make(map[string]string)
 
 	return s

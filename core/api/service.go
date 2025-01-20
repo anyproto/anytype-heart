@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/api/server"
-	"github.com/anyproto/anytype-heart/core/interfaces"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
 
@@ -21,8 +20,7 @@ const (
 )
 
 var (
-	mwSrv       service.ClientCommandsServer
-	tvInterface interfaces.TokenValidator
+	mwSrv service.ClientCommandsServer
 )
 
 type Service interface {
@@ -33,14 +31,10 @@ type apiService struct {
 	srv     *server.Server
 	httpSrv *http.Server
 	mw      service.ClientCommandsServer
-	tv      interfaces.TokenValidator
 }
 
 func New() Service {
-	return &apiService{
-		mw: mwSrv,
-		tv: tvInterface,
-	}
+	return &apiService{mw: mwSrv}
 }
 
 func (s *apiService) Name() (name string) {
@@ -64,7 +58,7 @@ func (s *apiService) Name() (name string) {
 //	@externalDocs.description	OpenAPI
 //	@externalDocs.url			https://swagger.io/resources/open-api/
 func (s *apiService) Init(a *app.App) (err error) {
-	s.srv = server.NewServer(a, s.mw, s.tv)
+	s.srv = server.NewServer(a, s.mw)
 	s.httpSrv = &http.Server{
 		Addr:              httpPort,
 		Handler:           s.srv.Engine(),
@@ -96,7 +90,6 @@ func (s *apiService) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func SetMiddlewareParams(mw service.ClientCommandsServer, tv interfaces.TokenValidator) {
+func SetMiddlewareParams(mw service.ClientCommandsServer) {
 	mwSrv = mw
-	tvInterface = tv
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/services/object"
 	"github.com/anyproto/anytype-heart/core/api/services/search"
 	"github.com/anyproto/anytype-heart/core/api/services/space"
-	"github.com/anyproto/anytype-heart/core/interfaces"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
 
@@ -25,7 +24,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(a *app.App, mw service.ClientCommandsServer, tv interfaces.TokenValidator) *gin.Engine {
+func (s *Server) NewRouter(a *app.App, mw service.ClientCommandsServer) *gin.Engine {
 	router := gin.Default()
 
 	paginator := pagination.New(pagination.Config{
@@ -48,7 +47,7 @@ func (s *Server) NewRouter(a *app.App, mw service.ClientCommandsServer, tv inter
 	// API routes
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
-	v1.Use(s.ensureAuthenticated(mw, tv))
+	v1.Use(s.ensureAuthenticated(mw))
 	v1.Use(s.ensureAccountInfo(a))
 	{
 		// Export
