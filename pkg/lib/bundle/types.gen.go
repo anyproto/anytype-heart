@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "ef6f7320503988b931e7e3dcaff70746c59a7ae2e119aa1d802e185a33def361"
+const TypeChecksum = "66c7946afe19193a627e58a96698229c85b015794dd2864c21e411910960a511"
 const (
 	TypePrefix = "_ot"
 )
@@ -67,7 +67,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Book",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAuthor), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyStarred), MustGetRelationLink(RelationKeyUrl)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAuthor), MustGetRelationLink(RelationKeyStarred), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyUrl)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "book",
 		},
@@ -78,7 +78,7 @@ var (
 			Layout:        model.ObjectType_bookmark,
 			Name:          "Bookmark",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySource), MustGetRelationLink(RelationKeyPicture)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPicture), MustGetRelationLink(RelationKeySource)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
 		},
@@ -90,7 +90,7 @@ var (
 			Layout:        model.ObjectType_chat,
 			Name:          "Chat [deprecated]",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
 			Url:           TypePrefix + "chat",
 		},
@@ -101,7 +101,7 @@ var (
 			Layout:        model.ObjectType_chatDerived,
 			Name:          "Chat Derived Object",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDescription)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatDerivedObject},
 			Url:           TypePrefix + "chatDerived",
@@ -124,7 +124,7 @@ var (
 			Layout:        model.ObjectType_profile,
 			Name:          "Contact",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPhone), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyCompany)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyCompany), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyPhone)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "contact",
 		},
@@ -182,7 +182,7 @@ var (
 			Layout:        model.ObjectType_todo,
 			Name:          "Goal",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
 		},
@@ -285,7 +285,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Recipe",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTime), MustGetRelationLink(RelationKeyIngredients)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIngredients), MustGetRelationLink(RelationKeyTime)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "recipe",
 		},
@@ -356,7 +356,7 @@ var (
 			Layout:        model.ObjectType_todo,
 			Name:          "Task",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyPriority), MustGetRelationLink(RelationKeyTasks), MustGetRelationLink(RelationKeyLinkedProjects)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyLinkedProjects), MustGetRelationLink(RelationKeyPriority), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "task",
 		},

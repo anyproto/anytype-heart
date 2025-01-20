@@ -10,8 +10,8 @@
     "layout": "basic",
     "relations": [
       "tag",
-      "time",
-      "ingredients"
+      "ingredients",
+      "time"
     ],
     "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food"
   },
@@ -40,9 +40,9 @@
     "layout": "profile",
     "relations": [
       "tag",
-      "phone",
+      "company",
       "email",
-      "company"
+      "phone"
     ],
     "description": "Information to make action of communicating or meeting with Human or Company"
   },
@@ -57,8 +57,8 @@
     "layout": "bookmark",
     "relations": [
       "tag",
-      "source",
-      "picture"
+      "picture",
+      "source"
     ],
     "description": "URL that is stored as Object and may be categorised and linked with objects"
   },
@@ -88,12 +88,12 @@
     "relations": [
       "tag",
       "assignee",
-      "dueDate",
-      "status",
       "done",
+      "dueDate",
+      "linkedProjects",
       "priority",
-      "tasks",
-      "linkedProjects"
+      "status",
+      "tasks"
     ],
     "description": "A piece of work to be done or undertaken"
   },
@@ -127,8 +127,8 @@
     "relations": [
       "tag",
       "author",
-      "status",
       "starred",
+      "status",
       "url"
     ],
     "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover"
@@ -415,9 +415,9 @@
     "layout": "todo",
     "relations": [
       "tag",
+      "dueDate",
       "progress",
       "status",
-      "dueDate",
       "tasks"
     ],
     "description": "The object of a person's ambition or effort; an aim or desired result"
@@ -467,8 +467,7 @@
     "hidden": true,
     "layout": "chat",
     "relations": [
-        "tag",
-        "description"
+        "tag"
     ],
     "description": "A chat [deprecated]"
   },
@@ -482,8 +481,7 @@
     "hidden": true,
     "layout": "chatDerived",
     "relations": [
-      "tag",
-      "description"
+      "tag"
     ],
     "description": "A chat derived object",
     "revision": 1
