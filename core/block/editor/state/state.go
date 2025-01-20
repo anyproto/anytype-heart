@@ -136,7 +136,7 @@ type State struct {
 
 	groupId                  string
 	noObjectType             bool
-	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
+	originalCreatedTimestamp int64 // pass here from snapshots when importing objects or used for derived objects such as relations, types and etc
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -1702,9 +1702,6 @@ func (s *State) AddRelationLinks(links ...*model.RelationLink) {
 	for _, l := range links {
 		if !relLinks.Has(l.Key) {
 			relLinks = append(relLinks, l)
-			if l.Format == model.RelationFormat_checkbox {
-				s.SetDetail(domain.RelationKey(l.Key), domain.Bool(false))
-			}
 		}
 	}
 	s.relationLinks = relLinks
