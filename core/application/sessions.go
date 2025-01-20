@@ -33,7 +33,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 		}
 		log.Infof("appLink auth %s", appLink.AppName)
 
-		token, err := s.sessions.StartSession(s.sessionSigningKey, model.AccountAuthLocalApiScope(appLink.Scope))
+		token, err := s.sessions.StartSession(s.sessionSigningKey, model.AccountAuthLocalApiScope(appLink.Scope)) // nolint:gosec
 		if err != nil {
 			return "", "", err
 		}

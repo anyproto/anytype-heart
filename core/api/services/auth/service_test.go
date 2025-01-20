@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -40,7 +41,10 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
-		fx.mwMock.On("AccountLocalLinkNewChallenge", mock.Anything, &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: mockedAppName}).
+		fx.mwMock.On("AccountLocalLinkNewChallenge", mock.Anything, &pb.RpcAccountLocalLinkNewChallengeRequest{
+			AppName: mockedAppName,
+			Scope:   model.AccountAuth_JsonAPI,
+		}).
 			Return(&pb.RpcAccountLocalLinkNewChallengeResponse{
 				ChallengeId: mockedChallengeId,
 				Error:       &pb.RpcAccountLocalLinkNewChallengeResponseError{Code: pb.RpcAccountLocalLinkNewChallengeResponseError_NULL},
@@ -73,7 +77,10 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
-		fx.mwMock.On("AccountLocalLinkNewChallenge", mock.Anything, &pb.RpcAccountLocalLinkNewChallengeRequest{AppName: mockedAppName}).
+		fx.mwMock.On("AccountLocalLinkNewChallenge", mock.Anything, &pb.RpcAccountLocalLinkNewChallengeRequest{
+			AppName: mockedAppName,
+			Scope:   model.AccountAuth_JsonAPI,
+		}).
 			Return(&pb.RpcAccountLocalLinkNewChallengeResponse{
 				Error: &pb.RpcAccountLocalLinkNewChallengeResponseError{Code: pb.RpcAccountLocalLinkNewChallengeResponseError_UNKNOWN_ERROR},
 			}).Once()
