@@ -230,3 +230,9 @@ packages:
   github.com/anyproto/anytype-heart/core/kanban:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/core/inviteservice:
+    interfaces:
+      InviteService:
+  github.com/anyproto/anytype-heart/core/identity:
+    interfaces:
+      Service:

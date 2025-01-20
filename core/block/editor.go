@@ -469,15 +469,6 @@ func (s *Service) GetRelations(ctx session.Context, objectId string) (relations 
 	return
 }
 
-func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relationIds []string) (err error) {
-	if len(relationIds) == 0 {
-		return nil
-	}
-	return cache.Do(s, objectId, func(b smartblock.SmartBlock) error { // TODO RQ: check if empty
-		return b.AddRelationLinks(ctx, slice.StringsInto[domain.RelationKey](relationIds)...)
-	})
-}
-
 func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTypeUniqueKeys []string) (err error) {
 	return cache.Do(s, objectId, func(b basic.CommonOperations) error {
 		objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeUniqueKeys))
