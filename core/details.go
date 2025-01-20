@@ -188,8 +188,7 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 			}
 			format, err := mw.extractRelationFormat(current, objectStore, key)
 			if err != nil {
-				current.Set(domain.RelationKey(key), domain.Null())
-				continue
+				log.Errorf("failed to fetch relation from store to get format %s, falling back to basic", err)
 			}
 			switch format {
 			case model.RelationFormat_checkbox:
@@ -217,7 +216,7 @@ func (mw *Middleware) extractRelationFormat(current *domain.Details, objectStore
 	spaceId := current.GetString(bundle.RelationKeySpaceId)
 	relation, err := objectStore.SpaceIndex(spaceId).FetchRelationByKeys(domain.RelationKey(key))
 	if err != nil {
-		return 0, err
+		return model.RelationFormat_longtext, err
 	}
 	var format model.RelationFormat
 	if len(relation) != 0 {
