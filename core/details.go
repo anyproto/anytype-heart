@@ -188,11 +188,13 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 			}
 			format, err := mw.extractRelationFormat(current, objectStore, key)
 			if err != nil {
+				current.Set(domain.RelationKey(key), domain.Null())
 				continue
 			}
-			if format == model.RelationFormat_checkbox {
+			switch format {
+			case model.RelationFormat_checkbox:
 				current.Set(domain.RelationKey(key), domain.Bool(false))
-			} else {
+			default:
 				current.Set(domain.RelationKey(key), domain.Null())
 			}
 		}
