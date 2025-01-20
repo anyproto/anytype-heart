@@ -41,12 +41,12 @@ func (s *dsObjectStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLi
 		return nil, commit(fmt.Errorf("find outbound links: %w", err))
 	}
 
-	inbound, err := s.getObjectsInfo(s.componentCtx, inboundIds)
+	inbound, err := s.getObjectsInfo(txn.Context(), inboundIds)
 	if err != nil {
 		return nil, commit(err)
 	}
 
-	outbound, err := s.getObjectsInfo(s.componentCtx, outboundsIds)
+	outbound, err := s.getObjectsInfo(txn.Context(), outboundsIds)
 	if err != nil {
 		return nil, commit(err)
 	}
