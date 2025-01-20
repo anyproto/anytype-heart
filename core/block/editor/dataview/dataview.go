@@ -118,10 +118,23 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 		return err
 	}
 
+	var viewRelations []*model.BlockContentDataviewRelation
+	if srcBlock, err := BlockBySource(d.objectStore, source); err != nil {
+		log.Errorf("failed to build dataview block to modify view relation lists: %v", err)
+	} else {
+		for _, relLink := range srcBlock.Dataview.RelationLinks {
+			_ = dv.AddRelation(relLink)
+		}
+		viewRelations = srcBlock.Dataview.Views[0].Relations
+	}
+
 	for _, view := range dv.ListViews() {
 		// TODO: GO-4189 Need to review relation lists modification in each view on source change
 		view.DefaultTemplateId = ""
 		view.DefaultObjectTypeId = ""
+		if len(viewRelations) != 0 {
+			view.Relations = viewRelations
+		}
 		if err = dv.SetView(view.Id, *view); err != nil {
 			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
 		}
