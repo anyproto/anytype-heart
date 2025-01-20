@@ -192,7 +192,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 
 func (s *service) applyInviteLink(ctx context.Context, spc clientspace.Space, snapshot *PublishingUberSnapshot, joinSpace bool) error {
 	inviteLink, err := s.extractInviteLink(ctx, spc.Id(), joinSpace, spc.IsPersonal())
-	if err != nil && errors.Is(err, ErrLimitExceeded) {
+	if err != nil && errors.Is(err, inviteservice.ErrInviteNotExists) {
 		return nil
 	}
 	if err != nil {
