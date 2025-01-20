@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "This API allows interaction with Anytype resources such as spaces, objects, and object types.",
+        "description": "This API allows interaction with Anytype resources such as spaces, objects and types.",
         "title": "Anytype API",
         "termsOfService": "https://anytype.io/terms_of_use",
         "contact": {
@@ -29,11 +29,11 @@
                 "tags": [
                     "auth"
                 ],
-                "summary": "Open a modal window with a code in Anytype Desktop app",
+                "summary": "Start new challenge",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The name of the app that requests the code",
+                        "description": "App name requesting the challenge",
                         "name": "app_name",
                         "in": "query",
                         "required": true
@@ -52,7 +52,7 @@
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -72,18 +72,18 @@
                 "tags": [
                     "auth"
                 ],
-                "summary": "Retrieve an authentication token using a code",
+                "summary": "Retrieve token",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The challenge ID",
+                        "description": "Challenge ID",
                         "name": "challenge_id",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The 4-digit code retrieved from Anytype Desktop app",
+                        "description": "4-digit code retrieved from Anytype Desktop app",
                         "name": "code",
                         "in": "query",
                         "required": true
@@ -102,7 +102,7 @@
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -122,11 +122,11 @@
                 "tags": [
                     "search"
                 ],
-                "summary": "Search and retrieve objects across all the spaces",
+                "summary": "Search objects across all spaces",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The search term to filter objects by name",
+                        "description": "Search query",
                         "name": "query",
                         "in": "query"
                     },
@@ -136,8 +136,8 @@
                             "type": "string"
                         },
                         "collectionFormat": "csv",
-                        "description": "Specify object types for search",
-                        "name": "object_types",
+                        "description": "Types to filter objects by",
+                        "name": "types",
                         "in": "query"
                     },
                     {
@@ -167,19 +167,13 @@
                             }
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -199,7 +193,7 @@
                 "tags": [
                     "spaces"
                 ],
-                "summary": "Retrieve a list of spaces",
+                "summary": "List spaces",
                 "parameters": [
                     {
                         "type": "integer",
@@ -222,19 +216,13 @@
                             "$ref": "#/definitions/pagination.PaginatedResponse-space_Space"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -252,7 +240,7 @@
                 "tags": [
                     "spaces"
                 ],
-                "summary": "Create a new Space",
+                "summary": "Create space",
                 "parameters": [
                     {
                         "description": "Space Name",
@@ -277,13 +265,13 @@
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -303,11 +291,11 @@
                 "tags": [
                     "spaces"
                 ],
-                "summary": "Retrieve a list of members for the specified Space",
+                "summary": "List members",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
@@ -333,159 +321,13 @@
                             "$ref": "#/definitions/pagination.PaginatedResponse-space_Member"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/util.ServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/spaces/{space_id}/object_types": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "objects"
-                ],
-                "summary": "Retrieve object types in a specific space",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The ID of the space",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "The number of items to skip before starting to collect the result set",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 100,
-                        "description": "The number of items to return",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of object types",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "$ref": "#/definitions/object.ObjectType"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/util.UnauthorizedError"
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/util.ServerError"
-                        }
-                    }
-                }
-            }
-        },
-        "/spaces/{space_id}/object_types/{type_id}/templates": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "objects"
-                ],
-                "summary": "Retrieve a list of templates for a specific object type in a space",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The ID of the space",
-                        "name": "space_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "The ID of the object type",
-                        "name": "type_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "The number of items to skip before starting to collect the result set",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 100,
-                        "description": "The number of items to return",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of templates",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/object.ObjectTemplate"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/util.UnauthorizedError"
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -505,11 +347,11 @@
                 "tags": [
                     "objects"
                 ],
-                "summary": "Retrieve objects in a specific space",
+                "summary": "List objects",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
@@ -532,28 +374,16 @@
                     "200": {
                         "description": "List of objects",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/object.Object"
-                                }
-                            }
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Object"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
-                        }
-                    },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -571,25 +401,22 @@
                 "tags": [
                     "objects"
                 ],
-                "summary": "Create a new object in a specific space",
+                "summary": "Create object",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Object details (e.g., name)",
+                        "description": "Object to create",
                         "name": "object",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/object.CreateObjectRequest"
                         }
                     }
                 ],
@@ -606,13 +433,13 @@
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -632,18 +459,18 @@
                 "tags": [
                     "objects"
                 ],
-                "summary": "Retrieve a specific object in a space",
+                "summary": "Get object",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The ID of the object",
+                        "description": "Object ID",
                         "name": "object_id",
                         "in": "path",
                         "required": true
@@ -656,7 +483,7 @@
                             "$ref": "#/definitions/object.ObjectResponse"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
@@ -668,7 +495,7 @@
                             "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -686,18 +513,18 @@
                 "tags": [
                     "objects"
                 ],
-                "summary": "Delete a specific object in a space",
+                "summary": "Delete object",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The ID of the space",
+                        "description": "Space ID",
                         "name": "space_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "The ID of the object",
+                        "description": "Object ID",
                         "name": "object_id",
                         "in": "path",
                         "required": true
@@ -710,10 +537,16 @@
                             "$ref": "#/definitions/object.ObjectResponse"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/util.ForbiddenError"
                         }
                     },
                     "404": {
@@ -722,7 +555,7 @@
                             "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
-                    "502": {
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -742,7 +575,7 @@
                 "tags": [
                     "export"
                 ],
-                "summary": "Export an object",
+                "summary": "Export object",
                 "parameters": [
                     {
                         "type": "string",
@@ -762,7 +595,7 @@
                         "type": "string",
                         "description": "Export format",
                         "name": "format",
-                        "in": "query",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -779,19 +612,132 @@
                             "$ref": "#/definitions/util.ValidationError"
                         }
                     },
-                    "403": {
+                    "401": {
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/util.NotFoundError"
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/spaces/{space_id}/types": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "objects"
+                ],
+                "summary": "List types",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "The number of items to skip before starting to collect the result set",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "The number of items to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of types",
+                        "schema": {
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Type"
                         }
                     },
-                    "502": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/spaces/{space_id}/types/{type_id}/templates": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "objects"
+                ],
+                "summary": "List templates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type ID",
+                        "name": "type_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "The number of items to skip before starting to collect the result set",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 100,
+                        "description": "The number of items to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of templates",
+                        "schema": {
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Template"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "500": {
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/util.ServerError"
@@ -860,6 +806,32 @@
                 "vertical_align": {
                     "type": "string",
                     "example": "VerticalAlignTop"
+                }
+            }
+        },
+        "object.CreateObjectRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "object_type_unique_key": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "template_id": {
+                    "type": "string"
                 }
             }
         },
@@ -963,7 +935,7 @@
                 }
             }
         },
-        "object.ObjectTemplate": {
+        "object.Template": {
             "type": "object",
             "properties": {
                 "icon": {
@@ -976,40 +948,11 @@
                 },
                 "name": {
                     "type": "string",
-                    "example": "Object Template Name"
+                    "example": "Template Name"
                 },
                 "type": {
                     "type": "string",
-                    "example": "object_template"
-                }
-            }
-        },
-        "object.ObjectType": {
-            "type": "object",
-            "properties": {
-                "icon": {
-                    "type": "string",
-                    "example": "📄"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Page"
-                },
-                "recommended_layout": {
-                    "type": "string",
-                    "example": "todo"
-                },
-                "type": {
-                    "type": "string",
-                    "example": "object_type"
-                },
-                "unique_key": {
-                    "type": "string",
-                    "example": "ot-page"
+                    "example": "template"
                 }
             }
         },
@@ -1030,6 +973,77 @@
                 },
                 "text": {
                     "type": "string"
+                }
+            }
+        },
+        "object.Type": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "type": "string",
+                    "example": "📄"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Page"
+                },
+                "recommended_layout": {
+                    "type": "string",
+                    "example": "todo"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "type"
+                },
+                "unique_key": {
+                    "type": "string",
+                    "example": "ot-page"
+                }
+            }
+        },
+        "pagination.PaginatedResponse-object_Object": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/object.Object"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
+                }
+            }
+        },
+        "pagination.PaginatedResponse-object_Template": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/object.Template"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
+                }
+            }
+        },
+        "pagination.PaginatedResponse-object_Type": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/object.Type"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/pagination.PaginationMeta"
                 }
             }
         },
@@ -1205,6 +1219,19 @@
                 "workspace_object_id": {
                     "type": "string",
                     "example": "bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"
+                }
+            }
+        },
+        "util.ForbiddenError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },

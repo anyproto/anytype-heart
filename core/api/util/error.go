@@ -5,25 +5,36 @@ import (
 	"net/http"
 )
 
-type ServerError struct {
-	Error struct {
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
+// 400
 type ValidationError struct {
 	Error struct {
 		Message string `json:"message"`
 	} `json:"error"`
 }
 
+// 401
 type UnauthorizedError struct {
 	Error struct {
 		Message string `json:"message"`
 	} `json:"error"`
 }
 
+// 403
+type ForbiddenError struct {
+	Error struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// 404
 type NotFoundError struct {
+	Error struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// 500
+type ServerError struct {
 	Error struct {
 		Message string `json:"message"`
 	} `json:"error"`

@@ -8,7 +8,6 @@ type CreateObjectRequest struct {
 	Source              string `json:"source"`
 	TemplateId          string `json:"template_id"`
 	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
-	WithChat            bool   `json:"with_chat"`
 }
 
 type ObjectResponse struct {
@@ -69,8 +68,8 @@ type Tag struct {
 	Color string `json:"color" example:"yellow"`
 }
 
-type ObjectType struct {
-	Type              string `json:"type" example:"object_type"`
+type Type struct {
+	Type              string `json:"type" example:"type"`
 	Id                string `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"`
 	UniqueKey         string `json:"unique_key" example:"ot-page"`
 	Name              string `json:"name" example:"Page"`
@@ -78,9 +77,9 @@ type ObjectType struct {
 	RecommendedLayout string `json:"recommended_layout" example:"todo"`
 }
 
-type ObjectTemplate struct {
-	Type string `json:"type" example:"object_template"`
+type Template struct {
+	Type string `json:"type" example:"template"`
 	Id   string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"`
-	Name string `json:"name" example:"Object Template Name"`
+	Name string `json:"name" example:"Template Name"`
 	Icon string `json:"icon" example:"📄"`
 }

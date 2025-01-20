@@ -11,16 +11,15 @@ import (
 
 // GetSpacesHandler retrieves a list of spaces
 //
-//	@Summary	Retrieve a list of spaces
+//	@Summary	List spaces
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
 //	@Param		offset	query		int									false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit	query		int									false	"The number of items to return"	default(100)
 //	@Success	200		{object}	pagination.PaginatedResponse[Space]	"List of spaces"
-//	@Failure	403		{object}	util.UnauthorizedError				"Unauthorized"
-//	@Failure	404		{object}	util.NotFoundError					"Resource not found"
-//	@Failure	502		{object}	util.ServerError					"Internal server error"
+//	@Failure	401		{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure	500		{object}	util.ServerError					"Internal server error"
 //	@Router		/spaces [get]
 func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -29,7 +28,6 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 
 		spaces, total, hasMore, err := s.ListSpaces(c.Request.Context(), offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrNoSpacesFound, http.StatusNotFound),
 			util.ErrToCode(ErrFailedListSpaces, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedOpenWorkspace, http.StatusInternalServerError),
 		)
@@ -46,15 +44,15 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 
 // CreateSpaceHandler creates a new space
 //
-//	@Summary	Create a new Space
+//	@Summary	Create space
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
 //	@Param		name	body		string					true	"Space Name"
 //	@Success	200		{object}	CreateSpaceResponse		"Space created successfully"
 //	@Failure	400		{object}	util.ValidationError	"Bad request"
-//	@Failure	403		{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure	502		{object}	util.ServerError		"Internal server error"
+//	@Failure	401		{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	500		{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces [post]
 func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -80,19 +78,18 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 	}
 }
 
-// GetMembersHandler retrieves a list of members for the specified space
+// GetMembersHandler retrieves a list of members in a space
 //
-//	@Summary	Retrieve a list of members for the specified Space
+//	@Summary	List members
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string									true	"The ID of the space"
+//	@Param		space_id	path		string									true	"Space ID"
 //	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit		query		int										false	"The number of items to return"	default(100)
 //	@Success	200			{object}	pagination.PaginatedResponse[Member]	"List of members"
-//	@Failure	403			{object}	util.UnauthorizedError					"Unauthorized"
-//	@Failure	404			{object}	util.NotFoundError						"Resource not found"
-//	@Failure	502			{object}	util.ServerError						"Internal server error"
+//	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure	500			{object}	util.ServerError						"Internal server error"
 //	@Router		/spaces/{space_id}/members [get]
 func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -102,7 +99,6 @@ func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
 
 		members, total, hasMore, err := s.ListMembers(c.Request.Context(), spaceId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrNoMembersFound, http.StatusNotFound),
 			util.ErrToCode(ErrFailedListMembers, http.StatusInternalServerError),
 		)
 

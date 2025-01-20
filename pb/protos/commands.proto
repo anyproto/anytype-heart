@@ -7850,54 +7850,7 @@ message Rpc {
             }
         }
     }
-    message Api {
-        message StartServer {
-            message Request {
-                // empty
-            }
-
-            message Response {
-                Error error = 1;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        PORT_ALREADY_USED = 3;
-                        SERVER_ALREADY_STARTED = 4;
-                    }
-                }
-            }
-        }
-        message StopServer {
-            message Request{
-                // empty
-            }
-
-            message Response {
-                Error error = 1;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        SERVER_NOT_STARTED = 3;
-                    }
-                }
-            }
-        }
-    }
 }
-
-
 
 message Empty {
 

@@ -146,7 +146,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		spaces, total, hasMore, err := fx.ListSpaces(nil, offset, limit)
 
 		// then
-		require.ErrorIs(t, err, ErrNoSpacesFound)
+		require.NoError(t, err)
 		require.Len(t, spaces, 0)
 		require.Equal(t, 0, total)
 		require.False(t, hasMore)
@@ -305,7 +305,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		members, total, hasMore, err := fx.ListMembers(nil, "space-id", offset, limit)
 
 		// then
-		require.ErrorIs(t, err, ErrNoMembersFound)
+		require.NoError(t, err)
 		require.Len(t, members, 0)
 		require.Equal(t, 0, total)
 		require.False(t, hasMore)

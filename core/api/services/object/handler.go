@@ -9,19 +9,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
-// GetObjectsHandler retrieves objects in a specific space
+// GetObjectsHandler retrieves a list of objects in a space
 //
-//	@Summary	Retrieve objects in a specific space
+//	@Summary	List objects
 //	@Tags		objects
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string					true	"The ID of the space"
-//	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int						false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string][]Object		"List of objects"
-//	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure	404			{object}	util.NotFoundError		"Resource not found"
-//	@Failure	502			{object}	util.ServerError		"Internal server error"
+//	@Param		space_id	path		string									true	"Space ID"
+//	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int										false	"The number of items to return"	default(100)
+//	@Success	200			{object}	pagination.PaginatedResponse[Object]	"List of objects"
+//	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure	500			{object}	util.ServerError						"Internal server error"
 //	@Router		/spaces/{space_id}/objects [get]
 func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -31,9 +30,8 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 
 		objects, total, hasMore, err := s.ListObjects(c.Request.Context(), spaceId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrorFailedRetrieveObjects, http.StatusInternalServerError),
-			util.ErrToCode(ErrNoObjectsFound, http.StatusNotFound),
-			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedRetrieveObjects, http.StatusInternalServerError),
+			util.ErrToCode(ErrObjectNotFound, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
@@ -47,18 +45,18 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 	}
 }
 
-// GetObjectHandler retrieves a specific object in a space
+// GetObjectHandler retrieves an object in a space
 //
-//	@Summary	Retrieve a specific object in a space
+//	@Summary	Get object
 //	@Tags		objects
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string					true	"The ID of the space"
-//	@Param		object_id	path		string					true	"The ID of the object"
+//	@Param		space_id	path		string					true	"Space ID"
+//	@Param		object_id	path		string					true	"Object ID"
 //	@Success	200			{object}	ObjectResponse			"The requested object"
-//	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
-//	@Failure	502			{object}	util.ServerError		"Internal server error"
+//	@Failure	500			{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces/{space_id}/objects/{object_id} [get]
 func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -81,18 +79,19 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 	}
 }
 
-// DeleteObjectHandler deletes a specific object in a space
+// DeleteObjectHandler deletes an object in a space
 //
-//	@Summary	Delete a specific object in a space
+//	@Summary	Delete object
 //	@Tags		objects
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string					true	"The ID of the space"
-//	@Param		object_id	path		string					true	"The ID of the object"
+//	@Param		space_id	path		string					true	"Space ID"
+//	@Param		object_id	path		string					true	"Object ID"
 //	@Success	200			{object}	ObjectResponse			"The deleted object"
-//	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	403			{object}	util.ForbiddenError		"Forbidden"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
-//	@Failure	502			{object}	util.ServerError		"Internal server error"
+//	@Failure	500			{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces/{space_id}/objects/{object_id} [delete]
 func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -102,8 +101,8 @@ func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 		object, err := s.DeleteObject(c.Request.Context(), spaceId, objectId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
-			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedDeleteObject, http.StatusForbidden),
+			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -116,18 +115,18 @@ func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 	}
 }
 
-// CreateObjectHandler creates a new object in a specific space
+// CreateObjectHandler creates a new object in a space
 //
-//	@Summary	Create a new object in a specific space
+//	@Summary	Create object
 //	@Tags		objects
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string					true	"The ID of the space"
-//	@Param		object		body		map[string]string		true	"Object details (e.g., name)"
+//	@Param		space_id	path		string					true	"Space ID"
+//	@Param		object		body		CreateObjectRequest		true	"Object to create"
 //	@Success	200			{object}	ObjectResponse			"The created object"
 //	@Failure	400			{object}	util.ValidationError	"Bad request"
-//	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure	502			{object}	util.ServerError		"Internal server error"
+//	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	500			{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces/{space_id}/objects [post]
 func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -146,7 +145,7 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 			util.ErrToCode(ErrFailedCreateObject, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedSetRelationFeatured, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedFetchBookmark, http.StatusInternalServerError),
-			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrObjectNotFound, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
@@ -160,20 +159,19 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 	}
 }
 
-// GetTypesHandler retrieves object types in a specific space
+// GetTypesHandler retrieves a list of types in a space
 //
-//	@Summary	Retrieve object types in a specific space
+//	@Summary	List types
 //	@Tags		objects
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string					true	"The ID of the space"
-//	@Param		offset		query		int						false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int						false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string]ObjectType	"List of object types"
-//	@Failure	403			{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure	404			{object}	util.NotFoundError		"Resource not found"
-//	@Failure	502			{object}	util.ServerError		"Internal server error"
-//	@Router		/spaces/{space_id}/object_types [get]
+//	@Param		space_id	path		string								true	"Space ID"
+//	@Param		offset		query		int									false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int									false	"The number of items to return"	default(100)
+//	@Success	200			{object}	pagination.PaginatedResponse[Type]	"List of types"
+//	@Failure	401			{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure	500			{object}	util.ServerError					"Internal server error"
+//	@Router		/spaces/{space_id}/types [get]
 func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -183,7 +181,6 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 		types, total, hasMore, err := s.ListTypes(c.Request.Context(), spaceId, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedRetrieveTypes, http.StatusInternalServerError),
-			util.ErrToCode(ErrNoTypesFound, http.StatusNotFound),
 		)
 
 		if code != http.StatusOK {
@@ -196,21 +193,20 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 	}
 }
 
-// GetTemplatesHandler retrieves a list of templates for a specific object type in a space
+// GetTemplatesHandler retrieves a list of templates for a type in a space
 //
-//	@Summary	Retrieve a list of templates for a specific object type in a space
+//	@Summary	List templates
 //	@Tags		objects
 //	@Accept		json
 //	@Produce	json
-//	@Param		space_id	path		string						true	"The ID of the space"
-//	@Param		type_id		path		string						true	"The ID of the object type"
-//	@Param		offset		query		int							false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int							false	"The number of items to return"	default(100)
-//	@Success	200			{object}	map[string][]ObjectTemplate	"List of templates"
-//	@Failure	403			{object}	util.UnauthorizedError		"Unauthorized"
-//	@Failure	404			{object}	util.NotFoundError			"Resource not found"
-//	@Failure	502			{object}	util.ServerError			"Internal server error"
-//	@Router		/spaces/{space_id}/object_types/{type_id}/templates [get]
+//	@Param		space_id	path		string									true	"Space ID"
+//	@Param		type_id		path		string									true	"Type ID"
+//	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"
+//	@Param		limit		query		int										false	"The number of items to return"	default(100)
+//	@Success	200			{object}	pagination.PaginatedResponse[Template]	"List of templates"
+//	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure	500			{object}	util.ServerError						"Internal server error"
+//	@Router		/spaces/{space_id}/types/{type_id}/templates [get]
 func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -221,10 +217,9 @@ func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 		templates, total, hasMore, err := s.ListTemplates(c.Request.Context(), spaceId, typeId, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedRetrieveTemplateType, http.StatusInternalServerError),
-			util.ErrToCode(ErrTemplateTypeNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrTemplateTypeNotFound, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedRetrieveTemplates, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedRetrieveTemplate, http.StatusInternalServerError),
-			util.ErrToCode(ErrNoTemplatesFound, http.StatusNotFound),
 		)
 
 		if code != http.StatusOK {

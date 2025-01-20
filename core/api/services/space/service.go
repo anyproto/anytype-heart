@@ -18,13 +18,10 @@ import (
 )
 
 var (
-	ErrNoSpacesFound            = errors.New("no spaces found")
 	ErrFailedListSpaces         = errors.New("failed to retrieve list of spaces")
 	ErrFailedOpenWorkspace      = errors.New("failed to open workspace")
 	ErrFailedGenerateRandomIcon = errors.New("failed to generate random icon")
 	ErrFailedCreateSpace        = errors.New("failed to create space")
-	ErrBadInput                 = errors.New("bad input")
-	ErrNoMembersFound           = errors.New("no members found")
 	ErrFailedListMembers        = errors.New("failed to retrieve list of members")
 )
 
@@ -74,10 +71,6 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return nil, 0, false, ErrFailedListSpaces
-	}
-
-	if len(resp.Records) == 0 {
-		return nil, 0, false, ErrNoSpacesFound
 	}
 
 	total = len(resp.Records)
@@ -156,10 +149,6 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return nil, 0, false, ErrFailedListMembers
-	}
-
-	if len(resp.Records) == 0 {
-		return nil, 0, false, ErrNoMembersFound
 	}
 
 	total = len(resp.Records)

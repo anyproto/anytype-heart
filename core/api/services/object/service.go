@@ -20,8 +20,7 @@ import (
 var (
 	ErrObjectNotFound             = errors.New("object not found")
 	ErrFailedRetrieveObject       = errors.New("failed to retrieve object")
-	ErrorFailedRetrieveObjects    = errors.New("failed to retrieve list of objects")
-	ErrNoObjectsFound             = errors.New("no objects found")
+	ErrFailedRetrieveObjects      = errors.New("failed to retrieve list of objects")
 	ErrFailedDeleteObject         = errors.New("failed to delete object")
 	ErrFailedCreateObject         = errors.New("failed to create object")
 	ErrInputMissingSource         = errors.New("source is missing for bookmark")
@@ -29,21 +28,19 @@ var (
 	ErrFailedFetchBookmark        = errors.New("failed to fetch bookmark")
 	ErrFailedPasteBody            = errors.New("failed to paste body")
 	ErrFailedRetrieveTypes        = errors.New("failed to retrieve types")
-	ErrNoTypesFound               = errors.New("no types found")
 	ErrFailedRetrieveTemplateType = errors.New("failed to retrieve template type")
 	ErrTemplateTypeNotFound       = errors.New("template type not found")
 	ErrFailedRetrieveTemplate     = errors.New("failed to retrieve template")
 	ErrFailedRetrieveTemplates    = errors.New("failed to retrieve templates")
-	ErrNoTemplatesFound           = errors.New("no templates found")
 )
 
 type Service interface {
 	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
 	GetObject(ctx context.Context, spaceId string, objectId string) (Object, error)
-	DeleteObject(ctx context.Context, spaceId string, objectId string) error
+	DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error)
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error)
-	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]ObjectType, int, bool, error)
-	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]ObjectTemplate, int, bool, error)
+	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
+	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
 }
 
 type ObjectService struct {
@@ -83,19 +80,11 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 			IncludeTime:    true,
 			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}},
-		FullText:         "",
-		Offset:           0,
-		Limit:            0,
-		ObjectTypeFilter: []string{},
-		Keys:             []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, 0, false, ErrorFailedRetrieveObjects
-	}
-
-	if len(resp.Records) == 0 {
-		return nil, 0, false, ErrNoObjectsFound
+		return nil, 0, false, ErrFailedRetrieveObjects
 	}
 
 	total = len(resp.Records)
@@ -190,7 +179,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 		TemplateId:          request.TemplateId,
 		SpaceId:             spaceId,
 		ObjectTypeUniqueKey: request.ObjectTypeUniqueKey,
-		WithChat:            request.WithChat,
+		WithChat:            false,
 	})
 
 	if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
@@ -268,7 +257,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 }
 
 // ListTypes returns a paginated list of types in a specific space.
-func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []ObjectType, total int, hasMore bool, err error) {
+func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []Type, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -296,17 +285,13 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 		return nil, 0, false, ErrFailedRetrieveTypes
 	}
 
-	if len(resp.Records) == 0 {
-		return nil, 0, false, ErrNoTypesFound
-	}
-
 	total = len(resp.Records)
 	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	objectTypes := make([]ObjectType, 0, len(paginatedTypes))
+	types = make([]Type, 0, len(paginatedTypes))
 
 	for _, record := range paginatedTypes {
-		objectTypes = append(objectTypes, ObjectType{
-			Type:              "object_type",
+		types = append(types, Type{
+			Type:              "type",
 			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			UniqueKey:         record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -314,11 +299,11 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 		})
 	}
-	return objectTypes, total, hasMore, nil
+	return types, total, hasMore, nil
 }
 
 // ListTemplates returns a paginated list of templates in a specific space.
-func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []ObjectTemplate, total int, hasMore bool, err error) {
+func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []Template, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -358,10 +343,6 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		return nil, 0, false, ErrFailedRetrieveTemplates
 	}
 
-	if len(templateObjectsResp.Records) == 0 {
-		return nil, 0, false, ErrNoTemplatesFound
-	}
-
 	templateIds := make([]string, 0)
 	for _, record := range templateObjectsResp.Records {
 		if record.Fields[bundle.RelationKeyTargetObjectType.String()].GetStringValue() == typeId {
@@ -371,7 +352,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 
 	total = len(templateIds)
 	paginatedTemplates, hasMore := pagination.Paginate(templateIds, offset, limit)
-	templates = make([]ObjectTemplate, 0, len(paginatedTemplates))
+	templates = make([]Template, 0, len(paginatedTemplates))
 
 	// Finally, open each template and populate the response
 	for _, templateId := range paginatedTemplates {
@@ -384,8 +365,8 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 			return nil, 0, false, ErrFailedRetrieveTemplate
 		}
 
-		templates = append(templates, ObjectTemplate{
-			Type: "object_template",
+		templates = append(templates, Template{
+			Type: "template",
 			Id:   templateId,
 			Name: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),

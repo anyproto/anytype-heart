@@ -388,9 +388,4 @@ service ClientCommands {
     rpc ChatSubscribeLastMessages (anytype.Rpc.Chat.SubscribeLastMessages.Request) returns (anytype.Rpc.Chat.SubscribeLastMessages.Response);
     rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
-
-    // API
-    // ***
-    rpc ApiStartServer (anytype.Rpc.Api.StartServer.Request) returns (anytype.Rpc.Api.StartServer.Response);
-    rpc ApiStopServer (anytype.Rpc.Api.StopServer.Request) returns (anytype.Rpc.Api.StopServer.Response);
 }

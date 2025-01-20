@@ -78,11 +78,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			FullText:         "",
-			Offset:           0,
-			Limit:            0,
-			ObjectTypeFilter: []string{},
-			Keys:             []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
@@ -220,7 +216,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		objects, total, hasMore, err := fx.ListObjects(ctx, "empty-space", offset, limit)
 
 		// then
-		require.ErrorIs(t, err, ErrNoObjectsFound)
+		require.NoError(t, err)
 		require.Len(t, objects, 0)
 		require.Equal(t, 0, total)
 		require.False(t, hasMore)
@@ -469,7 +465,6 @@ func TestObjectService_CreateObject(t *testing.T) {
 			// TODO: use actual values
 			TemplateId:          "",
 			ObjectTypeUniqueKey: "ot-page",
-			WithChat:            false,
 		})
 
 		// then
@@ -553,7 +548,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		types, total, hasMore, err := fx.ListTypes(ctx, "empty-space", offset, limit)
 
 		// then
-		require.ErrorIs(t, err, ErrNoTypesFound)
+		require.NoError(t, err)
 		require.Len(t, types, 0)
 		require.Equal(t, 0, total)
 		require.False(t, hasMore)
