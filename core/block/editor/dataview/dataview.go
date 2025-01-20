@@ -122,9 +122,7 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 	if srcBlock, err := BlockBySource(d.objectStore, source); err != nil {
 		log.Errorf("failed to build dataview block to modify view relation lists: %v", err)
 	} else {
-		for _, relLink := range srcBlock.Dataview.RelationLinks {
-			_ = dv.AddRelation(relLink)
-		}
+		dv.SetRelations(srcBlock.Dataview.RelationLinks)
 		viewRelations = srcBlock.Dataview.Views[0].Relations
 	}
 
