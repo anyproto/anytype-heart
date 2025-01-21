@@ -4,7 +4,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 
@@ -16,7 +15,7 @@ import (
 type Directory struct {
 	fileReaders map[string]struct{}
 	importPath  string
-	rootDirs    []string
+	rootDirs    map[string]bool
 }
 
 func NewDirectory() *Directory {
@@ -89,37 +88,40 @@ func (d *Directory) CountFilesWithGivenExtensions(extension []string) int {
 
 func (d *Directory) IsRootFile(fileName string) bool {
 	fileDir := filepath.Dir(fileName)
-	return fileDir == d.importPath || slices.Contains(d.rootDirs, fileDir)
+	return fileDir == d.importPath || d.rootDirs[fileDir]
 }
 
 func (d *Directory) Close() {}
 
-func findNonEmptyDirs(files map[string]struct{}) []string {
+func findNonEmptyDirs(files map[string]struct{}) map[string]bool {
 	dirs := make([]string, 0, len(files))
 	for file := range files {
 		dir := filepath.Dir(file)
 		if dir == "." {
-			return []string{dir}
+			return map[string]bool{dir: true}
 		}
 		dirs = append(dirs, dir)
 	}
 	sort.Strings(dirs)
-	var result []string
+	result := make(map[string]bool)
 	visited := make(map[string]bool)
 
 	for _, dir := range dirs {
+		if _, ok := visited[dir]; ok {
+			continue
+		}
+		visited[dir] = true
 		if isSubdirectoryOfAny(dir, result) {
 			continue
 		}
-		result = lo.Union(result, []string{dir})
-		visited[dir] = true
+		result[dir] = true
 	}
 
 	return result
 }
 
-func isSubdirectoryOfAny(dir string, directories []string) bool {
-	for _, base := range directories {
+func isSubdirectoryOfAny(dir string, directories map[string]bool) bool {
+	for base := range directories {
 		if strings.HasPrefix(dir, base+string(filepath.Separator)) {
 			return true
 		}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/samber/lo"
@@ -21,7 +20,7 @@ type Zip struct {
 	archiveReader             *zip.ReadCloser
 	fileReaders               map[string]*zip.File
 	originalToNormalizedNames map[string]string
-	rootDirs                  []string
+	rootDirs                  map[string]bool
 }
 
 func NewZip() *Zip {
@@ -108,7 +107,7 @@ func (z *Zip) Close() {
 
 func (z *Zip) IsRootFile(fileName string) bool {
 	fileDir := filepath.Dir(fileName)
-	return fileDir == "." || slices.Contains(z.rootDirs, fileDir)
+	return fileDir == "." || z.rootDirs[fileDir]
 }
 
 func (z *Zip) GetFileOriginalName(fileName string) string {

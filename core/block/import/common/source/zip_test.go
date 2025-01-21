@@ -56,7 +56,7 @@ func TestZip_Initialize(t *testing.T) {
 		assert.NotNil(t, zipInstance.archiveReader)
 		assert.Len(t, zipInstance.fileReaders, 2)
 
-		expectedRoots := []string{"."}
+		expectedRoots := map[string]bool{".": true}
 		assert.Equal(t, expectedRoots, zipInstance.rootDirs)
 	})
 	t.Run("zip files with dir inside", func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestZip_Initialize(t *testing.T) {
 		assert.NotNil(t, zipInstance.archiveReader)
 		assert.Len(t, zipInstance.fileReaders, 3)
 
-		expectedRoots := []string{"folder"}
+		expectedRoots := map[string]bool{"folder": true}
 		assert.Equal(t, expectedRoots, zipInstance.rootDirs)
 	})
 	t.Run("zip files with 2 dirs inside", func(t *testing.T) {
@@ -103,7 +103,7 @@ func TestZip_Initialize(t *testing.T) {
 		assert.NotNil(t, zipInstance.archiveReader)
 		assert.Len(t, zipInstance.fileReaders, 2)
 
-		expectedRoots := []string{"folder", filepath.Join("folder1", "folder2")}
+		expectedRoots := map[string]bool{"folder": true, filepath.Join("folder1", "folder2"): true}
 		assert.Equal(t, expectedRoots, zipInstance.rootDirs)
 	})
 	t.Run("invalid path", func(t *testing.T) {

@@ -47,7 +47,7 @@ func TestDirectory_Initialize(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, tempDir, directory.importPath)
 		assert.Len(t, directory.fileReaders, 2)
-		expectedRoots := []string{tempDir}
+		expectedRoots := map[string]bool{tempDir: true}
 		assert.Equal(t, expectedRoots, directory.rootDirs)
 	})
 	t.Run("directory with another dir inside", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestDirectory_Initialize(t *testing.T) {
 		assert.Equal(t, tempDir, directory.importPath)
 		assert.Len(t, directory.fileReaders, 3)
 
-		expectedRoots := []string{filepath.Join(tempDir, "folder")}
+		expectedRoots := map[string]bool{filepath.Join(tempDir, "folder"): true}
 		assert.Equal(t, expectedRoots, directory.rootDirs)
 	})
 	t.Run("directory with 2 dirs inside", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestDirectory_Initialize(t *testing.T) {
 		assert.Equal(t, tempDir, directory.importPath)
 		assert.Len(t, directory.fileReaders, 2)
 
-		expectedRoots := []string{filepath.Join(tempDir, "folder"), filepath.Join(tempDir, "folder1", "folder2")}
+		expectedRoots := map[string]bool{filepath.Join(tempDir, "folder"): true, filepath.Join(tempDir, "folder1", "folder2"): true}
 		assert.Equal(t, expectedRoots, directory.rootDirs)
 	})
 }
