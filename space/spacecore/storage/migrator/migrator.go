@@ -72,7 +72,7 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("get free disk space: %w", err)
 	}
-	if oldSize > free {
+	if oldSize*15/10 > free {
 		return fmt.Errorf("not enough disk space")
 	}
 
