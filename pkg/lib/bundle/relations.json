@@ -1429,5 +1429,31 @@
     "name": "Default type id",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "List of recommended relations that are hidden in layout",
+    "format": "object",
+    "hidden": true,
+    "key": "recommendedHiddenRelations",
+    "maxCount": 0,
+    "name": "Recommended hidden relations",
+    "objectTypes": [
+      "relation"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "List of recommended file-specific relations",
+    "format": "object",
+    "hidden": true,
+    "key": "recommendedFileRelations",
+    "maxCount": 0,
+    "name": "Recommended file relations",
+    "objectTypes": [
+      "relation"
+    ],
+    "readonly": false,
+    "source": "details"
   }
 ]

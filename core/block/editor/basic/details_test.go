@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,7 +67,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		}})
 
 		// when
-		err := f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+		err := f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 			current.Set(bundle.RelationKeyAperture, domain.String("aperture"))
 			current.Set(bundle.RelationKeyRelationMaxCount, domain.Int64(5))
 			return current, nil
@@ -105,7 +106,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		}})
 
 		// when
-		err = f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+		err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 			current.Set(bundle.RelationKeySpaceDashboardId, domain.String("new123"))
 			return current, nil
 		})
@@ -129,7 +130,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		assert.NoError(t, err)
 
 		// when
-		err = f.basic.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+		err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 			current.Delete(bundle.RelationKeyTargetObjectType)
 			return current, nil
 		})
@@ -179,6 +180,45 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 		// then
 		assert.ErrorIs(t, err, restriction.ErrRestricted)
 	})
+
+	typeKey := "type"
+	for _, tc := range []struct {
+		from, to    model.ObjectTypeLayout
+		shouldError bool
+	}{
+		{model.ObjectType_basic, model.ObjectType_todo, false},
+		{model.ObjectType_profile, model.ObjectType_note, false},
+		{model.ObjectType_basic, model.ObjectType_set, true},
+		{model.ObjectType_collection, model.ObjectType_todo, true},
+		{model.ObjectType_tag, model.ObjectType_note, true},
+		{model.ObjectType_dashboard, model.ObjectType_collection, true},
+		{model.ObjectType_todo, model.ObjectType_relation, true},
+	} {
+		t.Run(fmt.Sprintf("change to type with other layout group is restricted. From '%s' to '%s'",
+			model.ObjectTypeLayout_name[int32(tc.from)], model.ObjectTypeLayout_name[int32(tc.to)]), func(t *testing.T) {
+			// given
+			f := newBasicFixture(t)
+			f.lastUsed.EXPECT().UpdateLastUsedDate(mock.Anything, mock.Anything, mock.Anything).Return().Maybe()
+			f.store.AddObjects(t, []objectstore.TestObject{{
+				bundle.RelationKeyId:                domain.String(typeKey),
+				bundle.RelationKeySpaceId:           domain.String(spaceId),
+				bundle.RelationKeyUniqueKey:         domain.String("ot-" + typeKey),
+				bundle.RelationKeyRecommendedLayout: domain.Int64(int64(tc.to)),
+			}})
+			s := f.sb.NewState()
+			s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(tc.from)))
+
+			// when
+			err := f.basic.SetObjectTypesInState(s, []domain.TypeKey{domain.TypeKey(typeKey)}, false)
+
+			// then
+			if tc.shouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 
 	t.Run("changing to template type is restricted", func(t *testing.T) {
 		// given

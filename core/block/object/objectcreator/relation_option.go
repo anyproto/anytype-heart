@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -25,7 +26,9 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	if details.GetString(bundle.RelationKeyRelationKey) == "" {
 		return "", nil, fmt.Errorf("relation key is empty")
 	}
-
+	if !details.Has(bundle.RelationKeyCreatedDate) {
+		details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
+	}
 	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeRelationOption, details)
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
@@ -38,13 +41,19 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
+	setOriginalCreatedTimestamp(createState, details)
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelationOption}, createState)
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *domain.Details) (domain.UniqueKey, error) {
 	uniqueKey := details.GetString(bundle.RelationKeyUniqueKey)
 	if uniqueKey == "" {
-		return domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
+		newUniqueKey, err := domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
+		if err != nil {
+			return nil, err
+		}
+		details.SetString(bundle.RelationKeyUniqueKey, newUniqueKey.Marshal())
+		return newUniqueKey, err
 	}
 	return domain.UnmarshalUniqueKey(uniqueKey)
 }

@@ -2,42 +2,17 @@ package objectcreator
 
 import (
 	"context"
-	"errors"
 	"fmt"
-
-	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-)
-
-var (
-	defaultRecommendedFeaturedRelationKeys = []domain.RelationKey{
-		bundle.RelationKeyType,
-		bundle.RelationKeyTag,
-		bundle.RelationKeyBacklinks,
-	}
-
-	defaultRecommendedRelationKeys = []domain.RelationKey{
-		bundle.RelationKeyCreatedDate,
-		bundle.RelationKeyCreator,
-		bundle.RelationKeyLastModifiedDate,
-		bundle.RelationKeyLastModifiedBy,
-		bundle.RelationKeyLastOpenedDate,
-		bundle.RelationKeyLinks,
-	}
-
-	// relationsToExclude = []domain.RelationKey{
-	// 	bundle.RelationKeyDescription,
-	// }
-
-	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
 )
 
 func (s *service) createObjectType(ctx context.Context, space clientspace.Space, details *domain.Details) (id string, newDetails *domain.Details, err error) {
@@ -55,7 +30,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
 	}
 
-	keys, isAlreadyFilled, err := fillRecommendedRelations(ctx, space, object)
+	keys, isAlreadyFilled, err := relationutils.FillRecommendedRelations(ctx, space, object)
 	if err != nil {
 		return "", nil, fmt.Errorf("fill recommended relations: %w", err)
 	}
@@ -65,6 +40,9 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 			return "", nil, fmt.Errorf("install recommended relations: %w", err)
 		}
 	}
+	if !object.Has(bundle.RelationKeyCreatedDate) {
+		object.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
+	}
 
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
@@ -72,6 +50,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
+	setOriginalCreatedTimestamp(createState, details)
 	id, newDetails, err = s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyObjectType}, createState)
 	if err != nil {
 		return "", nil, fmt.Errorf("create smartblock from state: %w", err)
@@ -83,90 +62,6 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		log.With("spaceID", space.Id(), "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
 	}
 	return id, newDetails, nil
-}
-
-// fillRecommendedRelations fills recommendedRelations and recommendedFeaturedRelations based on object's details
-// If these relations are already filled with correct ids, isAlreadyFilled = true is returned
-func fillRecommendedRelations(ctx context.Context, spc clientspace.Space, details *domain.Details) (keys []domain.RelationKey, isAlreadyFilled bool, err error) {
-	keys, err = getRelationKeysFromDetails(details)
-	if err != nil {
-		if errors.Is(err, errRecommendedRelationsAlreadyFilled) {
-			return nil, true, nil
-		}
-		return nil, false, fmt.Errorf("get recommended relation keys: %w", err)
-	}
-
-	// we should include default system recommended relations and exclude default recommended featured relations
-	keys = lo.Uniq(append(keys, defaultRecommendedRelationKeys...))
-	keys = slices.DeleteFunc(keys, func(key domain.RelationKey) bool {
-		return slices.Contains(defaultRecommendedFeaturedRelationKeys, key)
-	})
-
-	relationIds, err := prepareRelationIds(ctx, spc, keys)
-	if err != nil {
-		return nil, false, fmt.Errorf("prepare recommended relation ids: %w", err)
-	}
-	details.SetStringList(bundle.RelationKeyRecommendedRelations, relationIds)
-
-	featuredRelationIds, err := prepareRelationIds(ctx, spc, defaultRecommendedFeaturedRelationKeys)
-	if err != nil {
-		return nil, false, fmt.Errorf("prepare recommended featured relation ids: %w", err)
-	}
-	details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, featuredRelationIds)
-
-	return append(keys, defaultRecommendedFeaturedRelationKeys...), false, nil
-}
-
-func getRelationKeysFromDetails(details *domain.Details) ([]domain.RelationKey, error) {
-	bundledRelationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)
-	if len(bundledRelationIds) == 0 {
-		rawRecommendedLayout := details.GetInt64(bundle.RelationKeyRecommendedLayout)
-		// nolint: gosec
-		recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(rawRecommendedLayout))
-		if err != nil {
-			return nil, fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
-		}
-		keys := make([]domain.RelationKey, 0, len(recommendedLayout.RequiredRelations))
-		for _, rel := range recommendedLayout.RequiredRelations {
-			keys = append(keys, domain.RelationKey(rel.Key))
-		}
-		return keys, nil
-	}
-
-	keys := make([]domain.RelationKey, 0, len(bundledRelationIds))
-	for i, id := range bundledRelationIds {
-		key, err := bundle.RelationKeyFromID(id)
-		if err == nil {
-			// TODO: use Contains when we have more relations to exclude
-			// if !slices.Contains(relationsToExclude, key) {
-			if key != bundle.RelationKeyDescription {
-				keys = append(keys, key)
-			}
-			continue
-		}
-		if i == 0 {
-			// if we fail to parse 1st bundled relation id, details are already filled with correct ids
-			return nil, errRecommendedRelationsAlreadyFilled
-		}
-		return nil, fmt.Errorf("relation key from id: %w", err)
-	}
-	return keys, nil
-}
-
-func prepareRelationIds(ctx context.Context, space clientspace.Space, relationKeys []domain.RelationKey) ([]string, error) {
-	relationIds := make([]string, 0, len(relationKeys))
-	for _, key := range relationKeys {
-		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key.String())
-		if err != nil {
-			return nil, fmt.Errorf("failed to create unique Key: %w", err)
-		}
-		id, err := space.DeriveObjectID(ctx, uk)
-		if err != nil {
-			return nil, fmt.Errorf("failed to derive object id: %w", err)
-		}
-		relationIds = append(relationIds, id)
-	}
-	return relationIds, nil
 }
 
 func (s *service) installRecommendedRelations(ctx context.Context, space clientspace.Space, relationKeys []domain.RelationKey) error {

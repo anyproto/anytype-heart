@@ -79,6 +79,7 @@ func (ko *KeyOrder) Compare(a, b *domain.Details) int {
 	av, bv = ko.tryExtractSnippet(a, b, av, bv)
 	av, bv = ko.tryExtractDateTime(av, bv)
 	av, bv = ko.tryExtractTag(av, bv)
+	av, bv = ko.tryExtractBool(av, bv)
 
 	comp := ko.tryCompareStrings(av, bv)
 	if comp == 0 {
@@ -112,6 +113,8 @@ func (ko *KeyOrder) AnystoreSort() query.Sort {
 		return ko.basicSort(anyenc.TypeString)
 	case model.RelationFormat_tag, model.RelationFormat_status:
 		return ko.tagStatusSort()
+	case model.RelationFormat_checkbox:
+		return ko.boolSort()
 	default:
 		return ko.basicSort(anyenc.TypeString)
 	}
@@ -178,6 +181,14 @@ func (ko *KeyOrder) textSort() query.Sort {
 	}
 }
 
+func (ko *KeyOrder) boolSort() query.Sort {
+	return boolSort{
+		arena:       ko.arena,
+		relationKey: ko.Key.String(),
+		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
+	}
+}
+
 func (ko *KeyOrder) tryAdjustEmptyPositions(av domain.Value, bv domain.Value, comp int) int {
 	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {
 		return comp
@@ -230,6 +241,18 @@ func (ko *KeyOrder) tryFlipComp(comp int) int {
 func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av domain.Value, bv domain.Value, aString bool, bString bool) bool {
 	return (ko.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified) &&
 		(aString || !av.Ok()) && (bString || !bv.Ok())
+}
+
+func (ko *KeyOrder) tryExtractBool(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
+	if ko.relationFormat == model.RelationFormat_checkbox {
+		if !av.Ok() {
+			av = domain.Bool(false)
+		}
+		if !bv.Ok() {
+			bv = domain.Bool(false)
+		}
+	}
+	return av, bv
 }
 
 func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {

@@ -25,7 +25,8 @@ import (
 )
 
 type LayoutConverter interface {
-	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error
+	CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error
 	app.Component
 }
 
@@ -50,9 +51,46 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error {
+	fromLayout := st.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
+	if !c.isConversionAllowed(model.ObjectTypeLayout(fromLayout), layout) { //nolint:gosec
+		return fmt.Errorf("can't change object type recommended layout from '%s' to '%s'",
+			model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(layout)]) //nolint:gosec
+	}
+	return nil
+}
+
+// isConversionAllowed provides more strict check of layout conversion with introduction of primitives.
+// Only conversion between page layouts (page/note/task/profile) and list layouts (set->collection) is allowed
+func (c *layoutConverter) isConversionAllowed(from, to model.ObjectTypeLayout) bool {
+	if from == to {
+		return true
+	}
+	if isPageLayout(from) && isPageLayout(to) {
+		return true
+	}
+	if from == model.ObjectType_set && to == model.ObjectType_collection {
+		return true
+	}
+	return false
+}
+
+func isPageLayout(layout model.ObjectTypeLayout) bool {
+	return slices.Contains([]model.ObjectTypeLayout{
+		model.ObjectType_basic,
+		model.ObjectType_todo,
+		model.ObjectType_note,
+		model.ObjectType_profile,
+	}, layout)
+}
+
+func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error {
 	if fromLayout == toLayout {
 		return nil
+	}
+
+	if !ignoreIntergroupConversion && !c.isConversionAllowed(fromLayout, toLayout) {
+		return fmt.Errorf("layout conversion from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 	}
 
 	if fromLayout == model.ObjectType_chat || fromLayout == model.ObjectType_chatDerived {
