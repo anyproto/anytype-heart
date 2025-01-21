@@ -430,7 +430,7 @@ func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	tags := []Tag{}
 
 	tagField, ok := resp.ObjectView.Details[0].Details.Fields["tag"]
-	if !ok {
+	if !ok || tagField.GetListValue() == nil {
 		return tags
 	}
 
