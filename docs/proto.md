@@ -18210,6 +18210,7 @@ Available undo/redo operations
 | version | [string](#string) |  |  |
 | timestamp | [int64](#int64) |  |  |
 | size | [int64](#int64) |  |  |
+| joinSpace | [bool](#bool) |  |  |
 
 
 
