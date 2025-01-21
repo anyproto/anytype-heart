@@ -29,6 +29,7 @@ type ClientStorage interface {
 	AllSpaceIds() (ids []string, err error)
 	DeleteSpaceStorage(ctx context.Context, spaceId string) error
 	GetSpaceID(objectID string) (spaceID string, err error)
+	EstimateSize() (uint64, error)
 }
 
 // storageService is a proxy for the actual storage implementation

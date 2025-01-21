@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
+	"github.com/anyproto/anytype-heart/util/freespace"
 )
 
 const CName = "client.storage.migration"
@@ -63,6 +64,18 @@ func (m *migrator) Name() (name string) {
 }
 
 func (m *migrator) Run(ctx context.Context) (err error) {
+	oldSize, err := m.oldStorage.EstimateSize()
+	if err != nil {
+		return fmt.Errorf("estimate size: %w", err)
+	}
+	free, err := freespace.GetFreeDiskSpace(m.path)
+	if err != nil {
+		return fmt.Errorf("get free disk space: %w", err)
+	}
+	if oldSize > free {
+		return fmt.Errorf("not enough disk space")
+	}
+
 	progress := process.NewProgress(&pb.ModelProcessMessageOfMigration{Migration: &pb.ModelProcessMigration{}})
 	progress.SetProgressMessage("Migrating spaces")
 	err = m.process.Add(progress)

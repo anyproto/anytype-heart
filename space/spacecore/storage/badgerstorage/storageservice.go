@@ -227,6 +227,11 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 	return
 }
 
+func (s *storageService) EstimateSize() (uint64, error) {
+	onDiskSize, _ := s.db.EstimateSize(nil)
+	return onDiskSize, nil
+}
+
 func (s *storageService) Run(ctx context.Context) (err error) {
 	s.db, err = s.provider.SpaceStorage()
 	if err != nil {

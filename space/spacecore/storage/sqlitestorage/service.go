@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -373,6 +374,14 @@ func (s *storageService) checkpoint() (err error) {
 	_, err = s.writeDb.ExecContext(s.ctx, `PRAGMA wal_checkpoint(PASSIVE)`)
 	s.lastCheckpoint.Store(time.Now())
 	return err
+}
+
+func (s *storageService) EstimateSize() (uint64, error) {
+	stat, err := os.Stat(s.dbPath)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(stat.Size()), nil
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
