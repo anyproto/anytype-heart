@@ -353,7 +353,7 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout, detail
 			template.WithDetail(bundle.RelationKeyType, details.Get(bundle.RelationKeyType)),
 		)
 	}
-	if err := s.converter.Convert(st, model.ObjectType_basic, layout); err != nil {
+	if err := s.converter.Convert(st, model.ObjectType_basic, layout, true); err != nil {
 		log.Errorf("failed to set '%s' layout to blank template: %v", layout.String(), err)
 	}
 	return

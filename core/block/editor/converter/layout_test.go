@@ -59,7 +59,7 @@ func TestLayoutConverter_Convert(t *testing.T) {
 			lc := layoutConverter{objectStore: store}
 
 			// when
-			err := lc.Convert(st, from, model.ObjectType_set)
+			err := lc.Convert(st, from, model.ObjectType_set, true)
 
 			// then
 			assert.NoError(t, err)
@@ -112,7 +112,7 @@ func TestLayoutConverter_Convert(t *testing.T) {
 		lc := layoutConverter{objectStore: store, sbtProvider: provider}
 
 		// when
-		err := lc.Convert(st, model.ObjectType_set, model.ObjectType_collection)
+		err := lc.Convert(st, model.ObjectType_set, model.ObjectType_collection, true)
 
 		// then
 		assert.NoError(t, err)
