@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -20,6 +21,18 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
 	"github.com/anyproto/anytype-heart/util/freespace"
 )
+
+type NotEnoughFreeSpaceError struct {
+	Free     uint64
+	Required uint64
+}
+
+func (e NotEnoughFreeSpaceError) Error() string {
+	if e.Required == 0 {
+		return fmt.Sprintf("not enough free space: %d", e.Free)
+	}
+	return fmt.Sprintf("Not enough free space: %d, required: %d", e.Free, e.Required)
+}
 
 const CName = "client.storage.migration"
 
@@ -72,10 +85,27 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("get free disk space: %w", err)
 	}
-	if oldSize*15/10 > free {
-		return fmt.Errorf("not enough disk space")
+	requiredDiskSpace := oldSize * 15 / 10
+	if requiredDiskSpace > free {
+		return NotEnoughFreeSpaceError{
+			Free:     free,
+			Required: requiredDiskSpace,
+		}
 	}
 
+	err = m.run(ctx)
+	if err != nil {
+		if strings.Contains(err.Error(), "disk is full") {
+			return NotEnoughFreeSpaceError{
+				Free: free,
+			}
+		}
+		return err
+	}
+	return nil
+}
+
+func (m *migrator) run(ctx context.Context) (err error) {
 	progress := process.NewProgress(&pb.ModelProcessMessageOfMigration{Migration: &pb.ModelProcessMigration{}})
 	progress.SetProgressMessage("Migrating spaces")
 	err = m.process.Add(progress)
