@@ -218,8 +218,15 @@ func TestDataview_SetSourceInSet(t *testing.T) {
 		}}, false)
 		require.NoError(t, err)
 
+		fx.store.AddObjects(t, []objectstore.TestObject{map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeySpaceId:   domain.String(spcId),
+			bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeyType:      domain.String(bundle.TypeKeyObjectType.URL()),
+		}})
+
 		// when
-		err = fx.SetSourceInSet(nil, []string{"ot-page"})
+		err = fx.SetSourceInSet(nil, []string{bundle.TypeKeyPage.URL()})
 
 		// then
 		assert.NoError(t, err)
