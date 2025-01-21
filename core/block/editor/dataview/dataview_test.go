@@ -219,11 +219,21 @@ func TestDataview_SetSourceInSet(t *testing.T) {
 		require.NoError(t, err)
 
 		fx.store.AddObjects(t, []objectstore.TestObject{map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:        domain.String(bundle.TypeKeyPage.URL()),
-			bundle.RelationKeySpaceId:   domain.String(spcId),
-			bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyPage.URL()),
-			bundle.RelationKeyType:      domain.String(bundle.TypeKeyObjectType.URL()),
-		}})
+			bundle.RelationKeyId:                           domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeySpaceId:                      domain.String(spcId),
+			bundle.RelationKeyUniqueKey:                    domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeyType:                         domain.String(bundle.TypeKeyObjectType.URL()),
+			bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL()}),
+			bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{bundle.RelationKeyType.URL(), bundle.RelationKeyBacklinks.URL(), bundle.RelationKeyDone.URL()}),
+			bundle.RelationKeyRecommendedFileRelations:     domain.StringList([]string{bundle.RelationKeyFileExt.URL()}),
+			bundle.RelationKeyRecommendedHiddenRelations:   domain.StringList([]string{bundle.RelationKeyTag.URL()}),
+		}, generateTestRelationObject(bundle.RelationKeyAssignee, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyDone, model.RelationFormat_checkbox),
+			generateTestRelationObject(bundle.RelationKeyType, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyBacklinks, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyFileExt, model.RelationFormat_shorttext),
+			generateTestRelationObject(bundle.RelationKeyTag, model.RelationFormat_tag),
+		})
 
 		// when
 		err = fx.SetSourceInSet(nil, []string{bundle.TypeKeyPage.URL()})
@@ -239,13 +249,25 @@ func TestDataview_SetSourceInSet(t *testing.T) {
 		dv := b.Model().GetDataview()
 		require.NotNil(t, dv)
 		require.Len(t, dv.Views, 2)
+		assert.Len(t, dv.RelationLinks, 12) // 7 default + 6 recommended - 1 common (backlinks)
 		assert.Empty(t, dv.Views[0].DefaultTemplateId)
 		assert.Empty(t, dv.Views[0].DefaultObjectTypeId)
+		assert.Len(t, dv.Views[0].Relations, 12)
 		assert.Empty(t, dv.Views[1].DefaultTemplateId)
 		assert.Empty(t, dv.Views[1].DefaultObjectTypeId)
+		assert.Len(t, dv.Views[1].Relations, 12)
 
 		assert.Empty(t, fx.sb.NewState().Details().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 
 	// TODO: GO-4189 Add more tests when more logic on SetSourceToSet will be added
+}
+
+func generateTestRelationObject(key domain.RelationKey, format model.RelationFormat) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String(key.URL()),
+		bundle.RelationKeyRelationKey:    domain.String(key.String()),
+		bundle.RelationKeyType:           domain.String(bundle.TypeKeyRelation.URL()),
+		bundle.RelationKeyRelationFormat: domain.Int64(format),
+	}
 }
