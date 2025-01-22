@@ -127,10 +127,9 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 	}
 
 	for _, view := range dv.ListViews() {
-		// TODO: GO-4189 Need to review relation lists modification in each view on source change
 		view.DefaultTemplateId = ""
 		view.DefaultObjectTypeId = ""
-		if len(viewRelations) != 0 {
+		if len(viewRelations) > 0 {
 			view.Relations = viewRelations
 		}
 		if err = dv.SetView(view.Id, *view); err != nil {

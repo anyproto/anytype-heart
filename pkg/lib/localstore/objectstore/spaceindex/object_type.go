@@ -2,6 +2,7 @@ package spaceindex
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/samber/lo"
@@ -59,7 +60,7 @@ func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *domain.
 	featuredRelationIds := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
 	fileRelationIds := details.GetStringList(bundle.RelationKeyRecommendedFileRelations)
 	hiddenRelationIds := details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)
-	allRelationIds := lo.Uniq(append(append(recommendedRelationIds, featuredRelationIds...), append(fileRelationIds, hiddenRelationIds...)...))
+	allRelationIds := lo.Uniq(slices.Concat(recommendedRelationIds, featuredRelationIds, fileRelationIds, hiddenRelationIds))
 	relationLinks := make([]*model.RelationLink, 0, len(allRelationIds))
 	for _, relationID := range allRelationIds {
 		relation, err := s.GetRelationById(relationID)
