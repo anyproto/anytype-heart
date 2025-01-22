@@ -50,9 +50,11 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		})
 	}
 	mo := &pb.SnapshotWithType{
-		SbType:           sbType,
-		Snapshot:         snapshot,
-		DependantDetails: dependentDetails,
+		SbType:   sbType,
+		Snapshot: snapshot,
+	}
+	if len(dependentDetails) > 0 {
+		mo.DependantDetails = dependentDetails
 	}
 	if p.isJSON {
 		m := jsonpb.Marshaler{Indent: " "}
