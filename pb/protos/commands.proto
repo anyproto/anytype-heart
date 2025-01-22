@@ -7807,6 +7807,7 @@ message Rpc {
             message Request {
                 string chatObjectId = 1;  // Identifier for the chat
                 int32 limit = 2;  // Number of max last messages to return and subscribe
+                string subId = 3;
             }
 
             message Response {
@@ -7831,6 +7832,7 @@ message Rpc {
         message Unsubscribe {
             message Request {
                 string chatObjectId = 1;  // Identifier for the chat
+                string subId = 2;
             }
             message Response {
                 Error error = 1;

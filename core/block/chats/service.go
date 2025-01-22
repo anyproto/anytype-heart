@@ -27,8 +27,8 @@ type Service interface {
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) ([]*model.ChatMessage, error)
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
-	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
-	Unsubscribe(chatObjectId string) error
+	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) ([]*model.ChatMessage, int, error)
+	Unsubscribe(chatObjectId string, subId string) error
 
 	app.ComponentRunnable
 }
@@ -138,14 +138,14 @@ func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, mes
 	return res, err
 }
 
-func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error) {
+func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) ([]*model.ChatMessage, int, error) {
 	var (
 		msgs      []*model.ChatMessage
 		numBefore int
 	)
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		msgs, numBefore, err = sb.SubscribeLastMessages(ctx, limit)
+		msgs, numBefore, err = sb.SubscribeLastMessages(ctx, subId, limit)
 		if err != nil {
 			return err
 		}
@@ -154,8 +154,8 @@ func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string
 	return msgs, numBefore, err
 }
 
-func (s *service) Unsubscribe(chatObjectId string) error {
+func (s *service) Unsubscribe(chatObjectId string, subId string) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.Unsubscribe()
+		return sb.Unsubscribe(subId)
 	})
 }

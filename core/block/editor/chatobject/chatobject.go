@@ -38,8 +38,8 @@ type StoreObject interface {
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
-	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
-	Unsubscribe() error
+	SubscribeLastMessages(ctx context.Context, subId string, limit int) ([]*model.ChatMessage, int, error)
+	Unsubscribe(subId string) error
 }
 
 type GetMessagesRequest struct {
@@ -307,7 +307,7 @@ func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, me
 	return false, nil
 }
 
-func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error) {
+func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, limit int) ([]*model.ChatMessage, int, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, 0, fmt.Errorf("get collection: %w", err)
@@ -322,13 +322,13 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 		return messages[i].OrderId < messages[j].OrderId
 	})
 
-	s.subscription.enable()
+	s.subscription.subscribe(subId)
 
 	return messages, 0, nil
 }
 
-func (s *storeObject) Unsubscribe() error {
-	s.subscription.close()
+func (s *storeObject) Unsubscribe(subId string) error {
+	s.subscription.unsubscribe(subId)
 	return nil
 }
 
@@ -336,7 +336,7 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 	if !s.locker.TryLock() {
 		return false, nil
 	}
-	isActive := s.subscription.enabled
+	isActive := s.subscription.isActive()
 	s.Unlock()
 
 	if isActive {

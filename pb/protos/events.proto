@@ -124,17 +124,21 @@ message Event {
             string id = 1;
             string orderId = 2;
             model.ChatMessage message = 3;
+            repeated string subIds = 4;
         }
         message Delete {
             string id = 1;
+            repeated string subIds = 2;
         }
         message Update {
             string id = 1;
             model.ChatMessage message = 2;
+            repeated string subIds = 3;
         }
         message UpdateReactions {
             string id = 1;
             model.ChatMessage.Reactions reactions = 2;
+            repeated string subIds = 3;
         }
     }
 

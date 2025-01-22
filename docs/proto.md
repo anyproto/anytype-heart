@@ -10287,6 +10287,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  | Identifier for the chat |
 | limit | [int32](#int32) |  | Number of max last messages to return and subscribe |
+| subId | [string](#string) |  |  |
 
 
 
@@ -10403,6 +10404,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  | Identifier for the chat |
+| subId | [string](#string) |  |  |
 
 
 
@@ -27060,6 +27062,7 @@ Precondition: user A opened a block
 | id | [string](#string) |  |  |
 | orderId | [string](#string) |  |  |
 | message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+| subIds | [string](#string) | repeated |  |
 
 
 
@@ -27075,6 +27078,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
+| subIds | [string](#string) | repeated |  |
 
 
 
@@ -27091,6 +27095,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+| subIds | [string](#string) | repeated |  |
 
 
 
@@ -27107,6 +27112,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | reactions | [model.ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  |  |
+| subIds | [string](#string) | repeated |  |
 
 
 

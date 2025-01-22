@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type subscription struct {
@@ -18,7 +19,7 @@ type subscription struct {
 
 	eventsBuffer []*pb.EventMessage
 
-	enabled bool
+	ids []string
 }
 
 func newSubscription(spaceId string, chatId string, eventSender event.Sender) *subscription {
@@ -29,12 +30,18 @@ func newSubscription(spaceId string, chatId string, eventSender event.Sender) *s
 	}
 }
 
-func (s *subscription) enable() {
-	s.enabled = true
+func (s *subscription) subscribe(subId string) {
+	if !slices.Contains(s.ids, subId) {
+		s.ids = append(s.ids, subId)
+	}
 }
 
-func (s *subscription) close() {
-	s.enabled = false
+func (s *subscription) unsubscribe(subId string) {
+	s.ids = slice.Remove(s.ids, subId)
+}
+
+func (s *subscription) isActive() bool {
+	return len(s.ids) > 0
 }
 
 // setSessionContext sets the session context for the current operation
@@ -59,7 +66,7 @@ func (s *subscription) flush() {
 		s.sessionContext.SetMessages(s.chatId, slices.Clone(s.eventsBuffer))
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 		s.sessionContext = nil
-	} else if s.enabled {
+	} else if s.isActive() {
 		s.eventSender.Broadcast(ev)
 	}
 }
@@ -72,6 +79,7 @@ func (s *subscription) add(message *model.ChatMessage) {
 		Id:      message.Id,
 		Message: message,
 		OrderId: message.OrderId,
+		SubIds:  slices.Clone(s.ids),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
 		ChatAdd: ev,
@@ -80,7 +88,8 @@ func (s *subscription) add(message *model.ChatMessage) {
 
 func (s *subscription) delete(messageId string) {
 	ev := &pb.EventChatDelete{
-		Id: messageId,
+		Id:     messageId,
+		SubIds: slices.Clone(s.ids),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatDelete{
 		ChatDelete: ev,
@@ -94,6 +103,7 @@ func (s *subscription) updateFull(message *model.ChatMessage) {
 	ev := &pb.EventChatUpdate{
 		Id:      message.Id,
 		Message: message,
+		SubIds:  slices.Clone(s.ids),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdate{
 		ChatUpdate: ev,
@@ -107,6 +117,7 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 	ev := &pb.EventChatUpdateReactions{
 		Id:        message.Id,
 		Reactions: message.Reactions,
+		SubIds:    slices.Clone(s.ids),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReactions{
 		ChatUpdateReactions: ev,
@@ -117,7 +128,7 @@ func (s *subscription) canSend() bool {
 	if s.sessionContext != nil {
 		return true
 	}
-	if !s.enabled {
+	if !s.isActive() {
 		return false
 	}
 	return true
