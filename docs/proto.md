@@ -20622,7 +20622,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 | Id or root path is wrong |
 | ACCOUNT_NOT_FOUND | 101 |  |
 | CANCELED | 102 |  |
-| NOT_ENOUGH_STORAGE | 103 | TODO: [storage] Add specific error codes for migration problems |
+| NOT_ENOUGH_FREE_SPACE | 103 | TODO: [storage] Add specific error codes for migration problems |
 
 
 

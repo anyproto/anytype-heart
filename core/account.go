@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -55,6 +56,7 @@ func (mw *Middleware) AccountMigrate(cctx context.Context, req *pb.RpcAccountMig
 		errToCode(application.ErrBadInput, pb.RpcAccountMigrateResponseError_BAD_INPUT),
 		errToCode(application.ErrAccountNotFound, pb.RpcAccountMigrateResponseError_ACCOUNT_NOT_FOUND),
 		errToCode(context.Canceled, pb.RpcAccountMigrateResponseError_CANCELED),
+		errTypeToCode(&migrator.NotEnoughFreeSpaceError{}, pb.RpcAccountMigrateResponseError_NOT_ENOUGH_FREE_SPACE),
 	)
 	return &pb.RpcAccountMigrateResponse{
 		Error: &pb.RpcAccountMigrateResponseError{
