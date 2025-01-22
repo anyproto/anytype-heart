@@ -180,7 +180,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			if pErr := progress.Cancel(); pErr != nil {
 				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
 			}
-			progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+			if notificationProgress, ok := progress.(process.Notificationable); ok {
+				notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+			}
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
 			}
@@ -194,7 +196,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-	progress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
+	if notificationProgress, ok := progress.(process.Notificationable); ok {
+		notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
+	}
 
 	if importErr != nil {
 		log.Errorf("failed to send notification: %v", importErr)
@@ -493,7 +497,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	return path, nil
 }
 
-func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
+func (b *builtinObjects) setupProgress() (process.Progress, error) {
 	progress := process.NewNotificationProcess(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)

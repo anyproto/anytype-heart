@@ -2944,3 +2944,36 @@ func TestState_FileRelationKeys(t *testing.T) {
 		assert.Len(t, keys, 0)
 	})
 }
+
+func TestState_AddRelationLinks(t *testing.T) {
+	t.Run("add new link", func(t *testing.T) {
+		// given
+		s := &State{}
+		newLink := &model.RelationLink{
+			Key:    "newLink",
+			Format: model.RelationFormat_shorttext,
+		}
+
+		// when
+		s.AddRelationLinks(newLink)
+
+		// then
+		assert.True(t, s.GetRelationLinks().Has("newLink"))
+	})
+	t.Run("add existing link", func(t *testing.T) {
+		// given
+		s := &State{}
+		newLink := &model.RelationLink{
+			Key:    "existingLink",
+			Format: model.RelationFormat_shorttext,
+		}
+
+		// when
+		s.AddRelationLinks(newLink)
+		s.AddRelationLinks(newLink)
+
+		// then
+		assert.True(t, s.GetRelationLinks().Has("existingLink"))
+		assert.Len(t, s.GetRelationLinks(), 1)
+	})
+}
