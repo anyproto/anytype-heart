@@ -354,15 +354,12 @@ func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchP
 	return nil
 }
 
-func fileNameAddSuffix(fileName string, suffix string) string {
-	ext := filepath.Ext(fileName)
-	fileName = strings.TrimSuffix(fileName, ext)
-	return fileName + suffix + ext
-}
-
 func getFileNameFromURL(url, filename string) string {
 	u, err := uri.ParseURI(url)
 	if err != nil {
+		return ""
+	}
+	if u.Hostname() == "" {
 		return ""
 	}
 	var urlFileExt string
@@ -373,7 +370,11 @@ func getFileNameFromURL(url, filename string) string {
 
 	source := strings.TrimPrefix(u.Hostname(), "www.")
 	source = strings.ReplaceAll(source, ".", "_")
-	return source + "_" + filename + urlFileExt
+	if source != "" {
+		source += "_"
+	}
+	source += filename + urlFileExt
+	return source
 }
 
 func (s *service) loadImage(spaceId string, title, url string) (hash string, err error) {
