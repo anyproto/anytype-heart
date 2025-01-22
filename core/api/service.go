@@ -97,8 +97,6 @@ func (s *apiService) runServer() {
 			fmt.Printf("API server ListenAndServe error: %v\n", err)
 		}
 	}()
-
-	return
 }
 
 func (s *apiService) shutdown(ctx context.Context) (err error) {

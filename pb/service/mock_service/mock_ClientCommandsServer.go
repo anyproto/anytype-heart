@@ -24,6 +24,55 @@ func (_m *MockClientCommandsServer) EXPECT() *MockClientCommandsServer_Expecter 
 	return &MockClientCommandsServer_Expecter{mock: &_m.Mock}
 }
 
+// AccountChangeJsonApiAddr provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) AccountChangeJsonApiAddr(_a0 context.Context, _a1 *pb.RpcAccountChangeJsonApiAddrRequest) *pb.RpcAccountChangeJsonApiAddrResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AccountChangeJsonApiAddr")
+	}
+
+	var r0 *pb.RpcAccountChangeJsonApiAddrResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcAccountChangeJsonApiAddrRequest) *pb.RpcAccountChangeJsonApiAddrResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcAccountChangeJsonApiAddrResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_AccountChangeJsonApiAddr_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountChangeJsonApiAddr'
+type MockClientCommandsServer_AccountChangeJsonApiAddr_Call struct {
+	*mock.Call
+}
+
+// AccountChangeJsonApiAddr is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcAccountChangeJsonApiAddrRequest
+func (_e *MockClientCommandsServer_Expecter) AccountChangeJsonApiAddr(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_AccountChangeJsonApiAddr_Call {
+	return &MockClientCommandsServer_AccountChangeJsonApiAddr_Call{Call: _e.mock.On("AccountChangeJsonApiAddr", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_AccountChangeJsonApiAddr_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcAccountChangeJsonApiAddrRequest)) *MockClientCommandsServer_AccountChangeJsonApiAddr_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcAccountChangeJsonApiAddrRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AccountChangeJsonApiAddr_Call) Return(_a0 *pb.RpcAccountChangeJsonApiAddrResponse) *MockClientCommandsServer_AccountChangeJsonApiAddr_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AccountChangeJsonApiAddr_Call) RunAndReturn(run func(context.Context, *pb.RpcAccountChangeJsonApiAddrRequest) *pb.RpcAccountChangeJsonApiAddrResponse) *MockClientCommandsServer_AccountChangeJsonApiAddr_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AccountChangeNetworkConfigAndRestart provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) AccountChangeNetworkConfigAndRestart(_a0 context.Context, _a1 *pb.RpcAccountChangeNetworkConfigAndRestartRequest) *pb.RpcAccountChangeNetworkConfigAndRestartResponse {
 	ret := _m.Called(_a0, _a1)
