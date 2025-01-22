@@ -13,7 +13,7 @@ import (
 func TestPbc_Convert(t *testing.T) {
 	s := state.NewDoc("root", nil).(*state.State)
 	template.InitTemplate(s, template.WithTitle)
-	c := NewConverter(s, false)
+	c := NewConverter(s, false, nil)
 	result := c.Convert(model.SmartBlockType_Page)
 	assert.NotEmpty(t, result)
 }

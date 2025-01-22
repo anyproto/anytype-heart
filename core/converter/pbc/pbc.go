@@ -7,22 +7,26 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var log = logging.Logger("pb-converter")
 
-func NewConverter(s state.Doc, isJSON bool) converter.Converter {
+func NewConverter(s state.Doc, isJSON bool, dependentDetails []database.Record) converter.Converter {
 	return &pbc{
-		s:      s,
-		isJSON: isJSON,
+		s:                s,
+		isJSON:           isJSON,
+		dependentDetails: dependentDetails,
 	}
 }
 
 type pbc struct {
-	s      state.Doc
-	isJSON bool
+	s                state.Doc
+	isJSON           bool
+	dependentDetails []database.Record
 }
 
 func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
@@ -38,12 +42,20 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 			FileInfo:      st.GetFileInfo().ToModel(),
 		},
 	}
+	dependentDetails := make([]*pb.DependantDetail, 0, len(p.dependentDetails))
+	for _, detail := range p.dependentDetails {
+		dependentDetails = append(dependentDetails, &pb.DependantDetail{
+			Id:      detail.Details.GetString(bundle.RelationKeyId),
+			Details: detail.Details.ToProto(),
+		})
+	}
 	mo := &pb.SnapshotWithType{
-		SbType:   sbType,
-		Snapshot: snapshot,
+		SbType:           sbType,
+		Snapshot:         snapshot,
+		DependantDetails: dependentDetails,
 	}
 	if p.isJSON {
-		m := jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
+		m := jsonpb.Marshaler{Indent: " "}
 		result, err := m.MarshalToString(mo)
 		if err != nil {
 			log.Errorf("failed to convert object to json: %s", err)

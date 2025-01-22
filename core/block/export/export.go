@@ -135,33 +135,35 @@ func (e *export) finishWithNotification(spaceId string, exportFormat model.Expor
 }
 
 type exportContext struct {
-	spaceId        string
-	docs           map[string]*domain.Details
-	includeArchive bool
-	includeNested  bool
-	includeFiles   bool
-	format         model.ExportFormat
-	isJson         bool
-	reqIds         []string
-	zip            bool
-	path           string
+	spaceId                 string
+	docs                    map[string]*domain.Details
+	includeArchive          bool
+	includeNested           bool
+	includeFiles            bool
+	format                  model.ExportFormat
+	isJson                  bool
+	reqIds                  []string
+	zip                     bool
+	path                    string
+	includeDependentDetails bool
 
 	*export
 }
 
 func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
 	return &exportContext{
-		path:           req.Path,
-		spaceId:        req.SpaceId,
-		docs:           map[string]*domain.Details{},
-		includeArchive: req.IncludeArchived,
-		includeNested:  req.IncludeNested,
-		includeFiles:   req.IncludeFiles,
-		format:         req.Format,
-		isJson:         req.IsJson,
-		reqIds:         req.ObjectIds,
-		zip:            req.Zip,
-		export:         e,
+		path:                    req.Path,
+		spaceId:                 req.SpaceId,
+		docs:                    map[string]*domain.Details{},
+		includeArchive:          req.IncludeArchived,
+		includeNested:           req.IncludeNested,
+		includeFiles:            req.IncludeFiles,
+		format:                  req.Format,
+		isJson:                  req.IsJson,
+		reqIds:                  req.ObjectIds,
+		zip:                     req.Zip,
+		includeDependentDetails: req.IncludeDependentDetails,
+		export:                  e,
 	}
 }
 
@@ -969,12 +971,16 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 			}
 		}
 
+		dependentDetails, err := e.getDependentDetails(b, st, err)
+		if err != nil {
+			return err
+		}
 		var conv converter.Converter
 		switch e.format {
 		case model.Export_Markdown:
 			conv = md.NewMDConverter(st, wr.Namer())
 		case model.Export_Protobuf:
-			conv = pbc.NewConverter(st, e.isJson)
+			conv = pbc.NewConverter(st, e.isJson, dependentDetails)
 		case model.Export_JSON:
 			conv = pbjson.NewConverter(st)
 		}
@@ -994,6 +1000,22 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 		}
 		return nil
 	})
+}
+
+func (e *exportContext) getDependentDetails(b sb.SmartBlock, st *state.State, err error) ([]database.Record, error) {
+	var dependentDetails []database.Record
+	if e.includeDependentDetails {
+		dependentObjectIDs := objectlink.DependentObjectIDs(st, b.Space(), objectlink.Flags{
+			Blocks:  true,
+			Details: true,
+			Types:   true,
+		})
+		dependentDetails, err = e.objectStore.SpaceIndex(b.SpaceID()).QueryByIds(dependentObjectIDs)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return dependentDetails, nil
 }
 
 func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {

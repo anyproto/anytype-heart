@@ -122,14 +122,15 @@ func uniqName() string {
 func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
 	tempDir := os.TempDir()
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
-		SpaceId:      spaceId,
-		Format:       model.Export_Protobuf,
-		IncludeFiles: true,
-		IsJson:       false,
-		Zip:          false,
-		Path:         tempDir,
-		ObjectIds:    []string{pageId},
-		NoProgress:   true,
+		SpaceId:                 spaceId,
+		Format:                  model.Export_Protobuf,
+		IncludeFiles:            true,
+		IsJson:                  false,
+		Zip:                     false,
+		Path:                    tempDir,
+		ObjectIds:               []string{pageId},
+		NoProgress:              true,
+		IncludeDependentDetails: true,
 	})
 	if err != nil {
 		return

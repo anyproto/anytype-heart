@@ -1795,6 +1795,7 @@
     - [Model.Process.State](#anytype-Model-Process-State)
   
 - [pb/protos/snapshot.proto](#pb_protos_snapshot-proto)
+    - [DependantDetail](#anytype-DependantDetail)
     - [Profile](#anytype-Profile)
     - [SnapshotWithType](#anytype-SnapshotWithType)
   
@@ -15485,6 +15486,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | isJson | [bool](#bool) |  | for protobuf export |
 | includeArchived | [bool](#bool) |  | for migration |
 | noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
+| includeDependentDetails | [bool](#bool) |  | for web publising, just add details of dependent objects in result snapshot |
 
 
 
@@ -28257,6 +28259,22 @@ Precondition: user A and user B opened the same block
 
 
 
+<a name="anytype-DependantDetail"></a>
+
+### DependantDetail
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
 <a name="anytype-Profile"></a>
 
 ### Profile
@@ -28287,6 +28305,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | sbType | [model.SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 | snapshot | [Change.Snapshot](#anytype-Change-Snapshot) |  |  |
+| dependantDetails | [DependantDetail](#anytype-DependantDetail) | repeated |  |
 
 
 

@@ -2757,6 +2757,8 @@ message Rpc {
                 bool includeArchived = 9;
                 // for integrations like raycast and web publishing
                 bool noProgress = 11;
+                // for web publising, just add details of dependent objects in result snapshot
+                bool includeDependentDetails = 12;
             }
 
             message Response {
