@@ -164,7 +164,11 @@ var (
 	}
 )
 
-var editableSystemTypes = []domain.TypeKey{bundle.TypeKeyPage, bundle.TypeKeyTask, bundle.TypeKeyNote}
+var editableSystemTypes = []domain.TypeKey{
+	bundle.TypeKeyPage, bundle.TypeKeyTask, bundle.TypeKeyNote,
+	bundle.TypeKeySet, bundle.TypeKeyCollection, bundle.TypeKeyFile,
+	bundle.TypeKeyAudio, bundle.TypeKeyVideo, bundle.TypeKeyImage,
+}
 
 func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
 	restrictions := objectRestrictionsBySBType[sbType]
