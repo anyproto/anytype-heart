@@ -12,8 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -56,6 +56,9 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	if req.NetworkMode > 0 {
 		cfg.NetworkMode = req.NetworkMode
 		cfg.NetworkCustomConfigFilePath = req.NetworkCustomConfigFilePath
+	}
+	if req.JsonApiListenAddr != "" {
+		cfg.JsonApiListenAddr = req.JsonApiListenAddr
 	}
 	comps := []app.Component{
 		cfg,

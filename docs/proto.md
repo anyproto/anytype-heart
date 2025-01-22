@@ -50,6 +50,10 @@
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
     - [Rpc.Account](#anytype-Rpc-Account)
+    - [Rpc.Account.ChangeJsonApiAddr](#anytype-Rpc-Account-ChangeJsonApiAddr)
+    - [Rpc.Account.ChangeJsonApiAddr.Request](#anytype-Rpc-Account-ChangeJsonApiAddr-Request)
+    - [Rpc.Account.ChangeJsonApiAddr.Response](#anytype-Rpc-Account-ChangeJsonApiAddr-Response)
+    - [Rpc.Account.ChangeJsonApiAddr.Response.Error](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error)
     - [Rpc.Account.ChangeNetworkConfigAndRestart](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response)
@@ -1274,6 +1278,7 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.Account.ChangeJsonApiAddr.Response.Error.Code](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error-Code)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
@@ -2020,6 +2025,7 @@
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
+| AccountChangeJsonApiAddr | [Rpc.Account.ChangeJsonApiAddr.Request](#anytype-Rpc-Account-ChangeJsonApiAddr-Request) | [Rpc.Account.ChangeJsonApiAddr.Response](#anytype-Rpc-Account-ChangeJsonApiAddr-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
@@ -2942,6 +2948,62 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr"></a>
+
+### Rpc.Account.ChangeJsonApiAddr
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr-Request"></a>
+
+### Rpc.Account.ChangeJsonApiAddr.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| listenAddr | [string](#string) |  | make sure to use 127.0.0.1:x to not listen on all interfaces; recommended value is 127.0.0.1:31009 |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr-Response"></a>
+
+### Rpc.Account.ChangeJsonApiAddr.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.ChangeJsonApiAddr.Response.Error](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error"></a>
+
+### Rpc.Account.ChangeJsonApiAddr.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.ChangeJsonApiAddr.Response.Error.Code](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart"></a>
 
 ### Rpc.Account.ChangeNetworkConfigAndRestart
@@ -3100,6 +3162,7 @@ Front end to middleware request-to-create-an account
 | networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
+| jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 
 
 
@@ -3644,6 +3707,7 @@ User can select an account from those, that came with an AccountAdd events
 | networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
+| jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 
 
 
@@ -20687,6 +20751,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
  
+
+
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error-Code"></a>
+
+### Rpc.Account.ChangeJsonApiAddr.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 4 |  |
+
 
 
 <a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code"></a>

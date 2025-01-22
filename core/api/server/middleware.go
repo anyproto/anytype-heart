@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/didip/tollbooth/v8"
 	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/gin-gonic/gin"
@@ -75,14 +74,9 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 }
 
 // ensureAccountInfo is a middleware that ensures the account info is available in the services.
-func (s *Server) ensureAccountInfo(a *app.App) gin.HandlerFunc {
+func (s *Server) ensureAccountInfo(accountService account.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if a == nil {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "failed to get app instance"})
-			return
-		}
-
-		accInfo, err := a.Component(account.CName).(account.Service).GetInfo(context.Background())
+		accInfo, err := accountService.GetInfo(context.Background())
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get account info: %v", err)})
 			return

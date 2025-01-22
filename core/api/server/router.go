@@ -1,11 +1,13 @@
 package server
 
 import (
-	"github.com/anyproto/any-sync/app"
+	"os"
+
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/services/auth"
 	"github.com/anyproto/anytype-heart/core/api/services/export"
@@ -24,9 +26,18 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(a *app.App, mw service.ClientCommandsServer) *gin.Engine {
-	router := gin.Default()
+func (s *Server) NewRouter(accountService account.Service, mw service.ClientCommandsServer) *gin.Engine {
+	debug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
+	if !debug {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
+	router := gin.New()
+	router.Use(gin.Recovery())
+
+	if debug {
+		router.Use(gin.Logger())
+	}
 	paginator := pagination.New(pagination.Config{
 		DefaultPage:     defaultPage,
 		DefaultPageSize: defaultPageSize,
@@ -48,7 +59,7 @@ func (s *Server) NewRouter(a *app.App, mw service.ClientCommandsServer) *gin.Eng
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
 	v1.Use(s.ensureAuthenticated(mw))
-	v1.Use(s.ensureAccountInfo(a))
+	v1.Use(s.ensureAccountInfo(accountService))
 	{
 		// Export
 		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))

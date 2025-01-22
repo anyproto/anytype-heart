@@ -41,6 +41,8 @@ service ClientCommands {
     rpc AccountRevertDeletion (anytype.Rpc.Account.RevertDeletion.Request) returns (anytype.Rpc.Account.RevertDeletion.Response);
     rpc AccountSelect (anytype.Rpc.Account.Select.Request) returns (anytype.Rpc.Account.Select.Response);
     rpc AccountEnableLocalNetworkSync (anytype.Rpc.Account.EnableLocalNetworkSync.Request) returns (anytype.Rpc.Account.EnableLocalNetworkSync.Response);
+    rpc AccountChangeJsonApiAddr (anytype.Rpc.Account.ChangeJsonApiAddr.Request) returns (anytype.Rpc.Account.ChangeJsonApiAddr.Response);
+
     rpc AccountStop (anytype.Rpc.Account.Stop.Request) returns (anytype.Rpc.Account.Stop.Response);
     rpc AccountMove (anytype.Rpc.Account.Move.Request) returns (anytype.Rpc.Account.Move.Response);
     rpc AccountConfigUpdate (anytype.Rpc.Account.ConfigUpdate.Request) returns (anytype.Rpc.Account.ConfigUpdate.Response);

@@ -5,18 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
 
 const (
-	CName    = "api"
-	httpPort = ":31009"
-	timeout  = 5 * time.Second
+	CName       = "api"
+	readTimeout = 5 * time.Second
 )
 
 var (
@@ -25,12 +27,16 @@ var (
 
 type Service interface {
 	app.ComponentRunnable
+	ReassignAddress(ctx context.Context, listenAddr string) (err error)
 }
 
 type apiService struct {
-	srv     *server.Server
-	httpSrv *http.Server
-	mw      service.ClientCommandsServer
+	srv            *server.Server
+	httpSrv        *http.Server
+	mw             service.ClientCommandsServer
+	accountService account.Service
+	listenAddr     string
+	lock           sync.Mutex
 }
 
 func New() Service {
@@ -58,16 +64,32 @@ func (s *apiService) Name() (name string) {
 //	@externalDocs.description	OpenAPI
 //	@externalDocs.url			https://swagger.io/resources/open-api/
 func (s *apiService) Init(a *app.App) (err error) {
-	s.srv = server.NewServer(a, s.mw)
-	s.httpSrv = &http.Server{
-		Addr:              httpPort,
-		Handler:           s.srv.Engine(),
-		ReadHeaderTimeout: timeout,
-	}
+	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
+	s.accountService = a.MustComponent(account.CName).(account.Service)
+
 	return nil
 }
 
 func (s *apiService) Run(ctx context.Context) (err error) {
+	s.runServer()
+	return nil
+}
+
+func (s *apiService) runServer() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if s.listenAddr == "" {
+		// means that API is disabled
+		return
+	}
+
+	s.srv = server.NewServer(s.accountService, s.mw)
+	s.httpSrv = &http.Server{
+		Addr:              s.listenAddr,
+		Handler:           s.srv.Engine(),
+		ReadHeaderTimeout: readTimeout,
+	}
+
 	fmt.Printf("Starting API server on %s\n", s.httpSrv.Addr)
 
 	go func() {
@@ -76,17 +98,38 @@ func (s *apiService) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	return nil
+	return
 }
 
-func (s *apiService) Close(ctx context.Context) (err error) {
-	shutdownCtx, cancel := context.WithTimeout(ctx, timeout)
+func (s *apiService) shutdown(ctx context.Context) (err error) {
+	if s.httpSrv == nil {
+		return nil
+	}
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	// we don't want graceful shutdown here and block tha app close
+	shutdownCtx, cancel := context.WithTimeout(ctx, time.Millisecond)
 	defer cancel()
 
 	if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (s *apiService) Close(ctx context.Context) (err error) {
+	return s.shutdown(ctx)
+}
+
+func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) (err error) {
+	err = s.shutdown(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.listenAddr = listenAddr
+	s.runServer()
 	return nil
 }
 
