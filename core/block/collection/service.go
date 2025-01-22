@@ -160,7 +160,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 
 		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)
 		return nil
-	})
+	}, smartblock.KeepInternalFlags)
 	if err != nil {
 		return nil, nil, err
 	}

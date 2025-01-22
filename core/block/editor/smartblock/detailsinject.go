@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/anyproto/any-sync/app/ocache"
 
@@ -282,6 +283,12 @@ func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage,
 		return nil
 	}
 
+	// nolint:gosec
+	if !isLayoutChangeApplicable(model.ObjectTypeLayout(layout)) {
+		// if layout change is not applicable, then it is init of some system type
+		return nil
+	}
+
 	index := sb.objectStore.SpaceIndex(sb.SpaceID())
 	records, err := index.Query(database.Query{Filters: []database.FilterRequest{
 		{
@@ -379,4 +386,14 @@ func getLayoutFromMessages(msgs []simple.EventMessage) (layout int64, found bool
 		}
 	}
 	return 0, false
+}
+
+func isLayoutChangeApplicable(layout model.ObjectTypeLayout) bool {
+	return slices.Contains([]model.ObjectTypeLayout{
+		model.ObjectType_basic,
+		model.ObjectType_todo,
+		model.ObjectType_profile,
+		model.ObjectType_note,
+		model.ObjectType_collection,
+	}, layout)
 }
