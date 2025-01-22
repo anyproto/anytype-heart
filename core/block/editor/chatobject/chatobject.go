@@ -38,7 +38,7 @@ type StoreObject interface {
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
-	SubscribeLastMessages(ctx context.Context, subId string, limit int) ([]*model.ChatMessage, int, error)
+	SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) ([]*model.ChatMessage, int, error)
 	Unsubscribe(subId string) error
 }
 
@@ -307,7 +307,7 @@ func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, me
 	return false, nil
 }
 
-func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, limit int) ([]*model.ChatMessage, int, error) {
+func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) ([]*model.ChatMessage, int, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, 0, fmt.Errorf("get collection: %w", err)
@@ -323,8 +323,15 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 	})
 
 	s.subscription.subscribe(subId)
-
-	return messages, 0, nil
+	if asyncInit {
+		for _, message := range messages {
+			s.subscription.add(message)
+		}
+		s.subscription.flush()
+		return nil, 0, nil
+	} else {
+		return messages, 0, nil
+	}
 }
 
 func (s *storeObject) Unsubscribe(subId string) error {

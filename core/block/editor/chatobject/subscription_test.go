@@ -21,7 +21,7 @@ func TestSubscription(t *testing.T) {
 		assert.NotEmpty(t, messageId)
 	}
 
-	messages, _, err := fx.SubscribeLastMessages(ctx, "subId", 5)
+	messages, _, err := fx.SubscribeLastMessages(ctx, "subId", 5, false)
 	require.NoError(t, err)
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
 	for i, msg := range messages {
