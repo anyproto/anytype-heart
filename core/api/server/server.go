@@ -1,6 +1,8 @@
 package server
 
 import (
+	"sync"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/gin-gonic/gin"
 
@@ -21,6 +23,9 @@ type Server struct {
 	objectService *object.ObjectService
 	spaceService  *space.SpaceService
 	searchService *search.SearchService
+
+	mu         sync.Mutex
+	KeyToToken map[string]string // appKey -> token
 }
 
 // NewServer constructs a new Server with default config and sets up the routes.
@@ -33,7 +38,8 @@ func NewServer(a *app.App, mw service.ClientCommandsServer) *Server {
 
 	s.objectService = object.NewService(mw, s.spaceService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
-	s.engine = s.NewRouter(a)
+	s.engine = s.NewRouter(a, mw)
+	s.KeyToToken = make(map[string]string)
 
 	return s
 }

@@ -1073,6 +1073,7 @@ message Rpc {
                 message Request {
                     option (no_auth) = true;
                     string appName = 1; // just for info, not secure to rely on
+                    model.Account.Auth.LocalApiScope scope = 2;
                 }
 
                 message Response {

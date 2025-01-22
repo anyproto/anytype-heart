@@ -34,9 +34,7 @@ type apiService struct {
 }
 
 func New() Service {
-	return &apiService{
-		mw: mwSrv,
-	}
+	return &apiService{mw: mwSrv}
 }
 
 func (s *apiService) Name() (name string) {
