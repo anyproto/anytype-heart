@@ -33,7 +33,7 @@ type Service interface {
 	// Cancel cancels process by id
 	Cancel(id string) (err error)
 	// NewQueue creates new queue with given workers count
-	NewQueue(info pb.ModelProcess, workers int) Queue
+	NewQueue(info pb.ModelProcess, workers int, noProgress bool, notificationService NotificationService) Queue
 	// Subscribe remove session from the map of disabled sessions
 	Subscribe(token string)
 	// Unsubscribe add session to the map of disabled sessions
@@ -81,49 +81,31 @@ func (s *service) monitor(p Process) {
 		s.m.Unlock()
 	}()
 	info := p.Info()
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfProcessNew{
-					ProcessNew: &pb.EventProcessNew{
-						Process: &info,
-					},
-				},
-			},
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfProcessNew{
+		ProcessNew: &pb.EventProcessNew{
+			Process: &info,
 		},
-	})
+	}))
 	var prevInfo = info
 	for {
 		select {
 		case <-ticker.C:
 			info := p.Info()
 			if !infoEquals(info, prevInfo) {
-				s.eventSender.BroadcastExceptSessions(&pb.Event{
-					Messages: []*pb.EventMessage{
-						{
-							Value: &pb.EventMessageValueOfProcessUpdate{
-								ProcessUpdate: &pb.EventProcessUpdate{
-									Process: &info,
-								},
-							},
-						},
+				s.eventSender.BroadcastExceptSessions(event.NewEventSingleMessage("", &pb.EventMessageValueOfProcessUpdate{
+					ProcessUpdate: &pb.EventProcessUpdate{
+						Process: &info,
 					},
-				}, s.getExcludedSessions())
+				}), s.getExcludedSessions())
 				prevInfo = info
 			}
 		case <-p.Done():
 			info := p.Info()
-			s.eventSender.Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{
-					{
-						Value: &pb.EventMessageValueOfProcessDone{
-							ProcessDone: &pb.EventProcessDone{
-								Process: &info,
-							},
-						},
-					},
+			s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfProcessDone{
+				ProcessDone: &pb.EventProcessDone{
+					Process: &info,
 				},
-			})
+			}))
 			if notificationSender, ok := p.(NotificationSender); ok {
 				notificationSender.SendNotification()
 			}

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "spc1"
@@ -58,7 +56,7 @@ type testTemplateService struct {
 	templates map[string]*state.State
 }
 
-func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *types.Struct) (*state.State, error) {
+func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error) {
 	if tts.templates != nil {
 		if st, found := tts.templates[templateId]; found {
 			return st, nil
@@ -83,9 +81,9 @@ func TestService_CreateObject(t *testing.T) {
 
 		// when
 		id, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyTargetObjectType.String(): pbtypes.String(bundle.TypeKeyTask.URL()),
-			}},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
+			}),
 			ObjectTypeKey: bundle.TypeKeyTemplate,
 		})
 
@@ -123,15 +121,15 @@ func TestService_CreateObject(t *testing.T) {
 		// when
 		id, details, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
 			ObjectTypeKey: bundle.TypeKeyDate,
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyTimestamp.String(): pbtypes.Int64(dateObject.Time().Unix()),
-			}},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyTimestamp: domain.Int64(dateObject.Time().Unix()),
+			}),
 		})
 
 		// then
 		assert.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, dateObject.Id()))
-		assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
-		assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
+		assert.Equal(t, spaceId, details.GetString(bundle.RelationKeySpaceId))
+		assert.Equal(t, bundle.TypeKeyDate.URL(), details.GetString(bundle.RelationKeyType))
 	})
 }

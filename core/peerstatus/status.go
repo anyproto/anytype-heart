@@ -254,22 +254,16 @@ func (p *p2pStatus) countOpenConnections(spaceId string) int64 {
 
 // sendEvent sends event to session with sessionToken or broadcast to all sessions if sessionToken is empty
 func (p *p2pStatus) sendEvent(sessionToken string, spaceId string, status pb.EventP2PStatusStatus, count int64) {
-	event := &pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfP2PStatusUpdate{
-					P2PStatusUpdate: &pb.EventP2PStatusUpdate{
-						SpaceId:        spaceId,
-						Status:         status,
-						DevicesCounter: count,
-					},
-				},
-			},
+	ev := event.NewEventSingleMessage("", &pb.EventMessageValueOfP2PStatusUpdate{
+		P2PStatusUpdate: &pb.EventP2PStatusUpdate{
+			SpaceId:        spaceId,
+			Status:         status,
+			DevicesCounter: count,
 		},
-	}
+	})
 	if sessionToken != "" {
-		p.eventSender.SendToSession(sessionToken, event)
+		p.eventSender.SendToSession(sessionToken, ev)
 		return
 	}
-	p.eventSender.Broadcast(event)
+	p.eventSender.Broadcast(ev)
 }

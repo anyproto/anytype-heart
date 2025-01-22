@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
@@ -18,9 +17,6 @@ import (
 )
 
 func Test_registerBuiltin(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	sourceService := mock_source.NewMockService(t)
 	sourceService.EXPECT().NewStaticSource(mock.Anything).Return(nil).Maybe()
 	sourceService.EXPECT().RegisterStaticSource(mock.Anything).Return(nil).Maybe()

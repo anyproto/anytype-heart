@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-store/query"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const linkOutboundField = "o"
@@ -41,12 +40,12 @@ func (s *dsObjectStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLi
 		return nil, commit(fmt.Errorf("find outbound links: %w", err))
 	}
 
-	inbound, err := s.getObjectsInfo(s.componentCtx, inboundIds)
+	inbound, err := s.getObjectsInfo(txn.Context(), inboundIds)
 	if err != nil {
 		return nil, commit(err)
 	}
 
-	outbound, err := s.getObjectsInfo(s.componentCtx, outboundsIds)
+	outbound, err := s.getObjectsInfo(txn.Context(), outboundsIds)
 	if err != nil {
 		return nil, commit(err)
 	}
@@ -55,12 +54,21 @@ func (s *dsObjectStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLi
 	if err != nil {
 		return nil, fmt.Errorf("commit txn: %w", err)
 	}
+
+	inboundProto := make([]*model.ObjectInfo, 0, len(inbound))
+	for _, info := range inbound {
+		inboundProto = append(inboundProto, info.ToProto())
+	}
+	outboundProto := make([]*model.ObjectInfo, 0, len(outbound))
+	for _, info := range outbound {
+		outboundProto = append(outboundProto, info.ToProto())
+	}
 	return &model.ObjectInfoWithLinks{
 		Id:   id,
-		Info: page,
+		Info: page.ToProto(),
 		Links: &model.ObjectLinksInfo{
-			Inbound:  inbound,
-			Outbound: outbound,
+			Inbound:  inboundProto,
+			Outbound: outboundProto,
 		},
 	}, nil
 }
@@ -83,7 +91,7 @@ func (s *dsObjectStore) findOutboundLinks(ctx context.Context, id string) ([]str
 		return nil, err
 	}
 	arr := doc.Value().GetArray(linkOutboundField)
-	return pbtypes.AnyEncArrayToStrings(arr), nil
+	return anyEncArrayToStrings(arr), nil
 }
 
 // Find from which IDs specified one has inbound links.

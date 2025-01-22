@@ -15,10 +15,10 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -339,7 +339,7 @@ func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 	}()
 }
 
-func (s *service) OnWorkspaceChanged(spaceId string, details *types.Struct) {
+func (s *service) OnWorkspaceChanged(spaceId string, details *domain.Details) {
 	go func() {
 		if err := s.techSpace.SpaceViewSetData(s.ctx, spaceId, details); err != nil {
 			log.Warn("OnWorkspaceChanged error", zap.Error(err))

@@ -161,13 +161,26 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
 				continue
 			}
-			val := pbtypes.GetString(sb.Details(), rel.Key)
+			val := sb.Details().GetString(domain.RelationKey(rel.Key))
 			if val == "" {
-				continue
+				val = sb.LocalDetails().GetString(domain.RelationKey(rel.Key))
+				if val == "" {
+					continue
+				}
 			}
 			// skip readonly and hidden system relations
 			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
-				if bundledRel.ReadOnly || bundledRel.Hidden && rel.Key != bundle.RelationKeyName.String() {
+				layout, _ := sb.Layout()
+				skip := bundledRel.ReadOnly || bundledRel.Hidden
+				if rel.Key == bundle.RelationKeyName.String() {
+					skip = false
+				}
+				if layout == model.ObjectType_note && rel.Key == bundle.RelationKeySnippet.String() {
+					// index snippet only for notes, so we will be able to do fast prefix queries
+					skip = false
+				}
+
+				if skip {
 					continue
 				}
 			}

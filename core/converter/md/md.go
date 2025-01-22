@@ -10,16 +10,15 @@ import (
 	"strings"
 
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -39,7 +38,7 @@ type MD struct {
 	fileHashes  []string
 	imageHashes []string
 
-	knownDocs map[string]*types.Struct
+	knownDocs map[string]*domain.Details
 
 	mw *marksWriter
 	fn FileNamer
@@ -390,7 +389,7 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 	return h.mw.Init(text)
 }
 
-func (h *MD) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	h.knownDocs = docs
 	return h
 }
@@ -400,12 +399,12 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 	if !ok {
 		return
 	}
-	title = pbtypes.GetString(info, bundle.RelationKeyName.String())
+	title = info.GetString(bundle.RelationKeyName)
 	// if object is a file
-	layout := model.ObjectTypeLayout(pbtypes.GetInt64(info, bundle.RelationKeyLayout.String()))
+	layout := model.ObjectTypeLayout(info.GetInt64(bundle.RelationKeyLayout))
 	if layout == model.ObjectType_file || layout == model.ObjectType_image || layout == model.ObjectType_audio || layout == model.ObjectType_video {
-		title = pbtypes.GetString(info, bundle.RelationKeyName.String())
-		ext := pbtypes.GetString(info, bundle.RelationKeyFileExt.String())
+		title = info.GetString(bundle.RelationKeyName)
+		ext := info.GetString(bundle.RelationKeyFileExt)
 		if ext != "" {
 			ext = "." + ext
 		}
@@ -418,7 +417,7 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 	}
 
 	if title == "" {
-		title = pbtypes.GetString(info, bundle.RelationKeySnippet.String())
+		title = info.GetString(bundle.RelationKeySnippet)
 	}
 	if title == "" {
 		title = docId

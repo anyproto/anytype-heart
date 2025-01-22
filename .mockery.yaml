@@ -43,6 +43,9 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
+  github.com/anyproto/anytype-heart/core/block/import/web/parsers:
+    interfaces:
+      Parser:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
@@ -222,3 +225,12 @@ packages:
   github.com/anyproto/anytype-heart/core/kanban:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/core/inviteservice:
+    interfaces:
+      InviteService:
+  github.com/anyproto/anytype-heart/core/identity:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/pb/service:
+    interfaces:
+      ClientCommandsServer:

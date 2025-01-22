@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestCount(t *testing.T) {
@@ -17,16 +17,16 @@ func TestCount(t *testing.T) {
 	subService := subscription.NewInternalTestService(t)
 	subService.AddObjects(t, spaceId, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:   pbtypes.String("1"),
-			bundle.RelationKeyName: pbtypes.String("1"),
+			bundle.RelationKeyId:   domain.String("1"),
+			bundle.RelationKeyName: domain.String("1"),
 		},
 		{
-			bundle.RelationKeyId:   pbtypes.String("2"),
-			bundle.RelationKeyName: pbtypes.String("2"),
+			bundle.RelationKeyId:   domain.String("2"),
+			bundle.RelationKeyName: domain.String("2"),
 		},
 		{
-			bundle.RelationKeyId:   pbtypes.String("4"),
-			bundle.RelationKeyName: pbtypes.String("4"),
+			bundle.RelationKeyId:   domain.String("4"),
+			bundle.RelationKeyName: domain.String("4"),
 		},
 	})
 

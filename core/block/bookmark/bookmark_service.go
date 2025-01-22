@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
@@ -27,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -37,8 +35,8 @@ const CName = "bookmark"
 type ContentFuture func() *bookmark.ObjectContent
 
 type Service interface {
-	CreateObjectAndFetch(ctx context.Context, spaceId string, details *types.Struct) (objectID string, newDetails *types.Struct, err error)
-	CreateBookmarkObject(ctx context.Context, spaceId string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
+	CreateObjectAndFetch(ctx context.Context, spaceId string, details *domain.Details) (objectID string, newDetails *domain.Details, err error)
+	CreateBookmarkObject(ctx context.Context, spaceId string, details *domain.Details, getContent ContentFuture) (objectId string, newDetails *domain.Details, err error)
 	UpdateObject(objectId string, getContent *bookmark.ObjectContent) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
 	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
@@ -49,11 +47,11 @@ type Service interface {
 }
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 }
 
 type DetailsSetter interface {
-	SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error)
+	SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error)
 }
 
 type service struct {
@@ -88,9 +86,9 @@ func (s *service) Name() (name string) {
 var log = logging.Logger("anytype-mw-bookmark")
 
 func (s *service) CreateObjectAndFetch(
-	ctx context.Context, spaceId string, details *types.Struct,
-) (objectID string, newDetails *types.Struct, err error) {
-	source := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	ctx context.Context, spaceId string, details *domain.Details,
+) (objectID string, newDetails *domain.Details, err error) {
+	source := details.GetString(bundle.RelationKeySource)
 	var res ContentFuture
 	if source != "" {
 		u, err := uri.NormalizeURI(source)
@@ -107,9 +105,9 @@ func (s *service) CreateObjectAndFetch(
 }
 
 func (s *service) CreateBookmarkObject(
-	ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture,
-) (objectId string, objectDetails *types.Struct, err error) {
-	if details == nil || details.Fields == nil {
+	ctx context.Context, spaceID string, details *domain.Details, getContent ContentFuture,
+) (objectId string, objectDetails *domain.Details, err error) {
+	if details == nil {
 		return "", nil, fmt.Errorf("empty details")
 	}
 
@@ -121,25 +119,25 @@ func (s *service) CreateBookmarkObject(
 	if err != nil {
 		return "", nil, fmt.Errorf("get bookmark type id: %w", err)
 	}
-	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	url := details.GetString(bundle.RelationKeySource)
 
 	records, err := s.store.SpaceIndex(spaceID).Query(database.Query{
-		Sorts: []*model.BlockContentDataviewSort{
+		Sorts: []database.SortRequest{
 			{
-				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+				RelationKey: bundle.RelationKeyLastModifiedDate,
 				Type:        model.BlockContentDataviewSort_Desc,
 			},
 		},
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySource.String(),
+				RelationKey: bundle.RelationKeySource,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(url),
+				Value:       domain.String(url),
 			},
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeId),
+				Value:       domain.String(typeId),
 			},
 		},
 		Limit: 1,
@@ -150,7 +148,7 @@ func (s *service) CreateBookmarkObject(
 
 	if len(records) > 0 {
 		rec := records[0]
-		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+		objectId = rec.Details.GetString(bundle.RelationKeyId)
 		objectDetails = rec.Details
 	} else {
 		creationState := state.NewDoc("", nil).(*state.State)
@@ -179,25 +177,13 @@ func (s *service) CreateBookmarkObject(
 	return objectId, objectDetails, nil
 }
 
-func detailsFromContent(content *bookmark.ObjectContent) map[string]*types.Value {
-	return map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(content.BookmarkContent.Title),
-		bundle.RelationKeyDescription.String(): pbtypes.String(content.BookmarkContent.Description),
-		bundle.RelationKeySource.String():      pbtypes.String(content.BookmarkContent.Url),
-		bundle.RelationKeyPicture.String():     pbtypes.String(content.BookmarkContent.ImageHash),
-		bundle.RelationKeyIconImage.String():   pbtypes.String(content.BookmarkContent.FaviconHash),
-	}
-}
-
-func (s *service) UpdateObject(objectId string, getContent *bookmark.ObjectContent) error {
-	detailsMap := detailsFromContent(getContent)
-
-	details := make([]*model.Detail, 0, len(detailsMap))
-	for k, v := range detailsMap {
-		details = append(details, &model.Detail{
-			Key:   k,
-			Value: v,
-		})
+func (s *service) UpdateObject(objectId string, content *bookmark.ObjectContent) error {
+	details := []domain.Detail{
+		{Key: bundle.RelationKeyName, Value: domain.String(content.BookmarkContent.Title)},
+		{Key: bundle.RelationKeyDescription, Value: domain.String(content.BookmarkContent.Description)},
+		{Key: bundle.RelationKeySource, Value: domain.String(content.BookmarkContent.Url)},
+		{Key: bundle.RelationKeyPicture, Value: domain.String(content.BookmarkContent.ImageHash)},
+		{Key: bundle.RelationKeyIconImage, Value: domain.String(content.BookmarkContent.FaviconHash)},
 	}
 
 	return s.detailsSetter.SetDetails(nil, objectId, details)

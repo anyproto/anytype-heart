@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "space1"
@@ -33,18 +32,18 @@ func TestBuildDetailsFromTimestamp(t *testing.T) {
 
 			// then
 			assert.NoError(t, err)
-			assert.Equal(t, spaceId, pbtypes.GetString(details, bundle.RelationKeySpaceId.String()))
-			assert.Equal(t, bundle.TypeKeyDate.URL(), pbtypes.GetString(details, bundle.RelationKeyType.String()))
+			assert.Equal(t, spaceId, details.GetString(bundle.RelationKeySpaceId))
+			assert.Equal(t, bundle.TypeKeyDate.URL(), details.GetString(bundle.RelationKeyType))
 
 			dateObject := dateutil.NewDateObject(time.Unix(ts, 0), false)
-			assert.Equal(t, dateObject.Id(), pbtypes.GetString(details, bundle.RelationKeyId.String()))
-			assert.Equal(t, dateObject.Name(), pbtypes.GetString(details, bundle.RelationKeyName.String()))
-			ts2 := pbtypes.GetInt64(details, bundle.RelationKeyTimestamp.String())
+			assert.Equal(t, dateObject.Id(), details.GetString(bundle.RelationKeyId))
+			assert.Equal(t, dateObject.Name(), details.GetString(bundle.RelationKeyName))
+			ts2 := details.GetInt64(bundle.RelationKeyTimestamp)
 			tt := time.Unix(ts2, 0)
 			assert.Zero(t, tt.Hour())
 			assert.Zero(t, tt.Minute())
 			assert.Zero(t, tt.Second())
-			assert.Len(t, pbtypes.GetIntList(details, bundle.RelationKeyRestrictions.String()), 8)
+			assert.Len(t, details.GetInt64List(bundle.RelationKeyRestrictions), 9)
 		})
 	}
 }

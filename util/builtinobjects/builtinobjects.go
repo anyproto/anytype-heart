@@ -24,6 +24,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/notifications"
@@ -39,7 +40,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -180,7 +180,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			if pErr := progress.Cancel(); pErr != nil {
 				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
 			}
-			progress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+			if notificationProgress, ok := progress.(process.Notificationable); ok {
+				notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+			}
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
 			}
@@ -194,7 +196,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-	progress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
+	if notificationProgress, ok := progress.(process.Notificationable); ok {
+		notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
+	}
 
 	if importErr != nil {
 		log.Errorf("failed to send notification: %v", importErr)
@@ -351,10 +355,10 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
 	if err := b.detailsService.SetDetails(nil,
 		spc.DerivedIDs().Workspace,
-		[]*model.Detail{
+		[]domain.Detail{
 			{
-				Key:   bundle.RelationKeySpaceDashboardId.String(),
-				Value: pbtypes.String(id),
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.StringList([]string{id}),
 			},
 		},
 	); err != nil {
@@ -414,16 +418,11 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	var ids []string
 	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
-				Value:       pbtypes.String(oldID),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
+				RelationKey: bundle.RelationKeyOldAnytypeID,
+				Value:       domain.String(oldID),
 			},
 		},
 	}); err != nil {
@@ -498,7 +497,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	return path, nil
 }
 
-func (b *builtinObjects) setupProgress() (process.Notificationable, error) {
+func (b *builtinObjects) setupProgress() (process.Progress, error) {
 	progress := process.NewNotificationProcess(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}, b.notifications)
 	if err := b.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)

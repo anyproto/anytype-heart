@@ -354,4 +354,37 @@ func TestUpdateLinksToObjects(t *testing.T) {
 		assert.Equal(t, "newKey", st.Get("test").Model().GetDataview().GetViews()[0].GetSorts()[0].RelationKey)
 		assert.Equal(t, "key1", st.Get("test").Model().GetDataview().GetViews()[0].GetSorts()[1].RelationKey)
 	})
+	t.Run("update default object type", func(t *testing.T) {
+		// given
+		dataviewBlockId := "test"
+		rootId := "root"
+		newTypeId := "newType"
+		typeId := "type"
+		block := &model.Block{
+			Id: dataviewBlockId,
+			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:                  "id",
+						DefaultObjectTypeId: typeId,
+					},
+				},
+			}},
+		}
+		rootBlock := &model.Block{
+			Id:          rootId,
+			ChildrenIds: []string{dataviewBlockId},
+			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}
+		dataviewSimpleBlock := simple.New(block)
+		rootSimpleBlock := simple.New(rootBlock)
+		st := state.NewDoc(rootId, map[string]simple.Block{dataviewBlockId: dataviewSimpleBlock, rootId: rootSimpleBlock}).(*state.State)
+
+		// when
+		err := UpdateLinksToObjects(st, map[string]string{typeId: newTypeId})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, newTypeId, st.Get(dataviewBlockId).Model().GetDataview().GetViews()[0].GetDefaultObjectTypeId())
+	})
 }

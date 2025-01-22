@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -13,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestAddFileBlocks(t *testing.T) {
@@ -21,41 +19,41 @@ func TestAddFileBlocks(t *testing.T) {
 
 	for _, tc := range []struct {
 		name              string
-		details           *types.Struct
+		details           *domain.Details
 		expectedRelations []domain.RelationKey
 	}{
 		{
 			"image",
-			&types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():           pbtypes.String("photo.jpeg"),
-				bundle.RelationKeyFileMimeType.String():   pbtypes.String("image/jpeg"),
-				bundle.RelationKeyWidthInPixels.String():  pbtypes.Int64(400),
-				bundle.RelationKeyHeightInPixels.String(): pbtypes.Int64(600),
-				bundle.RelationKeyAddedDate.String():      pbtypes.Int64(time.Now().Unix()),
-			}},
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:           domain.String("photo.jpeg"),
+				bundle.RelationKeyFileMimeType:   domain.String("image/jpeg"),
+				bundle.RelationKeyWidthInPixels:  domain.Int64(400),
+				bundle.RelationKeyHeightInPixels: domain.Int64(600),
+				bundle.RelationKeyAddedDate:      domain.Int64(time.Now().Unix()),
+			}),
 			[]domain.RelationKey{bundle.RelationKeyFileExt, bundle.RelationKeyWidthInPixels, bundle.RelationKeyHeightInPixels, bundle.RelationKeyAddedDate},
 		},
 		{
 			"plain file",
-			&types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():        pbtypes.String("txt.txt"),
-				bundle.RelationKeySizeInBytes.String(): pbtypes.Int64(24000),
-				bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_dragAndDrop)),
-				bundle.RelationKeyAddedDate.String():   pbtypes.Int64(time.Now().Unix()),
-			}},
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:        domain.String("txt.txt"),
+				bundle.RelationKeySizeInBytes: domain.Int64(24000),
+				bundle.RelationKeyOrigin:      domain.Int64(int64(model.ObjectOrigin_dragAndDrop)),
+				bundle.RelationKeyAddedDate:   domain.Int64(time.Now().Unix()),
+			}),
 			[]domain.RelationKey{bundle.RelationKeyFileExt, bundle.RelationKeySizeInBytes, bundle.RelationKeyOrigin, bundle.RelationKeyAddedDate},
 		},
 		{
 			"audio",
-			&types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():                  pbtypes.String("song.mp3"),
-				bundle.RelationKeyFileMimeType.String():          pbtypes.String("audio/mp3"),
-				bundle.RelationKeySizeInBytes.String():           pbtypes.Int64(2400000),
-				bundle.RelationKeyAudioAlbum.String():            pbtypes.String("Never mind"),
-				bundle.RelationKeyAudioAlbumTrackNumber.String(): pbtypes.Int64(13),
-				bundle.RelationKeyOrigin.String():                pbtypes.Int64(int64(model.ObjectOrigin_clipboard)),
-				bundle.RelationKeyImportType.String():            pbtypes.Int64(2),
-			}},
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:                  domain.String("song.mp3"),
+				bundle.RelationKeyFileMimeType:          domain.String("audio/mp3"),
+				bundle.RelationKeySizeInBytes:           domain.Int64(2400000),
+				bundle.RelationKeyAudioAlbum:            domain.String("Never mind"),
+				bundle.RelationKeyAudioAlbumTrackNumber: domain.Int64(13),
+				bundle.RelationKeyOrigin:                domain.Int64(int64(model.ObjectOrigin_clipboard)),
+				bundle.RelationKeyImportType:            domain.Int64(2),
+			}),
 			[]domain.RelationKey{bundle.RelationKeyFileExt, bundle.RelationKeySizeInBytes, bundle.RelationKeyAudioAlbum, bundle.RelationKeyAudioAlbumTrackNumber, bundle.RelationKeyOrigin, bundle.RelationKeyImportType},
 		},
 	} {
