@@ -1399,6 +1399,7 @@ message Rpc {
             string version = 5;
             int64 timestamp = 6;
             int64 size = 7;
+            bool joinSpace = 8;
         }
 
         message Create {

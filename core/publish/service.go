@@ -59,8 +59,9 @@ type PublishingUberSnapshotMeta struct {
 	InviteLink string `json:"inviteLink,omitempty"`
 }
 
-type Heads struct {
-	Heads []string `json:"heads"`
+type Version struct {
+	Heads     []string `json:"heads"`
+	JoinSpace bool     `json:"joinSpace"`
 }
 
 // Contains all publishing .pb files
@@ -177,7 +178,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	version, err := s.evaluateDocumentVersion(spc, pageId)
+	version, err := s.evaluateDocumentVersion(spc, pageId, joinSpace)
 	if err != nil {
 		return err
 	}
@@ -356,7 +357,7 @@ func (s *service) extractInviteLink(ctx context.Context, spaceId string, joinSpa
 	return inviteLink, nil
 }
 
-func (s *service) evaluateDocumentVersion(spc clientspace.Space, pageId string) (string, error) {
+func (s *service) evaluateDocumentVersion(spc clientspace.Space, pageId string, joinSpace bool) (string, error) {
 	treeStorage, err := spc.Storage().TreeStorage(pageId)
 	if err != nil {
 		return "", err
@@ -366,7 +367,7 @@ func (s *service) evaluateDocumentVersion(spc clientspace.Space, pageId string) 
 		return "", err
 	}
 	slices.Sort(heads)
-	h := &Heads{Heads: heads}
+	h := &Version{Heads: heads, JoinSpace: joinSpace}
 	jsonData, err := json.Marshal(h)
 	if err != nil {
 		return "", err
@@ -423,6 +424,7 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 	}
 	pbPublishes := make([]*pb.RpcPublishingPublishState, 0, len(publishes))
 	for _, publish := range publishes {
+		version := s.retrieveVersion(publish)
 		pbPublishes = append(pbPublishes, &pb.RpcPublishingPublishState{
 			SpaceId:   publish.SpaceId,
 			ObjectId:  publish.ObjectId,
@@ -431,9 +433,19 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 			Version:   publish.Version,
 			Timestamp: publish.Timestamp,
 			Size_:     publish.Size_,
+			JoinSpace: version.JoinSpace,
 		})
 	}
 	return pbPublishes, nil
+}
+
+func (s *service) retrieveVersion(publish *publishapi.Publish) *Version {
+	version := &Version{}
+	err := json.Unmarshal([]byte(publish.Version), version)
+	if err != nil {
+		log.Error("failed to unmarshal publish version", zap.Error(err))
+	}
+	return version
 }
 
 func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishingPublishState, error) {
@@ -441,6 +453,7 @@ func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishing
 	if err != nil {
 		return nil, err
 	}
+	version := s.retrieveVersion(publish)
 	return &pb.RpcPublishingPublishState{
 		SpaceId:   publish.SpaceId,
 		ObjectId:  publish.ObjectId,
@@ -449,6 +462,7 @@ func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishing
 		Version:   publish.Version,
 		Timestamp: publish.Timestamp,
 		Size_:     publish.Size_,
+		JoinSpace: version.JoinSpace,
 	}, nil
 }
 
@@ -457,6 +471,7 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 	if err != nil {
 		return nil, err
 	}
+	version := s.retrieveVersion(status)
 	return &pb.RpcPublishingPublishState{
 		SpaceId:   status.SpaceId,
 		ObjectId:  status.ObjectId,
@@ -465,5 +480,6 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 		Version:   status.Version,
 		Timestamp: status.Timestamp,
 		Size_:     status.Size_,
+		JoinSpace: version.JoinSpace,
 	}, nil
 }

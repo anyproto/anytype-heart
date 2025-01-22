@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"go.uber.org/zap"
@@ -213,6 +214,7 @@ func (s *service) reinstallObject(
 		st.SetDetails(installingDetails)
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(false))
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(false))
+		st.SetOriginalCreatedTimestamp(time.Now().Unix())
 
 		key = domain.TypeKey(st.UniqueKeyInternal())
 		details = st.CombinedDetails()
@@ -253,9 +255,7 @@ func (s *service) prepareDetailsForInstallingObject(
 	details.SetString(bundle.RelationKeySpaceId, spaceID)
 	details.SetString(bundle.RelationKeySourceObject, sourceId)
 	details.SetBool(bundle.RelationKeyIsReadonly, false)
-
-	// we should delete old createdDate as it belongs to source object from marketplace
-	details.Delete(bundle.RelationKeyCreatedDate)
+	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 
 	if isNewSpace {
 		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
