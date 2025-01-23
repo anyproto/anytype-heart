@@ -7,12 +7,10 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -30,23 +28,23 @@ func (fx *StoreFixture) TechSpaceId() string {
 }
 
 type virtualDetailsHandler interface {
-	AddVirtualDetails(id string, det *types.Struct)
+	AddVirtualDetails(id string, det *domain.Details)
 }
 
 type detailsFromId struct {
-	details map[string]*types.Struct
+	details map[string]*domain.Details
 }
 
-func (d *detailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
+func (d *detailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
 	if det, found := d.details[id.ObjectID]; found {
 		return det, nil
 	}
 	return nil, fmt.Errorf("not found")
 }
 
-func (d *detailsFromId) AddVirtualDetails(id string, det *types.Struct) {
+func (d *detailsFromId) AddVirtualDetails(id string, det *domain.Details) {
 	if d.details == nil {
-		d.details = map[string]*types.Struct{}
+		d.details = map[string]*domain.Details{}
 	}
 	d.details[id] = det
 }
@@ -57,14 +55,27 @@ func (s *stubTechSpaceIdProvider) TechSpaceId() string {
 	return "test-tech-space"
 }
 
-var ctx = context.Background()
+type walletStub struct {
+	wallet.Wallet
+	tempDir string
+}
+
+func newWalletStub(t testing.TB) wallet.Wallet {
+	return &walletStub{
+		tempDir: t.TempDir(),
+	}
+}
+
+func (w *walletStub) RepoPath() string {
+	return w.tempDir
+}
+
+func (w *walletStub) Name() string { return wallet.CName }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	walletService := mock_wallet.NewMockWallet(t)
-	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
-	walletService.EXPECT().RepoPath().Return(t.TempDir())
+	walletService := newWalletStub(t)
 
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
@@ -119,22 +130,18 @@ type TestObject = spaceindex.TestObject
 func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []spaceindex.TestObject) {
 	store := fx.SpaceIndex(spaceId)
 	for _, obj := range objects {
-		id := obj[bundle.RelationKeyId].GetStringValue()
+		id := obj[bundle.RelationKeyId].String()
 		require.NotEmpty(t, id)
 		err := store.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)
 	}
 }
 
-func makeDetails(fields spaceindex.TestObject) *types.Struct {
-	f := map[string]*types.Value{}
-	for k, v := range fields {
-		f[string(k)] = v
-	}
-	return &types.Struct{Fields: f}
+func makeDetails(fields spaceindex.TestObject) *domain.Details {
+	return domain.NewDetailsFromMap(fields)
 }
 
-func (fx *StoreFixture) AddVirtualDetails(id string, details *types.Struct) {
+func (fx *StoreFixture) AddVirtualDetails(id string, details *domain.Details) {
 	if handler := fx.sourceService.(virtualDetailsHandler); handler != nil {
 		handler.AddVirtualDetails(id, details)
 	}

@@ -21,7 +21,6 @@ type NotificationSender interface {
 }
 
 type Notificationable interface {
-	Progress
 	FinishWithNotification(notification *model.Notification, err error)
 }
 
@@ -33,7 +32,7 @@ type notificationProcess struct {
 	notification *model.Notification
 }
 
-func NewNotificationProcess(processMessage pb.IsModelProcessMessage, notificationService NotificationService) Notificationable {
+func NewNotificationProcess(processMessage pb.IsModelProcessMessage, notificationService NotificationService) Progress {
 	return &notificationProcess{progress: &progress{
 		id:             bson.NewObjectId().Hex(),
 		done:           make(chan struct{}),

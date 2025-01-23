@@ -161,17 +161,11 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 			return nil
 		}
 	}
-	n.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfNotificationSend{
-					NotificationSend: &pb.EventNotificationSend{
-						Notification: notification,
-					},
-				},
-			},
+	n.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfNotificationSend{
+		NotificationSend: &pb.EventNotificationSend{
+			Notification: notification,
 		},
-	})
+	}))
 	err := n.notificationStore.SaveNotification(notification)
 	if err != nil {
 		return fmt.Errorf("failed to add notification %s to cache: %w", notification.Id, err)
@@ -180,17 +174,11 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 }
 
 func (n *notificationService) UpdateAndSend(notification *model.Notification) error {
-	n.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfNotificationUpdate{
-					NotificationUpdate: &pb.EventNotificationUpdate{
-						Notification: notification,
-					},
-				},
-			},
+	n.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfNotificationUpdate{
+		NotificationUpdate: &pb.EventNotificationUpdate{
+			Notification: notification,
 		},
-	})
+	}))
 	err := n.notificationStore.SaveNotification(notification)
 	if err != nil {
 		return fmt.Errorf("failed to update notification %s: %w", notification.Id, err)

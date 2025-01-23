@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block/chats"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse {
 	ctx := mw.newContext(cctx)
-	chatService := getService[chats.Service](mw)
+	chatService := mustService[chats.Service](mw)
 
 	messageId, err := chatService.AddMessage(cctx, ctx, req.ChatObjectId, req.Message)
 	code := mapErrorCode[pb.RpcChatAddMessageResponseErrorCode](err)
@@ -24,7 +25,7 @@ func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMes
 }
 
 func (mw *Middleware) ChatEditMessageContent(cctx context.Context, req *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse {
-	chatService := getService[chats.Service](mw)
+	chatService := mustService[chats.Service](mw)
 
 	err := chatService.EditMessage(cctx, req.ChatObjectId, req.MessageId, req.EditedMessage)
 	code := mapErrorCode[pb.RpcChatEditMessageContentResponseErrorCode](err)
@@ -37,7 +38,7 @@ func (mw *Middleware) ChatEditMessageContent(cctx context.Context, req *pb.RpcCh
 }
 
 func (mw *Middleware) ChatToggleMessageReaction(cctx context.Context, req *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse {
-	chatService := getService[chats.Service](mw)
+	chatService := mustService[chats.Service](mw)
 
 	err := chatService.ToggleMessageReaction(cctx, req.ChatObjectId, req.MessageId, req.Emoji)
 	code := mapErrorCode[pb.RpcChatToggleMessageReactionResponseErrorCode](err)
@@ -50,7 +51,7 @@ func (mw *Middleware) ChatToggleMessageReaction(cctx context.Context, req *pb.Rp
 }
 
 func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDeleteMessageRequest) *pb.RpcChatDeleteMessageResponse {
-	chatService := getService[chats.Service](mw)
+	chatService := mustService[chats.Service](mw)
 
 	err := chatService.DeleteMessage(cctx, req.ChatObjectId, req.MessageId)
 	code := mapErrorCode[pb.RpcChatDeleteMessageResponseErrorCode](err)
@@ -63,9 +64,13 @@ func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDel
 }
 
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
-	chatService := getService[chats.Service](mw)
+	chatService := mustService[chats.Service](mw)
 
-	messages, err := chatService.GetMessages(cctx, req.ChatObjectId, req.BeforeOrderId, int(req.Limit))
+	messages, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
+		AfterOrderId:  req.AfterOrderId,
+		BeforeOrderId: req.BeforeOrderId,
+		Limit:         int(req.Limit),
+	})
 	code := mapErrorCode[pb.RpcChatGetMessagesResponseErrorCode](err)
 	return &pb.RpcChatGetMessagesResponse{
 		Messages: messages,
@@ -77,7 +82,7 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 }
 
 func (mw *Middleware) ChatGetMessagesByIds(cctx context.Context, req *pb.RpcChatGetMessagesByIdsRequest) *pb.RpcChatGetMessagesByIdsResponse {
-	chatService := getService[chats.Service](mw)
+	chatService := mustService[chats.Service](mw)
 
 	messages, err := chatService.GetMessagesByIds(cctx, req.ChatObjectId, req.MessageIds)
 	code := mapErrorCode[pb.RpcChatGetMessagesByIdsResponseErrorCode](err)
@@ -91,7 +96,7 @@ func (mw *Middleware) ChatGetMessagesByIds(cctx context.Context, req *pb.RpcChat
 }
 
 func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
-	chatService := getService[chats.Service](mw)
+	chatService := mustService[chats.Service](mw)
 
 	messages, numBefore, err := chatService.SubscribeLastMessages(cctx, req.ChatObjectId, int(req.Limit))
 	code := mapErrorCode[pb.RpcChatSubscribeLastMessagesResponseErrorCode](err)
@@ -106,7 +111,7 @@ func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.Rp
 }
 
 func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse {
-	chatService := getService[chats.Service](mw)
+	chatService := mustService[chats.Service](mw)
 
 	err := chatService.Unsubscribe(req.ChatObjectId)
 	code := mapErrorCode[pb.RpcChatUnsubscribeResponseErrorCode](err)

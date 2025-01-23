@@ -27,6 +27,7 @@ type AppLinkPayload struct {
 	AppPath           string `json:"app_path"`   // for now, it is not verified
 	CreatedAt         int64  `json:"created_at"` // unix timestamp
 	ExpireAt          int64  `json:"expire_at"`  // unix timestamp
+	Scope             int    `json:"scope"`
 }
 
 type appLinkFileEncrypted struct {

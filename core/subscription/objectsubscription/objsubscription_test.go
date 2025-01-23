@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -18,75 +19,62 @@ import (
 )
 
 func makeSubscriptionAdd(id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfSubscriptionAdd{
-			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
-				Id: id,
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionAdd{
+		SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+			Id: id,
 		},
-	}
+	})
 }
 
 func makeSubscriptionRemove(id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfSubscriptionRemove{
-			SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
-				Id: id,
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionRemove{
+		SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+			Id: id,
 		},
-	}
+	})
 }
 
 func makeDetailsSet(id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectDetailsSet{
-			ObjectDetailsSet: &pb.EventObjectDetailsSet{
-				Id: id,
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						"key1": pbtypes.String("value1"),
-					},
-				},
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsSet{
+		ObjectDetailsSet: &pb.EventObjectDetailsSet{
+			Id: id,
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"key1": domain.String("value1"),
+			}).ToProto(),
 		},
-	}
+	})
 }
 
 func makeDetailsUnset(id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectDetailsUnset{
-			ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
-				Id:   id,
-				Keys: []string{"key1", "key2"},
-			},
+	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsUnset{
+		ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+			Id:   id,
+			Keys: []string{"key1", "key2"},
 		},
-	}
+	})
 }
 
 func makeDetailsAmend(id string) *pb.EventMessage {
-	return &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectDetailsAmend{
-			ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-				Id: id,
-				Details: []*pb.EventObjectDetailsAmendKeyValue{
-					{
-						Key:   "key3",
-						Value: pbtypes.String("value3"),
-					},
+	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsAmend{
+		ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+			Id: id,
+			Details: []*pb.EventObjectDetailsAmendKeyValue{
+				{
+					Key:   "key3",
+					Value: pbtypes.String("value3"),
 				},
 			},
 		},
-	}
+	})
 }
 
-func makeStructs(ids []string) []*types.Struct {
-	structs := make([]*types.Struct, len(ids))
+func makeStructs(ids []string) []*domain.Details {
+	structs := make([]*domain.Details, len(ids))
 	for i, id := range ids {
-		structs[i] = &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String(): pbtypes.String(id),
-			},
-		}
+		structs[i] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String(id),
+		},
+		)
 	}
 	return structs
 }

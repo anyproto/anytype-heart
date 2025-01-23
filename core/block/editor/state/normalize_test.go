@@ -50,7 +50,7 @@ func TestState_Normalize(t *testing.T) {
 		r := NewDoc("1", nil)
 		r.(*State).Add(simple.New(&model.Block{Id: "1"}))
 		s := r.NewState()
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
 		assert.Empty(t, hist)
@@ -63,7 +63,7 @@ func TestState_Normalize(t *testing.T) {
 		}).(*State)
 		s := r.NewState()
 		s.Get("one")
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 1)
 		assert.Len(t, hist.Change, 1)
@@ -97,7 +97,7 @@ func TestState_Normalize(t *testing.T) {
 		s.Get("tableRows")
 		s.Get("tableColumns")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, hist.Change, 1)
@@ -122,7 +122,7 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		s.Get("c1")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, hist.Change, 1)
@@ -146,7 +146,7 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		s.Unlink("c2")
 
-		msgs, hist, err := ApplyState(s, true)
+		msgs, hist, err := ApplyState("", s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 4) // 1 row change + 1 remove + 2 width reset
 		assert.Len(t, hist.Remove, 2)
@@ -168,7 +168,7 @@ func TestState_Normalize(t *testing.T) {
 
 		s := r.NewState()
 		s.normalizeTree()
-		ApplyState(s, true)
+		ApplyState("", s, true)
 		blocks := r.Blocks()
 		result := []string{}
 		divs := []string{}
@@ -207,7 +207,7 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: rootIds}))
 
 		s := r.NewState()
-		_, _, err := ApplyState(s, true)
+		_, _, err := ApplyState("", s, true)
 		require.NoError(t, err)
 	})
 
@@ -221,7 +221,7 @@ func TestState_Normalize(t *testing.T) {
 			id := fmt.Sprint(i)
 			s.Add(simple.New(&model.Block{Id: id}))
 			s.InsertTo(targetId, targetPos, id)
-			msgs, _, err := ApplyState(s, true)
+			msgs, _, err := ApplyState("", s, true)
 			require.NoError(t, err)
 			for _, msg := range msgs {
 				if add := msg.Msg.GetBlockAdd(); add != nil {
@@ -262,7 +262,7 @@ func TestState_Normalize(t *testing.T) {
 		for _, b := range ev.Blocks {
 			r.Add(simple.New(b))
 		}
-		_, _, err = ApplyState(r.NewState(), true)
+		_, _, err = ApplyState("", r.NewState(), true)
 		require.NoError(t, err)
 		// t.Log(r.String())
 
@@ -283,7 +283,7 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "e"}))
 		s := r.NewState()
 		require.NoError(t, s.Normalize(false))
-		_, _, err := ApplyState(s, false)
+		_, _, err := ApplyState("", s, false)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"a", "b", "c"}, r.Pick("root").Model().ChildrenIds)
 		assert.Equal(t, []string{"d"}, r.Pick("a").Model().ChildrenIds)
@@ -305,7 +305,7 @@ func TestState_Normalize(t *testing.T) {
 
 		s := r.NewState()
 		s.normalizeTree()
-		ApplyState(s, true)
+		ApplyState("", s, true)
 		assert.Equal(t, "header", s.Pick(s.RootId()).Model().ChildrenIds[0])
 	})
 
@@ -336,7 +336,7 @@ func TestState_Normalize(t *testing.T) {
 
 		// when
 		require.NoError(t, s.Normalize(false))
-		_, msg, err := ApplyState(s, false)
+		_, msg, err := ApplyState("", s, false)
 
 		// then
 		require.NoError(t, err)
@@ -463,7 +463,7 @@ func BenchmarkNormalize(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		ApplyState(r.NewState(), true)
+		ApplyState("", r.NewState(), true)
 	}
 }
 

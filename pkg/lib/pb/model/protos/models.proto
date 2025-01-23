@@ -390,6 +390,7 @@ message Block {
                 TimeFormat timeFormat = 6;
                 DateFormat dateFormat = 7;
                 FormulaType formula = 8;
+                Block.Align align = 9;
 
                 enum DateFormat {
                     MonthAbbrBeforeDay = 0; // Jul 30, 2020
@@ -407,17 +408,18 @@ message Block {
                 enum FormulaType {
                     None				    = 0;
                     Count				    = 1;
-                    CountDistinct		= 2;
-                    CountEmpty			= 3;
-                    CountNotEmpty		= 4;
-                    PercentEmpty		= 5;
-                    PercentNotEmpty	= 6;
-                    MathSum				  = 7;
-                    MathAverage			= 8;
-                    MathMedian			= 9;
-                    MathMin				  = 10;
-                    MathMax				  = 11;
-                    Range				    = 12;
+                    CountValue      = 2;
+                    CountDistinct		= 3;
+                    CountEmpty			= 4;
+                    CountNotEmpty		= 5;
+                    PercentEmpty		= 6;
+                    PercentNotEmpty	= 7;
+                    MathSum				  = 8;
+                    MathAverage			= 9;
+                    MathMedian			= 10;
+                    MathMin				  = 11;
+                    MathMax				  = 12;
+                    Range				    = 13;
                 }
             }
 
@@ -429,6 +431,7 @@ message Block {
                 bool includeTime = 5;
                 string id = 6;
                 EmptyType emptyPlacement = 7;
+                bool noCollate = 8;
 
                 enum Type {
                     Asc = 0;
@@ -659,7 +662,7 @@ message Account {
         string workspaceObjectId = 15; // workspace object id. used for space-level chat
 
         string deviceId = 8;
-        string accountSpaceId = 9;
+        string accountSpaceId = 9; // the first created private space. It's filled only when account is created
         string widgetsId = 10;
         string spaceViewId = 13;
         string techSpaceId = 14;
@@ -669,6 +672,14 @@ message Account {
         string timeZone = 104; // time zone from config
         string analyticsId = 105;
         string networkId = 106; // network id to which anytype is connected
+    }
+
+    message Auth {
+        enum LocalApiScope {
+            Limited = 0; // Used in WebClipper; AccountSelect(to be deprecated), ObjectSearch, ObjectShow, ObjectCreate, ObjectCreateFromURL, BlockPreview, BlockPaste, BroadcastPayloadEvent
+            JsonAPI = 1; // JSON API only, no direct grpc api calls allowed
+            Full = 2; // Full access, not available via LocalLink
+        }
     }
 
 }
@@ -713,6 +724,8 @@ message Restrictions {
         Duplicate = 8;
         // can be set only for types. Restricts creating objects of this type
         CreateObjectOfThisType = 9;
+        // object is not allowed to publish
+        Publish = 10;
     }
 
 
@@ -881,6 +894,7 @@ enum ObjectOrigin {
   usecase = 6;
   builtin = 7;
   bookmark = 8;
+  api = 9;
 }
 
 message RelationLink {

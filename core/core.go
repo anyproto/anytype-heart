@@ -35,7 +35,14 @@ func New() *Middleware {
 }
 
 func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
-	mw.applicationService.Stop()
+	err := mw.applicationService.Stop()
+	// using fmt.Println instead of log because we want it only in stdout
+	if err != nil {
+		fmt.Println("[anytype-heart] Shutdown: error during closing components: ", err)
+	} else {
+		fmt.Println("[anytype-heart] Shutdown: graceful shutdown finished")
+	}
+	// intentionally do not pass the error to the client
 	return &pb.RpcAppShutdownResponse{
 		Error: &pb.RpcAppShutdownResponseError{
 			Code: pb.RpcAppShutdownResponseError_NULL,
@@ -76,10 +83,19 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 	return f(app.MustComponent[*collection.Service](a))
 }
 
-func getService[T any](mw *Middleware) T {
+func mustService[T any](mw *Middleware) T {
 	a := mw.applicationService.GetApp()
 	requireApp(a)
 	return app.MustComponent[T](a)
+}
+
+func getService[T any](mw *Middleware) (T, error) {
+	var empty T
+	a := mw.applicationService.GetApp()
+	if a == nil {
+		return empty, ErrNotLoggedIn
+	}
+	return app.GetComponent[T](a)
 }
 
 func requireApp(a *app.App) {

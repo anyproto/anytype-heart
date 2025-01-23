@@ -13,6 +13,6 @@ func BuildStateFromAST(root *blockbuilder.Block) *state.State {
 			Blocks: root.Build(),
 		},
 	}).(*state.State)
-	state.ApplyState(st, true)
+	state.ApplyState("", st, true)
 	return st.NewState()
 }

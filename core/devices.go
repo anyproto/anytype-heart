@@ -16,7 +16,7 @@ func (mw *Middleware) DeviceSetName(cctx context.Context, req *pb.RpcDeviceSetNa
 		}
 		return m
 	}
-	err := getService[device.Service](mw).UpdateName(cctx, req.DeviceId, req.Name)
+	err := mustService[device.Service](mw).UpdateName(cctx, req.DeviceId, req.Name)
 	if err != nil {
 		return response(pb.RpcDeviceSetNameResponseError_UNKNOWN_ERROR, err)
 	}
@@ -32,7 +32,7 @@ func (mw *Middleware) DeviceList(cctx context.Context, _ *pb.RpcDeviceListReques
 		m.Devices = devices
 		return m
 	}
-	devices, err := getService[device.Service](mw).ListDevices(cctx)
+	devices, err := mustService[device.Service](mw).ListDevices(cctx)
 	if err != nil {
 		return response(pb.RpcDeviceListResponseError_UNKNOWN_ERROR, devices, err)
 	}

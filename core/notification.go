@@ -20,7 +20,7 @@ func (mw *Middleware) NotificationList(cctx context.Context, req *pb.RpcNotifica
 		}
 		return m
 	}
-	notificationsList, err := getService[notifications.Notifications](mw).List(req.Limit, req.IncludeRead)
+	notificationsList, err := mustService[notifications.Notifications](mw).List(req.Limit, req.IncludeRead)
 
 	if err != nil {
 		return response(pb.RpcNotificationListResponseError_INTERNAL_ERROR, notificationsList, err)
@@ -36,7 +36,7 @@ func (mw *Middleware) NotificationReply(cctx context.Context, req *pb.RpcNotific
 		}
 		return m
 	}
-	err := getService[notifications.Notifications](mw).Reply(req.Ids, req.ActionType)
+	err := mustService[notifications.Notifications](mw).Reply(req.Ids, req.ActionType)
 
 	if err != nil {
 		return response(pb.RpcNotificationReplyResponseError_INTERNAL_ERROR, err)
@@ -52,7 +52,7 @@ func (mw *Middleware) NotificationTest(cctx context.Context, req *pb.RpcNotifica
 		}
 		return m
 	}
-	err := getService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
+	err := mustService[notifications.Notifications](mw).CreateAndSend(&model.Notification{
 		Id:      uuid.New().String(),
 		Status:  model.Notification_Created,
 		IsLocal: true,

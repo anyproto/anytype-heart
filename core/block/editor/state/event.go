@@ -2,9 +2,8 @@ package state
 
 import (
 	"fmt"
+	"slices"
 	"sort"
-
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -17,6 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/simple/widget"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -314,53 +315,57 @@ func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMess
 	return wmsgs
 }
 
-func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.EventMessage) {
-	return StructDiffIntoEventsWithSubIds(contextId, diff, nil, nil)
+// StructDiffIntoEvents converts diff details and relation keys to unset into events
+func StructDiffIntoEvents(spaceId string, contextId string, diff *domain.Details, keysToUnset []domain.RelationKey) (msgs []*pb.EventMessage) {
+	return StructDiffIntoEventsWithSubIds(spaceId, contextId, diff, nil, keysToUnset, nil)
 }
 
-// StructDiffIntoEvents converts map into events. nil map value converts to Remove event
-func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys []string, subIds []string) (msgs []*pb.EventMessage) {
-	if diff == nil || len(diff.Fields) == 0 {
+func StructDiffIntoEventsWithSubIds(
+	spaceId, contextId string,
+	diff *domain.Details,
+	filterKeys, keysToUnset []domain.RelationKey,
+	subIds []string,
+) (msgs []*pb.EventMessage) {
+	if diff.Len() == 0 && len(keysToUnset) == 0 {
 		return nil
 	}
 	var (
-		removed []string
 		details []*pb.EventObjectDetailsAmendKeyValue
 	)
 
-	for k, v := range diff.Fields {
-		if len(keys) > 0 && slice.FindPos(keys, k) == -1 {
+	for k, v := range diff.Iterate() {
+		key := string(k)
+		if len(filterKeys) > 0 && slice.FindPos(filterKeys, k) == -1 {
 			continue
 		}
-		if v == nil {
-			removed = append(removed, k)
-			continue
-		}
-		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: k, Value: v})
+		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: key, Value: v.ToProto()})
 	}
+
 	if len(details) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsAmend{
-				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-					Id:      contextId,
-					Details: details,
-					SubIds:  subIds,
-				},
+		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsAmend{
+			ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+				Id:      contextId,
+				Details: details,
+				SubIds:  subIds,
 			},
-		})
+		}))
 	}
-	if len(removed) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsUnset{
-				ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
-					Id:     contextId,
-					Keys:   removed,
-					SubIds: subIds,
-				},
-			},
+
+	if len(filterKeys) != 0 {
+		keysToUnset = slices.DeleteFunc(keysToUnset, func(key domain.RelationKey) bool {
+			return !slices.Contains(filterKeys, key)
 		})
 	}
 
+	if len(keysToUnset) > 0 {
+		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsUnset{
+			ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+				Id:     contextId,
+				Keys:   slice.IntoStrings(keysToUnset),
+				SubIds: subIds,
+			},
+		}))
+	}
 	return
 }
 

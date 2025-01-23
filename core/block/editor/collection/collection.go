@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -26,7 +26,7 @@ type Collection interface {
 	GetIds() (ids []string, err error)
 	ModifyLocalDetails(
 		objectId string,
-		modifier func(current *types.Struct) (*types.Struct, error),
+		modifier func(current *domain.Details) (*domain.Details, error),
 	) (err error)
 }
 
@@ -111,7 +111,7 @@ func (p *objectLinksCollection) GetIds() (ids []string, err error) {
 // and if it is not found, sets pending details in object store
 func (p *objectLinksCollection) ModifyLocalDetails(
 	objectId string,
-	modifier func(current *types.Struct) (*types.Struct, error),
+	modifier func(current *domain.Details) (*domain.Details, error),
 ) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
@@ -126,7 +126,7 @@ func (p *objectLinksCollection) ModifyLocalDetails(
 		return err
 	}
 	err = p.Space().Do(objectId, func(b smartblock.SmartBlock) error {
-		// we just need to invoke the smartblock so it reads from pending details
+		// we just need to invoke the smartblock, so it reads from pending details
 		// no need to call modify twice
 		if err == nil {
 			return b.Apply(b.NewState())

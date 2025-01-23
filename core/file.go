@@ -7,6 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
@@ -56,7 +57,7 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 }
 
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
-	fileOffloader := getService[fileoffloader.Service](mw)
+	fileOffloader := mustService[fileoffloader.Service](mw)
 	err := fileOffloader.FilesOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
 		return &pb.RpcFileListOffloadResponse{
@@ -87,7 +88,7 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	fileOffloader := getService[fileoffloader.Service](mw)
+	fileOffloader := mustService[fileoffloader.Service](mw)
 	bytesRemoved, err := fileOffloader.FileOffload(cctx, req.Id, req.IncludeNotPinned)
 	if err != nil {
 		log.Errorf("failed to offload file %s: %s", req.Id, err)
@@ -110,7 +111,7 @@ func (mw *Middleware) FileSpaceOffload(cctx context.Context, req *pb.RpcFileSpac
 		return m
 	}
 
-	fileOffloader := getService[fileoffloader.Service](mw)
+	fileOffloader := mustService[fileoffloader.Service](mw)
 	filesOffloaded, bytesRemoved, err := fileOffloader.FileSpaceOffload(cctx, req.SpaceId, false)
 	if err != nil {
 		return response(0, 0, pb.RpcFileSpaceOffloadResponseError_UNKNOWN_ERROR, err)
@@ -128,7 +129,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var (
 		objectId string
-		details  *types.Struct
+		details  *domain.Details
 	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		dto := block.FileUploadRequest{RpcFileUploadRequest: *req, ObjectOrigin: objectorigin.ObjectOrigin{Origin: req.Origin}}
@@ -138,7 +139,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	if err != nil {
 		return response("", nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(objectId, details, pb.RpcFileUploadResponseError_NULL, nil)
+	return response(objectId, details.ToProto(), pb.RpcFileUploadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {
@@ -154,7 +155,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return m
 	}
 
-	usage, err := getService[files.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
+	usage, err := mustService[files.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
 	if err != nil {
 		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
 	}
@@ -162,7 +163,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 }
 
 func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
-	usage, err := getService[files.Service](mw).GetNodeUsage(ctx)
+	usage, err := mustService[files.Service](mw).GetNodeUsage(ctx)
 	code := mapErrorCode[pb.RpcFileNodeUsageResponseErrorCode](err)
 	resp := &pb.RpcFileNodeUsageResponse{
 		Error: &pb.RpcFileNodeUsageResponseError{
@@ -194,7 +195,7 @@ func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsag
 }
 
 func (mw *Middleware) FileReconcile(ctx context.Context, req *pb.RpcFileReconcileRequest) *pb.RpcFileReconcileResponse {
-	err := getService[reconciler.Reconciler](mw).Start(ctx)
+	err := mustService[reconciler.Reconciler](mw).Start(ctx)
 	if err != nil {
 		return &pb.RpcFileReconcileResponse{
 			Error: &pb.RpcFileReconcileResponseError{

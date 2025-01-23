@@ -14,14 +14,25 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	lib "github.com/anyproto/anytype-heart/pb/service"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.ClientCommands_ListenSessionEventsServer) {
-	if err := mw.applicationService.ValidateSessionToken(req.Token); err != nil {
+	var (
+		scope model.AccountAuthLocalApiScope
+		err   error
+	)
+	if scope, err = mw.applicationService.ValidateSessionToken(req.Token); err != nil {
 		log.Errorf("ListenSessionEvents: %s", err)
 		return
 	}
 
+	switch scope {
+	case model.AccountAuth_Full:
+	default:
+		log.Errorf("method not allowed for scope %s", scope.String())
+		return
+	}
 	var srv event.SessionServer
 	if sender, ok := mw.applicationService.GetEventSender().(*event.GrpcSender); ok {
 		srv = sender.SetSessionServer(req.Token, server)

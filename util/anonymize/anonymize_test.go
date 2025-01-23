@@ -6,6 +6,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -47,22 +48,20 @@ func TestChange(t *testing.T) {
 					},
 				},
 			},
-			changeUpdate(&pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockSetText{
-					BlockSetText: &pb.EventBlockSetText{
-						Id: "text",
-						Text: &pb.EventBlockSetTextText{
-							Value: "set text event",
-						},
-						Marks: &pb.EventBlockSetTextMarks{Value: &model.BlockContentTextMarks{
-							Marks: []*model.BlockContentTextMark{{
-								Param: "https://randomsite.com/kosilica",
-								Type:  model.BlockContentTextMark_Link,
-							}},
-						}},
+			changeUpdate(event.NewMessage("", &pb.EventMessageValueOfBlockSetText{
+				BlockSetText: &pb.EventBlockSetText{
+					Id: "text",
+					Text: &pb.EventBlockSetTextText{
+						Value: "set text event",
 					},
+					Marks: &pb.EventBlockSetTextMarks{Value: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{{
+							Param: "https://randomsite.com/kosilica",
+							Type:  model.BlockContentTextMark_Link,
+						}},
+					}},
 				},
-			}),
+			})),
 		},
 		Snapshot:  nil,
 		FileKeys:  nil,

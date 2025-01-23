@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -41,7 +40,7 @@ var log = logging.Logger("import")
 // Service encapsulate logic with creation of given smartblocks
 type Service interface {
 	//nolint:lll
-	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
+	Create(dataObject *DataObject, sn *common.Snapshot) (*domain.Details, string, error)
 }
 
 type ObjectGetterDeleter interface {
@@ -79,7 +78,7 @@ func New(detailsService detailservice.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error) {
+func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*domain.Details, string, error) {
 	snapshot := sn.Snapshot.Data
 	oldIDtoNew := dataObject.oldIDtoNew
 	ctx := dataObject.ctx
@@ -88,15 +87,15 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	newID := oldIDtoNew[sn.Id]
 
-	if sn.SbType == coresb.SmartBlockTypeFile {
+	if sn.Snapshot.SbType == coresb.SmartBlockTypeFile {
 		return nil, newID, nil
 	}
 
 	oc.setRootBlock(snapshot, newID)
 
 	oc.injectImportDetails(sn, origin)
-	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
-	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
+	st := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto()).(*state.State)
+	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.Get(bundle.RelationKeyLastModifiedDate))
 
 	var (
 		filesToDelete []string
@@ -114,12 +113,12 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	}
 
 	oc.updateKeys(st, oldIDtoNew)
-	if sn.SbType == coresb.SmartBlockTypeWorkspace {
+	if sn.Snapshot.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(spaceID, st)
 		return nil, newID, nil
 	}
 
-	if sn.SbType == coresb.SmartBlockTypeWidget {
+	if sn.Snapshot.SbType == coresb.SmartBlockTypeWidget {
 		return oc.updateWidgetObject(st)
 	}
 
@@ -132,7 +131,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	})
 
 	typeKeys := st.ObjectTypeKeys()
-	if sn.SbType == coresb.SmartBlockTypeObjectType {
+	if sn.Snapshot.SbType == coresb.SmartBlockTypeObjectType {
 		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
@@ -140,7 +139,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
-	var respDetails *types.Struct
+	var respDetails *domain.Details
 	if payload := dataObject.createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
@@ -148,7 +147,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 			return nil, "", err
 		}
 	} else {
-		if canUpdateObject(sn.SbType) {
+		if canUpdateObject(sn.Snapshot.SbType) {
 			respDetails = oc.updateExistingObject(st, oldIDtoNew, newID)
 		}
 	}
@@ -174,11 +173,11 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 }
 
 func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objectorigin.ObjectOrigin) {
-	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
-	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	lastModifiedDate := sn.Snapshot.Data.Details.GetInt64(bundle.RelationKeyLastModifiedDate)
+	createdDate := sn.Snapshot.Data.Details.GetInt64(bundle.RelationKeyCreatedDate)
 	if lastModifiedDate == 0 {
 		if createdDate != 0 {
-			sn.Snapshot.Data.Details.Fields[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Int64(int64(createdDate))
+			sn.Snapshot.Data.Details.SetInt64(bundle.RelationKeyLastModifiedDate, createdDate)
 		} else {
 			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
 			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
@@ -191,12 +190,12 @@ func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objecto
 		sn.Snapshot.Data.OriginalCreatedTimestamp = createdDate
 	}
 
-	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin.Origin))
-	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyImportType.String()] = pbtypes.Int64(int64(origin.ImportType))
+	sn.Snapshot.Data.Details.SetInt64(bundle.RelationKeyOrigin, int64(origin.Origin))
+	sn.Snapshot.Data.Details.SetInt64(bundle.RelationKeyImportType, int64(origin.ImportType))
 	// we don't need to inject relatonLinks, they will be automatically injected for bundled relations
 }
 
-func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
+func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *domain.Details {
 	if st.Store() != nil {
 		oc.updateLinksInCollections(st, oldIDtoNew, false)
 	}
@@ -214,7 +213,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))
 	for _, link := range links {
 		// TODO: check if we have them in oldIDtoNew
-		if !bundle.HasRelation(link.Key) {
+		if !bundle.HasRelation(domain.RelationKey(link.Key)) {
 			continue
 		}
 
@@ -243,8 +242,8 @@ func (oc *ObjectCreator) createNewObject(
 	payload treestorage.TreeStorageCreatePayload,
 	st *state.State,
 	newID string,
-	oldIDtoNew map[string]string) (*types.Struct, error) {
-	var respDetails *types.Struct
+	oldIDtoNew map[string]string) (*domain.Details, error) {
+	var respDetails *domain.Details
 	spc, err := oc.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return nil, fmt.Errorf("get space %s: %w", spaceID, err)
@@ -282,7 +281,7 @@ func (oc *ObjectCreator) createNewObject(
 	return respDetails, nil
 }
 
-func (oc *ObjectCreator) setRootBlock(snapshot *model.SmartBlockSnapshotBase, newID string) {
+func (oc *ObjectCreator) setRootBlock(snapshot *common.StateSnapshot, newID string) {
 	var found bool
 	for _, b := range snapshot.Blocks {
 		if b.Id == newID {
@@ -323,28 +322,28 @@ func (oc *ObjectCreator) deleteFile(spaceId string, hash string) {
 
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
-	var details []*model.Detail
-	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
-	if spaceDashBoardID != "" {
-		details = append(details, &model.Detail{
-			Key:   bundle.RelationKeySpaceDashboardId.String(),
-			Value: pbtypes.String(spaceDashBoardID),
+	var details []domain.Detail
+	ids := st.CombinedDetails().GetStringList(bundle.RelationKeySpaceDashboardId)
+	if len(ids) > 0 {
+		details = append(details, domain.Detail{
+			Key:   bundle.RelationKeySpaceDashboardId,
+			Value: domain.StringList(ids),
 		})
 	}
 
-	spaceName := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String())
+	spaceName := st.CombinedDetails().GetString(bundle.RelationKeyName)
 	if spaceName != "" {
-		details = append(details, &model.Detail{
-			Key:   bundle.RelationKeyName.String(),
-			Value: pbtypes.String(spaceName),
+		details = append(details, domain.Detail{
+			Key:   bundle.RelationKeyName,
+			Value: domain.String(spaceName),
 		})
 	}
 
-	iconOption := pbtypes.GetInt64(st.CombinedDetails(), bundle.RelationKeyIconOption.String())
+	iconOption := st.CombinedDetails().GetInt64(bundle.RelationKeyIconOption)
 	if iconOption != 0 {
-		details = append(details, &model.Detail{
-			Key:   bundle.RelationKeyIconOption.String(),
-			Value: pbtypes.Int64(iconOption),
+		details = append(details, domain.Detail{
+			Key:   bundle.RelationKeyIconOption,
+			Value: domain.Int64(iconOption),
 		})
 	}
 	if len(details) > 0 {
@@ -365,8 +364,8 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	}
 }
 
-func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct {
-	var respDetails *types.Struct
+func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Details {
+	var respDetails *domain.Details
 	err := cache.Do(oc.objectGetterDeleter, newID, func(b smartblock.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
@@ -389,8 +388,8 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 	return respDetails
 }
 
-func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, newID string) {
-	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
+func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID string) {
+	isFavorite := snapshot.Details.GetBool(bundle.RelationKeyIsFavorite)
 	if isFavorite {
 		err := oc.detailsService.SetIsFavorite(newID, true, false)
 		if err != nil {
@@ -399,8 +398,8 @@ func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, newID string) {
-	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
+func (oc *ObjectCreator) setArchived(snapshot *common.StateSnapshot, newID string) {
+	isArchive := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
 	if isArchive {
 		err := oc.detailsService.SetIsArchived(newID, true)
 		if err != nil {
@@ -472,7 +471,7 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
 }
 
-func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*types.Struct, string, error) {
+func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*domain.Details, string, error) {
 	err := cache.DoState(oc.objectGetterDeleter, st.RootId(), func(oldState *state.State, sb smartblock.SmartBlock) error {
 		blocks := st.Blocks()
 		blocksMap := make(map[string]*model.Block, len(blocks))
@@ -542,32 +541,31 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 }
 
 func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
-	for key, value := range st.Details().GetFields() {
-		if newKey, ok := oldIDtoNew[key]; ok && newKey != key {
-			oc.updateDetails(st, newKey, value, key)
+	for key, value := range st.Details().Iterate() {
+		if newKey, ok := oldIDtoNew[string(key)]; ok && newKey != string(key) {
+			oc.updateDetails(st, domain.RelationKey(newKey), value, key)
 		}
 	}
-
 	if newKey, ok := oldIDtoNew[st.ObjectTypeKey().String()]; ok {
 		st.SetObjectTypeKey(domain.TypeKey(newKey))
 	}
 }
 
-func (oc *ObjectCreator) updateDetails(st *state.State, newKey string, value *types.Value, key string) {
+func (oc *ObjectCreator) updateDetails(st *state.State, newKey domain.RelationKey, value domain.Value, key domain.RelationKey) {
 	st.SetDetail(newKey, value)
 	link := oc.findRelationLinkByKey(st, key)
 	if link != nil {
-		link.Key = newKey
+		link.Key = string(newKey)
 		st.AddRelationLinks(link)
 	}
 	st.RemoveRelation(key)
 }
 
-func (oc *ObjectCreator) findRelationLinkByKey(st *state.State, key string) *model.RelationLink {
+func (oc *ObjectCreator) findRelationLinkByKey(st *state.State, key domain.RelationKey) *model.RelationLink {
 	relationLinks := st.GetRelationLinks()
 	var link *model.RelationLink
 	for _, link = range relationLinks {
-		if link.Key == key {
+		if domain.RelationKey(link.Key) == key {
 			break
 		}
 	}

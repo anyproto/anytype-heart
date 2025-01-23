@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -37,7 +36,7 @@ var (
 )
 
 type Service interface {
-	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct)
+	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details)
 
 	UpdateOwnGlobalName(myIdentityGlobalName string)
 
@@ -517,6 +516,6 @@ func (s *service) UnregisterIdentitiesInSpace(spaceId string) {
 	}
 }
 
-func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *types.Struct) {
+func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details) {
 	return s.ownProfileSubscription.getDetails(ctx)
 }

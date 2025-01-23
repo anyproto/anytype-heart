@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const widgetCollectionPattern = "'s Widgets"
@@ -46,7 +45,7 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 		fileKeys []*pb.ChangeFileKeys
 	)
 	if workspaceSnapshot != nil { // we use space icon for import collection
-		icon = pbtypes.GetString(workspaceSnapshot.Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		icon = workspaceSnapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
 		fileKeys = lo.Filter(workspaceSnapshot.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
 	}
 	collectionName := params.GetCollectionTitle() // collection name should be the name of experience
@@ -94,7 +93,7 @@ func (g *GalleryImport) getWidgetsCollection(collectionName string,
 }
 
 func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) []string {
-	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot).(*state.State)
+	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot.ToProto()).(*state.State)
 	var objectsInWidget []string
 	err := widgetState.Iterate(func(b simple.Block) (isContinue bool) {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId != "" {
@@ -142,7 +141,7 @@ func (g *GalleryImport) addCollectionWidget(widgetSnapshot *common.Snapshot, col
 func (g *GalleryImport) getObjectsIDs(snapshots []*common.Snapshot) []string {
 	var resultIDs []string
 	for _, snapshot := range snapshots {
-		if snapshot.SbType == smartblock.SmartBlockTypePage {
+		if snapshot.Snapshot.SbType == smartblock.SmartBlockTypePage {
 			resultIDs = append(resultIDs, snapshot.Id)
 		}
 	}

@@ -2,11 +2,12 @@ package objectlink
 
 import (
 	"context"
+	"errors"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -16,20 +17,25 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("objectlink")
 
-type KeyToIDConverter interface {
-	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
-}
+type (
+	KeyToIDConverter interface {
+		GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
+		GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+	}
 
-type linkSource interface {
-	FillSmartIds(ids []string) []string
-	HasSmartIds() bool
-}
+	linkSource interface {
+		FillSmartIds(ids []string) []string
+		HasSmartIds() bool
+	}
+
+	spaceIdResolver interface {
+		ResolveSpaceID(id string) (spaceId string, err error)
+	}
+)
 
 type Flags struct {
 	Blocks,
@@ -46,6 +52,7 @@ type Flags struct {
 }
 
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
+	// TODO Blocks is always true
 	if flags.Blocks {
 		ids = collectIdsFromBlocks(s, flags)
 	}
@@ -54,7 +61,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 		ids = append(ids, collectIdsFromTypes(s, converter)...)
 	}
 
-	var det *types.Struct
+	var det *domain.Details
 	if flags.Details {
 		det = s.CombinedDetails()
 	}
@@ -86,6 +93,31 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 
 	ids = lo.Uniq(ids)
 	return
+}
+
+func DependentObjectIDsPerSpace(rootSpaceId string, s *state.State, converter KeyToIDConverter, resolver spaceIdResolver, flags Flags) map[string][]string {
+	ids := DependentObjectIDs(s, converter, flags)
+	perSpace := map[string][]string{}
+	for _, id := range ids {
+		if dateObject, parseErr := dateutil.BuildDateObjectFromId(id); parseErr == nil {
+			perSpace[rootSpaceId] = append(perSpace[rootSpaceId], dateObject.Id())
+			continue
+		}
+
+		spaceId, err := resolver.ResolveSpaceID(id)
+		if errors.Is(err, domain.ErrObjectNotFound) {
+			perSpace[rootSpaceId] = append(perSpace[rootSpaceId], id)
+			continue
+		}
+
+		if err != nil {
+			perSpace[rootSpaceId] = append(perSpace[rootSpaceId], id)
+			log.With("id", id).Warn("resolve space id", zap.Error(err))
+			continue
+		}
+		perSpace[spaceId] = append(perSpace[spaceId], id)
+	}
+	return perSpace
 }
 
 func collectIdsFromBlocks(s *state.State, flags Flags) (ids []string) {
@@ -136,7 +168,7 @@ func collectIdsFromTypes(s *state.State, converter KeyToIDConverter) (ids []stri
 	return ids
 }
 
-func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flags) (ids []string) {
+func collectIdsFromDetail(rel *model.RelationLink, det *domain.Details, flags Flags) (ids []string) {
 	if flags.NoSystemRelations {
 		if rel.Format != model.RelationFormat_object || bundle.IsSystemRelation(domain.RelationKey(rel.Key)) {
 			return
@@ -152,8 +184,8 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 
 	// handle corner cases first for specific formats
 	if rel.Format == model.RelationFormat_date &&
-		!lo.Contains(bundle.LocalAndDerivedRelationKeys, rel.Key) {
-		relInt := pbtypes.GetInt64(det, rel.Key)
+		!lo.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(rel.Key)) {
+		relInt := det.GetInt64(domain.RelationKey(rel.Key))
 		if relInt > 0 {
 			t := time.Unix(relInt, 0)
 			t = t.In(time.Local)
@@ -165,7 +197,7 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 	if rel.Key == bundle.RelationKeyCreator.String() ||
 		rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 		if flags.CreatorModifierWorkspace {
-			v := pbtypes.GetString(det, rel.Key)
+			v := det.GetString(domain.RelationKey(rel.Key))
 			ids = append(ids, v)
 		}
 		return
@@ -179,7 +211,7 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 	}
 
 	if rel.Key == bundle.RelationKeyCoverId.String() {
-		v := pbtypes.GetString(det, rel.Key)
+		v := det.GetString(domain.RelationKey(rel.Key))
 		_, err := cid.Decode(v)
 		if err != nil {
 			// this is an exception cause coverId can contain not a file hash but color
@@ -196,7 +228,7 @@ func collectIdsFromDetail(rel *model.RelationLink, det *types.Struct, flags Flag
 	}
 
 	// add all object relation values as dependents
-	for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
+	for _, targetID := range det.GetStringList(domain.RelationKey(rel.Key)) {
 		if targetID != "" {
 			ids = append(ids, targetID)
 		}

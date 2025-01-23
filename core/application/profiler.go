@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 	"runtime/trace"
+	"strings"
 	"sync"
 	"time"
 
@@ -117,9 +119,8 @@ func (s *Service) SaveLoginTrace(dir string) (string, error) {
 	return s.traceRecorder.save(dir)
 }
 
-// empty dir means use system temp dir
-func (s *Service) SaveLog(srcPath, destDir string) (string, error) {
-	if srcPath == "" {
+func (s *Service) SaveLog(logFile, destDir string) (string, error) {
+	if logFile == "" {
 		return "", ErrNoFolder
 	}
 	targetFile, err := os.CreateTemp(destDir, "anytype-log-*.zip")
@@ -127,15 +128,55 @@ func (s *Service) SaveLog(srcPath, destDir string) (string, error) {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}
 
-	file, err := os.Open(srcPath)
+	err = os.Chmod(targetFile.Name(), 0664)
 	if err != nil {
-		return "", fmt.Errorf("failed to open source file: %w", err)
+		return "", err
 	}
-	defer file.Close()
 
-	err = createZipArchive(targetFile, []zipFile{
-		{name: "anytype.log", data: file},
+	var files []zipFile
+	var toClose []io.Closer
+
+	srcDir := filepath.Dir(logFile)
+	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing file %s: %w", path, err)
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		if strings.HasPrefix(info.Name(), "anytype") {
+			relPath, err := filepath.Rel(srcDir, path)
+			if err != nil {
+				return fmt.Errorf("failed to compute relative path: %w", err)
+			}
+
+			file, err := os.Open(path)
+			if err != nil {
+				return fmt.Errorf("failed to open file %s: %w", path, err)
+			}
+
+			files = append(files, zipFile{name: relPath, data: file})
+			toClose = append(toClose, file)
+		}
+		return nil
 	})
+	defer func() {
+		for _, closeable := range toClose {
+			closeable.Close()
+		}
+	}()
+
+	if err != nil {
+		return "", fmt.Errorf("error while walking directory: %w", err)
+	}
+
+	if len(files) == 0 {
+		return "", fmt.Errorf("no log files found in directory: %w", err)
+	}
+
+	err = createZipArchive(targetFile, files)
 	if err != nil {
 		return "", fmt.Errorf("failed to create zip archive: %w", err)
 	}

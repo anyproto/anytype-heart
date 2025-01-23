@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // TODO Decide what to do with it
@@ -61,9 +61,9 @@ func TestGetRelationById(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		obj := TestObject{
-			bundle.RelationKeyId:      pbtypes.String("id1"),
-			bundle.RelationKeyName:    pbtypes.String("name1"),
-			bundle.RelationKeySpaceId: pbtypes.String("space1"),
+			bundle.RelationKeyId:      domain.String("id1"),
+			bundle.RelationKeyName:    domain.String("name1"),
+			bundle.RelationKeySpaceId: domain.String("space1"),
 		}
 		s.AddObjects(t, []TestObject{obj})
 
@@ -77,12 +77,12 @@ func TestGetRelationById(t *testing.T) {
 		relation := &relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyName)}
 		relationID := "derivedFrom(name)"
 		relation.Id = relationID
-		relObject := relation.ToStruct()
+		relObject := relation.ToDetails()
 		err := s.UpdateObjectDetails(context2.Background(), relation.Id, relObject)
 		require.NoError(t, err)
 
 		got, err := s.GetRelationById(relationID)
 		require.NoError(t, err)
-		assert.Equal(t, relationutils.RelationFromStruct(relObject).Relation, got)
+		assert.Equal(t, relationutils.RelationFromDetails(relObject).Relation, got)
 	})
 }

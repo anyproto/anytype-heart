@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -27,12 +28,12 @@ type Div struct {
 	content *model.BlockContentDiv
 }
 
-func (b *Div) Diff(block simple.Block) (msgs []simple.EventMessage, err error) {
+func (b *Div) Diff(spaceId string, block simple.Block) (msgs []simple.EventMessage, err error) {
 	div, ok := block.(*Div)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = b.Base.Diff(div); err != nil {
+	if msgs, err = b.Base.Diff(spaceId, div); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetDiv{
@@ -45,7 +46,7 @@ func (b *Div) Diff(block simple.Block) (msgs []simple.EventMessage, err error) {
 		changes.Style = &pb.EventBlockSetDivStyle{Value: div.content.Style}
 	}
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDiv{BlockSetDiv: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetDiv{BlockSetDiv: changes})})
 	}
 	return
 }

@@ -19,7 +19,7 @@ func (mw *Middleware) TemplateCreateFromObject(ctx context.Context, req *pb.RpcT
 		}
 		return m
 	}
-	templateId, err := getService[template.Service](mw).TemplateCreateFromObject(ctx, req.ContextId)
+	templateId, err := mustService[template.Service](mw).TemplateCreateFromObject(ctx, req.ContextId)
 	return response(templateId, err)
 }
 
@@ -35,7 +35,7 @@ func (mw *Middleware) TemplateClone(_ context.Context, req *pb.RpcTemplateCloneR
 		}
 		return m
 	}
-	templateId, err := getService[template.Service](mw).TemplateClone(req.SpaceId, req.ContextId)
+	templateId, err := mustService[template.Service](mw).TemplateClone(req.SpaceId, req.ContextId)
 	return response(templateId, err)
 }
 
@@ -50,7 +50,7 @@ func (mw *Middleware) ObjectApplyTemplate(_ context.Context, req *pb.RpcObjectAp
 		}
 		return m
 	}
-	err := getService[template.Service](mw).ObjectApplyTemplate(req.ContextId, req.TemplateId)
+	err := mustService[template.Service](mw).ObjectApplyTemplate(req.ContextId, req.TemplateId)
 	return response(err)
 }
 
@@ -70,6 +70,6 @@ func (mw *Middleware) TemplateExportAll(ctx context.Context, req *pb.RpcTemplate
 		}
 		return res
 	}
-	path, err := getService[template.Service](mw).TemplateExportAll(ctx, req.Path)
+	path, err := mustService[template.Service](mw).TemplateExportAll(ctx, req.Path)
 	return response(path, err)
 }

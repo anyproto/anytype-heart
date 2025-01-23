@@ -7,8 +7,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -32,11 +32,15 @@ func (s *syncingObjects) Run() error {
 		Internal:          true,
 		NoDepSubscription: true,
 		Keys:              []string{bundle.RelationKeyId.String()},
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySyncStatus.String(),
+				RelationKey: bundle.RelationKeySyncStatus,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(domain.SpaceSyncStatusSyncing), int(domain.ObjectSyncStatusQueued), int(domain.ObjectSyncStatusError)),
+				Value: domain.Int64List([]int64{
+					int64(domain.SpaceSyncStatusSyncing),
+					int64(domain.ObjectSyncStatusQueued),
+					int64(domain.ObjectSyncStatusError),
+				}),
 			},
 		},
 	}

@@ -8,7 +8,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
+
+var log = logging.Logger("anytype-core")
 
 const tmpDir = "tmp"
 

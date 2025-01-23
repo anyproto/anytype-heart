@@ -15,6 +15,7 @@ const (
 	DefaultWidgetSet        = "set"
 	DefaultWidgetRecent     = "recent"
 	DefaultWidgetCollection = "collection"
+	DefaultWidgetRecentOpen = "recentOpen"
 )
 
 type Widget interface {

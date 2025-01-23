@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -20,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -32,7 +32,7 @@ var randomIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔
 
 var log = logging.Logger("import")
 
-func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
+func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *domain.Details {
 	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
@@ -42,15 +42,14 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	}
 	h := sha256.Sum256([]byte(sourcePath))
 	hash := hex.EncodeToString(h[:])
-	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():             pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String():   pbtypes.String(hash),
-		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
-		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
-		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
-		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
-	}
-	return &types.Struct{Fields: fields}
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeySourceFilePath, hash)
+	details.SetString(bundle.RelationKeyIconEmoji, emoji)
+	details.SetInt64(bundle.RelationKeyCreatedDate, creationTime)
+	details.SetInt64(bundle.RelationKeyLastModifiedDate, modTime)
+	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
+	return details
 }
 
 func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string) error {
@@ -92,6 +91,10 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 
 		if view.DefaultTemplateId != "" {
 			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
+		}
+
+		if view.DefaultObjectTypeId != "" {
+			view.DefaultObjectTypeId = oldIDtoNew[view.DefaultObjectTypeId]
 		}
 
 		updateRelationsInView(view, oldIDtoNew)
@@ -217,7 +220,7 @@ func isBundledObjects(targetObjectID string) bool {
 		return true
 	}
 	rel, err := pbtypes.RelationIdToKey(targetObjectID)
-	if err == nil && bundle.HasRelation(rel) {
+	if err == nil && bundle.HasRelation(domain.RelationKey(rel)) {
 		return true
 	}
 
@@ -259,8 +262,8 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 	rels := st.GetRelationLinks()
-	for k, v := range st.Details().GetFields() {
-		relLink := rels.Get(k)
+	for k, v := range st.Details().Iterate() {
+		relLink := rels.Get(string(k))
 		if relLink == nil {
 			continue
 		}
@@ -285,18 +288,17 @@ func isLinkToObject(relLink *model.RelationLink) bool {
 		relLink.Format == model.RelationFormat_file
 }
 
-func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string) {
-	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
-		objectsID := v.GetStringValue()
-		newObjectIDs := getNewObjectsIDForRelation([]string{objectsID}, oldIDtoNew)
+func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domain.Value, k domain.RelationKey) {
+	if objectId, ok := v.TryString(); ok {
+		newObjectIDs := getNewObjectsIDForRelation([]string{objectId}, oldIDtoNew)
 		if len(newObjectIDs) != 0 {
-			st.SetDetail(k, pbtypes.String(newObjectIDs[0]))
+			st.SetDetail(k, domain.String(newObjectIDs[0]))
 		}
 		return
 	}
-	objectsIDs := pbtypes.GetStringListValue(v)
+	objectsIDs := v.StringList()
 	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew)
-	st.SetDetail(k, pbtypes.StringList(objectsIDs))
+	st.SetDetail(k, domain.StringList(objectsIDs))
 }
 
 func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string) []string {

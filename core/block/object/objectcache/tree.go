@@ -74,12 +74,12 @@ func (c *objectCache) DeriveTreePayload(ctx context.Context, params payloadcreat
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
 	accountKeys := c.accountService.Account()
+	if c.space.TreeBuilder() == nil {
+		return treestorage.TreeStorageCreatePayload{}, fmt.Errorf("can't derive in virtual space")
+	}
 	// we have to derive ids differently for personal space
 	if c.personalSpaceId == c.space.Id() || params.UseAccountSignature {
 		treePayload := derivePersonalPayload(c.space.Id(), accountKeys.SignKey, changePayload)
-		if c.space.TreeBuilder() == nil {
-			return treestorage.TreeStorageCreatePayload{}, fmt.Errorf("can't derive in virtual space")
-		}
 		create, err := c.space.TreeBuilder().CreateTree(context.Background(), treePayload)
 		if err != nil {
 			return storagePayload, err

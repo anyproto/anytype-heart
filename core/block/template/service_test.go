@@ -55,20 +55,20 @@ func (t *testPicker) Name() string { return "" }
 
 func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 	sb := smarttest.New(templateName)
-	details := []*model.Detail{
+	details := []domain.Detail{
 		{
-			Key:   bundle.RelationKeyName.String(),
-			Value: pbtypes.String(templateName),
+			Key:   bundle.RelationKeyName,
+			Value: domain.String(templateName),
 		},
 		{
-			Key:   bundle.RelationKeyDescription.String(),
-			Value: pbtypes.String(templateName),
+			Key:   bundle.RelationKeyDescription,
+			Value: domain.String(templateName),
 		},
 	}
 	if templateName == archivedTemplateId {
-		details = append(details, &model.Detail{
-			Key:   bundle.RelationKeyIsArchived.String(),
-			Value: pbtypes.Bool(true),
+		details = append(details, domain.Detail{
+			Key:   bundle.RelationKeyIsArchived,
+			Value: domain.Bool(true),
 		})
 	}
 	_ = sb.SetDetails(nil, details, false)
@@ -83,8 +83,7 @@ func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 			Fields: map[string]*types.Value{
 				text.DetailsKeyFieldName: pbtypes.String("name"),
 			},
-		},
-	}, text.DetailsKeys{
+		}}, text.DetailsKeys{
 		Text:    "name",
 		Checked: "done",
 	}))
@@ -121,7 +120,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, st.Details().Fields[bundle.RelationKeyName.String()].GetStringValue(), templateName)
+		assert.Equal(t, st.Details().GetString(bundle.RelationKeyName), templateName)
 		assert.Equal(t, st.Get(template.TitleBlockId).Model().GetText().Text, templateName)
 	})
 
@@ -135,17 +134,17 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 				// given
 				tmpl := NewTemplateTest(templateName, "")
 				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
-				details := &types.Struct{Fields: map[string]*types.Value{}}
-				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(addedDetail)
-				details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(addedDetail)
+				details := domain.NewDetails()
+				details.Set(bundle.RelationKeyName, domain.String(addedDetail))
+				details.Set(bundle.RelationKeyDescription, domain.String(addedDetail))
 
 				// when
 				st, err := s.CreateTemplateStateWithDetails(templateName, details)
 
 				// then
 				assert.NoError(t, err)
-				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyName.String()].GetStringValue())
-				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyDescription.String()].GetStringValue())
+				assert.Equal(t, expected[templateIndex], st.Details().GetString(bundle.RelationKeyName))
+				assert.Equal(t, expected[templateIndex], st.Details().GetString(bundle.RelationKeyDescription))
 				assert.Equal(t, expected[templateIndex], st.Get(template.TitleBlockId).Model().GetText().Text)
 			})
 		}
@@ -168,8 +167,8 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			// then
 			assert.NoError(t, err)
 			assert.Equal(t, BlankTemplateId, st.RootId())
-			assert.Contains(t, pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String()), bundle.RelationKeyTag.String())
-			assert.True(t, pbtypes.Exists(st.Details(), bundle.RelationKeyTag.String()))
+			assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag.String())
+			assert.True(t, st.Details().Has(bundle.RelationKeyTag))
 		})
 	}
 
@@ -210,15 +209,15 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		t.Run("blank template should correspond "+model.ObjectTypeLayout_name[int32(layout)]+" layout", func(t *testing.T) {
 			// given
 			s := service{converter: converter.NewLayoutConverter()}
-			details := &types.Struct{Fields: map[string]*types.Value{}}
-			details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(layout))
+			details := domain.NewDetails()
+			details.Set(bundle.RelationKeyLayout, domain.Int64(int64(layout)))
 
 			// when
 			st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, details)
 
 			// then
 			assert.NoError(t, err)
-			assert.Equal(t, layout, model.ObjectTypeLayout(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())))
+			assert.Equal(t, layout, model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyLayout)))
 			assertLayoutBlocks(t, st, layout)
 		})
 	}
@@ -230,7 +229,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		tmpl := smarttest.New(templateName)
 		tmpl.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyBook})
 		tmpl.Doc.(*state.State).SetOriginalCreatedTimestamp(sometime)
-		err := tmpl.SetDetails(nil, []*model.Detail{{Key: bundle.RelationKeyAddedDate.String(), Value: pbtypes.Int64(sometime)}}, false)
+		err := tmpl.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyAddedDate, Value: domain.Int64(sometime)}}, false)
 		require.NoError(t, err)
 
 		s := service{picker: &testPicker{tmpl}}
@@ -241,8 +240,8 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Zero(t, st.OriginalCreatedTimestamp())
-		assert.Zero(t, pbtypes.GetInt64(st.Details(), bundle.RelationKeyAddedDate.String()))
-		assert.Zero(t, pbtypes.GetInt64(st.Details(), bundle.RelationKeyCreatedDate.String()))
+		assert.Zero(t, st.Details().GetInt64(bundle.RelationKeyAddedDate))
+		assert.Zero(t, st.Details().GetInt64(bundle.RelationKeyCreatedDate))
 	})
 }
 
@@ -252,14 +251,14 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 		s := service{converter: converter.NewLayoutConverter()}
 
 		// when
-		st := s.CreateTemplateStateFromSmartBlock(nil, &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyLayout.String(): pbtypes.Int64(int64(model.ObjectType_todo)),
-		}})
+		st := s.CreateTemplateStateFromSmartBlock(nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_todo)),
+		}))
 
 		// then
 		assert.Equal(t, BlankTemplateId, st.RootId())
-		assert.Contains(t, pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String()), bundle.RelationKeyTag.String())
-		assert.True(t, pbtypes.Exists(st.Details(), bundle.RelationKeyTag.String()))
+		assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag.String())
+		assert.True(t, st.Details().Has(bundle.RelationKeyTag))
 	})
 
 	t.Run("create state from template smartblock", func(t *testing.T) {
@@ -271,8 +270,8 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 		st := s.CreateTemplateStateFromSmartBlock(tmpl, nil)
 
 		// then
-		assert.Equal(t, "template", pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
-		assert.Equal(t, "template", pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String()))
+		assert.Equal(t, "template", st.Details().GetString(bundle.RelationKeyName))
+		assert.Equal(t, "template", st.Details().GetString(bundle.RelationKeyDescription))
 	})
 }
 
@@ -325,41 +324,41 @@ func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLa
 
 func TestExtractTargetDetails(t *testing.T) {
 	for _, testCase := range []struct {
-		Key                        string
-		OriginValue, TemplateValue *types.Value
+		Key                        domain.RelationKey
+		OriginValue, TemplateValue domain.Value
 		OriginLeft                 bool
 	}{
-		{Key: bundle.RelationKeyLayout.String(), OriginValue: pbtypes.Int64(0), TemplateValue: pbtypes.Int64(1), OriginLeft: false},
-		{Key: bundle.RelationKeyLayout.String(), OriginValue: pbtypes.Int64(5), TemplateValue: pbtypes.Int64(0), OriginLeft: false},
-		{Key: bundle.RelationKeyLayout.String(), OriginValue: pbtypes.Int64(3), TemplateValue: pbtypes.Int64(3), OriginLeft: false},
-		{Key: bundle.RelationKeySourceObject.String(), OriginValue: pbtypes.String(""), TemplateValue: pbtypes.String("s1"), OriginLeft: false},
-		{Key: bundle.RelationKeySourceObject.String(), OriginValue: pbtypes.String("s2"), TemplateValue: pbtypes.String(""), OriginLeft: true},
-		{Key: bundle.RelationKeySourceObject.String(), OriginValue: pbtypes.String("s0"), TemplateValue: pbtypes.String("s3"), OriginLeft: false},
-		{Key: bundle.RelationKeyFeaturedRelations.String(), OriginValue: pbtypes.StringList([]string{"tag"}), TemplateValue: pbtypes.StringList([]string{}), OriginLeft: true},
-		{Key: bundle.RelationKeyFeaturedRelations.String(), OriginValue: pbtypes.StringList([]string{}), TemplateValue: pbtypes.StringList([]string{"tag", "type"}), OriginLeft: false},
-		{Key: bundle.RelationKeyFeaturedRelations.String(), OriginValue: pbtypes.StringList([]string{"type"}), TemplateValue: pbtypes.StringList([]string{"tag"}), OriginLeft: false},
-		{Key: bundle.RelationKeyName.String(), OriginValue: pbtypes.String("orig"), TemplateValue: pbtypes.String(""), OriginLeft: true},
-		{Key: bundle.RelationKeyName.String(), OriginValue: pbtypes.String(""), TemplateValue: pbtypes.String("tmpl"), OriginLeft: false},
-		{Key: bundle.RelationKeyName.String(), OriginValue: pbtypes.String("orig"), TemplateValue: pbtypes.String("tmpl"), OriginLeft: true},
-		{Key: bundle.RelationKeyDescription.String(), OriginValue: pbtypes.String("orig"), TemplateValue: pbtypes.String(""), OriginLeft: true},
-		{Key: bundle.RelationKeyDescription.String(), OriginValue: pbtypes.String(""), TemplateValue: pbtypes.String("tmpl"), OriginLeft: false},
-		{Key: bundle.RelationKeyDescription.String(), OriginValue: pbtypes.String("orig"), TemplateValue: pbtypes.String("tmpl"), OriginLeft: true},
-		{Key: bundle.RelationKeyCoverId.String(), OriginValue: pbtypes.String("old"), TemplateValue: pbtypes.String(""), OriginLeft: true},
-		{Key: bundle.RelationKeyCoverId.String(), OriginValue: pbtypes.String(""), TemplateValue: pbtypes.String("new"), OriginLeft: false},
-		{Key: bundle.RelationKeyCoverId.String(), OriginValue: pbtypes.String("old"), TemplateValue: pbtypes.String("new"), OriginLeft: false},
+		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(0), TemplateValue: domain.Int64(1), OriginLeft: false},
+		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(5), TemplateValue: domain.Int64(0), OriginLeft: false},
+		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(3), TemplateValue: domain.Int64(3), OriginLeft: false},
+		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String(""), TemplateValue: domain.String("s1"), OriginLeft: false},
+		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s2"), TemplateValue: domain.String(""), OriginLeft: true},
+		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s0"), TemplateValue: domain.String("s3"), OriginLeft: false},
+		{Key: bundle.RelationKeyFeaturedRelations, OriginValue: domain.StringList([]string{"tag"}), TemplateValue: domain.StringList([]string{}), OriginLeft: true},
+		{Key: bundle.RelationKeyFeaturedRelations, OriginValue: domain.StringList([]string{}), TemplateValue: domain.StringList([]string{"tag", "type"}), OriginLeft: false},
+		{Key: bundle.RelationKeyFeaturedRelations, OriginValue: domain.StringList([]string{"type"}), TemplateValue: domain.StringList([]string{"tag"}), OriginLeft: false},
+		{Key: bundle.RelationKeyName, OriginValue: domain.String("orig"), TemplateValue: domain.String(""), OriginLeft: true},
+		{Key: bundle.RelationKeyName, OriginValue: domain.String(""), TemplateValue: domain.String("tmpl"), OriginLeft: false},
+		{Key: bundle.RelationKeyName, OriginValue: domain.String("orig"), TemplateValue: domain.String("tmpl"), OriginLeft: true},
+		{Key: bundle.RelationKeyDescription, OriginValue: domain.String("orig"), TemplateValue: domain.String(""), OriginLeft: true},
+		{Key: bundle.RelationKeyDescription, OriginValue: domain.String(""), TemplateValue: domain.String("tmpl"), OriginLeft: false},
+		{Key: bundle.RelationKeyDescription, OriginValue: domain.String("orig"), TemplateValue: domain.String("tmpl"), OriginLeft: true},
+		{Key: bundle.RelationKeyCoverId, OriginValue: domain.String("old"), TemplateValue: domain.String(""), OriginLeft: true},
+		{Key: bundle.RelationKeyCoverId, OriginValue: domain.String(""), TemplateValue: domain.String("new"), OriginLeft: false},
+		{Key: bundle.RelationKeyCoverId, OriginValue: domain.String("old"), TemplateValue: domain.String("new"), OriginLeft: false},
 	} {
-		t.Run("merge details: key = "+testCase.Key+", origin = "+testCase.OriginValue.String()+
+		t.Run("merge details: key = "+testCase.Key.String()+", origin = "+testCase.OriginValue.String()+
 			", template = "+testCase.TemplateValue.String()+". Should origin be left:"+strconv.FormatBool(testCase.OriginLeft),
 			func(t *testing.T) {
 				// given
-				originDetails := &types.Struct{Fields: map[string]*types.Value{testCase.Key: testCase.OriginValue}}
-				templateDetails := &types.Struct{Fields: map[string]*types.Value{testCase.Key: testCase.TemplateValue}}
+				originDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{testCase.Key: testCase.OriginValue})
+				templateDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{testCase.Key: testCase.TemplateValue})
 
 				// when
 				targetDetails := extractTargetDetails(originDetails, templateDetails)
 
 				// then
-				value, found := targetDetails.Fields[testCase.Key]
+				value, found := targetDetails.TryGet(testCase.Key)
 				assert.Equal(t, found, testCase.OriginLeft)
 				if found {
 					assert.True(t, testCase.OriginValue.Equal(value))
@@ -373,9 +372,9 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 	t.Run("building state for new template", func(t *testing.T) {
 		// given
 		obj := smarttest.New("object")
-		err := obj.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeyInternalFlags.String(),
-			Value: pbtypes.IntList(0, 1, 2, 3),
+		err := obj.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeyInternalFlags,
+			Value: domain.Int64List([]int64{0, 1, 2, 3}),
 		}}, false)
 		assert.NoError(t, err)
 
@@ -390,9 +389,9 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.NotContains(t, pbtypes.GetIntList(st.Details(), bundle.RelationKeyInternalFlags.String()), model.InternalFlag_editorDeleteEmpty)
+		assert.NotContains(t, st.Details().GetInt64List(bundle.RelationKeyInternalFlags), model.InternalFlag_editorDeleteEmpty)
 		assert.Equal(t, []domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyNote}, st.ObjectTypeKeys())
-		assert.Equal(t, bundle.TypeKeyNote.String(), pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+		assert.Equal(t, bundle.TypeKeyNote.String(), st.Details().GetString(bundle.RelationKeyTargetObjectType))
 		assert.Nil(t, st.LocalDetails())
 	})
 }

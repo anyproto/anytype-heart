@@ -39,20 +39,20 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(_ context.Context, req *p
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	resolver := getService[idresolver.Resolver](mw)
+	resolver := mustService[idresolver.Resolver](mw)
 	spaceId, err := resolver.ResolveSpaceID(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("resolve spaceId: %w", err))
 	}
 
-	store := getService[objectstore.ObjectStore](mw)
+	store := mustService[objectstore.ObjectStore](mw)
 	index := store.SpaceIndex(spaceId)
 	page, err := index.GetWithLinksInfoById(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	sbTypeProvider := getService[typeprovider.SmartBlockTypeProvider](mw)
+	sbTypeProvider := mustService[typeprovider.SmartBlockTypeProvider](mw)
 	filter := func(objects []*model.ObjectInfo) []*model.ObjectInfo {
 		var filtered []*model.ObjectInfo
 		for _, obj := range objects {

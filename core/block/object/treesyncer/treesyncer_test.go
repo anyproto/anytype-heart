@@ -2,13 +2,13 @@ package treesyncer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
@@ -26,7 +26,7 @@ import (
 type fixture struct {
 	*treeSyncer
 
-	missingMock        *mock_objecttree.MockObjectTree
+	missingMock        *mock_synctree.MockSyncTree
 	existingMock       *mock_synctree.MockSyncTree
 	treeManager        *mock_treemanager.MockTreeManager
 	nodeConf           *mock_nodeconf.MockService
@@ -37,7 +37,7 @@ type fixture struct {
 func newFixture(t *testing.T, spaceId string) *fixture {
 	ctrl := gomock.NewController(t)
 	treeManager := mock_treemanager.NewMockTreeManager(ctrl)
-	missingMock := mock_objecttree.NewMockObjectTree(ctrl)
+	missingMock := mock_synctree.NewMockSyncTree(ctrl)
 	existingMock := mock_synctree.NewMockSyncTree(ctrl)
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
 	nodeConf.EXPECT().Name().Return("nodeConf").AnyTimes()
@@ -79,7 +79,30 @@ func TestTreeSyncer(t *testing.T) {
 		fx := newFixture(t, spaceId)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(nil, fmt.Errorf("not found"))
+		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
+		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
+		err := fx.SyncAll(context.Background(), pr, []string{existingId}, []string{missingId})
+		require.NoError(t, err)
+		require.NotNil(t, fx.requestPools[peerId])
+		require.NotNil(t, fx.headPools[peerId])
+
+		fx.StartSync()
+		time.Sleep(100 * time.Millisecond)
+		fx.Close(ctx)
+	})
+
+	t.Run("delayed sync empty derived", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t, spaceId)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
+		fx.missingMock.EXPECT().IsDerived().Return(true)
+		fx.missingMock.EXPECT().Len().Return(1)
+		fx.missingMock.EXPECT().Root().Return(&objecttree.Change{Id: "id"})
+		fx.missingMock.EXPECT().Id().Return("id")
+		fx.missingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 		err := fx.SyncAll(context.Background(), pr, []string{existingId}, []string{missingId})
@@ -99,6 +122,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{peerId})
+		fx.missingMock.EXPECT().IsDerived().Return(false)
 		fx.syncDetailsUpdater.EXPECT().UpdateSpaceDetails([]string{existingId}, []string{missingId}, spaceId)
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 		err := fx.SyncAll(context.Background(), pr, []string{existingId}, []string{missingId})
@@ -117,6 +141,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
+		fx.missingMock.EXPECT().IsDerived().Return(false)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
@@ -136,6 +161,7 @@ func TestTreeSyncer(t *testing.T) {
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
 		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).Return(nil)
 		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
+		fx.missingMock.EXPECT().IsDerived().Return(false)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId, existingId}).Return()
 
@@ -184,6 +210,7 @@ func TestTreeSyncer(t *testing.T) {
 			<-ch
 			return fx.missingMock, nil
 		})
+		fx.missingMock.EXPECT().IsDerived().AnyTimes().Return(false)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, []string{existingId}).Return()
 
@@ -211,6 +238,7 @@ func TestTreeSyncer(t *testing.T) {
 			mutex.Unlock()
 			return fx.missingMock, nil
 		})
+		fx.missingMock.EXPECT().IsDerived().Return(false)
 		fx.nodeConf.EXPECT().NodeIds(spaceId).Return(nil)
 		var existing []string
 		fx.syncStatus.EXPECT().RemoveAllExcept(peerId, mock.Anything).RunAndReturn(func(s string, strings []string) {

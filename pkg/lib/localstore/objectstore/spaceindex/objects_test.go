@@ -8,44 +8,49 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	s := NewStoreFixture(t)
 	id := bson.NewObjectId()
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
-	err := s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
-		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
-	})
+	err := s.UpdateObjectDetails(context2.Background(), id.String(),
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyLastOpenedDate: domain.Int64(4),
+			bundle.RelationKeyType:           domain.String("_otp1"),
+		}))
 	require.NoError(t, err)
 
 	recs, err := s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
-	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
+	require.Equal(t, domain.Int64(4), recs[0].Details.Get(bundle.RelationKeyLastOpenedDate))
 
-	err = s.UpdateObjectDetails(context2.Background(), id.String(), &types.Struct{
-		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
-	})
+	err = s.UpdateObjectDetails(context2.Background(), id.String(),
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"k1":   domain.String("1"),
+			"k2":   domain.String("2"),
+			"type": domain.String("_otp1"),
+		}))
 	require.NoError(t, err)
 
 	recs, err = s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
-	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
-	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
+	require.False(t, recs[0].Details.Get(bundle.RelationKeyLastOpenedDate).Ok())
+	require.Equal(t, "2", recs[0].Details.GetString("k2"))
 }
 
 func Test_removeByPrefix(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context2.Background()
+
 	var key = make([]byte, 32)
 	spaceId := "space1"
 	objectsCount := 10
@@ -62,8 +67,8 @@ func Test_removeByPrefix(t *testing.T) {
 			links = append(links, fmt.Sprintf("%x", key))
 		}
 		details := makeDetails(TestObject{
-			bundle.RelationKeyId:      pbtypes.String(objId),
-			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+			bundle.RelationKeyId:      domain.String(objId),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
 		})
 		require.NoError(t, s.UpdateObjectDetails(context2.Background(), objId, details))
 		require.NoError(t, s.UpdateObjectLinks(ctx, objId, links))
@@ -88,19 +93,19 @@ func TestList(t *testing.T) {
 	s := NewStoreFixture(t)
 
 	obj1 := makeObjectWithName("id1", "name1")
-	obj1[bundle.RelationKeySnippet] = pbtypes.String("snippet1")
+	obj1[bundle.RelationKeySnippet] = domain.String("snippet1")
 
 	obj2 := makeObjectWithName("id2", "name2")
 
 	obj3 := makeObjectWithName("id3", "date")
-	obj3[bundle.RelationKeyIsDeleted] = pbtypes.Bool(true)
+	obj3[bundle.RelationKeyIsDeleted] = domain.Bool(true)
 
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 	got, err := s.List(false)
 	require.NoError(t, err)
 
-	want := []*model.ObjectInfo{
+	want := []*database.ObjectInfo{
 		{
 			Id:      "id1",
 			Details: makeDetails(obj1),
@@ -169,6 +174,7 @@ func TestHasIDs(t *testing.T) {
 
 func TestGetWithLinksInfoByID(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context2.Background()
 	obj1 := makeObjectWithName("id1", "name1")
 	obj2 := makeObjectWithName("id2", "name2")
 	obj3 := makeObjectWithName("id3", "name3")
@@ -181,28 +187,28 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 		got, err := s.GetWithLinksInfoById("id1")
 		require.NoError(t, err)
 
-		assert.Equal(t, makeDetails(obj1), got.Info.Details)
+		assert.Equal(t, makeDetails(obj1).ToProto(), got.Info.Details)
 		require.Len(t, got.Links.Outbound, 2)
-		assert.Equal(t, makeDetails(obj2), got.Links.Outbound[0].Details)
-		assert.Equal(t, makeDetails(obj3), got.Links.Outbound[1].Details)
+		assert.Equal(t, makeDetails(obj2).ToProto(), got.Links.Outbound[0].Details)
+		assert.Equal(t, makeDetails(obj3).ToProto(), got.Links.Outbound[1].Details)
 	})
 
 	t.Run("links of second object", func(t *testing.T) {
 		got, err := s.GetWithLinksInfoById("id2")
 		require.NoError(t, err)
 
-		assert.Equal(t, makeDetails(obj2), got.Info.Details)
+		assert.Equal(t, makeDetails(obj2).ToProto(), got.Info.Details)
 		require.Len(t, got.Links.Inbound, 1)
-		assert.Equal(t, makeDetails(obj1), got.Links.Inbound[0].Details)
+		assert.Equal(t, makeDetails(obj1).ToProto(), got.Links.Inbound[0].Details)
 	})
 
 	t.Run("links of third object", func(t *testing.T) {
 		got, err := s.GetWithLinksInfoById("id3")
 		require.NoError(t, err)
 
-		assert.Equal(t, makeDetails(obj3), got.Info.Details)
+		assert.Equal(t, makeDetails(obj3).ToProto(), got.Info.Details)
 		require.Len(t, got.Links.Inbound, 1)
-		assert.Equal(t, makeDetails(obj1), got.Links.Inbound[0].Details)
+		assert.Equal(t, makeDetails(obj1).ToProto(), got.Links.Inbound[0].Details)
 	})
 }
 
@@ -215,13 +221,11 @@ func TestDeleteObject(t *testing.T) {
 
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
-		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("test"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
-			}),
-		}, got)
+		assert.Equal(t, makeDetails(TestObject{
+			bundle.RelationKeyId:        domain.String("id1"),
+			bundle.RelationKeySpaceId:   domain.String("test"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		}), got)
 	})
 
 	t.Run("object is already deleted", func(t *testing.T) {
@@ -234,18 +238,17 @@ func TestDeleteObject(t *testing.T) {
 
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
-		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("test"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
-			}),
-		}, got)
+		assert.Equal(t, makeDetails(TestObject{
+			bundle.RelationKeyId:        domain.String("id1"),
+			bundle.RelationKeySpaceId:   domain.String("test"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		}), got)
 	})
 
 	t.Run("delete object", func(t *testing.T) {
 		// Arrange
 		s := NewStoreFixture(t)
+		ctx := context2.Background()
 		obj := makeObjectWithName("id1", "name1")
 		s.AddObjects(t, []TestObject{obj})
 
@@ -265,13 +268,11 @@ func TestDeleteObject(t *testing.T) {
 		// Assert
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
-		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(TestObject{
-				bundle.RelationKeyId:        pbtypes.String("id1"),
-				bundle.RelationKeySpaceId:   pbtypes.String("test"),
-				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
-			}),
-		}, got)
+		assert.Equal(t, makeDetails(TestObject{
+			bundle.RelationKeyId:        domain.String("id1"),
+			bundle.RelationKeySpaceId:   domain.String("test"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		}), got)
 
 		objects, err := s.GetInfosByIds([]string{"id1"})
 		require.NoError(t, err)
@@ -297,6 +298,7 @@ func TestDeleteObject(t *testing.T) {
 
 func TestDeleteDetails(t *testing.T) {
 	s := NewStoreFixture(t)
+	ctx := context2.Background()
 	s.AddObjects(t, []TestObject{makeObjectWithName("id1", "name1")})
 
 	err := s.DeleteDetails(ctx, []string{"id1"})
@@ -304,7 +306,5 @@ func TestDeleteDetails(t *testing.T) {
 
 	got, err := s.GetDetails("id1")
 	require.NoError(t, err)
-	assert.Equal(t, &model.ObjectDetails{Details: &types.Struct{
-		Fields: map[string]*types.Value{},
-	}}, got)
+	assert.Equal(t, domain.NewDetails(), got)
 }

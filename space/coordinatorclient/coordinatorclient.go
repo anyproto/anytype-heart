@@ -13,12 +13,13 @@ import (
 const CName = coordinatorclient.CName
 
 type coordinatorClient struct {
+	limiter chan struct{}
 	coordinatorclient.CoordinatorClient
 	delController deletioncontroller.DeletionController
 }
 
 func New() coordinatorclient.CoordinatorClient {
-	return &coordinatorClient{}
+	return &coordinatorClient{limiter: make(chan struct{}, 1)}
 }
 
 func (c *coordinatorClient) Init(a *app.App) (err error) {
@@ -32,7 +33,14 @@ func (c *coordinatorClient) Name() string {
 }
 
 func (c *coordinatorClient) SpaceSign(ctx context.Context, payload coordinatorclient.SpaceSignPayload) (receipt *coordinatorproto.SpaceReceiptWithSignature, err error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case c.limiter <- struct{}{}:
+	}
+
 	res, err := c.CoordinatorClient.SpaceSign(ctx, payload)
+	<-c.limiter
 	if err != nil {
 		return nil, err
 	}

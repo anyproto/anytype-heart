@@ -6,20 +6,22 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
+	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 func TestService_NewQueue(t *testing.T) {
 	s := NewTest(t, nil)
-	q := s.NewQueue(pb.ModelProcess{}, 0)
+	q := s.NewQueue(pb.ModelProcess{}, 0, false, nil)
 	assert.NotEmpty(t, q.Id())
 	assert.NotEmpty(t, q.Info())
 }
 
 func TestQueue_Start(t *testing.T) {
 	s := NewTest(t, nil)
-	q := s.NewQueue(pb.ModelProcess{}, 5)
+	q := s.NewQueue(pb.ModelProcess{}, 5, false, nil)
 	assert.NoError(t, q.Start())
 	assert.Error(t, q.Start()) // error for second start
 	assert.NoError(t, q.Finalize())
@@ -28,7 +30,9 @@ func TestQueue_Start(t *testing.T) {
 func TestQueue_Add(t *testing.T) {
 	var a, b int32
 	s := NewTest(t, nil)
-	q := s.NewQueue(pb.ModelProcess{}, 5)
+	notifications := mock_notifications.NewMockNotifications(t)
+	notifications.EXPECT().CreateAndSend(mock.Anything).Return(nil).Maybe()
+	q := s.NewQueue(pb.ModelProcess{}, 5, false, notifications)
 	incrA := func() {
 		atomic.AddInt32(&a, 1)
 	}
@@ -56,7 +60,7 @@ func TestQueue_Wait(t *testing.T) {
 	var a, b int32
 	var aCh = make(chan struct{})
 	s := NewTest(t, nil)
-	q := s.NewQueue(pb.ModelProcess{}, 5)
+	q := s.NewQueue(pb.ModelProcess{}, 5, false, nil)
 	incrA := func() {
 		atomic.AddInt32(&a, 1)
 	}
@@ -92,7 +96,7 @@ func TestQueue_Cancel(t *testing.T) {
 	var aLock = make(chan struct{})
 	var bLock chan struct{}
 	s := NewTest(t, nil)
-	q := s.NewQueue(pb.ModelProcess{}, 1)
+	q := s.NewQueue(pb.ModelProcess{}, 1, false, nil)
 	assert.NoError(t, q.Start())
 	fl := func() {
 		close(aStarts)
@@ -120,7 +124,7 @@ func TestQueue_Cancel(t *testing.T) {
 
 func TestQueue_Finalize(t *testing.T) {
 	s := NewTest(t, nil)
-	q := s.NewQueue(pb.ModelProcess{}, 1)
+	q := s.NewQueue(pb.ModelProcess{}, 1, false, nil)
 	assert.Error(t, q.Finalize())
 	assert.NoError(t, q.Start())
 	assert.NoError(t, q.Finalize())

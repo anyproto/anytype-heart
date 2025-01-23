@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -30,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestSmartBlock_Init(t *testing.T) {
@@ -120,7 +118,7 @@ func TestBasic_SetAlign(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, model.Block_AlignRight, st.Get("title").Model().Align)
-		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayoutAlign.String()))
+		assert.Equal(t, int64(model.Block_AlignRight), st.Details().GetInt64(bundle.RelationKeyLayoutAlign))
 	})
 
 }
@@ -131,21 +129,13 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":     pbtypes.String(id),
-				"number": pbtypes.Float64(2.18281828459045),
-				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
-			},
-		}
-
-		err := fx.store.UpdateObjectDetails(context.Background(), id, &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":     pbtypes.String(id),
-				"number": pbtypes.Float64(2.18281828459045),
-				"🔥":      pbtypes.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
-			},
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"id":     domain.String(id),
+			"number": domain.Float64(2.18281828459045),
+			"🔥":      domain.StringList([]string{"Jeanne d'Arc", "Giordano Bruno", "Capocchio"}),
 		})
+
+		err := fx.store.UpdateObjectDetails(context.Background(), id, details)
 		require.NoError(t, err)
 
 		// when
@@ -185,13 +175,13 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		require.NoError(t, err)
 
 		st := state.NewDoc("", nil).NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, pbtypes.StringList(backLinks))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, domain.StringList(backLinks))
 
 		// when
 		fx.updateBackLinks(st)
 
 		// then
-		assert.Equal(t, newBackLinks, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()))
+		assert.Equal(t, newBackLinks, st.CombinedDetails().GetStringList(bundle.RelationKeyBacklinks))
 	})
 
 	t.Run("back links were found in object store", func(t *testing.T) {
@@ -214,8 +204,8 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 
 		// then
 		details := st.CombinedDetails()
-		assert.NotNil(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
-		assert.Equal(t, backLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
+		assert.NotNil(t, details.GetStringList(bundle.RelationKeyBacklinks))
+		assert.Equal(t, backLinks, details.GetStringList(bundle.RelationKeyBacklinks))
 	})
 
 	t.Run("back links were not found in object store", func(t *testing.T) {
@@ -228,7 +218,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.updateBackLinks(st)
 
 		// then
-		assert.Len(t, pbtypes.GetStringList(st.CombinedDetails(), bundle.RelationKeyBacklinks.String()), 0)
+		assert.Len(t, st.CombinedDetails().GetStringList(bundle.RelationKeyBacklinks), 0)
 	})
 }
 
@@ -240,24 +230,24 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		fx := newFixture(id, t)
 
 		var hasPendingDetails bool
-		details := &types.Struct{Fields: map[string]*types.Value{}}
+		details := domain.NewDetails()
 
 		// when
 		_, result := fx.appendPendingDetails(details)
 
 		// then
 		assert.Equal(t, hasPendingDetails, result)
-		assert.Zero(t, len(details.Fields))
+		assert.Zero(t, details.Len())
 	})
 
 	t.Run("found pending details", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := &types.Struct{Fields: map[string]*types.Value{}}
+		details := domain.NewDetails()
 
-		err := fx.store.UpdatePendingLocalDetails(id, func(det *types.Struct) (*types.Struct, error) {
-			det.Fields[bundle.RelationKeyIsDeleted.String()] = pbtypes.Bool(false)
+		err := fx.store.UpdatePendingLocalDetails(id, func(det *domain.Details) (*domain.Details, error) {
+			det.Set(bundle.RelationKeyIsDeleted, domain.Bool(false))
 			return det, nil
 		})
 		require.NoError(t, err)
@@ -266,12 +256,10 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		got, _ := fx.appendPendingDetails(details)
 
 		// then
-		want := &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():        pbtypes.String(id),
-				bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(false),
-			},
-		}
+		want := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String(id),
+			bundle.RelationKeyIsDeleted: domain.Bool(false),
+		})
 		assert.Equal(t, want, got)
 	})
 
@@ -279,7 +267,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
-		details := &types.Struct{}
+		details := domain.NewDetails()
 
 		// when
 		_, hasPendingDetails := fx.appendPendingDetails(details)
@@ -302,18 +290,18 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		}
 		sb := &smartBlock{source: src}
 		s := &state.State{}
-		s.SetLocalDetails(&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyCreator.String():     pbtypes.String(creator),
-			bundle.RelationKeyCreatedDate.String(): pbtypes.Int64(creationDate),
-		}})
+		s.SetLocalDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyCreator:     domain.String(creator),
+			bundle.RelationKeyCreatedDate: domain.Int64(creationDate),
+		}))
 
 		// when
 		err := sb.injectCreationInfo(s)
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, creator, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()))
-		assert.Equal(t, creationDate, pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
+		assert.Equal(t, creator, s.LocalDetails().GetString(bundle.RelationKeyCreator))
+		assert.Equal(t, creationDate, s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
 	})
 
 	t.Run("both creator and creation date are found", func(t *testing.T) {
@@ -331,9 +319,9 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, creator, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()))
+		assert.Equal(t, creator, s.LocalDetails().GetString(bundle.RelationKeyCreator))
 		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreator.String()))
-		assert.Equal(t, creationDate, pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
+		assert.Equal(t, creationDate, s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
 		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreatedDate.String()))
 	})
 
@@ -357,13 +345,13 @@ func Test_removeInternalFlags(t *testing.T) {
 	t.Run("no flags - no changes", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", nil).(*state.State)
-		st.SetDetail(bundle.RelationKeyInternalFlags.String(), pbtypes.IntList())
+		st.SetDetail(bundle.RelationKeyInternalFlags, domain.Int64List([]int64{}))
 
 		// when
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 	t.Run("EmptyDelete flag is not removed when state is empty", func(t *testing.T) {
 		// given
@@ -375,14 +363,14 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Len(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()), 1)
+		assert.Len(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags), 1)
 	})
 	t.Run("all flags are removed when title is not empty", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", map[string]simple.Block{
 			"title": simple.New(&model.Block{Id: "title"}),
 		}).(*state.State)
-		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("some name"))
+		st.SetDetail(bundle.RelationKeyName, domain.String("some name"))
 		flags := defaultInternalFlags()
 		flags.AddToState(st)
 
@@ -390,7 +378,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 	t.Run("all flags are removed when state has non-empty text blocks", func(t *testing.T) {
 		// given
@@ -407,7 +395,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, st.CombinedDetails().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 }
 
@@ -425,8 +413,8 @@ func TestInjectLocalDetails(t *testing.T) {
 
 		require.NoError(t, err)
 
-		assert.Equal(t, fx.source.creator, pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyCreator.String()))
-		assert.Equal(t, fx.source.createdDate, pbtypes.GetInt64(st.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
+		assert.Equal(t, fx.source.creator, st.LocalDetails().GetString(bundle.RelationKeyCreator))
+		assert.Equal(t, fx.source.createdDate, st.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
 	})
 
 	// TODO More tests
@@ -447,13 +435,13 @@ func TestInjectDerivedDetails(t *testing.T) {
 			"link":     simple.New(&model.Block{Id: "link", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "some_obj"}}}),
 		}).NewState()
 		st.AddRelationLinks(&model.RelationLink{Key: bundle.RelationKeyAssignee.String(), Format: model.RelationFormat_object})
-		st.SetDetail(bundle.RelationKeyAssignee.String(), pbtypes.String("Kirill"))
+		st.SetDetail(bundle.RelationKeyAssignee, domain.StringList([]string{"Kirill"}))
 
 		// when
 		fx.injectDerivedDetails(st, spaceId, smartblock.SmartBlockTypePage)
 
 		// then
-		assert.Len(t, pbtypes.GetStringList(st.LocalDetails(), bundle.RelationKeyLinks.String()), 3)
+		assert.Len(t, st.LocalDetails().GetStringList(bundle.RelationKeyLinks), 3)
 	})
 }
 

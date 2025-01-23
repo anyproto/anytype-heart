@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -23,7 +21,7 @@ import (
 
 type Image interface {
 	FileId() domain.FileId
-	Details(ctx context.Context) (*types.Struct, error)
+	Details(ctx context.Context) (*domain.Details, error)
 	GetFileForWidth(wantWidth int) (File, error)
 	GetOriginalFile() (File, error)
 }
@@ -166,22 +164,18 @@ func (i *image) getExif(ctx context.Context) (*mill.ImageExifSchema, error) {
 	return &exif, nil
 }
 
-func (i *image) Details(ctx context.Context) (*types.Struct, error) {
+func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 	imageExif, err := i.getExif(ctx)
 	if err != nil {
 		log.Errorf("failed to get exif for image: %s", err)
 		imageExif = &mill.ImageExifSchema{}
 	}
 
-	commonDetails := calculateCommonDetails(
+	details := calculateCommonDetails(
 		i.fileId,
 		model.ObjectType_image,
 		i.extractLastModifiedDate(imageExif),
 	)
-
-	details := &types.Struct{
-		Fields: commonDetails,
-	}
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
@@ -192,52 +186,52 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "width"); v != nil {
-		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
+		details.SetFloat64(bundle.RelationKeyWidthInPixels, v.GetNumberValue())
 	}
 
 	if v := pbtypes.Get(largest.GetMeta(), "height"); v != nil {
-		details.Fields[bundle.RelationKeyHeightInPixels.String()] = v
+		details.SetFloat64(bundle.RelationKeyHeightInPixels, v.GetNumberValue())
 	}
 
 	if largest.Meta != nil {
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
-		details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Name), "."))
-		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Media)
-		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Size_))
-		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Added))
+		details.SetString(bundle.RelationKeyName, strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
+		details.SetString(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(largest.Name), "."))
+		details.SetString(bundle.RelationKeyFileMimeType, largest.Media)
+		details.SetFloat64(bundle.RelationKeySizeInBytes, float64(largest.Size_))
+		details.SetFloat64(bundle.RelationKeyAddedDate, float64(largest.Added))
 	}
 
 	if !imageExif.Created.IsZero() {
-		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(imageExif.Created.Unix()))
+		details.SetFloat64(bundle.RelationKeyCreatedDate, float64(imageExif.Created.Unix()))
 	}
 	/*if exif.Latitude != 0.0 {
-		details.Fields["latitude"] = pbtypes.Float64(exif.Latitude)
+		details.Set("latitude",  pbtypes.Float64(exif.Latitude))
 	}
 	if exif.Longitude != 0.0 {
-		details.Fields["longitude"] = pbtypes.Float64(exif.Longitude)
+		details.Set("longitude",  pbtypes.Float64(exif.Longitude))
 	}*/
 	if imageExif.CameraModel != "" {
-		details.Fields[bundle.RelationKeyCamera.String()] = pbtypes.String(imageExif.CameraModel)
+		details.SetString(bundle.RelationKeyCamera, imageExif.CameraModel)
 	}
 	if imageExif.ExposureTime != "" {
-		details.Fields[bundle.RelationKeyExposure.String()] = pbtypes.String(imageExif.ExposureTime)
+		details.SetString(bundle.RelationKeyExposure, imageExif.ExposureTime)
 	}
 	if imageExif.FNumber != 0 {
-		details.Fields[bundle.RelationKeyFocalRatio.String()] = pbtypes.Float64(imageExif.FNumber)
+		details.SetFloat64(bundle.RelationKeyFocalRatio, imageExif.FNumber)
 	}
 	if imageExif.ISO != 0 {
-		details.Fields[bundle.RelationKeyCameraIso.String()] = pbtypes.Float64(float64(imageExif.ISO))
+		details.SetFloat64(bundle.RelationKeyCameraIso, float64(imageExif.ISO))
 	}
 	if imageExif.Description != "" {
 		// use non-empty image description as an image name, because it much uglier to use file names for objects
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(imageExif.Description)
+		details.SetString(bundle.RelationKeyName, imageExif.Description)
 	}
 	if imageExif.Artist != "" {
 		artistName, artistURL := unpackArtist(imageExif.Artist)
-		details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistName)
+		details.SetString(bundle.RelationKeyMediaArtistName, artistName)
 
 		if artistURL != "" {
-			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistURL)
+			details.SetString(bundle.RelationKeyMediaArtistURL, artistURL)
 		}
 	}
 	return details, nil

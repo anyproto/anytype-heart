@@ -243,8 +243,7 @@ func TestPb_GetSnapshots(t *testing.T) {
 		dir := t.TempDir()
 		p := &Pb{}
 		zipPath := filepath.Join(dir, "empty.zip")
-		err := test.CreateEmptyZip(t, zipPath)
-		assert.Nil(t, err)
+		test.CreateEmptyZip(t, zipPath)
 
 		// when
 		_, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{

@@ -3,12 +3,11 @@ package subscription
 import (
 	"errors"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -17,7 +16,7 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []string, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
+func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
 		spaceId:     spaceId,
@@ -36,7 +35,7 @@ func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []stri
 type sortedSub struct {
 	id      string
 	spaceId string
-	keys    []string
+	keys    []domain.RelationKey
 	filter  database.Filter
 	order   database.Order
 
@@ -47,7 +46,7 @@ type sortedSub struct {
 	afterEl, beforeEl *skiplist.Element
 
 	depSub           *simpleSub
-	depKeys          []string
+	depKeys          []domain.RelationKey
 	activeEntriesBuf []*entry
 
 	forceSubIds []string
@@ -126,7 +125,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	activeEntries := s.getActiveEntries()
 	var activeIds = make([]string, len(activeEntries))
 	for i, ae := range activeEntries {
-		ae.SetSub(s.id, true, false)
+		ae.SetSub(s.id, true, true)
 		activeIds[i] = ae.id
 	}
 	s.diff = newListDiff(activeIds)
@@ -174,7 +173,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	wasAddOrRemove, ids := s.diff.diff(ctx, s.id, s.keys)
-	s.ds.depEntriesByEntries(ctx, s.spaceId, ids)
+	s.ds.depEntriesByEntries(ctx, ids)
 
 	hasChanges := false
 	for _, e := range ctx.entries {
@@ -190,7 +189,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
-		s.ds.refillSubscription(s.spaceId, ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
+		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
 	}
 
 	if s.parent != nil {
@@ -294,9 +293,9 @@ func (s *sortedSub) counters() (prev, next int) {
 	return
 }
 
-func (s *sortedSub) getActiveRecords() (res []*types.Struct) {
+func (s *sortedSub) getActiveRecords() (res []*domain.Details) {
 	reverse := s.iterateActive(func(e *entry) {
-		res = append(res, pbtypes.StructFilterKeys(e.data, s.keys))
+		res = append(res, e.data.CopyOnlyKeys(s.keys...))
 	})
 	if reverse {
 		for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {

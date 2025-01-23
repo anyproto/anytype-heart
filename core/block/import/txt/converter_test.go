@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestTXT_GetSnapshots(t *testing.T) {
@@ -34,8 +33,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 		assert.NotNil(t, sn)
 		assert.Len(t, sn.Snapshots, 2)
 		assert.Contains(t, sn.Snapshots[0].FileName, "test.txt")
-		assert.NotEmpty(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"])
-		assert.Equal(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"], pbtypes.String("test"))
+		assert.Equal(t, sn.Snapshots[0].Snapshot.Data.Details.GetString("name"), "test")
 
 		assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
 		assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
@@ -46,7 +44,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 			text  string
 		)
 
-		for _, block := range sn.Snapshots[0].Snapshot.Data.GetBlocks() {
+		for _, block := range sn.Snapshots[0].Snapshot.Data.Blocks {
 			if t, ok := block.Content.(*model.BlockContentOfText); ok {
 				found = ok
 				text = t.Text.GetText()
@@ -78,8 +76,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 		// given
 		dir := t.TempDir()
 		zipPath := filepath.Join(dir, "empty.zip")
-		err := test.CreateEmptyZip(t, zipPath)
-		assert.Nil(t, err)
+		test.CreateEmptyZip(t, zipPath)
 
 		h := &TXT{}
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})

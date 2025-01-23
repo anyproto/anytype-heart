@@ -181,7 +181,7 @@ func (mw *Middleware) DebugSubscriptions(_ context.Context, _ *pb.RpcDebugSubscr
 	}
 	var subscriptions []string
 	err := mw.doBlockService(func(s *block.Service) error {
-		subscriptions = getService[subscription.Service](mw).SubscriptionIDs()
+		subscriptions = mustService[subscription.Service](mw).SubscriptionIDs()
 		return nil
 	})
 	return response(subscriptions, err)
@@ -256,7 +256,7 @@ func (mw *Middleware) DebugExportLog(cctx context.Context, req *pb.RpcDebugExpor
 }
 
 func (mw *Middleware) DebugAnystoreObjectChanges(cctx context.Context, req *pb.RpcDebugAnystoreObjectChangesRequest) *pb.RpcDebugAnystoreObjectChangesResponse {
-	debugService := getService[debug.Debug](mw)
+	debugService := mustService[debug.Debug](mw)
 	changes, wrongOrder, err := debugService.DebugAnystoreObjectChanges(cctx, req.ObjectId, req.OrderBy)
 	if err != nil {
 		return &pb.RpcDebugAnystoreObjectChangesResponse{
@@ -274,7 +274,7 @@ func (mw *Middleware) DebugAnystoreObjectChanges(cctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) DebugNetCheck(cctx context.Context, req *pb.RpcDebugNetCheckRequest) *pb.RpcDebugNetCheckResponse {
-	res, err := getService[debug.Debug](mw).NetCheck(cctx, req.ClientYml)
+	res, err := mustService[debug.Debug](mw).NetCheck(cctx, req.ClientYml)
 	if err != nil {
 		return &pb.RpcDebugNetCheckResponse{
 			Error: &pb.RpcDebugNetCheckResponseError{

@@ -29,7 +29,7 @@ import (
 
 const CName = "payments"
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.Logger(CName)
 
 const (
 	refreshIntervalSecs = 60
@@ -150,7 +150,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.ns = app.MustComponent[nameservice.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
-	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log})
+	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log.Desugar()})
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
 	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
@@ -189,17 +189,11 @@ func (s *service) getPeriodicStatus(ctx context.Context) error {
 }
 
 func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusResponse) {
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfMembershipUpdate{
-					MembershipUpdate: &pb.EventMembershipUpdate{
-						Data: status.Data,
-					},
-				},
-			},
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipUpdate{
+		MembershipUpdate: &pb.EventMembershipUpdate{
+			Data: status.Data,
 		},
-	})
+	}))
 }
 
 // GetSubscriptionStatus Logic:

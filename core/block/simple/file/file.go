@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -129,12 +130,12 @@ func (f *File) Validate() error {
 	return nil
 }
 
-func (f *File) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
+func (f *File) Diff(spaceId string, b simple.Block) (msgs []simple.EventMessage, err error) {
 	file, ok := b.(*File)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = f.Base.Diff(file); err != nil {
+	if msgs, err = f.Base.Diff(spaceId, file); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetFile{
@@ -176,7 +177,7 @@ func (f *File) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	}
 
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes})})
 	}
 	return
 }

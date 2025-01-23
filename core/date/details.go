@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -16,7 +14,7 @@ import (
 
 func BuildDetailsFromTimestamp(
 	ctx context.Context, spaceService space.Service, spaceId string, timestamp int64,
-) (details *types.Struct, err error) {
+) (details *domain.Details, err error) {
 	spc, err := spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get space service: %w", err)

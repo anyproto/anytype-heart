@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -76,25 +75,53 @@ func TestDifferentSpaces(t *testing.T) {
 		SpaceId: "space2",
 	}))
 
-	search, err := ft.Search([]string{"space1"}, "one")
+	search, err := ft.Search("space1", "one")
 	require.NoError(t, err)
 	require.Len(t, search, 1)
 
-	search, err = ft.Search([]string{"space2"}, "one")
+	search, err = ft.Search("space2", "one")
 	require.NoError(t, err)
 	require.Len(t, search, 1)
 
-	search, err = ft.Search([]string{"space1", "space2"}, "one")
+	search, err = ft.Search("", "one")
 	require.NoError(t, err)
 	require.Len(t, search, 2)
 
-	search, err = ft.Search([]string{""}, "one")
+	_ = ft.Close(nil)
+}
+
+func TestNamePrefixSearch(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "")
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "id1/r/name",
+		Title: "opa",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:   "id2/r/name",
+		Text: "opa",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "id3/r/desc",
+		Title: "one",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:   "id4/r/desc",
+		Text: "opa",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:   "id5/r/desc",
+		Text: "noone",
+	}))
+
+	search, err := ft.NamePrefixSearch("", "o")
 	require.NoError(t, err)
 	require.Len(t, search, 2)
 
-	search, err = ft.Search(nil, "one")
+	search, err = ft.NamePrefixSearch("", "n")
 	require.NoError(t, err)
-	require.Len(t, search, 2)
+	require.Len(t, search, 0)
 
 	_ = ft.Close(nil)
 }
@@ -115,7 +142,12 @@ func TestNewFTSearch(t *testing.T) {
 		{
 			name:   "assertFoundCaseSensitivePartsOfTheWords",
 			tester: assertFoundCaseSensitivePartsOfTheWords,
-		}, {
+		},
+		{
+			name:   "assertPrefix",
+			tester: assertPrefix,
+		},
+		{
 			name:   "assertChineseFound",
 			tester: assertChineseFound,
 		},
@@ -131,6 +163,50 @@ func TestNewFTSearch(t *testing.T) {
 			testCase.tester(t, tmpDir)
 		})
 	}
+}
+
+func assertPrefix(t *testing.T, tmpDir string) {
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "1",
+		Title: "I love my mum",
+		Text:  "",
+	}))
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "2",
+		Title: "",
+		Text:  "Something completely different",
+	}))
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "4",
+		Title: "Just random filler",
+		Text:  "",
+	}))
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "4",
+		Title: "Another text for fun",
+		Text:  "",
+	}))
+
+	validateSearch(t, ft, "", "I love", 1)
+	validateSearch(t, ft, "", "I lo", 1)
+	validateSearch(t, ft, "", "I", 1)
+	validateSearch(t, ft, "", "lov", 1)
+
+	validateSearch(t, ft, "", "Something", 1)
+	validateSearch(t, ft, "", "Some", 1)
+	validateSearch(t, ft, "", "comp", 1)
+	validateSearch(t, ft, "", "diff", 1)
+	validateSearch(t, ft, "", "Something c", 1)
+	validateSearch(t, ft, "", "Something different", 1)
+	validateSearch(t, ft, "", "different something", 1)
+
+	_ = ft.Close(nil)
 }
 
 func assertFoundCaseSensitivePartsOfTheWords(t *testing.T, tmpDir string) {
@@ -252,7 +328,7 @@ func assertSearch(t *testing.T, tmpDir string) {
 }
 
 func validateSearch(t *testing.T, ft FTSearch, spaceID, qry string, times int) {
-	res, err := ft.Search([]string{spaceID}, qry)
+	res, err := ft.Search(spaceID, qry)
 	require.NoError(t, err)
 	assert.Len(t, res, times)
 }
@@ -292,49 +368,9 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 	validateSearch(t, ft, "", "Advanced", 1)
 	validateSearch(t, ft, "", "dash", 2)
 	validateSearch(t, ft, "", "space", 4)
-	validateSearch(t, ft, "", "of", 5)
+	validateSearch(t, ft, "", "of", 4)
 
 	_ = ft.Close(nil)
-}
-
-func TestEscapeQuery(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{strings.Repeat("a", 99) + " aa", `("` + strings.Repeat("a", 99) + `" OR ` + strings.Repeat("a", 99) + `)`},
-		{`""`, ``},
-		{"simpleQuery", `("simplequery" OR simplequery)`},
-		{"with+special^chars", `("withspecialchars" OR withspecialchars)`},
-		{"text`with:brackets{}", `("textwithbrackets" OR textwithbrackets)`},
-		{"escaped[]symbols()", `("escapedsymbols" OR escapedsymbols)`},
-		{"multiple!!special~~", `("multiplespecial" OR multiplespecial)`},
-	}
-
-	for _, test := range tests {
-		actual := prepareQuery(test.input)
-		if actual != test.expected {
-			t.Errorf("For input '%s', expected '%s', but got '%s'", test.input, test.expected, actual)
-		}
-	}
-}
-
-// Tests
-func TestGetSpaceIdsQuery(t *testing.T) {
-	// Test with empty slice of ids
-	assert.Equal(t, "", getSpaceIdsQuery([]string{}))
-
-	// Test with slice containing only empty strings
-	assert.Equal(t, "", getSpaceIdsQuery([]string{"", "", ""}))
-
-	// Test with a single id
-	assert.Equal(t, "(SpaceID:123)", getSpaceIdsQuery([]string{"123"}))
-
-	// Test with multiple ids
-	assert.Equal(t, "(SpaceID:123 OR SpaceID:456 OR SpaceID:789)", getSpaceIdsQuery([]string{"123", "456", "789"}))
-
-	// Test with some empty ids
-	assert.Equal(t, "(SpaceID:123 OR SpaceID:789)", getSpaceIdsQuery([]string{"123", "", "789"}))
 }
 
 func TestFtSearch_Close(t *testing.T) {

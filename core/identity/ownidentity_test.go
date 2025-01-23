@@ -10,13 +10,13 @@ import (
 	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ownSubscriptionFixture struct {
@@ -144,12 +143,12 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
-				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
-				bundle.RelationKeyGlobalName:  pbtypes.String("foobar"),
-				bundle.RelationKeyIconImage:   pbtypes.String("fileObjectId"),
-				bundle.RelationKeyName:        pbtypes.String("John Doe"),
-				bundle.RelationKeyDescription: pbtypes.String("Description"),
+				bundle.RelationKeyId:          domain.String(testProfileObjectId),
+				bundle.RelationKeySpaceId:     domain.String("space1"),
+				bundle.RelationKeyGlobalName:  domain.String("foobar"),
+				bundle.RelationKeyIconImage:   domain.String("fileObjectId"),
+				bundle.RelationKeyName:        domain.String("John Doe"),
+				bundle.RelationKeyDescription: domain.String("Description"),
 			},
 		})
 
@@ -269,11 +268,11 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
-				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
-				bundle.RelationKeyGlobalName:  pbtypes.String("foobar"),
-				bundle.RelationKeyName:        pbtypes.String("John Doe"),
-				bundle.RelationKeyDescription: pbtypes.String("Description"),
+				bundle.RelationKeyId:          domain.String(testProfileObjectId),
+				bundle.RelationKeySpaceId:     domain.String("space1"),
+				bundle.RelationKeyGlobalName:  domain.String("foobar"),
+				bundle.RelationKeyName:        domain.String("John Doe"),
+				bundle.RelationKeyDescription: domain.String("Description"),
 			},
 		})
 		time.Sleep(testBatchTimeout / 4)
@@ -283,12 +282,12 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
-				bundle.RelationKeySpaceId:     pbtypes.String("space1"),
-				bundle.RelationKeyGlobalName:  pbtypes.String("foobar2"),
-				bundle.RelationKeyIconImage:   pbtypes.String("fileObjectId2"),
-				bundle.RelationKeyName:        pbtypes.String("John Doe2"),
-				bundle.RelationKeyDescription: pbtypes.String("Description2"),
+				bundle.RelationKeyId:          domain.String(testProfileObjectId),
+				bundle.RelationKeySpaceId:     domain.String("space1"),
+				bundle.RelationKeyGlobalName:  domain.String("foobar2"),
+				bundle.RelationKeyIconImage:   domain.String("fileObjectId2"),
+				bundle.RelationKeyName:        domain.String("John Doe2"),
+				bundle.RelationKeyDescription: domain.String("Description2"),
 			},
 		})
 		time.Sleep(testBatchTimeout / 4)
@@ -382,12 +381,12 @@ func TestWaitForDetails(t *testing.T) {
 	}, nil)
 	fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:          pbtypes.String(testProfileObjectId),
-			bundle.RelationKeySpaceId:     pbtypes.String("space1"),
-			bundle.RelationKeyGlobalName:  pbtypes.String("foobar"),
-			bundle.RelationKeyIconImage:   pbtypes.String("fileObjectId"),
-			bundle.RelationKeyName:        pbtypes.String("John Doe"),
-			bundle.RelationKeyDescription: pbtypes.String("Description"),
+			bundle.RelationKeyId:          domain.String(testProfileObjectId),
+			bundle.RelationKeySpaceId:     domain.String("space1"),
+			bundle.RelationKeyGlobalName:  domain.String("foobar"),
+			bundle.RelationKeyIconImage:   domain.String("fileObjectId"),
+			bundle.RelationKeyName:        domain.String("John Doe"),
+			bundle.RelationKeyDescription: domain.String("Description"),
 		},
 	})
 	time.Sleep(2 * testBatchTimeout)
@@ -400,15 +399,13 @@ func TestWaitForDetails(t *testing.T) {
 		assert.Equal(t, testIdentity, identity)
 		assert.Equal(t, accountSymKey, metadataKey)
 
-		wantDetails := &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():          pbtypes.String(testProfileObjectId),
-				bundle.RelationKeyName.String():        pbtypes.String("John Doe"),
-				bundle.RelationKeyDescription.String(): pbtypes.String("Description"),
-				bundle.RelationKeyGlobalName.String():  pbtypes.String(globalName),
-				bundle.RelationKeyIconImage.String():   pbtypes.String("fileObjectId"),
-			},
-		}
+		wantDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:          domain.String(testProfileObjectId),
+			bundle.RelationKeyName:        domain.String("John Doe"),
+			bundle.RelationKeyDescription: domain.String("Description"),
+			bundle.RelationKeyGlobalName:  domain.String(globalName),
+			bundle.RelationKeyIconImage:   domain.String("fileObjectId"),
+		})
 		assert.Equal(t, wantDetails, details)
 	})
 }

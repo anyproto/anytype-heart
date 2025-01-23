@@ -19,7 +19,7 @@ func (mw *Middleware) BlockDataviewGroupOrderUpdate(cctx context.Context, req *p
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).UpdateDataviewGroupOrder(ctx, *req)
+	err := mustService[dataviewservice.Service](mw).UpdateDataviewGroupOrder(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewGroupOrderUpdateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -37,7 +37,7 @@ func (mw *Middleware) BlockDataviewObjectOrderUpdate(cctx context.Context, req *
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).UpdateDataviewObjectOrder(ctx, *req)
+	err := mustService[dataviewservice.Service](mw).UpdateDataviewObjectOrder(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewObjectOrderUpdateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -55,7 +55,7 @@ func (mw *Middleware) BlockDataviewObjectOrderMove(cctx context.Context, req *pb
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).DataviewMoveObjectsInView(ctx, req)
+	err := mustService[dataviewservice.Service](mw).DataviewMoveObjectsInView(ctx, req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewObjectOrderMoveResponseError_UNKNOWN_ERROR, err)
 	}
@@ -85,7 +85,7 @@ func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context
 		return m
 	}
 
-	views, err := getService[dataviewservice.Service](mw).CopyDataviewToBlock(ctx, req)
+	views, err := mustService[dataviewservice.Service](mw).CopyDataviewToBlock(ctx, req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewCreateFromExistingObjectResponseError_UNKNOWN_ERROR,
 			req.BlockId, req.TargetObjectId, views, err)
@@ -106,7 +106,7 @@ func (mw *Middleware) BlockDataviewViewUpdate(cctx context.Context, req *pb.RpcB
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).UpdateDataviewView(ctx, *req)
+	err := mustService[dataviewservice.Service](mw).UpdateDataviewView(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewViewUpdateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -124,7 +124,7 @@ func (mw *Middleware) BlockDataviewViewCreate(cctx context.Context, req *pb.RpcB
 		}
 		return m
 	}
-	viewId, err := getService[dataviewservice.Service](mw).CreateDataviewView(ctx, *req)
+	viewId, err := mustService[dataviewservice.Service](mw).CreateDataviewView(ctx, *req)
 	if err != nil {
 		return response("", pb.RpcBlockDataviewViewCreateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -142,7 +142,7 @@ func (mw *Middleware) BlockDataviewViewDelete(cctx context.Context, req *pb.RpcB
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).DeleteDataviewView(ctx, *req)
+	err := mustService[dataviewservice.Service](mw).DeleteDataviewView(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewViewDeleteResponseError_UNKNOWN_ERROR, err)
 	}
@@ -160,7 +160,7 @@ func (mw *Middleware) BlockDataviewViewSetActive(cctx context.Context, req *pb.R
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).SetDataviewActiveView(ctx, *req)
+	err := mustService[dataviewservice.Service](mw).SetDataviewActiveView(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewViewSetActiveResponseError_UNKNOWN_ERROR, err)
 	}
@@ -178,7 +178,7 @@ func (mw *Middleware) BlockDataviewViewSetPosition(cctx context.Context, req *pb
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).SetDataviewViewPosition(ctx, *req)
+	err := mustService[dataviewservice.Service](mw).SetDataviewViewPosition(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewViewSetPositionResponseError_UNKNOWN_ERROR, err)
 	}
@@ -197,7 +197,7 @@ func (mw *Middleware) BlockDataviewRelationAdd(cctx context.Context, req *pb.Rpc
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).AddDataviewRelation(ctx, *req)
+	err := mustService[dataviewservice.Service](mw).AddDataviewRelation(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewRelationAddResponseError_BAD_INPUT, err)
 	}
@@ -216,7 +216,7 @@ func (mw *Middleware) BlockDataviewRelationDelete(cctx context.Context, req *pb.
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).DeleteDataviewRelation(ctx, *req)
+	err := mustService[dataviewservice.Service](mw).DeleteDataviewRelation(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockDataviewRelationDeleteResponseError_BAD_INPUT, err)
 	}
@@ -240,7 +240,7 @@ func (mw *Middleware) BlockDataviewSetSource(cctx context.Context, req *pb.RpcBl
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).SetDataviewSource(ctx, req.ContextId, req.BlockId, req.Source)
+	err := mustService[dataviewservice.Service](mw).SetDataviewSource(ctx, req.ContextId, req.BlockId, req.Source)
 	return resp(err)
 }
 
@@ -261,7 +261,7 @@ func (mw *Middleware) BlockDataviewFilterAdd(cctx context.Context, req *pb.RpcBl
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).AddDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Filter)
+	err := mustService[dataviewservice.Service](mw).AddDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Filter)
 	return resp(err)
 }
 
@@ -282,7 +282,7 @@ func (mw *Middleware) BlockDataviewFilterRemove(cctx context.Context, req *pb.Rp
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).RemoveDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
+	err := mustService[dataviewservice.Service](mw).RemoveDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	return resp(err)
 }
 
@@ -303,7 +303,7 @@ func (mw *Middleware) BlockDataviewFilterReplace(cctx context.Context, req *pb.R
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Filter)
+	err := mustService[dataviewservice.Service](mw).ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Filter)
 	return resp(err)
 }
 
@@ -324,7 +324,7 @@ func (mw *Middleware) BlockDataviewFilterSort(cctx context.Context, req *pb.RpcB
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).ReorderDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
+	err := mustService[dataviewservice.Service](mw).ReorderDataviewFilters(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	return resp(err)
 }
 
@@ -345,7 +345,7 @@ func (mw *Middleware) BlockDataviewSortAdd(cctx context.Context, req *pb.RpcBloc
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).AddDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.Sort)
+	err := mustService[dataviewservice.Service](mw).AddDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.Sort)
 	return resp(err)
 }
 
@@ -366,7 +366,7 @@ func (mw *Middleware) BlockDataviewSortRemove(cctx context.Context, req *pb.RpcB
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).RemoveDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
+	err := mustService[dataviewservice.Service](mw).RemoveDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	return resp(err)
 }
 
@@ -387,7 +387,7 @@ func (mw *Middleware) BlockDataviewSortReplace(cctx context.Context, req *pb.Rpc
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).ReplaceDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Sort)
+	err := mustService[dataviewservice.Service](mw).ReplaceDataviewSort(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Sort)
 	return resp(err)
 }
 
@@ -408,7 +408,7 @@ func (mw *Middleware) BlockDataviewSortSort(cctx context.Context, req *pb.RpcBlo
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).ReorderDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
+	err := mustService[dataviewservice.Service](mw).ReorderDataviewSorts(ctx, req.ContextId, req.BlockId, req.ViewId, req.Ids)
 	return resp(err)
 }
 
@@ -429,7 +429,7 @@ func (mw *Middleware) BlockDataviewViewRelationAdd(cctx context.Context, req *pb
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).AddDataviewViewRelation(ctx, req.ContextId, req.BlockId, req.ViewId, req.Relation)
+	err := mustService[dataviewservice.Service](mw).AddDataviewViewRelation(ctx, req.ContextId, req.BlockId, req.ViewId, req.Relation)
 	return resp(err)
 }
 
@@ -450,7 +450,7 @@ func (mw *Middleware) BlockDataviewViewRelationRemove(cctx context.Context, req 
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).RemoveDataviewViewRelations(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
+	err := mustService[dataviewservice.Service](mw).RemoveDataviewViewRelations(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
 	return resp(err)
 }
 
@@ -471,7 +471,7 @@ func (mw *Middleware) BlockDataviewViewRelationReplace(cctx context.Context, req
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).ReplaceDataviewViewRelation(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKey, req.Relation)
+	err := mustService[dataviewservice.Service](mw).ReplaceDataviewViewRelation(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKey, req.Relation)
 	return resp(err)
 }
 
@@ -492,7 +492,7 @@ func (mw *Middleware) BlockDataviewViewRelationSort(cctx context.Context, req *p
 		return r
 	}
 
-	err := getService[dataviewservice.Service](mw).ReorderDataviewViewRelations(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
+	err := mustService[dataviewservice.Service](mw).ReorderDataviewViewRelations(ctx, req.ContextId, req.BlockId, req.ViewId, req.RelationKeys)
 	return resp(err)
 }
 
@@ -507,7 +507,7 @@ func (mw *Middleware) ObjectSetSource(cctx context.Context, req *pb.RpcObjectSet
 		}
 		return m
 	}
-	err := getService[dataviewservice.Service](mw).SetSourceToSet(ctx, req.ContextId, req.Source)
+	err := mustService[dataviewservice.Service](mw).SetSourceToSet(ctx, req.ContextId, req.Source)
 	if err != nil {
 		return response(pb.RpcObjectSetSourceResponseError_UNKNOWN_ERROR, err)
 	}

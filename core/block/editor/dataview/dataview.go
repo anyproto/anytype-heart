@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -90,7 +89,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 
 	if len(source) == 0 {
 		s.Unlink(blockId)
-		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		s.SetLocalDetail(bundle.RelationKeySetOf, domain.StringList(source))
 		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
@@ -108,7 +107,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		s.InsertTo("", 0, blockId)
 	}
 
-	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+	s.SetLocalDetail(bundle.RelationKeySetOf, domain.StringList(source))
 	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
@@ -127,7 +126,7 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
 		}
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(source))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, domain.StringList(source))
 
 	flags := internalflag.NewFromState(s)
 	// set with source is no longer empty

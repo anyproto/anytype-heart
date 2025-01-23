@@ -6,6 +6,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -39,13 +40,13 @@ func (s *Base) ModelToSave() *model.Block {
 	return s.Block
 }
 
-func (s *Base) Diff(block simple.Block) (msgs []simple.EventMessage, err error) {
+func (s *Base) Diff(spaceId string, block simple.Block) (msgs []simple.EventMessage, err error) {
 	m := block.Model()
 	if !stringSlicesEq(m.ChildrenIds, s.ChildrenIds) {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetChildrenIds{BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
+		m := event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetChildrenIds{BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
 			Id:          s.Id,
 			ChildrenIds: m.ChildrenIds,
-		}}}
+		}})
 		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 
@@ -56,38 +57,38 @@ func (s *Base) Diff(block simple.Block) (msgs []simple.EventMessage, err error) 
 		m.Restrictions = &model.BlockRestrictions{}
 	}
 	if *s.Restrictions != *m.Restrictions {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetRestrictions{BlockSetRestrictions: &pb.EventBlockSetRestrictions{
+		m := event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetRestrictions{BlockSetRestrictions: &pb.EventBlockSetRestrictions{
 			Id:           s.Id,
 			Restrictions: m.Restrictions,
-		}}}
+		}})
 		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 	if !fieldsEq(s.Fields, m.Fields) {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFields{BlockSetFields: &pb.EventBlockSetFields{
+		m := event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetFields{BlockSetFields: &pb.EventBlockSetFields{
 			Id:     s.Id,
 			Fields: m.Fields,
-		}}}
+		}})
 		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 	if s.BackgroundColor != m.BackgroundColor {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBackgroundColor{BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
+		m := event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetBackgroundColor{BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
 			Id:              s.Id,
 			BackgroundColor: m.BackgroundColor,
-		}}}
+		}})
 		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 	if s.Align != m.Align {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetAlign{BlockSetAlign: &pb.EventBlockSetAlign{
+		m := event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetAlign{BlockSetAlign: &pb.EventBlockSetAlign{
 			Id:    s.Id,
 			Align: m.Align,
-		}}}
+		}})
 		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 	if s.VerticalAlign != m.VerticalAlign {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetVerticalAlign{BlockSetVerticalAlign: &pb.EventBlockSetVerticalAlign{
+		m := event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetVerticalAlign{BlockSetVerticalAlign: &pb.EventBlockSetVerticalAlign{
 			Id:            s.Id,
 			VerticalAlign: m.VerticalAlign,
-		}}}
+		}})
 		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 

@@ -5,8 +5,10 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
@@ -46,6 +48,17 @@ func getErrorDescription(err error) string {
 		return ""
 	}
 	return anyerror.CleanupError(err).Error()
+}
+
+func requestDetailsListToDomain(list []*model.Detail) []domain.Detail {
+	details := make([]domain.Detail, 0, len(list))
+	for _, it := range list {
+		details = append(details, domain.Detail{
+			Key:   domain.RelationKey(it.Key),
+			Value: domain.ValueFromProto(it.Value),
+		})
+	}
+	return details
 }
 
 func init() {

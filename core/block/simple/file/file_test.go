@@ -29,7 +29,7 @@ func TestFile_Diff(t *testing.T) {
 	t.Run("type error", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := base.NewBase(&model.Block{})
-		_, err := b1.Diff(b2)
+		_, err := b1.Diff("", b2)
 		assert.Error(t, err)
 	})
 	t.Run("no diff", func(t *testing.T) {
@@ -38,7 +38,7 @@ func TestFile_Diff(t *testing.T) {
 		tm := time.Now()
 		b1.SetHash("1").SetMIME("2").SetName("3").SetSize(4).SetTime(tm)
 		b2.SetHash("1").SetMIME("2").SetName("3").SetSize(4).SetTime(tm)
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 0)
 	})
@@ -46,7 +46,7 @@ func TestFile_Diff(t *testing.T) {
 		b1 := testBlockPdf()
 		b2 := testBlockPdf()
 		b2.Restrictions.Read = true
-		d, err := b1.Diff(b2)
+		d, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 1)
 	})
@@ -57,7 +57,7 @@ func TestFile_Diff(t *testing.T) {
 		b2.SetState(model.BlockContentFile_Done)
 		b2.SetHash("hash").SetMIME("video/mpeg").SetName("image.mpg").SetSize(3).SetTime(time.Now()).SetType(model.BlockContentFile_Video)
 
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetFile{

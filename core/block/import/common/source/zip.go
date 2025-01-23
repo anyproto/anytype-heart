@@ -12,13 +12,19 @@ import (
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
+type OriginalFileNameGetter interface {
+	GetFileOriginalName(filename string) string
+}
+
 type Zip struct {
-	archiveReader *zip.ReadCloser
-	fileReaders   map[string]*zip.File
+	archiveReader             *zip.ReadCloser
+	fileReaders               map[string]*zip.File
+	originalToNormalizedNames map[string]string
+	rootDirs                  map[string]bool
 }
 
 func NewZip() *Zip {
-	return &Zip{fileReaders: make(map[string]*zip.File, 0)}
+	return &Zip{fileReaders: make(map[string]*zip.File), originalToNormalizedNames: make(map[string]string)}
 }
 
 func (z *Zip) Initialize(importPath string) error {
@@ -28,12 +34,20 @@ func (z *Zip) Initialize(importPath string) error {
 		return err
 	}
 	fileReaders := make(map[string]*zip.File, len(archiveReader.File))
+	filePaths := make(map[string]struct{}, len(archiveReader.File))
 	for i, f := range archiveReader.File {
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
 			continue
 		}
-		fileReaders[normalizeName(f, i)] = f
+		normalizedName := normalizeName(f, i)
+		fileReaders[normalizedName] = f
+		filePaths[normalizedName] = struct{}{}
+		if normalizedName != f.Name {
+			z.originalToNormalizedNames[f.Name] = normalizedName
+		}
 	}
+
+	z.rootDirs = findNonEmptyDirs(filePaths)
 	z.fileReaders = fileReaders
 	return nil
 }
@@ -92,5 +106,13 @@ func (z *Zip) Close() {
 }
 
 func (z *Zip) IsRootFile(fileName string) bool {
-	return filepath.Dir(fileName) == "."
+	fileDir := filepath.Dir(fileName)
+	return fileDir == "." || z.rootDirs[fileDir]
+}
+
+func (z *Zip) GetFileOriginalName(fileName string) string {
+	if originalName, ok := z.originalToNormalizedNames[fileName]; ok {
+		return originalName
+	}
+	return fileName
 }

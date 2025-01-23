@@ -2,7 +2,6 @@ package pbjson
 
 import (
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
@@ -27,7 +26,7 @@ func (p *pbj) Convert(sbType model.SmartBlockType) []byte {
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:        st.BlocksToSave(),
-			Details:       st.CombinedDetails(),
+			Details:       st.CombinedDetails().ToProto(),
 			ObjectTypes:   domain.MarshalTypeKeys(st.ObjectTypeKeys()),
 			Collections:   st.Store(),
 			RelationLinks: st.PickRelationLinks(),
@@ -51,7 +50,7 @@ func (p *pbj) Ext() string {
 	return ".pb.json"
 }
 
-func (p *pbj) SetKnownDocs(map[string]*types.Struct) converter.Converter {
+func (p *pbj) SetKnownDocs(map[string]*domain.Details) converter.Converter {
 	return p
 }
 

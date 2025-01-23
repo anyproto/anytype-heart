@@ -4,26 +4,28 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func TestEntry_SubIds(t *testing.T) {
-	e := &entry{}
+	e := newEntry("id", domain.NewDetails())
 	e.SetSub("1", true, false)
 	assert.Len(t, e.SubIds(), 1)
 	e.SetSub("2", false, false)
 	assert.Len(t, e.SubIds(), 2)
 	e.SetSub("2", false, false)
 	assert.Len(t, e.SubIds(), 2)
-	assert.True(t, e.IsActive("1"))
-	assert.False(t, e.IsActive("1", "2"))
+	assert.Contains(t, e.GetActive(), "1")
+	assert.NotContains(t, e.GetActive(), []string{"1", "2"})
 	e.RemoveSubId("1")
 	assert.Len(t, e.SubIds(), 1)
 
 	e.SetSub("2", true, true)
 	e.SetSub("3", true, false)
-	assert.False(t, e.IsFullDetailsSent("2", "3"))
-	assert.True(t, e.IsFullDetailsSent("2"))
+	assert.Contains(t, e.GetFullDetailsSent(), "2")
+	assert.NotContains(t, e.GetFullDetailsSent(), "3")
 	e.SetSub("3", true, true)
-	assert.True(t, e.IsFullDetailsSent("2", "3"))
+	assert.NotContains(t, e.GetFullDetailsSent(), []string{"2", "3"})
 
 }

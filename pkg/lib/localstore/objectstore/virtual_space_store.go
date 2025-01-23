@@ -6,11 +6,11 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) SaveVirtualSpace(id string) (err error) {
@@ -49,26 +49,26 @@ func (s *dsObjectStore) ListVirtualSpaces() ([]string, error) {
 
 func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
 	ids, _, err := s.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledRelationURLPrefix),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(addr.BundledRelationURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledObjectTypeURLPrefix),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(addr.BundledObjectTypeURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledTemplatesURLPrefix),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(addr.BundledTemplatesURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.AnytypeProfileId),
+				RelationKey: bundle.RelationKeyId,
+				Value:       domain.String(addr.AnytypeProfileId),
 			},
 		},
 	})

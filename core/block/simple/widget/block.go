@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -38,12 +39,12 @@ func (b *block) Copy() simple.Block {
 	return NewBlock(pbtypes.CopyBlock(b.Model()))
 }
 
-func (b *block) Diff(ob simple.Block) (msgs []simple.EventMessage, err error) {
+func (b *block) Diff(spaceId string, ob simple.Block) (msgs []simple.EventMessage, err error) {
 	other, ok := ob.(*block)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with incompatible block")
 	}
-	if msgs, err = b.Base.Diff(other); err != nil {
+	if msgs, err = b.Base.Diff(spaceId, other); err != nil {
 		return
 	}
 
@@ -68,7 +69,7 @@ func (b *block) Diff(ob simple.Block) (msgs []simple.EventMessage, err error) {
 	}
 
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetWidget{BlockSetWidget: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetWidget{BlockSetWidget: changes})})
 	}
 	return
 }

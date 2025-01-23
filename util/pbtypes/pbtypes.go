@@ -131,8 +131,9 @@ func IsEmptyValueOrAbsent(s *types.Struct, name string) bool {
 	return IsEmptyValue(value)
 }
 
+// IsEmptyValue returns true for nil, null value, unknown kind of value, empty strings and empty lists
 func IsEmptyValue(value *types.Value) bool {
-	if value == nil {
+	if IsNullValue(value) {
 		return true
 	}
 
@@ -140,20 +141,16 @@ func IsEmptyValue(value *types.Value) bool {
 		return len(v.StringValue) == 0
 	}
 
-	if v, ok := value.Kind.(*types.Value_NumberValue); ok {
-		return v.NumberValue == 0
+	if _, ok := value.Kind.(*types.Value_NumberValue); ok {
+		return false
 	}
 
-	if v, ok := value.Kind.(*types.Value_BoolValue); ok {
-		return !v.BoolValue
+	if _, ok := value.Kind.(*types.Value_BoolValue); ok {
+		return false
 	}
 
 	if _, ok := value.Kind.(*types.Value_ListValue); ok {
 		return len(GetStringListValue(value)) == 0
-	}
-
-	if _, ok := value.Kind.(*types.Value_NullValue); ok {
-		return true
 	}
 
 	if _, ok := value.Kind.(*types.Value_StructValue); ok {
@@ -161,6 +158,16 @@ func IsEmptyValue(value *types.Value) bool {
 	}
 
 	return true
+}
+
+func IsNullValue(value *types.Value) bool {
+	if value == nil {
+		return true
+	}
+	if _, ok := value.Kind.(*types.Value_NullValue); ok {
+		return true
+	}
+	return false
 }
 
 func GetStruct(s *types.Struct, name string) *types.Struct {
@@ -510,33 +517,6 @@ func BundledRelationIdToKey(id string) (string, error) {
 	return "", fmt.Errorf("incorrect id format")
 }
 
-func Map(s *types.Struct, keys ...string) *types.Struct {
-	if len(keys) == 0 {
-		return s
-	}
-	if s == nil {
-		return nil
-	}
-	ns := new(types.Struct)
-	if s.Fields == nil {
-		return ns
-	}
-	ns.Fields = make(map[string]*types.Value)
-	for _, key := range keys {
-		if value, ok := s.Fields[key]; ok {
-			ns.Fields[key] = value
-		}
-	}
-	return ns
-}
-
-func MapN(structs []*types.Struct, keys ...string) []*types.Struct {
-	for i, s := range structs {
-		structs[i] = Map(s, keys...)
-	}
-	return structs
-}
-
 func StructIterate(st *types.Struct, f func(path []string, v *types.Value)) {
 	var iterate func(s *types.Struct, f func(path []string, v *types.Value), path []string)
 	iterate = func(s *types.Struct, f func(path []string, v *types.Value), path []string) {
@@ -721,4 +701,34 @@ func RelationIdToKey(id string) (string, error) {
 	}
 
 	return "", fmt.Errorf("incorrect id format")
+}
+
+func ProtoToAny(v *types.Value) any {
+	if v == nil {
+		return nil
+	}
+	switch v.Kind.(type) {
+	case *types.Value_StringValue:
+		return v.GetStringValue()
+	case *types.Value_NumberValue:
+		return v.GetNumberValue()
+	case *types.Value_BoolValue:
+		return v.GetBoolValue()
+	case *types.Value_ListValue:
+		listValue := v.GetListValue()
+		if listValue == nil || len(listValue.Values) == 0 {
+			return []string{}
+		}
+
+		firstValue := listValue.Values[0]
+		if _, ok := firstValue.GetKind().(*types.Value_StringValue); ok {
+			return ListValueToStrings(listValue)
+		}
+		if _, ok := firstValue.GetKind().(*types.Value_NumberValue); ok {
+			return ListValueToFloats(listValue)
+		}
+		return []string{}
+	default:
+		return nil
+	}
 }

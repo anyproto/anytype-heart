@@ -3,11 +3,11 @@ package bookmark
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -37,7 +37,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
-	ToDetails(origin objectorigin.ObjectOrigin) *types.Struct
+	ToDetails(origin objectorigin.ObjectOrigin) *domain.Details
 	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *ObjectContent))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
@@ -52,12 +52,9 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
 }
 
-func (b *Bookmark) ToDetails(origin objectorigin.ObjectOrigin) *types.Struct {
-	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),
-		},
-	}
+func (b *Bookmark) ToDetails(origin objectorigin.ObjectOrigin) *domain.Details {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeySource, b.content.Url)
 	origin.AddToDetails(details)
 	return details
 }
@@ -92,12 +89,12 @@ func (b *Bookmark) Validate() error {
 	return nil
 }
 
-func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err error) {
+func (b *Bookmark) Diff(spaceId string, other simple.Block) (msgs []simple.EventMessage, err error) {
 	bookmark, ok := other.(*Bookmark)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = b.Base.Diff(bookmark); err != nil {
+	if msgs, err = b.Base.Diff(spaceId, bookmark); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetBookmark{
@@ -139,7 +136,7 @@ func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err err
 	}
 
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes})})
 	}
 	return
 }

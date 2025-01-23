@@ -2,8 +2,8 @@ package simple
 
 import (
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -26,7 +26,7 @@ func RegisterFallback(c BlockCreator) {
 type Block interface {
 	Model() *model.Block
 	ModelToSave() *model.Block
-	Diff(block Block) (msgs []EventMessage, err error)
+	Diff(spaceId string, block Block) (msgs []EventMessage, err error)
 	String() string
 	Copy() Block
 	Validate() error
@@ -45,8 +45,8 @@ type FileMigrator interface {
 }
 
 type DetailsService interface {
-	Details() *types.Struct
-	SetDetail(key string, value *types.Value)
+	Details() *domain.Details
+	SetDetail(key domain.RelationKey, value domain.Value)
 }
 
 type DetailsHandler interface {

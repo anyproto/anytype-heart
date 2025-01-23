@@ -11,17 +11,16 @@ import (
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -47,7 +46,7 @@ type dot struct {
 	ctx          context.Context
 	graph        *cgraph.Graph
 	graphviz     *graphviz.Graphviz
-	knownDocs    map[string]*types.Struct
+	knownDocs    map[string]*domain.Details
 	fileHashes   []string
 	imageHashes  []string
 	exportFormat graphviz.Format
@@ -81,7 +80,7 @@ func NewMultiConverter(
 	}
 }
 
-func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	d.knownDocs = docs
 	return d
 }
@@ -101,25 +100,25 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	}
 	d.nodes[st.RootId()] = n
 	n.SetStyle(cgraph.FilledNodeStyle)
-	n.SetLabel(pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
-	image := pbtypes.GetString(st.Details(), bundle.RelationKeyIconImage.String())
+	n.SetLabel(st.Details().GetString(bundle.RelationKeyName))
+	image := st.Details().GetString(bundle.RelationKeyIconImage)
 	if image != "" {
 		n.Set("iconImage", image)
 		// n.SetImage(image+".jpg")
 	}
 
-	iconEmoji := pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String())
+	iconEmoji := st.Details().GetString(bundle.RelationKeyIconEmoji)
 	if iconEmoji != "" {
 		n.Set("iconEmoji", iconEmoji)
 	}
 
-	desc := pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String())
+	desc := st.Details().GetString(bundle.RelationKeyDescription)
 	if desc != "" {
 		n.Set("description", desc)
 	}
 
 	n.Set("type", string(st.ObjectTypeKey()))
-	layout := pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())
+	layout := st.Details().GetInt64(bundle.RelationKeyLayout)
 	n.Set("layout", fmt.Sprintf("%d", layout))
 
 	// TODO: add relations

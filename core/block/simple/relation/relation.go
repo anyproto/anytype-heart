@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -48,12 +49,12 @@ func (l *Relation) Validate() error {
 	return nil
 }
 
-func (l *Relation) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
+func (l *Relation) Diff(spaceId string, b simple.Block) (msgs []simple.EventMessage, err error) {
 	relation, ok := b.(*Relation)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = l.Base.Diff(relation); err != nil {
+	if msgs, err = l.Base.Diff(spaceId, relation); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetRelation{
@@ -67,7 +68,7 @@ func (l *Relation) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	}
 
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetRelation{BlockSetRelation: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetRelation{BlockSetRelation: changes})})
 	}
 	return
 }

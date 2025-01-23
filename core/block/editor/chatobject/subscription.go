@@ -10,6 +10,7 @@ import (
 )
 
 type subscription struct {
+	spaceId     string
 	chatId      string
 	eventSender event.Sender
 
@@ -17,19 +18,18 @@ type subscription struct {
 
 	eventsBuffer []*pb.EventMessage
 
-	firstOrderId string
-	enabled      bool
+	enabled bool
 }
 
-func newSubscription(chatId string, eventSender event.Sender) *subscription {
+func newSubscription(spaceId string, chatId string, eventSender event.Sender) *subscription {
 	return &subscription{
+		spaceId:     spaceId,
 		chatId:      chatId,
 		eventSender: eventSender,
 	}
 }
 
-func (s *subscription) subscribe(firstOrderId string) {
-	s.firstOrderId = firstOrderId
+func (s *subscription) enable() {
 	s.enabled = true
 }
 
@@ -51,19 +51,21 @@ func (s *subscription) flush() {
 		return
 	}
 
+	ev := &pb.Event{
+		ContextId: s.chatId,
+		Messages:  slices.Clone(s.eventsBuffer),
+	}
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, slices.Clone(s.eventsBuffer))
+		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 		s.sessionContext = nil
 	} else if s.enabled {
-		s.eventSender.Broadcast(&pb.Event{
-			ContextId: s.chatId,
-			Messages:  slices.Clone(s.eventsBuffer),
-		})
+		s.eventSender.Broadcast(ev)
 	}
 }
 
 func (s *subscription) add(message *model.ChatMessage) {
-	if !s.canSend(message) {
+	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatAdd{
@@ -71,62 +73,51 @@ func (s *subscription) add(message *model.ChatMessage) {
 		Message: message,
 		OrderId: message.OrderId,
 	}
-	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfChatAdd{
-			ChatAdd: ev,
-		},
-	})
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
+		ChatAdd: ev,
+	}))
 }
 
 func (s *subscription) delete(messageId string) {
 	ev := &pb.EventChatDelete{
 		Id: messageId,
 	}
-	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfChatDelete{
-			ChatDelete: ev,
-		},
-	})
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatDelete{
+		ChatDelete: ev,
+	}))
 }
 
 func (s *subscription) updateFull(message *model.ChatMessage) {
-	if !s.canSend(message) {
+	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatUpdate{
 		Id:      message.Id,
 		Message: message,
 	}
-	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfChatUpdate{
-			ChatUpdate: ev,
-		},
-	})
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdate{
+		ChatUpdate: ev,
+	}))
 }
 
 func (s *subscription) updateReactions(message *model.ChatMessage) {
-	if !s.canSend(message) {
+	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatUpdateReactions{
 		Id:        message.Id,
 		Reactions: message.Reactions,
 	}
-	s.eventsBuffer = append(s.eventsBuffer, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfChatUpdateReactions{
-			ChatUpdateReactions: ev,
-		},
-	})
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReactions{
+		ChatUpdateReactions: ev,
+	}))
 }
 
-func (s *subscription) canSend(message *model.ChatMessage) bool {
+func (s *subscription) canSend() bool {
 	if s.sessionContext != nil {
 		return true
 	}
 	if !s.enabled {
-		return false
-	}
-	if s.firstOrderId > message.OrderId {
 		return false
 	}
 	return true

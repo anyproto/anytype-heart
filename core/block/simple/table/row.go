@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -43,12 +44,12 @@ func (b *rowBlock) SetIsHeader(v bool) {
 	b.content.IsHeader = v
 }
 
-func (b *rowBlock) Diff(sb simple.Block) (msgs []simple.EventMessage, err error) {
+func (b *rowBlock) Diff(spaceId string, sb simple.Block) (msgs []simple.EventMessage, err error) {
 	other, ok := sb.(*rowBlock)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = b.Base.Diff(other); err != nil {
+	if msgs, err = b.Base.Diff(spaceId, other); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetTableRow{
@@ -62,7 +63,7 @@ func (b *rowBlock) Diff(sb simple.Block) (msgs []simple.EventMessage, err error)
 	}
 
 	if hasChanges {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetTableRow{BlockSetTableRow: changes}}})
+		msgs = append(msgs, simple.EventMessage{Msg: event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetTableRow{BlockSetTableRow: changes})})
 	}
 	return
 }
