@@ -24,7 +24,7 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		}
 	}
 
-	data, _, _, err := getService[linkpreview.LinkPreview](mw).Fetch(ctx, u.String())
+	data, _, _, err := mustService[linkpreview.LinkPreview](mw).Fetch(ctx, u.String())
 	if err != nil {
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
