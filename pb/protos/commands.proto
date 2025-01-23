@@ -2782,8 +2782,13 @@ message Rpc {
                 bool includeArchived = 9;
                 // for integrations like raycast and web publishing
                 bool noProgress = 11;
+                StateFilters linksStateFilters = 12;
             }
 
+            message StateFilters {
+                repeated string relationsWhiteList = 1;
+                bool onlyRootBlock = 2;
+            }
             message Response {
                 Error error = 1;
                 string path = 2;

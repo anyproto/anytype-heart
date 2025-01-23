@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -137,6 +138,46 @@ type State struct {
 	groupId                  string
 	noObjectType             bool
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects or used for derived objects such as relations, types and etc
+}
+
+type Filters struct {
+	RelationsWhiteList []string
+	OnlyRootBlock      bool
+}
+
+func (s *State) Filter(filters *Filters) *State {
+	if filters == nil {
+		return s
+	}
+	if filters.OnlyRootBlock {
+		resultBlocks := make(map[string]simple.Block, 1)
+		resultBlocks[s.rootId] = s.blocks[s.rootId]
+		s.blocks = resultBlocks
+	}
+	if len(filters.RelationsWhiteList) > 0 {
+		s.cutRelations(filters)
+	}
+	if s.parent != nil {
+		s.parent = s.parent.Filter(filters)
+	}
+	return s
+}
+
+func (s *State) cutRelations(filters *Filters) {
+	resultDetails := domain.NewDetails()
+	s.relationLinks = pbtypes.RelationLinks{}
+	for key, value := range s.details.Iterate() {
+		if slices.Contains(filters.RelationsWhiteList, key.String()) {
+			resultDetails.Set(key, value)
+		}
+	}
+	if resultDetails.Len() != len(filters.RelationsWhiteList) {
+		for key, value := range s.localDetails.Iterate() {
+			if slices.Contains(filters.RelationsWhiteList, key.String()) {
+				resultDetails.Set(key, value)
+			}
+		}
+	}
 }
 
 func (s *State) MigrationVersion() uint32 {

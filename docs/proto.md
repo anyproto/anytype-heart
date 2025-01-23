@@ -918,6 +918,7 @@
     - [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request)
     - [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response)
     - [Rpc.Object.ListExport.Response.Error](#anytype-Rpc-Object-ListExport-Response-Error)
+    - [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters)
     - [Rpc.Object.ListModifyDetailValues](#anytype-Rpc-Object-ListModifyDetailValues)
     - [Rpc.Object.ListModifyDetailValues.Request](#anytype-Rpc-Object-ListModifyDetailValues-Request)
     - [Rpc.Object.ListModifyDetailValues.Request.Operation](#anytype-Rpc-Object-ListModifyDetailValues-Request-Operation)
@@ -15553,6 +15554,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | isJson | [bool](#bool) |  | for protobuf export |
 | includeArchived | [bool](#bool) |  | for migration |
 | noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
+| linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
 
 
 
@@ -15587,6 +15589,22 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.ListExport.Response.Error.Code](#anytype-Rpc-Object-ListExport-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListExport-StateFilters"></a>
+
+### Rpc.Object.ListExport.StateFilters
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationsWhiteList | [string](#string) | repeated |  |
+| onlyRootBlock | [bool](#bool) |  |  |
 
 
 

@@ -134,49 +134,77 @@ func (e *export) finishWithNotification(spaceId string, exportFormat model.Expor
 	}, nil)
 }
 
+type Doc struct {
+	Details *domain.Details
+	isLink  bool
+}
+
+type Docs map[string]*Doc
+
+func (d Docs) transformToDetailsMap() map[string]*domain.Details {
+	details := make(map[string]*domain.Details, len(d))
+	for id, doc := range d {
+		details[id] = doc.Details
+	}
+	return details
+}
+
 type exportContext struct {
-	spaceId        string
-	docs           map[string]*domain.Details
-	includeArchive bool
-	includeNested  bool
-	includeFiles   bool
-	format         model.ExportFormat
-	isJson         bool
-	reqIds         []string
-	zip            bool
-	path           string
+	spaceId          string
+	docs             Docs
+	includeArchive   bool
+	includeNested    bool
+	includeFiles     bool
+	format           model.ExportFormat
+	isJson           bool
+	reqIds           []string
+	zip              bool
+	path             string
+	linkStateFilters *state.Filters
+	isLinkProcess    bool
 
 	*export
 }
 
 func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
-	return &exportContext{
-		path:           req.Path,
-		spaceId:        req.SpaceId,
-		docs:           map[string]*domain.Details{},
-		includeArchive: req.IncludeArchived,
-		includeNested:  req.IncludeNested,
-		includeFiles:   req.IncludeFiles,
-		format:         req.Format,
-		isJson:         req.IsJson,
-		reqIds:         req.ObjectIds,
-		zip:            req.Zip,
-		export:         e,
+	ec := &exportContext{
+		path:             req.Path,
+		spaceId:          req.SpaceId,
+		docs:             map[string]*Doc{},
+		includeArchive:   req.IncludeArchived,
+		includeNested:    req.IncludeNested,
+		includeFiles:     req.IncludeFiles,
+		format:           req.Format,
+		isJson:           req.IsJson,
+		reqIds:           req.ObjectIds,
+		zip:              req.Zip,
+		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
+		export:           e,
 	}
+	return ec
 }
 
 func (e *exportContext) copy() *exportContext {
 	return &exportContext{
-		spaceId:        e.spaceId,
-		docs:           e.docs,
-		includeArchive: e.includeArchive,
-		includeNested:  e.includeNested,
-		includeFiles:   e.includeFiles,
-		format:         e.format,
-		isJson:         e.isJson,
-		reqIds:         e.reqIds,
-		export:         e.export,
+		spaceId:          e.spaceId,
+		docs:             e.docs,
+		includeArchive:   e.includeArchive,
+		includeNested:    e.includeNested,
+		includeFiles:     e.includeFiles,
+		format:           e.format,
+		isJson:           e.isJson,
+		reqIds:           e.reqIds,
+		export:           e.export,
+		isLinkProcess:    e.isLinkProcess,
+		linkStateFilters: e.linkStateFilters,
 	}
+}
+
+func (e *exportContext) getStateFilters(id string) *state.Filters {
+	if doc, ok := e.docs[id]; ok && doc.isLink {
+		return e.linkStateFilters
+	}
+	return nil
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {
@@ -261,10 +289,11 @@ func (e *exportContext) exportDocs(ctx context.Context,
 	succeed *int64,
 	tasks []process.Task,
 ) []process.Task {
+	docsDetails := e.docs.transformToDetailsMap()
 	for docId := range e.docs {
 		did := docId
 		task := func() {
-			if werr := e.writeDoc(ctx, wr, did); werr != nil {
+			if werr := e.writeDoc(ctx, wr, did, docsDetails); werr != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
 				atomic.AddInt64(succeed, 1)
@@ -277,7 +306,7 @@ func (e *exportContext) exportDocs(ctx context.Context,
 
 func (e *exportContext) exportGraphJson(ctx context.Context, succeed int, wr writer, queue process.Queue) int {
 	mc := graphjson.NewMultiConverter(e.sbtProvider)
-	mc.SetKnownDocs(e.docs)
+	mc.SetKnownDocs(e.docs.transformToDetailsMap())
 	var werr error
 	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, queue); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
@@ -291,7 +320,7 @@ func (e *exportContext) exportDotAndSVG(ctx context.Context, succeed int, wr wri
 		format = dot.ExportFormatSVG
 	}
 	mc := dot.NewMultiConverter(format, e.sbtProvider)
-	mc.SetKnownDocs(e.docs)
+	mc.SetKnownDocs(e.docs.transformToDetailsMap())
 	var werr error
 	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, queue); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
@@ -332,7 +361,7 @@ func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
 	}
 	for _, object := range res {
 		id := object.Details.GetString(bundle.RelationKeyId)
-		e.docs[id] = object.Details
+		e.docs[id] = &Doc{Details: object.Details}
 	}
 	if isProtobuf {
 		return e.processProtobuf()
@@ -385,7 +414,7 @@ func (e *exportContext) processNotProtobuf() error {
 	}
 	if e.includeNested {
 		for _, id := range ids {
-			e.addNestedObject(id, map[string]*domain.Details{})
+			e.addNestedObject(id, map[string]*Doc{})
 		}
 	}
 	return nil
@@ -426,7 +455,7 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 		err                     error
 	)
 	for id, details := range e.docs {
-		if isObjectWithDataview(details) {
+		if isObjectWithDataview(details.Details) {
 			viewDependentObjectsIds, err = e.getViewDependentObjects(id, viewDependentObjectsIds)
 			if err != nil {
 				return err
@@ -443,14 +472,17 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 	}
 	for _, object := range append(viewDependentObjects, templates...) {
 		id := object.Details.GetString(bundle.RelationKeyId)
-		e.docs[id] = object.Details
+		e.docs[id] = &Doc{
+			Details: object.Details,
+			isLink:  e.isLinkProcess,
+		}
 	}
 	return nil
 }
 
 func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsIds []string) ([]string, error) {
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
-		st := sb.NewState()
+		st := sb.NewState().Filter(e.getStateFilters(id))
 		viewDependentObjectsIds = append(viewDependentObjectsIds, objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{Blocks: true})...)
 		return nil
 	})
@@ -506,7 +538,7 @@ func (e *exportContext) addDerivedObjects() error {
 	return nil
 }
 
-func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*domain.Details, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
+func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*Doc, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
 	allRelations, allTypes, allSetOfList, err := e.collectDerivedObjects(notProcessedObjects)
 	if err != nil {
 		return nil, nil, nil, err
@@ -525,11 +557,11 @@ func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*dom
 	return allRelations, allTypes, allSetOfList, nil
 }
 
-func (e *exportContext) collectDerivedObjects(objects map[string]*domain.Details) ([]string, []string, []string, error) {
+func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) ([]string, []string, []string, error) {
 	var relations, objectsTypes, setOf []string
 	for id := range objects {
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
-			state := b.NewState()
+			state := b.NewState().Filter(e.getStateFilters(id))
 			relations = lo.Union(relations, getObjectRelations(state))
 			details := state.CombinedDetails()
 			if isObjectWithDataview(details) {
@@ -582,7 +614,7 @@ func getDataviewRelations(state *state.State) ([]string, error) {
 }
 
 func (e *exportContext) getDerivedObjectsForTypes(allTypes []string, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
-	notProceedTypes := make(map[string]*domain.Details)
+	notProceedTypes := make(map[string]*Doc)
 	var relations, objectTypes []string
 	for _, object := range allTypes {
 		if _, ok := processedObjects[object]; ok {
@@ -609,12 +641,13 @@ func (e *exportContext) getTemplatesRelationsAndTypes(allTypes []string, process
 	if len(templates) == 0 {
 		return nil, nil, nil, nil
 	}
-	templatesToProcess := make(map[string]*domain.Details, len(templates))
+	templatesToProcess := make(map[string]*Doc, len(templates))
 	for _, template := range templates {
 		id := template.Details.GetString(bundle.RelationKeyId)
 		if _, ok := e.docs[id]; !ok {
-			e.docs[id] = template.Details
-			templatesToProcess[id] = template.Details
+			templateDoc := &Doc{Details: template.Details, isLink: e.isLinkProcess}
+			e.docs[id] = templateDoc
+			templatesToProcess[id] = templateDoc
 		}
 	}
 	templateRelations, templateType, templateSetOfList, err := e.getRelationsAndTypes(templatesToProcess, processedObjects)
@@ -671,7 +704,7 @@ func (e *exportContext) addRelation(relation database.Record) {
 	relationKey := domain.RelationKey(relation.Details.GetString(bundle.RelationKeyRelationKey))
 	if relationKey != "" && !bundle.HasRelation(relationKey) {
 		id := relation.Details.GetString(bundle.RelationKeyId)
-		e.docs[id] = relation.Details
+		e.docs[id] = &Doc{Details: relation.Details, isLink: e.isLinkProcess}
 	}
 }
 
@@ -694,7 +727,7 @@ func (e *exportContext) addRelationOptions(relationKey string) error {
 	}
 	for _, option := range relationOptions {
 		id := option.Details.GetString(bundle.RelationKeyId)
-		e.docs[id] = option.Details
+		e.docs[id] = &Doc{Details: option.Details, isLink: e.isLinkProcess}
 	}
 	return nil
 }
@@ -748,7 +781,7 @@ func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []d
 			return nil, err
 		}
 		id := objectTypes[i].Details.GetString(bundle.RelationKeyId)
-		e.docs[id] = objectTypes[i].Details
+		e.docs[id] = &Doc{Details: objectTypes[i].Details, isLink: e.isLinkProcess}
 		if uniqueKey.SmartblockType() == smartblock.SmartBlockTypeObjectType {
 			key, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 			if err != nil {
@@ -782,13 +815,13 @@ func (e *exportContext) addRecommendedRelations(recommendedRelations []string) e
 		if bundle.IsSystemRelation(domain.RelationKey(uniqueKey.InternalKey())) {
 			continue
 		}
-		e.docs[id] = relation.Details
+		e.docs[id] = &Doc{Details: relation.Details, isLink: e.isLinkProcess}
 	}
 	return nil
 }
 
 func (e *exportContext) addNestedObjects(ids []string) error {
-	nestedDocs := make(map[string]*domain.Details, 0)
+	nestedDocs := make(map[string]*Doc, 0)
 	for _, id := range ids {
 		e.addNestedObject(id, nestedDocs)
 	}
@@ -798,6 +831,7 @@ func (e *exportContext) addNestedObjects(ids []string) error {
 	exportCtxChild := e.copy()
 	exportCtxChild.includeNested = false
 	exportCtxChild.docs = nestedDocs
+	exportCtxChild.isLinkProcess = true
 	err := exportCtxChild.processProtobuf()
 	if err != nil {
 		return err
@@ -810,10 +844,20 @@ func (e *exportContext) addNestedObjects(ids []string) error {
 	return nil
 }
 
-func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*domain.Details) {
-	links, err := e.objectStore.SpaceIndex(e.spaceId).GetOutboundLinksById(id)
+func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
+	var links []string
+	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
+		st := sb.NewState().Filter(e.getStateFilters(id))
+		links = objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{
+			Blocks:                   true,
+			Details:                  true,
+			Collection:               true,
+			NoSystemRelations:        true,
+			NoHiddenBundledRelations: true,
+		})
+		return nil
+	})
 	if err != nil {
-		log.Errorf("export failed to get outbound links for id: %s", err)
 		return
 	}
 	for _, link := range links {
@@ -832,8 +876,9 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*domain
 				continue
 			}
 			if isLinkedObjectExist(rec) {
-				nestedDocs[link] = rec[0].Details
-				e.docs[link] = rec[0].Details
+				exportDoc := &Doc{Details: rec[0].Details, isLink: e.isLinkProcess}
+				nestedDocs[link] = exportDoc
+				e.docs[link] = exportDoc
 				e.addNestedObject(link, nestedDocs)
 			}
 		}
@@ -844,7 +889,7 @@ func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
 	var fileObjectsIds []string
 	err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
-		b.NewState().IterateLinkedFiles(func(fileObjectId string) {
+		b.NewState().Filter(e.getStateFilters(id)).IterateLinkedFiles(func(fileObjectId string) {
 			res, err := spaceIndex.Query(database.Query{
 				Filters: []database.FilterRequest{
 					{
@@ -861,7 +906,7 @@ func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 			if len(res) == 0 {
 				return
 			}
-			e.docs[fileObjectId] = res[0].Details
+			e.docs[fileObjectId] = &Doc{Details: res[0].Details, isLink: e.isLinkProcess}
 			fileObjectsIds = append(fileObjectsIds, fileObjectId)
 		})
 		return nil
@@ -885,7 +930,7 @@ func (e *exportContext) getExistedObjects(isProtobuf bool) error {
 		}
 		res = append(res, archivedObjects...)
 	}
-	e.docs = make(map[string]*domain.Details, len(res))
+	e.docs = make(map[string]*Doc, len(res))
 	for _, info := range res {
 		objectSpaceID := e.spaceId
 		if objectSpaceID == "" {
@@ -899,15 +944,14 @@ func (e *exportContext) getExistedObjects(isProtobuf bool) error {
 		if !objectValid(sbType, info, e.includeArchive, isProtobuf) {
 			continue
 		}
-		e.docs[info.Id] = info.Details
-
+		e.docs[info.Id] = &Doc{Details: info.Details}
 	}
 	return nil
 }
 
 func (e *exportContext) listTargetTypesFromTemplates(ids []string) []string {
 	for id, object := range e.docs {
-		if object.Has(bundle.RelationKeyTargetObjectType) {
+		if object.Details.Has(bundle.RelationKeyTargetObjectType) {
 			ids = append(ids, id)
 		}
 	}
@@ -950,13 +994,14 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 	return
 }
 
-func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (err error) {
+func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, details map[string]*domain.Details) (err error) {
 	return cache.Do(e.picker, docId, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
 			return nil
 		}
 
+		st = st.Filter(e.getStateFilters(docId))
 		if e.includeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
 			fileName, err := e.saveFile(ctx, wr, b, e.spaceId == "")
 			if err != nil {
@@ -978,7 +1023,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string) (
 		case model.Export_JSON:
 			conv = pbjson.NewConverter(st)
 		}
-		conv.SetKnownDocs(e.docs)
+		conv.SetKnownDocs(details)
 		result := conv.Convert(b.Type().ToProto())
 		var filename string
 		if e.format == model.Export_Markdown {
@@ -1198,7 +1243,7 @@ func cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func listObjectIds(docs map[string]*domain.Details) []string {
+func listObjectIds(docs map[string]*Doc) []string {
 	ids := make([]string, 0, len(docs))
 	for id := range docs {
 		ids = append(ids, id)
@@ -1208,4 +1253,14 @@ func listObjectIds(docs map[string]*domain.Details) []string {
 
 func isLinkedObjectExist(rec []database.Record) bool {
 	return len(rec) > 0 && !rec[0].Details.GetBool(bundle.RelationKeyIsDeleted)
+}
+
+func pbFiltersToState(filters *pb.RpcObjectListExportStateFilters) *state.Filters {
+	if filters == nil {
+		return nil
+	}
+	return &state.Filters{
+		RelationsWhiteList: filters.RelationsWhiteList,
+		OnlyRootBlock:      filters.OnlyRootBlock,
+	}
 }

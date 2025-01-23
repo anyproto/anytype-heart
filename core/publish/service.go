@@ -45,6 +45,23 @@ const (
 	indexFileName         = "index.json.gz"
 )
 
+var publishingRelationsWhiteList = []string{
+	bundle.RelationKeyName.String(),
+	bundle.RelationKeyDescription.String(),
+	bundle.RelationKeySnippet.String(),
+	bundle.RelationKeyType.String(),
+	bundle.RelationKeySpaceId.String(),
+	bundle.RelationKeyId.String(),
+	bundle.RelationKeyIconImage.String(),
+	bundle.RelationKeyIconEmoji.String(),
+	bundle.RelationKeyCoverType.String(),
+	bundle.RelationKeyCoverId.String(),
+	bundle.RelationKeyIsArchived.String(),
+	bundle.RelationKeyIsDeleted.String(),
+	bundle.RelationKeyDone.String(),
+	bundle.RelationKeyPicture.String(),
+}
+
 var log = logger.NewNamed(CName)
 
 var ErrLimitExceeded = errors.New("limit exceeded")
@@ -130,6 +147,10 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 		Path:         tempDir,
 		ObjectIds:    []string{pageId},
 		NoProgress:   true,
+		LinksStateFilters: &pb.RpcObjectListExportStateFilters{
+			RelationsWhiteList: publishingRelationsWhiteList,
+			OnlyRootBlock:      true,
+		},
 	})
 	if err != nil {
 		return
