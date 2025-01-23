@@ -229,10 +229,23 @@ func (mw *Middleware) AccountEnableLocalNetworkSync(_ context.Context, req *pb.R
 	}
 }
 
+func (mw *Middleware) AccountChangeJsonApiAddr(ctx context.Context, req *pb.RpcAccountChangeJsonApiAddrRequest) *pb.RpcAccountChangeJsonApiAddrResponse {
+	err := mw.applicationService.AccountChangeJsonApiAddr(ctx, req.ListenAddr)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountChangeJsonApiAddrResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountChangeJsonApiAddrResponse{
+		Error: &pb.RpcAccountChangeJsonApiAddrResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
 	info := getClientInfo(ctx)
 
-	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(&info)
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info)
 	code := mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),

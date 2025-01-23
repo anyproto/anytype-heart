@@ -50,6 +50,10 @@
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
     - [Rpc.Account](#anytype-Rpc-Account)
+    - [Rpc.Account.ChangeJsonApiAddr](#anytype-Rpc-Account-ChangeJsonApiAddr)
+    - [Rpc.Account.ChangeJsonApiAddr.Request](#anytype-Rpc-Account-ChangeJsonApiAddr-Request)
+    - [Rpc.Account.ChangeJsonApiAddr.Response](#anytype-Rpc-Account-ChangeJsonApiAddr-Response)
+    - [Rpc.Account.ChangeJsonApiAddr.Response.Error](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error)
     - [Rpc.Account.ChangeNetworkConfigAndRestart](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response)
@@ -1282,6 +1286,7 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.Account.ChangeJsonApiAddr.Response.Error.Code](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error-Code)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
@@ -1594,6 +1599,7 @@
     - [Event.Account.Details](#anytype-Event-Account-Details)
     - [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge)
     - [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo)
+    - [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide)
     - [Event.Account.Show](#anytype-Event-Account-Show)
     - [Event.Account.Update](#anytype-Event-Account-Update)
     - [Event.Block](#anytype-Event-Block)
@@ -1820,6 +1826,7 @@
   
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
+    - [Account.Auth](#anytype-model-Account-Auth)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
     - [Account.Status](#anytype-model-Account-Status)
@@ -1918,6 +1925,7 @@
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
+    - [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope)
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
     - [Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State)
@@ -2029,6 +2037,7 @@
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
+| AccountChangeJsonApiAddr | [Rpc.Account.ChangeJsonApiAddr.Request](#anytype-Rpc-Account-ChangeJsonApiAddr-Request) | [Rpc.Account.ChangeJsonApiAddr.Response](#anytype-Rpc-Account-ChangeJsonApiAddr-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
@@ -2951,6 +2960,62 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr"></a>
+
+### Rpc.Account.ChangeJsonApiAddr
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr-Request"></a>
+
+### Rpc.Account.ChangeJsonApiAddr.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| listenAddr | [string](#string) |  | make sure to use 127.0.0.1:x to not listen on all interfaces; recommended value is 127.0.0.1:31009 |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr-Response"></a>
+
+### Rpc.Account.ChangeJsonApiAddr.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.ChangeJsonApiAddr.Response.Error](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error"></a>
+
+### Rpc.Account.ChangeJsonApiAddr.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.ChangeJsonApiAddr.Response.Error.Code](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart"></a>
 
 ### Rpc.Account.ChangeNetworkConfigAndRestart
@@ -3109,6 +3174,7 @@ Front end to middleware request-to-create-an account
 | networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
+| jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 
 
 
@@ -3310,6 +3376,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | appName | [string](#string) |  | just for info, not secure to rely on |
+| scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
 
 
 
@@ -3765,6 +3832,7 @@ User can select an account from those, that came with an AccountAdd events
 | networkMode | [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode) |  | optional, default is DefaultConfig |
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
+| jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 
 
 
@@ -20811,6 +20879,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error-Code"></a>
+
+### Rpc.Account.ChangeJsonApiAddr.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 4 |  |
+
+
+
 <a name="anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code"></a>
 
 ### Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code
@@ -25102,6 +25184,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | ----- | ---- | ----- | ----------- |
 | challenge | [string](#string) |  |  |
 | clientInfo | [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo) |  |  |
+| scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
 
 
 
@@ -25119,6 +25202,21 @@ Event – type of message, that could be sent from a middleware to the correspon
 | processName | [string](#string) |  |  |
 | processPath | [string](#string) |  |  |
 | signatureVerified | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-LinkChallengeHide"></a>
+
+### Event.Account.LinkChallengeHide
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| challenge | [string](#string) |  | verify code before hiding to protect from MITM attacks |
 
 
 
@@ -27407,6 +27505,7 @@ Precondition: user A opened a block
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
 | accountUpdate | [Event.Account.Update](#anytype-Event-Account-Update) |  |  |
 | accountLinkChallenge | [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge) |  |  |
+| accountLinkChallengeHide | [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |
@@ -28640,6 +28739,16 @@ Contains basic information about a user account
 | config | [Account.Config](#anytype-model-Account-Config) |  |  |
 | status | [Account.Status](#anytype-model-Account-Status) |  |  |
 | info | [Account.Info](#anytype-model-Account-Info) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Account-Auth"></a>
+
+### Account.Auth
+
 
 
 
@@ -30361,6 +30470,19 @@ stored |
  
 
 
+<a name="anytype-model-Account-Auth-LocalApiScope"></a>
+
+### Account.Auth.LocalApiScope
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Limited | 0 | Used in WebClipper; AccountSelect(to be deprecated), ObjectSearch, ObjectShow, ObjectCreate, ObjectCreateFromURL, BlockPreview, BlockPaste, BroadcastPayloadEvent |
+| JsonAPI | 1 | JSON API only, no direct grpc api calls allowed |
+| Full | 2 | Full access, not available via LocalLink |
+
+
+
 <a name="anytype-model-Account-StatusType"></a>
 
 ### Account.StatusType
@@ -31083,6 +31205,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | usecase | 6 |  |
 | builtin | 7 |  |
 | bookmark | 8 |  |
+| api | 9 |  |
 
 
 
