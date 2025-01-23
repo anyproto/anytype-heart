@@ -7839,7 +7839,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 repeated model.ChatMessage messages = 2;
-
+                model.ChatState chatState = 3; // dbState from the state should be used in the next request to Chat.SubscribeLastMessages and Chat.ReadMessage
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -7882,6 +7882,7 @@ message Rpc {
             message Request {
                 string chatObjectId = 1;  // Identifier for the chat
                 int32 limit = 2;  // Number of max last messages to return and subscribe
+                int64 lastDbState = 3; // lastDbState from the ChatGetMessages response. In case some messages where added between ChatGetMessages and SubscribeLastMessages you will immediately receive Chat.Add events.
             }
 
             message Response {
@@ -7910,6 +7911,35 @@ message Rpc {
             message Response {
                 Error error = 1;
 
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Read {
+            enum ReadType {
+                messages = 0;
+                replies = 1;
+            }
+            message Request {
+                ReadType type = 1;
+                string chatObjectId = 2;  // Identifier for the chat
+                string beforeOrderId = 4; // last orderId in the current viewport
+                int64 lastDbState = 5; // lastDbState from the last processed Chat.Add event or ChatGetMessages response (in case no events received after it). Used to prevent race conditions
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
                 message Error {
                     Code code = 1;
                     string description = 2;

@@ -12,6 +12,8 @@ const (
 	modifiedAtKey = "modifiedAt"
 	reactionsKey  = "reactions"
 	contentKey    = "content"
+	readKey       = "read"
+	addedKey      = "a"
 	orderKey      = "_o"
 )
 
@@ -32,8 +34,20 @@ func (m *messageWrapper) setCreator(v string) {
 	m.val.Set(creatorKey, m.arena.NewString(v))
 }
 
+func (m *messageWrapper) setRead(v bool) {
+	if v {
+		m.val.Set(readKey, m.arena.NewTrue())
+	} else {
+		m.val.Set(readKey, m.arena.NewFalse())
+	}
+}
+
 func (m *messageWrapper) setCreatedAt(v int64) {
 	m.val.Set(createdAtKey, m.arena.NewNumberInt(int(v)))
+}
+
+func (m *messageWrapper) setAddedAt(v int64) {
+	m.val.Set(addedKey, m.arena.NewNumberInt(int(v)))
 }
 
 /*
@@ -114,6 +128,14 @@ func marshalModel(arena *anyenc.Arena, msg *model.ChatMessage) *anyenc.Value {
 	root.Set(modifiedAtKey, arena.NewNumberInt(int(msg.ModifiedAt)))
 	root.Set("replyToMessageId", arena.NewString(msg.ReplyToMessageId))
 	root.Set(contentKey, content)
+	var read = arena.NewObject()
+	if msg.Read {
+		read = arena.NewTrue()
+	} else {
+		read = arena.NewFalse()
+	}
+	root.Set(readKey, read)
+
 	root.Set(reactionsKey, reactions)
 	return root
 }
@@ -127,6 +149,7 @@ func (m *messageWrapper) toModel() *model.ChatMessage {
 		OrderId:          string(m.val.GetStringBytes("_o", "id")),
 		ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
 		Message:          m.contentToModel(),
+		Read:             m.val.GetBool(readKey),
 		Attachments:      m.attachmentsToModel(),
 		Reactions:        m.reactionsToModel(),
 	}

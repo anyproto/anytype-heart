@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -15,7 +16,8 @@ import (
 )
 
 type ChatHandler struct {
-	subscription *subscription
+	subscription    *subscription
+	currentIdentity string
 }
 
 func (d ChatHandler) CollectionName() string {
@@ -40,7 +42,12 @@ func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (
 	msg := newMessageWrapper(ch.Arena, ch.Value)
 	msg.setCreatedAt(ch.Change.Timestamp)
 	msg.setCreator(ch.Change.Creator)
-
+	if ch.Change.Creator == d.currentIdentity {
+		msg.setRead(true)
+	} else {
+		msg.setRead(false)
+	}
+	msg.setAddedAt(time.Now().UnixMilli())
 	model := msg.toModel()
 	model.OrderId = ch.Change.Order
 	d.subscription.add(model)

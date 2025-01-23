@@ -39,7 +39,7 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
-	MarkSeenHeads(heads []string)
+	MarkReadMessages(ctx context.Context, beforeOrderId string, lastDbState int64) error
 	Unsubscribe() error
 }
 
@@ -87,7 +87,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
-		subscription: s.subscription,
+		subscription:    s.subscription,
+		currentIdentity: s.accountService.AccountID(),
 	})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
@@ -113,8 +114,30 @@ func (s *storeObject) onUpdate() {
 	s.subscription.flush()
 }
 
-func (s *storeObject) MarkSeenHeads(heads []string) {
-	s.storeSource.MarkSeenHeads(heads)
+func (s *storeObject) MarkReadMessages(ctx context.Context, beforeOrderId string, lastDbState int64) error {
+	// 1. select all messages with orderId < beforeOrderId and addedTime < lastDbState
+	// 2. use the last(by orderId) message id as lastHead
+	// 3. update the MarkSeenHeads
+	// 2. mark messages as read in the DB
+	coll, err := s.store.Collection(ctx, collectionName)
+	if err != nil {
+		return fmt.Errorf("get collection: %w", err)
+	}
+	txn, err := coll.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	res, err := coll.Find(query.And{
+		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)},
+		query.Key{Path: []string{"a"}, Filter: query.NewComp(query.CompOpLt, lastDbState)},
+		query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpLt, lastDbState)},
+	}).Update(ctx, `{"$set":{`+readKey+`:true}}`)
+
+	if err != nil {
+		return errors.Join(txn.Rollback(), fmt.Errorf("update messages: %w", err))
+	}
+	fmt.Printf("MarkReadMessages: %d messages matched %d marked as read\n", res.Matched, res.Modified)
+	return txn.Commit()
 }
 
 func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error) {
@@ -196,6 +219,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
+	message.Read = true
 	obj := marshalModel(arena, message)
 
 	builder := storestate.Builder{}

@@ -117,17 +117,21 @@ message Event {
             Chat.Update chatUpdate = 129;
             Chat.UpdateReactions chatUpdateReactions = 130;
             Chat.Delete chatDelete = 131;
+            Chat.UpdateState chatStateUpdate = 133; // received in case of remote-triggered state update (e.g. messages read on another device)
         }
     }
 
     message Chat {
         message Add {
             string id = 1;
-            string orderId = 2;
-            model.ChatMessage message = 3;
+            string orderId = 2; // orderId of the message, used for sorting
+            int64 dbState = 3; // Client should persist it after rendering and use it in ChatReadMessages RPC to prevent race conditions
+            model.ChatMessage message = 4;
+            model.ChatState state = 5; // Chat state. dbState should be persisted after rendered
         }
         message Delete {
             string id = 1;
+            model.ChatState state = 2; // Chat state. dbState should be persisted after rendered
         }
         message Update {
             string id = 1;
@@ -136,6 +140,12 @@ message Event {
         message UpdateReactions {
             string id = 1;
             model.ChatMessage.Reactions reactions = 2;
+        }
+
+        message UpdateState {
+            string id = 1;
+            model.ChatState state = 2;
+            // todo: we should make sure we protect from the race conds when sending Chat.* and Chat.UpdateState at the same time
         }
     }
 

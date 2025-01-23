@@ -22,6 +22,7 @@ type Service interface {
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
+	ChatReadMessages(chatObjectId string, beforeOrderId string, lastDbState int64) error
 
 	app.Component
 }
@@ -119,5 +120,11 @@ func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string
 func (s *service) Unsubscribe(chatObjectId string) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.Unsubscribe()
+	})
+}
+
+func (s *service) ChatReadMessages(chatObjectId string, beforeOrderId string, lastDbState int64) error {
+	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.MarkReadMessages(context.Background(), beforeOrderId, lastDbState)
 	})
 }

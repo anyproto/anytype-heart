@@ -122,3 +122,15 @@ func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsub
 		},
 	}
 }
+
+func (mw *Middleware) ChatReadMessages(ctx context.Context, request *pb.RpcChatReadRequest) *pb.RpcChatReadResponse {
+	chatService := mustService[chats.Service](mw)
+	err := chatService.ChatReadMessages(request.ChatObjectId, request.BeforeOrderId, request.LastDbState)
+	code := mapErrorCode[pb.RpcChatReadResponseErrorCode](err)
+	return &pb.RpcChatReadResponse{
+		Error: &pb.RpcChatReadResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

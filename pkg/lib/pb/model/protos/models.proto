@@ -1369,6 +1369,16 @@ message DeviceInfo {
     bool isConnected = 5;
 }
 
+message ChatState {
+    message UnreadState {
+        string oldestOrderId = 1; // oldest message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest
+        int32 unreadCounter = 2;
+    }
+    UnreadState messages = 1; // unread messages
+    UnreadState replies = 2; // unread replies
+    int64 dbState = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
+}
+
 message ChatMessage {
     string id = 1;        // Unique message identifier
     string orderId = 2;   // Used for subscriptions
@@ -1379,7 +1389,7 @@ message ChatMessage {
     MessageContent message = 6;  // Message content
     repeated Attachment attachments = 7;  // Attachments slice
     Reactions reactions = 8;  // Reactions to the message
-
+    bool read = 10; // Message read status
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
