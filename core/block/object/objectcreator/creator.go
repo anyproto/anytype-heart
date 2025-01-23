@@ -130,10 +130,6 @@ func (s *service) createObjectInSpace(
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
 		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
-	case bundle.TypeKeySet:
-		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_set))
-	case bundle.TypeKeyCollection:
-		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_collection))
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)
 	case bundle.TypeKeyRelation:
@@ -145,35 +141,73 @@ func (s *service) createObjectInSpace(
 	case bundle.TypeKeyFile:
 		return "", nil, fmt.Errorf("files must be created via fileobject service")
 	case bundle.TypeKeyTemplate:
-		if details.GetString(bundle.RelationKeyTargetObjectType) == "" {
-			return "", nil, fmt.Errorf("cannot create template without target object")
-		}
+		return s.createTemplate(ctx, space, details, req)
 	case bundle.TypeKeyDate:
 		return buildDateObject(space, details)
+	default:
+		return s.createCommonObject(ctx, space, details, req)
 	}
-
-	return s.createObjectFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)
 }
 
-func (s *service) createObjectFromTemplate(
-	ctx context.Context,
-	space clientspace.Space,
-	objectTypeKeys []domain.TypeKey,
-	details *domain.Details,
-	templateId string,
-) (id string, newDetails *domain.Details, err error) {
-	typeId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, string(objectTypeKeys[0])))
+func (s *service) createTemplate(
+	ctx context.Context, space clientspace.Space, details *domain.Details, req CreateObjectRequest,
+) (id string, resultDetails *domain.Details, err error) {
+	target := details.GetString(bundle.RelationKeyTargetObjectType)
+	if target == "" {
+		return "", nil, fmt.Errorf("cannot create template without target object type")
+	}
+	layout, err := s.getTypeRecommendedLayout(domain.FullID{SpaceID: space.Id(), ObjectID: target})
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
+	}
+	details.SetInt64(bundle.RelationKeyResolvedLayout, layout)
+
+	typeId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, req.ObjectTypeKey.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to derive object type id: %w", err)
 	}
-	// we should enrich details with spaceId and type to use type object to form state of new object
+	// we should enrich details with spaceId, type and layout to use type object to form state of new object
 	details.Set(bundle.RelationKeySpaceId, domain.String(space.Id()))
 	details.Set(bundle.RelationKeyType, domain.String(typeId))
-	createState, err := s.templateService.CreateTemplateStateWithDetails(templateId, details)
+
+	createState, err := s.templateService.CreateTemplateStateWithDetails("", details)
 	if err != nil {
 		return
 	}
-	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
+	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
+}
+
+func (s *service) createCommonObject(
+	ctx context.Context, space clientspace.Space, details *domain.Details, req CreateObjectRequest,
+) (id string, resultDetails *domain.Details, err error) {
+	typeId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, req.ObjectTypeKey.String()))
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to derive object type id: %w", err)
+	}
+
+	layout, err := s.getTypeRecommendedLayout(domain.FullID{SpaceID: space.Id(), ObjectID: typeId})
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
+	}
+
+	// we should enrich details with spaceId, type and layout to use type object to form state of new object
+	details.Set(bundle.RelationKeySpaceId, domain.String(space.Id()))
+	details.Set(bundle.RelationKeyType, domain.String(typeId))
+	details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+
+	createState, err := s.templateService.CreateTemplateStateWithDetails(req.TemplateId, details)
+	if err != nil {
+		return
+	}
+	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
+}
+
+func (s *service) getTypeRecommendedLayout(typeId domain.FullID) (int64, error) {
+	ot, err := s.objectStore.SpaceIndex(typeId.SpaceID).GetObjectType(typeId.ObjectID)
+	if err != nil {
+		return 0, err
+	}
+	return int64(ot.Layout), nil
 }
 
 // buildDateObject does not create real date object. It just builds date object details
