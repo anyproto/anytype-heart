@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.1.3
+	github.com/anyproto/any-store v0.1.4
 	github.com/anyproto/any-sync v0.5.25
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20241223184559-a5cacfe0950a
 	github.com/anyproto/go-chash v0.1.0
@@ -263,10 +263,10 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
-	modernc.org/libc v1.61.0 // indirect
-	modernc.org/mathutil v1.6.0 // indirect
-	modernc.org/memory v1.8.0 // indirect
-	modernc.org/sqlite v1.33.1 // indirect
+	modernc.org/libc v1.61.9 // indirect
+	modernc.org/mathutil v1.7.1 // indirect
+	modernc.org/memory v1.8.2 // indirect
+	modernc.org/sqlite v1.34.5 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
