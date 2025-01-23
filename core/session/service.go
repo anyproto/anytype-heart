@@ -8,33 +8,27 @@ import (
 	"github.com/golang-jwt/jwt"
 
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const CName = "session"
 
 type Service interface {
-	StartSession(privKey []byte, scope model.AccountAuthLocalApiScope) (string, error)
-	ValidateToken(privKey []byte, token string) (model.AccountAuthLocalApiScope, error)
-	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo) (id string, value string, err error)
-	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, scope model.AccountAuthLocalApiScope, err error)
+	StartSession(privKey []byte) (string, error)
+	ValidateToken(privKey []byte, token string) error
+	StartNewChallenge(info *pb.EventAccountLinkChallengeClientInfo) (id string, value string, err error)
+	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, err error)
 
 	CloseSession(token string) error
 }
 
 type session struct {
 	token string
-	scope model.AccountAuthLocalApiScope
 }
 
 type service struct {
 	lock       *sync.RWMutex
 	sessions   map[string]session
 	challenges map[string]challenge
-}
-
-func (s session) Scope() model.AccountAuthLocalApiScope {
-	return s.scope
 }
 
 func New() Service {
@@ -49,11 +43,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) StartSession(privKey []byte, scope model.AccountAuthLocalApiScope) (string, error) {
-	if _, scopeExists := model.AccountAuthLocalApiScope_name[int32(scope)]; !scopeExists {
-		return "", ErrInvalidScope
-	}
-
+func (s *service) StartSession(privKey []byte) (string, error) {
 	token, err := generateToken(privKey)
 	if err != nil {
 		return "", fmt.Errorf("generate token: %w", err)
@@ -66,32 +56,19 @@ func (s *service) StartSession(privKey []byte, scope model.AccountAuthLocalApiSc
 	}
 	s.sessions[token] = session{
 		token: token,
-		scope: scope,
 	}
 	return token, nil
 }
 
-type scopeGetter interface {
-	Scope() model.AccountAuthLocalApiScope
-}
-
-func (s *service) ValidateToken(privKey []byte, token string) (model.AccountAuthLocalApiScope, error) {
+func (s *service) ValidateToken(privKey []byte, token string) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	var (
-		ok    bool
-		scope scopeGetter
-	)
-	if scope, ok = s.sessions[token]; !ok {
-		return 0, fmt.Errorf("session is not registered")
+
+	if _, ok := s.sessions[token]; !ok {
+		return fmt.Errorf("session is not registered")
 	}
 
-	err := validateToken(privKey, token)
-	if err != nil {
-		return 0, err
-	}
-
-	return scope.Scope(), nil
+	return validateToken(privKey, token)
 }
 
 func (s *service) CloseSession(token string) error {

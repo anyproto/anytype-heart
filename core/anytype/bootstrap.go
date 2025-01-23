@@ -35,7 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
@@ -337,8 +336,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
 		Register(lastused.New()).
-		Register(spaceview.New()).
-		Register(api.New())
+		Register(spaceview.New())
 }
 
 func MiddlewareVersion() string {

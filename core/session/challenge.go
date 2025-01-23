@@ -9,7 +9,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -22,21 +21,14 @@ var (
 	ErrChallengeTriesExceeded   = fmt.Errorf("challenge tries exceeded")
 	ErrChallengeIdNotFound      = fmt.Errorf("challenge id not found")
 	ErrChallengeSolutionWrong   = fmt.Errorf("challenge solution is wrong")
-	ErrInvalidScope             = fmt.Errorf("invalid scope")
 	ErrTooManyChallengeRequests = fmt.Errorf("too many challenge requests per session")
 	currentChallengesRequests   = atomic.NewInt32(0)
 )
 
-func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo) (challengeId string, challengeValue string, err error) {
+func (s *service) StartNewChallenge(info *pb.EventAccountLinkChallengeClientInfo) (challengeId string, challengeValue string, err error) {
 	if currentChallengesRequests.Load() >= maxChallengesRequests {
 		// todo: add limits per process?
 		return "", "", ErrTooManyChallengeRequests
-	}
-	switch scope {
-	case model.AccountAuth_Limited, model.AccountAuth_JsonAPI:
-		// full scope is not allowed via challenge
-	default:
-		return "", "", ErrInvalidScope
 	}
 	// generate random challenge id
 	id := bson.NewObjectId().Hex()
@@ -49,47 +41,45 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 		tries:      0,
 		value:      value,
 		clientInfo: info,
-		scope:      scope,
 	}
 
 	currentChallengesRequests.Inc()
 	return id, value, nil
 }
 
-func (s *service) SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, scope model.AccountAuthLocalApiScope, err error) {
+func (s *service) SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, err error) {
 	s.lock.Lock()
 	challenge, ok := s.challenges[challengeId]
 	if !ok {
 		s.lock.Unlock()
 
-		return nil, "", 0, ErrChallengeIdNotFound
+		return nil, "", ErrChallengeIdNotFound
 	}
 	if challenge.tries >= challengeMaxTries {
 		s.lock.Unlock()
 
-		return clientInfo, "", 0, ErrChallengeTriesExceeded
+		return clientInfo, "", ErrChallengeTriesExceeded
 	}
 
 	if challenge.value != challengeSolution {
 		s.lock.Unlock()
 
 		challenge.tries++
-		return clientInfo, "", 0, ErrChallengeSolutionWrong
+		return clientInfo, "", ErrChallengeSolutionWrong
 	}
 
 	delete(s.challenges, challengeId)
 	s.lock.Unlock()
 
-	sessionToken, err := s.StartSession(signingKey, scope)
+	sessionToken, err := s.StartSession(signingKey)
 	if err != nil {
-		return nil, "", 0, err
+		return nil, "", err
 	}
-	return challenge.clientInfo, sessionToken, challenge.scope, nil
+	return challenge.clientInfo, sessionToken, nil
 }
 
 type challenge struct {
 	tries      int
 	value      string
 	clientInfo *pb.EventAccountLinkChallengeClientInfo
-	scope      model.AccountAuthLocalApiScope
 }

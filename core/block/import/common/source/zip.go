@@ -20,7 +20,6 @@ type Zip struct {
 	archiveReader             *zip.ReadCloser
 	fileReaders               map[string]*zip.File
 	originalToNormalizedNames map[string]string
-	rootDirs                  map[string]bool
 }
 
 func NewZip() *Zip {
@@ -34,20 +33,16 @@ func (z *Zip) Initialize(importPath string) error {
 		return err
 	}
 	fileReaders := make(map[string]*zip.File, len(archiveReader.File))
-	filePaths := make(map[string]struct{}, len(archiveReader.File))
 	for i, f := range archiveReader.File {
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
 			continue
 		}
 		normalizedName := normalizeName(f, i)
 		fileReaders[normalizedName] = f
-		filePaths[normalizedName] = struct{}{}
 		if normalizedName != f.Name {
 			z.originalToNormalizedNames[f.Name] = normalizedName
 		}
 	}
-
-	z.rootDirs = findNonEmptyDirs(filePaths)
 	z.fileReaders = fileReaders
 	return nil
 }
@@ -106,8 +101,7 @@ func (z *Zip) Close() {
 }
 
 func (z *Zip) IsRootFile(fileName string) bool {
-	fileDir := filepath.Dir(fileName)
-	return fileDir == "." || z.rootDirs[fileDir]
+	return filepath.Dir(fileName) == "."
 }
 
 func (z *Zip) GetFileOriginalName(fileName string) string {

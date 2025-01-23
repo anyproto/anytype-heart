@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -11,7 +12,7 @@ import (
 )
 
 func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
-	ctx, cancel := context.WithTimeout(cctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	u, err := uri.NormalizeAndParseURI(req.Url)
@@ -24,12 +25,24 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		}
 	}
 
-	data, _, _, err := mustService[linkpreview.LinkPreview](mw).Fetch(ctx, u.String())
+	if mw.applicationService.GetApp() == nil {
+		return &pb.RpcLinkPreviewResponse{
+			Error: &pb.RpcLinkPreviewResponseError{
+				Code: pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
+			},
+		}
+	}
+	lp := mw.applicationService.GetApp().MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+	data, _, _, err := lp.Fetch(ctx, u.String())
 	if err != nil {
+		// trim the actual url from the error
+		errTrimmed := strings.Replace(err.Error(), u.String(), "<url>", -1)
+		errTrimmed = strings.Replace(errTrimmed, u.Hostname(), "<host>", -1) // in case of dns errors
+
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
 				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
-				Description: getErrorDescription(err),
+				Description: errTrimmed,
 			},
 		}
 	}
