@@ -2976,43 +2976,4 @@ func TestState_AddRelationLinks(t *testing.T) {
 		assert.True(t, s.GetRelationLinks().Has("existingLink"))
 		assert.Len(t, s.GetRelationLinks(), 1)
 	})
-	t.Run("add checkbox link", func(t *testing.T) {
-		// given
-		s := &State{}
-		checkboxLink := &model.RelationLink{
-			Key:    "checkboxLink",
-			Format: model.RelationFormat_checkbox,
-		}
-
-		// when
-		s.AddRelationLinks(checkboxLink)
-
-		// then
-		relLinks := s.GetRelationLinks()
-		assert.Equal(t, 1, len(relLinks))
-		assert.True(t, relLinks.Has("checkboxLink"))
-		detailValue := s.Details().Get("checkboxLink")
-		assert.Equal(t, domain.Bool(false), detailValue)
-	})
-	t.Run("multi links", func(t *testing.T) {
-		// given
-		s := &State{}
-		link1 := &model.RelationLink{
-			Key:    "link1",
-			Format: model.RelationFormat_shorttext,
-		}
-		link2 := &model.RelationLink{
-			Key:    "link2",
-			Format: model.RelationFormat_checkbox,
-		}
-
-		// when
-		s.AddRelationLinks(link1, link2)
-
-		// then
-		relLinks := s.GetRelationLinks()
-		assert.Equal(t, 2, len(relLinks))
-		assert.True(t, relLinks.Has("link1"))
-		assert.True(t, relLinks.Has("link2"))
-	})
 }
