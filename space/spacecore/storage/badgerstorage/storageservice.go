@@ -1,12 +1,15 @@
 package badgerstorage
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/dgraph-io/badger/v4"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -46,11 +49,11 @@ func (s *storageService) Name() (name string) {
 	return spacestorage.CName
 }
 
-func (s *storageService) SpaceStorage(id string) (spacestorage.SpaceStorage, error) {
+func (s *storageService) SpaceStorage(id string) (oldstorage.SpaceStorage, error) {
 	return newSpaceStorage(s.db, id, s)
 }
 
-func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store spacestorage.SpaceStorage, err error) {
+func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store oldstorage.SpaceStorage, err error) {
 	var ls *lockSpace
 	ls, err = s.checkLock(id, func() error {
 		store, err = newSpaceStorage(s.db, id, s)
@@ -152,7 +155,7 @@ func (s *storageService) unlockSpaceStorage(id string) {
 	}
 }
 
-func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
+func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (oldstorage.SpaceStorage, error) {
 	return createSpaceStorage(s.db, payload, s)
 }
 
@@ -164,6 +167,37 @@ func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error)
 		return "", domain.ErrObjectNotFound
 	}
 	return spaceID, err
+}
+
+func (s *storageService) GetBoundObjectIds(spaceId string) (ids []string, err error) {
+	prefix := []byte("bind/")
+	spaceIdBytes := []byte(spaceId)
+	err = s.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		opts.Prefix = prefix
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			id := item.Key()
+
+			err = item.Value(func(val []byte) error {
+				if bytes.Equal(spaceIdBytes, val) {
+					idStr := string(id)
+					ids = append(ids, idStr[len(prefix):])
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("read value: %w", err)
+			}
+		}
+		return nil
+	})
+	return
 }
 
 func (s *storageService) BindSpaceID(spaceID, objectID string) (err error) {
@@ -191,6 +225,11 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 		return nil
 	})
 	return
+}
+
+func (s *storageService) EstimateSize() (uint64, error) {
+	onDiskSize, _ := s.db.EstimateSize(nil)
+	return onDiskSize, nil
 }
 
 func (s *storageService) Run(ctx context.Context) (err error) {
