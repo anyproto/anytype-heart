@@ -14,6 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -27,6 +29,7 @@ type fixture struct {
 	spc             *mock_clientspace.MockSpace
 	templateService *testTemplateService
 	lastUsedService *mock_lastused.MockObjectUsageUpdater
+	objectStore     *objectstore.StoreFixture
 	service         Service
 }
 
@@ -36,11 +39,13 @@ func newFixture(t *testing.T) *fixture {
 
 	templateSvc := &testTemplateService{}
 	lastUsedSvc := mock_lastused.NewMockObjectUsageUpdater(t)
+	store := objectstore.NewStoreFixture(t)
 
 	s := &service{
 		spaceService:    spaceService,
 		templateService: templateSvc,
 		lastUsedUpdater: lastUsedSvc,
+		objectStore:     store,
 	}
 
 	return &fixture{
@@ -48,6 +53,7 @@ func newFixture(t *testing.T) *fixture {
 		spc:             spc,
 		templateService: templateSvc,
 		lastUsedService: lastUsedSvc,
+		objectStore:     store,
 		service:         s,
 	}
 }
@@ -62,7 +68,9 @@ func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string
 			return st, nil
 		}
 	}
-	return state.NewDoc(templateId, nil).NewState(), nil
+	st := state.NewDoc(templateId, nil).NewState()
+	st.SetDetails(details)
+	return st, nil
 }
 
 func (tts *testTemplateService) TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error) {
@@ -77,8 +85,19 @@ func TestService_CreateObject(t *testing.T) {
 		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
 		f.spc.EXPECT().CreateTreeObject(mock.Anything, mock.Anything).Return(sb, nil)
 		f.spc.EXPECT().Id().Return(spaceId)
-		f.spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(bundle.TypeKeyTask.URL(), nil)
+		f.spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 		f.lastUsedService.EXPECT().UpdateLastUsedDate(spaceId, bundle.TypeKeyTemplate, mock.Anything).Return()
+
+		f.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+				bundle.RelationKeySpaceId:           domain.String(spaceId),
+				bundle.RelationKeyUniqueKey:         domain.String(bundle.TypeKeyTask.URL()),
+				bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
+			},
+		})
 
 		// when
 		id, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{
