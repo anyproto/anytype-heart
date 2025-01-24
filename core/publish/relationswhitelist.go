@@ -35,6 +35,8 @@ var relationsWhiteList = append(derivedObjectsWhiteList, bundle.RelationKeyRelat
 
 var relationOptionWhiteList = append(derivedObjectsWhiteList, bundle.RelationKeyRelationOptionColor.String())
 
+var fileRelationsWhiteList = append(documentRelationsWhiteList, bundle.RelationKeyFileId.String(), bundle.RelationKeyFileExt.String())
+
 var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_basic:      documentRelationsWhiteList,
 	model.ObjectType_profile:    documentRelationsWhiteList,
@@ -43,9 +45,9 @@ var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_collection: documentRelationsWhiteList,
 	model.ObjectType_objectType: derivedObjectsWhiteList,
 	model.ObjectType_relation:   relationsWhiteList,
-	model.ObjectType_file:       documentRelationsWhiteList,
+	model.ObjectType_file:       fileRelationsWhiteList,
 	model.ObjectType_dashboard:  allObjectsRelationsWhiteList,
-	model.ObjectType_image:      documentRelationsWhiteList,
+	model.ObjectType_image:      fileRelationsWhiteList,
 	model.ObjectType_note:       documentRelationsWhiteList,
 	model.ObjectType_space:      allObjectsRelationsWhiteList,
 
