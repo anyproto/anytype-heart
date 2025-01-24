@@ -44,7 +44,7 @@ var (
 	templateIsPreferableRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyResolvedLayout,
 		bundle.RelationKeyIconEmoji, bundle.RelationKeyCoverId,
-		bundle.RelationKeySourceObject,
+		bundle.RelationKeySourceObject, bundle.RelationKeySetOf,
 	}
 )
 
