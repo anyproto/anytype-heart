@@ -4,12 +4,18 @@ option go_package = "pb";
 
 import "pkg/lib/pb/model/protos/models.proto";
 import "pb/protos/changes.proto";
+import "google/protobuf/struct.proto";
 
 message SnapshotWithType {
   anytype.model.SmartBlockType sbType = 1;
   anytype.Change.Snapshot snapshot = 2;
+  repeated DependantDetail dependantDetails = 3;
 }
 
+message DependantDetail {
+  string id = 1;
+  google.protobuf.Struct details = 2;
+}
 message Profile {
   string name = 1;
   string avatar = 2;

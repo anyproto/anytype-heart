@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestFileNamer_Get(t *testing.T) {
@@ -2124,6 +2125,136 @@ func Test_docsForExport(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(expCtx.docs))
+	})
+	t.Run("include dependent details", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeId := "customObjectType"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
+		assert.Nil(t, err)
+
+		objectID := "id"
+		targetBlockId := "targetBlockId"
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:      domain.String(objectID),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:      domain.String(targetBlockId),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+				bundle.RelationKeyName:    domain.String("test"),
+			},
+			{
+				bundle.RelationKeyId:                   domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
+				bundle.RelationKeySpaceId:              domain.String(spaceId),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+
+		smartBlockTest := smarttest.New(objectID)
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectID),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		smartBlockTest.Doc = doc
+
+		smartBlockTest.AddBlock(simple.New(&model.Block{
+			Id:          objectID,
+			ChildrenIds: []string{"link"},
+			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}))
+		smartBlockTest.AddBlock(simple.New(&model.Block{
+			Id: "link",
+			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: targetBlockId,
+			}},
+		}))
+
+		smartBlockTest.SetSpaceId(spaceId)
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+		objectType.SetType(smartblock.SmartBlockTypeObjectType)
+		objectType.SetSpaceId(spaceId)
+
+		objectGetter.EXPECT().GetObject(context.Background(), objectID).Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+		service := process.New()
+		err = service.Init(a)
+		assert.Nil(t, err)
+
+		notifications := mock_notifications.NewMockNotifications(t)
+
+		e := &export{
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			processService:      service,
+			notificationService: notifications,
+		}
+
+		// when
+		path, success, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
+			SpaceId:                 spaceId,
+			Path:                    t.TempDir(),
+			ObjectIds:               []string{objectID},
+			Format:                  model.Export_Protobuf,
+			IncludeFiles:            true,
+			IsJson:                  true,
+			NoProgress:              true,
+			IncludeDependentDetails: true,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 2, success)
+
+		objectPath := filepath.Join(path, objectsDirectory, objectID+".pb.json")
+		file, err := os.Open(objectPath)
+		assert.Nil(t, err)
+		var snapshot pb.SnapshotWithType
+		err = jsonpb.Unmarshal(file, &snapshot)
+		assert.Nil(t, err)
+
+		expected := []*pb.DependantDetail{
+			{
+				Id: targetBlockId,
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					bundle.RelationKeyId.String():      pbtypes.String(targetBlockId),
+					bundle.RelationKeyType.String():    pbtypes.String(objectTypeId),
+					bundle.RelationKeySpaceId.String(): pbtypes.String(spaceId),
+					bundle.RelationKeyName.String():    pbtypes.String("test"),
+				}},
+			},
+		}
+		assert.Equal(t, expected, snapshot.DependantDetails)
 	})
 }
 
