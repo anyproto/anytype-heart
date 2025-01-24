@@ -39,7 +39,7 @@ const CName = "common.core.publishservice"
 const (
 	membershipLimit       = 100 << 20
 	defaultLimit          = 10 << 20
-	inviteLinkUrlTemplate = "https://invite.any.org/%s#%s"
+	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
 	memberUrlTemplate     = "https://%s.org"
 	defaultUrlTemplate    = "https://any.org/%s"
 	indexFileName         = "index.json.gz"
