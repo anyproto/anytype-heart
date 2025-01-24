@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -22,9 +21,8 @@ func NewConverter(s state.Doc, isJSON bool) converter.Converter {
 }
 
 type pbc struct {
-	s                state.Doc
-	isJSON           bool
-	dependentDetails []database.Record
+	s      state.Doc
+	isJSON bool
 }
 
 func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
@@ -45,7 +43,7 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		Snapshot: snapshot,
 	}
 	if p.isJSON {
-		m := jsonpb.Marshaler{Indent: " "}
+		m := jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
 		result, err := m.MarshalToString(mo)
 		if err != nil {
 			log.Errorf("failed to convert object to json: %s", err)
