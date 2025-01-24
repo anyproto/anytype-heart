@@ -24,7 +24,7 @@ type ObjectGetter interface {
 
 type CachedObjectGetter interface {
 	ObjectGetter
-	TryRemoveFromCache(ctx context.Context, objectId string) error
+	TryRemoveFromCache(ctx context.Context, objectId string) (res bool, err error)
 }
 
 func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
