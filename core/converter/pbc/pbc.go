@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -15,11 +14,10 @@ import (
 
 var log = logging.Logger("pb-converter")
 
-func NewConverter(s state.Doc, isJSON bool, dependentDetails []database.Record) converter.Converter {
+func NewConverter(s state.Doc, isJSON bool) converter.Converter {
 	return &pbc{
-		s:                s,
-		isJSON:           isJSON,
-		dependentDetails: dependentDetails,
+		s:      s,
+		isJSON: isJSON,
 	}
 }
 
@@ -42,19 +40,9 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 			FileInfo:      st.GetFileInfo().ToModel(),
 		},
 	}
-	dependentDetails := make([]*pb.DependantDetail, 0, len(p.dependentDetails))
-	for _, detail := range p.dependentDetails {
-		dependentDetails = append(dependentDetails, &pb.DependantDetail{
-			Id:      detail.Details.GetString(bundle.RelationKeyId),
-			Details: detail.Details.ToProto(),
-		})
-	}
 	mo := &pb.SnapshotWithType{
 		SbType:   sbType,
 		Snapshot: snapshot,
-	}
-	if len(dependentDetails) > 0 {
-		mo.DependantDetails = dependentDetails
 	}
 	if p.isJSON {
 		m := jsonpb.Marshaler{Indent: " "}

@@ -179,7 +179,7 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		reqIds:           req.ObjectIds,
 		zip:              req.Zip,
 		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
-		includeDependentDetails: req.IncludeDependentDetails,export:           e,
+		export:           e,
 	}
 	return ec
 }
@@ -1016,16 +1016,12 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 			}
 		}
 
-		dependentDetails, err := e.getDependentDetails(b, st, err)
-		if err != nil {
-			return err
-		}
 		var conv converter.Converter
 		switch e.format {
 		case model.Export_Markdown:
 			conv = md.NewMDConverter(st, wr.Namer())
 		case model.Export_Protobuf:
-			conv = pbc.NewConverter(st, e.isJson, dependentDetails)
+			conv = pbc.NewConverter(st, e.isJson)
 		case model.Export_JSON:
 			conv = pbjson.NewConverter(st)
 		}
@@ -1045,22 +1041,6 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		}
 		return nil
 	})
-}
-
-func (e *exportContext) getDependentDetails(b sb.SmartBlock, st *state.State, err error) ([]database.Record, error) {
-	var dependentDetails []database.Record
-	if e.includeDependentDetails {
-		dependentObjectIDs := objectlink.DependentObjectIDs(st, b.Space(), objectlink.Flags{
-			Blocks:  true,
-			Details: true,
-			Types:   true,
-		})
-		dependentDetails, err = e.objectStore.SpaceIndex(b.SpaceID()).QueryByIds(dependentObjectIDs)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return dependentDetails, nil
 }
 
 func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {
