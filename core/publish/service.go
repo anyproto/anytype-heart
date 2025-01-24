@@ -41,7 +41,7 @@ const (
 	defaultLimit          = 10 << 20
 	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
 	memberUrlTemplate     = "https://%s.org"
-	defaultUrlTemplate    = "https://any.org/%s"
+	defaultUrlTemplate    = "https://any.coop/%s"
 	indexFileName         = "index.json.gz"
 )
 
