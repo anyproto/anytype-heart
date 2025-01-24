@@ -64,8 +64,7 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 		if _, ok := limitedScopeMethods[methodTrimmed]; !ok {
 			return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("method %s not allowed for %s", methodTrimmed, scope.String()))
 		}
-	default
-
+	default:
 		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("method %s not allowed for %s scope", info.FullMethod, scope.String()))
 	}
 	resp, err = handler(ctx, req)
