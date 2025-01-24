@@ -22,6 +22,11 @@ type ObjectGetter interface {
 	GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
 }
 
+type CachedObjectGetter interface {
+	ObjectGetter
+	TryRemoveFromCache(ctx context.Context, objectId string) error
+}
+
 func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
 	ctx := context.Background()
 	sb, err := p.GetObject(ctx, objectID)

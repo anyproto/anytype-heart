@@ -234,6 +234,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 
 		return nil
 	})
+	_ = i.picker.TryRemoveFromCache(ctx, id)
 
 	return docs, err
 }
