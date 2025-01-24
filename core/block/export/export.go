@@ -571,8 +571,10 @@ func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) ([]string
 				}
 				relations = lo.Union(relations, dataviewRelations)
 			}
-			objectTypeId := details.GetString(bundle.RelationKeyType)
-			objectsTypes = lo.Union(objectsTypes, []string{objectTypeId})
+			if details.Has(bundle.RelationKeyType) {
+				objectTypeId := details.GetString(bundle.RelationKeyType)
+				objectsTypes = lo.Union(objectsTypes, []string{objectTypeId})
+			}
 			setOfList := details.GetStringList(bundle.RelationKeySetOf)
 			setOf = lo.Union(setOf, setOfList)
 			return nil
@@ -876,7 +878,7 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 				continue
 			}
 			if isLinkedObjectExist(rec) {
-				exportDoc := &Doc{Details: rec[0].Details, isLink: e.isLinkProcess}
+				exportDoc := &Doc{Details: rec[0].Details, isLink: true}
 				nestedDocs[link] = exportDoc
 				e.docs[link] = exportDoc
 				e.addNestedObject(link, nestedDocs)
@@ -1259,8 +1261,16 @@ func pbFiltersToState(filters *pb.RpcObjectListExportStateFilters) *state.Filter
 	if filters == nil {
 		return nil
 	}
+	relationByLayoutList := state.RelationsByLayout{}
+	for _, relationByLayout := range filters.RelationsWhiteList {
+		allowedRelations := make([]domain.RelationKey, 0, len(relationByLayout.AllowedRelations))
+		for _, relation := range relationByLayout.AllowedRelations {
+			allowedRelations = append(allowedRelations, domain.RelationKey(relation))
+		}
+		relationByLayoutList[relationByLayout.Layout] = allowedRelations
+	}
 	return &state.Filters{
-		RelationsWhiteList: filters.RelationsWhiteList,
-		OnlyRootBlock:      filters.OnlyRootBlock,
+		RelationsWhiteList: relationByLayoutList,
+		RemoveBlocks:       filters.RemoveBlocks,
 	}
 }

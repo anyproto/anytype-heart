@@ -140,22 +140,22 @@ type State struct {
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects or used for derived objects such as relations, types and etc
 }
 
+type RelationsByLayout map[model.ObjectTypeLayout][]domain.RelationKey
+
 type Filters struct {
-	RelationsWhiteList []string
-	OnlyRootBlock      bool
+	RelationsWhiteList RelationsByLayout
+	RemoveBlocks       bool
 }
 
 func (s *State) Filter(filters *Filters) *State {
 	if filters == nil {
 		return s
 	}
-	if filters.OnlyRootBlock {
-		resultBlocks := make(map[string]simple.Block, 1)
-		resultBlocks[s.rootId] = s.blocks[s.rootId]
-		s.blocks = resultBlocks
+	if filters.RemoveBlocks {
+		s.filterBlocks()
 	}
 	if len(filters.RelationsWhiteList) > 0 {
-		s.cutRelations(filters)
+		s.filterRelations(filters)
 	}
 	if s.parent != nil {
 		s.parent = s.parent.Filter(filters)
@@ -163,21 +163,43 @@ func (s *State) Filter(filters *Filters) *State {
 	return s
 }
 
-func (s *State) cutRelations(filters *Filters) {
+func (s *State) filterBlocks() {
+	resultBlocks := make(map[string]simple.Block)
+	if block, ok := s.blocks[s.rootId]; ok {
+		resultBlocks[s.rootId] = block
+	}
+	s.blocks = resultBlocks
+}
+
+func (s *State) filterRelations(filters *Filters) {
 	resultDetails := domain.NewDetails()
-	s.relationLinks = pbtypes.RelationLinks{}
+	layout, _ := s.Layout()
+	relationKeys := filters.RelationsWhiteList[layout]
+	var updatedRelationLinks pbtypes.RelationLinks
 	for key, value := range s.details.Iterate() {
-		if slices.Contains(filters.RelationsWhiteList, key.String()) {
+		if slices.Contains(relationKeys, key) {
 			resultDetails.Set(key, value)
+			updatedRelationLinks = append(updatedRelationLinks, s.relationLinks.Get(key.String()))
+			continue
 		}
 	}
-	if resultDetails.Len() != len(filters.RelationsWhiteList) {
-		for key, value := range s.localDetails.Iterate() {
-			if slices.Contains(filters.RelationsWhiteList, key.String()) {
-				resultDetails.Set(key, value)
-			}
+	s.details = resultDetails
+	if resultDetails.Len() == 0 {
+		s.details = nil
+	}
+	resultLocalDetails := domain.NewDetails()
+	for key, value := range s.localDetails.Iterate() {
+		if slices.Contains(relationKeys, key) {
+			resultLocalDetails.Set(key, value)
+			updatedRelationLinks = append(updatedRelationLinks, s.relationLinks.Get(key.String()))
+			continue
 		}
 	}
+	s.localDetails = resultLocalDetails
+	if resultLocalDetails.Len() == 0 {
+		s.localDetails = nil
+	}
+	s.relationLinks = updatedRelationLinks
 }
 
 func (s *State) MigrationVersion() uint32 {

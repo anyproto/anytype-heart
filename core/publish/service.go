@@ -45,23 +45,6 @@ const (
 	indexFileName         = "index.json.gz"
 )
 
-var publishingRelationsWhiteList = []string{
-	bundle.RelationKeyName.String(),
-	bundle.RelationKeyDescription.String(),
-	bundle.RelationKeySnippet.String(),
-	bundle.RelationKeyType.String(),
-	bundle.RelationKeySpaceId.String(),
-	bundle.RelationKeyId.String(),
-	bundle.RelationKeyIconImage.String(),
-	bundle.RelationKeyIconEmoji.String(),
-	bundle.RelationKeyCoverType.String(),
-	bundle.RelationKeyCoverId.String(),
-	bundle.RelationKeyIsArchived.String(),
-	bundle.RelationKeyIsDeleted.String(),
-	bundle.RelationKeyDone.String(),
-	bundle.RelationKeyPicture.String(),
-}
-
 var log = logger.NewNamed(CName)
 
 var ErrLimitExceeded = errors.New("limit exceeded")
@@ -139,17 +122,18 @@ func uniqName() string {
 func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
 	tempDir := os.TempDir()
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
-		SpaceId:      spaceId,
-		Format:       model.Export_Protobuf,
-		IncludeFiles: true,
-		IsJson:       false,
-		Zip:          false,
-		Path:         tempDir,
-		ObjectIds:    []string{pageId},
-		NoProgress:   true,
+		SpaceId:       spaceId,
+		Format:        model.Export_Protobuf,
+		IncludeFiles:  true,
+		IsJson:        false,
+		Zip:           false,
+		Path:          tempDir,
+		ObjectIds:     []string{pageId},
+		NoProgress:    true,
+		IncludeNested: true,
 		LinksStateFilters: &pb.RpcObjectListExportStateFilters{
-			RelationsWhiteList: publishingRelationsWhiteList,
-			OnlyRootBlock:      true,
+			RelationsWhiteList: relationsWhiteListToPbModel(),
+			RemoveBlocks:       true,
 		},
 	})
 	if err != nil {

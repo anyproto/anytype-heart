@@ -2784,10 +2784,13 @@ message Rpc {
                 bool noProgress = 11;
                 StateFilters linksStateFilters = 12;
             }
-
             message StateFilters {
-                repeated string relationsWhiteList = 1;
-                bool onlyRootBlock = 2;
+                repeated RelationsWhiteList relationsWhiteList = 1;
+                bool removeBlocks = 2;
+            }
+            message RelationsWhiteList {
+                anytype.model.ObjectType.Layout layout = 1;
+                repeated string allowedRelations = 2;
             }
             message Response {
                 Error error = 1;
