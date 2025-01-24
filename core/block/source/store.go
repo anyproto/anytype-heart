@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -50,6 +51,7 @@ type store struct {
 	store        *storestate.StoreState
 	onUpdateHook func()
 	onPushChange PushChangeHook
+	sbType       smartblock.SmartBlockType
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
@@ -73,9 +75,19 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 
 	st := state.NewDoc(s.id, nil).(*state.State)
 	// Set object type here in order to derive value of Type relation in smartblock.Init
-	st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	switch s.sbType {
+	case smartblock.SmartBlockTypeChatDerivedObject:
+		st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	case smartblock.SmartBlockTypeAccountObject:
+		st.SetObjectTypeKey(bundle.TypeKeyProfile)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_profile)))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_profile)))
+	default:
+		return nil, fmt.Errorf("unsupported smartblock type: %v", s.sbType)
+	}
+
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(true))
 	return st, nil
 }
