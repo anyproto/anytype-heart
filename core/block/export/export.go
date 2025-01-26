@@ -854,7 +854,6 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 			Blocks:                   true,
 			Details:                  true,
 			Collection:               true,
-			NoSystemRelations:        true,
 			NoHiddenBundledRelations: true,
 		})
 		return nil
