@@ -242,6 +242,26 @@ definitions:
         example: 1024
         type: integer
     type: object
+  search.SearchRequest:
+    properties:
+      query:
+        type: string
+      sort:
+        $ref: '#/definitions/search.SortOptions'
+      types:
+        items:
+          type: string
+        type: array
+    type: object
+  search.SortOptions:
+    properties:
+      direction:
+        description: '"asc" or "desc"'
+        type: string
+      timestamp:
+        description: '"created_date", "last_modified_date" or "last_opened_date"'
+        type: string
+    type: object
   space.CreateSpaceResponse:
     properties:
       space:
@@ -451,21 +471,10 @@ paths:
       tags:
       - auth
   /search:
-    get:
+    post:
       consumes:
       - application/json
       parameters:
-      - description: Search query
-        in: query
-        name: query
-        type: string
-      - collectionFormat: csv
-        description: Types to filter objects by
-        in: query
-        items:
-          type: string
-        name: types
-        type: array
       - description: The number of items to skip before starting to collect the result
           set
         in: query
@@ -476,6 +485,12 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: Search parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/search.SearchRequest'
       produces:
       - application/json
       responses:

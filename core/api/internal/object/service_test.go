@@ -115,8 +115,9 @@ func TestObjectService_ListObjects(t *testing.T) {
 								bundle.RelationKeySnippet.String():          pbtypes.String(mockedObjectSnippet),
 								bundle.RelationKeyIconEmoji.String():        pbtypes.String("📄"),
 								bundle.RelationKeyType.String():             pbtypes.String(mockedObjectTypeUniqueKey),
-								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
 								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
+								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
+								bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
 								bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
 							},
 						},
@@ -186,7 +187,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
 		require.Equal(t, "📄", objects[0].Icon)
 		require.Equal(t, "Page", objects[0].ObjectType)
-		require.Equal(t, 5, len(objects[0].Details))
+		require.Equal(t, 6, len(objects[0].Details))
 
 		for _, detail := range objects[0].Details {
 			if detail.Id == "created_date" {
@@ -197,6 +198,8 @@ func TestObjectService_ListObjects(t *testing.T) {
 				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
 			} else if detail.Id == "last_modified_by" {
 				require.Empty(t, detail.Details["last_modified_by"])
+			} else if detail.Id == "last_opened_date" {
+				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["last_opened_date"])
 			} else if detail.Id == "tags" {
 				require.Empty(t, detail.Details["tags"])
 			} else {
@@ -255,6 +258,7 @@ func TestObjectService_GetObject(t *testing.T) {
 									bundle.RelationKeyType.String():             pbtypes.String(mockedObjectTypeUniqueKey),
 									bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
 									bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
+									bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
 									bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
 								},
 							},
@@ -322,7 +326,7 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
 		require.Equal(t, mockedObjectName, object.Icon)
 		require.Equal(t, "Page", object.ObjectType)
-		require.Equal(t, 5, len(object.Details))
+		require.Equal(t, 6, len(object.Details))
 
 		for _, detail := range object.Details {
 			if detail.Id == "created_date" {
@@ -333,6 +337,8 @@ func TestObjectService_GetObject(t *testing.T) {
 				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
 			} else if detail.Id == "last_modified_by" {
 				require.Empty(t, detail.Details["last_modified_by"])
+			} else if detail.Id == "last_opened_date" {
+				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["last_opened_date"])
 			} else if detail.Id == "tags" {
 				require.Empty(t, detail.Details["tags"])
 			} else {

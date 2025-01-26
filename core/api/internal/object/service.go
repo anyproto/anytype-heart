@@ -418,6 +418,12 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 			},
 		},
 		{
+			Id: "last_opened_date",
+			Details: map[string]interface{}{
+				"last_opened_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastOpenedDate.String()].GetNumberValue()),
+			},
+		},
+		{
 			Id: "tags",
 			Details: map[string]interface{}{
 				"tags": s.getTags(resp),

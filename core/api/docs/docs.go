@@ -118,7 +118,7 @@ const docTemplate = `{
             }
         },
         "/search": {
-            "get": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -131,22 +131,6 @@ const docTemplate = `{
                 "summary": "Search objects across all spaces",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Search query",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "description": "Types to filter objects by",
-                        "name": "types",
-                        "in": "query"
-                    },
-                    {
                         "type": "integer",
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
@@ -158,6 +142,15 @@ const docTemplate = `{
                         "description": "The number of items to return",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "description": "Search parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/search.SearchRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -1107,6 +1100,36 @@ const docTemplate = `{
                     "description": "the total number of items available on that endpoint",
                     "type": "integer",
                     "example": 1024
+                }
+            }
+        },
+        "search.SearchRequest": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string"
+                },
+                "sort": {
+                    "$ref": "#/definitions/search.SortOptions"
+                },
+                "types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "search.SortOptions": {
+            "type": "object",
+            "properties": {
+                "direction": {
+                    "description": "\"asc\" or \"desc\"",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "\"created_date\", \"last_modified_date\" or \"last_opened_date\"",
+                    "type": "string"
                 }
             }
         },

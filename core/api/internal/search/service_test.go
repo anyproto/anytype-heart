@@ -157,7 +157,7 @@ func TestSearchService_Search(t *testing.T) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeyLastModifiedDate.String(), bundle.RelationKeySpaceId.String()},
+			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), bundle.RelationKeyLastModifiedDate.String()},
 			Limit: int32(offset + limit),
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
@@ -322,7 +322,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Twice()
 
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, "search-term", []string{}, offset, limit)
+		objects, total, hasMore, err := fx.Search(ctx, SearchRequest{Query: "search-term", Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
 
 		// then
 		require.NoError(t, err)

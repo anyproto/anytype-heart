@@ -23,7 +23,7 @@ var (
 )
 
 type Service interface {
-	Search(ctx context.Context, searchQuery string, types []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error)
+	Search(ctx context.Context, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error)
 }
 
 type SearchService struct {
@@ -38,33 +38,29 @@ func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceServic
 }
 
 // Search retrieves a paginated list of objects from all spaces that match the search parameters.
-func (s *SearchService) Search(ctx context.Context, searchQuery string, types []string, offset, limit int) (objects []object.Object, total int, hasMore bool, err error) {
+func (s *SearchService) Search(ctx context.Context, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error) {
 	spaces, _, _, err := s.spaceService.ListSpaces(ctx, 0, spaceLimit)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	baseFilters := s.prepareBaseFilters()
-	queryFilters := s.prepareQueryFilter(searchQuery)
+	queryFilters := s.prepareQueryFilter(request.Query)
+	sorts := s.prepareSorts(request.Sort)
+	dateToSortAfter := sorts[0].RelationKey
 
 	allResponses := make([]*pb.RpcObjectSearchResponse, 0, len(spaces))
 	for _, space := range spaces {
 		// Resolve object type IDs per space, as they are unique per space
-		typeFilters := s.prepareObjectTypeFilters(space.Id, types)
+		typeFilters := s.prepareObjectTypeFilters(space.Id, request.Types)
 		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, typeFilters)
 
 		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 			SpaceId: space.Id,
 			Filters: filters,
-			Sorts: []*model.BlockContentDataviewSort{{
-				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
-				Type:           model.BlockContentDataviewSort_Desc,
-				Format:         model.RelationFormat_date,
-				IncludeTime:    true,
-				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
-			}},
-			Keys:  []string{bundle.RelationKeyId.String(), bundle.RelationKeyLastModifiedDate.String(), bundle.RelationKeySpaceId.String()},
-			Limit: int32(offset + limit), // nolint: gosec
+			Sorts:   sorts,
+			Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), dateToSortAfter},
+			Limit:   int32(offset + limit), // nolint: gosec
 		})
 
 		if objResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -75,27 +71,27 @@ func (s *SearchService) Search(ctx context.Context, searchQuery string, types []
 	}
 
 	combinedRecords := make([]struct {
-		Id               string
-		SpaceId          string
-		LastModifiedDate float64
+		Id              string
+		SpaceId         string
+		DateToSortAfter float64
 	}, 0)
 	for _, objResp := range allResponses {
 		for _, record := range objResp.Records {
 			combinedRecords = append(combinedRecords, struct {
-				Id               string
-				SpaceId          string
-				LastModifiedDate float64
+				Id              string
+				SpaceId         string
+				DateToSortAfter float64
 			}{
-				Id:               record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-				SpaceId:          record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
-				LastModifiedDate: record.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue(),
+				Id:              record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+				SpaceId:         record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+				DateToSortAfter: record.Fields[dateToSortAfter].GetNumberValue(),
 			})
 		}
 	}
 
 	// sort after posix last_modified_date to achieve descending sort order across all spaces
 	sort.Slice(combinedRecords, func(i, j int) bool {
-		return combinedRecords[i].LastModifiedDate > combinedRecords[j].LastModifiedDate
+		return combinedRecords[i].DateToSortAfter > combinedRecords[j].DateToSortAfter
 	})
 
 	total = len(combinedRecords)
@@ -225,5 +221,42 @@ func (s *SearchService) prepareObjectTypeFilters(spaceId string, objectTypes []s
 			Operator:      model.BlockContentDataviewFilter_Or,
 			NestedFilters: nestedFilters,
 		},
+	}
+}
+
+// prepareSorts returns a sort filter based on the given sort parameters
+func (s *SearchService) prepareSorts(sort SortOptions) []*model.BlockContentDataviewSort {
+	return []*model.BlockContentDataviewSort{{
+		RelationKey:    s.getSortRelationKey(sort.Timestamp),
+		Type:           s.getSortDirection(sort.Direction),
+		Format:         model.RelationFormat_date,
+		IncludeTime:    true,
+		EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+	}}
+}
+
+// getSortRelationKey returns the relation key for the given sort timestamp
+func (s *SearchService) getSortRelationKey(timestamp string) string {
+	switch timestamp {
+	case "created_date":
+		return bundle.RelationKeyCreatedDate.String()
+	case "last_modified_date":
+		return bundle.RelationKeyLastModifiedDate.String()
+	case "last_opened_date":
+		return bundle.RelationKeyLastOpenedDate.String()
+	default:
+		return bundle.RelationKeyLastModifiedDate.String()
+	}
+}
+
+// getSortDirection returns the sort direction for the given string
+func (s *SearchService) getSortDirection(direction string) model.BlockContentDataviewSortType {
+	switch direction {
+	case "asc":
+		return model.BlockContentDataviewSort_Asc
+	case "desc":
+		return model.BlockContentDataviewSort_Desc
+	default:
+		return model.BlockContentDataviewSort_Desc
 	}
 }

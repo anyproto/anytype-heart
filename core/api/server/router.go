@@ -73,7 +73,7 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), object.CreateObjectHandler(s.objectService))
 
 		// Search
-		v1.GET("/search", search.SearchHandler(s.searchService))
+		v1.POST("/search", search.SearchHandler(s.searchService))
 
 		// Space
 		v1.GET("/spaces", space.GetSpacesHandler(s.spaceService))

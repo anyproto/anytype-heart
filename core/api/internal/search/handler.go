@@ -15,22 +15,26 @@ import (
 //	@Tags		search
 //	@Accept		json
 //	@Produce	json
-//	@Param		query	query		string						false	"Search query"
-//	@Param		types	query		[]string					false	"Types to filter objects by"
 //	@Param		offset	query		int							false	"The number of items to skip before starting to collect the result set"
 //	@Param		limit	query		int							false	"The number of items to return"	default(100)
+//	@Param		request	body		SearchRequest				true	"Search parameters"
 //	@Success	200		{object}	map[string][]object.Object	"List of objects"
 //	@Failure	401		{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure	500		{object}	util.ServerError			"Internal server error"
-//	@Router		/search [get]
+//	@Router		/search [post]
 func SearchHandler(s *SearchService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		searchQuery := c.Query("query")
-		objectTypes := c.QueryArray("types")
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		objects, total, hasMore, err := s.Search(c, searchQuery, objectTypes, offset, limit)
+		request := SearchRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		objects, total, hasMore, err := s.Search(c, request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedSearchObjects, http.StatusInternalServerError),
 		)
