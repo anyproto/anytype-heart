@@ -8,12 +8,12 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/api/internal/auth"
+	"github.com/anyproto/anytype-heart/core/api/internal/export"
+	"github.com/anyproto/anytype-heart/core/api/internal/object"
+	"github.com/anyproto/anytype-heart/core/api/internal/search"
+	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
-	"github.com/anyproto/anytype-heart/core/api/services/auth"
-	"github.com/anyproto/anytype-heart/core/api/services/export"
-	"github.com/anyproto/anytype-heart/core/api/services/object"
-	"github.com/anyproto/anytype-heart/core/api/services/search"
-	"github.com/anyproto/anytype-heart/core/api/services/space"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
 
