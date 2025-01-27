@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -13,6 +15,7 @@ import (
 type Directory struct {
 	fileReaders map[string]struct{}
 	importPath  string
+	rootDirs    map[string]bool
 }
 
 func NewDirectory() *Directory {
@@ -23,6 +26,9 @@ func (d *Directory) Initialize(importPath string) error {
 	files := make(map[string]struct{})
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
+			if strings.HasPrefix(info.Name(), ".DS_Store") {
+				return nil
+			}
 			if info != nil && !info.IsDir() {
 				files[path] = struct{}{}
 			}
@@ -31,6 +37,7 @@ func (d *Directory) Initialize(importPath string) error {
 	)
 	d.fileReaders = files
 	d.importPath = importPath
+	d.rootDirs = findNonEmptyDirs(files)
 	if err != nil {
 		return err
 	}
@@ -80,7 +87,44 @@ func (d *Directory) CountFilesWithGivenExtensions(extension []string) int {
 }
 
 func (d *Directory) IsRootFile(fileName string) bool {
-	return filepath.Dir(fileName) == d.importPath
+	fileDir := filepath.Dir(fileName)
+	return fileDir == d.importPath || d.rootDirs[fileDir]
 }
 
 func (d *Directory) Close() {}
+
+func findNonEmptyDirs(files map[string]struct{}) map[string]bool {
+	dirs := make([]string, 0, len(files))
+	for file := range files {
+		dir := filepath.Dir(file)
+		if dir == "." {
+			return map[string]bool{dir: true}
+		}
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+	result := make(map[string]bool)
+	visited := make(map[string]bool)
+
+	for _, dir := range dirs {
+		if _, ok := visited[dir]; ok {
+			continue
+		}
+		visited[dir] = true
+		if isSubdirectoryOfAny(dir, result) {
+			continue
+		}
+		result[dir] = true
+	}
+
+	return result
+}
+
+func isSubdirectoryOfAny(dir string, directories map[string]bool) bool {
+	for base := range directories {
+		if strings.HasPrefix(dir, base+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}

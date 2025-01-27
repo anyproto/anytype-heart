@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/anyproto/anytype-heart/core"
+	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -225,6 +226,7 @@ func main() {
 	}()
 
 	startReportMemory(mw)
+	api.SetMiddlewareParams(mw)
 
 	shutdown := func() {
 		server.Stop()
