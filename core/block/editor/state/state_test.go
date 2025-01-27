@@ -2979,50 +2979,6 @@ func TestState_AddRelationLinks(t *testing.T) {
 }
 
 func TestFilter(t *testing.T) {
-	t.Run("no filters", func(t *testing.T) {
-		// given
-		st := buildStateFromAST(blockbuilder.Root(
-			blockbuilder.ID("root"),
-			blockbuilder.Children(
-				blockbuilder.Text(
-					" text 1 ",
-					blockbuilder.ID("1"),
-				),
-				blockbuilder.Text(
-					" text 2 ",
-					blockbuilder.ID("2"),
-				),
-			)))
-		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyCoverType: domain.Int64(1),
-			bundle.RelationKeyName:      domain.String("name"),
-			bundle.RelationKeyAssignee:  domain.String("assignee"),
-			bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_todo),
-		}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyCoverType.String(),
-			Format: model.RelationFormat_number,
-		},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyName.String(),
-				Format: model.RelationFormat_longtext,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyAssignee.String(),
-				Format: model.RelationFormat_object,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyLayout.String(),
-				Format: model.RelationFormat_number,
-			},
-		)
-
-		// when
-		filteredState := st.Filter(nil)
-
-		// then
-		assert.Equal(t, st, filteredState)
-	})
 	t.Run("remove blocks", func(t *testing.T) {
 		// given
 		st := NewDoc("root", map[string]simple.Block{

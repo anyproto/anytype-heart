@@ -147,18 +147,18 @@ type Filters struct {
 	RemoveBlocks       bool
 }
 
+// Filter should be called with state copy
 func (s *State) Filter(filters *Filters) *State {
 	if filters == nil {
 		return s
 	}
-	stateCopy := s.Copy()
 	if filters.RemoveBlocks {
-		stateCopy.filterBlocks()
+		s.filterBlocks()
 	}
 	if len(filters.RelationsWhiteList) > 0 {
-		stateCopy.filterRelations(filters)
+		s.filterRelations(filters)
 	}
-	return stateCopy
+	return s
 }
 
 func (s *State) filterBlocks() {

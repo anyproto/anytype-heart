@@ -482,7 +482,7 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 
 func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsIds []string) ([]string, error) {
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
-		st := sb.NewState().Filter(e.getStateFilters(id))
+		st := sb.NewState().Copy().Filter(e.getStateFilters(id))
 		viewDependentObjectsIds = append(viewDependentObjectsIds, objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{Blocks: true})...)
 		return nil
 	})
@@ -561,7 +561,7 @@ func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) ([]string
 	var relations, objectsTypes, setOf []string
 	for id := range objects {
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
-			state := b.NewState().Filter(e.getStateFilters(id))
+			state := b.NewState().Copy().Filter(e.getStateFilters(id))
 			relations = lo.Union(relations, getObjectRelations(state))
 			details := state.CombinedDetails()
 			if isObjectWithDataview(details) {
@@ -849,7 +849,7 @@ func (e *exportContext) addNestedObjects(ids []string) error {
 func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 	var links []string
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
-		st := sb.NewState().Filter(e.getStateFilters(id))
+		st := sb.NewState().Copy().Filter(e.getStateFilters(id))
 		links = objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{
 			Blocks:                   true,
 			Details:                  true,
@@ -890,7 +890,7 @@ func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
 	var fileObjectsIds []string
 	err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
-		b.NewState().Filter(e.getStateFilters(id)).IterateLinkedFiles(func(fileObjectId string) {
+		b.NewState().Copy().Filter(e.getStateFilters(id)).IterateLinkedFiles(func(fileObjectId string) {
 			res, err := spaceIndex.Query(database.Query{
 				Filters: []database.FilterRequest{
 					{
@@ -1002,7 +1002,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 			return nil
 		}
 
-		st = st.Filter(e.getStateFilters(docId))
+		st = st.Copy().Filter(e.getStateFilters(docId))
 		if e.includeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
 			fileName, err := e.saveFile(ctx, wr, b, e.spaceId == "")
 			if err != nil {
