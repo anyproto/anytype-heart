@@ -986,29 +986,38 @@ const docTemplate = `{
             "properties": {
                 "align": {
                     "type": "string",
-                    "example": "AlignLeft"
+                    "enum": [
+                        "AlignLeft|AlignCenter|AlignRight|AlignJustify"
+                    ]
                 },
                 "background_color": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "red"
                 },
                 "children_ids": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "[\"6797ce8ecda913cde14b02dc\"]"
+                    ]
                 },
                 "file": {
                     "$ref": "#/definitions/object.File"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "64394517de52ad5acb89c66c"
                 },
                 "text": {
                     "$ref": "#/definitions/object.Text"
                 },
                 "vertical_align": {
                     "type": "string",
-                    "example": "VerticalAlignTop"
+                    "enum": [
+                        "VerticalAlignTop|VerticalAlignMiddle|VerticalAlignBottom"
+                    ]
                 }
             }
         },
@@ -1016,25 +1025,32 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "body": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Body"
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Description"
                 },
                 "icon": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "📄"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Name"
                 },
                 "object_type_unique_key": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "ot-page"
                 },
                 "source": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "https://source.com"
                 },
                 "template_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"
                 }
             }
         },
@@ -1046,7 +1062,10 @@ const docTemplate = `{
                     "additionalProperties": true
                 },
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "last_modified_date|last_modified_by|created_date|created_by|last_opened_date|tags"
+                    ]
                 }
             }
         },
@@ -1114,7 +1133,8 @@ const docTemplate = `{
                     "example": "Object Name"
                 },
                 "root_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"
                 },
                 "snippet": {
                     "type": "string",
@@ -1171,19 +1191,26 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "checked": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "color": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "red"
                 },
                 "icon": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "📄"
                 },
                 "style": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "Paragraph|Header1|Header2|Header3|Header4|Quote|Code|Title|Checkbox|Marked|Numbered|Toggle|Description|Callout"
+                    ]
                 },
                 "text": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Some text"
                 }
             }
         },

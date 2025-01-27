@@ -1,13 +1,13 @@
 package object
 
 type CreateObjectRequest struct {
-	Name                string `json:"name"`
-	Icon                string `json:"icon"`
-	Description         string `json:"description"`
-	Body                string `json:"body"`
-	Source              string `json:"source"`
-	TemplateId          string `json:"template_id"`
-	ObjectTypeUniqueKey string `json:"object_type_unique_key"`
+	Name                string `json:"name" example:"Object Name"`
+	Icon                string `json:"icon" example:"📄"`
+	Description         string `json:"description" example:"Object Description"`
+	Body                string `json:"body" example:"Object Body"`
+	Source              string `json:"source" example:"https://source.com"`
+	TemplateId          string `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"`
+	ObjectTypeUniqueKey string `json:"object_type_unique_key" example:"ot-page"`
 }
 
 type ObjectResponse struct {
@@ -22,27 +22,27 @@ type Object struct {
 	Snippet string   `json:"snippet" example:"The beginning of the object body..."`
 	Layout  string   `json:"layout" example:"basic"`
 	SpaceId string   `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`
-	RootId  string   `json:"root_id"`
+	RootId  string   `json:"root_id" example:"bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"`
 	Blocks  []Block  `json:"blocks"`
 	Details []Detail `json:"details"`
 }
 
 type Block struct {
-	Id              string   `json:"id"`
-	ChildrenIds     []string `json:"children_ids"`
-	BackgroundColor string   `json:"background_color"`
-	Align           string   `json:"align" example:"AlignLeft"`
-	VerticalAlign   string   `json:"vertical_align" example:"VerticalAlignTop"`
+	Id              string   `json:"id" example:"64394517de52ad5acb89c66c"`
+	ChildrenIds     []string `json:"children_ids" example:"[\"6797ce8ecda913cde14b02dc\"]"`
+	BackgroundColor string   `json:"background_color" example:"red"`
+	Align           string   `json:"align" enums:"AlignLeft|AlignCenter|AlignRight|AlignJustify"`
+	VerticalAlign   string   `json:"vertical_align" enums:"VerticalAlignTop|VerticalAlignMiddle|VerticalAlignBottom"`
 	Text            *Text    `json:"text,omitempty"`
 	File            *File    `json:"file,omitempty"`
 }
 
 type Text struct {
-	Text    string `json:"text"`
-	Style   string `json:"style"`
-	Checked bool   `json:"checked"`
-	Color   string `json:"color"`
-	Icon    string `json:"icon"`
+	Text    string `json:"text" example:"Some text"`
+	Style   string `json:"style" enums:"Paragraph|Header1|Header2|Header3|Header4|Quote|Code|Title|Checkbox|Marked|Numbered|Toggle|Description|Callout"`
+	Checked bool   `json:"checked" example:"true"`
+	Color   string `json:"color" example:"red"`
+	Icon    string `json:"icon" example:"📄"`
 }
 
 type File struct {
@@ -58,7 +58,7 @@ type File struct {
 }
 
 type Detail struct {
-	Id      string                 `json:"id"`
+	Id      string                 `json:"id" enums:"last_modified_date|last_modified_by|created_date|created_by|last_opened_date|tags"`
 	Details map[string]interface{} `json:"details"`
 }
 
