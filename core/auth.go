@@ -20,14 +20,18 @@ import (
 )
 
 var limitedScopeMethods = map[string]struct{}{
-	"ObjectSearch":          {},
-	"ObjectShow":            {},
-	"ObjectCreate":          {},
-	"ObjectCreateFromURL":   {},
-	"BlockPreview":          {},
-	"BlockPaste":            {},
-	"BroadcastPayloadEvent": {},
-	"AccountSelect":         {}, // need to replace with other method to get info
+	"ObjectSearch":               {},
+	"ObjectShow":                 {},
+	"ObjectCreate":               {},
+	"ObjectCreateFromUrl":        {},
+	"BlockPreview":               {},
+	"BlockPaste":                 {},
+	"BroadcastPayloadEvent":      {},
+	"AccountSelect":              {},
+	"ListenSessionEvents":        {},
+	"ObjectSearchSubscribe":      {},
+	"ObjectCreateRelationOption": {},
+	// need to replace with other method to get info
 }
 
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
@@ -56,11 +60,12 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 	switch scope {
 	case model.AccountAuth_Full:
 	case model.AccountAuth_Limited:
-		if _, ok := limitedScopeMethods[strings.TrimPrefix(info.FullMethod, "/anytype.ClientCommands/")]; !ok {
-			return nil, status.Error(codes.PermissionDenied, "method not allowed for limited scope")
+		methodTrimmed := strings.TrimPrefix(info.FullMethod, "/anytype.ClientCommands/")
+		if _, ok := limitedScopeMethods[methodTrimmed]; !ok {
+			return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("method %s not allowed for %s", methodTrimmed, scope.String()))
 		}
 	default:
-		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("method not allowed for %s scope", scope.String()))
+		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("method %s not allowed for %s scope", info.FullMethod, scope.String()))
 	}
 	resp, err = handler(ctx, req)
 	return
