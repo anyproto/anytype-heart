@@ -132,11 +132,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -196,11 +198,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -301,11 +305,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -357,11 +363,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -648,11 +656,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -719,11 +729,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -782,11 +794,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",

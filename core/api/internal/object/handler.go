@@ -16,8 +16,8 @@ import (
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space ID"
-//	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int										false	"The number of items to return"	default(100)
+//	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param		limit		query		int										false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success	200			{object}	pagination.PaginatedResponse[Object]	"List of objects"
 //	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
 //	@Failure	500			{object}	util.ServerError						"Internal server error"
@@ -166,8 +166,8 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string								true	"Space ID"
-//	@Param		offset		query		int									false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int									false	"The number of items to return"	default(100)
+//	@Param		offset		query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param		limit		query		int									false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success	200			{object}	pagination.PaginatedResponse[Type]	"List of types"
 //	@Failure	401			{object}	util.UnauthorizedError				"Unauthorized"
 //	@Failure	500			{object}	util.ServerError					"Internal server error"
@@ -201,8 +201,8 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space ID"
 //	@Param		type_id		path		string									true	"Type ID"
-//	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int										false	"The number of items to return"	default(100)
+//	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param		limit		query		int										false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success	200			{object}	pagination.PaginatedResponse[Template]	"List of templates"
 //	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
 //	@Failure	500			{object}	util.ServerError						"Internal server error"

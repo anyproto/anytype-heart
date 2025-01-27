@@ -475,7 +475,8 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The number of items to skip before starting to collect the result
+      - default: 0
+        description: The number of items to skip before starting to collect the result
           set
         in: query
         name: offset
@@ -483,6 +484,7 @@ paths:
       - default: 100
         description: The number of items to return
         in: query
+        maximum: 1000
         name: limit
         type: integer
       - description: Search parameters
@@ -518,7 +520,8 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: The number of items to skip before starting to collect the result
+      - default: 0
+        description: The number of items to skip before starting to collect the result
           set
         in: query
         name: offset
@@ -526,6 +529,7 @@ paths:
       - default: 100
         description: The number of items to return
         in: query
+        maximum: 1000
         name: limit
         type: integer
       produces:
@@ -588,7 +592,8 @@ paths:
         name: space_id
         required: true
         type: string
-      - description: The number of items to skip before starting to collect the result
+      - default: 0
+        description: The number of items to skip before starting to collect the result
           set
         in: query
         name: offset
@@ -596,6 +601,7 @@ paths:
       - default: 100
         description: The number of items to return
         in: query
+        maximum: 1000
         name: limit
         type: integer
       produces:
@@ -626,7 +632,8 @@ paths:
         name: space_id
         required: true
         type: string
-      - description: The number of items to skip before starting to collect the result
+      - default: 0
+        description: The number of items to skip before starting to collect the result
           set
         in: query
         name: offset
@@ -634,6 +641,7 @@ paths:
       - default: 100
         description: The number of items to return
         in: query
+        maximum: 1000
         name: limit
         type: integer
       produces:
@@ -820,7 +828,8 @@ paths:
         name: space_id
         required: true
         type: string
-      - description: The number of items to skip before starting to collect the result
+      - default: 0
+        description: The number of items to skip before starting to collect the result
           set
         in: query
         name: offset
@@ -828,6 +837,7 @@ paths:
       - default: 100
         description: The number of items to return
         in: query
+        maximum: 1000
         name: limit
         type: integer
       - description: Search parameters
@@ -868,7 +878,8 @@ paths:
         name: space_id
         required: true
         type: string
-      - description: The number of items to skip before starting to collect the result
+      - default: 0
+        description: The number of items to skip before starting to collect the result
           set
         in: query
         name: offset
@@ -876,6 +887,7 @@ paths:
       - default: 100
         description: The number of items to return
         in: query
+        maximum: 1000
         name: limit
         type: integer
       produces:
@@ -911,7 +923,8 @@ paths:
         name: type_id
         required: true
         type: string
-      - description: The number of items to skip before starting to collect the result
+      - default: 0
+        description: The number of items to skip before starting to collect the result
           set
         in: query
         name: offset
@@ -919,6 +932,7 @@ paths:
       - default: 100
         description: The number of items to return
         in: query
+        maximum: 1000
         name: limit
         type: integer
       produces:
