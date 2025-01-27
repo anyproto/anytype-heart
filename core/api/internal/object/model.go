@@ -15,17 +15,16 @@ type ObjectResponse struct {
 }
 
 type Object struct {
-	Type       string   `json:"type" example:"object"`
-	Id         string   `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`
-	Name       string   `json:"name" example:"Object Name"`
-	Icon       string   `json:"icon" example:"📄"`
-	Snippet    string   `json:"snippet" example:"The beginning of the object body..."`
-	Layout     string   `json:"layout" example:"basic"`
-	ObjectType string   `json:"object_type" example:"Page"`
-	SpaceId    string   `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`
-	RootId     string   `json:"root_id"`
-	Blocks     []Block  `json:"blocks"`
-	Details    []Detail `json:"details"`
+	Type    string   `json:"type" example:"Page"`
+	Id      string   `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`
+	Name    string   `json:"name" example:"Object Name"`
+	Icon    string   `json:"icon" example:"📄"`
+	Snippet string   `json:"snippet" example:"The beginning of the object body..."`
+	Layout  string   `json:"layout" example:"basic"`
+	SpaceId string   `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`
+	RootId  string   `json:"root_id"`
+	Blocks  []Block  `json:"blocks"`
+	Details []Detail `json:"details"`
 }
 
 type Block struct {

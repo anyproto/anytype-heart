@@ -23,6 +23,7 @@ const (
 	gatewayUrl                = "http://localhost:31006"
 	mockedSpaceId             = "mocked-space-id"
 	mockedObjectId            = "mocked-object-id"
+	mockedObjectType          = "mocked-object-type"
 	mockedNewObjectId         = "mocked-new-object-id"
 	mockedObjectName          = "mocked-object-name"
 	mockedObjectSnippet       = "mocked-object-snippet"
@@ -90,7 +91,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 						bundle.RelationKeyId.String():        pbtypes.String(mockedObjectId),
 						bundle.RelationKeyName.String():      pbtypes.String(mockedObjectName),
 						bundle.RelationKeySnippet.String():   pbtypes.String(mockedObjectSnippet),
-						bundle.RelationKeyIconEmoji.String(): pbtypes.String("📄"),
+						bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedObjectIcon),
 						bundle.RelationKeyType.String():      pbtypes.String(mockedObjectTypeUniqueKey),
 						bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_basic)),
 					},
@@ -113,7 +114,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
 								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
 								bundle.RelationKeySnippet.String():          pbtypes.String(mockedObjectSnippet),
-								bundle.RelationKeyIconEmoji.String():        pbtypes.String("📄"),
+								bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
 								bundle.RelationKeyType.String():             pbtypes.String(mockedObjectTypeUniqueKey),
 								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
@@ -142,7 +143,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String("Page"),
+						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectType),
 					},
 				},
 			},
@@ -182,11 +183,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
+		require.Equal(t, mockedObjectType, objects[0].Type)
 		require.Equal(t, mockedObjectId, objects[0].Id)
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
-		require.Equal(t, "📄", objects[0].Icon)
-		require.Equal(t, "Page", objects[0].ObjectType)
+		require.Equal(t, mockedObjectIcon, objects[0].Icon)
 		require.Equal(t, 6, len(objects[0].Details))
 
 		for _, detail := range objects[0].Details {
@@ -283,7 +284,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String("Page"),
+						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectType),
 					},
 				},
 			},
@@ -321,11 +322,11 @@ func TestObjectService_GetObject(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		require.Equal(t, mockedObjectType, object.Type)
 		require.Equal(t, mockedObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
 		require.Equal(t, mockedObjectName, object.Icon)
-		require.Equal(t, "Page", object.ObjectType)
 		require.Equal(t, 6, len(object.Details))
 
 		for _, detail := range object.Details {
@@ -376,7 +377,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					bundle.RelationKeyName.String():        pbtypes.String(mockedObjectName),
-					bundle.RelationKeyIconEmoji.String():   pbtypes.String("🆕"),
+					bundle.RelationKeyIconEmoji.String():   pbtypes.String(mockedObjectIcon),
 					bundle.RelationKeyDescription.String(): pbtypes.String(""),
 					bundle.RelationKeySource.String():      pbtypes.String(""),
 					bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
@@ -392,7 +393,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 				Fields: map[string]*types.Value{
 					bundle.RelationKeyId.String():        pbtypes.String(mockedNewObjectId),
 					bundle.RelationKeyName.String():      pbtypes.String(mockedObjectName),
-					bundle.RelationKeyIconEmoji.String(): pbtypes.String("🆕"),
+					bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedObjectIcon),
 					bundle.RelationKeySpaceId.String():   pbtypes.String(mockedSpaceId),
 				},
 			},
@@ -414,7 +415,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 								bundle.RelationKeyName.String():      pbtypes.String(mockedObjectName),
 								bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_basic)),
 								bundle.RelationKeyType.String():      pbtypes.String(mockedObjectTypeUniqueKey),
-								bundle.RelationKeyIconEmoji.String(): pbtypes.String("🆕"),
+								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedObjectIcon),
 								bundle.RelationKeySpaceId.String():   pbtypes.String(mockedSpaceId),
 							},
 						},
@@ -440,7 +441,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String("Page"),
+						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectType),
 					},
 				},
 			},
@@ -476,7 +477,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		// when
 		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name: mockedObjectName,
-			Icon: "🆕",
+			Icon: mockedObjectIcon,
 			// TODO: use actual values
 			TemplateId:          "",
 			ObjectTypeUniqueKey: mockedObjectTypeUniqueKey,
@@ -484,10 +485,10 @@ func TestObjectService_CreateObject(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		require.Equal(t, mockedObjectType, object.Type)
 		require.Equal(t, mockedNewObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
-		require.Equal(t, "Page", object.ObjectType)
-		require.Equal(t, "🆕", object.Icon)
+		require.Equal(t, mockedObjectIcon, object.Icon)
 		require.Equal(t, mockedSpaceId, object.SpaceId)
 	})
 

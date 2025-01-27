@@ -1113,10 +1113,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Object Name"
                 },
-                "object_type": {
-                    "type": "string",
-                    "example": "Page"
-                },
                 "root_id": {
                     "type": "string"
                 },
@@ -1130,7 +1126,7 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string",
-                    "example": "object"
+                    "example": "Page"
                 }
             }
         },

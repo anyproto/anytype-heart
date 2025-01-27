@@ -109,9 +109,6 @@ definitions:
       name:
         example: Object Name
         type: string
-      object_type:
-        example: Page
-        type: string
       root_id:
         type: string
       snippet:
@@ -121,7 +118,7 @@ definitions:
         example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
         type: string
       type:
-        example: object
+        example: Page
         type: string
     type: object
   object.ObjectResponse:

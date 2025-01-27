@@ -132,17 +132,16 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 	}
 
 	object := Object{
-		Type:       "object",
-		Id:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:       resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       icon,
-		Snippet:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue())],
-		ObjectType: objectTypeName,
-		SpaceId:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
-		RootId:     resp.ObjectView.RootId,
-		Blocks:     s.GetBlocks(resp),
-		Details:    s.GetDetails(resp),
+		Type:    objectTypeName,
+		Id:      resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:    icon,
+		Snippet: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:  model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue())],
+		SpaceId: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		RootId:  resp.ObjectView.RootId,
+		Blocks:  s.GetBlocks(resp),
+		Details: s.GetDetails(resp),
 	}
 
 	return object, nil
