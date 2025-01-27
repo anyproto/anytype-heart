@@ -43,6 +43,7 @@ const (
 const (
 	SpaceStoreBadgerPath = "spacestore"
 	SpaceStoreSqlitePath = "spaceStore.db"
+	SpaceStoreNewPath    = "spaceStoreNew"
 )
 
 var (
@@ -293,12 +294,27 @@ func (c *Config) FSConfig() (FSConfig, error) {
 	return FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
 }
 
+func (c *Config) GetRepoPath() string {
+	return c.RepoPath
+}
+
 func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
 }
 
-func (c *Config) GetSpaceStorePath() string {
-	return filepath.Join(c.RepoPath, "spaceStore.db")
+func (c *Config) GetSqliteStorePath() string {
+	return filepath.Join(c.RepoPath, SpaceStoreSqlitePath)
+}
+
+func (c *Config) GetOldSpaceStorePath() string {
+	if c.GetSpaceStorageMode() == storage.SpaceStorageModeBadger {
+		return filepath.Join(c.RepoPath, SpaceStoreBadgerPath)
+	}
+	return c.GetSqliteStorePath()
+}
+
+func (c *Config) GetNewSpaceStorePath() string {
+	return filepath.Join(c.RepoPath, SpaceStoreNewPath)
 }
 
 func (c *Config) GetTempDirPath() string {
