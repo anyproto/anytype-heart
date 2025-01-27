@@ -988,7 +988,8 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "AlignLeft|AlignCenter|AlignRight|AlignJustify"
-                    ]
+                    ],
+                    "example": "AlignLeft"
                 },
                 "background_color": {
                     "type": "string",
@@ -1000,7 +1001,7 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "example": [
-                        "[\"6797ce8ecda913cde14b02dc\"]"
+                        "['6797ce8ecda913cde14b02dc']"
                     ]
                 },
                 "file": {
@@ -1017,7 +1018,8 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "VerticalAlignTop|VerticalAlignMiddle|VerticalAlignBottom"
-                    ]
+                    ],
+                    "example": "VerticalAlignTop"
                 }
             }
         },
@@ -1065,7 +1067,8 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "last_modified_date|last_modified_by|created_date|created_by|last_opened_date|tags"
-                    ]
+                    ],
+                    "example": "last_modified_date"
                 }
             }
         },
@@ -1206,7 +1209,8 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "Paragraph|Header1|Header2|Header3|Header4|Quote|Code|Title|Checkbox|Marked|Numbered|Toggle|Description|Callout"
-                    ]
+                    ],
+                    "example": "Paragraph"
                 },
                 "text": {
                     "type": "string",

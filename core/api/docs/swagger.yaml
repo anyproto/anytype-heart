@@ -25,13 +25,14 @@ definitions:
       align:
         enum:
         - AlignLeft|AlignCenter|AlignRight|AlignJustify
+        example: AlignLeft
         type: string
       background_color:
         example: red
         type: string
       children_ids:
         example:
-        - '["6797ce8ecda913cde14b02dc"]'
+        - '[''6797ce8ecda913cde14b02dc'']'
         items:
           type: string
         type: array
@@ -45,6 +46,7 @@ definitions:
       vertical_align:
         enum:
         - VerticalAlignTop|VerticalAlignMiddle|VerticalAlignBottom
+        example: VerticalAlignTop
         type: string
     type: object
   object.CreateObjectRequest:
@@ -79,6 +81,7 @@ definitions:
       id:
         enum:
         - last_modified_date|last_modified_by|created_date|created_by|last_opened_date|tags
+        example: last_modified_date
         type: string
     type: object
   object.File:
@@ -176,6 +179,7 @@ definitions:
       style:
         enum:
         - Paragraph|Header1|Header2|Header3|Header4|Quote|Code|Title|Checkbox|Marked|Numbered|Toggle|Description|Callout
+        example: Paragraph
         type: string
       text:
         example: Some text
