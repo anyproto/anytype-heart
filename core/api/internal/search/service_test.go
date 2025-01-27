@@ -322,7 +322,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Twice()
 
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, SearchRequest{Query: "search-term", Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
+		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: "search-term", Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
 
 		// then
 		require.NoError(t, err)

@@ -810,6 +810,54 @@ paths:
       summary: Export object
       tags:
       - export
+  /spaces/{space_id}/search:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        name: limit
+        type: integer
+      - description: Search parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/search.SearchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of objects
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/object.Object'
+              type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Search objects within a space
+      tags:
+      - search
   /spaces/{space_id}/types:
     get:
       consumes:

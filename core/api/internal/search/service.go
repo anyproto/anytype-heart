@@ -23,7 +23,8 @@ var (
 )
 
 type Service interface {
-	Search(ctx context.Context, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error)
+	GlobalSearch(ctx context.Context, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error)
+	Search(ctx context.Context, spaceId string, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error)
 }
 
 type SearchService struct {
@@ -37,8 +38,8 @@ func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceServic
 	return &SearchService{mw: mw, spaceService: spaceService, objectService: objectService}
 }
 
-// Search retrieves a paginated list of objects from all spaces that match the search parameters.
-func (s *SearchService) Search(ctx context.Context, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error) {
+// GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
+func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error) {
 	spaces, _, _, err := s.spaceService.ListSpaces(ctx, 0, spaceLimit)
 	if err != nil {
 		return nil, 0, false, err
@@ -100,6 +101,42 @@ func (s *SearchService) Search(ctx context.Context, request SearchRequest, offse
 	results := make([]object.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
 		object, err := s.objectService.GetObject(ctx, record.SpaceId, record.Id)
+		if err != nil {
+			return nil, 0, false, err
+		}
+		results = append(results, object)
+	}
+
+	return results, total, hasMore, nil
+}
+
+// Search retrieves a paginated list of objects from a specific space that match the search parameters.
+func (s *SearchService) Search(ctx context.Context, spaceId string, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error) {
+	baseFilters := s.prepareBaseFilters()
+	queryFilters := s.prepareQueryFilter(request.Query)
+	typeFilters := s.prepareObjectTypeFilters(spaceId, request.Types)
+	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, typeFilters)
+
+	sorts := s.prepareSorts(request.Sort)
+	dateToSortAfter := sorts[0].RelationKey
+
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: filters,
+		Sorts:   sorts,
+		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), dateToSortAfter},
+	})
+
+	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, 0, false, ErrFailedSearchObjects
+	}
+
+	total = len(resp.Records)
+	paginatedRecords, hasMore := pagination.Paginate(resp.Records, offset, limit)
+
+	results := make([]object.Object, 0, len(paginatedRecords))
+	for _, record := range paginatedRecords {
+		object, err := s.objectService.GetObject(ctx, record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), record.Fields[bundle.RelationKeyId.String()].GetStringValue())
 		if err != nil {
 			return nil, 0, false, err
 		}
