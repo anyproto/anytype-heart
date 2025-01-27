@@ -109,7 +109,7 @@ func (s *apiService) shutdown(ctx context.Context) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// we don't want graceful shutdown here and block tha app close
+	// we don't want graceful shutdown here and block the app close
 	shutdownCtx, cancel := context.WithTimeout(ctx, time.Millisecond)
 	defer cancel()
 	if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {

@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	offset      = 0
-	limit       = 100
-	techSpaceId = "tech-space-id"
-	gatewayUrl  = "http://localhost:31006"
+	offset               = 0
+	limit                = 100
+	techSpaceId          = "tech-space-id"
+	gatewayUrl           = "http://localhost:31006"
+	mockedObjectTypeName = "mocked-object-type-name"
 )
 
 type fixture struct {
@@ -278,7 +279,7 @@ func TestSearchService_Search(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String("object-type-name"),
+						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectTypeName),
 					},
 				},
 			},
@@ -327,7 +328,7 @@ func TestSearchService_Search(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
-		require.Equal(t, "object", objects[0].Type)
+		require.Equal(t, mockedObjectTypeName, objects[0].Type)
 		require.Equal(t, "space-1", objects[0].SpaceId)
 		require.Equal(t, "Global Object", objects[0].Name)
 		require.Equal(t, "obj-global-1", objects[0].Id)
