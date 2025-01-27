@@ -62,18 +62,18 @@ func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEv
 	return updatedKeys, nil
 }
 
-func (bs *basic) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
-	_, _, err = bs.updateDetails(update)
+func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
+	_, _, err = bs.updateDetails(ctx, update)
 	return err
 }
 
-func (bs *basic) UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) error {
-	oldDetails, newDetails, err := bs.updateDetails(update)
+func (bs *basic) UpdateDetailsAndLastUsed(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) error {
+	oldDetails, newDetails, err := bs.updateDetails(ctx, update)
 	if err != nil {
 		return err
 	}
 
-	diff := domain.StructDiff(oldDetails, newDetails)
+	diff, _ := domain.StructDiff(oldDetails, newDetails)
 	if diff.Len() == 0 {
 		return nil
 	}
@@ -84,11 +84,11 @@ func (bs *basic) UpdateDetailsAndLastUsed(update func(current *domain.Details) (
 	return nil
 }
 
-func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
+func (bs *basic) updateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
 	if update == nil {
 		return nil, nil, fmt.Errorf("update function is nil")
 	}
-	s := bs.NewState()
+	s := bs.NewStateCtx(ctx)
 
 	oldDetails = s.CombinedDetails()
 	oldDetailsCopy := oldDetails.Copy()
@@ -206,7 +206,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 
 		return nil
 	case model.RelationFormat_file, model.RelationFormat_object:
-		vals, ok := v.TryStringList()
+		vals, ok := v.TryWrapToStringList()
 		if !ok {
 			return fmt.Errorf("incorrect type: %v instead of string list", v)
 		}

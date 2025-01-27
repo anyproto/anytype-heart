@@ -43,7 +43,7 @@ func (ds *dependencyService) depIdsByEntries(entries []*entry, depKeys []domain.
 	depIds = forceIds
 	for _, e := range entries {
 		for _, k := range depKeys {
-			for _, depId := range e.data.GetStringList(k) {
+			for _, depId := range e.data.WrapToStringList(k) {
 				if depId != "" && slice.FindPos(depIds, depId) == -1 && depId != e.id {
 					depIds = append(depIds, depId)
 				}
@@ -97,6 +97,9 @@ var ignoredKeys = map[domain.RelationKey]struct{}{
 }
 
 func (ds *dependencyService) isRelationObject(spaceId string, key domain.RelationKey) bool {
+	if key == "" {
+		return false
+	}
 	if _, ok := ignoredKeys[key]; ok {
 		return false
 	}

@@ -19,6 +19,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/cache:
     interfaces:
       ObjectGetter:
+      CachedObjectGetter:
       ObjectGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
@@ -225,3 +226,12 @@ packages:
   github.com/anyproto/anytype-heart/core/kanban:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/core/inviteservice:
+    interfaces:
+      InviteService:
+  github.com/anyproto/anytype-heart/core/identity:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/pb/service:
+    interfaces:
+      ClientCommandsServer:

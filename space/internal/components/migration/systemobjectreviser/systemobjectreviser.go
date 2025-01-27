@@ -147,7 +147,7 @@ func getBundleSystemObjectDetails(uk domain.UniqueKey) *domain.Details {
 }
 
 func buildDiffDetails(origin, current *domain.Details) *domain.Details {
-	diff := domain.StructDiff(current, origin)
+	diff, _ := domain.StructDiff(current, origin)
 	diff = diff.CopyOnlyKeys(
 		bundle.RelationKeyName,
 		bundle.RelationKeyDescription,

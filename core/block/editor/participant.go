@@ -100,7 +100,7 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 }
 
 func (p *participant) modifyDetails(newDetails *domain.Details) (err error) {
-	return p.DetailsUpdatable.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+	return p.DetailsUpdatable.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 		return current.Merge(newDetails), nil
 	})
 }

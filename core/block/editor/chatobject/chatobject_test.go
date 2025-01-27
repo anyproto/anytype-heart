@@ -37,6 +37,7 @@ type fixture struct {
 	source             *mock_source.MockStore
 	accountServiceStub *accountServiceStub
 	sourceCreator      string
+	eventSender        *mock_event.MockSender
 	events             []*pb.EventMessage
 }
 
@@ -63,6 +64,7 @@ func newFixture(t *testing.T) *fixture {
 		storeObject:        object.(*storeObject),
 		accountServiceStub: accountService,
 		sourceCreator:      testCreator,
+		eventSender:        eventSender,
 	}
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(event *pb.Event) {
 		for _, msg := range event.Messages {
@@ -89,6 +91,7 @@ func TestAddMessage(t *testing.T) {
 	sessionCtx := session.NewContext()
 
 	fx := newFixture(t)
+	fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
 
 	inputMessage := givenMessage()
 	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
@@ -154,6 +157,7 @@ func TestGetMessagesByIds(t *testing.T) {
 	sessionCtx := session.NewContext()
 
 	fx := newFixture(t)
+	fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
 
 	inputMessage := givenMessage()
 	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
