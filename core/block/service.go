@@ -161,6 +161,9 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 
 func (s *Service) TryRemoveFromCache(ctx context.Context, objectId string) (res bool, err error) {
 	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return false, fmt.Errorf("resolve space: %w", err)
+	}
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return false, fmt.Errorf("get space: %w", err)
