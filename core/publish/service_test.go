@@ -697,7 +697,7 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{})
 	file.SetSpace(space)
 
-	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(3)
+	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil).Times(2)
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
 
