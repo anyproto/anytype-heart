@@ -3,7 +3,6 @@ package objectcreator
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -74,7 +73,16 @@ func fillRelationFormatObjectTypes(ctx context.Context, spc clientspace.Space, d
 
 	for i, objectType := range objectTypes {
 		// replace object type url with id
-		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, strings.TrimPrefix(objectType, addr.BundledObjectTypeURLPrefix))
+		typeKey, err := bundle.TypeKeyFromUrl(objectType)
+		if err != nil {
+			if i == 0 {
+				// relationFormatObjectTypes detail already contains list of types' ids
+				return nil
+			}
+			// should never happen
+			return err
+		}
+		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, typeKey.String())
 		if err != nil {
 			// should never happen
 			return err
