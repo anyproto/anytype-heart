@@ -28753,14 +28753,14 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| source | [string](#string) | repeated |  |
+| source | [string](#string) | repeated | can be set for detached(without TargetObjectId) inline sets |
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
 | activeView | [string](#string) |  | do not generate changes for this field |
 | relations | [Relation](#anytype-model-Relation) | repeated | deprecated |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
-| TargetObjectId | [string](#string) |  |  |
+| TargetObjectId | [string](#string) |  | empty for original set/collection objects and for detached inline sets |
 | isCollection | [bool](#bool) |  |  |
 
 

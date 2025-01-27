@@ -336,7 +336,7 @@ message Block {
         }
 
         message Dataview {
-            repeated string source = 1;
+            repeated string source = 1; // can be set for detached(without TargetObjectId) inline sets
             repeated View views = 2;
             string activeView = 3; // do not generate changes for this field
             // deprecated
@@ -344,7 +344,7 @@ message Block {
             repeated GroupOrder groupOrders = 12;
             repeated ObjectOrder objectOrders = 13;
             repeated anytype.model.RelationLink relationLinks = 5;
-            string TargetObjectId = 6;
+            string TargetObjectId = 6; // empty for original set/collection objects and for detached inline sets
             bool isCollection = 14;
 
             message View {

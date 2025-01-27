@@ -250,7 +250,8 @@ func (p *Page) StateMigrations() migration.Migrations {
 			log.Errorf("objectType dataview migration: failed to get dataview content: %v", err)
 			return migration.MakeMigrations(migrations)
 		}
-
+		// in this case we have a detached inline set here
+		dvContent.Dataview.Source = []string{p.Id()}
 		migrations = append(migrations, migration.Migration{
 			Version: 3,
 			Proc: func(st *state.State) {
