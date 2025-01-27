@@ -7,6 +7,8 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "github.com/anyproto/anytype-heart/core/api/docs"
+
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
 	"github.com/anyproto/anytype-heart/core/api/internal/export"
@@ -68,8 +70,6 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
 		v1.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
 		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteObjectHandler(s.objectService))
-		v1.GET("/spaces/:space_id/types", object.GetTypesHandler(s.objectService))
-		v1.GET("/spaces/:space_id/types/:type_id/templates", object.GetTemplatesHandler(s.objectService))
 		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), object.CreateObjectHandler(s.objectService))
 
 		// Search
@@ -80,6 +80,12 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 		v1.GET("/spaces", space.GetSpacesHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members", space.GetMembersHandler(s.spaceService))
 		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
+
+		// Type
+		v1.GET("/spaces/:space_id/types", object.GetTypesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types/:type_id", object.GetTypeHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types/:type_id/templates", object.GetTemplatesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types/:type_id/templates/:template_id", object.GetTemplateHandler(s.objectService))
 	}
 
 	return router

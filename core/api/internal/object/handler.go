@@ -162,7 +162,7 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 // GetTypesHandler retrieves a list of types in a space
 //
 //	@Summary	List types
-//	@Tags		objects
+//	@Tags		types
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string								true	"Space ID"
@@ -193,10 +193,44 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 	}
 }
 
+// GetTypeHandler retrieves a type in a space
+//
+//	@Summary	Get type
+//	@Tags		types
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string					true	"Space ID"
+//	@Param		type_id		path		string					true	"Type ID"
+//	@Success	200			{object}	TypeResponse			"The requested type"
+//	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	util.NotFoundError		"Resource not found"
+//	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Router		/spaces/{space_id}/types/{type_id} [get]
+func GetTypeHandler(s *ObjectService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		typeId := c.Param("type_id")
+
+		object, err := s.GetType(c.Request.Context(), spaceId, typeId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrTypeNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedRetrieveType, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TypeResponse{Type: object})
+	}
+}
+
 // GetTemplatesHandler retrieves a list of templates for a type in a space
 //
 //	@Summary	List templates
-//	@Tags		objects
+//	@Tags		types
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space ID"
@@ -229,5 +263,41 @@ func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 		}
 
 		pagination.RespondWithPagination(c, http.StatusOK, templates, total, offset, limit, hasMore)
+	}
+}
+
+// GetTemplateHandler retrieves a template for a type in a space
+//
+//	@Summary	Get template
+//	@Tags		types
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string					true	"Space ID"
+//	@Param		type_id		path		string					true	"Type ID"
+//	@Param		template_id	path		string					true	"Template ID"
+//	@Success	200			{object}	TemplateResponse		"The requested template"
+//	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	util.NotFoundError		"Resource not found"
+//	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Router		/spaces/{space_id}/types/{type_id}/templates/{template_id} [get]
+func GetTemplateHandler(s *ObjectService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		typeId := c.Param("type_id")
+		templateId := c.Param("template_id")
+
+		object, err := s.GetTemplate(c.Request.Context(), spaceId, typeId, templateId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrTemplateNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedRetrieveTemplate, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TemplateResponse{Template: object})
 	}
 }

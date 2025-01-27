@@ -69,6 +69,10 @@ type Tag struct {
 	Color string `json:"color" example:"yellow"`
 }
 
+type TypeResponse struct {
+	Type Type `json:"type"`
+}
+
 type Type struct {
 	Type              string `json:"type" example:"type"`
 	Id                string `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"`
@@ -76,6 +80,10 @@ type Type struct {
 	Name              string `json:"name" example:"Page"`
 	Icon              string `json:"icon" example:"📄"`
 	RecommendedLayout string `json:"recommended_layout" example:"todo"`
+}
+
+type TemplateResponse struct {
+	Template Template `json:"template"`
 }
 
 type Template struct {

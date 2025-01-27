@@ -716,7 +716,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "objects"
+                    "types"
                 ],
                 "summary": "List types",
                 "parameters": [
@@ -765,6 +765,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/spaces/{space_id}/types/{type_id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "types"
+                ],
+                "summary": "Get type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type ID",
+                        "name": "type_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The requested type",
+                        "schema": {
+                            "$ref": "#/definitions/object.TypeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "schema": {
+                            "$ref": "#/definitions/util.NotFoundError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/spaces/{space_id}/types/{type_id}/templates": {
             "get": {
                 "consumes": [
@@ -774,7 +830,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "objects"
+                    "types"
                 ],
                 "summary": "List templates",
                 "parameters": [
@@ -819,6 +875,69 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/spaces/{space_id}/types/{type_id}/templates/{template_id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "types"
+                ],
+                "summary": "Get template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type ID",
+                        "name": "type_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The requested template",
+                        "schema": {
+                            "$ref": "#/definitions/object.TemplateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "schema": {
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "500": {
@@ -1044,6 +1163,14 @@ const docTemplate = `{
                 }
             }
         },
+        "object.TemplateResponse": {
+            "type": "object",
+            "properties": {
+                "template": {
+                    "$ref": "#/definitions/object.Template"
+                }
+            }
+        },
         "object.Text": {
             "type": "object",
             "properties": {
@@ -1090,6 +1217,14 @@ const docTemplate = `{
                 "unique_key": {
                     "type": "string",
                     "example": "ot-page"
+                }
+            }
+        },
+        "object.TypeResponse": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "$ref": "#/definitions/object.Type"
                 }
             }
         },
@@ -1209,12 +1344,18 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "direction": {
-                    "description": "\"asc\" or \"desc\"",
-                    "type": "string"
+                    "type": "string",
+                    "default": "desc",
+                    "enum": [
+                        "asc|desc"
+                    ]
                 },
                 "timestamp": {
-                    "description": "\"created_date\", \"last_modified_date\" or \"last_opened_date\"",
-                    "type": "string"
+                    "type": "string",
+                    "default": "last_modified_date",
+                    "enum": [
+                        "created_date|last_modified_date|last_opened_date"
+                    ]
                 }
             }
         },
@@ -1251,6 +1392,9 @@ const docTemplate = `{
                 },
                 "role": {
                     "type": "string",
+                    "enum": [
+                        "Reader|Writer|Owner|NoPermission"
+                    ],
                     "example": "Owner"
                 },
                 "type": {
@@ -1288,7 +1432,7 @@ const docTemplate = `{
                 },
                 "icon": {
                     "type": "string",
-                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
+                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"
                 },
                 "id": {
                     "type": "string",

@@ -66,13 +66,16 @@ func (s *apiService) Name() (name string) {
 func (s *apiService) Init(a *app.App) (err error) {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
 	s.accountService = a.MustComponent(account.CName).(account.Service)
-
 	return nil
 }
 
 func (s *apiService) Run(ctx context.Context) (err error) {
 	s.runServer()
 	return nil
+}
+
+func (s *apiService) Close(ctx context.Context) (err error) {
+	return s.shutdown(ctx)
 }
 
 func (s *apiService) runServer() {
@@ -105,19 +108,15 @@ func (s *apiService) shutdown(ctx context.Context) (err error) {
 	}
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
 	// we don't want graceful shutdown here and block tha app close
 	shutdownCtx, cancel := context.WithTimeout(ctx, time.Millisecond)
 	defer cancel()
-
 	if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func (s *apiService) Close(ctx context.Context) (err error) {
-	return s.shutdown(ctx)
 }
 
 func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) (err error) {

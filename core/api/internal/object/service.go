@@ -18,20 +18,26 @@ import (
 )
 
 var (
-	ErrObjectNotFound             = errors.New("object not found")
-	ErrFailedRetrieveObject       = errors.New("failed to retrieve object")
-	ErrFailedRetrieveObjects      = errors.New("failed to retrieve list of objects")
-	ErrFailedDeleteObject         = errors.New("failed to delete object")
-	ErrFailedCreateObject         = errors.New("failed to create object")
-	ErrInputMissingSource         = errors.New("source is missing for bookmark")
-	ErrFailedSetRelationFeatured  = errors.New("failed to set relation featured")
-	ErrFailedFetchBookmark        = errors.New("failed to fetch bookmark")
-	ErrFailedPasteBody            = errors.New("failed to paste body")
+	// objects
+	ErrObjectNotFound            = errors.New("object not found")
+	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
+	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
+	ErrFailedDeleteObject        = errors.New("failed to delete object")
+	ErrFailedCreateObject        = errors.New("failed to create object")
+	ErrInputMissingSource        = errors.New("source is missing for bookmark")
+	ErrFailedSetRelationFeatured = errors.New("failed to set relation featured")
+	ErrFailedFetchBookmark       = errors.New("failed to fetch bookmark")
+	ErrFailedPasteBody           = errors.New("failed to paste body")
+
+	// types
 	ErrFailedRetrieveTypes        = errors.New("failed to retrieve types")
+	ErrTypeNotFound               = errors.New("type not found")
+	ErrFailedRetrieveType         = errors.New("failed to retrieve type")
 	ErrFailedRetrieveTemplateType = errors.New("failed to retrieve template type")
 	ErrTemplateTypeNotFound       = errors.New("template type not found")
 	ErrFailedRetrieveTemplate     = errors.New("failed to retrieve template")
 	ErrFailedRetrieveTemplates    = errors.New("failed to retrieve templates")
+	ErrTemplateNotFound           = errors.New("template not found")
 )
 
 type Service interface {
@@ -40,7 +46,9 @@ type Service interface {
 	DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error)
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error)
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
+	GetType(ctx context.Context, spaceId string, typeId string) (Type, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
+	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error)
 }
 
 type ObjectService struct {
@@ -303,6 +311,31 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 	return types, total, hasMore, nil
 }
 
+// GetType returns a single type by its ID in a specific space.
+func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId string) (Type, error) {
+	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: typeId,
+	})
+
+	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+		return Type{}, ErrTypeNotFound
+	}
+
+	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return Type{}, ErrFailedRetrieveType
+	}
+
+	return Type{
+		Type:              "type",
+		Id:                typeId,
+		UniqueKey:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:              resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:              resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+		RecommendedLayout: model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+	}, nil
+}
+
 // ListTemplates returns a paginated list of templates in a specific space.
 func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []Template, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
@@ -375,6 +408,29 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 	}
 
 	return templates, total, hasMore, nil
+}
+
+// GetTemplate returns a single template by its ID in a specific space.
+func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error) {
+	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: templateId,
+	})
+
+	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+		return Template{}, ErrTemplateNotFound
+	}
+
+	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return Template{}, ErrFailedRetrieveTemplate
+	}
+
+	return Template{
+		Type: "template",
+		Id:   templateId,
+		Name: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+	}, nil
 }
 
 // GetDetails returns the list of details from the ObjectShowResponse.
