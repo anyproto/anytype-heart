@@ -1,6 +1,8 @@
 package publish
 
 import (
+	"slices"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -16,7 +18,7 @@ var allObjectsRelationsWhiteList = []string{
 	bundle.RelationKeyName.String(),
 }
 
-var documentRelationsWhiteList = append(allObjectsRelationsWhiteList,
+var documentRelationsWhiteList = append(slices.Clone(allObjectsRelationsWhiteList),
 	bundle.RelationKeyDescription.String(),
 	bundle.RelationKeySnippet.String(),
 	bundle.RelationKeyIconImage.String(),
@@ -25,17 +27,17 @@ var documentRelationsWhiteList = append(allObjectsRelationsWhiteList,
 	bundle.RelationKeyCoverId.String(),
 )
 
-var todoRelationsWhiteList = append(documentRelationsWhiteList, bundle.RelationKeyDone.String())
+var todoRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyDone.String())
 
-var bookmarkRelationsWhiteList = append(documentRelationsWhiteList, bundle.RelationKeyPicture.String())
+var bookmarkRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyPicture.String())
 
-var derivedObjectsWhiteList = append(allObjectsRelationsWhiteList, bundle.RelationKeyUniqueKey.String())
+var derivedObjectsWhiteList = append(slices.Clone(allObjectsRelationsWhiteList), bundle.RelationKeyUniqueKey.String())
 
-var relationsWhiteList = append(derivedObjectsWhiteList, bundle.RelationKeyRelationFormat.String())
+var relationsWhiteList = append(slices.Clone(derivedObjectsWhiteList), bundle.RelationKeyRelationFormat.String())
 
-var relationOptionWhiteList = append(derivedObjectsWhiteList, bundle.RelationKeyRelationOptionColor.String())
+var relationOptionWhiteList = append(slices.Clone(derivedObjectsWhiteList), bundle.RelationKeyRelationOptionColor.String())
 
-var fileRelationsWhiteList = append(documentRelationsWhiteList, bundle.RelationKeyFileId.String(), bundle.RelationKeyFileExt.String())
+var fileRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyFileId.String(), bundle.RelationKeyFileExt.String())
 
 var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_basic:      documentRelationsWhiteList,
