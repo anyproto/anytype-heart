@@ -3101,51 +3101,6 @@ func TestFilter(t *testing.T) {
 		assert.Len(t, filteredState.relationLinks, 1)
 		assert.Equal(t, bundle.RelationKeyAssignee.String(), filteredState.relationLinks[0].Key)
 	})
-	t.Run("parent state", func(t *testing.T) {
-		// given
-		st := NewDoc("root", map[string]simple.Block{
-			"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2"}}),
-			"2":    base.NewBase(&model.Block{Id: "2"}),
-		}).(*State)
-		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyCoverType: domain.Int64(1),
-			bundle.RelationKeyName:      domain.String("name"),
-			bundle.RelationKeyAssignee:  domain.String("assignee"),
-			bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_todo),
-		}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyCoverType.String(),
-			Format: model.RelationFormat_number,
-		},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyName.String(),
-				Format: model.RelationFormat_longtext,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyAssignee.String(),
-				Format: model.RelationFormat_object,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyLayout.String(),
-				Format: model.RelationFormat_number,
-			},
-		)
-
-		// when
-		filteredState := st.NewState().Filter(&Filters{
-			RemoveBlocks: true,
-			RelationsWhiteList: map[model.ObjectTypeLayout][]domain.RelationKey{
-				model.ObjectType_todo: {bundle.RelationKeyAssignee},
-			}})
-
-		// then
-		assert.Equal(t, filteredState.parent.details.Len(), 1)
-		assert.Equal(t, filteredState.parent.localDetails.Len(), 0)
-		assert.Len(t, filteredState.parent.relationLinks, 1)
-		assert.Equal(t, bundle.RelationKeyAssignee.String(), filteredState.parent.relationLinks[0].Key)
-		assert.Len(t, filteredState.parent.blocks, 1)
-		assert.NotNil(t, filteredState.parent.blocks["root"])
-	})
 	t.Run("empty white list relations", func(t *testing.T) {
 		// given
 		st := NewDoc("root", map[string]simple.Block{

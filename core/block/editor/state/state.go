@@ -151,16 +151,14 @@ func (s *State) Filter(filters *Filters) *State {
 	if filters == nil {
 		return s
 	}
+	stateCopy := s.Copy()
 	if filters.RemoveBlocks {
-		s.filterBlocks()
+		stateCopy.filterBlocks()
 	}
 	if len(filters.RelationsWhiteList) > 0 {
-		s.filterRelations(filters)
+		stateCopy.filterRelations(filters)
 	}
-	if s.parent != nil {
-		s.parent = s.parent.Filter(filters)
-	}
-	return s
+	return stateCopy
 }
 
 func (s *State) filterBlocks() {
