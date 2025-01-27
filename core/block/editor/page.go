@@ -253,7 +253,12 @@ func (p *Page) StateMigrations() migration.Migrations {
 
 		migrations = append(migrations, migration.Migration{
 			Version: 3,
-			Proc:    template.WithDataviewID(state.DataviewBlockID, dvContent, false),
+			Proc: func(st *state.State) {
+				template.InitTemplate(st,
+					template.WithDataviewID(state.DataviewBlockID, dvContent, false),
+					template.WithDetail(bundle.RelationKeySetOf, domain.StringList([]string{p.Id()})),
+				)
+			},
 		})
 	}
 
