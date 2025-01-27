@@ -159,6 +159,25 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 	return s.GetObjectByFullID(ctx, domain.FullID{SpaceID: spaceID, ObjectID: objectID})
 }
 
+func (s *Service) TryRemoveFromCache(ctx context.Context, objectId string) (res bool, err error) {
+	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return false, fmt.Errorf("resolve space: %w", err)
+	}
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return false, fmt.Errorf("get space: %w", err)
+	}
+	mutex.WithLock(s.openedObjs.lock, func() any {
+		_, contains := s.openedObjs.objects[objectId]
+		if !contains {
+			res, err = spc.TryRemove(objectId)
+		}
+		return nil
+	})
+	return
+}
+
 func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	spc, err := s.spaceService.Get(ctx, id.SpaceID)
 	if err != nil {

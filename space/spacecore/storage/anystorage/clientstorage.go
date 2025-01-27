@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 )
@@ -80,7 +81,7 @@ func (r *clientStorage) HasTree(ctx context.Context, id string) (has bool, err e
 
 func (r *clientStorage) TreeRoot(ctx context.Context, id string) (root *treechangeproto.RawTreeChangeWithId, err error) {
 	// it should be faster to do it that way, instead of calling TreeStorage
-	coll, err := r.SpaceStorage.AnyStore().OpenCollection(ctx, id)
+	coll, err := r.SpaceStorage.AnyStore().OpenCollection(ctx, objecttree.CollName)
 	if err != nil {
 		return nil, err
 	}

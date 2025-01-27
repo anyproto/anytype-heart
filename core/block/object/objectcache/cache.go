@@ -52,6 +52,7 @@ type Cache interface {
 	GetObjectWithTimeout(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 	DoLockedIfNotExists(objectID string, proc func() error) error
 	Remove(ctx context.Context, objectID string) error
+	TryRemove(objectId string) (bool, error)
 	CloseBlocks()
 
 	Close(ctx context.Context) error
@@ -153,6 +154,10 @@ func (c *objectCache) GetObject(ctx context.Context, id string) (sb smartblock.S
 func (c *objectCache) Remove(ctx context.Context, objectID string) error {
 	_, err := c.cache.Remove(ctx, objectID)
 	return err
+}
+
+func (c *objectCache) TryRemove(objectId string) (bool, error) {
+	return c.cache.TryRemove(objectId)
 }
 
 func (c *objectCache) GetObjectWithTimeout(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
