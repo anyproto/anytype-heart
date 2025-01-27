@@ -234,6 +234,10 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 
 		return nil
 	})
+	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
+	if cacheErr != nil {
+		log.With("objectId", id).Errorf("object cache remove: %v", err)
+	}
 
 	return docs, err
 }
