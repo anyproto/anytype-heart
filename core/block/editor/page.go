@@ -237,10 +237,25 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations([]migration.Migration{
+	migrations := []migration.Migration{
 		{
 			Version: 2,
 			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 		},
-	})
+	}
+
+	if p.ObjectTypeKey() == bundle.TypeKeyObjectType {
+		dvContent, err := dataview.BlockBySource(p.objectStore, []string{p.Id()})
+		if err != nil {
+			log.Errorf("objectType dataview migration: failed to get dataview content: %v", err)
+			return migration.MakeMigrations(migrations)
+		}
+
+		migrations = append(migrations, migration.Migration{
+			Version: 3,
+			Proc:    template.WithDataviewID(state.DataviewBlockID, dvContent, false),
+		})
+	}
+
+	return migration.MakeMigrations(migrations)
 }
