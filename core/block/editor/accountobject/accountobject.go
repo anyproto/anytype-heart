@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -88,23 +87,18 @@ func (a *accountObject) SetDetails(ctx session.Context, details []domain.Detail,
 	return a.bs.SetDetails(ctx, details, showEvent)
 }
 
-func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	return a.bs.SetDetailsAndUpdateLastUsed(ctx, details, showEvent)
-}
-
 func New(
 	sb smartblock.SmartBlock,
 	keys *accountdata.AccountKeys,
 	spaceObjects spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
-	lastUsedUpdater lastused.ObjectUsageUpdater,
 	crdtDb anystore.DB,
 	cfg *config.Config) AccountObject {
 	return &accountObject{
 		crdtDb:     crdtDb,
 		keys:       keys,
-		bs:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService, lastUsedUpdater),
+		bs:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService),
 		SmartBlock: sb,
 		cfg:        cfg,
 		relMapper: newRelationsMapper(map[string]KeyType{

@@ -46,7 +46,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver/idderiverimpl"
@@ -321,7 +320,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(payments.New()).
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
-		Register(lastused.New()).
 		Register(spaceview.New()).
 		Register(api.New())
 }

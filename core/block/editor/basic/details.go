@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -26,19 +25,6 @@ var log = logging.Logger("anytype-mw-editor-basic")
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	_, err = bs.setDetails(ctx, details, showEvent)
 	return err
-}
-
-func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	var keys []domain.RelationKey
-	keys, err = bs.setDetails(ctx, details, showEvent)
-	if err != nil {
-		return err
-	}
-	ts := time.Now().Unix()
-	for _, key := range keys {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
-	}
-	return nil
 }
 
 func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
@@ -65,23 +51,6 @@ func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEv
 func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	_, _, err = bs.updateDetails(ctx, update)
 	return err
-}
-
-func (bs *basic) UpdateDetailsAndLastUsed(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) error {
-	oldDetails, newDetails, err := bs.updateDetails(ctx, update)
-	if err != nil {
-		return err
-	}
-
-	diff, _ := domain.StructDiff(oldDetails, newDetails)
-	if diff.Len() == 0 {
-		return nil
-	}
-	ts := time.Now().Unix()
-	for _, key := range diff.Keys() {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
-	}
-	return nil
 }
 
 func (bs *basic) updateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
@@ -377,10 +346,6 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
-
-	if bs.CombinedDetails().GetInt64(bundle.RelationKeyOrigin) == int64(model.ObjectOrigin_none) {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), objectTypeKeys[0], time.Now().Unix())
-	}
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
