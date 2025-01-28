@@ -29,6 +29,13 @@ const (
 	mockedObjectSnippet       = "mocked-object-snippet"
 	mockedObjectIcon          = "🔍"
 	mockedObjectTypeUniqueKey = "ot-page"
+	mockedTypeId              = "mocked-type-id"
+	mockedTypeName            = "mocked-type-name"
+	mockedTypeUniqueKey       = "mocked-type-unique-key"
+	mockedTypeIcon            = "📝"
+	mockedTemplateId          = "mocked-template-id"
+	mockedTemplateName        = "mocked-template-name"
+	mockedTemplateIcon        = "📃"
 )
 
 type fixture struct {
@@ -571,6 +578,67 @@ func TestObjectService_ListTypes(t *testing.T) {
 	})
 }
 
+func TestObjectService_GetType(t *testing.T) {
+	t.Run("type found", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTypeId,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String():                pbtypes.String(mockedTypeId),
+								bundle.RelationKeyName.String():              pbtypes.String(mockedTypeName),
+								bundle.RelationKeyUniqueKey.String():         pbtypes.String(mockedTypeUniqueKey),
+								bundle.RelationKeyIconEmoji.String():         pbtypes.String(mockedTypeIcon),
+								bundle.RelationKeyRecommendedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
+							},
+						},
+					},
+				},
+			},
+		}).Once()
+
+		// when
+		objType, err := fx.GetType(ctx, mockedSpaceId, mockedTypeId)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, mockedTypeId, objType.Id)
+		require.Equal(t, mockedTypeName, objType.Name)
+		require.Equal(t, mockedTypeUniqueKey, objType.UniqueKey)
+		require.Equal(t, mockedTypeIcon, objType.Icon)
+		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objType.RecommendedLayout)
+	})
+
+	t.Run("type not found", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTypeId,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NOT_FOUND},
+		}).Once()
+
+		// when
+		objType, err := fx.GetType(ctx, mockedSpaceId, mockedTypeId)
+
+		// then
+		require.ErrorIs(t, err, ErrTypeNotFound)
+		require.Empty(t, objType)
+	})
+}
+
 func TestObjectService_ListTemplates(t *testing.T) {
 	t.Run("templates found", func(t *testing.T) {
 		// given
@@ -652,5 +720,62 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		require.Len(t, templates, 0)
 		require.Equal(t, 0, total)
 		require.False(t, hasMore)
+	})
+}
+
+func TestObjectService_GetTemplate(t *testing.T) {
+	t.Run("template found", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTemplateId,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String():        pbtypes.String(mockedTemplateId),
+								bundle.RelationKeyName.String():      pbtypes.String(mockedTemplateName),
+								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedTemplateIcon),
+							},
+						},
+					},
+				},
+			},
+		}).Once()
+
+		// when
+		template, err := fx.GetTemplate(ctx, mockedSpaceId, mockedObjectType, mockedTemplateId)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, mockedTemplateId, template.Id)
+		require.Equal(t, mockedTemplateName, template.Name)
+		require.Equal(t, mockedTemplateIcon, template.Icon)
+	})
+
+	t.Run("template not found", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTemplateId,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NOT_FOUND},
+		}).Once()
+
+		// when
+		template, err := fx.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
+
+		// then
+		require.ErrorIs(t, err, ErrTemplateNotFound)
+		require.Empty(t, template)
 	})
 }
