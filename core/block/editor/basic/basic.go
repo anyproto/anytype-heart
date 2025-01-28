@@ -68,8 +68,8 @@ type DetailsSettable interface {
 }
 
 type DetailsUpdatable interface {
-	UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error)
-	UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) (err error)
+	UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error)
+	UpdateDetailsAndLastUsed(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error)
 }
 
 type Restrictionable interface {
@@ -119,8 +119,8 @@ func NewBasic(
 type basic struct {
 	smartblock.SmartBlock
 
-	objectStore     spaceindex.Store
-	layoutConverter converter.LayoutConverter
+	objectStore       spaceindex.Store
+	layoutConverter   converter.LayoutConverter
 	fileObjectService fileobject.Service
 	lastUsedUpdater   lastused.ObjectUsageUpdater
 }

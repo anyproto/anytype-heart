@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"golang.org/x/exp/slices"
 
@@ -35,12 +36,16 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 			return "", nil, fmt.Errorf("fill recommended relations: %w", err)
 		}
 	}
+	if !object.Has(bundle.RelationKeyCreatedDate) {
+		object.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
+	}
 
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
+	setOriginalCreatedTimestamp(createState, details)
 	id, newDetails, err = s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyObjectType}, createState)
 	if err != nil {
 		return "", nil, fmt.Errorf("create smartblock from state: %w", err)

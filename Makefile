@@ -10,13 +10,13 @@ export GOLANGCI_LINT_VERSION=1.58.1
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion
 
 ifndef $(GOPATH)
-    GOPATH=$(shell go env GOPATH)
-    export GOPATH
+GOPATH=$(shell go env GOPATH)
+export GOPATH
 endif
 
 ifndef $(GOROOT)
-    GOROOT=$(shell go env GOROOT)
-    export GOROOT
+GOROOT=$(shell go env GOROOT)
+export GOROOT
 endif
 
 DEPS_PATH := $(shell pwd)/deps
@@ -38,14 +38,14 @@ ifdef ANYENV
 	@exit 1;
 endif
 	@if [ -z "$$ANY_SYNC_NETWORK" ]; then \
-        echo "Using the default production Any Sync Network"; \
-    elif [ ! -e "$$ANY_SYNC_NETWORK" ]; then \
-        echo "Network configuration file not found at $$ANY_SYNC_NETWORK"; \
-        exit 1; \
-    else \
-        echo "Using Any Sync Network configuration at $$ANY_SYNC_NETWORK"; \
-        cp $$ANY_SYNC_NETWORK $(CUSTOM_NETWORK_FILE); \
-    fi
+	echo "Using the default production Any Sync Network"; \
+elif [ ! -e "$$ANY_SYNC_NETWORK" ]; then \
+	echo "Network configuration file not found at $$ANY_SYNC_NETWORK"; \
+	exit 1; \
+else \
+	echo "Using Any Sync Network configuration at $$ANY_SYNC_NETWORK"; \
+	cp $$ANY_SYNC_NETWORK $(CUSTOM_NETWORK_FILE); \
+fi
 
 setup-go: setup-network-config check-tantivy-version
 	@echo 'Setting up go modules...'
@@ -102,7 +102,7 @@ build-js-addon:
 	@cp dist/lib.a clientlibrary/jsaddon/lib.a
 	@cp dist/lib.h clientlibrary/jsaddon/lib.h
 	@cp clientlibrary/clib/bridge.h clientlibrary/jsaddon/bridge.h
-    # Electron's version.
+	# Electron's version.
 	@export npm_config_target=12.0.4
 	@export npm_config_arch=x64
 	@export npm_config_target_arch=x64
@@ -196,7 +196,6 @@ setup-protoc-go:
 	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofaster
 	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofast
 	go build -o deps github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-
 
 setup-protoc-jsweb:
 	@echo 'Installing grpc-web plugin...'
@@ -346,17 +345,17 @@ OUTPUT_DIR := deps/libs
 SHA_FILE = tantivity_sha256.txt
 
 TANTIVY_LIBS := android-386.tar.gz \
-         android-amd64.tar.gz \
-         android-arm.tar.gz \
-         android-arm64.tar.gz \
-         darwin-amd64.tar.gz \
-         darwin-arm64.tar.gz \
-         ios-amd64.tar.gz \
-         ios-arm64.tar.gz \
-         ios-arm64-sim.tar.gz \
-         linux-amd64-musl.tar.gz \
-         linux-arm64-musl.tar.gz \
-         windows-amd64.tar.gz
+	android-amd64.tar.gz \
+	android-arm.tar.gz \
+	android-arm64.tar.gz \
+	darwin-amd64.tar.gz \
+	darwin-arm64.tar.gz \
+	ios-amd64.tar.gz \
+	ios-arm64.tar.gz \
+	ios-arm64-sim.tar.gz \
+	linux-amd64-musl.tar.gz \
+	linux-arm64-musl.tar.gz \
+	windows-amd64.tar.gz
 
 define download_tantivy_lib
 	curl -L -o $(OUTPUT_DIR)/$(1) https://github.com/$(REPO)/releases/download/$(TANTIVY_VERSION)/$(1)

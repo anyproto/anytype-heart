@@ -51,14 +51,16 @@ func (s *subscription) flush() {
 		return
 	}
 
+	ev := &pb.Event{
+		ContextId: s.chatId,
+		Messages:  slices.Clone(s.eventsBuffer),
+	}
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, slices.Clone(s.eventsBuffer))
+		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 		s.sessionContext = nil
 	} else if s.enabled {
-		s.eventSender.Broadcast(&pb.Event{
-			ContextId: s.chatId,
-			Messages:  slices.Clone(s.eventsBuffer),
-		})
+		s.eventSender.Broadcast(ev)
 	}
 }
 

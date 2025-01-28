@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/syncqueues"
+	"github.com/anyproto/anytype-publish-server/publishclient"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
@@ -34,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
@@ -80,6 +82,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/peerstatus"
+	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/spaceview"
@@ -268,6 +271,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(reconciler.New()).
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
 		Register(inviteservice.New()).
+		Register(publish.New()).
+		Register(publishclient.New()).
 		Register(acl.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
@@ -317,7 +322,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
 		Register(lastused.New()).
-		Register(spaceview.New())
+		Register(spaceview.New()).
+		Register(api.New())
 }
 
 func MiddlewareVersion() string {

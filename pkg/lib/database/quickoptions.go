@@ -9,9 +9,8 @@ import (
 )
 
 func transformQuickOption(protoFilter FilterRequest, loc *time.Location) []FilterRequest {
-	filters := []FilterRequest{
-		protoFilter,
-	}
+	var filters []FilterRequest
+
 	if protoFilter.QuickOption > model.BlockContentDataviewFilter_ExactDate || protoFilter.Format == model.RelationFormat_date {
 		d1, d2 := getRange(protoFilter, loc)
 		switch protoFilter.Condition {
@@ -43,6 +42,8 @@ func transformQuickOption(protoFilter FilterRequest, loc *time.Location) []Filte
 			})
 		}
 	}
+
+	filters = append(filters, protoFilter)
 	return filters
 }
 
