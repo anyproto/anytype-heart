@@ -122,3 +122,17 @@ func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsub
 		},
 	}
 }
+
+func (mw *Middleware) ChatSubscribeToMessagePreviews(cctx context.Context, req *pb.RpcChatSubscribeToMessagePreviewsRequest) *pb.RpcChatSubscribeToMessagePreviewsResponse {
+	chatService := mustService[chats.Service](mw)
+
+	subId, err := chatService.SubscribeToMessagePreviews(cctx)
+	code := mapErrorCode[pb.RpcChatSubscribeToMessagePreviewsResponseErrorCode](err)
+	return &pb.RpcChatSubscribeToMessagePreviewsResponse{
+		SubId: subId,
+		Error: &pb.RpcChatSubscribeToMessagePreviewsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

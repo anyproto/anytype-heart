@@ -3,6 +3,8 @@ package chats
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
@@ -36,6 +38,8 @@ type Service interface {
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string, subId string) error
 
+	SubscribeToMessagePreviews(ctx context.Context) (string, error)
+
 	app.ComponentRunnable
 }
 
@@ -45,11 +49,13 @@ type service struct {
 	objectGetter         cache.ObjectGetter
 	crossSpaceSubService crossspacesub.Service
 
-	componentCtx        context.Context
-	componentCtxCancel  context.CancelFunc
-	chatObjectsSubQueue *mb.MB[*pb.EventMessage]
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 
 	eventSender event.Sender
+
+	lock                sync.Mutex
+	chatObjectsSubQueue *mb.MB[*pb.EventMessage]
 }
 
 func New() Service {
@@ -64,7 +70,6 @@ func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
-	s.chatObjectsSubQueue = mb.New[*pb.EventMessage](0)
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 
 	return nil
@@ -74,7 +79,15 @@ const (
 	allChatsSubscriptionId = "allChatObjects"
 )
 
-func (s *service) Run(ctx context.Context) error {
+func (s *service) SubscribeToMessagePreviews(ctx context.Context) (string, error) {
+	s.lock.Lock()
+	if s.chatObjectsSubQueue != nil {
+		s.lock.Unlock()
+		return chatobject.LastMessageSubscriptionId, nil
+	}
+	s.chatObjectsSubQueue = mb.New[*pb.EventMessage](0)
+	s.lock.Unlock()
+
 	resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
 		SubId:             allChatsSubscriptionId,
 		InternalQueue:     s.chatObjectsSubQueue,
@@ -89,7 +102,7 @@ func (s *service) Run(ctx context.Context) error {
 		},
 	})
 	if err != nil {
-		return err
+		return "", fmt.Errorf("cross-space sub: %w", err)
 	}
 	for _, rec := range resp.Records {
 		err := s.onChatAdded(rec.GetString(bundle.RelationKeyId))
@@ -99,7 +112,11 @@ func (s *service) Run(ctx context.Context) error {
 	}
 	go s.monitorChats()
 
-	return err
+	return chatobject.LastMessageSubscriptionId, nil
+}
+
+func (s *service) Run(ctx context.Context) error {
+	return nil
 }
 
 func (s *service) monitorChats() {
@@ -142,11 +159,19 @@ func (s *service) onChatAdded(chatObjectId string) error {
 }
 
 func (s *service) Close(ctx context.Context) error {
+	var err error
+	s.lock.Lock()
+	if s.chatObjectsSubQueue != nil {
+		err = s.chatObjectsSubQueue.Close()
+	}
+	defer s.lock.Unlock()
+
 	s.componentCtxCancel()
-	return errors.Join(
+
+	err = errors.Join(err,
 		s.crossSpaceSubService.Unsubscribe(allChatsSubscriptionId),
-		s.chatObjectsSubQueue.Close(),
 	)
+	return err
 }
 
 func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error) {

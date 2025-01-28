@@ -556,6 +556,10 @@
     - [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request)
     - [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error)
+    - [Rpc.Chat.SubscribeToMessagePreviews](#anytype-Rpc-Chat-SubscribeToMessagePreviews)
+    - [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request)
+    - [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response)
+    - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error)
     - [Rpc.Chat.ToggleMessageReaction](#anytype-Rpc-Chat-ToggleMessageReaction)
     - [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request)
     - [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response)
@@ -1396,6 +1400,7 @@
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
     - [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
+    - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
@@ -2265,6 +2270,7 @@
 | ChatGetMessagesByIds | [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request) | [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response) |  |
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
+| ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 
  
@@ -10320,6 +10326,58 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeToMessagePreviews"></a>
+
+### Rpc.Chat.SubscribeToMessagePreviews
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeToMessagePreviews-Request"></a>
+
+### Rpc.Chat.SubscribeToMessagePreviews.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeToMessagePreviews-Response"></a>
+
+### Rpc.Chat.SubscribeToMessagePreviews.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.SubscribeToMessagePreviews.Response.Error](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error) |  |  |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error"></a>
+
+### Rpc.Chat.SubscribeToMessagePreviews.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22340,6 +22398,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code"></a>
 
 ### Rpc.Chat.SubscribeLastMessages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code"></a>
+
+### Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code
 
 
 | Name | Number | Description |

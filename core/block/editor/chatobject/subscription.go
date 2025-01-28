@@ -54,7 +54,7 @@ func (s *subscription) isActive() bool {
 }
 
 func (s *subscription) withDeps() bool {
-	return slices.Contains(s.ids, LastMessageSubscriptionId)
+	return slices.Equal(s.ids, []string{LastMessageSubscriptionId})
 }
 
 // setSessionContext sets the session context for the current operation
