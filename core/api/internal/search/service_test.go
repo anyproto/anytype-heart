@@ -18,11 +18,29 @@ import (
 )
 
 const (
-	offset               = 0
-	limit                = 100
-	techSpaceId          = "tech-space-id"
-	gatewayUrl           = "http://localhost:31006"
-	mockedObjectTypeName = "mocked-object-type-name"
+	offset                      = 0
+	limit                       = 100
+	techSpaceId                 = "tech-space-id"
+	gatewayUrl                  = "http://localhost:31006"
+	mockedSpaceId               = "mocked-space-id"
+	mockedSearchTerm            = "mocked-search-term"
+	mockedObjectId              = "mocked-object-id"
+	mockedObjectName            = "mocked-object-name"
+	mockedRootId                = "mocked-root-id"
+	mockedParticipantId         = "mocked-participant-id"
+	mockedType                  = "mocked-type"
+	mockedTagId1                = "mocked-tag-id-1"
+	mockedTagValue1             = "mocked-tag-value-1"
+	mockedTagColor1             = "mocked-tag-color-1"
+	mockedTagId2                = "mocked-tag-id-2"
+	mockedTagValue2             = "mocked-tag-value-2"
+	mockedTagColor2             = "mocked-tag-color-2"
+	mockedObjectTypeName        = "mocked-object-type-name"
+	mockedParticipantName       = "mocked-participant-name"
+	mockedParticipantIcon       = "mocked-participant-icon"
+	mockedParticipantImage      = "mocked-participant-image"
+	mockedParticipantIdentity   = "mocked-participant-identity"
+	mockedParticipantGlobalName = "mocked-participant-global-name"
 )
 
 type fixture struct {
@@ -34,7 +52,7 @@ func newFixture(t *testing.T) *fixture {
 	mw := mock_service.NewMockClientCommandsServer(t)
 
 	spaceService := space.NewService(mw)
-	spaceService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
+	spaceService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId, GatewayUrl: gatewayUrl}
 	objectService := object.NewService(mw, spaceService)
 	objectService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
 	searchService := NewService(mw, spaceService, objectService)
@@ -49,7 +67,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-func TestSearchService_Search(t *testing.T) {
+func TestSearchService_GlobalSearch(t *testing.T) {
 	t.Run("objects found globally", func(t *testing.T) {
 		// given
 		ctx := context.Background()
@@ -85,7 +103,7 @@ func TestSearchService_Search(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("space-1"),
+						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String(mockedSpaceId),
 					},
 				},
 			},
@@ -94,18 +112,18 @@ func TestSearchService_Search(t *testing.T) {
 
 		// Mock workspace opening
 		fx.mwMock.On("WorkspaceOpen", mock.Anything, &pb.RpcWorkspaceOpenRequest{
-			SpaceId:  "space-1",
+			SpaceId:  mockedSpaceId,
 			WithChat: true,
 		}).Return(&pb.RpcWorkspaceOpenResponse{
 			Info: &model.AccountInfo{
-				TechSpaceId: "space-1",
+				TechSpaceId: mockedSpaceId,
 			},
 			Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
 		}).Once()
 
-		// Mock objects in space-1
+		// Mock objects in space
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: "space-1",
+			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Operator: model.BlockContentDataviewFilter_And,
@@ -138,13 +156,13 @@ func TestSearchService_Search(t *testing.T) {
 									Operator:    model.BlockContentDataviewFilter_No,
 									RelationKey: bundle.RelationKeyName.String(),
 									Condition:   model.BlockContentDataviewFilter_Like,
-									Value:       pbtypes.String("search-term"),
+									Value:       pbtypes.String(mockedSearchTerm),
 								},
 								{
 									Operator:    model.BlockContentDataviewFilter_No,
 									RelationKey: bundle.RelationKeySnippet.String(),
 									Condition:   model.BlockContentDataviewFilter_Like,
-									Value:       pbtypes.String("search-term"),
+									Value:       pbtypes.String(mockedSearchTerm),
 								},
 							},
 						},
@@ -164,9 +182,9 @@ func TestSearchService_Search(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():      pbtypes.String("obj-global-1"),
-						bundle.RelationKeyName.String():    pbtypes.String("Global Object"),
-						bundle.RelationKeySpaceId.String(): pbtypes.String("space-1"),
+						bundle.RelationKeyId.String():      pbtypes.String(mockedObjectId),
+						bundle.RelationKeyName.String():    pbtypes.String(mockedObjectName),
+						bundle.RelationKeySpaceId.String(): pbtypes.String(mockedSpaceId),
 					},
 				},
 			},
@@ -175,14 +193,14 @@ func TestSearchService_Search(t *testing.T) {
 
 		// Mock object show for object blocks and details
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
-			SpaceId:  "space-1",
-			ObjectId: "obj-global-1",
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedObjectId,
 		}).Return(&pb.RpcObjectShowResponse{
 			ObjectView: &model.ObjectView{
-				RootId: "root-123",
+				RootId: mockedRootId,
 				Blocks: []*model.Block{
 					{
-						Id: "root-123",
+						Id: mockedRootId,
 						Restrictions: &model.BlockRestrictions{
 							Read:   false,
 							Edit:   false,
@@ -190,7 +208,7 @@ func TestSearchService_Search(t *testing.T) {
 							Drag:   false,
 							DropOn: false,
 						},
-						ChildrenIds: []string{"header", "text-block", "relation-block"},
+						ChildrenIds: []string{"header", "text-block"},
 					},
 					{
 						Id: "header",
@@ -215,46 +233,46 @@ func TestSearchService_Search(t *testing.T) {
 				},
 				Details: []*model.ObjectViewDetailsSet{
 					{
-						Id: "root-123",
+						Id: mockedRootId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								bundle.RelationKeyId.String():               pbtypes.String("obj-global-1"),
-								bundle.RelationKeyName.String():             pbtypes.String("Global Object"),
+								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
+								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
 								bundle.RelationKeyLayout.String():           pbtypes.Int64(int64(model.ObjectType_basic)),
 								bundle.RelationKeyIconEmoji.String():        pbtypes.String("🌐"),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
-								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String("participant-id"),
+								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String(mockedParticipantId),
 								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
-								bundle.RelationKeyCreator.String():          pbtypes.String("participant-id"),
-								bundle.RelationKeySpaceId.String():          pbtypes.String("space-1"),
-								bundle.RelationKeyType.String():             pbtypes.String("type-1"),
-								bundle.RelationKeyTag.String():              pbtypes.StringList([]string{"tag-1", "tag-2"}),
+								bundle.RelationKeyCreator.String():          pbtypes.String(mockedParticipantId),
+								bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
+								bundle.RelationKeyType.String():             pbtypes.String(mockedType),
+								bundle.RelationKeyTag.String():              pbtypes.StringList([]string{mockedTagId1, mockedTagId2}),
 							},
 						},
 					},
 					{
-						Id: "participant-id",
+						Id: mockedParticipantId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								bundle.RelationKeyId.String(): pbtypes.String("participant-id"),
+								bundle.RelationKeyId.String(): pbtypes.String(mockedParticipantId),
 							},
 						},
 					},
 					{
-						Id: "tag-1",
+						Id: mockedTagId1,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								bundle.RelationKeyName.String():                pbtypes.String("Important"),
-								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("red"),
+								bundle.RelationKeyName.String():                pbtypes.String(mockedTagValue1),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor1),
 							},
 						},
 					},
 					{
-						Id: "tag-2",
+						Id: mockedTagId2,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								bundle.RelationKeyName.String():                pbtypes.String("Optional"),
-								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("blue"),
+								bundle.RelationKeyName.String():                pbtypes.String(mockedTagValue2),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor2),
 							},
 						},
 					},
@@ -265,13 +283,13 @@ func TestSearchService_Search(t *testing.T) {
 
 		// Mock type resolution
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: "space-1",
+			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("type-1"),
+					Value:       pbtypes.String(mockedType),
 				},
 			},
 			Keys: []string{bundle.RelationKeyName.String()},
@@ -288,13 +306,13 @@ func TestSearchService_Search(t *testing.T) {
 
 		// Mock participant details
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: "space-1",
+			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("participant-id"),
+					Value:       pbtypes.String(mockedParticipantId),
 				},
 			},
 			Keys: []string{bundle.RelationKeyId.String(),
@@ -309,12 +327,12 @@ func TestSearchService_Search(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():                     pbtypes.String("participant-id"),
-						bundle.RelationKeyName.String():                   pbtypes.String("Participant Name"),
-						bundle.RelationKeyIconEmoji.String():              pbtypes.String("emoji"),
-						bundle.RelationKeyIconImage.String():              pbtypes.String("image-url"),
-						bundle.RelationKeyIdentity.String():               pbtypes.String("identity"),
-						bundle.RelationKeyGlobalName.String():             pbtypes.String("global-name"),
+						bundle.RelationKeyId.String():                     pbtypes.String(mockedParticipantId),
+						bundle.RelationKeyName.String():                   pbtypes.String(mockedParticipantName),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(mockedParticipantIcon),
+						bundle.RelationKeyIconImage.String():              pbtypes.String(mockedParticipantImage),
+						bundle.RelationKeyIdentity.String():               pbtypes.String(mockedParticipantIdentity),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String(mockedParticipantGlobalName),
 						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
 					},
 				},
@@ -323,16 +341,16 @@ func TestSearchService_Search(t *testing.T) {
 		}).Twice()
 
 		// when
-		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: "search-term", Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
+		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
 		require.Equal(t, mockedObjectTypeName, objects[0].Type)
-		require.Equal(t, "space-1", objects[0].SpaceId)
-		require.Equal(t, "Global Object", objects[0].Name)
-		require.Equal(t, "obj-global-1", objects[0].Id)
-		require.Equal(t, "basic", objects[0].Layout)
+		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
+		require.Equal(t, mockedObjectName, objects[0].Name)
+		require.Equal(t, mockedObjectId, objects[0].Id)
+		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
 		require.Equal(t, "🌐", objects[0].Icon)
 		require.Equal(t, "This is a sample text block", objects[0].Blocks[2].Text.Text)
 
@@ -343,9 +361,13 @@ func TestSearchService_Search(t *testing.T) {
 			} else if detail.Id == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
 			} else if detail.Id == "created_by" {
-				require.Equal(t, "participant-id", detail.Details["details"].(space.Member).Id)
+				require.Equal(t, mockedParticipantId, detail.Details["details"].(space.Member).Id)
+				require.Equal(t, mockedParticipantName, detail.Details["details"].(space.Member).Name)
+				require.Equal(t, gatewayUrl+"/image/"+mockedParticipantImage, detail.Details["details"].(space.Member).Icon)
+				require.Equal(t, mockedParticipantIdentity, detail.Details["details"].(space.Member).Identity)
+				require.Equal(t, mockedParticipantGlobalName, detail.Details["details"].(space.Member).GlobalName)
 			} else if detail.Id == "last_modified_by" {
-				require.Equal(t, "participant-id", detail.Details["details"].(space.Member).Id)
+				require.Equal(t, mockedParticipantId, detail.Details["details"].(space.Member).Id)
 			}
 		}
 
@@ -359,12 +381,12 @@ func TestSearchService_Search(t *testing.T) {
 			}
 		}
 		require.Len(t, tags, 2)
-		require.Equal(t, "tag-1", tags[0].Id)
-		require.Equal(t, "Important", tags[0].Name)
-		require.Equal(t, "red", tags[0].Color)
-		require.Equal(t, "tag-2", tags[1].Id)
-		require.Equal(t, "Optional", tags[1].Name)
-		require.Equal(t, "blue", tags[1].Color)
+		require.Equal(t, mockedTagId1, tags[0].Id)
+		require.Equal(t, mockedTagValue1, tags[0].Name)
+		require.Equal(t, mockedTagColor1, tags[0].Color)
+		require.Equal(t, mockedTagId2, tags[1].Id)
+		require.Equal(t, mockedTagValue2, tags[1].Name)
+		require.Equal(t, mockedTagColor2, tags[1].Color)
 
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)

@@ -457,7 +457,7 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "last_modified_by",
 			Details: map[string]interface{}{
-				"details": s.spaceService.GetParticipantDetails(s.mw, s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), lastModifiedById),
+				"details": s.spaceService.GetParticipantDetails(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), lastModifiedById),
 			},
 		},
 		{
@@ -469,7 +469,7 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "created_by",
 			Details: map[string]interface{}{
-				"details": s.spaceService.GetParticipantDetails(s.mw, s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId),
+				"details": s.spaceService.GetParticipantDetails(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId),
 			},
 		},
 		{

@@ -174,7 +174,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 	return members, total, hasMore, nil
 }
 
-func (s *SpaceService) GetParticipantDetails(mw service.ClientCommandsServer, accountInfo *model.AccountInfo, spaceId string, participantId string) Member {
+func (s *SpaceService) GetParticipantDetails(mw service.ClientCommandsServer, spaceId string, participantId string) Member {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -196,7 +196,7 @@ func (s *SpaceService) GetParticipantDetails(mw service.ClientCommandsServer, ac
 		return Member{}
 	}
 
-	icon := util.GetIconFromEmojiOrImage(accountInfo, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
+	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
 
 	return Member{
 		Type:       "member",
