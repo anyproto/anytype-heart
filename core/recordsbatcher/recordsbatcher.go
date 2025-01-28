@@ -1,21 +1,22 @@
 package recordsbatcher
 
 import (
+	"context"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 )
 
 const CName = "recordsbatcher"
 
 type recordsBatcher struct {
-	batcher   *mb.MB
+	batcher   *mb.MB[any]
 	packDelay time.Duration // delay for better packing of msgs
 }
 
 func (r *recordsBatcher) Init(a *app.App) (err error) {
-	r.batcher = mb.New(0)
+	r.batcher = mb.New[any](0)
 	r.packDelay = time.Millisecond * 100
 	return nil
 }
@@ -24,8 +25,8 @@ func (r *recordsBatcher) Name() (name string) {
 	return CName
 }
 
-func (r *recordsBatcher) Add(msgs ...interface{}) error {
-	return r.batcher.Add(msgs...)
+func (r *recordsBatcher) Add(msgs ...any) error {
+	return r.batcher.Add(context.Background(), msgs...)
 }
 
 func (r *recordsBatcher) Read(buffer []interface{}) int {
@@ -33,7 +34,10 @@ func (r *recordsBatcher) Read(buffer []interface{}) int {
 		time.Sleep(r.packDelay)
 	}()
 
-	msgs := r.batcher.WaitMax(len(buffer))
+	msgs, err := r.batcher.NewCond().WithMax(len(buffer)).Wait(context.Background())
+	if err != nil {
+		return 0
+	}
 	if len(msgs) == 0 {
 		return 0
 	}
@@ -49,7 +53,7 @@ func (r *recordsBatcher) Close() (err error) {
 }
 
 func New() RecordsBatcher {
-	return &recordsBatcher{batcher: mb.New(0)}
+	return &recordsBatcher{batcher: mb.New[any](0)}
 }
 
 type RecordsBatcher interface {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	mb2 "github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -270,7 +270,7 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 			subscriptionKeys:  make([]string, 0, 20),
 			subscriptions:     make(map[string]subscription, 20),
 			customOutput:      map[string]*internalSubOutput{},
-			recBatch:          mb.New(0),
+			recBatch:          mb.New[database.Record](0),
 			objectStore:       s.objectStore.SpaceIndex(spaceId),
 			kanban:            s.kanban,
 			collectionService: s.collectionService,
@@ -294,7 +294,7 @@ type spaceSubscriptions struct {
 	subscriptions    map[string]subscription
 
 	customOutput map[string]*internalSubOutput
-	recBatch     *mb.MB
+	recBatch     *mb.MB[database.Record]
 
 	// Deps
 	objectStore       spaceindex.Store
@@ -311,10 +311,14 @@ type spaceSubscriptions struct {
 	arenaPool   *anyenc.ArenaPool
 }
 
-func (s *spaceSubscriptions) Run(context.Context) (err error) {
+func (s *spaceSubscriptions) Run(ctx context.Context) (err error) {
+	var batchErr error
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
-		s.recBatch.Add(rec)
+		batchErr = s.recBatch.Add(ctx, rec)
 	})
+	if batchErr != nil {
+		return batchErr
+	}
 	go s.recordsHandler()
 	return
 }
@@ -772,15 +776,18 @@ func (s *spaceSubscriptions) recordsHandler() {
 		}
 	}
 	for {
-		records := s.recBatch.Wait()
+		records, err := s.recBatch.Wait(context.Background())
+		if err != nil {
+			return
+		}
 		if len(records) == 0 {
 			return
 		}
 		for _, rec := range records {
-			id := rec.(database.Record).Details.GetString(bundle.RelationKeyId)
+			id := rec.Details.GetString(bundle.RelationKeyId)
 			// nil previous version
 			nilIfExists(id)
-			entries = append(entries, newEntry(id, rec.(database.Record).Details))
+			entries = append(entries, newEntry(id, rec.Details))
 		}
 		// filter nil entries
 		filtered := entries[:0]

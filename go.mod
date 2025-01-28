@@ -19,7 +19,6 @@ require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/chai2010/webp v1.1.2-0.20240612091223-aa1b379218b7
-	github.com/cheggaaa/mb v1.0.3
 	github.com/cheggaaa/mb/v3 v3.0.2
 	github.com/dave/jennifer v1.7.1
 	github.com/davecgh/go-spew v1.1.1
