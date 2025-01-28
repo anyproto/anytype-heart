@@ -44,7 +44,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Nil(t, collection)
 	})
-	t.Run("no widget object - add all objects (except template and subobjects) in Protobuf Import collection", func(t *testing.T) {
+	t.Run("no widget object - add all objects (except subobjects) in Protobuf Import collection", func(t *testing.T) {
 		// given
 		p := SpaceImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
@@ -85,9 +85,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Len(t, collection, 1)
 		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 2)
+		assert.Len(t, objectsInCollection, 3)
 		assert.Equal(t, objectsInCollection[0], "id1")
-		assert.Equal(t, objectsInCollection[1], "id4")
+		assert.Equal(t, objectsInCollection[1], "id3")
+		assert.Equal(t, objectsInCollection[2], "id4")
 	})
 	t.Run("widget with sets - add only sets in Protobuf Import collection", func(t *testing.T) {
 		// given
@@ -106,6 +107,9 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				Id: "id3",
 				Snapshot: &common.SnapshotModel{
 					SbType: smartblock2.SmartBlockTypeTemplate,
+					Data: &common.StateSnapshot{
+						ObjectTypes: []string{bundle.TypeKeyTemplate.URL()},
+					},
 				},
 			},
 			// page
@@ -191,6 +195,9 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				Id: "id3",
 				Snapshot: &common.SnapshotModel{
 					SbType: smartblock2.SmartBlockTypeTemplate,
+					Data: &common.StateSnapshot{
+						ObjectTypes: []string{bundle.TypeKeyTemplate.URL()},
+					},
 				},
 			},
 			// page
@@ -277,6 +284,9 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				Id: "id3",
 				Snapshot: &common.SnapshotModel{
 					SbType: smartblock2.SmartBlockTypeTemplate,
+					Data: &common.StateSnapshot{
+						ObjectTypes: []string{bundle.TypeKeyTemplate.URL()},
+					},
 				},
 			},
 			// favorite page
