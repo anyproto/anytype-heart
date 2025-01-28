@@ -3,12 +3,18 @@ package chatobject
 import (
 	"slices"
 
+	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+const LastMessageSubscriptionId = "lastMessage"
 
 type subscription struct {
 	spaceId     string
@@ -19,14 +25,17 @@ type subscription struct {
 
 	eventsBuffer []*pb.EventMessage
 
+	spaceIndex spaceindex.Store
+
 	ids []string
 }
 
-func newSubscription(spaceId string, chatId string, eventSender event.Sender) *subscription {
+func newSubscription(spaceId string, chatId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
 	return &subscription{
 		spaceId:     spaceId,
 		chatId:      chatId,
 		eventSender: eventSender,
+		spaceIndex:  spaceIndex,
 	}
 }
 
@@ -42,6 +51,10 @@ func (s *subscription) unsubscribe(subId string) {
 
 func (s *subscription) isActive() bool {
 	return len(s.ids) > 0
+}
+
+func (s *subscription) withDeps() bool {
+	return slices.Contains(s.ids, LastMessageSubscriptionId)
 }
 
 // setSessionContext sets the session context for the current operation
@@ -81,6 +94,25 @@ func (s *subscription) add(message *model.ChatMessage) {
 		OrderId: message.OrderId,
 		SubIds:  slices.Clone(s.ids),
 	}
+
+	if s.withDeps() {
+		identityDetails, err := s.spaceIndex.GetDetails(domain.NewParticipantId(s.spaceId, message.Creator))
+		if err != nil {
+			log.Error("get identity details", zap.Error(err))
+		} else {
+			ev.Dependencies = append(ev.Dependencies, identityDetails.ToProto())
+		}
+
+		for _, attachment := range message.Attachments {
+			attachmentDetails, err := s.spaceIndex.GetDetails(attachment.Target)
+			if err != nil {
+				log.Error("get attachment details", zap.Error(err))
+			} else {
+				ev.Dependencies = append(ev.Dependencies, attachmentDetails.ToProto())
+			}
+		}
+	}
+
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
 		ChatAdd: ev,
 	}))

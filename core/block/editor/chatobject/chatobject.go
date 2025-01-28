@@ -19,6 +19,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -27,6 +29,8 @@ const (
 	descOrder      = "-_o.id"
 	ascOrder       = "_o.id"
 )
+
+var log = logging.Logger("core.block.editor.chatobject").Desugar()
 
 type StoreObject interface {
 	smartblock.SmartBlock
@@ -63,11 +67,12 @@ type storeObject struct {
 	eventSender    event.Sender
 	subscription   *subscription
 	crdtDb         anystore.DB
+	spaceIndex     spaceindex.Store
 
 	arenaPool *anyenc.ArenaPool
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB, spaceIndex spaceindex.Store) StoreObject {
 	return &storeObject{
 		SmartBlock:     sb,
 		locker:         sb.(smartblock.Locker),
@@ -75,6 +80,7 @@ func New(sb smartblock.SmartBlock, accountService AccountService, eventSender ev
 		arenaPool:      &anyenc.ArenaPool{},
 		eventSender:    eventSender,
 		crdtDb:         crdtDb,
+		spaceIndex:     spaceIndex,
 	}
 }
 
@@ -83,7 +89,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
-	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender)
+	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender, s.spaceIndex)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
 		subscription: s.subscription,

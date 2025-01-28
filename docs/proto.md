@@ -27063,6 +27063,7 @@ Precondition: user A opened a block
 | orderId | [string](#string) |  |  |
 | message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
 | subIds | [string](#string) | repeated |  |
+| dependencies | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
 
 
 

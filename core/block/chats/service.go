@@ -71,8 +71,7 @@ func (s *service) Init(a *app.App) error {
 }
 
 const (
-	allChatsSubscriptionId    = "allChatObjects"
-	lastMessageSubscriptionId = "lastMessage"
+	allChatsSubscriptionId = "allChatObjects"
 )
 
 func (s *service) Run(ctx context.Context) error {
@@ -112,7 +111,7 @@ func (s *service) monitorChats() {
 			}
 		},
 		OnRemove: func(remove *pb.EventObjectSubscriptionRemove) {
-			err := s.Unsubscribe(remove.Id, lastMessageSubscriptionId)
+			err := s.Unsubscribe(remove.Id, chatobject.LastMessageSubscriptionId)
 			if err != nil && !errors.Is(err, domain.ErrObjectNotFound) {
 				log.Error("unsubscribe from the last message", zap.Error(err))
 			}
@@ -134,7 +133,7 @@ func (s *service) monitorChats() {
 func (s *service) onChatAdded(chatObjectId string) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		_, _, err = sb.SubscribeLastMessages(s.componentCtx, lastMessageSubscriptionId, 1, true)
+		_, _, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.LastMessageSubscriptionId, 1, true)
 		if err != nil {
 			return err
 		}
