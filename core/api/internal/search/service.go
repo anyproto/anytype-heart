@@ -48,7 +48,7 @@ func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest,
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts := s.prepareSorts(request.Sort)
-	dateToSortAfter := sorts[0].RelationKey
+	dateToSortAfter := sorts.RelationKey
 
 	allResponses := make([]*pb.RpcObjectSearchResponse, 0, len(spaces))
 	for _, space := range spaces {
@@ -59,7 +59,7 @@ func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest,
 		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 			SpaceId: space.Id,
 			Filters: filters,
-			Sorts:   sorts,
+			Sorts:   []*model.BlockContentDataviewSort{sorts},
 			Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), dateToSortAfter},
 			Limit:   int32(offset + limit), // nolint: gosec
 		})
@@ -118,12 +118,12 @@ func (s *SearchService) Search(ctx context.Context, spaceId string, request Sear
 	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, typeFilters)
 
 	sorts := s.prepareSorts(request.Sort)
-	dateToSortAfter := sorts[0].RelationKey
+	dateToSortAfter := sorts.RelationKey
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: filters,
-		Sorts:   sorts,
+		Sorts:   []*model.BlockContentDataviewSort{sorts},
 		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), dateToSortAfter},
 	})
 
@@ -262,14 +262,14 @@ func (s *SearchService) prepareObjectTypeFilters(spaceId string, objectTypes []s
 }
 
 // prepareSorts returns a sort filter based on the given sort parameters
-func (s *SearchService) prepareSorts(sort SortOptions) []*model.BlockContentDataviewSort {
-	return []*model.BlockContentDataviewSort{{
+func (s *SearchService) prepareSorts(sort SortOptions) *model.BlockContentDataviewSort {
+	return &model.BlockContentDataviewSort{
 		RelationKey:    s.getSortRelationKey(sort.Timestamp),
 		Type:           s.getSortDirection(sort.Direction),
 		Format:         model.RelationFormat_date,
 		IncludeTime:    true,
 		EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
-	}}
+	}
 }
 
 // getSortRelationKey returns the relation key for the given sort timestamp
