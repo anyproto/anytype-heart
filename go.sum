@@ -82,8 +82,8 @@ github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5/go.mod h
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kktS1LM=
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
-github.com/anyproto/any-store v0.1.5 h1:AHOaFr9A+RhUc80MceUI9DL8vWqEW7AVB29lTqUlLL8=
-github.com/anyproto/any-store v0.1.5/go.mod h1:nbyRoJYOlvSWU1xDOrmgPP96UeoTf4eYZ9k+qqLK9k8=
+github.com/anyproto/any-store v0.1.6 h1:CmxIH2JhgHH2s7dnv1SNKAQ3spvX2amG/5RbrTZkLaQ=
+github.com/anyproto/any-store v0.1.6/go.mod h1:nbyRoJYOlvSWU1xDOrmgPP96UeoTf4eYZ9k+qqLK9k8=
 github.com/anyproto/any-sync v0.5.26 h1:JWcR/RFGQ22CYWrdh2Ain6uEWNePtYHCLs+LXsm8hhU=
 github.com/anyproto/any-sync v0.5.26/go.mod h1:Ljftoz6/mCM/2wP2tK9H1/jtVAxfgqzYplBA4MbiUs0=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20241223184559-a5cacfe0950a h1:kSNyLHsZ40JxlRAglr85YXH2ik2LH3AH5Hd3JL42KGo=
