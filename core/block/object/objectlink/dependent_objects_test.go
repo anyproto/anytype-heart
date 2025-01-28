@@ -224,9 +224,26 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 		assert.Len(t, objectIDs, 15) // 11 links + 4 relations
 	})
 
-	t.Run("date object ids are rounded to day", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, RoundDateIdsToDay: true})
-		assert.Len(t, objectIDs, 10)
+	t.Run("save backlinks", func(t *testing.T) {
+		st := stateWithLinks.Copy()
+		st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList([]string{"link1"}))
+		st.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyBacklinks.String(),
+			Format: model.RelationFormat_object,
+		})
+		objectIDs := DependentObjectIDs(st, converter, Flags{Details: true})
+		assert.Len(t, objectIDs, 1)
+		assert.Contains(t, objectIDs, "link1")
+	})
+	t.Run("skip backlinks", func(t *testing.T) {
+		st := stateWithLinks.Copy()
+		st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList([]string{"link1"}))
+		st.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyBacklinks.String(),
+			Format: model.RelationFormat_object,
+		})
+		objectIDs := DependentObjectIDs(st, converter, Flags{Details: true, NoBackLinks: true})
+		assert.Len(t, objectIDs, 0)
 	})
 }
 
@@ -317,6 +334,10 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 	t.Run("blocks option and relations option are turned on: get ids from blocks and relations", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true})
 		assert.Len(t, objectIDs, 9) // 4 links + 5 relations
+	})
+	t.Run("blocks, relations and details option are turned on: get ids from blocks, relations and details", func(t *testing.T) {
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true, Details: true})
+		assert.Len(t, objectIDs, 14) // 4 links + 5 relations + 3 options + 1 fileID + 1 date
 	})
 	t.Run("blocks, relations and details option are turned on: get ids from blocks, relations and details", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true, Details: true})

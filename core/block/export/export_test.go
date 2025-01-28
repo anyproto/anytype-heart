@@ -543,6 +543,273 @@ func TestExport_Export(t *testing.T) {
 		assert.Len(t, sn.GetSnapshot().GetData().GetRelationLinks(), 1)
 		assert.Equal(t, bundle.RelationKeyCamera.String(), sn.GetSnapshot().GetData().GetRelationLinks()[0].Key)
 	})
+	t.Run("export with backlinks", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeId := "objectTypeId"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
+		assert.Nil(t, err)
+		objectId := "objectID"
+		link1 := "linkId"
+
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:      domain.String(link1),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:        domain.String(objectId),
+				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeySpaceId:   domain.String(spaceId),
+				bundle.RelationKeyBacklinks: domain.StringList([]string{link1}),
+			},
+			{
+				bundle.RelationKeyId:                   domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
+				bundle.RelationKeySpaceId:              domain.String(spaceId),
+				bundle.RelationKeyType:                 domain.String(objectTypeId),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetterComponent(t)
+
+		smartBlockTest := smarttest.New(objectId)
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String(objectId),
+			bundle.RelationKeyType:      domain.String(objectTypeId),
+			bundle.RelationKeyBacklinks: domain.StringList([]string{link1}),
+		}))
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyBacklinks.String(),
+			Format: model.RelationFormat_object,
+		})
+		smartBlockTest.Doc = doc
+
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+		objectType.SetType(smartblock.SmartBlockTypeObjectType)
+
+		linkObject := smarttest.New(link1)
+		linkObjectDoc := linkObject.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String(link1),
+			bundle.RelationKeyType:    domain.String(objectTypeId),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		}))
+		linkObjectDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeySpaceId.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		linkObject.Doc = linkObjectDoc
+
+		objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), link1).Return(linkObject, nil)
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+		service := process.New()
+		err = service.Init(a)
+		assert.Nil(t, err)
+
+		notifications := mock_notifications.NewMockNotifications(t)
+		notificationSend := make(chan struct{})
+		notifications.EXPECT().CreateAndSend(mock.Anything).RunAndReturn(func(notification *model.Notification) error {
+			close(notificationSend)
+			return nil
+		})
+
+		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		provider.EXPECT().Type(spaceId, link1).Return(smartblock.SmartBlockTypePage, nil)
+
+		e := &export{
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			processService:      service,
+			notificationService: notifications,
+			sbtProvider:         provider,
+		}
+
+		// when
+		path, success, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
+			SpaceId:          spaceId,
+			Path:             t.TempDir(),
+			ObjectIds:        []string{objectId},
+			Format:           model.Export_Protobuf,
+			Zip:              true,
+			IncludeNested:    true,
+			IncludeFiles:     true,
+			IsJson:           true,
+			IncludeBacklinks: true,
+		})
+
+		// then
+		<-notificationSend
+		assert.Nil(t, err)
+		assert.Equal(t, 3, success)
+
+		reader, err := zip.OpenReader(path)
+		assert.Nil(t, err)
+
+		assert.Len(t, reader.File, 3)
+		fileNames := make(map[string]bool, 3)
+		for _, file := range reader.File {
+			fileNames[file.Name] = true
+		}
+
+		objectPath := filepath.Join(objectsDirectory, link1+".pb.json")
+		assert.True(t, fileNames[objectPath])
+	})
+	t.Run("export without backlinks", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeId := "objectTypeId"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
+		assert.Nil(t, err)
+		objectId := "objectID"
+		link1 := "linkId"
+
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:      domain.String(link1),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:        domain.String(objectId),
+				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeySpaceId:   domain.String(spaceId),
+				bundle.RelationKeyBacklinks: domain.StringList([]string{link1}),
+			},
+			{
+				bundle.RelationKeyId:                   domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
+				bundle.RelationKeySpaceId:              domain.String(spaceId),
+				bundle.RelationKeyType:                 domain.String(objectTypeId),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetterComponent(t)
+
+		smartBlockTest := smarttest.New(objectId)
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String(objectId),
+			bundle.RelationKeyType:      domain.String(objectTypeId),
+			bundle.RelationKeyBacklinks: domain.StringList([]string{link1}),
+		}))
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyBacklinks.String(),
+			Format: model.RelationFormat_object,
+		})
+		smartBlockTest.Doc = doc
+
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+		objectType.SetType(smartblock.SmartBlockTypeObjectType)
+
+		objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+		service := process.New()
+		err = service.Init(a)
+		assert.Nil(t, err)
+
+		notifications := mock_notifications.NewMockNotifications(t)
+		notificationSend := make(chan struct{})
+		notifications.EXPECT().CreateAndSend(mock.Anything).RunAndReturn(func(notification *model.Notification) error {
+			close(notificationSend)
+			return nil
+		})
+
+		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+
+		e := &export{
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			processService:      service,
+			notificationService: notifications,
+			sbtProvider:         provider,
+		}
+
+		// when
+		path, success, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
+			SpaceId:          spaceId,
+			Path:             t.TempDir(),
+			ObjectIds:        []string{objectId},
+			Format:           model.Export_Protobuf,
+			Zip:              true,
+			IncludeNested:    true,
+			IncludeFiles:     true,
+			IsJson:           true,
+			IncludeBacklinks: false,
+		})
+
+		// then
+		<-notificationSend
+		assert.Nil(t, err)
+		assert.Equal(t, 2, success)
+
+		reader, err := zip.OpenReader(path)
+		assert.Nil(t, err)
+
+		fileNames := make(map[string]bool, 2)
+		for _, file := range reader.File {
+			fileNames[file.Name] = true
+		}
+
+		objectPath := filepath.Join(objectsDirectory, link1+".pb.json")
+		assert.False(t, fileNames[objectPath])
+	})
 }
 
 func Test_docsForExport(t *testing.T) {
