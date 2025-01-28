@@ -2,7 +2,9 @@ package chatobject
 
 import (
 	"slices"
+	"time"
 
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -27,15 +29,18 @@ type subscription struct {
 
 	spaceIndex spaceindex.Store
 
+	identityCache *expirable.LRU[string, *domain.Details]
+
 	ids []string
 }
 
 func newSubscription(spaceId string, chatId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
 	return &subscription{
-		spaceId:     spaceId,
-		chatId:      chatId,
-		eventSender: eventSender,
-		spaceIndex:  spaceIndex,
+		spaceId:       spaceId,
+		chatId:        chatId,
+		eventSender:   eventSender,
+		spaceIndex:    spaceIndex,
+		identityCache: expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
 	}
 }
 
@@ -84,6 +89,19 @@ func (s *subscription) flush() {
 	}
 }
 
+func (s *subscription) getIdentityDetails(identity string) (*domain.Details, error) {
+	cached, ok := s.identityCache.Get(identity)
+	if ok {
+		return cached, nil
+	}
+	details, err := s.spaceIndex.GetDetails(domain.NewParticipantId(s.spaceId, identity))
+	if err != nil {
+		return nil, err
+	}
+	s.identityCache.Add(identity, details)
+	return details, nil
+}
+
 func (s *subscription) add(message *model.ChatMessage) {
 	if !s.canSend() {
 		return
@@ -96,7 +114,7 @@ func (s *subscription) add(message *model.ChatMessage) {
 	}
 
 	if s.withDeps() {
-		identityDetails, err := s.spaceIndex.GetDetails(domain.NewParticipantId(s.spaceId, message.Creator))
+		identityDetails, err := s.getIdentityDetails(message.Creator)
 		if err != nil {
 			log.Error("get identity details", zap.Error(err))
 		} else {
