@@ -48,7 +48,7 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
-//	@Param		name	body		string					true	"Space Name"
+//	@Param		name	body		CreateSpaceRequest		true	"Space to create"
 //	@Success	200		{object}	CreateSpaceResponse		"Space created successfully"
 //	@Failure	400		{object}	util.ValidationError	"Bad request"
 //	@Failure	401		{object}	util.UnauthorizedError	"Unauthorized"

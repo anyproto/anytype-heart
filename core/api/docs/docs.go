@@ -159,13 +159,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of objects",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/object.Object"
-                                }
-                            }
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Object"
                         }
                     },
                     "401": {
@@ -246,12 +240,12 @@ const docTemplate = `{
                 "summary": "Create space",
                 "parameters": [
                     {
-                        "description": "Space Name",
+                        "description": "Space to create",
                         "name": "name",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/space.CreateSpaceRequest"
                         }
                     }
                 ],
@@ -599,6 +593,10 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "enum": [
+                            "markdown",
+                            "protobuf"
+                        ],
                         "type": "string",
                         "description": "Export format",
                         "name": "format",
@@ -683,13 +681,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of objects",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/object.Object"
-                                }
-                            }
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Object"
                         }
                     },
                     "401": {
@@ -965,11 +957,11 @@ const docTemplate = `{
             "properties": {
                 "app_key": {
                     "type": "string",
-                    "example": ""
+                    "example": "zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6="
                 },
                 "session_token": {
                     "type": "string",
-                    "example": ""
+                    "example": "eyJhbGciOeJIRzI1NiIsInR5cCI6IkpXVCJ1.eyJzZWVkIjaiY0dmVndlUnAifQ.Y1EZecYnwmvMkrXKOa2XJnAbaRt34urBabe06tmDQII"
                 }
             }
         },
@@ -977,7 +969,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "path": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "/path/to/export"
                 }
             }
         },
@@ -987,7 +980,10 @@ const docTemplate = `{
                 "align": {
                     "type": "string",
                     "enum": [
-                        "AlignLeft|AlignCenter|AlignRight|AlignJustify"
+                        "AlignLeft",
+                        "AlignCenter",
+                        "AlignRight",
+                        "AlignJustify"
                     ],
                     "example": "AlignLeft"
                 },
@@ -1017,7 +1013,9 @@ const docTemplate = `{
                 "vertical_align": {
                     "type": "string",
                     "enum": [
-                        "VerticalAlignTop|VerticalAlignMiddle|VerticalAlignBottom"
+                        "VerticalAlignTop",
+                        "VerticalAlignMiddle",
+                        "VerticalAlignBottom"
                     ],
                     "example": "VerticalAlignTop"
                 }
@@ -1066,7 +1064,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string",
                     "enum": [
-                        "last_modified_date|last_modified_by|created_date|created_by|last_opened_date|tags"
+                        "last_modified_date",
+                        "last_modified_by",
+                        "created_date",
+                        "created_by",
+                        "last_opened_date",
+                        "tags"
                     ],
                     "example": "last_modified_date"
                 }
@@ -1208,7 +1211,20 @@ const docTemplate = `{
                 "style": {
                     "type": "string",
                     "enum": [
-                        "Paragraph|Header1|Header2|Header3|Header4|Quote|Code|Title|Checkbox|Marked|Numbered|Toggle|Description|Callout"
+                        "Paragraph",
+                        "Header1",
+                        "Header2",
+                        "Header3",
+                        "Header4",
+                        "Quote",
+                        "Code",
+                        "Title",
+                        "Checkbox",
+                        "Marked",
+                        "Numbered",
+                        "Toggle",
+                        "Description",
+                        "Callout"
                     ],
                     "example": "Paragraph"
                 },
@@ -1374,15 +1390,27 @@ const docTemplate = `{
                     "type": "string",
                     "default": "desc",
                     "enum": [
-                        "asc|desc"
+                        "asc",
+                        "desc"
                     ]
                 },
                 "timestamp": {
                     "type": "string",
                     "default": "last_modified_date",
                     "enum": [
-                        "created_date|last_modified_date|last_opened_date"
+                        "created_date",
+                        "last_modified_date",
+                        "last_opened_date"
                     ]
+                }
+            }
+        },
+        "space.CreateSpaceRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "New Space"
                 }
             }
         },
@@ -1420,7 +1448,10 @@ const docTemplate = `{
                 "role": {
                     "type": "string",
                     "enum": [
-                        "Reader|Writer|Owner|NoPermission"
+                        "Reader",
+                        "Writer",
+                        "Owner",
+                        "NoPermission"
                     ],
                     "example": "Owner"
                 },

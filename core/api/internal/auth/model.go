@@ -5,6 +5,6 @@ type DisplayCodeResponse struct {
 }
 
 type TokenResponse struct {
-	SessionToken string `json:"session_token" example:""`
-	AppKey       string `json:"app_key" example:""`
+	SessionToken string `json:"session_token" example:"eyJhbGciOeJIRzI1NiIsInR5cCI6IkpXVCJ1.eyJzZWVkIjaiY0dmVndlUnAifQ.Y1EZecYnwmvMkrXKOa2XJnAbaRt34urBabe06tmDQII"`
+	AppKey       string `json:"app_key" example:"zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6="`
 }

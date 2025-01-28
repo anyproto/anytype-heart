@@ -1,7 +1,7 @@
 package space
 
 type CreateSpaceRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" example:"New Space"`
 }
 
 type CreateSpaceResponse struct {
@@ -37,5 +37,5 @@ type Member struct {
 	Icon       string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"`
 	Identity   string `json:"identity" example:"AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"`
 	GlobalName string `json:"global_name" example:"john.any"`
-	Role       string `json:"role" enums:"Reader|Writer|Owner|NoPermission" example:"Owner"`
+	Role       string `json:"role" enums:"Reader,Writer,Owner,NoPermission" example:"Owner"`
 }

@@ -9,22 +9,26 @@ definitions:
   auth.TokenResponse:
     properties:
       app_key:
-        example: ""
+        example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
         type: string
       session_token:
-        example: ""
+        example: eyJhbGciOeJIRzI1NiIsInR5cCI6IkpXVCJ1.eyJzZWVkIjaiY0dmVndlUnAifQ.Y1EZecYnwmvMkrXKOa2XJnAbaRt34urBabe06tmDQII
         type: string
     type: object
   export.ObjectExportResponse:
     properties:
       path:
+        example: /path/to/export
         type: string
     type: object
   object.Block:
     properties:
       align:
         enum:
-        - AlignLeft|AlignCenter|AlignRight|AlignJustify
+        - AlignLeft
+        - AlignCenter
+        - AlignRight
+        - AlignJustify
         example: AlignLeft
         type: string
       background_color:
@@ -45,7 +49,9 @@ definitions:
         $ref: '#/definitions/object.Text'
       vertical_align:
         enum:
-        - VerticalAlignTop|VerticalAlignMiddle|VerticalAlignBottom
+        - VerticalAlignTop
+        - VerticalAlignMiddle
+        - VerticalAlignBottom
         example: VerticalAlignTop
         type: string
     type: object
@@ -80,7 +86,12 @@ definitions:
         type: object
       id:
         enum:
-        - last_modified_date|last_modified_by|created_date|created_by|last_opened_date|tags
+        - last_modified_date
+        - last_modified_by
+        - created_date
+        - created_by
+        - last_opened_date
+        - tags
         example: last_modified_date
         type: string
     type: object
@@ -178,7 +189,20 @@ definitions:
         type: string
       style:
         enum:
-        - Paragraph|Header1|Header2|Header3|Header4|Quote|Code|Title|Checkbox|Marked|Numbered|Toggle|Description|Callout
+        - Paragraph
+        - Header1
+        - Header2
+        - Header3
+        - Header4
+        - Quote
+        - Code
+        - Title
+        - Checkbox
+        - Marked
+        - Numbered
+        - Toggle
+        - Description
+        - Callout
         example: Paragraph
         type: string
       text:
@@ -291,12 +315,21 @@ definitions:
       direction:
         default: desc
         enum:
-        - asc|desc
+        - asc
+        - desc
         type: string
       timestamp:
         default: last_modified_date
         enum:
-        - created_date|last_modified_date|last_opened_date
+        - created_date
+        - last_modified_date
+        - last_opened_date
+        type: string
+    type: object
+  space.CreateSpaceRequest:
+    properties:
+      name:
+        example: New Space
         type: string
     type: object
   space.CreateSpaceResponse:
@@ -323,7 +356,10 @@ definitions:
         type: string
       role:
         enum:
-        - Reader|Writer|Owner|NoPermission
+        - Reader
+        - Writer
+        - Owner
+        - NoPermission
         example: Owner
         type: string
       type:
@@ -538,11 +574,7 @@ paths:
         "200":
           description: List of objects
           schema:
-            additionalProperties:
-              items:
-                $ref: '#/definitions/object.Object'
-              type: array
-            type: object
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Object'
         "401":
           description: Unauthorized
           schema:
@@ -593,12 +625,12 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Space Name
+      - description: Space to create
         in: body
         name: name
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/space.CreateSpaceRequest'
       produces:
       - application/json
       responses:
@@ -831,6 +863,9 @@ paths:
         required: true
         type: string
       - description: Export format
+        enum:
+        - markdown
+        - protobuf
         in: path
         name: format
         required: true
@@ -891,11 +926,7 @@ paths:
         "200":
           description: List of objects
           schema:
-            additionalProperties:
-              items:
-                $ref: '#/definitions/object.Object'
-              type: array
-            type: object
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Object'
         "401":
           description: Unauthorized
           schema:
