@@ -24,6 +24,104 @@ func (_m *MockClientCommandsServer) EXPECT() *MockClientCommandsServer_Expecter 
 	return &MockClientCommandsServer_Expecter{mock: &_m.Mock}
 }
 
+// AIAutofill provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) AIAutofill(_a0 context.Context, _a1 *pb.RpcAIAutofillRequest) *pb.RpcAIAutofillResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AIAutofill")
+	}
+
+	var r0 *pb.RpcAIAutofillResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcAIAutofillRequest) *pb.RpcAIAutofillResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcAIAutofillResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_AIAutofill_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AIAutofill'
+type MockClientCommandsServer_AIAutofill_Call struct {
+	*mock.Call
+}
+
+// AIAutofill is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcAIAutofillRequest
+func (_e *MockClientCommandsServer_Expecter) AIAutofill(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_AIAutofill_Call {
+	return &MockClientCommandsServer_AIAutofill_Call{Call: _e.mock.On("AIAutofill", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_AIAutofill_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcAIAutofillRequest)) *MockClientCommandsServer_AIAutofill_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcAIAutofillRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AIAutofill_Call) Return(_a0 *pb.RpcAIAutofillResponse) *MockClientCommandsServer_AIAutofill_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AIAutofill_Call) RunAndReturn(run func(context.Context, *pb.RpcAIAutofillRequest) *pb.RpcAIAutofillResponse) *MockClientCommandsServer_AIAutofill_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AIWritingTools provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) AIWritingTools(_a0 context.Context, _a1 *pb.RpcAIWritingToolsRequest) *pb.RpcAIWritingToolsResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AIWritingTools")
+	}
+
+	var r0 *pb.RpcAIWritingToolsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcAIWritingToolsRequest) *pb.RpcAIWritingToolsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcAIWritingToolsResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_AIWritingTools_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AIWritingTools'
+type MockClientCommandsServer_AIWritingTools_Call struct {
+	*mock.Call
+}
+
+// AIWritingTools is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcAIWritingToolsRequest
+func (_e *MockClientCommandsServer_Expecter) AIWritingTools(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_AIWritingTools_Call {
+	return &MockClientCommandsServer_AIWritingTools_Call{Call: _e.mock.On("AIWritingTools", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_AIWritingTools_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcAIWritingToolsRequest)) *MockClientCommandsServer_AIWritingTools_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcAIWritingToolsRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AIWritingTools_Call) Return(_a0 *pb.RpcAIWritingToolsResponse) *MockClientCommandsServer_AIWritingTools_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AIWritingTools_Call) RunAndReturn(run func(context.Context, *pb.RpcAIWritingToolsRequest) *pb.RpcAIWritingToolsResponse) *MockClientCommandsServer_AIWritingTools_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AccountChangeJsonApiAddr provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) AccountChangeJsonApiAddr(_a0 context.Context, _a1 *pb.RpcAccountChangeJsonApiAddrRequest) *pb.RpcAccountChangeJsonApiAddrResponse {
 	ret := _m.Called(_a0, _a1)
