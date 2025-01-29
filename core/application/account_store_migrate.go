@@ -49,6 +49,7 @@ func (s *Service) migrate(ctx context.Context, id string) error {
 	}
 	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
 	cfg.PeferYamuxTransport = true
+	cfg.DisableNetworkIdCheck = true
 	comps := []app.Component{
 		cfg,
 		anytype.BootstrapWallet(s.rootPath, res),
