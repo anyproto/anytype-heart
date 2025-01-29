@@ -1,7 +1,7 @@
 package space
 
 type CreateSpaceRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" example:"New Space"`
 }
 
 type CreateSpaceResponse struct {
@@ -12,7 +12,7 @@ type Space struct {
 	Type                   string `json:"type" example:"space"`
 	Id                     string `json:"id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`
 	Name                   string `json:"name" example:"Space Name"`
-	Icon                   string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"`
+	Icon                   string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"`
 	HomeObjectId           string `json:"home_object_id" example:"bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"`
 	ArchiveObjectId        string `json:"archive_object_id" example:"bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"`
 	ProfileObjectId        string `json:"profile_object_id" example:"bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4"`
@@ -37,5 +37,5 @@ type Member struct {
 	Icon       string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"`
 	Identity   string `json:"identity" example:"AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"`
 	GlobalName string `json:"global_name" example:"john.any"`
-	Role       string `json:"role" enum:"Reader,Writer,Owner,NoPermission" example:"Owner"`
+	Role       string `json:"role" enums:"Reader,Writer,Owner,NoPermission" example:"Owner"`
 }
