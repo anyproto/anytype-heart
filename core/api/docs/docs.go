@@ -947,6 +947,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "challenge_id": {
+                    "description": "The challenge id associated with the displayed code and needed to solve the challenge for token",
                     "type": "string",
                     "example": "67647f5ecda913e9a2e11b26"
                 }
@@ -956,10 +957,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "app_key": {
+                    "description": "The permanent app key",
                     "type": "string",
                     "example": "zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6="
                 },
                 "session_token": {
+                    "description": "The ephemeral session token",
                     "type": "string",
                     "example": "eyJhbGciOeJIRzI1NiIsInR5cCI6IkpXVCJ1.eyJzZWVkIjaiY0dmVndlUnAifQ.Y1EZecYnwmvMkrXKOa2XJnAbaRt34urBabe06tmDQII"
                 }
@@ -969,6 +972,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "path": {
+                    "description": "The path the object was exported to",
                     "type": "string",
                     "example": "/path/to/export"
                 }
@@ -978,6 +982,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "align": {
+                    "description": "The alignment of the block",
                     "type": "string",
                     "enum": [
                         "AlignLeft",
@@ -988,10 +993,12 @@ const docTemplate = `{
                     "example": "AlignLeft"
                 },
                 "background_color": {
+                    "description": "The background color of the block",
                     "type": "string",
                     "example": "red"
                 },
                 "children_ids": {
+                    "description": "The ids of the block's children",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -1001,16 +1008,28 @@ const docTemplate = `{
                     ]
                 },
                 "file": {
-                    "$ref": "#/definitions/object.File"
+                    "description": "The file of the block, if applicable",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/object.File"
+                        }
+                    ]
                 },
                 "id": {
+                    "description": "The id of the block",
                     "type": "string",
                     "example": "64394517de52ad5acb89c66c"
                 },
                 "text": {
-                    "$ref": "#/definitions/object.Text"
+                    "description": "The text of the block, if applicable",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/object.Text"
+                        }
+                    ]
                 },
                 "vertical_align": {
+                    "description": "The vertical alignment of the block",
                     "type": "string",
                     "enum": [
                         "VerticalAlignTop",
@@ -1025,30 +1044,37 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "body": {
+                    "description": "The body of the object",
                     "type": "string",
-                    "example": "Object Body"
+                    "example": "This is the body of the object. Markdown syntax is supported here."
                 },
                 "description": {
+                    "description": "The description of the object",
                     "type": "string",
-                    "example": "Object Description"
+                    "example": "This is a description of the object."
                 },
                 "icon": {
+                    "description": "The icon of the object",
                     "type": "string",
                     "example": "📄"
                 },
                 "name": {
+                    "description": "The name of the object",
                     "type": "string",
-                    "example": "Object Name"
+                    "example": "My object"
                 },
                 "object_type_unique_key": {
+                    "description": "The unique key of the object type",
                     "type": "string",
                     "example": "ot-page"
                 },
                 "source": {
+                    "description": "The source url, only applicable for bookmarks",
                     "type": "string",
-                    "example": "https://source.com"
+                    "example": "https://bookmark-source.com"
                 },
                 "template_id": {
+                    "description": "The id of the template to use",
                     "type": "string",
                     "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"
                 }
@@ -1058,10 +1084,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "details": {
+                    "description": "The details",
                     "type": "object",
                     "additionalProperties": true
                 },
                 "id": {
+                    "description": "The id of the detail",
                     "type": "string",
                     "enum": [
                         "last_modified_date",
@@ -1079,30 +1107,39 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "added_at": {
+                    "description": "The added at of the file",
                     "type": "integer"
                 },
                 "hash": {
+                    "description": "The hash of the file",
                     "type": "string"
                 },
                 "mime": {
+                    "description": "The mime of the file",
                     "type": "string"
                 },
                 "name": {
+                    "description": "The name of the file",
                     "type": "string"
                 },
                 "size": {
+                    "description": "The size of the file",
                     "type": "integer"
                 },
                 "state": {
+                    "description": "The state of the file",
                     "type": "string"
                 },
                 "style": {
+                    "description": "The style of the file",
                     "type": "string"
                 },
                 "target_object_id": {
+                    "description": "The target object id of the file",
                     "type": "string"
                 },
                 "type": {
+                    "description": "The type of the file",
                     "type": "string"
                 }
             }
@@ -1111,46 +1148,56 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "blocks": {
+                    "description": "The blocks of the object",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/object.Block"
                     }
                 },
                 "details": {
+                    "description": "The details of the object",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/object.Detail"
                     }
                 },
                 "icon": {
+                    "description": "The icon of the object",
                     "type": "string",
                     "example": "📄"
                 },
                 "id": {
+                    "description": "The id of the object",
                     "type": "string",
                     "example": "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
                 },
                 "layout": {
+                    "description": "The layout of the object",
                     "type": "string",
                     "example": "basic"
                 },
                 "name": {
+                    "description": "The name of the object",
                     "type": "string",
-                    "example": "Object Name"
+                    "example": "My object"
                 },
                 "root_id": {
+                    "description": "The id of the object's root",
                     "type": "string",
                     "example": "bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"
                 },
                 "snippet": {
+                    "description": "The snippet of the object, especially important for notes as they don't have a name",
                     "type": "string",
                     "example": "The beginning of the object body..."
                 },
                 "space_id": {
+                    "description": "The id of the space the object is in",
                     "type": "string",
                     "example": "bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"
                 },
                 "type": {
+                    "description": "The type of the object",
                     "type": "string",
                     "example": "Page"
                 }
@@ -1160,7 +1207,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "object": {
-                    "$ref": "#/definitions/object.Object"
+                    "description": "The object",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/object.Object"
+                        }
+                    ]
                 }
             }
         },
@@ -1168,18 +1220,22 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "icon": {
+                    "description": "The icon of the template",
                     "type": "string",
                     "example": "📄"
                 },
                 "id": {
+                    "description": "The id of the template",
                     "type": "string",
                     "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"
                 },
                 "name": {
+                    "description": "The name of the template",
                     "type": "string",
-                    "example": "Template Name"
+                    "example": "My template"
                 },
                 "type": {
+                    "description": "The type of the object",
                     "type": "string",
                     "example": "template"
                 }
@@ -1189,7 +1245,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "template": {
-                    "$ref": "#/definitions/object.Template"
+                    "description": "The template",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/object.Template"
+                        }
+                    ]
                 }
             }
         },
@@ -1197,18 +1258,22 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "checked": {
+                    "description": "Whether the text is checked",
                     "type": "boolean",
                     "example": true
                 },
                 "color": {
+                    "description": "The color of the text",
                     "type": "string",
                     "example": "red"
                 },
                 "icon": {
+                    "description": "The icon of the text",
                     "type": "string",
                     "example": "📄"
                 },
                 "style": {
+                    "description": "The style of the text",
                     "type": "string",
                     "enum": [
                         "Paragraph",
@@ -1229,8 +1294,9 @@ const docTemplate = `{
                     "example": "Paragraph"
                 },
                 "text": {
+                    "description": "The text",
                     "type": "string",
-                    "example": "Some text"
+                    "example": "Some text..."
                 }
             }
         },
@@ -1238,26 +1304,32 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "icon": {
+                    "description": "The icon of the type",
                     "type": "string",
                     "example": "📄"
                 },
                 "id": {
+                    "description": "The id of the type",
                     "type": "string",
                     "example": "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"
                 },
                 "name": {
+                    "description": "The name of the type",
                     "type": "string",
                     "example": "Page"
                 },
                 "recommended_layout": {
+                    "description": "The recommended layout of the type",
                     "type": "string",
                     "example": "todo"
                 },
                 "type": {
+                    "description": "The type of the object",
                     "type": "string",
                     "example": "type"
                 },
                 "unique_key": {
+                    "description": "The unique key of the type",
                     "type": "string",
                     "example": "ot-page"
                 }
@@ -1267,7 +1339,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "type": {
-                    "$ref": "#/definitions/object.Type"
+                    "description": "The type",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/object.Type"
+                        }
+                    ]
                 }
             }
         },
@@ -1275,13 +1352,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
+                    "description": "The list of items in the current result set",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/object.Object"
                     }
                 },
                 "pagination": {
-                    "$ref": "#/definitions/pagination.PaginationMeta"
+                    "description": "The pagination metadata for the response",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pagination.PaginationMeta"
+                        }
+                    ]
                 }
             }
         },
@@ -1289,13 +1372,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
+                    "description": "The list of items in the current result set",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/object.Template"
                     }
                 },
                 "pagination": {
-                    "$ref": "#/definitions/pagination.PaginationMeta"
+                    "description": "The pagination metadata for the response",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pagination.PaginationMeta"
+                        }
+                    ]
                 }
             }
         },
@@ -1303,13 +1392,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
+                    "description": "The list of items in the current result set",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/object.Type"
                     }
                 },
                 "pagination": {
-                    "$ref": "#/definitions/pagination.PaginationMeta"
+                    "description": "The pagination metadata for the response",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pagination.PaginationMeta"
+                        }
+                    ]
                 }
             }
         },
@@ -1317,13 +1412,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
+                    "description": "The list of items in the current result set",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/space.Member"
                     }
                 },
                 "pagination": {
-                    "$ref": "#/definitions/pagination.PaginationMeta"
+                    "description": "The pagination metadata for the response",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pagination.PaginationMeta"
+                        }
+                    ]
                 }
             }
         },
@@ -1331,13 +1432,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
+                    "description": "The list of items in the current result set",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/space.Space"
                     }
                 },
                 "pagination": {
-                    "$ref": "#/definitions/pagination.PaginationMeta"
+                    "description": "The pagination metadata for the response",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pagination.PaginationMeta"
+                        }
+                    ]
                 }
             }
         },
@@ -1345,22 +1452,22 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "has_more": {
-                    "description": "whether there are more items available",
+                    "description": "Indicates if there are more items available beyond the current result set",
                     "type": "boolean",
                     "example": true
                 },
                 "limit": {
-                    "description": "the current limit",
+                    "description": "The maximum number of items returned in the result set",
                     "type": "integer",
                     "example": 100
                 },
                 "offset": {
-                    "description": "the current offset",
+                    "description": "The number of items skipped before starting to collect the result set",
                     "type": "integer",
                     "example": 0
                 },
                 "total": {
-                    "description": "the total number of items available on that endpoint",
+                    "description": "The total number of items available for the endpoint",
                     "type": "integer",
                     "example": 1024
                 }
@@ -1370,16 +1477,30 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "query": {
-                    "type": "string"
+                    "description": "The search term to look for in object names and snippets",
+                    "type": "string",
+                    "example": "test"
                 },
                 "sort": {
-                    "$ref": "#/definitions/search.SortOptions"
+                    "description": "The sorting criteria and direction for the search results",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/search.SortOptions"
+                        }
+                    ]
                 },
                 "types": {
+                    "description": "The types of objects to search for, specified by unique key or ID",
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "ot-note",
+                        "ot-page",
+                        "ot-678043f0cda9133be777049f",
+                        "bafyreightzrdts2ymxyaeyzspwdfo2juspyam76ewq6qq7ixnw3523gs7q"
+                    ]
                 }
             }
         },
@@ -1387,6 +1508,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "direction": {
+                    "description": "The direction to sort the search results",
                     "type": "string",
                     "default": "desc",
                     "enum": [
@@ -1395,6 +1517,7 @@ const docTemplate = `{
                     ]
                 },
                 "timestamp": {
+                    "description": "The timestamp to sort the search results by",
                     "type": "string",
                     "default": "last_modified_date",
                     "enum": [
@@ -1409,6 +1532,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
+                    "description": "The name of the space",
                     "type": "string",
                     "example": "New Space"
                 }
@@ -1418,7 +1542,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "space": {
-                    "$ref": "#/definitions/space.Space"
+                    "description": "The created space",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/space.Space"
+                        }
+                    ]
                 }
             }
         },
@@ -1426,26 +1555,32 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "global_name": {
+                    "description": "The global name of the member in the network",
                     "type": "string",
                     "example": "john.any"
                 },
                 "icon": {
+                    "description": "The icon of the member",
                     "type": "string",
                     "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
                 },
                 "id": {
+                    "description": "The profile object id of the member",
                     "type": "string",
                     "example": "_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"
                 },
                 "identity": {
+                    "description": "The identity of the member in the network",
                     "type": "string",
                     "example": "AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"
                 },
                 "name": {
+                    "description": "The name of the member",
                     "type": "string",
                     "example": "John Doe"
                 },
                 "role": {
+                    "description": "The role of the member",
                     "type": "string",
                     "enum": [
                         "Reader",
@@ -1456,6 +1591,7 @@ const docTemplate = `{
                     "example": "Owner"
                 },
                 "type": {
+                    "description": "The type of the object",
                     "type": "string",
                     "example": "member"
                 }
@@ -1465,78 +1601,97 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "account_space_id": {
+                    "description": "The id of the account space",
                     "type": "string",
                     "example": "bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1"
                 },
                 "analytics_id": {
+                    "description": "The analytics id of the account",
                     "type": "string",
                     "example": "624aecdd-4797-4611-9d61-a2ae5f53cf1c"
                 },
                 "archive_object_id": {
+                    "description": "The id of the archive object",
                     "type": "string",
                     "example": "bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"
                 },
                 "device_id": {
+                    "description": "The id of the device",
                     "type": "string",
                     "example": "12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF"
                 },
                 "gateway_url": {
+                    "description": "The gateway url to serve files and media",
                     "type": "string",
                     "example": "http://127.0.0.1:31006"
                 },
                 "home_object_id": {
+                    "description": "The id of the home object",
                     "type": "string",
                     "example": "bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya"
                 },
                 "icon": {
+                    "description": "The icon of the space",
                     "type": "string",
                     "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"
                 },
                 "id": {
+                    "description": "The id of the space",
                     "type": "string",
                     "example": "bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"
                 },
                 "local_storage_path": {
+                    "description": "The local storage path of the account",
                     "type": "string",
                     "example": "/Users/johndoe/Library/Application Support/Anytype/data/AAHTtt1wuQEnaYBNZ2Cyfcvs6DqPqxgn8VXDVk4avsUkMuha"
                 },
                 "marketplace_workspace_id": {
+                    "description": "The id of the marketplace workspace",
                     "type": "string",
                     "example": "_anytype_marketplace"
                 },
                 "name": {
+                    "description": "The name of the space",
                     "type": "string",
-                    "example": "Space Name"
+                    "example": "My Space"
                 },
                 "network_id": {
+                    "description": "The network id of the space",
                     "type": "string",
                     "example": "N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU"
                 },
                 "profile_object_id": {
+                    "description": "The id of the profile object",
                     "type": "string",
                     "example": "bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4"
                 },
                 "space_view_id": {
+                    "description": "The id of the space view",
                     "type": "string",
                     "example": "bafyreigzv3vq7qwlrsin6njoduq727ssnhwd6bgyfj6nm4hv3pxoc2rxhy"
                 },
                 "tech_space_id": {
+                    "description": "The id of tech space, where objects outside of user's actual spaces are stored, e.g. spaces itself",
                     "type": "string",
                     "example": "bafyreif4xuwncrjl6jajt4zrrfnylpki476nv2w64yf42ovt7gia7oypii.23me69r569oi1"
                 },
                 "timezone": {
+                    "description": "The timezone of the account",
                     "type": "string",
                     "example": ""
                 },
                 "type": {
+                    "description": "The type of the object",
                     "type": "string",
                     "example": "space"
                 },
                 "widgets_id": {
+                    "description": "The id of the widgets",
                     "type": "string",
                     "example": "bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva"
                 },
                 "workspace_object_id": {
+                    "description": "The id of the workspace object",
                     "type": "string",
                     "example": "bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"
                 }
