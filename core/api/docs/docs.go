@@ -1704,7 +1704,8 @@ const docTemplate = `{
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Forbidden"
                         }
                     }
                 }
@@ -1717,7 +1718,8 @@ const docTemplate = `{
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Resource not found"
                         }
                     }
                 }
@@ -1730,7 +1732,8 @@ const docTemplate = `{
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Internal server error"
                         }
                     }
                 }
@@ -1743,7 +1746,8 @@ const docTemplate = `{
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Unauthorized"
                         }
                     }
                 }
@@ -1756,7 +1760,8 @@ const docTemplate = `{
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Bad request"
                         }
                     }
                 }

@@ -555,6 +555,7 @@ definitions:
       error:
         properties:
           message:
+            example: Forbidden
             type: string
         type: object
     type: object
@@ -563,6 +564,7 @@ definitions:
       error:
         properties:
           message:
+            example: Resource not found
             type: string
         type: object
     type: object
@@ -571,6 +573,7 @@ definitions:
       error:
         properties:
           message:
+            example: Internal server error
             type: string
         type: object
     type: object
@@ -579,6 +582,7 @@ definitions:
       error:
         properties:
           message:
+            example: Unauthorized
             type: string
         type: object
     type: object
@@ -587,6 +591,7 @@ definitions:
       error:
         properties:
           message:
+            example: Bad request
             type: string
         type: object
     type: object

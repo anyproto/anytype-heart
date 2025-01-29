@@ -1698,7 +1698,8 @@
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Forbidden"
                         }
                     }
                 }
@@ -1711,7 +1712,8 @@
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Resource not found"
                         }
                     }
                 }
@@ -1724,7 +1726,8 @@
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Internal server error"
                         }
                     }
                 }
@@ -1737,7 +1740,8 @@
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Unauthorized"
                         }
                     }
                 }
@@ -1750,7 +1754,8 @@
                     "type": "object",
                     "properties": {
                         "message": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Bad request"
                         }
                     }
                 }
