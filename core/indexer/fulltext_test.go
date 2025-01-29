@@ -35,7 +35,7 @@ import (
 
 type IndexerFixture struct {
 	*indexer
-	pickerFx         *mock_cache.MockObjectGetter
+	pickerFx         *mock_cache.MockCachedObjectGetter
 	storageServiceFx *mock_storage.MockClientStorage
 	objectStore      *objectstore.StoreFixture
 	sourceFx         *mock_source.MockService
@@ -82,13 +82,14 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indxr.fileStore = fileStore
 	indxr.ftsearch = objectStore.FullText
 	indexerFx.ftsearch = indxr.ftsearch
-	indexerFx.pickerFx = mock_cache.NewMockObjectGetter(t)
+	indexerFx.pickerFx = mock_cache.NewMockCachedObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
 	indxr.spaceIndexers = make(map[string]*spaceIndexer)
 	indxr.forceFt = make(chan struct{})
 	indxr.config = &config.Config{NetworkMode: pb.RpcAccount_LocalOnly}
 	indxr.runCtx, indxr.runCtxCancel = context.WithCancel(ctx)
-	// go indxr.indexBatchLoop()
+
+	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, mock.Anything).Maybe().Return(true, nil)
 	return indexerFx
 }
 
@@ -105,6 +106,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 			),
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, "objectId1").Return(true, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
 	assert.NoError(t, err)

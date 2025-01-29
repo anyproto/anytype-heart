@@ -13,7 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -22,10 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
-
-type detailsSettable interface {
-	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
-}
 
 const MName = "SystemObjectReviser"
 
@@ -37,23 +33,18 @@ const revisionKey = bundle.RelationKeyRevision
 // For more info see 'System Objects Update' section of docs/Flow.md
 type Migration struct{}
 
-func (Migration) Name() string {
+func (m Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, marketPlace dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (m Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceObjects, err := listAllTypesAndRelations(store)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get relations and types from client space: %w", err)
 	}
 
-	marketObjects, err := listAllTypesAndRelations(marketPlace)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get relations from marketplace space: %w", err)
-	}
-
 	for _, details := range spaceObjects {
-		shouldBeRevised, e := reviseSystemObject(ctx, log, space, details, marketObjects)
+		shouldBeRevised, e := reviseObject(ctx, log, space, details)
 		if !shouldBeRevised {
 			continue
 		}
@@ -89,15 +80,25 @@ func listAllTypesAndRelations(store dependencies.QueryableStore) (map[string]*do
 	return details, nil
 }
 
-func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *domain.Details, marketObjects map[string]*domain.Details) (toRevise bool, err error) {
-	source := localObject.GetString(bundle.RelationKeySourceObject)
-	marketObject, found := marketObjects[source]
-	if !found || !isSystemObject(localObject) || marketObject.GetInt64(revisionKey) <= localObject.GetInt64(revisionKey) {
+func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.SpaceWithCtx, localObject *domain.Details) (toRevise bool, err error) {
+	uniqueKeyRaw := localObject.GetString(bundle.RelationKeyUniqueKey)
+
+	uk, err := domain.UnmarshalUniqueKey(uniqueKeyRaw)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal unique key '%s': %w", uniqueKeyRaw, err)
+	}
+
+	bundleObject := getBundleSystemObjectDetails(uk)
+	if bundleObject == nil {
 		return false, nil
 	}
-	details := buildDiffDetails(marketObject, localObject)
 
-	recRelsDetail, err := checkRecommendedRelations(ctx, space, marketObject, localObject)
+	if bundleObject.GetInt64(revisionKey) <= localObject.GetInt64(revisionKey) {
+		return false, nil
+	}
+	details := buildDiffDetails(bundleObject, localObject)
+
+	recRelsDetail, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
 	if err != nil {
 		log.Error("failed to check recommended relations", zap.Error(err))
 	}
@@ -107,7 +108,7 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 	}
 
 	if details.Len() > 0 {
-		log.Debug("updating system object", zap.String("source", source), zap.String("space", space.Id()))
+		log.Debug("updating system object", zap.String("key", uk.InternalKey()), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, localObject.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
 			for key, value := range details.Iterate() {
@@ -115,25 +116,34 @@ func reviseSystemObject(ctx context.Context, log logger.CtxLogger, space depende
 			}
 			return sb.Apply(st)
 		}); err != nil {
-			return true, fmt.Errorf("failed to update system object %s in space %s: %w", source, space.Id(), err)
+			return true, fmt.Errorf("failed to update system object '%s' in space '%s': %w", uk.InternalKey(), space.Id(), err)
 		}
 	}
 	return true, nil
 }
 
-func isSystemObject(details *domain.Details) bool {
-	rawKey := details.GetString(bundle.RelationKeyUniqueKey)
-	uk, err := domain.UnmarshalUniqueKey(rawKey)
-	if err != nil {
-		return false
-	}
+// getBundleSystemObjectDetails returns nil if the object with provided unique key is not either system relation or system type
+func getBundleSystemObjectDetails(uk domain.UniqueKey) *domain.Details {
 	switch uk.SmartblockType() {
 	case coresb.SmartBlockTypeObjectType:
-		return lo.Contains(bundle.SystemTypes, domain.TypeKey(uk.InternalKey()))
+		typeKey := domain.TypeKey(uk.InternalKey())
+		if !lo.Contains(bundle.SystemTypes, typeKey) {
+			// non system object type, no need to revise
+			return nil
+		}
+		objectType := bundle.MustGetType(typeKey)
+		return (&relationutils.ObjectType{ObjectType: objectType}).BundledTypeDetails()
 	case coresb.SmartBlockTypeRelation:
-		return lo.Contains(bundle.SystemRelations, domain.RelationKey(uk.InternalKey()))
+		relationKey := domain.RelationKey(uk.InternalKey())
+		if !lo.Contains(bundle.SystemRelations, relationKey) {
+			// non system relation, no need to revise
+			return nil
+		}
+		relation := bundle.MustGetRelation(relationKey)
+		return (&relationutils.Relation{Relation: relation}).ToDetails()
+	default:
+		return nil
 	}
-	return false
 }
 
 func buildDiffDetails(origin, current *domain.Details) *domain.Details {

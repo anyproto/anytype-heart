@@ -74,6 +74,7 @@ type Config struct {
 	NetworkCustomConfigFilePath            string           `json:",omitempty"` // not saved to config
 	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
 	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
+	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled
 
 	RepoPath    string
 	AnalyticsId string

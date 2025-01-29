@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -136,7 +137,67 @@ type State struct {
 
 	groupId                  string
 	noObjectType             bool
-	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
+	originalCreatedTimestamp int64 // pass here from snapshots when importing objects or used for derived objects such as relations, types and etc
+}
+
+type RelationsByLayout map[model.ObjectTypeLayout][]domain.RelationKey
+
+type Filters struct {
+	RelationsWhiteList RelationsByLayout
+	RemoveBlocks       bool
+}
+
+// Filter should be called with state copy
+func (s *State) Filter(filters *Filters) *State {
+	if filters == nil {
+		return s
+	}
+	if filters.RemoveBlocks {
+		s.filterBlocks()
+	}
+	if len(filters.RelationsWhiteList) > 0 {
+		s.filterRelations(filters)
+	}
+	return s
+}
+
+func (s *State) filterBlocks() {
+	resultBlocks := make(map[string]simple.Block)
+	if block, ok := s.blocks[s.rootId]; ok {
+		resultBlocks[s.rootId] = block
+	}
+	s.blocks = resultBlocks
+}
+
+func (s *State) filterRelations(filters *Filters) {
+	resultDetails := domain.NewDetails()
+	layout, _ := s.Layout()
+	relationKeys := filters.RelationsWhiteList[layout]
+	var updatedRelationLinks pbtypes.RelationLinks
+	for key, value := range s.details.Iterate() {
+		if slices.Contains(relationKeys, key) {
+			resultDetails.Set(key, value)
+			updatedRelationLinks = append(updatedRelationLinks, s.relationLinks.Get(key.String()))
+			continue
+		}
+	}
+	s.details = resultDetails
+	if resultDetails.Len() == 0 {
+		s.details = nil
+	}
+	resultLocalDetails := domain.NewDetails()
+	for key, value := range s.localDetails.Iterate() {
+		if slices.Contains(relationKeys, key) {
+			resultLocalDetails.Set(key, value)
+			updatedRelationLinks = append(updatedRelationLinks, s.relationLinks.Get(key.String()))
+			continue
+		}
+	}
+	s.localDetails = resultLocalDetails
+	if resultLocalDetails.Len() == 0 {
+		s.localDetails = nil
+	}
+	s.relationLinks = updatedRelationLinks
 }
 
 func (s *State) MigrationVersion() uint32 {

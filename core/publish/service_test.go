@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -63,6 +64,7 @@ type mockPublishClient struct {
 	expectedInvite  string
 	expectedObject  string
 	expectedPbFiles map[string]struct{}
+	expectedResult  []*publishapi.Publish
 }
 
 func (m *mockPublishClient) Init(a *app.App) (err error) {
@@ -78,7 +80,7 @@ func (m *mockPublishClient) ResolveUri(ctx context.Context, uri string) (publish
 }
 
 func (m *mockPublishClient) GetPublishStatus(ctx context.Context, spaceId, objectId string) (publish *publishapi.Publish, err error) {
-	return
+	return m.expectedResult[0], nil
 }
 
 func (m *mockPublishClient) Publish(ctx context.Context, req *publishapi.PublishRequest) (uploadUrl string, err error) {
@@ -91,7 +93,7 @@ func (m *mockPublishClient) UnPublish(ctx context.Context, req *publishapi.UnPub
 }
 
 func (m *mockPublishClient) ListPublishes(ctx context.Context, spaceId string) (publishes []*publishapi.Publish, err error) {
-	return
+	return m.expectedResult, nil
 }
 
 func (m *mockPublishClient) UploadDir(ctx context.Context, uploadUrl, dir string) (err error) {
@@ -165,7 +167,7 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, expected, publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":false}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -219,7 +221,7 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, expected, publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -266,7 +268,7 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, expected, publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -324,7 +326,7 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, expectedUrl, publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -369,7 +371,7 @@ func TestPublish(t *testing.T) {
 		// then
 		assert.Error(t, err)
 		assert.Equal(t, "", publish.Url)
-		assert.Equal(t, "{\"heads\":[\"heads\"]}", publishClient.expectedRequest.Version)
+		assert.Equal(t, "{\"heads\":[\"heads\"],\"joinSpace\":true}", publishClient.expectedRequest.Version)
 		assert.Equal(t, objectId, publishClient.expectedRequest.ObjectId)
 		assert.Equal(t, spaceId, publishClient.expectedRequest.SpaceId)
 		assert.Equal(t, expectedUri, publishClient.expectedRequest.Uri)
@@ -448,6 +450,75 @@ func TestPublish(t *testing.T) {
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, ErrLimitExceeded)
 		assert.Equal(t, "", publish.Url)
+	})
+}
+
+func TestService_PublishList(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		publishClientService := &mockPublishClient{
+			t: t,
+			expectedResult: []*publishapi.Publish{
+				{
+					SpaceId:  spaceId,
+					ObjectId: objectId,
+					Uri:      "test",
+					Version:  "{\"heads\":[\"heads\"],\"joinSpace\":true}",
+				},
+			},
+		}
+		svc := &service{
+			publishClientService: publishClientService,
+		}
+
+		// when
+		publishes, err := svc.PublishList(context.Background(), spaceId)
+
+		// then
+		expectedModel := &pb.RpcPublishingPublishState{
+			SpaceId:   spaceId,
+			ObjectId:  objectId,
+			Uri:       "test",
+			Version:   "{\"heads\":[\"heads\"],\"joinSpace\":true}",
+			JoinSpace: true,
+		}
+		assert.NoError(t, err)
+		assert.Len(t, publishes, 1)
+		assert.Equal(t, expectedModel, publishes[0])
+	})
+}
+
+func TestService_GetStatus(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		publishClientService := &mockPublishClient{
+			t: t,
+			expectedResult: []*publishapi.Publish{
+				{
+					SpaceId:  spaceId,
+					ObjectId: objectId,
+					Uri:      "test",
+					Version:  "{\"heads\":[\"heads\"],\"joinSpace\":false}",
+				},
+			},
+		}
+		svc := &service{
+			publishClientService: publishClientService,
+		}
+
+		// when
+		publish, err := svc.GetStatus(context.Background(), spaceId, objectId)
+
+		// then
+		expectedModel := &pb.RpcPublishingPublishState{
+			SpaceId:   spaceId,
+			ObjectId:  objectId,
+			Uri:       "test",
+			Version:   "{\"heads\":[\"heads\"],\"joinSpace\":false}",
+			JoinSpace: false,
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, expectedModel, publish)
 	})
 }
 
@@ -626,7 +697,7 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{})
 	file.SetSpace(space)
 
-	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(3)
+	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil).Times(2)
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
 
