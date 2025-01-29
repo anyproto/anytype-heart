@@ -162,6 +162,7 @@ type exportContext struct {
 	path             string
 	linkStateFilters *state.Filters
 	isLinkProcess    bool
+	includeBackLinks bool
 
 	*export
 }
@@ -179,6 +180,7 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		reqIds:           req.ObjectIds,
 		zip:              req.Zip,
 		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
+		includeBackLinks: req.IncludeBacklinks,
 		export:           e,
 	}
 	return ec
@@ -197,6 +199,7 @@ func (e *exportContext) copy() *exportContext {
 		export:           e.export,
 		isLinkProcess:    e.isLinkProcess,
 		linkStateFilters: e.linkStateFilters,
+		includeBackLinks: e.includeBackLinks,
 	}
 }
 
@@ -855,6 +858,7 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 			Details:                  true,
 			Collection:               true,
 			NoHiddenBundledRelations: true,
+			NoBackLinks:              !e.includeBackLinks,
 		})
 		return nil
 	})

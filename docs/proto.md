@@ -15572,6 +15572,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | includeArchived | [bool](#bool) |  | for migration |
 | noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
 | linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
+| includeBacklinks | [bool](#bool) |  |  |
 
 
 

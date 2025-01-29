@@ -2783,6 +2783,7 @@ message Rpc {
                 // for integrations like raycast and web publishing
                 bool noProgress = 11;
                 StateFilters linksStateFilters = 12;
+                bool includeBacklinks = 13;
             }
             message StateFilters {
                 repeated RelationsWhiteList relationsWhiteList = 1;
