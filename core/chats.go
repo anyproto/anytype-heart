@@ -101,11 +101,12 @@ func (mw *Middleware) ChatGetMessagesByIds(cctx context.Context, req *pb.RpcChat
 func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 
-	messages, numBefore, err := chatService.SubscribeLastMessages(cctx, req.ChatObjectId, int(req.Limit))
+	messages, numBefore, chatState, err := chatService.SubscribeLastMessages(cctx, req.ChatObjectId, int(req.Limit))
 	code := mapErrorCode[pb.RpcChatSubscribeLastMessagesResponseErrorCode](err)
 	return &pb.RpcChatSubscribeLastMessagesResponse{
 		Messages:          messages,
 		NumMessagesBefore: int32(numBefore),
+		ChatState:         chatState,
 		Error: &pb.RpcChatSubscribeLastMessagesResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),

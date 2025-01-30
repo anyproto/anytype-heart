@@ -44,7 +44,7 @@ type StoreObject interface {
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
-	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
+	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, *model.ChatState, error)
 	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64) error
 	Unsubscribe() error
 }
@@ -510,15 +510,15 @@ func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, me
 	return false, nil
 }
 
-func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error) {
+func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, *model.ChatState, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
-		return nil, 0, fmt.Errorf("get collection: %w", err)
+		return nil, 0, nil, fmt.Errorf("get collection: %w", err)
 	}
 	query := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
 	messages, err := s.queryMessages(ctx, query)
 	if err != nil {
-		return nil, 0, fmt.Errorf("query messages: %w", err)
+		return nil, 0, nil, fmt.Errorf("query messages: %w", err)
 	}
 	// reverse
 	sort.Slice(messages, func(i, j int) bool {
@@ -528,11 +528,11 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 	if s.subscription.enable() {
 		s.subscription.chatState, err = s.initialChatState()
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to fetch initial chat state: %w", err)
+			return nil, 0, s.subscription.chatState, fmt.Errorf("failed to fetch initial chat state: %w", err)
 		}
 	}
 
-	return messages, 0, nil
+	return messages, 0, s.subscription.chatState, nil
 }
 
 func (s *storeObject) Unsubscribe() error {

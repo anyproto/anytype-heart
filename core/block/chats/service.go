@@ -20,7 +20,7 @@ type Service interface {
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error)
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
-	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
+	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, *model.ChatState, error)
 	ReadMessages(ctx context.Context, chatObjectId string, afterOrderId, beforeOrderId string, lastDbState int64) error
 	Unsubscribe(chatObjectId string) error
 
@@ -105,20 +105,21 @@ func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, mes
 	return res, err
 }
 
-func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error) {
+func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, *model.ChatState, error) {
 	var (
 		msgs      []*model.ChatMessage
 		numBefore int
+		chatState *model.ChatState
 	)
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		msgs, numBefore, err = sb.SubscribeLastMessages(ctx, limit)
+		msgs, numBefore, chatState, err = sb.SubscribeLastMessages(ctx, limit)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
-	return msgs, numBefore, err
+	return msgs, numBefore, chatState, err
 }
 
 func (s *service) Unsubscribe(chatObjectId string) error {

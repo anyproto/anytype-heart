@@ -7888,7 +7888,7 @@ message Rpc {
                 Error error = 1;
                 repeated model.ChatMessage messages = 2;  // List of messages
                 int32 numMessagesBefore = 3;  // Number of messages before the returned messages
-
+                model.ChatState chatState = 4;  // Chat state
                 message Error {
                     Code code = 1;
                     string description = 2;
