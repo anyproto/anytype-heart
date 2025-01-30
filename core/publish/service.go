@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -88,6 +90,7 @@ type service struct {
 	publishClientService publishclient.Client
 	identityService      identity.Service
 	inviteService        inviteservice.InviteService
+	objectStore          objectstore.ObjectStore
 }
 
 func New() Service {
@@ -100,6 +103,7 @@ func (s *service) Init(a *app.App) error {
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
 	s.identityService = app.MustComponent[identity.Service](a)
 	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -431,6 +435,7 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 	pbPublishes := make([]*pb.RpcPublishingPublishState, 0, len(publishes))
 	for _, publish := range publishes {
 		version := s.retrieveVersion(publish)
+		details := s.retrieveObjectDetails(publish)
 		pbPublishes = append(pbPublishes, &pb.RpcPublishingPublishState{
 			SpaceId:   publish.SpaceId,
 			ObjectId:  publish.ObjectId,
@@ -440,9 +445,24 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 			Timestamp: publish.Timestamp,
 			Size_:     publish.Size_,
 			JoinSpace: version.JoinSpace,
+			Details:   details,
 		})
 	}
 	return pbPublishes, nil
+}
+
+func (s *service) retrieveObjectDetails(publish *publishapi.Publish) *types.Struct {
+	records, err := s.objectStore.SpaceIndex(publish.SpaceId).QueryByIds([]string{publish.ObjectId})
+	if err != nil {
+		log.Error("failed to extract object details", zap.Error(err))
+		return nil
+	}
+	if len(records) == 0 {
+		log.Error("details weren't found in store")
+		return nil
+	}
+	details := records[0].Details
+	return details.ToProto()
 }
 
 func (s *service) retrieveVersion(publish *publishapi.Publish) *Version {

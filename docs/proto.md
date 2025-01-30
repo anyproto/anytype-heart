@@ -18315,6 +18315,7 @@ Available undo/redo operations
 | timestamp | [int64](#int64) |  |  |
 | size | [int64](#int64) |  |  |
 | joinSpace | [bool](#bool) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
