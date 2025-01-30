@@ -131,10 +131,18 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 	}))
 }
 
+// updateReadStatus updates the read status of the messages with the given ids
+// read ids should ONLY contain ids if they were actually modified in the DB
 func (s *subscription) updateReadStatus(ids []string, read bool) {
 	if !s.canSend() {
 		return
 	}
+	if read {
+		s.chatState.Messages.UnreadCounter -= int32(len(ids))
+	} else {
+		s.chatState.Messages.UnreadCounter += int32(len(ids))
+	}
+
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReadStatus{
 		ChatUpdateReadStatus: &pb.EventChatUpdateReadStatus{
 			Ids:    ids,
