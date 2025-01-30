@@ -67,11 +67,10 @@ var loginCmd = &cobra.Command{
 		fmt.Println("✅ Initial parameters set.")
 
 		// Call WalletRecover first
-		recoverReq := &pb.RpcWalletRecoverRequest{
+		_, err = client.WalletRecover(ctx, &pb.RpcWalletRecoverRequest{
 			Mnemonic: mnemonic,
 			RootPath: rootPath,
-		}
-		_, err = client.WalletRecover(ctx, recoverReq)
+		})
 		if err != nil {
 			fmt.Println("❌ Wallet recovery failed:", err)
 			return
@@ -80,13 +79,11 @@ var loginCmd = &cobra.Command{
 		fmt.Println("✅ Wallet recovered successfully.")
 
 		// Call gRPC WalletCreateSession
-		req := &pb.RpcWalletCreateSessionRequest{
+		resp, err := client.WalletCreateSession(ctx, &pb.RpcWalletCreateSessionRequest{
 			Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{
 				Mnemonic: mnemonic,
 			},
-		}
-
-		resp, err := client.WalletCreateSession(ctx, req)
+		})
 		if err != nil {
 			fmt.Println("❌ Failed to create session:", err)
 			return
@@ -117,31 +114,19 @@ var loginCmd = &cobra.Command{
 		case accountID := <-accountIDChan:
 			fmt.Println("✅ Received Account ID:", accountID)
 
-			// Now select the account using gRPC
-			client, err := process.GetGRPCClient()
-			if err != nil {
-				fmt.Println("❌ Error connecting to gRPC server:", err)
-				return
-			}
-
-			accountSelectReq := &pb.RpcAccountSelectRequest{
+			_, err = client.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
 				DisableLocalNetworkSync: false,
 				Id:                      accountID,
 				JsonApiListenAddr:       "127.0.0.1:31009",
 				RootPath:                rootPath,
-			}
-
-			_, err = client.AccountSelect(ctx, accountSelectReq)
+			})
 			if err != nil {
 				fmt.Println("❌ Failed to select account:", err)
 				return
 			}
-
 			fmt.Println("✅ Successfully selected account!")
 
-		case err := <-errorChan:
-			fmt.Println("❌ Failed to get account ID:", err)
-		case <-time.After(10 * time.Second): // Timeout in case of failure
+		case <-time.After(5 * time.Second):
 			fmt.Println("❌ Timed out waiting for session event")
 		}
 	},

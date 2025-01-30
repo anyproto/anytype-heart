@@ -53,8 +53,7 @@ func IsGRPCServerRunning() (bool, error) {
 		return false, err
 	}
 
-	req := &pb.RpcAppGetVersionRequest{}
-	_, err = client.AppGetVersion(context.Background(), req)
+	_, err = client.AppGetVersion(context.Background(), &pb.RpcAppGetVersionRequest{})
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
 			return false, nil

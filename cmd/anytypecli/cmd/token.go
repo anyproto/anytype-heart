@@ -53,12 +53,11 @@ var tokenCreateCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		req := &pb.RpcWalletCreateSessionRequest{
+		resp, err := client.WalletCreateSession(ctx, &pb.RpcWalletCreateSessionRequest{
 			Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{
 				Mnemonic: mnemonic,
 			},
-		}
-		resp, err := client.WalletCreateSession(ctx, req)
+		})
 		if err != nil {
 			fmt.Println("Failed to generate token:", err)
 			return
