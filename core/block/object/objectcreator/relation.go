@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -31,6 +32,9 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	if details.GetString(bundle.RelationKeyName) == "" {
 		return "", nil, fmt.Errorf("missing relation name")
 	}
+	if !details.Has(bundle.RelationKeyCreatedDate) {
+		details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
+	}
 
 	object = details.Copy()
 	key := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
@@ -55,5 +59,6 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
+	setOriginalCreatedTimestamp(createState, details)
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelation}, createState)
 }

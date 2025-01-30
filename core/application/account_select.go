@@ -74,10 +74,10 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	}
 	metrics.Service.SetWorkingDir(req.RootPath, req.Id)
 
-	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
+	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.JsonApiListenAddr, req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
 }
 
-func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
+func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, jsonApiListenAddr string, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
 	ctx, task := trace2.NewTask(ctx, "application.start")
 	defer task.End()
 
@@ -107,6 +107,10 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
+	}
+
+	if jsonApiListenAddr != "" {
+		cfg.JsonApiListenAddr = jsonApiListenAddr
 	}
 	if preferYamux {
 		cfg.PeferYamuxTransport = true

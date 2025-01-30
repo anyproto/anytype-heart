@@ -48,7 +48,8 @@ type Flags struct {
 	NoSystemRelations,
 	NoHiddenBundledRelations,
 	NoImages,
-	RoundDateIdsToDay bool
+	RoundDateIdsToDay,
+	NoBackLinks bool
 }
 
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
@@ -180,6 +181,10 @@ func collectIdsFromDetail(rel *model.RelationLink, det *domain.Details, flags Fl
 		if r, err := bundle.GetRelation(domain.RelationKey(rel.Key)); err == nil && r.Hidden {
 			return
 		}
+	}
+
+	if rel.Key == bundle.RelationKeyBacklinks.String() && flags.NoBackLinks {
+		return
 	}
 
 	// handle corner cases first for specific formats

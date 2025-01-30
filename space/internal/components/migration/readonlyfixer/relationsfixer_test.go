@@ -82,7 +82,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		).Times(2)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), nil, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), spc)
 
 		// then
 		assert.NoError(t, err)
@@ -99,7 +99,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space2"), nil, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space2"), spc)
 
 		// then
 		assert.NoError(t, err)
@@ -116,7 +116,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space3"), nil, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space3"), spc)
 
 		// then
 		assert.NoError(t, err)

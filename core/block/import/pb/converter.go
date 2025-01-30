@@ -285,7 +285,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.Snapsho
 	defer rd.Close()
 	if filepath.Ext(name) == ".json" {
 		snapshot := &pb.SnapshotWithType{}
-		um := jsonpb.Unmarshaler{}
+		um := jsonpb.Unmarshaler{AllowUnknownFields: true}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
