@@ -126,6 +126,9 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	if err != nil {
 		return "", fmt.Errorf("marshal change: %w", err)
 	}
+
+	prevOrder := tx.GetMaxOrder()
+
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountKeysService.Account().SignKey,
@@ -133,13 +136,14 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),
 	}, func(change *treechangeproto.RawTreeChangeWithId) error {
-		order := tx.NextOrder(tx.GetMaxOrder())
+		order := tx.NextOrder(prevOrder)
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
-			Id:        change.Id,
-			Order:     order,
-			Changes:   params.Changes,
-			Creator:   s.accountService.AccountID(),
-			Timestamp: params.Time.Unix(),
+			Id:          change.Id,
+			PrevOrderId: prevOrder,
+			Order:       order,
+			Changes:     params.Changes,
+			Creator:     s.accountService.AccountID(),
+			Timestamp:   params.Time.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("apply change set: %w", err)

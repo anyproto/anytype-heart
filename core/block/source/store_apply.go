@@ -75,7 +75,7 @@ func (a *storeApply) Apply() (err error) {
 			}
 		}
 
-		if err = a.applyChange(change, currOrder); err != nil {
+		if err = a.applyChange(change, prevOrder, currOrder); err != nil {
 			return false
 		}
 		a.prevOrder = currOrder
@@ -88,7 +88,7 @@ func (a *storeApply) Apply() (err error) {
 	return
 }
 
-func (a *storeApply) applyChange(change *objecttree.Change, order string) (err error) {
+func (a *storeApply) applyChange(change *objecttree.Change, prevOrder string, order string) (err error) {
 	storeChange, ok := change.Model.(*pb.StoreChange)
 	if !ok {
 		// if it is root
@@ -98,11 +98,12 @@ func (a *storeApply) applyChange(change *objecttree.Change, order string) (err e
 		return fmt.Errorf("unexpected change content type: %T", change.Model)
 	}
 	set := storestate.ChangeSet{
-		Id:        change.Id,
-		Order:     order,
-		Changes:   storeChange.ChangeSet,
-		Creator:   change.Identity.Account(),
-		Timestamp: change.Timestamp,
+		Id:          change.Id,
+		PrevOrderId: prevOrder,
+		Order:       order,
+		Changes:     storeChange.ChangeSet,
+		Creator:     change.Identity.Account(),
+		Timestamp:   change.Timestamp,
 	}
 	err = a.tx.ApplyChangeSet(set)
 	// Skip invalid changes

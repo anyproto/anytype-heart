@@ -76,19 +76,21 @@ func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (s
 }
 
 type ChangeSet struct {
-	Id        string
-	Order     string
-	Creator   string
-	Changes   []*pb.StoreChangeContent
-	Timestamp int64
+	Id          string
+	PrevOrderId string
+	Order       string
+	Creator     string
+	Changes     []*pb.StoreChangeContent
+	Timestamp   int64
 }
 
 type Change struct {
-	Id        string
-	Order     string
-	Creator   string
-	Change    *pb.StoreChangeContent
-	Timestamp int64
+	Id          string
+	PrevOrderId string
+	Order       string
+	Creator     string
+	Change      *pb.StoreChangeContent
+	Timestamp   int64
 }
 
 type StoreState struct {
@@ -132,13 +134,16 @@ func (ss *StoreState) Collection(ctx context.Context, name string) (anystore.Col
 }
 
 func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet) (err error) {
+	fmt.Println("PREV=", ss.id, " -- ", set.PrevOrderId)
+	fmt.Println("CURR=", ss.id, " -- ", set.Order)
 	for _, ch := range set.Changes {
 		applyErr := ss.applyChange(ctx, Change{
-			Id:        set.Id,
-			Order:     set.Order,
-			Change:    ch,
-			Creator:   set.Creator,
-			Timestamp: set.Timestamp,
+			Id:          set.Id,
+			PrevOrderId: set.PrevOrderId,
+			Order:       set.Order,
+			Change:      ch,
+			Creator:     set.Creator,
+			Timestamp:   set.Timestamp,
 		})
 		if applyErr == nil || errors.Is(applyErr, ErrIgnore) {
 			continue

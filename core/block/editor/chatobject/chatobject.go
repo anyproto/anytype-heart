@@ -331,7 +331,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 	s.subscription.subscribe(subId)
 	if asyncInit {
 		for _, message := range messages {
-			s.subscription.add(message)
+			s.subscription.add("TODO :(", message)
 		}
 		s.subscription.flush()
 		return nil, 0, nil
