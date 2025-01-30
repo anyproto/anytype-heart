@@ -20,7 +20,7 @@ var tokenCreateCmd = &cobra.Command{
 	Short: "Generate an API token for authenticating requests to the REST API",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Ensure the server is running
-		status, err := process.CheckGRPCServer()
+		status, err := process.IsGRPCServerRunning()
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -79,5 +79,4 @@ var tokenCmd = &cobra.Command{
 func init() {
 	tokenCreateCmd.Flags().String("mnemonic", "", "Provide mnemonic (12 words) for authentication")
 	tokenCmd.AddCommand(tokenCreateCmd)
-	rootCmd.AddCommand(tokenCmd)
 }

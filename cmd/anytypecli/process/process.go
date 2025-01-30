@@ -19,21 +19,25 @@ const pidFile = "/tmp/anytype_server.pid"
 
 // StartServer runs the Anytype server and waits for the confirmation logs
 func StartServer() error {
-	if _, err := os.Stat(pidFile); err == nil {
+	status, err := IsGRPCServerRunning()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return err
+	}
+	if _, err := os.Stat(pidFile); err == nil && status {
 		return errors.New("server is already running")
 	}
 
 	grpcPort := "31007"
 	grpcWebPort := "31008"
 
-	cmd := exec.Command("go", "run", "-tags", "debug", "../grpcserver")
+	cmd := exec.Command("go", "run", "-tags", "debug", "/Users/jmetrikat/Code/anyproto/anytype-heart/cmd/grpcserver")
 	cmd.Env = append(os.Environ(),
 		"ANYTYPE_GRPC_ADDR=127.0.0.1:"+grpcPort,
 		"ANYTYPE_GRPCWEB_ADDR=127.0.0.1:"+grpcWebPort,
 	)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	// Capture stdout
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("failed to capture stdout: %v", err)
@@ -48,7 +52,7 @@ func StartServer() error {
 	var lastLogs []string
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line) // Optional: Print logs for debugging
+		fmt.Println(line)
 
 		lastLogs = append(lastLogs, line)
 		if len(lastLogs) > 2 {
@@ -59,7 +63,6 @@ func StartServer() error {
 		if len(lastLogs) == 2 &&
 			strings.Contains(lastLogs[0], "gRPC server started at:") &&
 			strings.Contains(lastLogs[1], "gRPC Web proxy started at:") {
-			// Save PID
 			pid := cmd.Process.Pid
 			pidData := fmt.Sprintf("%d:%s:%s", pid, grpcPort, grpcWebPort)
 			err = os.WriteFile(pidFile, []byte(pidData), 0644)
@@ -74,7 +77,7 @@ func StartServer() error {
 		return fmt.Errorf("error reading server output: %v", err)
 	}
 
-	return fmt.Errorf("server did not output expected startup logs")
+	return fmt.Errorf("server did not output expected startup logs %v", lastLogs)
 }
 
 // StopServer stops the running Anytype server and ensures it is fully terminated.
@@ -152,14 +155,14 @@ func CheckServerStatus() (string, error) {
 	// Validate if the process is really Anytype gRPC (Unix Only)
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		processName, err := getProcessName(pid)
-		if err != nil || !strings.Contains(processName, "grpcserver") {
-			return fmt.Sprintf("Process found but it's not Anytype gRPC server: %s", processName), nil
+		if processName != "" && (err != nil || !strings.Contains(processName, "grpcserver")) {
+			return fmt.Sprintf("Process found (PID: %d) but it's not Anytype gRPC server: %s", pid, processName), nil
 		}
 	}
 
 	// Check if the gRPC server is responding
 	if isPortInUse(grpcPort) && isPortInUse(grpcWebPort) {
-		return fmt.Sprintf("✅ Server is running (PID: %d) and gRPC is responsive on port %s", process.Pid, grpcPort), nil
+		return fmt.Sprintf("✅ server is running (pid: %d) and grpc is responsive on port %s", process.Pid, grpcPort), nil
 	}
 
 	return fmt.Sprintf("⚠️ Process (PID: %d) is running but gRPC is not responding", process.Pid), nil
