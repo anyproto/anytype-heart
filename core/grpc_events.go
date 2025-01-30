@@ -28,9 +28,9 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 	}
 
 	switch scope {
-	case model.AccountAuth_Full:
+	case model.AccountAuth_Full, model.AccountAuth_Limited:
 	default:
-		log.Errorf("method not allowed for scope %s", scope.String())
+		log.Warnf("method ListenSessionEvents not allowed for scope %s", scope.String())
 		return
 	}
 	var srv event.SessionServer
