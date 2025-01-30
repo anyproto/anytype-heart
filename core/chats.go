@@ -126,9 +126,9 @@ func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsub
 	}
 }
 
-func (mw *Middleware) ChatReadMessages(ctx context.Context, request *pb.RpcChatReadRequest) *pb.RpcChatReadResponse {
+func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChatReadRequest) *pb.RpcChatReadResponse {
 	chatService := mustService[chats.Service](mw)
-	err := chatService.ChatReadMessages(request.ChatObjectId, request.BeforeOrderId, request.LastDbState)
+	err := chatService.ReadMessages(cctx, request.ChatObjectId, request.AfterOrderId, request.BeforeOrderId, request.LastDbTimestamp)
 	code := mapErrorCode(err,
 		errToCode(anystore.ErrDocNotFound, pb.RpcChatReadResponseError_MESSAGES_NOT_FOUND),
 	)

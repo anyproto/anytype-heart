@@ -43,7 +43,7 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, error)
-	MarkReadMessages(ctx context.Context, beforeOrderId string, lastDbState int64) error
+	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64) error
 	Unsubscribe() error
 }
 
@@ -184,7 +184,7 @@ func (s *storeObject) initialChatState() (*model.ChatState, error) {
 			Counter:       int32(count),
 		},
 		// todo: add replies counter
-		DbState: int64(lastAdded),
+		DbTimestamp: int64(lastAdded),
 	}, nil
 }
 func (s *storeObject) markReadMessages(ids []string) {
@@ -204,7 +204,7 @@ func (s *storeObject) markReadMessages(ids []string) {
 	ctx := txn.Context()
 	idsModified := make([]string, 0, len(ids))
 	for _, id := range ids {
-		res, err := coll.Find(query.Key{Path: []string{"id"}, Filter: query.NewComp(query.CompOpEq, id)}).Limit(1).Update(ctx, `{"$set":{"`+readKey+`":true}}`)
+		res, err := coll.UpdateId(ctx, id, query.MustParseModifier(`{"$set":{"`+readKey+`":true}}`))
 		if err != nil {
 			log.Warnf("markReadMessages: update messages: %v", err)
 			continue
@@ -213,6 +213,10 @@ func (s *storeObject) markReadMessages(ids []string) {
 			idsModified = append(idsModified, id)
 		}
 	}
+	if len(idsModified) > 0 {
+
+	}
+
 	err = txn.Commit()
 	if err != nil {
 		log.Errorf("markReadMessages: commit: %v", err)
@@ -220,18 +224,39 @@ func (s *storeObject) markReadMessages(ids []string) {
 	}
 	log.Warnf("markReadMessages: %d/%d messages marked as read", len(idsModified), len(ids))
 	if len(idsModified) > 0 {
+		// it doesn't work within the same transaction
+		// query the new oldest unread message's orderId
+		iter, err := coll.Find(
+			query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, false)},
+		).Sort(ascOrder).
+			Limit(1).
+			Iter(s.componentCtx)
+		if err != nil {
+			log.Errorf("markReadMessages: find oldest read message: %v", err)
+		}
+		defer iter.Close()
+		if iter.Next() {
+			val, err := iter.Doc()
+			if err != nil {
+				log.Errorf("markReadMessages: get oldest read message: %v", err)
+			}
+			if val != nil {
+				newOldestOrderId := val.Value().GetObject(orderKey).Get("id").GetString()
+				s.subscription.chatState.Messages.OldestOrderId = newOldestOrderId
+			}
+		}
 		s.subscription.updateReadStatus(idsModified, true)
 		s.onUpdate()
 	}
 }
 
-func (s *storeObject) MarkReadMessages(ctx context.Context, beforeOrderId string, lastDbState int64) error {
+func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64) error {
 	// 1. select all messages with orderId < beforeOrderId and addedTime < lastDbState
 	// 2. use the last(by orderId) message id as lastHead
 	// 3. update the MarkSeenHeads
 	// 2. mark messages as read in the DB
 
-	msg, err := s.GetLastAddedMessageBeforeOrderIdAndAddedTime(ctx, beforeOrderId, lastDbState)
+	msg, err := s.GetLastAddedMessageInOrderRange(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp)
 	if err != nil {
 		return fmt.Errorf("get message: %w", err)
 	}
@@ -241,7 +266,7 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, beforeOrderId string
 	return nil
 }
 
-func (s *storeObject) GetLastAddedMessageBeforeOrderIdAndAddedTime(ctx context.Context, orderId string, addedTime int64) (*model.ChatMessage, error) {
+func (s *storeObject) GetLastAddedMessageInOrderRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64) (*model.ChatMessage, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
@@ -249,10 +274,11 @@ func (s *storeObject) GetLastAddedMessageBeforeOrderIdAndAddedTime(ctx context.C
 
 	iter, err := coll.Find(
 		query.And{
-			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, orderId)},
-			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, addedTime)},
+			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
+			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, lastAddedMessageTimestamp)},
 		},
-	).
+	).Sort(descAdded).
 		Limit(1).
 		Iter(ctx)
 	if err != nil {
@@ -509,7 +535,7 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 	if !s.locker.TryLock() {
 		return false, nil
 	}
-	isActive := s.subscription.enabled.Load()
+	isActive := s.subscription.enabled
 	s.Unlock()
 
 	if isActive {

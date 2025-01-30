@@ -10391,7 +10391,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Chat.GetMessages.Response.Error](#anytype-Rpc-Chat-GetMessages-Response-Error) |  |  |
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
-| chatState | [model.ChatState](#anytype-model-ChatState) |  | dbState from the state should be used in the next request to Chat.SubscribeLastMessages and Chat.ReadMessage |
+| chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
 
 
 
@@ -10491,10 +10491,10 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | type | [Rpc.Chat.Read.ReadType](#anytype-Rpc-Chat-Read-ReadType) |  |  |
-| chatObjectId | [string](#string) |  | Identifier for the chat |
-| afterOrderId | [string](#string) |  | first orderId in the current viewport |
-| beforeOrderId | [string](#string) |  | last orderId in the current viewport |
-| lastDbState | [int64](#int64) |  | last dbState from the last processed Chat.Add event or ChatGetMessages response (in case no events received after it). Used to prevent race conditions |
+| chatObjectId | [string](#string) |  | id of the chat object |
+| afterOrderId | [string](#string) |  | read from this orderId; if empty - read from the beginning of the chat |
+| beforeOrderId | [string](#string) |  | read til this orderId |
+| lastDbTimestamp | [int64](#int64) |  | dbTimestamp from the last processed ChatState event(or GetMessages). Used to prevent race conditions |
 
 
 
@@ -10553,7 +10553,6 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  | Identifier for the chat |
 | limit | [int32](#int32) |  | Number of max last messages to return and subscribe |
-| lastDbState | [int64](#int64) |  | lastDbState from the ChatGetMessages response. In case some messages where added between ChatGetMessages and SubscribeLastMessages you will immediately receive Chat.Add events. |
 
 
 
@@ -29684,7 +29683,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | messages | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread messages |
 | mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
-| dbState | [int64](#int64) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
+| dbTimestamp | [int64](#int64) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
 
 
 

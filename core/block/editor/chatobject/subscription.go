@@ -2,8 +2,6 @@ package chatobject
 
 import (
 	"slices"
-	"sync"
-	"sync/atomic"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -20,9 +18,8 @@ type subscription struct {
 
 	eventsBuffer []*pb.EventMessage
 
-	enabled   atomic.Bool
+	enabled   bool
 	chatState *model.ChatState
-	sync.Mutex
 }
 
 func newSubscription(spaceId string, chatId string, eventSender event.Sender) *subscription {
@@ -33,12 +30,14 @@ func newSubscription(spaceId string, chatId string, eventSender event.Sender) *s
 	}
 }
 
-func (s *subscription) enable() (wasEnabled bool) {
-	return s.enabled.Swap(true) == false
+func (s *subscription) enable() (wasDisabled bool) {
+	wasDisabled = !s.enabled
+	s.enabled = true
+	return
 }
 
 func (s *subscription) close() {
-	s.enabled.Store(false)
+	s.enabled = false
 }
 
 // setSessionContext sets the session context for the current operation
@@ -47,15 +46,9 @@ func (s *subscription) setSessionContext(ctx session.Context) {
 }
 
 func (s *subscription) flush() *model.ChatState {
-	s.Lock()
-	// if len(s.eventsBuffer) == 0 {
-	//	s.Unlock()
-	//	return
-	// }
 	events := slices.Clone(s.eventsBuffer)
 	s.eventsBuffer = s.eventsBuffer[:0]
 	chatState := copyChatState(s.chatState)
-	s.Unlock()
 
 	events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
 		State: chatState,
@@ -71,7 +64,7 @@ func (s *subscription) flush() *model.ChatState {
 		s.sessionContext.SetMessages(s.chatId, events)
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 		s.sessionContext = nil
-	} else if s.enabled.Load() {
+	} else if s.enabled {
 		s.eventSender.Broadcast(ev)
 	}
 	return chatState
@@ -157,7 +150,7 @@ func (s *subscription) canSend() bool {
 	if s.sessionContext != nil {
 		return true
 	}
-	if !s.enabled.Load() {
+	if !s.enabled {
 		return false
 	}
 	return true
@@ -168,9 +161,9 @@ func copyChatState(state *model.ChatState) *model.ChatState {
 		return nil
 	}
 	return &model.ChatState{
-		Messages: copyReadState(state.Messages),
-		Mentions: copyReadState(state.Mentions),
-		DbState:  state.DbState,
+		Messages:    copyReadState(state.Messages),
+		Mentions:    copyReadState(state.Mentions),
+		DbTimestamp: state.DbTimestamp,
 	}
 }
 
