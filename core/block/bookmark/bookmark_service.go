@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
-	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
@@ -51,13 +50,19 @@ type Service interface {
 	app.Component
 }
 
-type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
-}
+type (
+	ObjectCreator interface {
+		CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
+	}
 
-type DetailsSetter interface {
-	SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error)
-}
+	DetailsSetter interface {
+		SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error)
+	}
+
+	templateService interface {
+		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
+	}
+)
 
 type service struct {
 	detailsSetter       DetailsSetter
@@ -67,7 +72,7 @@ type service struct {
 	tempDirService      core.TempDirProvider
 	spaceService        space.Service
 	fileUploaderFactory fileuploader.Service
-	templateService     template.Service
+	templateService     templateService
 }
 
 func New() Service {
@@ -82,7 +87,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	s.fileUploaderFactory = app.MustComponent[fileuploader.Service](a)
-	s.templateService = app.MustComponent[template.Service](a)
+	s.templateService = app.MustComponent[templateService](a)
 	return nil
 }
 
