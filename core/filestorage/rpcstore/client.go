@@ -15,6 +15,7 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"storj.io/drpc"
@@ -68,8 +69,12 @@ func (c *client) opLoop(ctx context.Context) {
 	c.mu.Lock()
 	allowWrite := c.allowWrite
 	c.mu.Unlock()
-	cond := c.taskQueue.NewCond().WithFilter(func(t *task) bool {
-		if t.write && !allowWrite {
+
+	writeCond := c.taskQueue.NewCond().WithFilter(func(t *task) bool {
+		if !t.write {
+			return false
+		}
+		if !allowWrite {
 			return false
 		}
 		if slices.Index(t.denyPeerIds, c.peerId) != -1 {
@@ -77,11 +82,46 @@ func (c *client) opLoop(ctx context.Context) {
 		}
 		return c.checkSpaceFilter(t)
 	})
+
+	readCond := c.taskQueue.NewCond().WithFilter(func(t *task) bool {
+		if t.write {
+			return false
+		}
+		if slices.Index(t.denyPeerIds, c.peerId) != -1 {
+			return false
+		}
+		return c.checkSpaceFilter(t)
+	})
+
+	go func() {
+		readers := make(chan struct{}, 10)
+
+		counter := atomic.NewInt32(0)
+
+		for {
+			t, err := readCond.WithPriority(c.stat.Score()).WaitOne(ctx)
+			if err != nil {
+				return
+			}
+			readers <- struct{}{}
+			counter.Add(1)
+			go func() {
+				// fmt.Println("READ ", c.peerId, " x ", counter.Load())
+				t.execWithClient(c)
+				<-readers
+				counter.Add(-1)
+			}()
+
+		}
+	}()
+
+	// One writer
 	for {
-		t, err := cond.WithPriority(c.stat.Score()).WaitOne(ctx)
+		t, err := writeCond.WithPriority(c.stat.Score()).WaitOne(ctx)
 		if err != nil {
 			return
 		}
+		fmt.Println("WRITE ", c.peerId)
 		t.execWithClient(c)
 	}
 }
