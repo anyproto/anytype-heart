@@ -1,7 +1,6 @@
 package process
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"net"
@@ -31,53 +30,34 @@ func StartServer() error {
 	grpcPort := "31007"
 	grpcWebPort := "31008"
 
-	cmd := exec.Command("go", "run", "-tags", "debug", "/Users/jmetrikat/Code/anyproto/anytype-heart/cmd/grpcserver")
+	cmd := exec.Command("../../dist/server")
 	cmd.Env = append(os.Environ(),
 		"ANYTYPE_GRPC_ADDR=127.0.0.1:"+grpcPort,
 		"ANYTYPE_GRPCWEB_ADDR=127.0.0.1:"+grpcWebPort,
 	)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to capture stdout: %v", err)
-	}
-	scanner := bufio.NewScanner(stdoutPipe)
+	// Redirect stdout and stderr directly to the terminal
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
+	// Start the process (non-blocking)
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start server: %v", err)
 	}
 
-	fmt.Println("Waiting for gRPC services to start...")
-	var lastLogs []string
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Println(line)
-
-		lastLogs = append(lastLogs, line)
-		if len(lastLogs) > 2 {
-			lastLogs = lastLogs[1:]
-		}
-
-		// Check if we reached logs indicating the server has started
-		if len(lastLogs) == 2 &&
-			strings.Contains(lastLogs[0], "gRPC server started at:") &&
-			strings.Contains(lastLogs[1], "gRPC Web proxy started at:") {
-			pid := cmd.Process.Pid
-			pidData := fmt.Sprintf("%d:%s:%s", pid, grpcPort, grpcWebPort)
-			err = os.WriteFile(pidFile, []byte(pidData), 0644)
-			if err != nil {
-				return fmt.Errorf("failed to save PID: %v", err)
-			}
-			return nil
-		}
+	// Save PID and ports
+	pid := cmd.Process.Pid
+	pidData := fmt.Sprintf("%d:%s:%s", pid, grpcPort, grpcWebPort)
+	err = os.WriteFile(pidFile, []byte(pidData), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to save PID: %v", err)
 	}
 
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading server output: %v", err)
-	}
+	fmt.Printf("✅ Server started (PID: %d). Streaming logs below:\n\n", pid)
 
-	return fmt.Errorf("server did not output expected startup logs %v", lastLogs)
+	// Wait for the process indefinitely (blocking call)
+	return cmd.Wait()
 }
 
 // StopServer stops the running Anytype server and ensures it is fully terminated.

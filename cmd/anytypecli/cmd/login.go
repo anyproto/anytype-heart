@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/cmd/anytypecli/process"
 	pb "github.com/anyproto/anytype-heart/pb"
@@ -107,6 +108,7 @@ var loginCmd = &cobra.Command{
 		}()
 
 		// 🟢 Call `AccountRecover` right after starting listener
+		ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("token", sessionToken))
 		_, err = client.AccountRecover(ctx, &pb.RpcAccountRecoverRequest{})
 
 		// Wait for either an account ID or an error
