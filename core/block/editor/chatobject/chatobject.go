@@ -10,6 +10,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/app/logger"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
@@ -22,10 +23,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+var log = logger.NewNamedSugared("common.editor.chatobject")
+
 const (
 	collectionName = "chats"
 	descOrder      = "-_o.id"
 	ascOrder       = "_o.id"
+	descAdded      = "-a"
 )
 
 type StoreObject interface {
@@ -33,7 +37,7 @@ type StoreObject interface {
 	anystoredebug.AnystoreDebug
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
-	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, error)
+	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
@@ -65,40 +69,49 @@ type storeObject struct {
 	subscription   *subscription
 	crdtDb         anystore.DB
 
-	arenaPool *anyenc.ArenaPool
+	arenaPool          *anyenc.ArenaPool
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 }
 
 func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB) StoreObject {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &storeObject{
-		SmartBlock:     sb,
-		locker:         sb.(smartblock.Locker),
-		accountService: accountService,
-		arenaPool:      &anyenc.ArenaPool{},
-		eventSender:    eventSender,
-		crdtDb:         crdtDb,
+		SmartBlock:         sb,
+		locker:             sb.(smartblock.Locker),
+		accountService:     accountService,
+		arenaPool:          &anyenc.ArenaPool{},
+		eventSender:        eventSender,
+		crdtDb:             crdtDb,
+		componentCtx:       ctx,
+		componentCtxCancel: cancel,
 	}
 }
 
 func (s *storeObject) Init(ctx *smartblock.InitContext) error {
+	storeSource, ok := ctx.Source.(source.Store)
+	if !ok {
+		return fmt.Errorf("source is not a store")
+	}
+
+	storeSource.SetDiffManagerOnRemoveHook(s.markReadMessages)
 	err := s.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
 	}
+
 	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
 		subscription:    s.subscription,
 		currentIdentity: s.accountService.AccountID(),
 	})
+
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
 	s.store = stateStore
 
-	storeSource, ok := ctx.Source.(source.Store)
-	if !ok {
-		return fmt.Errorf("source is not a store")
-	}
 	s.storeSource = storeSource
 	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, s.onUpdate)
 	if err != nil {
@@ -111,7 +124,104 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (s *storeObject) onUpdate() {
-	s.subscription.flush()
+	_ = s.subscription.flush()
+}
+
+func (s *storeObject) initialChatState() (*model.ChatState, error) {
+	coll, err := s.store.Collection(s.componentCtx, collectionName)
+	if err != nil {
+		return nil, fmt.Errorf("get collection: %w", err)
+	}
+
+	txn, err := coll.ReadTx(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("start read tx: %w", err)
+	}
+	defer func() {
+		errCommit := txn.Commit()
+		if errCommit != nil {
+			log.Errorf("read tx commit error: %v", errCommit)
+		}
+	}()
+
+	ctx := txn.Context()
+
+	unreadQuery := coll.Find(query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, false)}).Sort(ascOrder)
+	iter, err := unreadQuery.Limit(1).Iter(ctx)
+	var oldestOrderId string
+	defer iter.Close()
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		oldestOrderId = doc.Value().GetObject(orderKey).Get("id").GetString()
+	}
+
+	count, err := unreadQuery.Count(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("update messages: %w", err)
+	}
+
+	lastAddedDate := coll.Find(query.All{}).Sort(descAdded).Limit(1)
+	iter, err = lastAddedDate.Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find last added date: %w", err)
+	}
+	defer iter.Close()
+	var lastAdded int
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		lastAdded = doc.Value().GetInt(addedKey)
+	}
+	return &model.ChatState{
+		Messages: &model.ChatStateUnreadState{
+			OldestOrderId: oldestOrderId,
+			UnreadCounter: int32(count),
+		},
+		// todo: add replies counter
+		DbState: int64(lastAdded),
+	}, nil
+}
+func (s *storeObject) markReadMessages(ids []string) {
+	if len(ids) == 0 {
+		return
+	}
+	coll, err := s.store.Collection(s.componentCtx, collectionName)
+	if err != nil {
+		log.Errorf("markReadMessages: get collection: %v", err)
+		return
+	}
+	txn, err := coll.WriteTx(s.componentCtx)
+	if err != nil {
+		log.Errorf("markReadMessages: start write tx: %v", err)
+		return
+	}
+	ctx := txn.Context()
+	idsModified := make([]string, 0, len(ids))
+	for _, id := range ids {
+		res, err := coll.Find(query.Key{Path: []string{"id"}, Filter: query.NewComp(query.CompOpEq, id)}).Limit(1).Update(ctx, `{"$set":{"`+readKey+`":true}}`)
+		if err != nil {
+			log.Warnf("markReadMessages: update messages: %v", err)
+			continue
+		}
+		if res.Modified > 0 {
+			idsModified = append(idsModified, id)
+		}
+	}
+	err = txn.Commit()
+	if err != nil {
+		log.Errorf("markReadMessages: commit: %v", err)
+		return
+	}
+	log.Warnf("markReadMessages: %d/%d messages marked as read", len(idsModified), len(ids))
+	if len(idsModified) > 0 {
+		s.subscription.updateReadStatus(idsModified, true)
+		s.onUpdate()
+	}
 }
 
 func (s *storeObject) MarkReadMessages(ctx context.Context, beforeOrderId string, lastDbState int64) error {
@@ -119,25 +229,42 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, beforeOrderId string
 	// 2. use the last(by orderId) message id as lastHead
 	// 3. update the MarkSeenHeads
 	// 2. mark messages as read in the DB
+
+	msg, err := s.GetMessageByOrderId(ctx, beforeOrderId)
+	if err != nil {
+		return fmt.Errorf("get message: %w", err)
+	}
+
+	// mark the whole tree as seen from the current message
+	s.storeSource.MarkSeenHeads([]string{msg.Id})
+	return nil
+}
+
+func (s *storeObject) GetMessageByOrderId(ctx context.Context, orderId string) (*model.ChatMessage, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
-		return fmt.Errorf("get collection: %w", err)
+		return nil, fmt.Errorf("get collection: %w", err)
 	}
-	txn, err := coll.WriteTx(ctx)
-	if err != nil {
-		return fmt.Errorf("start write tx: %w", err)
-	}
-	res, err := coll.Find(query.And{
-		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, beforeOrderId)},
-		query.Key{Path: []string{"a"}, Filter: query.NewComp(query.CompOpLt, lastDbState)},
-		query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpLt, lastDbState)},
-	}).Update(ctx, `{"$set":{`+readKey+`:true}}`)
 
+	iter, err := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpEq, orderId)}).Limit(1).Iter(ctx)
 	if err != nil {
-		return errors.Join(txn.Rollback(), fmt.Errorf("update messages: %w", err))
+		return nil, fmt.Errorf("find id: %w", err)
 	}
-	fmt.Printf("MarkReadMessages: %d messages matched %d marked as read\n", res.Matched, res.Modified)
-	return txn.Commit()
+	defer iter.Close()
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		msg := newMessageWrapper(nil, doc.Value()).toModel()
+		return msg, nil
+	}
+
+	if err := iter.Err(); err != nil {
+		return nil, fmt.Errorf("iter error: %w", err)
+	}
+
+	return nil, anystore.ErrDocNotFound
 }
 
 func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error) {
@@ -164,10 +291,10 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 	return messages, txn.Commit()
 }
 
-func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, error) {
+func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
-		return nil, fmt.Errorf("get collection: %w", err)
+		return nil, nil, fmt.Errorf("get collection: %w", err)
 	}
 	var qry anystore.Query
 	if req.AfterOrderId != "" {
@@ -177,14 +304,18 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 	} else {
 		qry = coll.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
 	}
+	// make sure we flush all the pending message updates first
+	chatState := s.subscription.flush()
+	// todo here is possible race if new messages are added between the flush and the query
 	msgs, err := s.queryMessages(ctx, qry)
 	if err != nil {
-		return nil, fmt.Errorf("query messages: %w", err)
+		return nil, nil, fmt.Errorf("query messages: %w", err)
 	}
 	sort.Slice(msgs, func(i, j int) bool {
 		return msgs[i].OrderId < msgs[j].OrderId
 	})
-	return msgs, nil
+
+	return msgs, chatState, nil
 }
 
 func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*model.ChatMessage, error) {
@@ -351,6 +482,13 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 		return messages[i].OrderId < messages[j].OrderId
 	})
 
+	if !s.subscription.enabled {
+		s.subscription.chatState, err = s.initialChatState()
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to fetch initial chat state: %w", err)
+		}
+	}
+	// todo: race?
 	s.subscription.enable()
 
 	return messages, 0, nil
@@ -375,5 +513,6 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 }
 
 func (s *storeObject) Close() error {
+	s.componentCtxCancel()
 	return s.SmartBlock.Close()
 }

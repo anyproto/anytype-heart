@@ -18,7 +18,7 @@ type Service interface {
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
-	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) ([]*model.ChatMessage, error)
+	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error)
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, error)
 	Unsubscribe(chatObjectId string) error
@@ -75,17 +75,21 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 	})
 }
 
-func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) ([]*model.ChatMessage, error) {
-	var res []*model.ChatMessage
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		msgs, err := sb.GetMessages(ctx, req)
+func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error) {
+	var (
+		msgs      []*model.ChatMessage
+		chatState *model.ChatState
+		err       error
+	)
+
+	err = cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		msgs, chatState, err = sb.GetMessages(ctx, req)
 		if err != nil {
 			return err
 		}
-		res = msgs
 		return nil
 	})
-	return res, err
+	return msgs, chatState, err
 }
 
 func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error) {

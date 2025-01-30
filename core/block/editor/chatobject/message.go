@@ -146,6 +146,7 @@ func (m *messageWrapper) toModel() *model.ChatMessage {
 		Creator:          string(m.val.GetStringBytes(creatorKey)),
 		CreatedAt:        int64(m.val.GetInt(createdAtKey)),
 		ModifiedAt:       int64(m.val.GetInt(modifiedAtKey)),
+		AddedAt:          int64(m.val.GetInt(addedKey)),
 		OrderId:          string(m.val.GetStringBytes("_o", "id")),
 		ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
 		Message:          m.contentToModel(),

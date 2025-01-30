@@ -32,6 +32,7 @@ type Store interface {
 	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 	SetPushChangeHook(onPushChange PushChangeHook)
+	SetDiffManagerOnRemoveHook(f func(removed []string))
 	MarkSeenHeads(heads []string)
 }
 
@@ -48,10 +49,11 @@ var (
 
 type store struct {
 	*source
-	store        *storestate.StoreState
-	onUpdateHook func()
-	onPushChange PushChangeHook
-	diffManager  *objecttree.DiffManager
+	store               *storestate.StoreState
+	onUpdateHook        func()
+	onPushChange        PushChangeHook
+	onDiffManagerRemove func(removed []string)
+	diffManager         *objecttree.DiffManager
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
@@ -62,6 +64,12 @@ func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
 	s.onPushChange = onPushChange
 }
 
+// SetDiffManagerOnRemoveHook sets a hook that will be called when a change is removed from the diff manager
+// must be called only before ReadStoreDoc
+func (s *store) SetDiffManagerOnRemoveHook(f func(removed []string)) {
+	s.onDiffManagerRemove = f
+}
+
 func (s *store) createDiffManager(ctx context.Context, curTreeHeads, seenHeads []string) (err error) {
 	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
 		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
@@ -70,9 +78,7 @@ func (s *store) createDiffManager(ctx context.Context, curTreeHeads, seenHeads [
 		})
 	}
 	onRemove := func(removed []string) {
-		for _, rem := range removed {
-			fmt.Println("[x]: removed", rem)
-		}
+		s.onDiffManagerRemove(removed)
 	}
 	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
 	return

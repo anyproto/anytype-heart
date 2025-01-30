@@ -2,6 +2,7 @@ package chatobject
 
 import (
 	"slices"
+	"sync"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -18,7 +19,9 @@ type subscription struct {
 
 	eventsBuffer []*pb.EventMessage
 
-	enabled bool
+	enabled   bool
+	chatState *model.ChatState
+	sync.Mutex
 }
 
 func newSubscription(spaceId string, chatId string, eventSender event.Sender) *subscription {
@@ -42,36 +45,51 @@ func (s *subscription) setSessionContext(ctx session.Context) {
 	s.sessionContext = ctx
 }
 
-func (s *subscription) flush() {
-	defer func() {
-		s.eventsBuffer = s.eventsBuffer[:0]
-	}()
+func (s *subscription) flush() *model.ChatState {
+	s.Lock()
+	// if len(s.eventsBuffer) == 0 {
+	//	s.Unlock()
+	//	return
+	// }
+	events := slices.Clone(s.eventsBuffer)
+	s.eventsBuffer = s.eventsBuffer[:0]
+	chatState := copyChatState(s.chatState)
+	s.Unlock()
 
-	if len(s.eventsBuffer) == 0 {
-		return
-	}
+	events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
+		State: chatState,
+	}}))
 
 	ev := &pb.Event{
 		ContextId: s.chatId,
-		Messages:  slices.Clone(s.eventsBuffer),
+		Messages:  events,
 	}
+
 	if s.sessionContext != nil {
-		s.sessionContext.SetMessages(s.chatId, slices.Clone(s.eventsBuffer))
+		s.sessionContext.SetMessages(s.chatId, events)
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 		s.sessionContext = nil
 	} else if s.enabled {
 		s.eventSender.Broadcast(ev)
 	}
+	return chatState
 }
 
 func (s *subscription) add(message *model.ChatMessage) {
 	if !s.canSend() {
 		return
 	}
+
 	ev := &pb.EventChatAdd{
 		Id:      message.Id,
 		Message: message,
 		OrderId: message.OrderId,
+	}
+	if !message.Read {
+		if message.OrderId < s.chatState.Messages.OldestOrderId {
+			s.chatState.Messages.OldestOrderId = message.OrderId
+		}
+		s.chatState.Messages.UnreadCounter++
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
 		ChatAdd: ev,
@@ -113,6 +131,18 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 	}))
 }
 
+func (s *subscription) updateReadStatus(ids []string, read bool) {
+	if !s.canSend() {
+		return
+	}
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReadStatus{
+		ChatUpdateReadStatus: &pb.EventChatUpdateReadStatus{
+			Ids:    ids,
+			IsRead: read,
+		},
+	}))
+}
+
 func (s *subscription) canSend() bool {
 	if s.sessionContext != nil {
 		return true
@@ -121,4 +151,25 @@ func (s *subscription) canSend() bool {
 		return false
 	}
 	return true
+}
+
+func copyChatState(state *model.ChatState) *model.ChatState {
+	if state == nil {
+		return nil
+	}
+	return &model.ChatState{
+		Messages: copyReadState(state.Messages),
+		Replies:  copyReadState(state.Replies),
+		DbState:  state.DbState,
+	}
+}
+
+func copyReadState(state *model.ChatStateUnreadState) *model.ChatStateUnreadState {
+	if state == nil {
+		return nil
+	}
+	return &model.ChatStateUnreadState{
+		OldestOrderId: state.OldestOrderId,
+		UnreadCounter: state.UnreadCounter,
+	}
 }

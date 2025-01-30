@@ -66,14 +66,15 @@ func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDel
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 
-	messages, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
+	messages, chatState, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
 		AfterOrderId:  req.AfterOrderId,
 		BeforeOrderId: req.BeforeOrderId,
 		Limit:         int(req.Limit),
 	})
 	code := mapErrorCode[pb.RpcChatGetMessagesResponseErrorCode](err)
 	return &pb.RpcChatGetMessagesResponse{
-		Messages: messages,
+		Messages:  messages,
+		ChatState: chatState,
 		Error: &pb.RpcChatGetMessagesResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),

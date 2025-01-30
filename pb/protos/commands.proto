@@ -7933,8 +7933,9 @@ message Rpc {
             message Request {
                 ReadType type = 1;
                 string chatObjectId = 2;  // Identifier for the chat
+                string afterOrderId = 3; // first orderId in the current viewport
                 string beforeOrderId = 4; // last orderId in the current viewport
-                int64 lastDbState = 5; // lastDbState from the last processed Chat.Add event or ChatGetMessages response (in case no events received after it). Used to prevent race conditions
+                int64 lastDbState = 5; // last dbState from the last processed Chat.Add event or ChatGetMessages response (in case no events received after it). Used to prevent race conditions
             }
 
             message Response {

@@ -1741,6 +1741,7 @@
     - [Event.Chat.Delete](#anytype-Event-Chat-Delete)
     - [Event.Chat.Update](#anytype-Event-Chat-Update)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
+    - [Event.Chat.UpdateReadStatus](#anytype-Event-Chat-UpdateReadStatus)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
@@ -10491,8 +10492,9 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | type | [Rpc.Chat.Read.ReadType](#anytype-Rpc-Chat-Read-ReadType) |  |  |
 | chatObjectId | [string](#string) |  | Identifier for the chat |
+| afterOrderId | [string](#string) |  | first orderId in the current viewport |
 | beforeOrderId | [string](#string) |  | last orderId in the current viewport |
-| lastDbState | [int64](#int64) |  | lastDbState from the last processed Chat.Add event or ChatGetMessages response (in case no events received after it). Used to prevent race conditions |
+| lastDbState | [int64](#int64) |  | last dbState from the last processed Chat.Add event or ChatGetMessages response (in case no events received after it). Used to prevent race conditions |
 
 
 
@@ -27410,9 +27412,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | orderId | [string](#string) |  | orderId of the message, used for sorting |
-| dbState | [int64](#int64) |  | Client should persist it after rendering and use it in ChatReadMessages RPC to prevent race conditions |
 | message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
-| state | [model.ChatState](#anytype-model-ChatState) |  | Chat state. dbState should be persisted after rendered |
 
 
 
@@ -27467,6 +27467,22 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Chat-UpdateReadStatus"></a>
+
+### Event.Chat.UpdateReadStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+| isRead | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateState"></a>
 
 ### Event.Chat.UpdateState
@@ -27475,7 +27491,6 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
 | state | [model.ChatState](#anytype-model-ChatState) |  | todo: we should make sure we protect from the race conds when sending Chat.* and Chat.UpdateState at the same time |
 
 
@@ -27690,6 +27705,7 @@ Precondition: user A opened a block
 | chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
 | chatUpdate | [Event.Chat.Update](#anytype-Event-Chat-Update) |  |  |
 | chatUpdateReactions | [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions) |  |  |
+| chatUpdateReadStatus | [Event.Chat.UpdateReadStatus](#anytype-Event-Chat-UpdateReadStatus) |  |  |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | received in case of remote-triggered state update (e.g. messages read on another device) |
 
@@ -29566,6 +29582,7 @@ Used to decode block meta only, without the content itself
 | creator | [string](#string) |  | Identifier for the message creator |
 | createdAt | [int64](#int64) |  |  |
 | modifiedAt | [int64](#int64) |  |  |
+| addedAt | [int64](#int64) |  | Message received and added to db at |
 | replyToMessageId | [string](#string) |  | Identifier for the message being replied to |
 | message | [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent) |  | Message content |
 | attachments | [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment) | repeated | Attachments slice |
