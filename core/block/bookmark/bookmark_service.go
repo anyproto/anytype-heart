@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
@@ -66,6 +67,7 @@ type service struct {
 	tempDirService      core.TempDirProvider
 	spaceService        space.Service
 	fileUploaderFactory fileuploader.Service
+	templateService     template.Service
 }
 
 func New() Service {
@@ -74,12 +76,13 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.detailsSetter = app.MustComponent[DetailsSetter](a)
-	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
+	s.creator = app.MustComponent[ObjectCreator](a)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	s.fileUploaderFactory = app.MustComponent[fileuploader.Service](a)
+	s.templateService = app.MustComponent[template.Service](a)
 	return nil
 }
 
@@ -155,7 +158,11 @@ func (s *service) CreateBookmarkObject(
 		objectId = rec.Details.GetString(bundle.RelationKeyId)
 		objectDetails = rec.Details
 	} else {
-		creationState := state.NewDoc("", nil).(*state.State)
+		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_bookmark))
+		creationState, err := s.templateService.CreateTemplateStateWithDetails("", details)
+		if err != nil {
+			log.Errorf("failed to build state for bookmark: %v", err)
+		}
 		creationState.SetDetails(details)
 		objectId, objectDetails, err = s.creator.CreateSmartBlockFromState(
 			ctx,
