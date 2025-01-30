@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/anyproto/anytype-heart/cmd/anytypecli/process"
+	"github.com/anyproto/anytype-heart/cli/internal"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -20,7 +20,7 @@ var tokenCreateCmd = &cobra.Command{
 	Short: "Generate an API token for authenticating requests to the REST API",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Ensure the server is running
-		status, err := process.IsGRPCServerRunning()
+		status, err := internal.IsGRPCServerRunning()
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -45,7 +45,7 @@ var tokenCreateCmd = &cobra.Command{
 			return
 		}
 
-		client, err := process.GetGRPCClient()
+		client, err := internal.GetGRPCClient()
 		if err != nil {
 			fmt.Println("Error connecting to gRPC server:", err)
 			return

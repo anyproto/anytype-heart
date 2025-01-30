@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/anyproto/anytype-heart/cmd/anytypecli/process"
+	"github.com/anyproto/anytype-heart/cli/internal"
 	pb "github.com/anyproto/anytype-heart/pb"
 )
 
@@ -20,7 +20,7 @@ var loginCmd = &cobra.Command{
 	Short: "Log in to your Anytype vault",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Ensure the server is running
-		status, err := process.IsGRPCServerRunning()
+		status, err := internal.IsGRPCServerRunning()
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -30,7 +30,7 @@ var loginCmd = &cobra.Command{
 			return
 		}
 
-		client, err := process.GetGRPCClient()
+		client, err := internal.GetGRPCClient()
 		if err != nil {
 			fmt.Println("Error connecting to gRPC server:", err)
 			return
@@ -99,7 +99,7 @@ var loginCmd = &cobra.Command{
 		errorChan := make(chan error, 1)
 
 		go func() {
-			accountID, err := process.ListenSessionEvents(sessionToken)
+			accountID, err := internal.ListenSessionEvents(sessionToken)
 			if err != nil {
 				errorChan <- err
 			} else {

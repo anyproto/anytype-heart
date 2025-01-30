@@ -1,4 +1,4 @@
-package process
+package internal
 
 import (
 	"errors"
@@ -15,12 +15,12 @@ import (
 
 // File to store the process ID
 const pidFile = "/tmp/anytype_server.pid"
+const logFilePath = "/tmp/anytype.log"
 
 // StartServer runs the Anytype server and waits for the confirmation logs
 func StartServer() error {
 	status, err := IsGRPCServerRunning()
 	if err != nil {
-		fmt.Println("Error:", err)
 		return err
 	}
 	if _, err := os.Stat(pidFile); err == nil && status {
@@ -37,27 +37,35 @@ func StartServer() error {
 	)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	// Redirect stdout and stderr directly to the terminal
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %v", err)
+	}
+	defer logFile.Close()
 
-	// Start the process (non-blocking)
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+
+	// Start the server process
 	if err := cmd.Start(); err != nil {
+		logError("Failed to start server: %v", err)
 		return fmt.Errorf("failed to start server: %v", err)
 	}
 
-	// Save PID and ports
+	go func() {
+		cmd.Wait() // Block until process exits
+		logInfo("🚪 Server process exited.")
+	}()
+
 	pid := cmd.Process.Pid
 	pidData := fmt.Sprintf("%d:%s:%s", pid, grpcPort, grpcWebPort)
 	err = os.WriteFile(pidFile, []byte(pidData), 0644)
 	if err != nil {
+		logError("Failed to save PID: %v", err)
 		return fmt.Errorf("failed to save PID: %v", err)
 	}
 
-	fmt.Printf("✅ Server started (PID: %d). Streaming logs below:\n\n", pid)
-
-	// Wait for the process indefinitely (blocking call)
-	return cmd.Wait()
+	return nil
 }
 
 // StopServer stops the running Anytype server and ensures it is fully terminated.
@@ -104,7 +112,6 @@ func StopServer() error {
 	return nil
 }
 
-// CheckServerStatus checks if the server is running
 // CheckServerStatus verifies if the server is running by checking the process and gRPC connectivity.
 func CheckServerStatus() (string, error) {
 	pidData, err := os.ReadFile(pidFile)
@@ -135,14 +142,14 @@ func CheckServerStatus() (string, error) {
 	// Validate if the process is really Anytype gRPC (Unix Only)
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		processName, err := getProcessName(pid)
-		if processName != "" && (err != nil || !strings.Contains(processName, "grpcserver")) {
+		if processName != "" && (err != nil || !strings.Contains(processName, "/dist/server")) {
 			return fmt.Sprintf("Process found (PID: %d) but it's not Anytype gRPC server: %s", pid, processName), nil
 		}
 	}
 
 	// Check if the gRPC server is responding
 	if isPortInUse(grpcPort) && isPortInUse(grpcWebPort) {
-		return fmt.Sprintf("✅ server is running (pid: %d) and grpc is responsive on port %s", process.Pid, grpcPort), nil
+		return fmt.Sprintf("✅ Server is running (pid: %d) and grpc is responsive on port %s", process.Pid, grpcPort), nil
 	}
 
 	return fmt.Sprintf("⚠️ Process (PID: %d) is running but gRPC is not responding", process.Pid), nil

@@ -7,7 +7,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "anytype",
+	Use:   "ay",
 	Short: "Anytype Headless CLI",
 	Long:  `Manage the Anytype local server from the command line.`,
 }
@@ -23,4 +23,5 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(serverCmd)
 	rootCmd.AddCommand(tokenCmd)
+	rootCmd.AddCommand(shellCmd)
 }
