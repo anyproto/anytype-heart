@@ -231,7 +231,7 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, beforeOrderId string
 	// 3. update the MarkSeenHeads
 	// 2. mark messages as read in the DB
 
-	msg, err := s.GetMessageByOrderId(ctx, beforeOrderId)
+	msg, err := s.GetLastAddedMessageBeforeOrderIdAndAddedTime(ctx, beforeOrderId, lastDbState)
 	if err != nil {
 		return fmt.Errorf("get message: %w", err)
 	}
@@ -241,13 +241,20 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, beforeOrderId string
 	return nil
 }
 
-func (s *storeObject) GetMessageByOrderId(ctx context.Context, orderId string) (*model.ChatMessage, error) {
+func (s *storeObject) GetLastAddedMessageBeforeOrderIdAndAddedTime(ctx context.Context, orderId string, addedTime int64) (*model.ChatMessage, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 
-	iter, err := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpEq, orderId)}).Limit(1).Iter(ctx)
+	iter, err := coll.Find(
+		query.And{
+			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, orderId)},
+			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, addedTime)},
+		},
+	).
+		Limit(1).
+		Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find id: %w", err)
 	}

@@ -7949,6 +7949,8 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+
+                        MESSAGES_NOT_FOUND = 100; // chat is empty or invalid beforeOrderId/lastDbState
                         // ...
                     }
                 }

@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 
+	anystore "github.com/anyproto/any-store"
+
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/pb"
@@ -127,7 +129,9 @@ func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsub
 func (mw *Middleware) ChatReadMessages(ctx context.Context, request *pb.RpcChatReadRequest) *pb.RpcChatReadResponse {
 	chatService := mustService[chats.Service](mw)
 	err := chatService.ChatReadMessages(request.ChatObjectId, request.BeforeOrderId, request.LastDbState)
-	code := mapErrorCode[pb.RpcChatReadResponseErrorCode](err)
+	code := mapErrorCode(err,
+		errToCode(anystore.ErrDocNotFound, pb.RpcChatReadResponseError_MESSAGES_NOT_FOUND),
+	)
 	return &pb.RpcChatReadResponse{
 		Error: &pb.RpcChatReadResponseError{
 			Code:        code,

@@ -22668,7 +22668,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
+| BAD_INPUT | 2 |  |
+| MESSAGES_NOT_FOUND | 100 | chat is empty or invalid beforeOrderId/lastDbState |
 
 
 
