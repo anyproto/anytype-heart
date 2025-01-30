@@ -107,6 +107,7 @@ func TestAddMessage(t *testing.T) {
 	want := givenMessage()
 	want.Id = messageId
 	want.Creator = testCreator
+	want.Read = true
 
 	got := messages[0]
 	assertMessagesEqual(t, want, got)
