@@ -46,8 +46,16 @@ var (
 		model.Restrictions_Template,
 		model.Restrictions_Publish,
 	}
-	sysTypesRestrictions = ObjectRestrictions{
+	sysTypesRestrictionsEdit = ObjectRestrictions{
 		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
+		model.Restrictions_Template,
+		model.Restrictions_Details,
+		model.Restrictions_Delete,
+		model.Restrictions_Publish,
+	}
+	sysTypesRestrictions = ObjectRestrictions{
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
@@ -242,8 +250,12 @@ func getRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
-		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) && !lo.Contains(editableSystemTypes, domain.TypeKey(key)) {
-			r = sysTypesRestrictions
+		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
+			if lo.Contains(editableSystemTypes, domain.TypeKey(key)) {
+				r = sysTypesRestrictions
+			} else {
+				r = sysTypesRestrictionsEdit
+			}
 		}
 		if t, _ := bundle.GetType(domain.TypeKey(key)); t != nil && t.RestrictObjectCreation {
 			r = append(r, model.Restrictions_CreateObjectOfThisType)
