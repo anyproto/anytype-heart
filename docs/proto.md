@@ -29682,7 +29682,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | messages | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread messages |
-| replies | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread replies |
+| mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
 | dbState | [int64](#int64) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
 
 
@@ -29698,8 +29698,8 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| oldestOrderId | [string](#string) |  | oldest message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest |
-| unreadCounter | [int32](#int32) |  |  |
+| oldestOrderId | [string](#string) |  | oldest(in the lex sorting) unread message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest |
+| counter | [int32](#int32) |  | total number of unread messages |
 
 
 

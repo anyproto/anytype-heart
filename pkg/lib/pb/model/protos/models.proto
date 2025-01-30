@@ -1371,11 +1371,11 @@ message DeviceInfo {
 
 message ChatState {
     message UnreadState {
-        string oldestOrderId = 1; // oldest message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest
-        int32 unreadCounter = 2;
+        string oldestOrderId = 1; // oldest(in the lex sorting) unread message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest
+        int32 counter = 2; // total number of unread messages
     }
     UnreadState messages = 1; // unread messages
-    UnreadState replies = 2; // unread replies
+    UnreadState mentions = 2; // unread mentions
     int64 dbState = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
 }
 

@@ -127,6 +127,7 @@ func (s *storeObject) onUpdate() {
 	_ = s.subscription.flush()
 }
 
+// initialChatState returns the initial chat state for the chat object from the DB
 func (s *storeObject) initialChatState() (*model.ChatState, error) {
 	coll, err := s.store.Collection(s.componentCtx, collectionName)
 	if err != nil {
@@ -180,7 +181,7 @@ func (s *storeObject) initialChatState() (*model.ChatState, error) {
 	return &model.ChatState{
 		Messages: &model.ChatStateUnreadState{
 			OldestOrderId: oldestOrderId,
-			UnreadCounter: int32(count),
+			Counter:       int32(count),
 		},
 		// todo: add replies counter
 		DbState: int64(lastAdded),
@@ -482,14 +483,12 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 		return messages[i].OrderId < messages[j].OrderId
 	})
 
-	if !s.subscription.enabled {
+	if s.subscription.enable() {
 		s.subscription.chatState, err = s.initialChatState()
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to fetch initial chat state: %w", err)
 		}
 	}
-	// todo: race?
-	s.subscription.enable()
 
 	return messages, 0, nil
 }
@@ -503,7 +502,7 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 	if !s.locker.TryLock() {
 		return false, nil
 	}
-	isActive := s.subscription.enabled
+	isActive := s.subscription.enabled.Load()
 	s.Unlock()
 
 	if isActive {
