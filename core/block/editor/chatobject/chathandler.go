@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/timeid"
 )
 
 type ChatHandler struct {
@@ -47,7 +47,7 @@ func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (
 	} else {
 		msg.setRead(false)
 	}
-	msg.setAddedAt(time.Now().UnixMilli())
+	msg.setAddedAt(timeid.NewNano())
 	model := msg.toModel()
 	model.OrderId = ch.Change.Order
 	d.subscription.add(model)

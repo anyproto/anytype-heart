@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -205,6 +206,10 @@ func (s *storeObject) markReadMessages(ids []string) {
 	ctx := txn.Context()
 	idsModified := make([]string, 0, len(ids))
 	for _, id := range ids {
+		if id == s.Id() {
+			// skip tree root
+			continue
+		}
 		res, err := coll.UpdateId(ctx, id, query.MustParseModifier(`{"$set":{"`+readKey+`":true}}`))
 		if err != nil {
 			log.With(zap.Error(err)).With(zap.String("id", id)).With(zap.String("chatId", s.Id())).Error("markReadMessages: update message")
@@ -242,7 +247,7 @@ func (s *storeObject) markReadMessages(ids []string) {
 				newOldestOrderId = val.Value().GetObject(orderKey).Get("id").GetString()
 			}
 		}
-		log.Debug(fmt.Sprintf("markReadMessages: new oldest unread message: %s", s.subscription.chatState.Messages.OldestOrderId))
+		log.Debug(fmt.Sprintf("markReadMessages: new oldest unread message: %s", newOldestOrderId))
 		s.subscription.chatState.Messages.OldestOrderId = newOldestOrderId
 		s.subscription.updateReadStatus(idsModified, true)
 		s.onUpdate()
@@ -271,6 +276,11 @@ func (s *storeObject) GetLastAddedMessageInOrderRange(ctx context.Context, after
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 
+	if lastAddedMessageTimestamp < 0 {
+		// todo: remove this
+		// for testing purposes
+		lastAddedMessageTimestamp = math.MaxInt64
+	}
 	iter, err := coll.Find(
 		query.And{
 			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
