@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/app/logger"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
@@ -23,7 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-var log = logger.NewNamedSugared("common.editor.chatobject")
+var log = logger.NewNamed("common.editor.chatobject")
 
 const (
 	collectionName = "chats"
@@ -141,7 +142,7 @@ func (s *storeObject) initialChatState() (*model.ChatState, error) {
 	defer func() {
 		errCommit := txn.Commit()
 		if errCommit != nil {
-			log.Errorf("read tx commit error: %v", errCommit)
+			log.With(zap.Error(errCommit)).Error("read tx commit error")
 		}
 	}()
 
@@ -193,12 +194,12 @@ func (s *storeObject) markReadMessages(ids []string) {
 	}
 	coll, err := s.store.Collection(s.componentCtx, collectionName)
 	if err != nil {
-		log.Errorf("markReadMessages: get collection: %v", err)
+		log.With(zap.Error(err)).Error("markReadMessages: get collection")
 		return
 	}
 	txn, err := coll.WriteTx(s.componentCtx)
 	if err != nil {
-		log.Errorf("markReadMessages: start write tx: %v", err)
+		log.With(zap.Error(err)).Error("markReadMessages: start write tx")
 		return
 	}
 	ctx := txn.Context()
@@ -206,23 +207,19 @@ func (s *storeObject) markReadMessages(ids []string) {
 	for _, id := range ids {
 		res, err := coll.UpdateId(ctx, id, query.MustParseModifier(`{"$set":{"`+readKey+`":true}}`))
 		if err != nil {
-			log.Warnf("markReadMessages: update messages: %v", err)
+			log.With(zap.Error(err)).With(zap.String("id", id)).With(zap.String("chatId", s.Id())).Error("markReadMessages: update message")
 			continue
 		}
 		if res.Modified > 0 {
 			idsModified = append(idsModified, id)
 		}
 	}
-	if len(idsModified) > 0 {
-
-	}
-
 	err = txn.Commit()
 	if err != nil {
-		log.Errorf("markReadMessages: commit: %v", err)
+		log.With(zap.Error(err)).Error("markReadMessages: commit")
 		return
 	}
-	log.Warnf("markReadMessages: %d/%d messages marked as read", len(idsModified), len(ids))
+	log.Debug(fmt.Sprintf("markReadMessages: %d/%d messages marked as read", len(idsModified), len(ids)))
 	if len(idsModified) > 0 {
 		// it doesn't work within the same transaction
 		// query the new oldest unread message's orderId
@@ -232,19 +229,21 @@ func (s *storeObject) markReadMessages(ids []string) {
 			Limit(1).
 			Iter(s.componentCtx)
 		if err != nil {
-			log.Errorf("markReadMessages: find oldest read message: %v", err)
+			log.With(zap.Error(err)).Error("markReadMessages: failed to find oldest unread message")
 		}
 		defer iter.Close()
+		var newOldestOrderId string
 		if iter.Next() {
 			val, err := iter.Doc()
 			if err != nil {
-				log.Errorf("markReadMessages: get oldest read message: %v", err)
+				log.With(zap.Error(err)).Error("markReadMessages: failed to get oldest unread message")
 			}
 			if val != nil {
-				newOldestOrderId := val.Value().GetObject(orderKey).Get("id").GetString()
-				s.subscription.chatState.Messages.OldestOrderId = newOldestOrderId
+				newOldestOrderId = val.Value().GetObject(orderKey).Get("id").GetString()
 			}
 		}
+		log.Debug(fmt.Sprintf("markReadMessages: new oldest unread message: %s", s.subscription.chatState.Messages.OldestOrderId))
+		s.subscription.chatState.Messages.OldestOrderId = newOldestOrderId
 		s.subscription.updateReadStatus(idsModified, true)
 		s.onUpdate()
 	}
