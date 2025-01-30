@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
-	mb2 "github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
@@ -61,7 +60,7 @@ type SubscribeRequest struct {
 	// Internal indicates that subscription will send events into message queue instead of global client's event system
 	Internal bool
 	// InternalQueue is used when Internal flag is set to true. If it's nil, new queue will be created
-	InternalQueue *mb2.MB[*pb.EventMessage]
+	InternalQueue *mb.MB[*pb.EventMessage]
 	AsyncInit     bool
 }
 
@@ -72,7 +71,7 @@ type SubscribeResponse struct {
 	Counters     *pb.EventObjectSubscriptionCounters
 
 	// Used when Internal flag is set to true
-	Output *mb2.MB[*pb.EventMessage]
+	Output *mb.MB[*pb.EventMessage]
 }
 
 type Service interface {
@@ -117,13 +116,13 @@ type service struct {
 
 type internalSubOutput struct {
 	externallyManaged bool
-	queue             *mb2.MB[*pb.EventMessage]
+	queue             *mb.MB[*pb.EventMessage]
 }
 
-func newInternalSubOutput(queue *mb2.MB[*pb.EventMessage]) *internalSubOutput {
+func newInternalSubOutput(queue *mb.MB[*pb.EventMessage]) *internalSubOutput {
 	if queue == nil {
 		return &internalSubOutput{
-			queue: mb2.New[*pb.EventMessage](0),
+			queue: mb.New[*pb.EventMessage](0),
 		}
 	}
 	return &internalSubOutput{
@@ -435,7 +434,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		}
 	}
 
-	var outputQueue *mb2.MB[*pb.EventMessage]
+	var outputQueue *mb.MB[*pb.EventMessage]
 	if req.Internal {
 		output := newInternalSubOutput(req.InternalQueue)
 		outputQueue = output.queue
@@ -525,7 +524,7 @@ func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *dat
 		depRecords = sub.sortedSub.depSub.getActiveRecords()
 	}
 
-	var outputQueue *mb2.MB[*pb.EventMessage]
+	var outputQueue *mb.MB[*pb.EventMessage]
 	if req.Internal {
 		output := newInternalSubOutput(req.InternalQueue)
 		outputQueue = output.queue
@@ -852,7 +851,7 @@ func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(c
 				s.eventSender.Broadcast(&pb.Event{Messages: msgs})
 			} else {
 				err := s.customOutput[id].add(msgs...)
-				if err != nil && !errors.Is(err, mb2.ErrClosed) {
+				if err != nil && !errors.Is(err, mb.ErrClosed) {
 					log.With("subId", id, "error", err).Errorf("push to output")
 				}
 			}

@@ -60,6 +60,8 @@ type watcher struct {
 	lock                 sync.Mutex
 	accumulatedBacklinks map[string]*backLinksUpdate
 	aggregationInterval  time.Duration
+	cancelCtx            context.CancelFunc
+	ctx                  context.Context
 }
 
 func New() UpdateWatcher {
@@ -82,6 +84,8 @@ func (w *watcher) Init(a *app.App) error {
 }
 
 func (w *watcher) Close(context.Context) error {
+	w.cancelCtx()
+	w.ctx = nil
 	if err := w.infoBatch.Close(); err != nil {
 		log.Errorf("failed to close message batch: %v", err)
 	}
@@ -89,8 +93,9 @@ func (w *watcher) Close(context.Context) error {
 }
 
 func (w *watcher) Run(ctx context.Context) error {
+	w.ctx, w.cancelCtx = context.WithCancel(context.Background())
 	w.updater.SubscribeLinksUpdate(func(info spaceindex.LinksUpdateInfo) {
-		if err := w.infoBatch.Add(ctx, info); err != nil {
+		if err := w.infoBatch.Add(w.ctx, info); err != nil {
 			log.With("objectId", info.LinksFromId).Errorf("failed to add backlinks update info to message batch: %v", err)
 		}
 	})
