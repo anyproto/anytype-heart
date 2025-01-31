@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"errors"
 	"expvar"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
 	"gopkg.in/Graylog2/go-gelf.v2/gelf"
 )
@@ -29,7 +30,7 @@ var (
 )
 
 func registerGelfSink(config *logger.Config) {
-	gelfSinkWrapper.batch = mb.New(1000)
+	gelfSinkWrapper.batch = mb.New[gelf.Message](1000)
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
 		fmt.Printf("failed to init gelf tls: %s", err)
@@ -49,7 +50,7 @@ func registerGelfSink(config *logger.Config) {
 
 type gelfSink struct {
 	sync.RWMutex
-	batch       *mb.MB
+	batch       *mb.MB[gelf.Message]
 	gelfWriter  gelf.Writer
 	version     string
 	account     string
@@ -66,17 +67,16 @@ func (gs *gelfSink) Run() {
 			continue
 		}
 
-		msgs := gs.batch.WaitMax(1)
+		msgs, err := gs.batch.NewCond().WithMax(1).Wait(context.Background())
+		if err != nil {
+			return
+		}
 		if len(msgs) == 0 {
 			return
 		}
 
 		for _, msg := range msgs {
-			msgCasted, ok := msg.(gelf.Message)
-			if !ok {
-				continue
-			}
-			err := gs.gelfWriter.WriteMessage(&msgCasted)
+			err := gs.gelfWriter.WriteMessage(&msg)
 			if err != nil {
 				if gs.lastErrorAt.IsZero() || gs.lastErrorAt.Add(printErrorThreshold).Before(time.Now()) {
 					fmt.Fprintf(os.Stderr, "failed to write to gelf: %v\n", err)
