@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.1.5
+	github.com/anyproto/any-store v0.1.6
 	github.com/anyproto/any-sync v0.5.26
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20241223184559-a5cacfe0950a
 	github.com/anyproto/go-chash v0.1.0
@@ -52,7 +52,7 @@ require (
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
 	github.com/huandu/skiplist v1.2.1
 	github.com/improbable-eng/grpc-web v0.15.0
-	github.com/ipfs/boxo v0.27.0
+	github.com/ipfs/boxo v0.27.2
 	github.com/ipfs/go-block-format v0.2.0
 	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-datastore v0.6.0
@@ -85,7 +85,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
-	github.com/samber/lo v1.49.0
+	github.com/samber/lo v1.49.1
 	github.com/sasha-s/go-deadlock v0.3.5
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
@@ -186,7 +186,7 @@ require (
 	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
-	github.com/golang/glog v1.2.3 // indirect
+	github.com/golang/glog v1.2.4 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect

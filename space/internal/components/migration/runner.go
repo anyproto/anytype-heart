@@ -106,7 +106,6 @@ func (r *Runner) run(migrations ...Migration) (err error) {
 
 	start := time.Now()
 	store := r.store.SpaceIndex(spaceId)
-	// marketPlaceStore := r.store.SpaceIndex(addr.AnytypeMarketplaceWorkspace)
 	spent := time.Since(start)
 
 	for _, m := range migrations {
