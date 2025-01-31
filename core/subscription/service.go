@@ -313,6 +313,7 @@ type spaceSubscriptions struct {
 }
 
 func (s *spaceSubscriptions) Run() (err error) {
+	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
 	var batchErr error
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
 		batchErr = s.recBatch.Add(s.ctx, rec)
