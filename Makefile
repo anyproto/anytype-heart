@@ -305,6 +305,12 @@ install-dev-js: setup-go build-server protos-js
 	@echo 'Installing JS-server (dev-mode) in $(CLIENT_DESKTOP_PATH)...'
 	@rm -f $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper
 
+generate-cli:
+	swagger generate cli --target=cmd/anyctl --spec=core/api/docs/swagger.yaml --cli-app-name anyctl
+
+build-cli: generate-cli
+	go build -o dist/anyctl cmd/anyctl/cmd/anyctl/main.go
+
 ifeq ($(OS),Windows_NT)
 	@cp -r dist/server $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper.exe
 else
