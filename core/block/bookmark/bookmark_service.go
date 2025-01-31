@@ -50,13 +50,19 @@ type Service interface {
 	app.Component
 }
 
-type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
-}
+type (
+	ObjectCreator interface {
+		CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
+	}
 
-type DetailsSetter interface {
-	SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error)
-}
+	DetailsSetter interface {
+		SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error)
+	}
+
+	templateService interface {
+		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
+	}
+)
 
 type service struct {
 	detailsSetter       DetailsSetter
@@ -66,6 +72,7 @@ type service struct {
 	tempDirService      core.TempDirProvider
 	spaceService        space.Service
 	fileUploaderFactory fileuploader.Service
+	templateService     templateService
 }
 
 func New() Service {
@@ -74,12 +81,13 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.detailsSetter = app.MustComponent[DetailsSetter](a)
-	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
+	s.creator = app.MustComponent[ObjectCreator](a)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	s.fileUploaderFactory = app.MustComponent[fileuploader.Service](a)
+	s.templateService = app.MustComponent[templateService](a)
 	return nil
 }
 
@@ -155,7 +163,11 @@ func (s *service) CreateBookmarkObject(
 		objectId = rec.Details.GetString(bundle.RelationKeyId)
 		objectDetails = rec.Details
 	} else {
-		creationState := state.NewDoc("", nil).(*state.State)
+		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_bookmark))
+		creationState, err := s.templateService.CreateTemplateStateWithDetails("", details)
+		if err != nil {
+			log.Errorf("failed to build state for bookmark: %v", err)
+		}
 		creationState.SetDetails(details)
 		objectId, objectDetails, err = s.creator.CreateSmartBlockFromState(
 			ctx,
