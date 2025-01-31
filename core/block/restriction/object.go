@@ -59,7 +59,6 @@ var (
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
-		model.Restrictions_Details,
 		model.Restrictions_Delete,
 		model.Restrictions_Publish,
 	}
@@ -173,9 +172,10 @@ var (
 )
 
 var editableSystemTypes = []domain.TypeKey{
-	bundle.TypeKeyPage, bundle.TypeKeyTask, bundle.TypeKeyNote,
-	bundle.TypeKeySet, bundle.TypeKeyCollection, bundle.TypeKeyFile,
-	bundle.TypeKeyAudio, bundle.TypeKeyVideo, bundle.TypeKeyImage,
+	bundle.TypeKeyPage, bundle.TypeKeyTask, bundle.TypeKeyNote, // pages
+	bundle.TypeKeySet, bundle.TypeKeyCollection, // lists
+	bundle.TypeKeyFile, bundle.TypeKeyAudio, bundle.TypeKeyVideo, bundle.TypeKeyImage, // files
+	bundle.TypeKeyBookmark,
 }
 
 func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
