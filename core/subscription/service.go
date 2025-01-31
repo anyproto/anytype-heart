@@ -158,7 +158,6 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
 	return
 }
 
