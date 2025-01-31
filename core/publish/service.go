@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -288,11 +289,15 @@ func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEnt
 		return err
 	}
 
+	details := snapshot.GetSnapshot().GetData().GetDetails()
+	if source := pbtypes.GetString(details, bundle.RelationKeySource.String()); source != "" {
+		source = filepath.ToSlash(source)
+		details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
+	}
 	jsonData, err := jsonM.MarshalToString(&snapshot)
 	if err != nil {
 		return err
 	}
-
 	fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
 	uberSnapshot.PbFiles[fileNameKey] = jsonData
 	return nil
