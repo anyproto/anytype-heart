@@ -158,6 +158,7 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
 	return
 }
 
@@ -279,7 +280,7 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 		}
 		spaceSubs.ds = newDependencyService(spaceSubs)
 		spaceSubs.initDebugger()
-		err := spaceSubs.Run(context.Background())
+		err := spaceSubs.Run()
 		if err != nil {
 			return nil, fmt.Errorf("run space subscriptions: %w", err)
 		}
@@ -312,8 +313,7 @@ type spaceSubscriptions struct {
 	cancelCtx   context.CancelFunc
 }
 
-func (s *spaceSubscriptions) Run(ctx context.Context) (err error) {
-	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
+func (s *spaceSubscriptions) Run() (err error) {
 	var batchErr error
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
 		batchErr = s.recBatch.Add(s.ctx, rec)
@@ -778,7 +778,7 @@ func (s *spaceSubscriptions) recordsHandler() {
 		}
 	}
 	for {
-		records, err := s.recBatch.Wait(context.Background())
+		records, err := s.recBatch.Wait(s.ctx)
 		if err != nil {
 			return
 		}
