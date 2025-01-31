@@ -84,8 +84,9 @@ func (w *watcher) Init(a *app.App) error {
 }
 
 func (w *watcher) Close(context.Context) error {
-	w.cancelCtx()
-	w.ctx = nil
+	if w.cancelCtx != nil {
+		w.cancelCtx()
+	}
 	if err := w.infoBatch.Close(); err != nil {
 		log.Errorf("failed to close message batch: %v", err)
 	}
