@@ -135,6 +135,7 @@ func (ss *StoreState) Collection(ctx context.Context, name string) (anystore.Col
 
 func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet) (err error) {
 	fmt.Println("PREV=", ss.id, " -- ", set.PrevOrderId)
+	fmt.Println("CURR derived=", ss.id, " -- ", lexId.Next(set.PrevOrderId))
 	fmt.Println("CURR=", ss.id, " -- ", set.Order)
 	for _, ch := range set.Changes {
 		applyErr := ss.applyChange(ctx, Change{

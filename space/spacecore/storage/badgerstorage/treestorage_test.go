@@ -1,13 +1,16 @@
 package badgerstorage
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +30,7 @@ type fixture struct {
 	db  *badger.DB
 }
 
-func testTreePayload(t *testing.T, store treestorage.TreeStorage, payload treestorage.TreeStorageCreatePayload) {
+func testTreePayload(t *testing.T, store oldstorage.TreeStorage, payload treestorage.TreeStorageCreatePayload) {
 	require.Equal(t, payload.RootRawChange.Id, store.Id())
 
 	root, err := store.Root()
@@ -139,7 +142,7 @@ func TestTreeStorage_Methods(t *testing.T) {
 	})
 
 	t.Run("add raw change, get change and has change", func(t *testing.T) {
-		newChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("ab"), Id: "newId"}
+		newChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("ab"), Id: "id10"}
 		require.NoError(t, store.AddRawChange(newChange))
 		rawCh, err := store.GetRawChange(context.Background(), newChange.Id)
 		require.NoError(t, err)
@@ -156,6 +159,50 @@ func TestTreeStorage_Methods(t *testing.T) {
 		has, err := store.HasChange(context.Background(), incorrectId)
 		require.NoError(t, err)
 		require.False(t, has)
+	})
+
+	t.Run("iterate changes", func(t *testing.T) {
+		newChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("foo"), Id: "id01"}
+		require.NoError(t, store.AddRawChange(newChange))
+		newChange = &treechangeproto.RawTreeChangeWithId{RawChange: []byte("bar"), Id: "id20"}
+		require.NoError(t, store.AddRawChange(newChange))
+
+		var collected []*treechangeproto.RawTreeChangeWithId
+		require.NoError(t, store.IterateChanges(func(id string, rawChange []byte) error {
+			collected = append(collected, &treechangeproto.RawTreeChangeWithId{
+				Id:        id,
+				RawChange: bytes.Clone(rawChange),
+			})
+			return nil
+		}))
+
+		want := []*treechangeproto.RawTreeChangeWithId{
+			{Id: "id01", RawChange: []byte("foo")},
+			{Id: "id10", RawChange: []byte("ab")},
+			{Id: "id20", RawChange: []byte("bar")},
+			{Id: "otherId", RawChange: []byte("some other")},
+			{Id: "someRootId", RawChange: []byte("some")},
+		}
+		assert.Equal(t, want, collected)
+
+		got, err := store.GetAllChanges()
+		require.NoError(t, err)
+
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("get all change ids", func(t *testing.T) {
+		got, err := store.GetAllChangeIds()
+		require.NoError(t, err)
+
+		want := []string{"id01",
+			"id10",
+			"id20",
+			"otherId",
+			"someRootId",
+		}
+
+		assert.Equal(t, want, got)
 	})
 }
 
