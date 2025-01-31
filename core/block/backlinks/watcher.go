@@ -171,7 +171,7 @@ func (w *watcher) backlinksUpdateHandler() {
 	}()
 
 	for {
-		msgs, err := w.infoBatch.Wait(context.Background())
+		msgs, err := w.infoBatch.Wait(w.ctx)
 		if err != nil {
 			return
 		}
@@ -215,7 +215,7 @@ func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksU
 		log.With("objectId", id).Errorf("failed to resolve space id for object: %v", err)
 		return
 	}
-	spc, err := w.spaceService.Get(context.Background(), spaceId)
+	spc, err := w.spaceService.Get(w.ctx, spaceId)
 	if err != nil {
 		log.With("objectId", id, "spaceId", spaceId).Errorf("failed to get space: %v", err)
 		return

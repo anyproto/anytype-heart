@@ -308,12 +308,15 @@ type spaceSubscriptions struct {
 
 	subDebugger *subDebugger
 	arenaPool   *anyenc.ArenaPool
+	ctx         context.Context
+	cancelCtx   context.CancelFunc
 }
 
 func (s *spaceSubscriptions) Run(ctx context.Context) (err error) {
+	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
 	var batchErr error
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
-		batchErr = s.recBatch.Add(ctx, rec)
+		batchErr = s.recBatch.Add(s.ctx, rec)
 	})
 	if batchErr != nil {
 		return batchErr
@@ -923,6 +926,9 @@ func (s *spaceSubscriptions) depIdsFromFilter(spaceId string, filters []database
 func (s *spaceSubscriptions) Close(ctx context.Context) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.cancelCtx != nil {
+		s.cancelCtx()
+	}
 	s.recBatch.Close()
 	for subId, sub := range s.subscriptions {
 		sub.close()
