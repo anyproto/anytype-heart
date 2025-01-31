@@ -145,6 +145,7 @@ func calculateCommonDetails(
 	det.SetString(bundle.RelationKeyFileId, fileId.String())
 	det.SetBool(bundle.RelationKeyIsReadonly, false)
 	det.SetInt64(bundle.RelationKeyResolvedLayout, int64(layout))
+	det.SetInt64(bundle.RelationKeyLayout, int64(layout))
 	det.SetFloat64(bundle.RelationKeyLastModifiedDate, float64(lastModifiedDate))
 	return det
 }
