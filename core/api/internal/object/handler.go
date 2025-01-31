@@ -91,6 +91,7 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	403			{object}	util.ForbiddenError		"Forbidden"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
+//	@Failure	423			{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces/{space_id}/objects/{object_id} [delete]
 func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
@@ -126,6 +127,7 @@ func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Success	200			{object}	ObjectResponse			"The created object"
 //	@Failure	400			{object}	util.ValidationError	"Bad request"
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	423			{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces/{space_id}/objects [post]
 func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {

@@ -568,6 +568,15 @@ definitions:
             type: string
         type: object
     type: object
+  util.RateLimitError:
+    properties:
+      error:
+        properties:
+          message:
+            example: Rate limit exceeded
+            type: string
+        type: object
+    type: object
   util.ServerError:
     properties:
       error:
@@ -775,6 +784,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
+        "423":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/util.RateLimitError'
         "500":
           description: Internal server error
           schema:
@@ -892,6 +905,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/util.UnauthorizedError'
+        "423":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/util.RateLimitError'
         "500":
           description: Internal server error
           schema:
@@ -933,6 +950,10 @@ paths:
           description: Resource not found
           schema:
             $ref: '#/definitions/util.NotFoundError'
+        "423":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/util.RateLimitError'
         "500":
           description: Internal server error
           schema:

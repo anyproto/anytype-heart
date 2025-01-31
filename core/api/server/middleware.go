@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
@@ -26,7 +27,8 @@ func (s *Server) rateLimit(max float64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request)
 		if httpError != nil {
-			c.AbortWithStatusJSON(httpError.StatusCode, gin.H{"error": httpError.Message})
+			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
+			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
 			return
 		}
 		c.Next()
@@ -38,12 +40,14 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
+			apiErr := util.CodeToAPIError(http.StatusUnauthorized, "Missing Authorization header")
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+			apiErr := util.CodeToAPIError(http.StatusUnauthorized, "Invalid Authorization header format")
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
 		key := strings.TrimPrefix(authHeader, "Bearer ")
@@ -57,7 +61,8 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+				apiErr := util.CodeToAPIError(http.StatusUnauthorized, "Invalid token")
+				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 				return
 			}
 			token = response.Token
@@ -78,7 +83,8 @@ func (s *Server) ensureAccountInfo(accountService account.Service) gin.HandlerFu
 	return func(c *gin.Context) {
 		accInfo, err := accountService.GetInfo(context.Background())
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get account info: %v", err)})
+			apiErr := util.CodeToAPIError(http.StatusInternalServerError, fmt.Sprintf("failed to get account info: %v", err))
+			c.AbortWithStatusJSON(http.StatusInternalServerError, apiErr)
 			return
 		}
 

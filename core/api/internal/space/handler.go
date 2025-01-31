@@ -52,6 +52,7 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 //	@Success	200		{object}	CreateSpaceResponse		"Space created successfully"
 //	@Failure	400		{object}	util.ValidationError	"Bad request"
 //	@Failure	401		{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	423		{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure	500		{object}	util.ServerError		"Internal server error"
 //	@Router		/spaces [post]
 func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {

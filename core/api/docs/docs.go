@@ -268,6 +268,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
+                    "423": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/util.RateLimitError"
+                        }
+                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
@@ -440,6 +446,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/util.UnauthorizedError"
                         }
                     },
+                    "423": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/util.RateLimitError"
+                        }
+                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
@@ -554,6 +566,12 @@ const docTemplate = `{
                         "description": "Resource not found",
                         "schema": {
                             "$ref": "#/definitions/util.NotFoundError"
+                        }
+                    },
+                    "423": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/util.RateLimitError"
                         }
                     },
                     "500": {
@@ -1720,6 +1738,20 @@ const docTemplate = `{
                         "message": {
                             "type": "string",
                             "example": "Resource not found"
+                        }
+                    }
+                }
+            }
+        },
+        "util.RateLimitError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "example": "Rate limit exceeded"
                         }
                     }
                 }

@@ -33,6 +33,13 @@ type NotFoundError struct {
 	} `json:"error"`
 }
 
+// RateLimitError is a struct for 423 errors
+type RateLimitError struct {
+	Error struct {
+		Message string `json:"message" example:"Rate limit exceeded"`
+	} `json:"error"`
+}
+
 // ServerError is a struct for 500 errors
 type ServerError struct {
 	Error struct {
@@ -104,6 +111,15 @@ func CodeToAPIError(code int, message string) any {
 		return NotFoundError{
 			Error: struct {
 				Message string `json:"message" example:"Resource not found"`
+			}{
+				Message: message,
+			},
+		}
+
+	case http.StatusTooManyRequests:
+		return RateLimitError{
+			Error: struct {
+				Message string `json:"message" example:"Rate limit exceeded"`
 			}{
 				Message: message,
 			},
