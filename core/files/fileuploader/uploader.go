@@ -272,7 +272,6 @@ func (u *uploader) SetUrl(url string) Uploader {
 	if err != nil {
 		// do nothing
 	}
-	u.SetName(strings.Split(filepath.Base(url), "?")[0])
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
@@ -293,6 +292,9 @@ func (u *uploader) SetUrl(url string) Uploader {
 			if len(contentDisposition) > 1 {
 				fileName = strings.Trim(contentDisposition[1], "\"")
 			}
+		}
+		if fileName == "" {
+			fileName = uri.GetFileNameFromURLAndContentType(resp.Request.URL, resp.Header.Get("Content-Type"))
 		}
 
 		tmpFile, err := ioutil.TempFile(u.tempDirProvider.TempDir(), "anytype_downloaded_file_*")
@@ -332,7 +334,10 @@ func (u *uploader) SetUrl(url string) Uploader {
 }
 
 func (u *uploader) SetFile(path string) Uploader {
-	u.SetName(filepath.Base(path))
+	if u.name == "" {
+		// only set name if it wasn't explicitly set before
+		u.SetName(filepath.Base(path))
+	}
 	u.setLastModifiedDate(path)
 
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
@@ -420,7 +425,12 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	if fileName := buf.GetFileName(); fileName != "" {
-		u.SetName(fileName)
+		if u.name == "" {
+			u.SetName(fileName)
+		} else if filepath.Ext(u.name) == "" {
+			// enrich current name with extension
+			u.name += filepath.Ext(fileName)
+		}
 	}
 
 	if u.block != nil {
