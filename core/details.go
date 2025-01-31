@@ -25,7 +25,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		return m
 	}
 
-	err := mustService[detailservice.Service](mw).SetDetailsAndUpdateLastUsed(ctx, req.ContextId, requestDetailsListToDomain(req.GetDetails()))
+	err := mustService[detailservice.Service](mw).SetDetails(ctx, req.ContextId, requestDetailsListToDomain(req.GetDetails()))
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
