@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -32,33 +31,11 @@ type keyWithIndex struct {
 }
 
 var validators = []validator{
-	validateRelationLinks,
-	validateRelationBlocks,
 	validateDetails,
 	validateObjectTypes,
 	validateBlockLinks,
 	validateDeleted,
 	validateRelationOption,
-}
-
-func validateRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	linksToDelete := make([]keyWithIndex, 0)
-	for i, rel := range s.Snapshot.Data.RelationLinks {
-		if bundle.HasRelation(domain.RelationKey(rel.Key)) {
-			continue
-		}
-		if _, found := info.customTypesAndRelations[rel.Key]; found {
-			continue
-		}
-		linksToDelete = append([]keyWithIndex{{key: rel.Key, index: i}}, linksToDelete...)
-
-	}
-	for _, link := range linksToDelete {
-		fmt.Println("WARNING: object", id, "contains link to unknown relation:", link.key, ", so it was deleted from snapshot")
-		s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks[:link.index], s.Snapshot.Data.RelationLinks[link.index+1:]...)
-	}
-	return err
 }
 
 func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
@@ -69,25 +46,14 @@ func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err erro
 			relKeys = append(relKeys, rel.Key)
 		}
 	}
-	relLinks := pbtypes.RelationLinks(s.Snapshot.Data.GetRelationLinks())
 	for _, rk := range relKeys {
-		if !relLinks.Has(rk) {
-			if rel, errFound := bundle.GetRelation(domain.RelationKey(rk)); errFound == nil {
-				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
-					Key:    rk,
-					Format: rel.Format,
-				})
-				continue
-			}
-			if relInfo, found := info.customTypesAndRelations[rk]; found {
-				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
-					Key:    rk,
-					Format: relInfo.relationFormat,
-				})
-				continue
-			}
-			err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in relation links of object %s", rk, id))
+		if _, errFound := bundle.GetRelation(domain.RelationKey(rk)); errFound == nil {
+			continue
 		}
+		if _, found := info.customTypesAndRelations[rk]; found {
+			continue
+		}
+		err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in relation links of object %s", rk, id))
 	}
 	return err
 }
@@ -105,16 +71,10 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 		)
 		rel, e = bundle.GetRelation(domain.RelationKey(k))
 		if e != nil {
-			rel = getRelationLinkByKey(s.Snapshot.Data.RelationLinks, k)
-			if rel == nil {
-				if relation, errFound := bundle.GetRelation(domain.RelationKey(k)); errFound == nil {
-					s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
-						Key:    k,
-						Format: relation.Format,
-					})
-					continue
-				}
-				err = multierror.Append(err, fmt.Errorf("relation '%s' exists in details of object '%s', but not in relation links", k, id))
+			var found bool
+			rel, found = info.customTypesAndRelations[k]
+			if !found {
+				err = multierror.Append(err, fmt.Errorf("relation '%s' exists in details of object '%s', but not in the archive", k, id))
 				continue
 			}
 		}
@@ -214,39 +174,6 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	return err
 }
 
-func validateFileKeys(s *pb.SnapshotWithType, _ *useCaseInfo) (err error) {
-	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	for _, r := range s.Snapshot.Data.RelationLinks {
-		if r.Format == model.RelationFormat_file || r.Key == bundle.RelationKeyCoverId.String() {
-			for _, hash := range pbtypes.GetStringList(s.Snapshot.GetData().GetDetails(), r.Key) {
-				if r.Format != model.RelationFormat_file {
-					_, err := cid.Parse(hash)
-					if err != nil {
-						continue
-					}
-				}
-				if !snapshotHasKeyForHash(s, hash) {
-					err = multierror.Append(err, fmt.Errorf("object '%s' has file detail '%s' has hash '%s' which keys are not in the snapshot", id, r.Key, hash))
-				}
-			}
-		}
-	}
-	for _, b := range s.Snapshot.Data.Blocks {
-		if v, ok := simple.New(b).(simple.FileHashes); ok {
-			hashes := v.FillFileHashes([]string{})
-			if len(hashes) == 0 {
-				continue
-			}
-			for _, hash := range hashes {
-				if !snapshotHasKeyForHash(s, hash) {
-					err = multierror.Append(err, fmt.Errorf("file block '%s' of object '%s' has hash '%s' which keys are not in the snapshot", b.Id, id, hash))
-				}
-			}
-		}
-	}
-	return err
-}
-
 func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 
@@ -284,24 +211,6 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
 		return errSkipObject
 	}
 	return nil
-}
-
-func getRelationLinkByKey(links []*model.RelationLink, key string) *model.RelationLink {
-	for _, l := range links {
-		if l.Key == key {
-			return l
-		}
-	}
-	return nil
-}
-
-func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
-	for _, k := range s.Snapshot.FileKeys {
-		if k.Hash == hash && len(k.Keys) > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 func isLinkRelation(k string) bool {

@@ -13,19 +13,8 @@ import (
 )
 
 func collectCustomObjectsUsageInfo(s *pb.SnapshotWithType, info *useCaseInfo) {
-	collectInfoFromRelationLinks(s, info)
 	collectInfoFromObjectTypes(s, info)
 	collectInfoFromDetails(s, info)
-}
-
-func collectInfoFromRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) {
-	for _, rel := range s.Snapshot.Data.RelationLinks {
-		if v, found := info.customTypesAndRelations[rel.Key]; found {
-			v.isUsed = true
-			info.customTypesAndRelations[rel.Key] = v
-			continue
-		}
-	}
 }
 
 func collectInfoFromObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) {

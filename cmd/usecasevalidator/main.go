@@ -68,6 +68,10 @@ type (
 	}
 )
 
+func (i customInfo) GetFormat() model.RelationFormat {
+	return i.relationFormat
+}
+
 func (f cliFlags) isUpdateNeeded() bool {
 	return f.analytics || f.creator || f.removeRelations || f.exclude || f.rules != ""
 }

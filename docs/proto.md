@@ -30250,8 +30250,8 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blocks | [Block](#anytype-model-Block) | repeated | dependent simple blocks (descendants) |
 | details | [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet) | repeated | details for the current and dependent objects |
 | type | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
-| relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED, use relationLinks instead |
-| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
+| relations | [Relation](#anytype-model-Relation) | repeated | **Deprecated.** DEPRECATED, use details instead |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated | **Deprecated.** DEPRECATED, use details instead |
 | restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
 | history | [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize) |  |  |
 | blockParticipants | [ObjectView.BlockParticipant](#anytype-model-ObjectView-BlockParticipant) | repeated |  |
@@ -30568,7 +30568,7 @@ stored |
 | objectTypes | [string](#string) | repeated |  |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
-| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated | **Deprecated.**  |
 | key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
 | originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
 | fileInfo | [FileInfo](#anytype-model-FileInfo) |  |  |

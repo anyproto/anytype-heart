@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -30,7 +29,6 @@ const (
 type entityType string
 
 const (
-	relationLink   entityType = "relationLink"
 	detail         entityType = "detail"
 	objectType     entityType = "objectType"
 	dataViewTarget entityType = "dataViewTarget"
@@ -79,8 +77,6 @@ func processRules(s *pb.ChangeSnapshot) {
 		}
 
 		switch r.Entity {
-		case relationLink:
-			doRelationLinkRule(s, r)
 		case detail:
 			doDetailRule(s, r)
 		case objectType:
@@ -92,27 +88,6 @@ func processRules(s *pb.ChangeSnapshot) {
 		default:
 			fmt.Println("Invalid entity in rule", i, ":", r.Entity)
 		}
-	}
-}
-
-func doRelationLinkRule(s *pb.ChangeSnapshot, r rule) {
-	if r.RelationLink == nil || r.RelationLink.Key == "" {
-		fmt.Println("Invalid Relation link provided in relation-rule")
-		return
-	}
-	switch r.Action {
-	case remove:
-		s.Data.RelationLinks = lo.Reject(s.Data.RelationLinks, func(relLink *model.RelationLink, _ int) bool {
-			return relLink.Key == r.RelationLink.Key
-		})
-	case add:
-		s.Data.RelationLinks = append(s.Data.RelationLinks, r.RelationLink)
-	case change:
-		s.Data.RelationLinks = slice.ReplaceFirstBy(s.Data.RelationLinks, r.RelationLink, func(rl *model.RelationLink) bool {
-			return rl.Key == r.RelationLink.Key
-		})
-	default:
-		fmt.Printf(errInvalidAction, r.Action)
 	}
 }
 

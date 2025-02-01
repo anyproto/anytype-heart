@@ -12,7 +12,7 @@ message SmartBlockSnapshotBase {
     repeated string objectTypes = 5;
     google.protobuf.Struct collections = 6;
     repeated string removedCollectionKeys = 8;
-    repeated RelationLink relationLinks = 7;
+    repeated RelationLink relationLinks = 7 [deprecated=true];
     string key = 9; // only used for pb backup purposes, ignored in other cases
     int64 originalCreatedTimestamp = 10; // ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp
     FileInfo fileInfo = 11;
@@ -945,8 +945,8 @@ message ObjectView {
         repeated RelationWithValue relations = 2;
     }
 
-    repeated Relation relations = 7; // DEPRECATED, use relationLinks instead
-    repeated RelationLink relationLinks = 10;
+    repeated Relation relations = 7 [deprecated=true]; // DEPRECATED, use details instead
+    repeated RelationLink relationLinks = 10 [deprecated=true]; // DEPRECATED, use details instead
 
     Restrictions restrictions = 8; // object restrictions
     HistorySize history = 9;
