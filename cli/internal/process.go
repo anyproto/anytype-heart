@@ -149,7 +149,7 @@ func CheckServerStatus() (string, error) {
 
 	// Check if the gRPC server is responding
 	if isPortInUse(grpcPort) && isPortInUse(grpcWebPort) {
-		return fmt.Sprintf("✅ Server is running (pid: %d) and grpc is responsive on port %s", process.Pid, grpcPort), nil
+		return fmt.Sprintf("✓ Server is running (pid: %d) and grpc is responsive on port %s", process.Pid, grpcPort), nil
 	}
 
 	return fmt.Sprintf("⚠️ Process (PID: %d) is running but gRPC is not responding", process.Pid), nil

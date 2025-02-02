@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	"google.golang.org/grpc/metadata"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 
@@ -62,4 +64,8 @@ func IsGRPCServerRunning() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func ClientContextWithAuth(token string) context.Context {
+	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs("token", token))
 }

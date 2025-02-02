@@ -5,21 +5,19 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/grpc/metadata"
-
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 // LoginAccount performs the common steps for logging in with a given mnemonic and root path.
 // It returns the session token if successful.
-func LoginAccount(mnemonic, rootPath string) (string, error) {
+func LoginAccount(mnemonic, rootPath string) error {
 	if rootPath == "" {
 		rootPath = "/Users/jmetrikat/Library/Application Support/anytype/alpha/data"
 	}
 
 	client, err := GetGRPCClient()
 	if err != nil {
-		return "", fmt.Errorf("error connecting to gRPC server: %v", err)
+		return fmt.Errorf("error connecting to gRPC server: %v", err)
 	}
 
 	// Create a context for the initial calls.
@@ -33,7 +31,7 @@ func LoginAccount(mnemonic, rootPath string) (string, error) {
 		Workdir:  "/Users/jmetrikat/Library/Application Support/anytype",
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to set initial parameters: %v", err)
+		return fmt.Errorf("failed to set initial parameters: %v", err)
 	}
 
 	// Recover the wallet.
@@ -42,7 +40,7 @@ func LoginAccount(mnemonic, rootPath string) (string, error) {
 		RootPath: rootPath,
 	})
 	if err != nil {
-		return "", fmt.Errorf("wallet recovery failed: %v", err)
+		return fmt.Errorf("wallet recovery failed: %v", err)
 	}
 
 	// Create a session.
@@ -52,37 +50,31 @@ func LoginAccount(mnemonic, rootPath string) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to create session: %v", err)
+		return fmt.Errorf("failed to create session: %v", err)
 	}
 	sessionToken := resp.Token
-
-	// Start listening for session events (to receive the account ID).
-	accountIDChan := make(chan string, 1)
-	errorChan := make(chan error, 1)
-	go func() {
-		accountID, err := ListenSessionEvents(sessionToken)
-		if err != nil {
-			errorChan <- err
-		} else {
-			accountIDChan <- accountID
-		}
-	}()
-
-	// Recover the account.
-	ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("token", sessionToken))
-	_, err = client.AccountRecover(ctx, &pb.RpcAccountRecoverRequest{})
+	err = SaveToken(sessionToken)
 	if err != nil {
-		return "", fmt.Errorf("account recovery failed: %v", err)
+		return fmt.Errorf("failed to save session token: %v", err)
 	}
 
-	// Wait for the account ID (or an error).
-	var accountID string
-	select {
-	case accountID = <-accountIDChan:
-	case err = <-errorChan:
-		return "", fmt.Errorf("error listening for session events: %v", err)
-	case <-time.After(5 * time.Second):
-		return "", fmt.Errorf("timed out waiting for session event")
+	// Start listening for session events using the universal event listener.
+	er, err := ListenForEvents(sessionToken)
+	if err != nil {
+		return fmt.Errorf("failed to start event listener: %v", err)
+	}
+
+	// Recover the account.
+	ctx = ClientContextWithAuth(sessionToken)
+	_, err = client.AccountRecover(ctx, &pb.RpcAccountRecoverRequest{})
+	if err != nil {
+		return fmt.Errorf("account recovery failed: %v", err)
+	}
+
+	// Wait for the account ID from the event receiver.
+	accountID, err := WaitForAccountID(er)
+	if err != nil {
+		return fmt.Errorf("error waiting for account ID: %v", err)
 	}
 
 	// Select the account.
@@ -93,8 +85,8 @@ func LoginAccount(mnemonic, rootPath string) (string, error) {
 		RootPath:                rootPath,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to select account: %v", err)
+		return fmt.Errorf("failed to select account: %v", err)
 	}
 
-	return sessionToken, nil
+	return nil
 }

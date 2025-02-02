@@ -21,7 +21,7 @@ func logInfo(format string, args ...interface{}) {
 
 // logError logs errors
 func logError(format string, args ...interface{}) {
-	message := fmt.Sprintf("❌ "+format, args...)
+	message := fmt.Sprintf("X "+format, args...)
 	fmt.Println(message)
 	appendToLogFile(message)
 }
