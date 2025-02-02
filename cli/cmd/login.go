@@ -23,7 +23,11 @@ var loginCmd = &cobra.Command{
 			return
 		}
 		if !status {
-			internal.StartServer()
+			err := internal.StartServer()
+			if err != nil {
+				fmt.Println("X Failed to start server:", err)
+				return
+			}
 			time.Sleep(2 * time.Second) // wait for server to start
 		}
 

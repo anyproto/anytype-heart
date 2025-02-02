@@ -22,7 +22,7 @@ type EventReceiver struct {
 func ListenForEvents(token string) (*EventReceiver, error) {
 	client, err := GetGRPCClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get gRPC client: %v", err)
+		return nil, fmt.Errorf("failed to get gRPC client: %w", err)
 	}
 
 	req := &pb.StreamRequest{
@@ -30,7 +30,7 @@ func ListenForEvents(token string) (*EventReceiver, error) {
 	}
 	stream, err := client.ListenSessionEvents(context.Background(), req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start event stream: %v", err)
+		return nil, fmt.Errorf("failed to start event stream: %w", err)
 	}
 
 	er := &EventReceiver{
@@ -51,14 +51,12 @@ func ListenForEvents(token string) (*EventReceiver, error) {
 				if err.Error() == "rpc error: code = Canceled desc = grpc: the client connection is closing" {
 					break
 				}
-				fmt.Printf("X Event stream error: %v\n", err)
+				fmt.Errorf("X Event stream error: %w\n", err)
 				break
 			}
 
 			er.lock.Lock()
-			for _, m := range event.Messages {
-				er.events = append(er.events, m)
-			}
+			er.events = append(er.events, event.Messages...)
 			er.lock.Unlock()
 		}
 	}()

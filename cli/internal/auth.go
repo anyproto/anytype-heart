@@ -17,7 +17,7 @@ func LoginAccount(mnemonic, rootPath string) error {
 
 	client, err := GetGRPCClient()
 	if err != nil {
-		return fmt.Errorf("error connecting to gRPC server: %v", err)
+		return fmt.Errorf("error connecting to gRPC server: %w", err)
 	}
 
 	// Create a context for the initial calls.
@@ -31,7 +31,7 @@ func LoginAccount(mnemonic, rootPath string) error {
 		Workdir:  "/Users/jmetrikat/Library/Application Support/anytype",
 	})
 	if err != nil {
-		return fmt.Errorf("failed to set initial parameters: %v", err)
+		return fmt.Errorf("failed to set initial parameters: %w", err)
 	}
 
 	// Recover the wallet.
@@ -40,7 +40,7 @@ func LoginAccount(mnemonic, rootPath string) error {
 		RootPath: rootPath,
 	})
 	if err != nil {
-		return fmt.Errorf("wallet recovery failed: %v", err)
+		return fmt.Errorf("wallet recovery failed: %w", err)
 	}
 
 	// Create a session.
@@ -50,31 +50,31 @@ func LoginAccount(mnemonic, rootPath string) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create session: %v", err)
+		return fmt.Errorf("failed to create session: %w", err)
 	}
 	sessionToken := resp.Token
 	err = SaveToken(sessionToken)
 	if err != nil {
-		return fmt.Errorf("failed to save session token: %v", err)
+		return fmt.Errorf("failed to save session token: %w", err)
 	}
 
 	// Start listening for session events using the universal event listener.
 	er, err := ListenForEvents(sessionToken)
 	if err != nil {
-		return fmt.Errorf("failed to start event listener: %v", err)
+		return fmt.Errorf("failed to start event listener: %w", err)
 	}
 
 	// Recover the account.
 	ctx = ClientContextWithAuth(sessionToken)
 	_, err = client.AccountRecover(ctx, &pb.RpcAccountRecoverRequest{})
 	if err != nil {
-		return fmt.Errorf("account recovery failed: %v", err)
+		return fmt.Errorf("account recovery failed: %w", err)
 	}
 
 	// Wait for the account ID from the event receiver.
 	accountID, err := WaitForAccountID(er)
 	if err != nil {
-		return fmt.Errorf("error waiting for account ID: %v", err)
+		return fmt.Errorf("error waiting for account ID: %w", err)
 	}
 
 	// Select the account.
@@ -85,7 +85,7 @@ func LoginAccount(mnemonic, rootPath string) error {
 		RootPath:                rootPath,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to select account: %v", err)
+		return fmt.Errorf("failed to select account: %w", err)
 	}
 
 	return nil

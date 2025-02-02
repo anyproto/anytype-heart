@@ -39,7 +39,7 @@ func StartServer() error {
 
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		return fmt.Errorf("failed to open log file: %v", err)
+		return fmt.Errorf("failed to open log file: %w", err)
 	}
 	defer logFile.Close()
 
@@ -49,20 +49,23 @@ func StartServer() error {
 	// Start the server process
 	if err := cmd.Start(); err != nil {
 		logError("Failed to start server: %v", err)
-		return fmt.Errorf("failed to start server: %v", err)
+		return fmt.Errorf("failed to start server: %w", err)
 	}
 
 	go func() {
-		cmd.Wait() // Block until process exits
+		err = cmd.Wait() // Block until process exits
+		if err != nil {
+			logError("Server process exited with error: %v", err)
+		}
 		logInfo("🚪 Server process exited.")
 	}()
 
 	pid := cmd.Process.Pid
 	pidData := fmt.Sprintf("%d:%s:%s", pid, grpcPort, grpcWebPort)
-	err = os.WriteFile(pidFile, []byte(pidData), 0644)
+	err = os.WriteFile(pidFile, []byte(pidData), 0600)
 	if err != nil {
-		logError("Failed to save PID: %v", err)
-		return fmt.Errorf("failed to save PID: %v", err)
+		logError("Failed to save PID: %w", err)
+		return fmt.Errorf("failed to save PID: %w", err)
 	}
 
 	return nil
@@ -83,7 +86,7 @@ func StopServer() error {
 
 	pid, err := strconv.Atoi(dataParts[0])
 	if err != nil {
-		return fmt.Errorf("failed to parse PID: %v", err)
+		return fmt.Errorf("failed to parse PID: %w", err)
 	}
 
 	grpcPort := dataParts[1]
@@ -92,13 +95,16 @@ func StopServer() error {
 	// Kill process group
 	err = syscall.Kill(-pid, syscall.SIGTERM)
 	if err != nil {
-		return fmt.Errorf("failed to send SIGTERM: %v", err)
+		return fmt.Errorf("failed to send SIGTERM: %w", err)
 	}
 
 	time.Sleep(2 * time.Second)
 
 	// Force kill if still running
-	process, _ := os.FindProcess(pid)
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("failed to find process: %w", err)
+	}
 	if err := process.Signal(syscall.Signal(0)); err == nil {
 		fmt.Println("Process did not terminate, sending SIGKILL...")
 		syscall.Kill(-pid, syscall.SIGKILL)
@@ -127,7 +133,7 @@ func CheckServerStatus() (string, error) {
 
 	pid, err := strconv.Atoi(dataParts[0])
 	if err != nil {
-		return "", fmt.Errorf("failed to parse PID: %v", err)
+		return "", fmt.Errorf("failed to parse PID: %w", err)
 	}
 
 	grpcPort := dataParts[1]
