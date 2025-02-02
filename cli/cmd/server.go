@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -17,6 +18,19 @@ var serverStartCmd = &cobra.Command{
 			fmt.Println("❌ Failed to start server:", err)
 		} else {
 			fmt.Println("✅ Server started successfully.")
+			time.Sleep(2 * time.Second) // wait for server to start
+
+			mnemonic, err := internal.GetStoredMnemonic()
+			if err == nil && mnemonic != "" {
+				fmt.Println("🔐 Keychain mnemonic found. Attempting auto login...")
+				if _, err := internal.LoginAccount(mnemonic, ""); err != nil {
+					fmt.Println("Auto login failed:", err)
+				} else {
+					fmt.Println("✅ Auto login successful!")
+				}
+			} else {
+				fmt.Println("ℹ️ No keychain mnemonic found. Please login using 'anyctl login'.")
+			}
 		}
 	},
 }

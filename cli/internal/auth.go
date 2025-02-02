@@ -1,0 +1,100 @@
+package internal
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"google.golang.org/grpc/metadata"
+
+	"github.com/anyproto/anytype-heart/pb"
+)
+
+// LoginAccount performs the common steps for logging in with a given mnemonic and root path.
+// It returns the session token if successful.
+func LoginAccount(mnemonic, rootPath string) (string, error) {
+	if rootPath == "" {
+		rootPath = "/Users/jmetrikat/Library/Application Support/anytype/alpha/data"
+	}
+
+	client, err := GetGRPCClient()
+	if err != nil {
+		return "", fmt.Errorf("error connecting to gRPC server: %v", err)
+	}
+
+	// Create a context for the initial calls.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Set initial parameters (adjust these values as needed).
+	_, err = client.InitialSetParameters(ctx, &pb.RpcInitialSetParametersRequest{
+		Platform: "Mac",
+		Version:  "0.0.0-test",
+		Workdir:  "/Users/jmetrikat/Library/Application Support/anytype",
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to set initial parameters: %v", err)
+	}
+
+	// Recover the wallet.
+	_, err = client.WalletRecover(ctx, &pb.RpcWalletRecoverRequest{
+		Mnemonic: mnemonic,
+		RootPath: rootPath,
+	})
+	if err != nil {
+		return "", fmt.Errorf("wallet recovery failed: %v", err)
+	}
+
+	// Create a session.
+	resp, err := client.WalletCreateSession(ctx, &pb.RpcWalletCreateSessionRequest{
+		Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{
+			Mnemonic: mnemonic,
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create session: %v", err)
+	}
+	sessionToken := resp.Token
+
+	// Start listening for session events (to receive the account ID).
+	accountIDChan := make(chan string, 1)
+	errorChan := make(chan error, 1)
+	go func() {
+		accountID, err := ListenSessionEvents(sessionToken)
+		if err != nil {
+			errorChan <- err
+		} else {
+			accountIDChan <- accountID
+		}
+	}()
+
+	// Recover the account.
+	ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("token", sessionToken))
+	_, err = client.AccountRecover(ctx, &pb.RpcAccountRecoverRequest{})
+	if err != nil {
+		return "", fmt.Errorf("account recovery failed: %v", err)
+	}
+
+	// Wait for the account ID (or an error).
+	var accountID string
+	select {
+	case accountID = <-accountIDChan:
+	case err = <-errorChan:
+		return "", fmt.Errorf("error listening for session events: %v", err)
+	case <-time.After(5 * time.Second):
+		return "", fmt.Errorf("timed out waiting for session event")
+	}
+
+	// Select the account.
+	_, err = client.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
+		DisableLocalNetworkSync: false,
+		Id:                      accountID,
+		JsonApiListenAddr:       "127.0.0.1:31009",
+		RootPath:                rootPath,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to select account: %v", err)
+	}
+
+	return sessionToken, nil
+}

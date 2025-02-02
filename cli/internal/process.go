@@ -30,7 +30,7 @@ func StartServer() error {
 	grpcPort := "31007"
 	grpcWebPort := "31008"
 
-	cmd := exec.Command("../../dist/server")
+	cmd := exec.Command("../dist/server")
 	cmd.Env = append(os.Environ(),
 		"ANYTYPE_GRPC_ADDR=127.0.0.1:"+grpcPort,
 		"ANYTYPE_GRPCWEB_ADDR=127.0.0.1:"+grpcWebPort,

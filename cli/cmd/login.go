@@ -2,17 +2,13 @@ package cmd
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/cli/internal"
-	pb "github.com/anyproto/anytype-heart/pb"
 )
 
 var loginCmd = &cobra.Command{
@@ -30,19 +26,18 @@ var loginCmd = &cobra.Command{
 			return
 		}
 
-		client, err := internal.GetGRPCClient()
-		if err != nil {
-			fmt.Println("Error connecting to gRPC server:", err)
-			return
-		}
-
-		// Get mnemonic from flag, otherwise prompt user
+		// Get mnemonic from flag, otherwise try retrieving it from the keychain.
 		mnemonic, _ := cmd.Flags().GetString("mnemonic")
 		if mnemonic == "" {
-			fmt.Print("Enter mnemonic (12 words): ")
-			reader := bufio.NewReader(os.Stdin)
-			mnemonic, _ = reader.ReadString('\n')
-			mnemonic = strings.TrimSpace(mnemonic)
+			mnemonic, err = internal.GetStoredMnemonic()
+			if err == nil && mnemonic != "" {
+				fmt.Println("Using stored mnemonic from keychain.")
+			} else {
+				fmt.Print("Enter mnemonic (12 words): ")
+				reader := bufio.NewReader(os.Stdin)
+				mnemonic, _ = reader.ReadString('\n')
+				mnemonic = strings.TrimSpace(mnemonic)
+			}
 		}
 
 		// Ensure mnemonic is valid (should be 12 words)
@@ -52,84 +47,19 @@ var loginCmd = &cobra.Command{
 		}
 		// Set default root path (adjust as needed)
 		rootPath, _ := cmd.Flags().GetString("path")
-		if rootPath == "" {
-			rootPath = "/Users/jmetrikat/Library/Application Support/anytype/alpha/data"
-		}
 
-		// Call gRPC InitialSetParameters
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, err = client.InitialSetParameters(ctx, &pb.RpcInitialSetParametersRequest{
-			Platform: "Mac",
-			Version:  "0.0.0-test",
-			Workdir:  "/Users/jmetrikat/Library/Application Support/anytype",
-		})
-
-		fmt.Println("✅ Initial parameters set.")
-
-		// Call WalletRecover first
-		_, err = client.WalletRecover(ctx, &pb.RpcWalletRecoverRequest{
-			Mnemonic: mnemonic,
-			RootPath: rootPath,
-		})
+		// Perform the common login process.
+		_, err = internal.LoginAccount(mnemonic, rootPath)
 		if err != nil {
-			fmt.Println("❌ Wallet recovery failed:", err)
+			fmt.Println("❌ Login failed:", err)
 			return
 		}
 
-		fmt.Println("✅ Wallet recovered successfully.")
-
-		// Call gRPC WalletCreateSession
-		resp, err := client.WalletCreateSession(ctx, &pb.RpcWalletCreateSessionRequest{
-			Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{
-				Mnemonic: mnemonic,
-			},
-		})
-		if err != nil {
-			fmt.Println("❌ Failed to create session:", err)
-			return
-		}
-
-		// Store the session token
-		sessionToken := resp.Token
-		fmt.Println("✅ Session created successfully.")
-
-		// Start listening for session events in a goroutine
-		accountIDChan := make(chan string, 1)
-		errorChan := make(chan error, 1)
-
-		go func() {
-			accountID, err := internal.ListenSessionEvents(sessionToken)
-			if err != nil {
-				errorChan <- err
-			} else {
-				accountIDChan <- accountID
-			}
-		}()
-
-		// 🟢 Call `AccountRecover` right after starting listener
-		ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("token", sessionToken))
-		_, err = client.AccountRecover(ctx, &pb.RpcAccountRecoverRequest{})
-
-		// Wait for either an account ID or an error
-		select {
-		case accountID := <-accountIDChan:
-			fmt.Println("✅ Received Account ID:", accountID)
-
-			_, err = client.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
-				DisableLocalNetworkSync: false,
-				Id:                      accountID,
-				JsonApiListenAddr:       "127.0.0.1:31009",
-				RootPath:                rootPath,
-			})
-			if err != nil {
-				fmt.Println("❌ Failed to select account:", err)
-				return
-			}
-			fmt.Println("✅ Successfully selected account!")
-
-		case <-time.After(5 * time.Second):
-			fmt.Println("❌ Timed out waiting for session event")
+		// Save the mnemonic in the keychain for future logins.
+		if err := internal.SaveMnemonic(mnemonic); err != nil {
+			fmt.Println("Warning: failed to save mnemonic in keychain:", err)
+		} else {
+			fmt.Println("Mnemonic saved to keychain.")
 		}
 	},
 }
