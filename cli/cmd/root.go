@@ -4,6 +4,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/anyproto/anytype-heart/cli/cmd/auth"
+	"github.com/anyproto/anytype-heart/cli/cmd/server"
 )
 
 var rootCmd = &cobra.Command{
@@ -20,9 +23,10 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.AddCommand(loginCmd)
-	rootCmd.AddCommand(logoutCmd)
-	rootCmd.AddCommand(serverCmd)
-	rootCmd.AddCommand(tokenCmd)
-	rootCmd.AddCommand(shellCmd)
+	rootCmd.AddCommand(
+		auth.NewAuthCmd(),
+		server.NewServerCmd(),
+		tokenCmd,
+		shellCmd,
+	)
 }
