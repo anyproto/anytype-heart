@@ -3,10 +3,12 @@ package storestate
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 )
 
 const maxOrderId = "_max"
@@ -26,6 +28,26 @@ func (stx *StoreStateTx) init() (err error) {
 		return
 	}
 	return nil
+}
+
+func (stx *StoreStateTx) GetPrevOrderId(orderId string) (string, error) {
+	iter, err := stx.state.collChangeOrders.Find(query.Key{
+		Path:   []string{"o"},
+		Filter: query.NewComp(query.CompOpLt, orderId),
+	}).Sort("-o").Limit(1).Iter(stx.ctx)
+	if err != nil {
+		return "", fmt.Errorf("open iterator: %w", err)
+	}
+	defer iter.Close()
+
+	if !iter.Next() {
+		return "", iter.Err()
+	}
+	doc, err := iter.Doc()
+	if err != nil {
+		return "", fmt.Errorf("get prev order id: %w", err)
+	}
+	return string(doc.Value().GetStringBytes("o")), nil
 }
 
 func (stx *StoreStateTx) GetOrder(changeId string) (orderId string, err error) {

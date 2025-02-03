@@ -24,16 +24,31 @@ type storeApply struct {
 }
 
 func (a *storeApply) Apply() (err error) {
-	prevOrderId := a.tx.GetMaxOrder()
+	lastOrderForUncommited := map[string]string{}
+
 	iterErr := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		// not a new change - remember and continue
 		if !a.allIsNew && !change.IsNew {
 			return true
 		}
+
+		storedPrevOrderId, err := a.tx.GetPrevOrderId(change.OrderId)
+		if err != nil {
+			log.With("error", err).Error("get prev order")
+			return false
+		}
+
+		prevOrderId := storedPrevOrderId
+		last, ok := lastOrderForUncommited[storedPrevOrderId]
+		if ok {
+			prevOrderId = last
+		}
+
 		if err = a.applyChange(prevOrderId, change); err != nil {
 			return false
 		}
-		prevOrderId = change.OrderId
+
+		lastOrderForUncommited[storedPrevOrderId] = change.OrderId
 		return true
 	})
 	if err == nil && iterErr != nil {
