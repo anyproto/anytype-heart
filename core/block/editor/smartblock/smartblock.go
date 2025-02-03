@@ -434,15 +434,12 @@ func (sb *smartBlock) Show() (*model.ObjectView, error) {
 
 	undo, redo := sb.History().Counters()
 
-	// todo: sb.Relations() makes extra query to read objectType which we already have here
-	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
 	return &model.ObjectView{
-		RootId:        sb.RootId(),
-		Type:          sb.Type().ToProto(),
-		Blocks:        sb.Blocks(),
-		Details:       details,
-		RelationLinks: sb.GetRelationLinks(),
-		Restrictions:  sb.restrictions.Proto(),
+		RootId:       sb.RootId(),
+		Type:         sb.Type().ToProto(),
+		Blocks:       sb.Blocks(),
+		Details:      details,
+		Restrictions: sb.restrictions.Proto(),
 		History: &model.ObjectViewHistorySize{
 			Undo: undo,
 			Redo: redo,
@@ -1074,7 +1071,7 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 				rel.Format == model.RelationFormat_tag ||
 				rel.Format == model.RelationFormat_object ||
 				rel.Format == model.RelationFormat_file ||
-				isCoverId(rel)) {
+				isCoverId(k)) {
 
 				before := act.Details.Before.Get(k)
 				// Check that value is actually changed
@@ -1109,8 +1106,8 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 // We need to provide the author's name if we download an image with unsplash
 // for the cover image inside an inner smartblock
 // CoverId can be either a file, a gradient, an icon, or a color
-func isCoverId(rel *model.RelationLink) bool {
-	return rel.Key == bundle.RelationKeyCoverId.String()
+func isCoverId(key domain.RelationKey) bool {
+	return key == bundle.RelationKeyCoverId
 }
 
 func getChangedFileHashes(s *state.State, fileDetailKeys []domain.RelationKey, act undo.Action) (hashes []string) {

@@ -105,11 +105,6 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		log.With("error", err).Errorf("failed to collect details of dependent objects")
 	}
 
-	relations, err := h.objectStore.SpaceIndex(id.SpaceID).FetchRelationByLinks(s.PickRelationLinks())
-	if err != nil {
-		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
-	}
-
 	blocksParticipants, err := h.GetBlocksParticipants(id, versionID, s.Blocks())
 	if err != nil {
 		return nil, nil, fmt.Errorf("get blocks modifiers: %w", err)
@@ -120,7 +115,6 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		Type:              model.SmartBlockType(sbType),
 		Blocks:            s.Blocks(),
 		Details:           details,
-		RelationLinks:     relations.RelationLinks(),
 		BlockParticipants: blocksParticipants,
 	}, ver, nil
 }
@@ -258,11 +252,10 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	}
 
 	objectView := &model.ObjectView{
-		RootId:        id.ObjectID,
-		Type:          model.SmartBlockType(sbType),
-		Blocks:        currState.Blocks(),
-		Details:       details,
-		RelationLinks: currState.GetRelationLinks(),
+		RootId:  id.ObjectID,
+		Type:    model.SmartBlockType(sbType),
+		Blocks:  currState.Blocks(),
+		Details: details,
 	}
 	return historyEvents, objectView, nil
 }
