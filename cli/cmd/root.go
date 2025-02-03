@@ -7,6 +7,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/cli/cmd/auth"
 	"github.com/anyproto/anytype-heart/cli/cmd/server"
+	"github.com/anyproto/anytype-heart/cli/cmd/shell"
+	"github.com/anyproto/anytype-heart/cli/cmd/token"
 )
 
 var rootCmd = &cobra.Command{
@@ -26,7 +28,7 @@ func init() {
 	rootCmd.AddCommand(
 		auth.NewAuthCmd(),
 		server.NewServerCmd(),
-		tokenCmd,
-		shellCmd,
+		token.NewTokenCmd(),
+		shell.NewShellCmd(rootCmd),
 	)
 }
