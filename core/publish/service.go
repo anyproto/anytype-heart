@@ -194,8 +194,16 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
-		return err
+	if localPublishDir := os.Getenv("ANYTYPE_LOCAL_PUBLISH_DIR"); localPublishDir != "" {
+		err := os.CopyFS(localPublishDir, os.DirFS(tempPublishDir))
+		if err != nil {
+			log.Error("publishing to local dir error", zap.Error(err))
+			return err
+		}
+	} else {
+		if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
+			return err
+		}
 	}
 
 	return nil
