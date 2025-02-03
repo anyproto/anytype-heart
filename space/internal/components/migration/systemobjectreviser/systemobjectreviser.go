@@ -193,6 +193,7 @@ func checkRecommendedRelations(
 		bundle.RelationKeyRecommendedRelations,
 		bundle.RelationKeyRecommendedFeaturedRelations,
 		bundle.RelationKeyRecommendedFileRelations,
+		bundle.RelationKeyRecommendedHiddenRelations,
 	} {
 		localIds := current.GetStringList(key)
 		newIds := details.GetStringList(key)
