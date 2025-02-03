@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -795,7 +796,12 @@ func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []d
 			if bundle.IsInternalType(key) {
 				continue
 			}
-			recommendedRelations = append(recommendedRelations, objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+			recommendedRelations = lo.Uniq(slices.Concat(recommendedRelations,
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedFileRelations),
+			))
 		}
 	}
 	return recommendedRelations, nil

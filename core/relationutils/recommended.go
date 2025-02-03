@@ -19,7 +19,7 @@ type ObjectIDDeriver interface {
 }
 
 var (
-	defaultRecommendedFeaturedRelationKeys = []domain.RelationKey{
+	defaultFeaturedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyType,
 		bundle.RelationKeyTag,
 		bundle.RelationKeyBacklinks,
@@ -28,10 +28,18 @@ var (
 	defaultRecommendedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyCreatedDate,
 		bundle.RelationKeyCreator,
+		bundle.RelationKeyLinks,
+	}
+
+	defaultHiddenRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyLastModifiedDate,
 		bundle.RelationKeyLastModifiedBy,
 		bundle.RelationKeyLastOpenedDate,
-		bundle.RelationKeyLinks,
+		bundle.RelationKeyAddedDate,
+		bundle.RelationKeySource,
+		bundle.RelationKeySourceObject,
+		bundle.RelationKeyImportType,
+		bundle.RelationKeyOrigin,
 	}
 
 	fileSpecificRelationKeysMap = map[domain.RelationKey]struct{}{
@@ -56,7 +64,8 @@ var (
 	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
 )
 
-// FillRecommendedRelations fills recommendedRelations and recommendedFeaturedRelations based on object's details
+// FillRecommendedRelations fills recommendedRelations, recommendedFeaturedRelations, recommendedFileRelations
+// and recommendedHiddenRelations based on object's details.
 // If these relations are already filled with correct ids, isAlreadyFilled = true is returned
 func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, details *domain.Details) (keys []domain.RelationKey, isAlreadyFilled bool, err error) {
 	keys, err = getRelationKeysFromDetails(details)
@@ -67,9 +76,10 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 		return nil, false, fmt.Errorf("get recommended relation keys: %w", err)
 	}
 
+	var fileRecommendedRelationKeys []domain.RelationKey
 	if isFileType(details) {
 		// for file types we need to fill separate relation list with file-specific recommended relations
-		var fileRecommendedRelationKeys, other []domain.RelationKey
+		var other []domain.RelationKey
 		for _, key := range keys {
 			if _, found := fileSpecificRelationKeysMap[key]; found {
 				fileRecommendedRelationKeys = append(fileRecommendedRelationKeys, key)
@@ -85,10 +95,11 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 		keys = other
 	}
 
-	// we should include default system recommended relations and exclude default recommended featured relations
+	// we should include default system recommended relations and
+	// exclude default recommended featured relations and default hidden relations
 	keys = lo.Uniq(append(keys, defaultRecommendedRelationKeys...))
 	keys = slices.DeleteFunc(keys, func(key domain.RelationKey) bool {
-		return slices.Contains(defaultRecommendedFeaturedRelationKeys, key)
+		return slices.Contains(append(defaultHiddenRelationKeys, defaultFeaturedRelationKeys...), key)
 	})
 
 	relationIds, err := prepareRelationIds(ctx, deriver, keys)
@@ -97,13 +108,19 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedRelations, relationIds)
 
-	featuredRelationIds, err := prepareRelationIds(ctx, deriver, defaultRecommendedFeaturedRelationKeys)
+	featuredRelationIds, err := prepareRelationIds(ctx, deriver, defaultFeaturedRelationKeys)
 	if err != nil {
 		return nil, false, fmt.Errorf("prepare recommended featured relation ids: %w", err)
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, featuredRelationIds)
 
-	return append(keys, defaultRecommendedFeaturedRelationKeys...), false, nil
+	hiddenRelationIds, err := prepareRelationIds(ctx, deriver, defaultHiddenRelationKeys)
+	if err != nil {
+		return nil, false, fmt.Errorf("prepare recommended hidden relation ids: %w", err)
+	}
+	details.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, hiddenRelationIds)
+
+	return slices.Concat(keys, fileRecommendedRelationKeys, defaultHiddenRelationKeys, defaultFeaturedRelationKeys), false, nil
 }
 
 func getRelationKeysFromDetails(details *domain.Details) ([]domain.RelationKey, error) {
