@@ -12,9 +12,12 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "anyctl",
-	Short: "Anytype Headless CLI",
-	Long:  `Manage the Anytype local server from the command line.`,
+	Use:   "anyctl <command> <subcommand> [flags]",
+	Short: "Anytype CLI",
+	Long:  "Seamlessly interact with Anytype from the command line",
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
 }
 
 // Execute runs the root command
