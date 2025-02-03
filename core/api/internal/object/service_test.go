@@ -390,7 +390,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 					bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
 				},
 			},
-			TemplateId:          "",
+			TemplateId:          mockedTemplateId,
 			SpaceId:             mockedSpaceId,
 			ObjectTypeUniqueKey: mockedObjectTypeUniqueKey,
 			WithChat:            false,
@@ -483,10 +483,9 @@ func TestObjectService_CreateObject(t *testing.T) {
 
 		// when
 		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
-			Name: mockedObjectName,
-			Icon: mockedObjectIcon,
-			// TODO: use actual values
-			TemplateId:          "",
+			Name:                mockedObjectName,
+			Icon:                mockedObjectIcon,
+			TemplateId:          mockedTemplateId,
 			ObjectTypeUniqueKey: mockedObjectTypeUniqueKey,
 		})
 
