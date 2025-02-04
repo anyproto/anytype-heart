@@ -1,12 +1,16 @@
 package block
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -61,5 +65,56 @@ func (s *Service) SetWidgetBlockViewId(ctx session.Context, req *pb.RpcBlockWidg
 			}
 			return nil
 		}, req.BlockId)
+	})
+}
+
+func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string, key domain.TypeKey) error {
+	space, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	widgetObjectId := space.DerivedIDs().Widgets
+	typeId, err := space.GetTypeIdByKey(ctx, key)
+	if err != nil {
+		return err
+	}
+	widgetBlockId := "type_" + key.String()
+	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
+		var typeBlockAlreadyExists bool
+
+		err = st.Iterate(func(b simple.Block) (isContinue bool) {
+			link := b.Model().GetLink()
+			if link == nil {
+				return true
+			}
+			if link.TargetBlockId == typeId {
+				// check by targetBlockId in case user created the same block manually
+				typeBlockAlreadyExists = true
+				return false
+			}
+			return true
+		})
+
+		if err != nil {
+			return err
+		}
+		if typeBlockAlreadyExists {
+			log.Debug("favorite widget block is already presented")
+			return nil
+		}
+
+		_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    widgetObjectId,
+			ObjectLimit:  6,
+			WidgetLayout: model.BlockContentWidget_View,
+			Position:     model.Block_Bottom,
+			Block: &model.Block{
+				Id: widgetBlockId, // hardcode id to avoid duplicates
+				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+					TargetBlockId: typeId,
+				}},
+			},
+		})
+		return err
 	})
 }

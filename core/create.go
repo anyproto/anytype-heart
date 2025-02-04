@@ -40,6 +40,15 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	if req.WithChat {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
+	if req.CreateTypeWidgetIfMissing {
+		err := mw.doBlockService(func(bs *block.Service) (err error) {
+			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, domain.TypeKey(req.ObjectTypeUniqueKey))
+			return err
+		})
+		if err != nil {
+			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
+		}
+	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 

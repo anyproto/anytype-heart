@@ -1609,6 +1609,7 @@ message Rpc {
                 string spaceId = 4;
                 string objectTypeUniqueKey = 5;
                 bool withChat = 6;
+                bool createTypeWidgetIfMissing = 7; // experimental flag to auto-create type widget if missing
             }
 
             message Response {

@@ -72,7 +72,6 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		return "", fmt.Errorf("unsupported widget content: %T", req.Block.Content)
 	}
 
-	req.Block.Id = ""
 	req.Block.ChildrenIds = nil
 	b := simple.New(req.Block)
 	if err := b.Validate(); err != nil {

@@ -138,7 +138,7 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := st.Details().GetStringList(bundle.RelationKeySetOf)
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source)
+	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source, "")
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
-	blockContent := template.MakeDataviewContent(true, nil, nil)
+	blockContent := template.MakeDataviewContent(true, nil, nil, "")
 	template.InitTemplate(st, template.WithDataview(blockContent, false))
 	return nil
 }
