@@ -37,7 +37,14 @@ var relationsWhiteList = append(slices.Clone(derivedObjectsWhiteList), bundle.Re
 
 var relationOptionWhiteList = append(slices.Clone(derivedObjectsWhiteList), bundle.RelationKeyRelationOptionColor.String())
 
-var fileRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyFileId.String(), bundle.RelationKeyFileExt.String())
+var fileRelationsWhiteList = append(
+	slices.Clone(documentRelationsWhiteList),
+	bundle.RelationKeyFileId.String(),
+	bundle.RelationKeyFileExt.String(),
+	bundle.RelationKeyFileMimeType.String(),
+	bundle.RelationKeySizeInBytes.String(),
+	bundle.RelationKeySource.String(),
+)
 
 var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_basic:      documentRelationsWhiteList,
