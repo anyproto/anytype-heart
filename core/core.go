@@ -35,7 +35,14 @@ func New() *Middleware {
 }
 
 func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
-	mw.applicationService.Stop()
+	err := mw.applicationService.Stop()
+	// using fmt.Println instead of log because we want it only in stdout
+	if err != nil {
+		fmt.Println("[anytype-heart] Shutdown: error during closing components: ", err)
+	} else {
+		fmt.Println("[anytype-heart] Shutdown: graceful shutdown finished")
+	}
+	// intentionally do not pass the error to the client
 	return &pb.RpcAppShutdownResponse{
 		Error: &pb.RpcAppShutdownResponseError{
 			Code: pb.RpcAppShutdownResponseError_NULL,

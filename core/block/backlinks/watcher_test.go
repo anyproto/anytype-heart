@@ -5,19 +5,19 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const spaceId = "spc1"
@@ -56,7 +56,7 @@ func newFixture(t *testing.T, aggregationInterval time.Duration) *fixture {
 		spaceService: spaceSvc,
 
 		aggregationInterval:  aggregationInterval,
-		infoBatch:            mb.New(0),
+		infoBatch:            mb.New[spaceindex.LinksUpdateInfo](0),
 		accumulatedBacklinks: make(map[string]*backLinksUpdate),
 	}
 
@@ -132,13 +132,13 @@ func TestWatcher_updateAccumulatedBacklinks(t *testing.T) {
 		f.resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceId, nil)
 
 		f.store.AddObjects(t, spaceId, []spaceindex.TestObject{{
-			bundle.RelationKeyId:        pbtypes.String("obj1"),
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-			bundle.RelationKeyBacklinks: pbtypes.StringList([]string{"obj4", "obj5", "obj6"}),
+			bundle.RelationKeyId:        domain.String("obj1"),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyBacklinks: domain.StringList([]string{"obj4", "obj5", "obj6"}),
 		}, {
-			bundle.RelationKeyId:        pbtypes.String("obj3"),
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-			bundle.RelationKeyBacklinks: pbtypes.StringList([]string{"obj1", "obj2", "obj4"}),
+			bundle.RelationKeyId:        domain.String("obj3"),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyBacklinks: domain.StringList([]string{"obj1", "obj2", "obj4"}),
 		}})
 
 		spc := mock_clientspace.NewMockSpace(t)
@@ -174,9 +174,9 @@ func TestWatcher_updateAccumulatedBacklinks(t *testing.T) {
 		// then
 		details, err := f.store.SpaceIndex(spaceId).GetDetails("obj1")
 		require.NoError(t, err)
-		assert.Equal(t, []string{"obj6", "obj2", "obj3"}, pbtypes.GetStringList(details.Details, bundle.RelationKeyBacklinks.String()))
+		assert.Equal(t, []string{"obj6", "obj2", "obj3"}, details.GetStringList(bundle.RelationKeyBacklinks))
 		details, err = f.store.SpaceIndex(spaceId).GetDetails("obj3")
 		require.NoError(t, err)
-		assert.Equal(t, []string{"obj2"}, pbtypes.GetStringList(details.Details, bundle.RelationKeyBacklinks.String()))
+		assert.Equal(t, []string{"obj2"}, details.GetStringList(bundle.RelationKeyBacklinks))
 	})
 }

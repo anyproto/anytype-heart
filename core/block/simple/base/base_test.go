@@ -35,7 +35,7 @@ func TestBase_Diff(t *testing.T) {
 	t.Run("equals", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		assert.Len(t, diff, 0)
 	})
@@ -43,7 +43,7 @@ func TestBase_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.ChildrenIds[0], b2.ChildrenIds[1] = b2.ChildrenIds[1], b2.ChildrenIds[2]
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetChildrenIds{
@@ -57,7 +57,7 @@ func TestBase_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.Restrictions.Read = !b1.Restrictions.Read
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetRestrictions{
@@ -75,7 +75,7 @@ func TestBase_Diff(t *testing.T) {
 		b2.Fields.Fields["diff"] = &types.Value{
 			Kind: &types.Value_StringValue{StringValue: "value"},
 		}
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetFields{
@@ -98,7 +98,7 @@ func TestBase_Diff(t *testing.T) {
 		// when
 		b1.BackgroundColor = "yellow"
 		b2.BackgroundColor = "red"
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestBase_Diff(t *testing.T) {
 		// when
 		b1.VerticalAlign = model.Block_VerticalAlignTop
 		b2.VerticalAlign = model.Block_VerticalAlignMiddle
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestBase_Diff(t *testing.T) {
 		// when
 		b1.Align = model.Block_AlignLeft
 		b2.Align = model.Block_AlignCenter
-		diff, err := b1.Diff(b2)
+		diff, err := b1.Diff("", b2)
 
 		// then
 		require.NoError(t, err)

@@ -419,7 +419,13 @@ func (f *ftSearchTantivy) performSearch(spaceId, query string, buildQueryFunc fu
 }
 
 func (f *ftSearchTantivy) buildObjectQuery(qb *tantivy.QueryBuilder, query string) {
-	qb.Query(tantivy.Must, fieldId, bundle.RelationKeyName.String(), tantivy.TermQuery, 1.0)
+	qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
+		Query(tantivy.Should, fieldId, bundle.RelationKeyName.String(), tantivy.TermQuery, 1.0).
+		// snippets are indexed only for notes which don't have a name, we should do a prefix search there as well
+		Query(tantivy.Should, fieldId, bundle.RelationKeySnippet.String(), tantivy.TermQuery, 1.0),
+		1.0,
+	)
+
 	if containsChineseCharacters(query) {
 		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
 			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhrasePrefixQuery, 1.0).

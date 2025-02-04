@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -42,7 +41,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/mutex"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fixture struct {
@@ -152,7 +150,7 @@ func newFixture(t *testing.T) *fixture {
 type objectCreatorStub struct {
 	objectId      string
 	creationState *state.State
-	details       *types.Struct
+	details       *domain.Details
 }
 
 func (c *objectCreatorStub) Init(_ *app.App) error {
@@ -163,7 +161,7 @@ func (c *objectCreatorStub) Name() string {
 	return "objectCreatorStub"
 }
 
-func (c *objectCreatorStub) CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *types.Struct, err error) {
+func (c *objectCreatorStub) CreateSmartBlockFromStateInSpaceWithOptions(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...objectcreator.CreateOption) (id string, newDetails *domain.Details, err error) {
 	c.creationState = createState
 	return c.objectId, c.details, nil
 }
@@ -236,7 +234,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 			sb := smarttest.New(testFileObjectId)
 
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(testFileId.String()))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 			return apply(sb)
 		})
@@ -263,7 +261,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 			sb := smarttest.New(testFileObjectId)
 
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, pbtypes.String(""))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(""))
 
 			return apply(sb)
 		})

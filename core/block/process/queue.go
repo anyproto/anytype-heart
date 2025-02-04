@@ -1,14 +1,16 @@
 package process
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"sync/atomic"
 
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
@@ -22,6 +24,7 @@ type Task func()
 
 type Queue interface {
 	Process
+	Notificationable
 	// Start starts the queue and register process in service
 	Start() (err error)
 	// Add adds tasks to queue. Can be called before Start
@@ -36,7 +39,7 @@ type Queue interface {
 	Stop(err error)
 }
 
-func (s *service) NewQueue(info pb.ModelProcess, workers int) Queue {
+func (s *service) NewQueue(info pb.ModelProcess, workers int, noProgress bool, notificationService NotificationService) Queue {
 	if workers <= 0 {
 		workers = 1
 	}
@@ -44,32 +47,37 @@ func (s *service) NewQueue(info pb.ModelProcess, workers int) Queue {
 		info.Id = bson.NewObjectId().Hex()
 	}
 	q := &queue{
-		id:      info.Id,
-		info:    info,
-		state:   pb.ModelProcess_None,
-		msgs:    mb.New(0),
-		done:    make(chan struct{}),
-		cancel:  make(chan struct{}),
-		s:       s,
-		workers: workers,
-		wg:      &sync.WaitGroup{},
+		id:                  info.Id,
+		info:                info,
+		state:               pb.ModelProcess_None,
+		msgs:                mb.New[Task](0),
+		done:                make(chan struct{}),
+		cancel:              make(chan struct{}),
+		s:                   s,
+		workers:             workers,
+		wg:                  &sync.WaitGroup{},
+		noProgress:          noProgress,
+		notificationService: notificationService,
 	}
 	q.wg.Add(workers)
 	return q
 }
 
 type queue struct {
-	id            string
-	info          pb.ModelProcess
-	state         pb.ModelProcessState
-	msgs          *mb.MB
-	wg            *sync.WaitGroup
-	done, cancel  chan struct{}
-	pTotal, pDone int64
-	workers       int
-	s             Service
-	m             sync.Mutex
-	message       string
+	id                  string
+	info                pb.ModelProcess
+	state               pb.ModelProcessState
+	msgs                *mb.MB[Task]
+	wg                  *sync.WaitGroup
+	done, cancel        chan struct{}
+	pTotal, pDone       int64
+	workers             int
+	s                   Service
+	m                   sync.Mutex
+	message             string
+	noProgress          bool
+	notificationService NotificationService
+	notification        *model.Notification
 }
 
 func (p *queue) Id() string {
@@ -86,6 +94,9 @@ func (p *queue) Start() (err error) {
 	for i := 0; i < p.workers; i++ {
 		go p.worker()
 	}
+	if p.noProgress {
+		return nil
+	}
 	return p.s.Add(p)
 }
 
@@ -96,7 +107,7 @@ func (p *queue) Add(ts ...Task) (err error) {
 		return
 	}
 	for _, t := range ts {
-		if err = p.msgs.Add(t); err != nil {
+		if err = p.msgs.Add(context.Background(), t); err != nil {
 			return ErrQueueDone
 		}
 		atomic.AddInt64(&p.pTotal, 1)
@@ -113,7 +124,7 @@ func (p *queue) Wait(ts ...Task) (err error) {
 	p.m.Unlock()
 	var done = make(chan struct{}, len(ts))
 	for _, t := range ts {
-		if err = p.msgs.Add(taskFunction(t, done)); err != nil {
+		if err = p.msgs.Add(context.Background(), taskFunction(t, done)); err != nil {
 			return ErrQueueDone
 		}
 		atomic.AddInt64(&p.pTotal, 1)
@@ -226,6 +237,20 @@ func (p *queue) Stop(err error) {
 	return
 }
 
+func (p *queue) FinishWithNotification(notification *model.Notification, err error) {
+	p.notification = notification
+}
+
+func (p *queue) SendNotification() {
+	if p.notification == nil {
+		return
+	}
+	err := p.notificationService.CreateAndSend(p.notification)
+	if err != nil {
+		log.Errorf("failed to send notification: %v", err)
+	}
+}
+
 func (p *queue) checkRunning(checkStarted bool) (err error) {
 	if checkStarted && p.state == pb.ModelProcess_None {
 		return ErrQueueNotStarted
@@ -243,15 +268,15 @@ func (p *queue) checkRunning(checkStarted bool) (err error) {
 func (p *queue) worker() {
 	defer p.wg.Done()
 	for {
-		msgs := p.msgs.WaitMax(1)
+		msgs, err := p.msgs.NewCond().WithMax(1).Wait(context.Background())
+		if err != nil {
+			log.Errorf("failed wait: %v", err)
+			return
+		}
 		if len(msgs) == 0 {
 			return
 		}
-		if f, ok := msgs[0].(func()); ok {
-			f()
-		} else if t, ok := msgs[0].(Task); ok {
-			t()
-		}
+		msgs[0]()
 		atomic.AddInt64(&p.pDone, 1)
 	}
 }

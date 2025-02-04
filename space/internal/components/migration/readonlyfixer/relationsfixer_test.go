@@ -10,11 +10,11 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestFixReadonlyInRelations(t *testing.T) {
@@ -22,46 +22,46 @@ func TestFixReadonlyInRelations(t *testing.T) {
 	store.AddObjects(t, "space1", []objectstore.TestObject{
 		// space1
 		{
-			bundle.RelationKeySpaceId:               pbtypes.String("space1"),
-			bundle.RelationKeyRelationFormat:        pbtypes.Int64(int64(model.RelationFormat_status)),
-			bundle.RelationKeyId:                    pbtypes.String("rel-tag"),
-			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(true),
+			bundle.RelationKeySpaceId:               domain.String("space1"),
+			bundle.RelationKeyRelationFormat:        domain.Int64(int64(model.RelationFormat_status)),
+			bundle.RelationKeyId:                    domain.String("rel-tag"),
+			bundle.RelationKeyRelationReadonlyValue: domain.Bool(true),
 		},
 		{
-			bundle.RelationKeySpaceId:               pbtypes.String("space1"),
-			bundle.RelationKeyRelationFormat:        pbtypes.Int64(int64(model.RelationFormat_tag)),
-			bundle.RelationKeyId:                    pbtypes.String("rel-customTag"),
-			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(true),
+			bundle.RelationKeySpaceId:               domain.String("space1"),
+			bundle.RelationKeyRelationFormat:        domain.Int64(int64(model.RelationFormat_tag)),
+			bundle.RelationKeyId:                    domain.String("rel-customTag"),
+			bundle.RelationKeyRelationReadonlyValue: domain.Bool(true),
 		},
 	})
 	store.AddObjects(t, "space2", []objectstore.TestObject{
 		// space2
 		{
-			bundle.RelationKeySpaceId:               pbtypes.String("space2"),
-			bundle.RelationKeyRelationFormat:        pbtypes.Int64(0),
-			bundle.RelationKeyId:                    pbtypes.String("rel-id"),
-			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(true),
+			bundle.RelationKeySpaceId:               domain.String("space2"),
+			bundle.RelationKeyRelationFormat:        domain.Int64(0),
+			bundle.RelationKeyId:                    domain.String("rel-id"),
+			bundle.RelationKeyRelationReadonlyValue: domain.Bool(true),
 		},
 		{
-			bundle.RelationKeySpaceId:               pbtypes.String("space2"),
-			bundle.RelationKeyRelationFormat:        pbtypes.Int64(2),
-			bundle.RelationKeyId:                    pbtypes.String("rel-relationFormat"),
-			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(true),
+			bundle.RelationKeySpaceId:               domain.String("space2"),
+			bundle.RelationKeyRelationFormat:        domain.Int64(2),
+			bundle.RelationKeyId:                    domain.String("rel-relationFormat"),
+			bundle.RelationKeyRelationReadonlyValue: domain.Bool(true),
 		},
 	})
 	store.AddObjects(t, "space3", []objectstore.TestObject{
 		// space3
 		{
-			bundle.RelationKeySpaceId:               pbtypes.String("space3"),
-			bundle.RelationKeyRelationFormat:        pbtypes.Int64(int64(model.RelationFormat_tag)),
-			bundle.RelationKeyId:                    pbtypes.String("rel-category"),
-			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(false),
+			bundle.RelationKeySpaceId:               domain.String("space3"),
+			bundle.RelationKeyRelationFormat:        domain.Int64(int64(model.RelationFormat_tag)),
+			bundle.RelationKeyId:                    domain.String("rel-category"),
+			bundle.RelationKeyRelationReadonlyValue: domain.Bool(false),
 		},
 		{
-			bundle.RelationKeySpaceId:               pbtypes.String("space3"),
-			bundle.RelationKeyRelationFormat:        pbtypes.Int64(int64(model.RelationFormat_status)),
-			bundle.RelationKeyId:                    pbtypes.String("rel-genderCustom"),
-			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(false),
+			bundle.RelationKeySpaceId:               domain.String("space3"),
+			bundle.RelationKeyRelationFormat:        domain.Int64(int64(model.RelationFormat_status)),
+			bundle.RelationKeyId:                    domain.String("rel-genderCustom"),
+			bundle.RelationKeyRelationReadonlyValue: domain.Bool(false),
 		},
 	})
 	fixer := &Migration{}
@@ -82,7 +82,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		).Times(2)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), nil, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), spc)
 
 		// then
 		assert.NoError(t, err)
@@ -99,7 +99,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space2"), nil, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space2"), spc)
 
 		// then
 		assert.NoError(t, err)
@@ -116,7 +116,7 @@ func TestFixReadonlyInRelations(t *testing.T) {
 		// sp.EXPECT().Do(mock.Anything, mock.Anything).Times(1).Return(nil)
 
 		// when
-		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space3"), nil, spc)
+		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space3"), spc)
 
 		// then
 		assert.NoError(t, err)

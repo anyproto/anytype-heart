@@ -142,7 +142,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		}
 	}
 
-	indexDetails, indexLinks := info.SmartblockType.Indexable()
+	_, indexDetails, indexLinks := info.SmartblockType.Indexable()
 	if !indexDetails && !indexLinks {
 		return nil
 	}
@@ -192,18 +192,18 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 
 		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			// Use component's context because ctx from parameter contains transaction
-			if err := i.objectStore.AddToIndexQueue(i.runCtx, info.Id); err != nil {
-				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
+			fulltext, _, _ := info.SmartblockType.Indexable()
+			if fulltext {
+				if err := i.objectStore.AddToIndexQueue(i.runCtx, info.Id); err != nil {
+					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
+				}
 			}
 		}
 	} else {
 		_ = i.spaceIndex.DeleteDetails(ctx, []string{info.Id})
 	}
 	indexDetailsTime := time.Now()
-	detailsCount := 0
-	if details.GetFields() != nil {
-		detailsCount = len(details.GetFields())
-	}
+	detailsCount := details.Len()
 
 	if !hasError {
 		saveIndexedHash()

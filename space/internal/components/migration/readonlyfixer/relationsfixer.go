@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -27,11 +28,11 @@ const MName = "ReadonlyRelationsFixer"
 // This migration was implemented to fix relations in accounts of users that are not able to modify its value (GO-2331)
 type Migration struct{}
 
-func (Migration) Name() string {
+func (m Migration) Name() string {
 	return MName
 }
 
-func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, _ dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (m Migration) Run(ctx context.Context, log logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	spaceId := space.Id()
 
 	relations, err := listReadonlyTagAndStatusRelations(store, spaceId)
@@ -47,18 +48,18 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, _ depende
 
 	for _, r := range relations {
 		var (
-			name = pbtypes.GetString(r.Details, bundle.RelationKeyName.String())
-			uk   = pbtypes.GetString(r.Details, bundle.RelationKeyUniqueKey.String())
+			name = r.Details.GetString(bundle.RelationKeyName)
+			uk   = r.Details.GetString(bundle.RelationKeyUniqueKey)
 		)
 
-		format := model.RelationFormat_name[int32(pbtypes.GetInt64(r.Details, bundle.RelationKeyRelationFormat.String()))]
+		format := model.RelationFormat_name[int32(r.Details.GetInt64(bundle.RelationKeyRelationFormat))]
 		log.Debug("setting relationReadonlyValue to FALSE for relation", zap.String("name", name), zap.String("uniqueKey", uk), zap.String("format", format), zap.String("migration", MName))
 
 		det := []*model.Detail{{
 			Key:   bundle.RelationKeyRelationReadonlyValue.String(),
 			Value: pbtypes.Bool(false),
 		}}
-		e := space.DoCtx(ctx, pbtypes.GetString(r.Details, bundle.RelationKeyId.String()), func(sb smartblock.SmartBlock) error {
+		e := space.DoCtx(ctx, r.Details.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(detailsSettable); ok {
 				return ds.SetDetails(nil, det, false)
 			}
@@ -74,16 +75,16 @@ func (Migration) Run(ctx context.Context, log logger.CtxLogger, store, _ depende
 }
 
 func listReadonlyTagAndStatusRelations(store dependencies.QueryableStore, spaceId string) ([]database.Record, error) {
-	return store.Query(database.Query{Filters: []*model.BlockContentDataviewFilter{
+	return store.Query(database.Query{Filters: []database.FilterRequest{
 		{
-			RelationKey: bundle.RelationKeyRelationFormat.String(),
+			RelationKey: bundle.RelationKeyRelationFormat,
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.IntList(int(model.RelationFormat_status), int(model.RelationFormat_tag)),
+			Value:       domain.Int64List([]model.RelationFormat{model.RelationFormat_status, model.RelationFormat_tag}),
 		},
 		{
-			RelationKey: bundle.RelationKeyRelationReadonlyValue.String(),
+			RelationKey: bundle.RelationKeyRelationReadonlyValue,
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.Bool(true),
+			Value:       domain.Bool(true),
 		},
 	}})
 }

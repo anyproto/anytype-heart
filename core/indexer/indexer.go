@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -21,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -52,7 +52,7 @@ type indexer struct {
 	store          objectstore.ObjectStore
 	fileStore      filestore.FileStore
 	source         source.Service
-	picker         cache.ObjectGetter
+	picker         cache.CachedObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 
@@ -77,7 +77,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.picker = app.MustComponent[cache.ObjectGetter](a)
+	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
@@ -122,11 +122,11 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	ids, _, err := i.store.SpaceIndex(spaceId).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+				Value:       domain.Int64(model.ObjectType_participant),
 			},
 		},
 	})

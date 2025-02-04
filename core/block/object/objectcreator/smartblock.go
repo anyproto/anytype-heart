@@ -2,11 +2,9 @@ package objectcreator
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -16,10 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type eventKey int
@@ -43,7 +38,7 @@ func WithPayload(payload *treestorage.TreeStorageCreatePayload) CreateOption {
 // It will return error if some of the relation keys in `details` not installed in the workspace.
 func (s *service) CreateSmartBlockFromState(
 	ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State,
-) (id string, newDetails *types.Struct, err error) {
+) (id string, newDetails *domain.Details, err error) {
 	spc, err := s.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return "", nil, err
@@ -53,13 +48,13 @@ func (s *service) CreateSmartBlockFromState(
 
 func (s *service) CreateSmartBlockFromStateInSpace(
 	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State,
-) (id string, newDetails *types.Struct, err error) {
+) (id string, newDetails *domain.Details, err error) {
 	return s.CreateSmartBlockFromStateInSpaceWithOptions(ctx, spc, objectTypeKeys, createState)
 }
 
 func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	ctx context.Context, spc clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State, opts ...CreateOption,
-) (id string, newDetails *types.Struct, err error) {
+) (id string, newDetails *domain.Details, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -74,7 +69,7 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	}
 	sbType := objectTypeKeysToSmartBlockType(objectTypeKeys)
 
-	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spc.Id()))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(spc.Id()))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
@@ -102,31 +97,11 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	sb.Unlock()
 	id = sb.Id()
 
-	s.updateLastUsedDate(spc.Id(), sbType, newDetails, objectTypeKeys[0])
-
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
 	ev.ObjectId = id
 	metrics.Service.Send(ev)
 	return id, newDetails, nil
-}
-
-func (s *service) updateLastUsedDate(spaceId string, sbType coresb.SmartBlockType, details *types.Struct, typeKey domain.TypeKey) {
-	if pbtypes.GetInt64(details, bundle.RelationKeyLastUsedDate.String()) != 0 {
-		return
-	}
-	uk := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
-	ts := time.Now().Unix()
-	switch sbType {
-	case coresb.SmartBlockTypeObjectType:
-		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.TypeKey(strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)), ts)
-	case coresb.SmartBlockTypeRelation:
-		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)), ts)
-	default:
-		if pbtypes.GetInt64(details, bundle.RelationKeyOrigin.String()) == int64(model.ObjectOrigin_none) {
-			s.lastUsedUpdater.UpdateLastUsedDate(spaceId, typeKey, ts)
-		}
-	}
 }
 
 func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlockType {
@@ -191,17 +166,17 @@ func createSmartBlock(
 	})
 }
 
-func generateRelationKeysFromState(st *state.State) (relationKeys []string) {
+func generateRelationKeysFromState(st *state.State) (relationKeys []domain.RelationKey) {
 	if st == nil {
 		return
 	}
-	details := st.Details().GetFields()
-	localDetails := st.LocalDetails().GetFields()
-	relationKeys = make([]string, 0, len(details)+len(localDetails))
-	for k := range details {
+	details := st.Details()
+	localDetails := st.LocalDetails()
+	relationKeys = make([]domain.RelationKey, 0, details.Len()+localDetails.Len())
+	for k, _ := range details.Iterate() {
 		relationKeys = append(relationKeys, k)
 	}
-	for k := range localDetails {
+	for k, _ := range localDetails.Iterate() {
 		relationKeys = append(relationKeys, k)
 	}
 	return

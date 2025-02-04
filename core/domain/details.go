@@ -126,20 +126,18 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 // StructDiff returns pb struct which contains:
 // - st2 fields that not exist in st1
 // - st2 fields that not equal to ones exist in st1
-// - nil map value for st1 fields not exist in st2
+// - absentKeys are st1 fields that do not exist in st2
 // In case st1 and st2 are equal returns nil
-func StructDiff(st1, st2 *Details) *Details {
-	var diff *Details
+func StructDiff(st1, st2 *Details) (diff *Details, absentKeys []RelationKey) {
 	if st1 == nil {
-		return st2
+		return st2, nil
 	}
 	if st2 == nil {
 		diff = NewDetails()
 		for k, _ := range st1.Iterate() {
-			// TODO This is not correct, Null value could be a valid value. Just rewrite this diff and generate events logic
-			diff.Set(k, Null())
+			absentKeys = append(absentKeys, k)
 		}
-		return diff
+		return nil, absentKeys
 	}
 
 	for k2, v2 := range st2.Iterate() {
@@ -154,14 +152,11 @@ func StructDiff(st1, st2 *Details) *Details {
 
 	for k, _ := range st1.Iterate() {
 		if !st2.Has(k) {
-			if diff == nil {
-				diff = NewDetails()
-			}
-			diff.Set(k, Null())
+			absentKeys = append(absentKeys, k)
 		}
 	}
 
-	return diff
+	return diff, absentKeys
 }
 
 func DetailsListToProtos(dets []*Details) []*types.Struct {

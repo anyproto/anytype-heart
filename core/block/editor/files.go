@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -30,7 +28,7 @@ var fileRequiredRelations = append(pageRequiredRelations, []domain.RelationKey{
 
 func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File {
 	store := f.objectStore.SpaceIndex(spaceId)
-	basicComponent := basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater)
+	basicComponent := basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService)
 	return &File{
 		SmartBlock:        sb,
 		ChangeReceiver:    sb.(source.ChangeReceiver),
@@ -108,10 +106,10 @@ func (f *File) InjectVirtualBlocks(objectId string, view *model.ObjectView) {
 		return
 	}
 
-	var details *types.Struct
+	var details *domain.Details
 	for _, det := range view.Details {
 		if det.Id == objectId {
-			details = det.Details
+			details = domain.NewDetailsFromProto(det.Details)
 			break
 		}
 	}

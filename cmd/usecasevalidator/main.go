@@ -238,7 +238,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
 			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
-			if !bundle.HasRelation(key) {
+			if !bundle.HasRelation(domain.RelationKey(key)) {
 				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 			}
 		case model.SmartBlockType_STType:
@@ -259,7 +259,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 				key := strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
 				info.relations[id] = domain.RelationKey(key)
 				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
-				if !bundle.HasRelation(key) {
+				if !bundle.HasRelation(domain.RelationKey(key)) {
 					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
 				}
 			}

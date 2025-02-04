@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -21,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestRunner(t *testing.T) {
@@ -118,10 +118,10 @@ func TestRunner(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		store.AddObjects(t, "space1", []objectstore.TestObject{{
-			bundle.RelationKeySpaceId:               pbtypes.String("space1"),
-			bundle.RelationKeyRelationFormat:        pbtypes.Int64(int64(model.RelationFormat_status)),
-			bundle.RelationKeyId:                    pbtypes.String("rel-tag"),
-			bundle.RelationKeyRelationReadonlyValue: pbtypes.Bool(true),
+			bundle.RelationKeySpaceId:               domain.String("space1"),
+			bundle.RelationKeyRelationFormat:        domain.Int64(int64(model.RelationFormat_status)),
+			bundle.RelationKeyId:                    domain.String("rel-tag"),
+			bundle.RelationKeyRelationReadonlyValue: domain.Bool(true),
 		}})
 		spaceErr := errors.New("failed to get object")
 		space := mock_space.NewMockSpace(t)
@@ -140,11 +140,11 @@ func TestRunner(t *testing.T) {
 
 type longStoreMigration struct{}
 
-func (longStoreMigration) Name() string {
+func (m longStoreMigration) Name() string {
 	return "long migration"
 }
 
-func (longStoreMigration) Run(ctx context.Context, _ logger.CtxLogger, store, queryableStore dependencies.QueryableStore, _ dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (m longStoreMigration) Run(ctx context.Context, _ logger.CtxLogger, store, queryableStore dependencies.QueryableStore, _ dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
 		if _, err = store.Query(database.Query{}); err != nil {
 			return 0, 0, err
@@ -154,11 +154,11 @@ func (longStoreMigration) Run(ctx context.Context, _ logger.CtxLogger, store, qu
 
 type longSpaceMigration struct{}
 
-func (longSpaceMigration) Name() string {
+func (m longSpaceMigration) Name() string {
 	return "long migration"
 }
 
-func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, _, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (m longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, store dependencies.QueryableStore, space dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	for {
 		if err = space.DoCtx(ctx, "", func(smartblock.SmartBlock) error {
 			// do smth
@@ -171,10 +171,10 @@ func (longSpaceMigration) Run(ctx context.Context, _ logger.CtxLogger, _, store 
 
 type instantMigration struct{}
 
-func (instantMigration) Name() string {
+func (m instantMigration) Name() string {
 	return "instant migration"
 }
 
-func (instantMigration) Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
+func (m instantMigration) Run(context.Context, logger.CtxLogger, dependencies.QueryableStore, dependencies.SpaceWithCtx) (toMigrate, migrated int, err error) {
 	return 0, 0, nil
 }

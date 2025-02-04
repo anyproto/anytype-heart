@@ -189,17 +189,11 @@ func (s *service) getPeriodicStatus(ctx context.Context) error {
 }
 
 func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusResponse) {
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfMembershipUpdate{
-					MembershipUpdate: &pb.EventMembershipUpdate{
-						Data: status.Data,
-					},
-				},
-			},
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipUpdate{
+		MembershipUpdate: &pb.EventMembershipUpdate{
+			Data: status.Data,
 		},
-	})
+	}))
 }
 
 // GetSubscriptionStatus Logic:
