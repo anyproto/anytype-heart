@@ -55,7 +55,7 @@ func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB))
 	indexStore := objectstore.NewStoreFixture(t).SpaceIndex("spaceId")
 	keys, err := accountdata.NewRandom()
 	require.NoError(t, err)
-	object := New(sb, keys, indexStore, nil, nil, nil, db, cfg)
+	object := New(sb, keys, indexStore, nil, nil, db, cfg)
 	fx := &fixture{
 		storeFx:       objectstore.NewStoreFixture(t),
 		db:            db,
