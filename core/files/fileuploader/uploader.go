@@ -287,7 +287,7 @@ func (u *uploader) SetUrl(url string) Uploader {
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return nil, fmt.Errorf("failed to download url: %s, %d", url, resp.StatusCode)
+			return nil, fmt.Errorf("failed to download url:, %d", resp.StatusCode)
 		}
 
 		var fileName string
