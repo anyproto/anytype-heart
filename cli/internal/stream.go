@@ -9,6 +9,13 @@ import (
 	"time"
 
 	pb "github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+// Singleton instance of EventReceiver
+var (
+	eventReceiverInstance *EventReceiver
+	erOnce                sync.Once
 )
 
 // EventReceiver is a universal receiver that collects all incoming event messages.
@@ -17,9 +24,21 @@ type EventReceiver struct {
 	events []*pb.EventMessage
 }
 
+// ListenForEvents ensures a single EventReceiver instance is used.
+func ListenForEvents(token string) (*EventReceiver, error) {
+	var err error
+	erOnce.Do(func() {
+		eventReceiverInstance, err = startListeningForEvents(token)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return eventReceiverInstance, nil
+}
+
 // ListenForEvents starts the gRPC stream for events using the provided token.
 // It returns an EventReceiver that will store all incoming events.
-func ListenForEvents(token string) (*EventReceiver, error) {
+func startListeningForEvents(token string) (*EventReceiver, error) {
 	client, err := GetGRPCClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gRPC client: %w", err)
@@ -84,6 +103,32 @@ func WaitForAccountID(er *EventReceiver) (string, error) {
 			}
 		}
 		er.lock.Unlock()
-		time.Sleep(100 * time.Millisecond) // Sleep briefly to avoid busy waiting.
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// WaitForJoinRequestEvent continuously polls the event receiver until it finds a join request for the specified space.
+// It returns the join request details.
+func WaitForJoinRequestEvent(er *EventReceiver, spaceID string) (*model.NotificationRequestToJoin, error) {
+	for {
+		er.lock.Lock()
+		for i := len(er.events) - 1; i >= 0; i-- {
+			m := er.events[i]
+			if m == nil {
+				continue
+			}
+			// Check for a notificationSend event with a join request.
+			if ns := m.GetNotificationSend(); ns != nil && ns.Notification != nil && ns.Notification.GetRequestToJoin() != nil {
+				req := ns.Notification.GetRequestToJoin()
+				if req.SpaceId == spaceID {
+					// Mark event as processed.
+					er.events[i] = nil
+					er.lock.Unlock()
+					return req, nil
+				}
+			}
+		}
+		er.lock.Unlock()
+		time.Sleep(100 * time.Millisecond)
 	}
 }
