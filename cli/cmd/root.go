@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/cli/cmd/auth"
 	"github.com/anyproto/anytype-heart/cli/cmd/server"
 	"github.com/anyproto/anytype-heart/cli/cmd/shell"
+	"github.com/anyproto/anytype-heart/cli/cmd/space"
 	"github.com/anyproto/anytype-heart/cli/cmd/token"
 )
 
@@ -31,7 +32,8 @@ func init() {
 	rootCmd.AddCommand(
 		auth.NewAuthCmd(),
 		server.NewServerCmd(),
-		token.NewTokenCmd(),
 		shell.NewShellCmd(rootCmd),
+		space.NewSpaceCmd(),
+		token.NewTokenCmd(),
 	)
 }
