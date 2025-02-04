@@ -28,6 +28,9 @@ jobs:
         with:
           path: mw/anytype-heart
 
+      - name: Setup anytype-heart
+        run: cd mw/anytype-heart && make setup
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
