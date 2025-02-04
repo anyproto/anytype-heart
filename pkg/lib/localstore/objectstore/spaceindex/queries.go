@@ -174,7 +174,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	for _, res := range results {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
-			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+			if _, indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 				details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
 					ObjectID: res.Path.ObjectId,
 					SpaceID:  s.SpaceId(),
@@ -428,7 +428,7 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 	for _, id := range ids {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
-			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+			if _, indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 				details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
 					ObjectID: id,
 					SpaceID:  s.SpaceId(),

@@ -1,11 +1,12 @@
 package subscription
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-store/query"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -29,7 +30,7 @@ type collectionObserver struct {
 	cache             *cache
 	objectStore       spaceindex.Store
 	collectionService CollectionService
-	recBatch          *mb.MB
+	recBatch          *mb.MB[database.Record]
 	recBatchMutex     sync.Mutex
 
 	spaceSubscription *spaceSubscriptions
@@ -114,7 +115,7 @@ func (c *collectionObserver) updateIds(ids []string) {
 	c.lock.Unlock()
 	entries := c.spaceSubscription.fetchEntriesLocked(append(removed, added...))
 	for _, e := range entries {
-		err := c.recBatch.Add(database.Record{
+		err := c.recBatch.Add(context.Background(), database.Record{
 			Details: e.data,
 		})
 		if err != nil {

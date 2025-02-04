@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	mb2 "github.com/cheggaaa/mb/v3"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -109,7 +109,7 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		require.NoError(t, err)
 
 		err = resp.Output.Add(context.Background(), event.NewMessage("", nil))
-		require.True(t, errors.Is(err, mb2.ErrClosed))
+		require.True(t, errors.Is(err, mb.ErrClosed))
 	})
 
 	t.Run("try to add after close", func(t *testing.T) {
@@ -280,7 +280,7 @@ func TestInternalSubCustomQueue(t *testing.T) {
 	subId := "test"
 	fx := newFixtureWithRealObjectStore(t)
 
-	queue := mb2.New[*pb.EventMessage](0)
+	queue := mb.New[*pb.EventMessage](0)
 
 	resp, err := fx.Search(SubscribeRequest{
 		SpaceId: testSpaceId,

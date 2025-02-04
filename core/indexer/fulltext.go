@@ -151,9 +151,11 @@ var filesLayouts = map[model.ObjectTypeLayout]struct{}{
 
 func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []ftsearch.SearchDoc, err error) {
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
+	var fulltextSkipped bool
 	err = cache.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
-		indexDetails, _ := sb.Type().Indexable()
-		if !indexDetails {
+		fulltext, _, _ := sb.Type().Indexable()
+		if !fulltext {
+			fulltextSkipped = true
 			return nil
 		}
 
@@ -234,6 +236,12 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 
 		return nil
 	})
+	if fulltextSkipped {
+		// todo: this should be removed. objects which is not supposed to be added to fulltext index should not be added to the queue
+		// but now it happens in the ftInit that some objects still can be added to the queue
+		// we need to avoid TryRemoveFromCache in this case
+		return docs, nil
+	}
 	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
 	if cacheErr != nil {
 		log.With("objectId", id).Errorf("object cache remove: %v", err)

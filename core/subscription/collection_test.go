@@ -1,9 +1,10 @@
 package subscription
 
 import (
+	"context"
 	"testing"
 
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -30,7 +31,7 @@ func Test_newCollectionObserver(t *testing.T) {
 		cache.Set(&entry{id: "id2", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyId: domain.String("id2"),
 		})})
-		batcher := mb.New(0)
+		batcher := mb.New[database.Record](0)
 		c := &spaceSubscriptions{
 			collectionService: collectionService,
 			objectStore:       store,
@@ -46,11 +47,12 @@ func Test_newCollectionObserver(t *testing.T) {
 		expectedIds := []string{"id1", "id2"}
 		ch <- expectedIds
 		close(observer.closeCh)
-		msgs := batcher.Wait()
+		msgs, err := batcher.NewCond().WithMin(2).Wait(context.Background())
+		assert.NoError(t, err)
 
 		var receivedIds []string
 		for _, msg := range msgs {
-			id := msg.(database.Record).Details.GetString(bundle.RelationKeyId)
+			id := msg.Details.GetString(bundle.RelationKeyId)
 			receivedIds = append(receivedIds, id)
 		}
 		assert.Equal(t, expectedIds, receivedIds)
@@ -76,7 +78,7 @@ func Test_newCollectionObserver(t *testing.T) {
 				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 		})
-		batcher := mb.New(0)
+		batcher := mb.New[database.Record](0)
 		c := &spaceSubscriptions{
 			collectionService: collectionService,
 			objectStore:       store,
@@ -92,11 +94,12 @@ func Test_newCollectionObserver(t *testing.T) {
 		expectedIds := []string{"id1", "id2"}
 		ch <- expectedIds
 		close(observer.closeCh)
-		msgs := batcher.Wait()
+		msgs, err := batcher.NewCond().WithMin(2).Wait(context.Background())
+		assert.NoError(t, err)
 
 		var receivedIds []string
 		for _, msg := range msgs {
-			id := msg.(database.Record).Details.GetString(bundle.RelationKeyId)
+			id := msg.Details.GetString(bundle.RelationKeyId)
 			receivedIds = append(receivedIds, id)
 		}
 		assert.Equal(t, expectedIds, receivedIds)

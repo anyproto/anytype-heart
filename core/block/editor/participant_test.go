@@ -120,7 +120,7 @@ func TestParticipant_Init(t *testing.T) {
 			bundle.RelationKeyName:    domain.String("test"),
 		}})
 
-		basicComponent := basic.NewBasic(sb, store, nil, nil, nil)
+		basicComponent := basic.NewBasic(sb, store, nil, nil)
 		p := &participant{
 			SmartBlock:       sb,
 			DetailsUpdatable: basicComponent,
@@ -147,7 +147,7 @@ func TestParticipant_Init(t *testing.T) {
 		sb := smarttest.New("root")
 		store := newStoreFixture(t)
 
-		basicComponent := basic.NewBasic(sb, store, nil, nil, nil)
+		basicComponent := basic.NewBasic(sb, store, nil, nil)
 		p := &participant{
 			SmartBlock:       sb,
 			DetailsUpdatable: basicComponent,
@@ -196,7 +196,7 @@ func newStoreFixture(t *testing.T) *spaceindex.StoreFixture {
 func newParticipantTest(t *testing.T) (*participant, error) {
 	sb := smarttest.New("root")
 	store := newStoreFixture(t)
-	basicComponent := basic.NewBasic(sb, store, nil, nil, nil)
+	basicComponent := basic.NewBasic(sb, store, nil, nil)
 	p := &participant{
 		SmartBlock:       sb,
 		DetailsUpdatable: basicComponent,
