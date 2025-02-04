@@ -131,6 +131,7 @@ func UnmarshalChangeWithDataType(dataType string, decrypted []byte) (res any, er
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
 	StateRebuild(d state.Doc) (err error)
+	IsLayoutsEnabled() bool
 }
 
 type Source interface {
@@ -333,6 +334,11 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+	}
+
+	if s.Type() == smartblock.SmartBlockTypeWidget {
+		// todo: remove this after 0.41 release
+		state.CleanupLayouts(st)
 	}
 
 	s.fileObjectMigrator.MigrateFiles(st, s.space, s.GetFileKeysSnapshot())

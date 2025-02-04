@@ -78,7 +78,6 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	s.log = s.log.With("spaceId", spaceId)
 
-	s.DisableLayouts()
 	info := spaceinfo.NewSpacePersistentInfoFromState(ctx.State)
 	newInfo := spaceinfo.NewSpacePersistentInfo(spaceId)
 	newInfo.SetAccountStatus(info.GetAccountStatus()).
