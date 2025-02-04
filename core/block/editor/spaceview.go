@@ -40,6 +40,9 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceShareableStatus,
 	bundle.RelationKeySpaceAccessType,
 	bundle.RelationKeyLatestAclHeadId,
+	bundle.RelationKeyChatId,
+	bundle.RelationKeyReadersLimit,
+	bundle.RelationKeyWritersLimit,
 }
 
 type spaceService interface {
