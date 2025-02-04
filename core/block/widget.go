@@ -99,7 +99,7 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 			return err
 		}
 		if typeBlockAlreadyExists {
-			log.Debug("favorite widget block is already presented")
+			log.Debug("type widget block is already presented")
 			return nil
 		}
 
