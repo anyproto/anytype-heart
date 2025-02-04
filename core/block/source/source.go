@@ -131,7 +131,6 @@ func UnmarshalChangeWithDataType(dataType string, decrypted []byte) (res any, er
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
 	StateRebuild(d state.Doc) (err error)
-	IsLayoutsEnabled() bool
 }
 
 type Source interface {

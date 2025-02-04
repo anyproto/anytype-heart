@@ -249,6 +249,10 @@ func (st *SmartTest) EnableLayouts() {
 	return
 }
 
+func (st *SmartTest) IsLayoutsEnabled() bool {
+	return false
+}
+
 func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
