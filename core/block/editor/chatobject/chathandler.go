@@ -12,10 +12,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/timeid"
 )
 
 type ChatHandler struct {
-	subscription *subscription
+	subscription    *subscription
+	currentIdentity string
 }
 
 func (d ChatHandler) CollectionName() string {
@@ -40,7 +42,12 @@ func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (
 	msg := newMessageWrapper(ch.Arena, ch.Value)
 	msg.setCreatedAt(ch.Change.Timestamp)
 	msg.setCreator(ch.Change.Creator)
-
+	if ch.Change.Creator == d.currentIdentity {
+		msg.setRead(true)
+	} else {
+		msg.setRead(false)
+	}
+	msg.setAddedAt(timeid.NewNano())
 	model := msg.toModel()
 	model.OrderId = ch.Change.Order
 	d.subscription.add(model)
