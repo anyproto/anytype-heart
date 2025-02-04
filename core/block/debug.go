@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 func (s *Service) DebugRouter(r chi.Router) {
 	r.Get("/objects", debug.JSONHandler(s.debugListObjects))
 	r.Get("/tree/{id}", debug.JSONHandler(s.debugTree))
+	r.Get("/tree_in_space/{spaceId}/{id}", debug.JSONHandler(s.debugTreeInSpace))
 	r.Get("/objects_per_space/{spaceId}", debug.JSONHandler(s.debugListObjectsPerSpace))
 	r.Get("/objects/{id}", debug.JSONHandler(s.debugGetObject))
 }
@@ -99,6 +101,44 @@ func (s *Service) debugTree(req *http.Request) (debugTree, error) {
 		Id: id,
 	}
 	err := cache.Do(s, id, func(sb smartblock.SmartBlock) error {
+		ot := sb.Tree()
+		return ot.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
+			change.Next = nil
+			raw, err := json.Marshal(change)
+			if err != nil {
+				log.Error("debug tree: marshal change", zap.Error(err))
+				return false
+			}
+			ts := time.Unix(change.Timestamp, 0)
+			ch := debugChange{
+				Change:    raw,
+				Timestamp: ts.Format(time.RFC3339),
+			}
+			if change.Identity != nil {
+				ch.Identity = change.Identity.Account()
+			}
+			result.Changes = append(result.Changes, ch)
+			return true
+		})
+	})
+	return result, err
+}
+
+// TODO Refactor
+func (s *Service) debugTreeInSpace(req *http.Request) (debugTree, error) {
+	spaceId := chi.URLParam(req, "spaceId")
+	id := chi.URLParam(req, "id")
+
+	result := debugTree{
+		Id: id,
+	}
+
+	spc, err := s.spaceService.Get(context.Background(), spaceId)
+	if err != nil {
+		return result, fmt.Errorf("get space: %w", err)
+	}
+
+	err = spc.Do(id, func(sb smartblock.SmartBlock) error {
 		ot := sb.Tree()
 		return ot.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
 			change.Next = nil

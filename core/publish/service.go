@@ -189,7 +189,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	version, err := s.evaluateDocumentVersion(spc, pageId, joinSpace)
+	version, err := s.evaluateDocumentVersion(ctx, spc, pageId, joinSpace)
 	if err != nil {
 		return err
 	}
@@ -380,12 +380,12 @@ func (s *service) extractInviteLink(ctx context.Context, spaceId string, joinSpa
 	return inviteLink, nil
 }
 
-func (s *service) evaluateDocumentVersion(spc clientspace.Space, pageId string, joinSpace bool) (string, error) {
-	treeStorage, err := spc.Storage().TreeStorage(pageId)
+func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.Space, pageId string, joinSpace bool) (string, error) {
+	treeStorage, err := spc.Storage().TreeStorage(ctx, pageId)
 	if err != nil {
 		return "", err
 	}
-	heads, err := treeStorage.Heads()
+	heads, err := treeStorage.Heads(ctx)
 	if err != nil {
 		return "", err
 	}

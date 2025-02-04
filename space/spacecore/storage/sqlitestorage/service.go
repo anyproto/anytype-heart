@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/globalsign/mgo/bson"
 	"github.com/mattn/go-sqlite3"
 	"go.uber.org/atomic"
@@ -30,7 +32,7 @@ var (
 )
 
 type configGetter interface {
-	GetSpaceStorePath() string
+	GetSqliteStorePath() string
 	GetTempDirPath() string
 }
 
@@ -51,6 +53,8 @@ type storageService struct {
 		allTreeDelStatus,
 		change,
 		hasTree,
+		listChanges,
+		iterateChanges,
 		hasChange,
 		updateTreeHeads,
 		deleteTree,
@@ -60,6 +64,7 @@ type storageService struct {
 		spaceIds,
 		spaceIsCreated,
 		upsertBind,
+		getAllBinds,
 		deleteSpace,
 		deleteTreesBySpace,
 		deleteChangesBySpace,
@@ -91,7 +96,7 @@ func New() *storageService {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	s.dbPath = a.MustComponent("config").(configGetter).GetSpaceStorePath()
+	s.dbPath = a.MustComponent("config").(configGetter).GetSqliteStorePath()
 	s.dbTempPath = a.MustComponent("config").(configGetter).GetTempDirPath()
 	s.lockedSpaces = map[string]*lockSpace{}
 	if s.checkpointAfterWrite == 0 {
@@ -159,7 +164,7 @@ func (s *storageService) Name() (name string) {
 	return spacestorage.CName
 }
 
-func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store spacestorage.SpaceStorage, err error) {
+func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store oldstorage.SpaceStorage, err error) {
 	var ls *lockSpace
 	ls, err = s.checkLock(id, func() error {
 		store, err = newSpaceStorage(s, id)
@@ -277,7 +282,7 @@ func (s *storageService) unlockSpaceStorage(id string) {
 	}
 }
 
-func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (ss spacestorage.SpaceStorage, err error) {
+func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (ss oldstorage.SpaceStorage, err error) {
 	_, err = s.checkLock(payload.SpaceHeaderWithId.Id, func() error {
 		ss, err = createSpaceStorage(s, payload)
 		return err
@@ -289,6 +294,25 @@ func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error)
 	err = s.stmt.getBind.QueryRow(objectID).Scan(&spaceID)
 	err = replaceNoRowsErr(err, domain.ErrObjectNotFound)
 	return
+}
+
+func (s *storageService) GetBoundObjectIds(spaceId string) ([]string, error) {
+	rows, err := s.stmt.getAllBinds.Query(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = errors.Join(rows.Close())
+	}()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (s *storageService) BindSpaceID(spaceID, objectID string) (err error) {
@@ -350,6 +374,14 @@ func (s *storageService) checkpoint() (err error) {
 	_, err = s.writeDb.ExecContext(s.ctx, `PRAGMA wal_checkpoint(PASSIVE)`)
 	s.lastCheckpoint.Store(time.Now())
 	return err
+}
+
+func (s *storageService) EstimateSize() (uint64, error) {
+	stat, err := os.Stat(s.dbPath)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(stat.Size()), nil
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
