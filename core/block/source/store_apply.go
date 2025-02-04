@@ -23,10 +23,21 @@ type storeApply struct {
 	nextCacheChange map[string]struct{}
 }
 
-func (a *storeApply) Apply() (err error) {
+func (a *storeApply) Apply() error {
+	// This map stores the last not commited order id. It's useful for situations like that:
+	// We got a state:
+	// - commited order1
+	// - uncommitted order2 -> last commited order is order1
+	// - uncommitted order3 -> last commited order is order1 too
+	// To obtain previous order id for order3 we should know that order2 follows order1,
+	// so we store that info in lastOrderForUncommited map. In this particular case the map is
+	// - commited order1    []
+	// - uncommitted order2 []
+	// - uncommitted order3 [order1 => order2]
+	// The final state of the map is [order1 => order3]
 	lastOrderForUncommited := map[string]string{}
 
-	iterErr := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
+	return a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		// not a new change - remember and continue
 		if !a.allIsNew && !change.IsNew {
 			return true
@@ -51,10 +62,6 @@ func (a *storeApply) Apply() (err error) {
 		lastOrderForUncommited[storedPrevOrderId] = change.OrderId
 		return true
 	})
-	if err == nil && iterErr != nil {
-		return iterErr
-	}
-	return
 }
 
 func (a *storeApply) applyChange(prevOrderId string, change *objecttree.Change) (err error) {
