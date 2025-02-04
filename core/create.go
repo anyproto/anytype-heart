@@ -42,7 +42,11 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	}
 	if req.CreateTypeWidgetIfMissing {
 		err := mw.doBlockService(func(bs *block.Service) (err error) {
-			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, domain.TypeKey(req.ObjectTypeUniqueKey))
+			typeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+			if err != nil {
+				return err
+			}
+			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
 			return err
 		})
 		if err != nil {
