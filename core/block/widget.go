@@ -78,7 +78,7 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	if err != nil {
 		return err
 	}
-	widgetBlockId := "type_" + key.String()
+	widgetBlockId := key.String()
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
 		var typeBlockAlreadyExists bool
 
