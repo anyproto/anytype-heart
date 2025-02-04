@@ -221,8 +221,6 @@ func (h *MD) renderFile(buf writer, in *renderState, b *model.Block) {
 	if !ok {
 		filename = h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name))
 		title = filepath.Base(file.Name)
-	} else {
-		filename = filepath.Base(filename)
 	}
 	buf.WriteString(in.indent)
 	if file.Type != model.BlockContentFile_Image {
@@ -401,10 +399,9 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 	}
 	title = info.GetString(bundle.RelationKeyName)
 	// if object is a file
-	layout := model.ObjectTypeLayout(pbtypes.GetInt64(info, bundle.RelationKeyLayout.String()))
+	layout := model.ObjectTypeLayout(info.GetInt64(bundle.RelationKeyLayout))
 	if layout == model.ObjectType_file || layout == model.ObjectType_image || layout == model.ObjectType_audio || layout == model.ObjectType_video {
-		title = pbtypes.GetString(info, bundle.RelationKeyName.String())
-		ext := pbtypes.GetString(info, bundle.RelationKeyFileExt.String())
+		ext := info.GetString(bundle.RelationKeyFileExt)
 		if ext != "" {
 			ext = "." + ext
 		}

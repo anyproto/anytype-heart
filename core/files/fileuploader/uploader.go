@@ -286,6 +286,10 @@ func (u *uploader) SetUrl(url string) Uploader {
 			return nil, err
 		}
 
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return nil, fmt.Errorf("failed to download url: %s, %d", url, resp.StatusCode)
+		}
+
 		var fileName string
 		if content := resp.Header.Get("Content-Disposition"); content != "" {
 			contentDisposition := strings.Split(content, "filename=")
