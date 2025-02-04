@@ -433,7 +433,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			u.SetName(fileName)
 		} else if filepath.Ext(u.name) == "" {
 			// enrich current name with extension
-			u.name = u.name + filepath.Ext(fileName)
+			u.name += filepath.Ext(fileName)
 		}
 	}
 
