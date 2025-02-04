@@ -209,7 +209,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			continue
 		}
 
-		if (strings.HasPrefix(f.Name, export.Files) && !strings.HasPrefix(f.Name, export.FilesObjects)) || f.FileInfo().IsDir() {
+		if isPlainFile(f.Name) || f.FileInfo().IsDir() {
 			continue
 		}
 
@@ -341,7 +341,7 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 		return processProfile(data, info, flags.spaceDashboardId)
 	}
 
-	if strings.HasPrefix(name, "files") {
+	if isPlainFile(name) {
 		return data, nil
 	}
 
@@ -568,4 +568,8 @@ func listObjects(info *useCaseInfo) {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%32s\n", id[len(id)-4:], obj.Name)
 	}
+}
+
+func isPlainFile(name string) bool {
+	return strings.HasPrefix(name, export.Files) && !strings.HasPrefix(name, export.FilesObjects)
 }
