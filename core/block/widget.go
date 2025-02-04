@@ -108,6 +108,7 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 			ObjectLimit:  6,
 			WidgetLayout: model.BlockContentWidget_View,
 			Position:     model.Block_Bottom,
+			ViewId:       "all",
 			Block: &model.Block{
 				Id: widgetBlockId, // hardcode id to avoid duplicates
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
