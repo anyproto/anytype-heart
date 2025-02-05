@@ -93,9 +93,9 @@ func (c *client) opLoop(ctx context.Context) {
 	})
 
 	go func() {
-		c.runWorkers(context.TODO(), 10, readCond)
+		c.runWorkers(ctx, maxSubConnections, readCond)
 	}()
-	c.runWorkers(context.TODO(), 10, writeCond)
+	c.runWorkers(ctx, maxSubConnections, writeCond)
 }
 
 func (c *client) runWorkers(ctx context.Context, count int, waitCond mb.WaitCond[*task]) {
