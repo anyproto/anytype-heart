@@ -425,7 +425,10 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	store := i.store.SpaceIndex(space.Id())
 	var entries []headstorage.HeadsEntry
 	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
-		entries = append(entries, entry)
+		// skipping Acl
+		if entry.CommonSnapshot != "" {
+			entries = append(entries, entry)
+		}
 		return true, nil
 	})
 	if err != nil {
