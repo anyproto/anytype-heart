@@ -16,50 +16,31 @@ type storeApply struct {
 	ot       objecttree.ObjectTree
 	allIsNew bool
 
-	prevOrder  string
-	prevChange *objecttree.Change
-
-	nextCachedOrder string
-	nextCacheChange map[string]struct{}
+	needFetchPrevOrderId bool
 }
 
 func (a *storeApply) Apply() error {
-	// This map stores the last not commited order id. It's useful for situations like that:
-	// We got a state:
-	// - commited order1
-	// - uncommitted order2 -> last commited order is order1
-	// - uncommitted order3 -> last commited order is order1 too
-	// To obtain previous order id for order3 we should know that order2 follows order1,
-	// so we store that info in lastOrderForUncommited map. In this particular case the map is
-	// - commited order1    []
-	// - uncommitted order2 []
-	// - uncommitted order3 [order1 => order2]
-	// The final state of the map is [order1 => order3]
-	lastOrderForUncommited := map[string]string{}
-
 	return a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		// not a new change - remember and continue
 		if !a.allIsNew && !change.IsNew {
 			return true
 		}
 
-		storedPrevOrderId, err := a.tx.GetPrevOrderId(change.OrderId)
+		var prevOrderId string
+		if a.needFetchPrevOrderId {
+			var err error
+			prevOrderId, err = a.tx.GetPrevOrderId(change.OrderId)
+			if err != nil {
+				log.With("error", err).Error("get prev order")
+				return false
+			}
+		}
+
+		err := a.applyChange(prevOrderId, change)
 		if err != nil {
-			log.With("error", err).Error("get prev order")
 			return false
 		}
 
-		prevOrderId := storedPrevOrderId
-		last, ok := lastOrderForUncommited[storedPrevOrderId]
-		if ok {
-			prevOrderId = last
-		}
-
-		if err = a.applyChange(prevOrderId, change); err != nil {
-			return false
-		}
-
-		lastOrderForUncommited[storedPrevOrderId] = change.OrderId
 		return true
 	})
 }

@@ -51,43 +51,24 @@ func TestStoreStateTx_GetOrder(t *testing.T) {
 
 func TestStoreStateTx_GetPrevOrderId(t *testing.T) {
 	fx := newFixture(t, "test", DefaultHandler{Name: "tcoll"})
-	t.Run("no changes yet", func(t *testing.T) {
-		tx, err := fx.NewTx(ctx)
-		require.NoError(t, err)
+	tx, err := fx.NewTx(ctx)
+	require.NoError(t, err)
 
-		err = tx.SetOrder("ch1", "1")
-		require.NoError(t, err)
-		err = tx.SetOrder("ch2", "2")
-		require.NoError(t, err)
+	err = tx.SetOrder("ch1", "1")
+	require.NoError(t, err)
+	err = tx.SetOrder("ch2", "2")
+	require.NoError(t, err)
 
-		prev, err := tx.GetPrevOrderId("1")
-		require.NoError(t, err)
-		assert.Equal(t, "", prev)
+	prev, err := tx.GetPrevOrderId("1")
+	require.NoError(t, err)
+	assert.Equal(t, "", prev)
 
-		prev, err = tx.GetPrevOrderId("2")
-		require.NoError(t, err)
-		// Previous order hasn't been commited yet
-		assert.Equal(t, "", prev)
+	prev, err = tx.GetPrevOrderId("2")
+	require.NoError(t, err)
+	assert.Equal(t, "1", prev)
 
-		err = tx.Commit()
-		require.NoError(t, err)
-	})
-
-	t.Run("commited changes", func(t *testing.T) {
-		tx, err := fx.NewTx(ctx)
-		require.NoError(t, err)
-
-		prev, err := tx.GetPrevOrderId("1")
-		require.NoError(t, err)
-		assert.Equal(t, "", prev)
-
-		prev, err = tx.GetPrevOrderId("2")
-		require.NoError(t, err)
-		assert.Equal(t, "1", prev)
-
-		err = tx.Commit()
-		require.NoError(t, err)
-	})
+	err = tx.Commit()
+	require.NoError(t, err)
 }
 
 func TestStoreStateTx_ApplyChangeSet(t *testing.T) {

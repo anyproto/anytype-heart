@@ -201,8 +201,9 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return err
 	}
 	applier := &storeApply{
-		tx: tx,
-		ot: tree,
+		tx:                   tx,
+		ot:                   tree,
+		needFetchPrevOrderId: true,
 	}
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)

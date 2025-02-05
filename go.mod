@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.1.6
+	github.com/anyproto/any-store v0.1.7
 	github.com/anyproto/any-sync v0.6.0-alpha.11.0.20250131145459-0bf102738a87
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/go-chash v0.1.0
