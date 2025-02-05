@@ -56,7 +56,7 @@ func LoginAccount(mnemonic, rootPath string) error {
 	}
 	sessionToken := resp.Token
 	err = SaveToken(sessionToken)
-	fmt.Println("Session token:", sessionToken)
+	fmt.Println("ℹ Session token:", sessionToken)
 	if err != nil {
 		return fmt.Errorf("failed to save session token: %w", err)
 	}
@@ -79,7 +79,7 @@ func LoginAccount(mnemonic, rootPath string) error {
 	if err != nil {
 		return fmt.Errorf("error waiting for account ID: %w", err)
 	}
-	fmt.Println("Account ID:", accountID)
+	fmt.Println("ℹ Account ID:", accountID)
 
 	// Select the account.
 	_, err = client.AccountSelect(ctx, &pb.RpcAccountSelectRequest{

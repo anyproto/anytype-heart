@@ -26,7 +26,7 @@ func AutoapproveTask(ctx context.Context, spaceID, role string) error {
 	}
 
 	er, err := internal.ListenForEvents(token)
-	if err != nil {
+	if err != nil || er == nil {
 		return fmt.Errorf("failed to start event listener: %w", err)
 	}
 
