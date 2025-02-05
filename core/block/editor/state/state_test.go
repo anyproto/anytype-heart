@@ -2943,6 +2943,23 @@ func TestState_FileRelationKeys(t *testing.T) {
 		// then
 		assert.Len(t, keys, 0)
 	})
+	t.Run("unsplash cover", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Key: bundle.RelationKeyCoverId.String()},
+			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(5),
+			}),
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		assert.Len(t, keys, 1)
+	})
 }
 
 func TestState_AddRelationLinks(t *testing.T) {

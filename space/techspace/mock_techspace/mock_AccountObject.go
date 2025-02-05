@@ -574,34 +574,34 @@ func (_c *MockAccountObject_Details_Call) RunAndReturn(run func() *domain.Detail
 	return _c
 }
 
-// DisableLayouts provides a mock function with given fields:
-func (_m *MockAccountObject) DisableLayouts() {
+// EnableLayouts provides a mock function with given fields:
+func (_m *MockAccountObject) EnableLayouts() {
 	_m.Called()
 }
 
-// MockAccountObject_DisableLayouts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DisableLayouts'
-type MockAccountObject_DisableLayouts_Call struct {
+// MockAccountObject_EnableLayouts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnableLayouts'
+type MockAccountObject_EnableLayouts_Call struct {
 	*mock.Call
 }
 
-// DisableLayouts is a helper method to define mock.On call
-func (_e *MockAccountObject_Expecter) DisableLayouts() *MockAccountObject_DisableLayouts_Call {
-	return &MockAccountObject_DisableLayouts_Call{Call: _e.mock.On("DisableLayouts")}
+// EnableLayouts is a helper method to define mock.On call
+func (_e *MockAccountObject_Expecter) EnableLayouts() *MockAccountObject_EnableLayouts_Call {
+	return &MockAccountObject_EnableLayouts_Call{Call: _e.mock.On("EnableLayouts")}
 }
 
-func (_c *MockAccountObject_DisableLayouts_Call) Run(run func()) *MockAccountObject_DisableLayouts_Call {
+func (_c *MockAccountObject_EnableLayouts_Call) Run(run func()) *MockAccountObject_EnableLayouts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockAccountObject_DisableLayouts_Call) Return() *MockAccountObject_DisableLayouts_Call {
+func (_c *MockAccountObject_EnableLayouts_Call) Return() *MockAccountObject_EnableLayouts_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockAccountObject_DisableLayouts_Call) RunAndReturn(run func()) *MockAccountObject_DisableLayouts_Call {
+func (_c *MockAccountObject_EnableLayouts_Call) RunAndReturn(run func()) *MockAccountObject_EnableLayouts_Call {
 	_c.Call.Return(run)
 	return _c
 }
