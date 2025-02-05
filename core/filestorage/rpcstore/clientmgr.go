@@ -109,7 +109,6 @@ func (m *clientManager) addOp(ctx context.Context, write bool, ready chan result
 }
 
 func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
-	fmt.Println("EXECUTED FOR", time.Since(t.addedAt))
 	var taskClientIds []string
 	m.ocache.ForEach(func(v ocache.Object) (isContinue bool) {
 		cl := v.(*client)

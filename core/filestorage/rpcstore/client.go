@@ -15,7 +15,6 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
-	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"storj.io/drpc"
@@ -94,35 +93,28 @@ func (c *client) opLoop(ctx context.Context) {
 	})
 
 	go func() {
-		readers := make(chan struct{}, 10)
-
-		counter := atomic.NewInt32(0)
-
-		for {
-			t, err := readCond.WithPriority(c.stat.Score()).WaitOne(ctx)
-			if err != nil {
-				return
-			}
-			readers <- struct{}{}
-			counter.Add(1)
-			go func() {
-				// fmt.Println("READ ", c.peerId, " x ", counter.Load())
-				t.execWithClient(c)
-				<-readers
-				counter.Add(-1)
-			}()
-
-		}
+		c.runWorkers(context.TODO(), 10, readCond)
 	}()
+	c.runWorkers(context.TODO(), 10, writeCond)
+}
 
-	// One writer
+func (c *client) runWorkers(ctx context.Context, count int, waitCond mb.WaitCond[*task]) {
+	connections := make(chan struct{}, count)
 	for {
-		t, err := writeCond.WithPriority(c.stat.Score()).WaitOne(ctx)
+		t, err := waitCond.WithPriority(c.stat.Score()).WaitOne(ctx)
 		if err != nil {
 			return
 		}
-		fmt.Println("WRITE ", c.peerId)
-		t.execWithClient(c)
+
+		if count == 1 {
+			t.execWithClient(c)
+		} else {
+			connections <- struct{}{}
+			go func() {
+				t.execWithClient(c)
+				<-connections
+			}()
+		}
 	}
 }
 
