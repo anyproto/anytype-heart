@@ -31,7 +31,6 @@ type Service interface {
 	app.Component
 
 	SetDetails(ctx session.Context, objectId string, details []domain.Detail) error
-	SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []domain.Detail) error
 	SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) error
 	ModifyDetails(ctx session.Context, objectId string, modifier func(current *domain.Details) (*domain.Details, error)) error
 	ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) error
@@ -84,23 +83,10 @@ func (s *service) SetDetails(ctx session.Context, objectId string, details []dom
 	})
 }
 
-func (s *service) SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []domain.Detail) (err error) {
-	return cache.Do(s.objectGetter, objectId, func(b basic.DetailsSettable) error {
-		return b.SetDetailsAndUpdateLastUsed(ctx, details, true)
-	})
-}
-
-func (s *service) SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) (err error) {
-	var (
-		resultError error
-		anySucceed  bool
-	)
-	for i, objectId := range objectIds {
-		setDetailsFunc := s.SetDetails
-		if i == 0 {
-			setDetailsFunc = s.SetDetailsAndUpdateLastUsed
-		}
-		err := setDetailsFunc(ctx, objectId, details)
+func (s *service) SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) (resultError error) {
+	var anySucceed bool
+	for _, objectId := range objectIds {
+		err := s.SetDetails(ctx, objectId, details)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
 		} else {
@@ -123,20 +109,10 @@ func (s *service) ModifyDetails(ctx session.Context, objectId string, modifier f
 	})
 }
 
-func (s *service) ModifyDetailsAndUpdateLastUsed(ctx session.Context, objectId string, modifier func(current *domain.Details) (*domain.Details, error)) (err error) {
-	return cache.Do(s.objectGetter, objectId, func(du basic.DetailsUpdatable) error {
-		return du.UpdateDetailsAndLastUsed(ctx, modifier)
-	})
-}
-
 func (s *service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) (resultError error) {
 	var anySucceed bool
-	for i, objectId := range req.ObjectIds {
-		modifyDetailsFunc := s.ModifyDetails
-		if i == 0 {
-			modifyDetailsFunc = s.ModifyDetailsAndUpdateLastUsed
-		}
-		err := modifyDetailsFunc(nil, objectId, func(current *domain.Details) (*domain.Details, error) {
+	for _, objectId := range req.ObjectIds {
+		err := s.ModifyDetails(nil, objectId, func(current *domain.Details) (*domain.Details, error) {
 			for _, op := range req.Operations {
 				if !pbtypes.IsNullValue(op.Set) {
 					// Set operation has higher priority than Add and Remove, because it modifies full value

@@ -40,7 +40,7 @@ func (f *ObjectFactory) newProfile(spaceId string, sb smartblock.SmartBlock) *Pr
 	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
+		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
