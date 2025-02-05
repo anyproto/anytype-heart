@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -54,11 +55,12 @@ type Service interface {
 type ObjectService struct {
 	mw           service.ClientCommandsServer
 	spaceService *space.SpaceService
+	eventService event.Sender
 	AccountInfo  *model.AccountInfo
 }
 
-func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceService) *ObjectService {
-	return &ObjectService{mw: mw, spaceService: spaceService}
+func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceService, eventService event.Sender) *ObjectService {
+	return &ObjectService{mw: mw, spaceService: spaceService, eventService: eventService}
 }
 
 // ListObjects retrieves a paginated list of objects in a specific space.
@@ -260,6 +262,14 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 			return object, ErrFailedPasteBody
 		}
 	}
+
+	// broadcast event: ObjectCreate
+	eventPayload := util.NewAnalyticsEventForApi(ctx, "ObjectCreate")
+	s.eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfPayloadBroadcast{
+		PayloadBroadcast: &pb.EventPayloadBroadcast{
+			Payload: eventPayload,
+		},
+	}))
 
 	return s.GetObject(ctx, spaceId, resp.ObjectId)
 }
