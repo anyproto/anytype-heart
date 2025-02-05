@@ -15,6 +15,11 @@ import (
 	"github.com/anyproto/anytype-heart/pb/service"
 )
 
+type ApiSessionEntry struct {
+	Token   string `json:"token"`
+	AppName string `json:"appName"`
+}
+
 // Server wraps the HTTP server and service logic.
 type Server struct {
 	engine *gin.Engine
@@ -26,7 +31,7 @@ type Server struct {
 	searchService *search.SearchService
 
 	mu         sync.Mutex
-	KeyToToken map[string]string // appKey -> token
+	KeyToToken map[string]ApiSessionEntry // appKey -> token
 }
 
 // NewServer constructs a new Server with default config and sets up the routes.
@@ -40,7 +45,7 @@ func NewServer(mw service.ClientCommandsServer, accountService account.Service, 
 	s.objectService = object.NewService(mw, s.spaceService, eventService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
 	s.engine = s.NewRouter(accountService, mw)
-	s.KeyToToken = make(map[string]string)
+	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
 }

@@ -16,6 +16,7 @@ type AnalyticsBroadcastEvent struct {
 	}
 }
 
+// ToJSON returns the event as a JSON string
 func (e *AnalyticsBroadcastEvent) ToJSON() string {
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
@@ -25,6 +26,7 @@ func (e *AnalyticsBroadcastEvent) ToJSON() string {
 	return string(eventJSON)
 }
 
+// NewAnalyticsEvent creates a new analytics event with the given code, origin and apiAppName
 func NewAnalyticsEvent(code, origin, apiAppName string) *AnalyticsBroadcastEvent {
 	return &AnalyticsBroadcastEvent{
 		Type: "analyticsEvent",
@@ -39,6 +41,7 @@ func NewAnalyticsEvent(code, origin, apiAppName string) *AnalyticsBroadcastEvent
 	}
 }
 
+// NewAnalyticsEventForApi creates a new analytics event for api with app name from the context
 func NewAnalyticsEventForApi(ctx context.Context, code string) string {
 	apiAppName := ctx.Value("apiAppName").(string)
 	return NewAnalyticsEvent(code, "api", apiAppName).ToJSON()

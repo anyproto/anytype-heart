@@ -51,7 +51,7 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 		// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
 		// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
 		s.mu.Lock()
-		token, exists := s.KeyToToken[key]
+		apiSession, exists := s.KeyToToken[key]
 		s.mu.Unlock()
 
 		if !exists {
@@ -60,15 +60,20 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 				return
 			}
-			token = response.Token
+			apiSession = ApiSessionEntry{
+				Token: response.Token,
+				// TODO: enable once app name is returned
+				// AppName: response.AppName,
+			}
 
 			s.mu.Lock()
-			s.KeyToToken[key] = token
+			s.KeyToToken[key] = apiSession
 			s.mu.Unlock()
 		}
 
 		// Add token to request context for downstream services (subscriptions, events, etc.)
-		c.Set("token", token)
+		c.Set("token", apiSession.Token)
+		c.Set("apiAppName", apiSession.AppName)
 		c.Next()
 	}
 }
