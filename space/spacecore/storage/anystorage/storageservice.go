@@ -95,7 +95,7 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 	if err != nil {
 		return nil, err
 	}
-	return newClientStorage(ctx, st)
+	return NewClientStorage(ctx, st)
 }
 
 func (s *storageService) SpaceExists(id string) bool {
@@ -118,7 +118,7 @@ func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacest
 	if err != nil {
 		return nil, err
 	}
-	return newClientStorage(ctx, st)
+	return NewClientStorage(ctx, st)
 }
 
 func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string) error {
