@@ -98,7 +98,6 @@ func (m *clientManager) ReadOp(ctx context.Context, ready chan result, f func(c 
 
 func (m *clientManager) addOp(ctx context.Context, write bool, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
 	t := getTask()
-	t.addedAt = time.Now()
 	t.ctx = ctx
 	t.cid = c
 	t.exec = f

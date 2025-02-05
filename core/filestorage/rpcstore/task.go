@@ -3,7 +3,6 @@ package rpcstore
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/ipfs/go-cid"
 )
@@ -23,7 +22,6 @@ type result struct {
 }
 
 type task struct {
-	addedAt     time.Time
 	ctx         context.Context
 	spaceId     string
 	cid         cid.Cid
