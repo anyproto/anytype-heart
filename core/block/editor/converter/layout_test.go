@@ -131,3 +131,90 @@ func TestLayoutConverter_Convert(t *testing.T) {
 		}
 	})
 }
+
+func TestInsertGroupRelationKey(t *testing.T) {
+	relationLinksOfAllFormats := []*model.RelationLink{
+		{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+		{Key: bundle.RelationKeySnippet.String(), Format: model.RelationFormat_shorttext},
+		{Key: bundle.RelationKeyRestrictions.String(), Format: model.RelationFormat_number},
+		{Key: bundle.RelationKeyStatus.String(), Format: model.RelationFormat_status},
+		{Key: bundle.RelationKeyTag.String(), Format: model.RelationFormat_tag},
+		{Key: bundle.RelationKeyCreatedDate.String(), Format: model.RelationFormat_date},
+		{Key: bundle.RelationKeyPicture.String(), Format: model.RelationFormat_file},
+		{Key: bundle.RelationKeyIsHidden.String(), Format: model.RelationFormat_checkbox},
+		{Key: bundle.RelationKeyUrl.String(), Format: model.RelationFormat_url},
+		{Key: bundle.RelationKeyEmail.String(), Format: model.RelationFormat_email},
+		{Key: bundle.RelationKeyPhone.String(), Format: model.RelationFormat_phone},
+		{Key: bundle.RelationKeyIconEmoji.String(), Format: model.RelationFormat_emoji},
+		{Key: bundle.RelationKeyLinks.String(), Format: model.RelationFormat_object},
+		{Key: "?relations?", Format: model.RelationFormat_relations},
+	}
+	for _, tc := range []struct {
+		name        string
+		viewType    model.BlockContentDataviewViewType
+		relLinks    []*model.RelationLink
+		expectedKey domain.RelationKey
+	}{
+		{
+			"kanban receives first status relation", model.BlockContentDataviewView_Kanban,
+			[]*model.RelationLink{
+				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+				{Key: bundle.RelationKeyCreatedDate.String(), Format: model.RelationFormat_date},
+				{Key: bundle.RelationKeyRestrictions.String(), Format: model.RelationFormat_number},
+				{Key: bundle.RelationKeyLinks.String(), Format: model.RelationFormat_object},
+				{Key: bundle.RelationKeyStatus.String(), Format: model.RelationFormat_status},
+				{Key: bundle.RelationKeyTag.String(), Format: model.RelationFormat_tag},
+			},
+			bundle.RelationKeyStatus,
+		},
+		{
+			"kanban receives first checkbox relation", model.BlockContentDataviewView_Kanban,
+			[]*model.RelationLink{
+				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+				{Key: "不可譯的", Format: model.RelationFormat_checkbox},
+				{Key: bundle.RelationKeyStatus.String(), Format: model.RelationFormat_status},
+			},
+			domain.RelationKey("不可譯的"),
+		},
+		{
+			"no suitable relation for kanban", model.BlockContentDataviewView_Kanban,
+			[]*model.RelationLink{
+				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+				{Key: bundle.RelationKeyCreatedDate.String(), Format: model.RelationFormat_date},
+				{Key: bundle.RelationKeyRestrictions.String(), Format: model.RelationFormat_number},
+			},
+			domain.RelationKey(""),
+		},
+		{
+			"calendar receives first unhidden date relation", model.BlockContentDataviewView_Calendar,
+			[]*model.RelationLink{
+				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+				{Key: bundle.RelationKeyLastUsedDate.String(), Format: model.RelationFormat_date},
+				{Key: bundle.RelationKeyCreatedDate.String(), Format: model.RelationFormat_date},
+				{Key: bundle.RelationKeyLastModifiedDate.String(), Format: model.RelationFormat_date},
+				{Key: bundle.RelationKeyRestrictions.String(), Format: model.RelationFormat_number},
+			},
+			bundle.RelationKeyCreatedDate,
+		},
+		{"table view", model.BlockContentDataviewView_Table, relationLinksOfAllFormats, domain.RelationKey("")},
+		{"list view", model.BlockContentDataviewView_List, relationLinksOfAllFormats, domain.RelationKey("")},
+		{"gallery view", model.BlockContentDataviewView_Gallery, relationLinksOfAllFormats, domain.RelationKey("")},
+		{"graph view", model.BlockContentDataviewView_Graph, relationLinksOfAllFormats, domain.RelationKey("")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			block := &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{{
+					Type: tc.viewType,
+				}},
+				RelationLinks: tc.relLinks,
+			}}
+
+			// when
+			insertGroupRelationKey(block, tc.viewType)
+
+			// then
+			assert.Equal(t, tc.expectedKey, domain.RelationKey(block.Dataview.Views[0].GroupRelationKey))
+		})
+	}
+}
