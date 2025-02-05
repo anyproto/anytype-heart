@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/anyproto/anytype-heart/cli/internal"
+	"github.com/anyproto/anytype-heart/cli/daemon"
 )
 
 func NewStopCmd() *cobra.Command {
@@ -13,10 +13,11 @@ func NewStopCmd() *cobra.Command {
 		Use:   "stop",
 		Short: "Stop the Anytype local server",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := internal.StopServer(); err != nil {
-				return fmt.Errorf("X Failed to stop server: %w", err)
+			resp, err := daemon.SendTaskStop("server", nil)
+			if err != nil {
+				return fmt.Errorf("failed to stop server task: %w", err)
 			}
-			fmt.Println("✓ Server stopped successfully.")
+			fmt.Println("✓ Server task stopped successfully. Response:", resp.Status)
 			return nil
 		},
 	}

@@ -12,7 +12,6 @@ import (
 )
 
 // LoginAccount performs the common steps for logging in with a given mnemonic and root path.
-// It returns the session token if successful.
 func LoginAccount(mnemonic, rootPath string) error {
 	if rootPath == "" {
 		rootPath = "/Users/jmetrikat/Library/Application Support/anytype/alpha/data"
@@ -27,7 +26,7 @@ func LoginAccount(mnemonic, rootPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Set initial parameters (adjust these values as needed).
+	// Set initial parameters.
 	_, err = client.InitialSetParameters(ctx, &pb.RpcInitialSetParametersRequest{
 		Platform: "Mac",
 		Version:  "0.0.0-test",
@@ -57,11 +56,12 @@ func LoginAccount(mnemonic, rootPath string) error {
 	}
 	sessionToken := resp.Token
 	err = SaveToken(sessionToken)
+	fmt.Println("Session token:", sessionToken)
 	if err != nil {
 		return fmt.Errorf("failed to save session token: %w", err)
 	}
 
-	// Start listening for session events using the universal event listener.
+	// Start listening for session events.
 	er, err := ListenForEvents(sessionToken)
 	if err != nil {
 		return fmt.Errorf("failed to start event listener: %w", err)
@@ -74,11 +74,12 @@ func LoginAccount(mnemonic, rootPath string) error {
 		return fmt.Errorf("account recovery failed: %w", err)
 	}
 
-	// Wait for the account ID from the event receiver.
+	// Wait for the account ID.
 	accountID, err := WaitForAccountID(er)
 	if err != nil {
 		return fmt.Errorf("error waiting for account ID: %w", err)
 	}
+	fmt.Println("Account ID:", accountID)
 
 	// Select the account.
 	_, err = client.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
@@ -95,22 +96,9 @@ func LoginAccount(mnemonic, rootPath string) error {
 }
 
 func Login(mnemonic, rootPath string) error {
-	// Ensure the server is running
-	status, err := IsGRPCServerRunning()
-	if err != nil {
-		return fmt.Errorf("failed to check server status: %w", err)
-	}
-	if !status {
-		err := StartServer()
-		if err != nil {
-			return fmt.Errorf("failed to start server: %w", err)
-		}
-		time.Sleep(2 * time.Second) // wait for server to start
-	}
-
 	usedStoredMnemonic := false
 	if mnemonic == "" {
-		mnemonic, err = GetStoredMnemonic()
+		mnemonic, err := GetStoredMnemonic()
 		if err == nil && mnemonic != "" {
 			fmt.Println("Using stored mnemonic from keychain.")
 			usedStoredMnemonic = true
@@ -122,23 +110,20 @@ func Login(mnemonic, rootPath string) error {
 		}
 	}
 
-	// Ensure mnemonic is valid (should be 12 words)
 	if len(strings.Split(mnemonic, " ")) != 12 {
 		return fmt.Errorf("mnemonic must be 12 words")
 	}
 
-	// Perform the common login process.
-	err = LoginAccount(mnemonic, rootPath)
+	err := LoginAccount(mnemonic, rootPath)
 	if err != nil {
 		return fmt.Errorf("failed to log in: %w", err)
 	}
 
-	// Save the mnemonic in the keychain for future logins.
 	if !usedStoredMnemonic {
 		if err := SaveMnemonic(mnemonic); err != nil {
 			fmt.Println("Warning: failed to save mnemonic in keychain:", err)
 		} else {
-			fmt.Println("Mnemonic saved to keychain.")
+			fmt.Println("✓ Mnemonic saved to keychain.")
 		}
 	}
 
@@ -156,43 +141,29 @@ func Logout() error {
 		return fmt.Errorf("failed to get stored token: %w", err)
 	}
 
-	// Call AccountStop RPC
 	ctx := ClientContextWithAuth(token)
 	resp, err := client.AccountStop(ctx, &pb.RpcAccountStopRequest{
 		RemoveData: false,
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to log out: %w", err)
 	}
-
 	if resp.Error.Code != pb.RpcAccountStopResponseError_NULL {
 		fmt.Println("Failed to log out:", resp.Error.Description)
 	}
 
-	// Call WalletCloseSession RPC
 	resp2, err := client.WalletCloseSession(ctx, &pb.RpcWalletCloseSessionRequest{Token: token})
 	if err != nil {
 		return fmt.Errorf("failed to close session: %w", err)
 	}
-
 	if resp2.Error.Code != pb.RpcWalletCloseSessionResponseError_NULL {
 		fmt.Println("Failed to close session:", resp2.Error.Description)
 	}
 
-	err = DeleteStoredMnemonic()
-	if err != nil {
+	if err := DeleteStoredMnemonic(); err != nil {
 		return fmt.Errorf("failed to delete stored mnemonic: %w", err)
 	}
-
 	fmt.Println("✓ Successfully logged out. Stored mnemonic removed.")
-
-	err = StopServer()
-	if err != nil {
-		fmt.Println("X Failed to stop server:", err)
-	} else {
-		fmt.Println("✓ Server stopped successfully.")
-	}
 
 	return nil
 }

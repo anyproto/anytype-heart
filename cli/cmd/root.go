@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/anyproto/anytype-heart/cli/cmd/auth"
+	"github.com/anyproto/anytype-heart/cli/cmd/daemon"
 	"github.com/anyproto/anytype-heart/cli/cmd/server"
 	"github.com/anyproto/anytype-heart/cli/cmd/shell"
 	"github.com/anyproto/anytype-heart/cli/cmd/space"
@@ -16,9 +17,6 @@ var rootCmd = &cobra.Command{
 	Use:   "anyctl <command> <subcommand> [flags]",
 	Short: "Anytype CLI",
 	Long:  "Seamlessly interact with Anytype from the command line",
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
 }
 
 // Execute runs the root command
@@ -35,5 +33,6 @@ func init() {
 		shell.NewShellCmd(rootCmd),
 		space.NewSpaceCmd(),
 		token.NewTokenCmd(),
+		daemon.NewDaemonCmd(),
 	)
 }

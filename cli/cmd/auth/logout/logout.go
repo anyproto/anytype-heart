@@ -2,7 +2,6 @@ package logout
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/spf13/cobra"
 
@@ -17,7 +16,7 @@ func NewLogoutCmd() *cobra.Command {
 			if err := internal.Logout(); err != nil {
 				return fmt.Errorf("X Failed to log out: %w", err)
 			}
-			log.Println("✓ Successfully logged out")
+			fmt.Println("✓ Successfully logged out")
 			return nil
 		},
 	}
