@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -25,9 +26,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -40,7 +43,7 @@ const (
 	membershipLimit       = 100 << 20
 	defaultLimit          = 10 << 20
 	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
-	memberUrlTemplate     = "https://%s.coop"
+	memberUrlTemplate     = "https://%s.org"
 	defaultUrlTemplate    = "https://any.coop/%s"
 	indexFileName         = "index.json.gz"
 )
@@ -59,8 +62,9 @@ type PublishingUberSnapshotMeta struct {
 	InviteLink string `json:"inviteLink,omitempty"`
 }
 
-type Heads struct {
-	Heads []string `json:"heads"`
+type Version struct {
+	Heads     []string `json:"heads"`
+	JoinSpace bool     `json:"joinSpace"`
 }
 
 // Contains all publishing .pb files
@@ -87,6 +91,7 @@ type service struct {
 	publishClientService publishclient.Client
 	identityService      identity.Service
 	inviteService        inviteservice.InviteService
+	objectStore          objectstore.ObjectStore
 }
 
 func New() Service {
@@ -99,6 +104,7 @@ func (s *service) Init(a *app.App) error {
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
 	s.identityService = app.MustComponent[identity.Service](a)
 	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -121,14 +127,20 @@ func uniqName() string {
 func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
 	tempDir := os.TempDir()
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
-		SpaceId:      spaceId,
-		Format:       model.Export_Protobuf,
-		IncludeFiles: true,
-		IsJson:       false,
-		Zip:          false,
-		Path:         tempDir,
-		ObjectIds:    []string{pageId},
-		NoProgress:   true,
+		SpaceId:          spaceId,
+		Format:           model.Export_Protobuf,
+		IncludeFiles:     true,
+		IsJson:           false,
+		Zip:              false,
+		Path:             tempDir,
+		ObjectIds:        []string{pageId},
+		NoProgress:       true,
+		IncludeNested:    true,
+		IncludeBacklinks: true,
+		LinksStateFilters: &pb.RpcObjectListExportStateFilters{
+			RelationsWhiteList: relationsWhiteListToPbModel(),
+			RemoveBlocks:       true,
+		},
 	})
 	if err != nil {
 		return
@@ -177,13 +189,21 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	version, err := s.evaluateDocumentVersion(spc, pageId)
+	version, err := s.evaluateDocumentVersion(ctx, spc, pageId, joinSpace)
 	if err != nil {
 		return err
 	}
 
-	if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
-		return err
+	if localPublishDir := os.Getenv("ANYTYPE_LOCAL_PUBLISH_DIR"); localPublishDir != "" {
+		err := os.CopyFS(localPublishDir, os.DirFS(tempPublishDir))
+		if err != nil {
+			log.Error("publishing to local dir error", zap.Error(err))
+			return err
+		}
+	} else {
+		if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -277,11 +297,15 @@ func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEnt
 		return err
 	}
 
+	details := snapshot.GetSnapshot().GetData().GetDetails()
+	if source := pbtypes.GetString(details, bundle.RelationKeySource.String()); source != "" {
+		source = filepath.ToSlash(source)
+		details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
+	}
 	jsonData, err := jsonM.MarshalToString(&snapshot)
 	if err != nil {
 		return err
 	}
-
 	fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
 	uberSnapshot.PbFiles[fileNameKey] = jsonData
 	return nil
@@ -356,17 +380,17 @@ func (s *service) extractInviteLink(ctx context.Context, spaceId string, joinSpa
 	return inviteLink, nil
 }
 
-func (s *service) evaluateDocumentVersion(spc clientspace.Space, pageId string) (string, error) {
-	treeStorage, err := spc.Storage().TreeStorage(pageId)
+func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.Space, pageId string, joinSpace bool) (string, error) {
+	treeStorage, err := spc.Storage().TreeStorage(ctx, pageId)
 	if err != nil {
 		return "", err
 	}
-	heads, err := treeStorage.Heads()
+	heads, err := treeStorage.Heads(ctx)
 	if err != nil {
 		return "", err
 	}
 	slices.Sort(heads)
-	h := &Heads{Heads: heads}
+	h := &Version{Heads: heads, JoinSpace: joinSpace}
 	jsonData, err := json.Marshal(h)
 	if err != nil {
 		return "", err
@@ -423,6 +447,8 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 	}
 	pbPublishes := make([]*pb.RpcPublishingPublishState, 0, len(publishes))
 	for _, publish := range publishes {
+		version := s.retrieveVersion(publish)
+		details := s.retrieveObjectDetails(publish)
 		pbPublishes = append(pbPublishes, &pb.RpcPublishingPublishState{
 			SpaceId:   publish.SpaceId,
 			ObjectId:  publish.ObjectId,
@@ -431,9 +457,34 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 			Version:   publish.Version,
 			Timestamp: publish.Timestamp,
 			Size_:     publish.Size_,
+			JoinSpace: version.JoinSpace,
+			Details:   details,
 		})
 	}
 	return pbPublishes, nil
+}
+
+func (s *service) retrieveObjectDetails(publish *publishapi.Publish) *types.Struct {
+	records, err := s.objectStore.SpaceIndex(publish.SpaceId).QueryByIds([]string{publish.ObjectId})
+	if err != nil {
+		log.Error("failed to extract object details", zap.Error(err))
+		return nil
+	}
+	if len(records) == 0 {
+		log.Error("details weren't found in store")
+		return nil
+	}
+	details := records[0].Details
+	return details.ToProto()
+}
+
+func (s *service) retrieveVersion(publish *publishapi.Publish) *Version {
+	version := &Version{}
+	err := json.Unmarshal([]byte(publish.Version), version)
+	if err != nil {
+		log.Error("failed to unmarshal publish version", zap.Error(err))
+	}
+	return version
 }
 
 func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishingPublishState, error) {
@@ -441,6 +492,7 @@ func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishing
 	if err != nil {
 		return nil, err
 	}
+	version := s.retrieveVersion(publish)
 	return &pb.RpcPublishingPublishState{
 		SpaceId:   publish.SpaceId,
 		ObjectId:  publish.ObjectId,
@@ -449,6 +501,7 @@ func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishing
 		Version:   publish.Version,
 		Timestamp: publish.Timestamp,
 		Size_:     publish.Size_,
+		JoinSpace: version.JoinSpace,
 	}, nil
 }
 
@@ -457,6 +510,7 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 	if err != nil {
 		return nil, err
 	}
+	version := s.retrieveVersion(status)
 	return &pb.RpcPublishingPublishState{
 		SpaceId:   status.SpaceId,
 		ObjectId:  status.ObjectId,
@@ -465,5 +519,6 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 		Version:   status.Version,
 		Timestamp: status.Timestamp,
 		Size_:     status.Size_,
+		JoinSpace: version.JoinSpace,
 	}, nil
 }

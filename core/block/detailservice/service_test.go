@@ -79,7 +79,7 @@ func TestService_SetDetailsList(t *testing.T) {
 		{Key: bundle.RelationKeyLinkedProjects, Value: domain.StringList([]string{"important", "urgent"})},
 	}
 
-	t.Run("lastUsed is updated once", func(t *testing.T) {
+	t.Run("no error", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		objects := map[string]*smarttest.SmartTest{
@@ -98,16 +98,6 @@ func TestService_SetDetailsList(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		require.Len(t, objects["obj1"].Results.LastUsedUpdates, 3)
-		assert.Equal(t, []string{
-			bundle.RelationKeyAssignee.String(),
-			bundle.RelationKeyDone.String(),
-			bundle.RelationKeyLinkedProjects.String(),
-		}, objects["obj1"].Results.LastUsedUpdates)
-
-		// lastUsed should be updated only during the work under 1st object
-		assert.Len(t, objects["obj2"].Results.LastUsedUpdates, 0)
-		assert.Len(t, objects["obj3"].Results.LastUsedUpdates, 0)
 
 		assert.Equal(t, "Mark Twain", objects["obj1"].NewState().Details().GetString(bundle.RelationKeyAssignee))
 		assert.True(t, objects["obj2"].NewState().Details().GetBool(bundle.RelationKeyDone))
@@ -153,7 +143,7 @@ func TestService_ModifyDetailsList(t *testing.T) {
 		{RelationKey: bundle.RelationKeyDone.String(), Set: domain.Bool(true).ToProto()},
 	}
 
-	t.Run("lastUsed is updated once", func(t *testing.T) {
+	t.Run("no error", func(t *testing.T) {
 		fx := newFixture(t)
 		objects := map[string]*smarttest.SmartTest{
 			"obj1": smarttest.New("obj1"),
@@ -174,11 +164,6 @@ func TestService_ModifyDetailsList(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		require.Len(t, objects["obj1"].Results.LastUsedUpdates, 3)
-
-		// lastUsed should be updated only during the work under 1st object
-		assert.Len(t, objects["obj2"].Results.LastUsedUpdates, 0)
-		assert.Len(t, objects["obj3"].Results.LastUsedUpdates, 0)
 	})
 
 	t.Run("some updates failed", func(t *testing.T) {
@@ -306,7 +291,7 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 			assert.Equal(t, wsObjectId, objectId)
 			ws := &editor.Workspaces{
 				SmartBlock:    sb,
-				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil, nil),
+				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil),
 			}
 			return ws, nil
 		})
@@ -329,7 +314,7 @@ func TestService_SetWorkspaceDashboardId(t *testing.T) {
 			assert.Equal(t, wsObjectId, objectId)
 			ws := &editor.Workspaces{
 				SmartBlock:    sb,
-				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil, nil),
+				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil),
 			}
 			return ws, nil
 		})

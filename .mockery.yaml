@@ -19,6 +19,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/cache:
     interfaces:
       ObjectGetter:
+      CachedObjectGetter:
       ObjectGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
@@ -37,9 +38,6 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
-  github.com/anyproto/anytype-heart/core/block/editor/lastused:
-    interfaces:
-      ObjectUsageUpdater:
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
@@ -231,3 +229,6 @@ packages:
   github.com/anyproto/anytype-heart/core/identity:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/pb/service:
+    interfaces:
+      ClientCommandsServer:

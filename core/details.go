@@ -7,6 +7,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 )
 
@@ -22,7 +25,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		return m
 	}
 
-	err := mustService[detailservice.Service](mw).SetDetailsAndUpdateLastUsed(ctx, req.ContextId, requestDetailsListToDomain(req.GetDetails()))
+	err := mustService[detailservice.Service](mw).SetDetails(ctx, req.ContextId, requestDetailsListToDomain(req.GetDetails()))
 	if err != nil {
 		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
@@ -177,12 +180,22 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 	}
 
 	detailsService := mustService[detailservice.Service](mw)
+	objectStore := mustService[objectstore.ObjectStore](mw)
 	err := detailsService.ModifyDetails(ctx, req.ContextId, func(current *domain.Details) (*domain.Details, error) {
 		for _, key := range req.RelationKeys {
 			if current.Has(domain.RelationKey(key)) {
 				continue
 			}
-			current.Set(domain.RelationKey(key), domain.Null())
+			format, err := mw.extractRelationFormat(current, objectStore, key)
+			if err != nil {
+				log.Errorf("failed to fetch relation from store to get format %s, falling back to basic", err)
+			}
+			switch format {
+			case model.RelationFormat_checkbox:
+				current.Set(domain.RelationKey(key), domain.Bool(false))
+			default:
+				current.Set(domain.RelationKey(key), domain.Null())
+			}
 		}
 		return current, nil
 	})
@@ -197,4 +210,17 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 		Error: &pb.RpcObjectRelationAddResponseError{},
 		Event: mw.getResponseEvent(ctx),
 	}
+}
+
+func (mw *Middleware) extractRelationFormat(current *domain.Details, objectStore objectstore.ObjectStore, key string) (model.RelationFormat, error) {
+	spaceId := current.GetString(bundle.RelationKeySpaceId)
+	relation, err := objectStore.SpaceIndex(spaceId).FetchRelationByKeys(domain.RelationKey(key))
+	if err != nil {
+		return model.RelationFormat_longtext, err
+	}
+	var format model.RelationFormat
+	if len(relation) != 0 {
+		format = relation[0].Format
+	}
+	return format, nil
 }

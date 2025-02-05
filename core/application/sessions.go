@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token string, accountId string, err error) {
@@ -31,7 +32,8 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 			return "", "", err
 		}
 		log.Infof("appLink auth %s", appLink.AppName)
-		token, err := s.sessions.StartSession(s.sessionSigningKey)
+
+		token, err := s.sessions.StartSession(s.sessionSigningKey, model.AccountAuthLocalApiScope(appLink.Scope)) // nolint:gosec
 		if err != nil {
 			return "", "", err
 		}
@@ -46,7 +48,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	if s.mnemonic != mnemonic {
 		return "", "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}
-	token, err = s.sessions.StartSession(s.sessionSigningKey)
+	token, err = s.sessions.StartSession(s.sessionSigningKey, model.AccountAuth_Full)
 	if err != nil {
 		return "", "", err
 	}
@@ -61,16 +63,16 @@ func (s *Service) CloseSession(req *pb.RpcWalletCloseSessionRequest) error {
 	return s.sessions.CloseSession(req.Token)
 }
 
-func (s *Service) ValidateSessionToken(token string) error {
+func (s *Service) ValidateSessionToken(token string) (model.AccountAuthLocalApiScope, error) {
 	return s.sessions.ValidateToken(s.sessionSigningKey, token)
 }
 
-func (s *Service) LinkLocalStartNewChallenge(clientInfo *pb.EventAccountLinkChallengeClientInfo) (id string, err error) {
+func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkChallengeClientInfo) (id string, err error) {
 	if s.app == nil {
 		return "", ErrApplicationIsNotRunning
 	}
 
-	id, value, err := s.sessions.StartNewChallenge(clientInfo)
+	id, value, err := s.sessions.StartNewChallenge(scope, clientInfo)
 	if err != nil {
 		return "", err
 	}
@@ -78,6 +80,7 @@ func (s *Service) LinkLocalStartNewChallenge(clientInfo *pb.EventAccountLinkChal
 		AccountLinkChallenge: &pb.EventAccountLinkChallenge{
 			Challenge:  value,
 			ClientInfo: clientInfo,
+			Scope:      scope,
 		},
 	}))
 	return id, nil
@@ -87,7 +90,7 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 	if s.app == nil {
 		return "", "", ErrApplicationIsNotRunning
 	}
-	clientInfo, token, err := s.sessions.SolveChallenge(req.ChallengeId, req.Answer, s.sessionSigningKey)
+	clientInfo, token, scope, err := s.sessions.SolveChallenge(req.ChallengeId, req.Answer, s.sessionSigningKey)
 	if err != nil {
 		return "", "", err
 	}
@@ -96,7 +99,13 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 		AppName:   clientInfo.ProcessName,
 		AppPath:   clientInfo.ProcessPath,
 		CreatedAt: time.Now().Unix(),
+		Scope:     int(scope),
 	})
 
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkChallengeHide{
+		AccountLinkChallengeHide: &pb.EventAccountLinkChallengeHide{
+			Challenge: req.Answer,
+		},
+	}))
 	return
 }

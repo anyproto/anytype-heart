@@ -4,10 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused/mock_lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -18,10 +16,9 @@ import (
 )
 
 type basicFixture struct {
-	sb       *smarttest.SmartTest
-	store    *spaceindex.StoreFixture
-	lastUsed *mock_lastused.MockObjectUsageUpdater
-	basic    CommonOperations
+	sb    *smarttest.SmartTest
+	store *spaceindex.StoreFixture
+	basic CommonOperations
 }
 
 var (
@@ -35,15 +32,13 @@ func newBasicFixture(t *testing.T) *basicFixture {
 	sb.SetSpaceId(spaceId)
 
 	store := spaceindex.NewStoreFixture(t)
-	lastUsed := mock_lastused.NewMockObjectUsageUpdater(t)
 
-	b := NewBasic(sb, store, converter.NewLayoutConverter(), nil, lastUsed)
+	b := NewBasic(sb, store, converter.NewLayoutConverter(), nil)
 
 	return &basicFixture{
-		sb:       sb,
-		store:    store,
-		lastUsed: lastUsed,
-		basic:    b,
+		sb:    sb,
+		store: store,
+		basic: b,
 	}
 }
 
@@ -149,7 +144,6 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
 
-		f.lastUsed.EXPECT().UpdateLastUsedDate(mock.Anything, bundle.TypeKeyTask, mock.Anything).Return().Once()
 		f.store.AddObjects(t, []objectstore.TestObject{{
 			bundle.RelationKeySpaceId:   domain.String(spaceId),
 			bundle.RelationKeyId:        domain.String("ot-task"),

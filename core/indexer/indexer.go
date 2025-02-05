@@ -52,7 +52,7 @@ type indexer struct {
 	store          objectstore.ObjectStore
 	fileStore      filestore.FileStore
 	source         source.Service
-	picker         cache.ObjectGetter
+	picker         cache.CachedObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 
@@ -77,7 +77,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.picker = app.MustComponent[cache.ObjectGetter](a)
+	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
@@ -140,7 +140,7 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {
-		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store, i.storageService)
+		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}
 	i.lock.Unlock()

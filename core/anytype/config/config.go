@@ -43,6 +43,7 @@ const (
 const (
 	SpaceStoreBadgerPath = "spacestore"
 	SpaceStoreSqlitePath = "spaceStore.db"
+	SpaceStoreNewPath    = "spaceStoreNew"
 )
 
 var (
@@ -69,11 +70,13 @@ type Config struct {
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
 	PeferYamuxTransport                    bool
+	DisableNetworkIdCheck                  bool
 	SpaceStorageMode                       storage.SpaceStorageMode
 	NetworkMode                            pb.RpcAccountNetworkMode
 	NetworkCustomConfigFilePath            string           `json:",omitempty"` // not saved to config
 	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
 	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
+	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled
 
 	RepoPath    string
 	AnalyticsId string
@@ -292,12 +295,27 @@ func (c *Config) FSConfig() (FSConfig, error) {
 	return FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
 }
 
+func (c *Config) GetRepoPath() string {
+	return c.RepoPath
+}
+
 func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
 }
 
-func (c *Config) GetSpaceStorePath() string {
-	return filepath.Join(c.RepoPath, "spaceStore.db")
+func (c *Config) GetSqliteStorePath() string {
+	return filepath.Join(c.RepoPath, SpaceStoreSqlitePath)
+}
+
+func (c *Config) GetOldSpaceStorePath() string {
+	if c.GetSpaceStorageMode() == storage.SpaceStorageModeBadger {
+		return filepath.Join(c.RepoPath, SpaceStoreBadgerPath)
+	}
+	return c.GetSqliteStorePath()
+}
+
+func (c *Config) GetNewSpaceStorePath() string {
+	return filepath.Join(c.RepoPath, SpaceStoreNewPath)
 }
 
 func (c *Config) GetTempDirPath() string {
@@ -390,7 +408,7 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 		if err := yaml.Unmarshal(confBytes, &conf); err != nil {
 			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, err)
 		}
-		if c.NetworkId != "" && c.NetworkId != conf.NetworkId {
+		if !c.DisableNetworkIdCheck && c.NetworkId != "" && c.NetworkId != conf.NetworkId {
 			log.Warnf("Network id mismatch: %s != %s", c.NetworkId, conf.NetworkId)
 			return nodeconf.Configuration{}, errors.Join(ErrNetworkIdMismatch, fmt.Errorf("network id mismatch: %s != %s", c.NetworkId, conf.NetworkId))
 		}

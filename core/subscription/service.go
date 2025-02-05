@@ -9,8 +9,7 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
-	"github.com/cheggaaa/mb"
-	mb2 "github.com/cheggaaa/mb/v3"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
@@ -61,7 +60,7 @@ type SubscribeRequest struct {
 	// Internal indicates that subscription will send events into message queue instead of global client's event system
 	Internal bool
 	// InternalQueue is used when Internal flag is set to true. If it's nil, new queue will be created
-	InternalQueue *mb2.MB[*pb.EventMessage]
+	InternalQueue *mb.MB[*pb.EventMessage]
 	AsyncInit     bool
 }
 
@@ -72,7 +71,7 @@ type SubscribeResponse struct {
 	Counters     *pb.EventObjectSubscriptionCounters
 
 	// Used when Internal flag is set to true
-	Output *mb2.MB[*pb.EventMessage]
+	Output *mb.MB[*pb.EventMessage]
 }
 
 type Service interface {
@@ -117,13 +116,13 @@ type service struct {
 
 type internalSubOutput struct {
 	externallyManaged bool
-	queue             *mb2.MB[*pb.EventMessage]
+	queue             *mb.MB[*pb.EventMessage]
 }
 
-func newInternalSubOutput(queue *mb2.MB[*pb.EventMessage]) *internalSubOutput {
+func newInternalSubOutput(queue *mb.MB[*pb.EventMessage]) *internalSubOutput {
 	if queue == nil {
 		return &internalSubOutput{
-			queue: mb2.New[*pb.EventMessage](0),
+			queue: mb.New[*pb.EventMessage](0),
 		}
 	}
 	return &internalSubOutput{
@@ -276,7 +275,7 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 			subscriptionKeys:  make([]string, 0, 20),
 			subscriptions:     make(map[string]subscription, 20),
 			customOutput:      map[string]*internalSubOutput{},
-			recBatch:          mb.New(0),
+			recBatch:          mb.New[database.Record](0),
 			objectStore:       s.objectStore.SpaceIndex(spaceId),
 			kanban:            s.kanban,
 			collectionService: s.collectionService,
@@ -286,7 +285,7 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 		}
 		spaceSubs.ds = newDependencyService(spaceSubs)
 		spaceSubs.initDebugger()
-		err := spaceSubs.Run(context.Background())
+		err := spaceSubs.Run()
 		if err != nil {
 			return nil, fmt.Errorf("run space subscriptions: %w", err)
 		}
@@ -300,7 +299,7 @@ type spaceSubscriptions struct {
 	subscriptions    map[string]subscription
 
 	customOutput map[string]*internalSubOutput
-	recBatch     *mb.MB
+	recBatch     *mb.MB[database.Record]
 
 	// Deps
 	objectStore       spaceindex.Store
@@ -315,12 +314,19 @@ type spaceSubscriptions struct {
 
 	subDebugger *subDebugger
 	arenaPool   *anyenc.ArenaPool
+	ctx         context.Context
+	cancelCtx   context.CancelFunc
 }
 
-func (s *spaceSubscriptions) Run(context.Context) (err error) {
+func (s *spaceSubscriptions) Run() (err error) {
+	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
+	var batchErr error
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
-		s.recBatch.Add(rec)
+		batchErr = s.recBatch.Add(s.ctx, rec)
 	})
+	if batchErr != nil {
+		return batchErr
+	}
 	go s.recordsHandler()
 	return
 }
@@ -437,7 +443,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		}
 	}
 
-	var outputQueue *mb2.MB[*pb.EventMessage]
+	var outputQueue *mb.MB[*pb.EventMessage]
 	if req.Internal {
 		output := newInternalSubOutput(req.InternalQueue)
 		outputQueue = output.queue
@@ -527,7 +533,7 @@ func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *dat
 		depRecords = sub.sortedSub.depSub.getActiveRecords()
 	}
 
-	var outputQueue *mb2.MB[*pb.EventMessage]
+	var outputQueue *mb.MB[*pb.EventMessage]
 	if req.Internal {
 		output := newInternalSubOutput(req.InternalQueue)
 		outputQueue = output.queue
@@ -778,15 +784,18 @@ func (s *spaceSubscriptions) recordsHandler() {
 		}
 	}
 	for {
-		records := s.recBatch.Wait()
+		records, err := s.recBatch.Wait(s.ctx)
+		if err != nil {
+			return
+		}
 		if len(records) == 0 {
 			return
 		}
 		for _, rec := range records {
-			id := rec.(database.Record).Details.GetString(bundle.RelationKeyId)
+			id := rec.Details.GetString(bundle.RelationKeyId)
 			// nil previous version
 			nilIfExists(id)
-			entries = append(entries, newEntry(id, rec.(database.Record).Details))
+			entries = append(entries, newEntry(id, rec.Details))
 		}
 		// filter nil entries
 		filtered := entries[:0]
@@ -851,7 +860,7 @@ func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(c
 				s.eventSender.Broadcast(&pb.Event{Messages: msgs})
 			} else {
 				err := s.customOutput[id].add(msgs...)
-				if err != nil && !errors.Is(err, mb2.ErrClosed) {
+				if err != nil && !errors.Is(err, mb.ErrClosed) {
 					log.With("subId", id, "error", err).Errorf("push to output")
 				}
 			}
@@ -923,6 +932,9 @@ func (s *spaceSubscriptions) depIdsFromFilter(spaceId string, filters []database
 func (s *spaceSubscriptions) Close(ctx context.Context) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.cancelCtx != nil {
+		s.cancelCtx()
+	}
 	s.recBatch.Close()
 	for subId, sub := range s.subscriptions {
 		sub.close()
