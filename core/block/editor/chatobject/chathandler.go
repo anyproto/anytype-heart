@@ -43,7 +43,7 @@ func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (
 
 	model := msg.toModel()
 	model.OrderId = ch.Change.Order
-	d.subscription.add(model)
+	d.subscription.add(ch.Change.PrevOrderId, model)
 
 	return
 }

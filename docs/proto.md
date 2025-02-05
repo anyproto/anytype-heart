@@ -27423,6 +27423,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | orderId | [string](#string) |  |  |
+| afterOrderId | [string](#string) |  |  |
 | message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
 | subIds | [string](#string) | repeated |  |
 | dependencies | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
