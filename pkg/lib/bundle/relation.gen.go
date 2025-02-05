@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5694f1d0c15a9a770f961a84dd5ee2af89886c00522f4150c601d40dadc502e0"
+const RelationChecksum = "7e14cc433fd3903623ab8f25cfdcfea52317aa59aee7b0925f1ba68afe46c5f5"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
