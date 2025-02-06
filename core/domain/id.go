@@ -17,3 +17,15 @@ func NewParticipantId(spaceId, identity string) string {
 	spaceId = strings.Replace(spaceId, ".", "_", 1)
 	return fmt.Sprintf("%s%s_%s", ParticipantPrefix, spaceId, identity)
 }
+
+func ExtractSpaceId(participantId string) (string, error) {
+	if !strings.HasPrefix(participantId, ParticipantPrefix) {
+		return "", fmt.Errorf("participant id must start with _participant_")
+	}
+	parts := strings.Split(participantId, "_")
+	if len(parts) != 5 {
+		return "", fmt.Errorf("can't extract space id")
+	}
+
+	return fmt.Sprintf("%s.%s", parts[2], parts[3]), nil
+}

@@ -17,7 +17,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver"
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -69,7 +68,6 @@ type service struct {
 	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
 	idDeriver          idderiver.Deriver
-	idResolver         idresolver.Resolver
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -84,7 +82,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.idDeriver = app.MustComponent[idderiver.Deriver](a)
-	s.idResolver = app.MustComponent[idresolver.Resolver](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
@@ -135,10 +132,10 @@ func (s *service) NewSource(ctx context.Context, space Space, id string, buildOp
 
 func (s *service) newSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (Source, error) {
 	if id == addr.AnytypeProfileId {
-		return s.withSpaceValidated(id, space, func() (Source, error) { return NewAnytypeProfile(id), nil })
+		return NewAnytypeProfile(id), nil
 	}
 	if id == addr.MissingObject {
-		return s.withSpaceValidated(id, space, func() (Source, error) { return NewMissingObject(), nil })
+		return NewMissingObject(), nil
 	}
 	st, err := typeprovider.SmartblockTypeFromID(id)
 	if err == nil {
@@ -148,33 +145,35 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			if err != nil {
 				return nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 			}
-			return s.withSpaceValidated(id, space, func() (Source, error) {
-				return NewDate(DateSourceParams{
-					Id: domain.FullID{
-						ObjectID: id,
-						SpaceID:  space.Id(),
-					},
-					DateObjectTypeId: typeId,
-				}), nil
-			})
+			return NewDate(DateSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  space.Id(),
+				},
+				DateObjectTypeId: typeId,
+			}), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
-			return s.withSpaceValidated(id, space, func() (Source, error) { return NewBundledObjectType(id), nil })
+			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
-			return s.withSpaceValidated(id, space, func() (Source, error) { return NewBundledRelation(id), nil })
+			return NewBundledRelation(id), nil
 		case smartblock.SmartBlockTypeParticipant:
+			spaceId, err := domain.ExtractSpaceId(id)
+			if err != nil {
+				return nil, err
+			}
 			participantState := state.NewDoc(id, nil).(*state.State)
 			// Set object type here in order to derive value of Type relation in smartblock.Init
 			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
 			params := StaticSourceParams{
 				Id: domain.FullID{
 					ObjectID: id,
-					SpaceID:  space.Id(),
+					SpaceID:  spaceId,
 				},
 				State:     participantState,
 				SbType:    smartblock.SmartBlockTypeParticipant,
 				CreatorId: addr.AnytypeProfileId,
 			}
-			return s.withSpaceValidated(id, space, func() (Source, error) { return s.NewStaticSource(params), nil })
+			return s.NewStaticSource(params), nil
 		}
 	}
 
@@ -182,21 +181,10 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	staticSrc := s.staticIds[id]
 	s.mu.Unlock()
 	if staticSrc != nil {
-		return s.withSpaceValidated(id, space, func() (Source, error) { return staticSrc, nil })
+		return staticSrc, nil
 	}
 
 	return s.newTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
-}
-
-func (s *service) withSpaceValidated(id string, space Space, f func() (Source, error)) (Source, error) {
-	spaceId, err := s.idResolver.ResolveSpaceID(id)
-	if err != nil {
-		return nil, err
-	}
-	if spaceId != space.Id() {
-		return nil, fmt.Errorf("wrong space for object provided")
-	}
-	return f()
 }
 
 func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error) {
