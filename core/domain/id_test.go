@@ -1,14 +1,10 @@
 package domain
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 )
 
 func TestExtractSpaceId(t *testing.T) {
-	x := strings.Split("_participant_spaceIdprefix_spaceIdsuffix_identity", "_")
-	fmt.Println(x)
 	tests := []struct {
 		participantId   string
 		expectedSpaceId string
