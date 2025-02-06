@@ -20,16 +20,18 @@ import (
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	files2 "github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/core/identity/mock_identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
@@ -42,7 +44,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -755,6 +756,11 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	return exp
 }
 
+type fileObjectWrapper struct {
+	editorsb.SmartBlock
+	fileobject.FileObject
+}
+
 func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mock_space.MockService, testFile *os.File) export.Export {
 	storeFixture := objectstore.NewStoreFixture(t)
 	objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
@@ -840,15 +846,24 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
 
 	fileService := mock_files.NewMockService(t)
-	fileObject := mock_files.NewMockFile(t)
-	fileObject.EXPECT().Info().Return(&storage.FileInfo{
-		Media: "file",
-	})
-	fileObject.EXPECT().Meta().Return(&files2.FileMeta{
-		Name: testFile.Name(),
-	})
-	fileObject.EXPECT().Reader(context.Background()).Return(testFile, nil)
-	fileService.EXPECT().FileByHash(context.Background(), domain.FullFileId{FileId: domain.FileId(fileId), SpaceId: spaceId}).Return(fileObject, nil)
+	// fileObject := mock_files.NewMockFile(t)
+	// fileObject.EXPECT().Info().Return(&storage.FileInfo{
+	// 	Media: "file",
+	// })
+	// fileObject.EXPECT().Meta().Return(&files2.FileMeta{
+	// 	Name: testFile.Name(),
+	// })
+	// fileObject.EXPECT().Reader(context.Background()).Return(testFile, nil)
+	fileService.EXPECT().GetContentReader(context.Background(), spaceId, fileId, mock.Anything).Return(testFile, nil).Maybe()
+
+	fileObjectSb := smarttest.New("")
+	fileObject := &fileObjectWrapper{SmartBlock: fileObjectSb, FileObject: fileobject.NewFileObject(fileObjectSb, fileService)}
+
+	spaceService.EXPECT().Get(mock.Anything, spaceId).Return(space, nil).Maybe()
+	space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(s string, f func(editorsb.SmartBlock) error) error {
+		return f(fileObject)
+	}).Maybe()
+
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
 	a.Register(storeFixture)
