@@ -144,6 +144,77 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 	})
 }
 
+func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
+	const (
+		spaceId1 = "space1"
+		spaceId2 = "space2"
+	)
+	fx := NewIndexerFixture(t)
+
+	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:      domain.String("_part1"),
+			bundle.RelationKeyLayout:  domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId: domain.String(spaceId1),
+		},
+		{
+			bundle.RelationKeyId:      domain.String("rand1"),
+			bundle.RelationKeyLayout:  domain.Int64(model.SmartBlockType_Page),
+			bundle.RelationKeySpaceId: domain.String(spaceId1),
+		},
+	})
+	fx.objectStore.AddObjects(t, spaceId2, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:      domain.String("_part2"),
+			bundle.RelationKeyLayout:  domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId: domain.String(spaceId2),
+		},
+		{
+			bundle.RelationKeyId:      domain.String("_part21"),
+			bundle.RelationKeyLayout:  domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId: domain.String(spaceId2),
+		},
+		{
+			bundle.RelationKeyId:      domain.String("rand2"),
+			bundle.RelationKeyLayout:  domain.Int64(model.SmartBlockType_Page),
+			bundle.RelationKeySpaceId: domain.String(spaceId1),
+		},
+	})
+
+	checksums := fx.getLatestChecksums(false)
+	checksums.ReindexParticipants = checksums.ReindexParticipants - 1
+
+	err := fx.objectStore.SaveChecksums(spaceId1, &checksums)
+	require.NoError(t, err)
+	err = fx.objectStore.SaveChecksums(spaceId2, &checksums)
+	require.NoError(t, err)
+
+	for _, space := range []string{spaceId1, spaceId2} {
+		t.Run("reindex - participants deleted - when flag doesn't match", func(t *testing.T) {
+			// given
+			store := fx.store.SpaceIndex(space)
+
+			spc := mock_space.NewMockSpace(t)
+			spc.EXPECT().Id().Return(space)
+			spc.EXPECT().StoredIds().Return([]string{}).Maybe()
+			fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
+
+			// when
+			err = fx.ReindexSpace(spc)
+			assert.NoError(t, err)
+
+			// then
+			ids, err := store.ListIds()
+			assert.NoError(t, err)
+			assert.Len(t, ids, 1)
+
+			storeChecksums, err := fx.store.GetChecksums(space)
+			assert.Equal(t, ForceReindexParticipantsCounter, storeChecksums.ReindexParticipants)
+		})
+	}
+
+}
+
 func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 	const (
 		spaceId1 = "space1"
