@@ -2,6 +2,8 @@ package domain
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExtractSpaceId(t *testing.T) {
@@ -21,19 +23,11 @@ func TestExtractSpaceId(t *testing.T) {
 	for _, test := range tests {
 		spaceId, id, err := ParseParticipantId(test.participantId)
 		if test.expectError {
-			if err == nil {
-				t.Errorf("Expected error for input %s, but got none", test.participantId)
-			}
+			assert.Error(t, err, "Expected error for input %s", test.participantId)
 		} else {
-			if err != nil {
-				t.Errorf("Unexpected error for input %s: %v", test.participantId, err)
-			}
-			if spaceId != test.expectedSpaceId {
-				t.Errorf("For input space %s, expected %s but got %s", test.participantId, test.expectedSpaceId, spaceId)
-			}
-			if id != test.expectedId {
-				t.Errorf("For input id %s, expected %s but got %s", test.participantId, test.expectedId, id)
-			}
+			assert.NoError(t, err, "Unexpected error for input %s", test.participantId)
+			assert.Equal(t, test.expectedSpaceId, spaceId, "For input space %s", test.participantId)
+			assert.Equal(t, test.expectedId, id, "For input id %s", test.participantId)
 		}
 	}
 }
