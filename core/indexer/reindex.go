@@ -208,7 +208,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	}
 
 	if flags.removeParticipants {
-		err = i.removeParticipants(space.Id())
+		err = i.RemoveAclIndexes(space.Id())
 		if err != nil {
 			log.Error("reindex deleted objects", zap.Error(err))
 		}
@@ -299,23 +299,6 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 		}
 	}
 	return nil
-}
-
-func (i *indexer) removeParticipants(spaceId string) error {
-	store := i.store.SpaceIndex(spaceId)
-	ids, _, err := store.QueryObjectIds(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyLayout,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(model.ObjectType_participant),
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("query participants: %w", err)
-	}
-	return store.DeleteDetails(i.runCtx, ids)
 }
 
 func (i *indexer) ReindexMarketplaceSpace(space clientspace.Space) error {
