@@ -151,7 +151,6 @@ type SmartBlock interface {
 	History() undo.History
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error)
 	AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error)
 	RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
@@ -161,7 +160,7 @@ type SmartBlock interface {
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
-	DisableLayouts()
+	EnableLayouts()
 	EnabledRelationAsDependentObjects()
 	AddHook(f HookCallback, events ...Hook)
 	AddHookOnce(id string, f HookCallback, events ...Hook)
@@ -234,7 +233,7 @@ type smartBlock struct {
 	lastDepDetails       map[string]*domain.Details
 	restrictions         restriction.Restrictions
 	isDeleted            bool
-	disableLayouts       bool
+	enableLayouts        bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -561,13 +560,13 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 	id := details.GetString(bundle.RelationKeyId)
 	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
-		diff := domain.StructDiff(v, details)
+		diff, keysToUnset := domain.StructDiff(v, details)
 		if id == sb.Id() {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 			diff = diff.CopyOnlyKeys(bundle.LocalRelationsKeys...)
 		}
 
-		msgs = append(msgs, state.StructDiffIntoEvents(sb.SpaceID(), id, diff)...)
+		msgs = append(msgs, state.StructDiffIntoEvents(sb.SpaceID(), id, diff, keysToUnset)...)
 	} else {
 		msgs = append(msgs, event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectDetailsSet{
 			ObjectDetailsSet: &pb.EventObjectDetailsSet{
@@ -613,8 +612,12 @@ func (sb *smartBlock) IsLocked() bool {
 	return activeCount > 0
 }
 
-func (sb *smartBlock) DisableLayouts() {
-	sb.disableLayouts = true
+func (sb *smartBlock) EnableLayouts() {
+	sb.enableLayouts = true
+}
+
+func (sb *smartBlock) IsLayoutsEnabled() bool {
+	return sb.enableLayouts
 }
 
 func (sb *smartBlock) EnabledRelationAsDependentObjects() {
@@ -701,7 +704,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
 
-	msgs, act, err := state.ApplyState(sb.SpaceID(), s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
 		return
 	}
@@ -900,14 +903,6 @@ func (sb *smartBlock) History() undo.History {
 	return sb.undo
 }
 
-func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error) {
-	s := sb.NewStateCtx(ctx)
-	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
-		return
-	}
-	return sb.Apply(s)
-}
-
 func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
 	if len(relationKeys) == 0 {
 		return
@@ -1063,7 +1058,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
-	msgs, act, err := state.ApplyState(sb.SpaceID(), s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
 		return err
 	}
@@ -1098,7 +1093,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
-	msgs, _, err := state.ApplyState(sb.SpaceID(), d.(*state.State), !sb.disableLayouts)
+	msgs, _, err := state.ApplyState(sb.SpaceID(), d.(*state.State), sb.enableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
 		// can't make diff - reopen doc

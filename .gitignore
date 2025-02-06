@@ -18,3 +18,5 @@ tests/.cache/
 staging.yml
 build
 /core/anytype/config/nodes/custom.yml
+/.direnv/
+/.envrc

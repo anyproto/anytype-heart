@@ -50,7 +50,7 @@ type Hasher interface {
 type indexer struct {
 	store          objectstore.ObjectStore
 	source         source.Service
-	picker         cache.ObjectGetter
+	picker         cache.CachedObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 
@@ -74,7 +74,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.picker = app.MustComponent[cache.ObjectGetter](a)
+	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)

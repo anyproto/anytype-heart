@@ -245,8 +245,12 @@ func (st *SmartTest) SetObjectTypes(objectTypes []domain.TypeKey) {
 	st.Doc.(*state.State).SetObjectTypeKeys(objectTypes)
 }
 
-func (st *SmartTest) DisableLayouts() {
+func (st *SmartTest) EnableLayouts() {
 	return
+}
+
+func (st *SmartTest) IsLayoutsEnabled() bool {
+	return false
 }
 
 func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
@@ -262,14 +266,7 @@ func (st *SmartTest) SetDetails(ctx session.Context, details []domain.Detail, sh
 	return
 }
 
-func (st *SmartTest) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	for _, detail := range details {
-		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, string(detail.Key))
-	}
-	return st.SetDetails(ctx, details, showEvent)
-}
-
-func (st *SmartTest) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
+func (st *SmartTest) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	details := st.Doc.(*state.State).CombinedDetails()
 	if details == nil {
 		details = domain.NewDetails()
@@ -279,31 +276,6 @@ func (st *SmartTest) UpdateDetails(update func(current *domain.Details) (*domain
 		return err
 	}
 	st.Doc.(*state.State).SetDetails(newDetails)
-	return nil
-}
-
-func (st *SmartTest) UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) (err error) {
-	details := st.Doc.(*state.State).CombinedDetails()
-	if details == nil {
-		details = domain.NewDetails()
-	}
-	oldDetails := details.Copy()
-
-	newDetails, err := update(details)
-	if err != nil {
-		return err
-	}
-
-	diff := domain.StructDiff(oldDetails, newDetails)
-	if diff == nil {
-		return nil
-	}
-
-	st.Doc.(*state.State).SetDetails(newDetails)
-
-	for k, _ := range diff.Iterate() {
-		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, string(k))
-	}
 	return nil
 }
 
@@ -453,6 +425,4 @@ func (st *SmartTest) Update(ctx session.Context, apply func(b simple.Block) erro
 type Results struct {
 	Events  [][]simple.EventMessage
 	Applies [][]*model.Block
-
-	LastUsedUpdates []string
 }

@@ -338,6 +338,11 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
 	}
 
+	if s.Type() == smartblock.SmartBlockTypeWidget {
+		// todo: remove this after 0.41 release
+		state.CleanupLayouts(st)
+	}
+
 	s.fileObjectMigrator.MigrateFiles(st, s.space, s.GetFileKeysSnapshot())
 	// Details in spaceview comes from Workspace object, so we don't need to migrate them
 	if s.Type() != smartblock.SmartBlockTypeSpaceView {

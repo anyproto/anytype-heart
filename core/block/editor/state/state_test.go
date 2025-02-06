@@ -2909,4 +2909,175 @@ func TestState_FileRelationKeys(t *testing.T) {
 		// then
 		assert.Equal(t, []domain.RelationKey{"coverId"}, keys)
 	})
+	t.Run("unsplash cover", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Key: bundle.RelationKeyCoverId.String()},
+			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(5),
+			}),
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		assert.Len(t, keys, 1)
+	})
+}
+
+func TestState_AddRelationLinks(t *testing.T) {
+	t.Run("add new link", func(t *testing.T) {
+		// given
+		s := &State{}
+		newLink := &model.RelationLink{
+			Key:    "newLink",
+			Format: model.RelationFormat_shorttext,
+		}
+
+		// when
+		s.AddRelationLinks(newLink)
+
+		// then
+		assert.True(t, s.GetRelationLinks().Has("newLink"))
+	})
+	t.Run("add existing link", func(t *testing.T) {
+		// given
+		s := &State{}
+		newLink := &model.RelationLink{
+			Key:    "existingLink",
+			Format: model.RelationFormat_shorttext,
+		}
+
+		// when
+		s.AddRelationLinks(newLink)
+		s.AddRelationLinks(newLink)
+
+		// then
+		assert.True(t, s.GetRelationLinks().Has("existingLink"))
+		assert.Len(t, s.GetRelationLinks(), 1)
+	})
+}
+
+func TestFilter(t *testing.T) {
+	t.Run("remove blocks", func(t *testing.T) {
+		// given
+		st := NewDoc("root", map[string]simple.Block{
+			"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2"}}),
+			"2":    base.NewBase(&model.Block{Id: "2"}),
+		}).(*State)
+		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyCoverType: domain.Int64(1),
+			bundle.RelationKeyName:      domain.String("name"),
+			bundle.RelationKeyAssignee:  domain.String("assignee"),
+			bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_todo),
+		}))
+		st.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyCoverType.String(),
+			Format: model.RelationFormat_number,
+		},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyName.String(),
+				Format: model.RelationFormat_longtext,
+			},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyAssignee.String(),
+				Format: model.RelationFormat_object,
+			},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyLayout.String(),
+				Format: model.RelationFormat_number,
+			},
+		)
+
+		// when
+		filteredState := st.Filter(&Filters{RemoveBlocks: true})
+
+		// then
+		assert.Len(t, filteredState.blocks, 1)
+		assert.NotNil(t, filteredState.blocks["root"])
+	})
+	t.Run("filter relations by white list", func(t *testing.T) {
+		// given
+		st := NewDoc("root", map[string]simple.Block{
+			"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2"}}),
+			"2":    base.NewBase(&model.Block{Id: "2"}),
+		}).(*State)
+		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyCoverType: domain.Int64(1),
+			bundle.RelationKeyName:      domain.String("name"),
+			bundle.RelationKeyAssignee:  domain.String("assignee"),
+			bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_todo),
+		}))
+		st.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyCoverType.String(),
+			Format: model.RelationFormat_number,
+		},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyName.String(),
+				Format: model.RelationFormat_longtext,
+			},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyAssignee.String(),
+				Format: model.RelationFormat_object,
+			},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyLayout.String(),
+				Format: model.RelationFormat_number,
+			},
+		)
+
+		// when
+		filteredState := st.Filter(&Filters{RelationsWhiteList: map[model.ObjectTypeLayout][]domain.RelationKey{
+			model.ObjectType_todo: {bundle.RelationKeyAssignee},
+		}})
+
+		// then
+		assert.Equal(t, filteredState.details.Len(), 1)
+		assert.Equal(t, filteredState.localDetails.Len(), 0)
+		assert.Len(t, filteredState.relationLinks, 1)
+		assert.Equal(t, bundle.RelationKeyAssignee.String(), filteredState.relationLinks[0].Key)
+	})
+	t.Run("empty white list relations", func(t *testing.T) {
+		// given
+		st := NewDoc("root", map[string]simple.Block{
+			"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2"}}),
+			"2":    base.NewBase(&model.Block{Id: "2"}),
+		}).(*State)
+		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyCoverType: domain.Int64(1),
+			bundle.RelationKeyName:      domain.String("name"),
+			bundle.RelationKeyAssignee:  domain.String("assignee"),
+			bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_todo),
+		}))
+		st.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyCoverType.String(),
+			Format: model.RelationFormat_number,
+		},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyName.String(),
+				Format: model.RelationFormat_longtext,
+			},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyAssignee.String(),
+				Format: model.RelationFormat_object,
+			},
+			&model.RelationLink{
+				Key:    bundle.RelationKeyLayout.String(),
+				Format: model.RelationFormat_number,
+			},
+		)
+
+		// when
+		filteredState := st.Filter(&Filters{RelationsWhiteList: map[model.ObjectTypeLayout][]domain.RelationKey{
+			model.ObjectType_todo: {},
+		}})
+
+		// then
+		assert.Equal(t, filteredState.details.Len(), 0)
+		assert.Equal(t, filteredState.localDetails.Len(), 0)
+		assert.Len(t, filteredState.relationLinks, 0)
+	})
 }

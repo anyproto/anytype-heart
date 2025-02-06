@@ -143,67 +143,6 @@ func (_c *MockAccountObject_AddHookOnce_Call) RunAndReturn(run func(string, smar
 	return _c
 }
 
-// AddRelationLinks provides a mock function with given fields: ctx, relationKeys
-func (_m *MockAccountObject) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) error {
-	_va := make([]interface{}, len(relationKeys))
-	for _i := range relationKeys {
-		_va[_i] = relationKeys[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AddRelationLinks")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, ...domain.RelationKey) error); ok {
-		r0 = rf(ctx, relationKeys...)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockAccountObject_AddRelationLinks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddRelationLinks'
-type MockAccountObject_AddRelationLinks_Call struct {
-	*mock.Call
-}
-
-// AddRelationLinks is a helper method to define mock.On call
-//   - ctx session.Context
-//   - relationKeys ...domain.RelationKey
-func (_e *MockAccountObject_Expecter) AddRelationLinks(ctx interface{}, relationKeys ...interface{}) *MockAccountObject_AddRelationLinks_Call {
-	return &MockAccountObject_AddRelationLinks_Call{Call: _e.mock.On("AddRelationLinks",
-		append([]interface{}{ctx}, relationKeys...)...)}
-}
-
-func (_c *MockAccountObject_AddRelationLinks_Call) Run(run func(ctx session.Context, relationKeys ...domain.RelationKey)) *MockAccountObject_AddRelationLinks_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]domain.RelationKey, len(args)-1)
-		for i, a := range args[1:] {
-			if a != nil {
-				variadicArgs[i] = a.(domain.RelationKey)
-			}
-		}
-		run(args[0].(session.Context), variadicArgs...)
-	})
-	return _c
-}
-
-func (_c *MockAccountObject_AddRelationLinks_Call) Return(err error) *MockAccountObject_AddRelationLinks_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockAccountObject_AddRelationLinks_Call) RunAndReturn(run func(session.Context, ...domain.RelationKey) error) *MockAccountObject_AddRelationLinks_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // AddRelationLinksToState provides a mock function with given fields: s, relationKeys
 func (_m *MockAccountObject) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) error {
 	_va := make([]interface{}, len(relationKeys))
@@ -635,34 +574,34 @@ func (_c *MockAccountObject_Details_Call) RunAndReturn(run func() *domain.Detail
 	return _c
 }
 
-// DisableLayouts provides a mock function with given fields:
-func (_m *MockAccountObject) DisableLayouts() {
+// EnableLayouts provides a mock function with given fields:
+func (_m *MockAccountObject) EnableLayouts() {
 	_m.Called()
 }
 
-// MockAccountObject_DisableLayouts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DisableLayouts'
-type MockAccountObject_DisableLayouts_Call struct {
+// MockAccountObject_EnableLayouts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnableLayouts'
+type MockAccountObject_EnableLayouts_Call struct {
 	*mock.Call
 }
 
-// DisableLayouts is a helper method to define mock.On call
-func (_e *MockAccountObject_Expecter) DisableLayouts() *MockAccountObject_DisableLayouts_Call {
-	return &MockAccountObject_DisableLayouts_Call{Call: _e.mock.On("DisableLayouts")}
+// EnableLayouts is a helper method to define mock.On call
+func (_e *MockAccountObject_Expecter) EnableLayouts() *MockAccountObject_EnableLayouts_Call {
+	return &MockAccountObject_EnableLayouts_Call{Call: _e.mock.On("EnableLayouts")}
 }
 
-func (_c *MockAccountObject_DisableLayouts_Call) Run(run func()) *MockAccountObject_DisableLayouts_Call {
+func (_c *MockAccountObject_EnableLayouts_Call) Run(run func()) *MockAccountObject_EnableLayouts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockAccountObject_DisableLayouts_Call) Return() *MockAccountObject_DisableLayouts_Call {
+func (_c *MockAccountObject_EnableLayouts_Call) Return() *MockAccountObject_EnableLayouts_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockAccountObject_DisableLayouts_Call) RunAndReturn(run func()) *MockAccountObject_DisableLayouts_Call {
+func (_c *MockAccountObject_EnableLayouts_Call) RunAndReturn(run func()) *MockAccountObject_EnableLayouts_Call {
 	_c.Call.Return(run)
 	return _c
 }

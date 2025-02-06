@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/pkg/errors"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -65,7 +64,6 @@ type service struct {
 	bookmarkService   bookmarkService
 	spaceService      space.Service
 	templateService   templateService
-	lastUsedUpdater   lastused.ObjectUsageUpdater
 	archiver          objectArchiver
 }
 
@@ -79,7 +77,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[collectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
-	s.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	s.archiver = app.MustComponent[objectArchiver](a)
 	return nil
 }
@@ -210,4 +207,10 @@ func buildDateObject(space clientspace.Space, details *domain.Details) (string, 
 
 	details, err = detailsGetter.DetailsFromId()
 	return dateObject.Id(), details, err
+}
+
+func setOriginalCreatedTimestamp(state *state.State, details *domain.Details) {
+	if createDate := details.GetInt64(bundle.RelationKeyCreatedDate); createDate != 0 {
+		state.SetOriginalCreatedTimestamp(createDate)
+	}
 }

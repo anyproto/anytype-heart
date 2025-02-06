@@ -1,0 +1,1108 @@
+basePath: /v1
+definitions:
+  auth.DisplayCodeResponse:
+    properties:
+      challenge_id:
+        example: 67647f5ecda913e9a2e11b26
+        type: string
+    type: object
+  auth.TokenResponse:
+    properties:
+      app_key:
+        example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
+        type: string
+      session_token:
+        example: eyJhbGciOeJIRzI1NiIsInR5cCI6IkpXVCJ1.eyJzZWVkIjaiY0dmVndlUnAifQ.Y1EZecYnwmvMkrXKOa2XJnAbaRt34urBabe06tmDQII
+        type: string
+    type: object
+  export.ObjectExportResponse:
+    properties:
+      path:
+        example: /path/to/export
+        type: string
+    type: object
+  object.Block:
+    properties:
+      align:
+        enum:
+        - AlignLeft
+        - AlignCenter
+        - AlignRight
+        - AlignJustify
+        example: AlignLeft
+        type: string
+      background_color:
+        example: red
+        type: string
+      children_ids:
+        example:
+        - '[''6797ce8ecda913cde14b02dc'']'
+        items:
+          type: string
+        type: array
+      file:
+        $ref: '#/definitions/object.File'
+      id:
+        example: 64394517de52ad5acb89c66c
+        type: string
+      text:
+        $ref: '#/definitions/object.Text'
+      vertical_align:
+        enum:
+        - VerticalAlignTop
+        - VerticalAlignMiddle
+        - VerticalAlignBottom
+        example: VerticalAlignTop
+        type: string
+    type: object
+  object.CreateObjectRequest:
+    properties:
+      body:
+        example: Object Body
+        type: string
+      description:
+        example: Object Description
+        type: string
+      icon:
+        example: "\U0001F4C4"
+        type: string
+      name:
+        example: Object Name
+        type: string
+      object_type_unique_key:
+        example: ot-page
+        type: string
+      source:
+        example: https://source.com
+        type: string
+      template_id:
+        example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
+        type: string
+    type: object
+  object.Detail:
+    properties:
+      details:
+        additionalProperties: true
+        type: object
+      id:
+        enum:
+        - last_modified_date
+        - last_modified_by
+        - created_date
+        - created_by
+        - last_opened_date
+        - tags
+        example: last_modified_date
+        type: string
+    type: object
+  object.File:
+    properties:
+      added_at:
+        type: integer
+      hash:
+        type: string
+      mime:
+        type: string
+      name:
+        type: string
+      size:
+        type: integer
+      state:
+        type: string
+      style:
+        type: string
+      target_object_id:
+        type: string
+      type:
+        type: string
+    type: object
+  object.Object:
+    properties:
+      blocks:
+        items:
+          $ref: '#/definitions/object.Block'
+        type: array
+      details:
+        items:
+          $ref: '#/definitions/object.Detail'
+        type: array
+      icon:
+        example: "\U0001F4C4"
+        type: string
+      id:
+        example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
+        type: string
+      layout:
+        example: basic
+        type: string
+      name:
+        example: Object Name
+        type: string
+      root_id:
+        example: bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u
+        type: string
+      snippet:
+        example: The beginning of the object body...
+        type: string
+      space_id:
+        example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
+        type: string
+      type:
+        example: Page
+        type: string
+    type: object
+  object.ObjectResponse:
+    properties:
+      object:
+        $ref: '#/definitions/object.Object'
+    type: object
+  object.Template:
+    properties:
+      icon:
+        example: "\U0001F4C4"
+        type: string
+      id:
+        example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
+        type: string
+      name:
+        example: Template Name
+        type: string
+      type:
+        example: template
+        type: string
+    type: object
+  object.TemplateResponse:
+    properties:
+      template:
+        $ref: '#/definitions/object.Template'
+    type: object
+  object.Text:
+    properties:
+      checked:
+        example: true
+        type: boolean
+      color:
+        example: red
+        type: string
+      icon:
+        example: "\U0001F4C4"
+        type: string
+      style:
+        enum:
+        - Paragraph
+        - Header1
+        - Header2
+        - Header3
+        - Header4
+        - Quote
+        - Code
+        - Title
+        - Checkbox
+        - Marked
+        - Numbered
+        - Toggle
+        - Description
+        - Callout
+        example: Paragraph
+        type: string
+      text:
+        example: Some text
+        type: string
+    type: object
+  object.Type:
+    properties:
+      icon:
+        example: "\U0001F4C4"
+        type: string
+      id:
+        example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
+        type: string
+      name:
+        example: Page
+        type: string
+      recommended_layout:
+        example: todo
+        type: string
+      type:
+        example: type
+        type: string
+      unique_key:
+        example: ot-page
+        type: string
+    type: object
+  object.TypeResponse:
+    properties:
+      type:
+        $ref: '#/definitions/object.Type'
+    type: object
+  pagination.PaginatedResponse-object_Object:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/object.Object'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
+    type: object
+  pagination.PaginatedResponse-object_Template:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/object.Template'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
+    type: object
+  pagination.PaginatedResponse-object_Type:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/object.Type'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
+    type: object
+  pagination.PaginatedResponse-space_Member:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/space.Member'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
+    type: object
+  pagination.PaginatedResponse-space_Space:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/space.Space'
+        type: array
+      pagination:
+        $ref: '#/definitions/pagination.PaginationMeta'
+    type: object
+  pagination.PaginationMeta:
+    properties:
+      has_more:
+        description: whether there are more items available
+        example: true
+        type: boolean
+      limit:
+        description: the current limit
+        example: 100
+        type: integer
+      offset:
+        description: the current offset
+        example: 0
+        type: integer
+      total:
+        description: the total number of items available on that endpoint
+        example: 1024
+        type: integer
+    type: object
+  search.SearchRequest:
+    properties:
+      query:
+        type: string
+      sort:
+        $ref: '#/definitions/search.SortOptions'
+      types:
+        items:
+          type: string
+        type: array
+    type: object
+  search.SortOptions:
+    properties:
+      direction:
+        default: desc
+        enum:
+        - asc
+        - desc
+        type: string
+      timestamp:
+        default: last_modified_date
+        enum:
+        - created_date
+        - last_modified_date
+        - last_opened_date
+        type: string
+    type: object
+  space.CreateSpaceRequest:
+    properties:
+      name:
+        example: New Space
+        type: string
+    type: object
+  space.CreateSpaceResponse:
+    properties:
+      space:
+        $ref: '#/definitions/space.Space'
+    type: object
+  space.Member:
+    properties:
+      global_name:
+        example: john.any
+        type: string
+      icon:
+        example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100
+        type: string
+      id:
+        example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
+        type: string
+      identity:
+        example: AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ
+        type: string
+      name:
+        example: John Doe
+        type: string
+      role:
+        enum:
+        - Reader
+        - Writer
+        - Owner
+        - NoPermission
+        example: Owner
+        type: string
+      type:
+        example: member
+        type: string
+    type: object
+  space.Space:
+    properties:
+      account_space_id:
+        example: bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1
+        type: string
+      analytics_id:
+        example: 624aecdd-4797-4611-9d61-a2ae5f53cf1c
+        type: string
+      archive_object_id:
+        example: bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri
+        type: string
+      device_id:
+        example: 12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF
+        type: string
+      gateway_url:
+        example: http://127.0.0.1:31006
+        type: string
+      home_object_id:
+        example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
+        type: string
+      icon:
+        example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
+        type: string
+      id:
+        example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
+        type: string
+      local_storage_path:
+        example: /Users/johndoe/Library/Application Support/Anytype/data/AAHTtt1wuQEnaYBNZ2Cyfcvs6DqPqxgn8VXDVk4avsUkMuha
+        type: string
+      marketplace_workspace_id:
+        example: _anytype_marketplace
+        type: string
+      name:
+        example: Space Name
+        type: string
+      network_id:
+        example: N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU
+        type: string
+      profile_object_id:
+        example: bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4
+        type: string
+      space_view_id:
+        example: bafyreigzv3vq7qwlrsin6njoduq727ssnhwd6bgyfj6nm4hv3pxoc2rxhy
+        type: string
+      tech_space_id:
+        example: bafyreif4xuwncrjl6jajt4zrrfnylpki476nv2w64yf42ovt7gia7oypii.23me69r569oi1
+        type: string
+      timezone:
+        example: ""
+        type: string
+      type:
+        example: space
+        type: string
+      widgets_id:
+        example: bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva
+        type: string
+      workspace_object_id:
+        example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
+        type: string
+    type: object
+  util.ForbiddenError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  util.NotFoundError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  util.ServerError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  util.UnauthorizedError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+  util.ValidationError:
+    properties:
+      error:
+        properties:
+          message:
+            type: string
+        type: object
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:31009
+info:
+  contact:
+    email: support@anytype.io
+    name: Anytype Support
+    url: https://anytype.io/contact
+  description: This API allows interaction with Anytype resources such as spaces,
+    objects and types.
+  license:
+    name: Any Source Available License 1.0
+    url: https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
+  termsOfService: https://anytype.io/terms_of_use
+  title: Anytype API
+  version: "1.0"
+paths:
+  /auth/display_code:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: App name requesting the challenge
+        in: query
+        name: app_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Challenge ID
+          schema:
+            $ref: '#/definitions/auth.DisplayCodeResponse'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Start new challenge
+      tags:
+      - auth
+  /auth/token:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Challenge ID
+        in: query
+        name: challenge_id
+        required: true
+        type: string
+      - description: 4-digit code retrieved from Anytype Desktop app
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authentication token
+          schema:
+            $ref: '#/definitions/auth.TokenResponse'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Retrieve token
+      tags:
+      - auth
+  /search:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - default: 0
+        description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        maximum: 1000
+        name: limit
+        type: integer
+      - description: Search parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/search.SearchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of objects
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Object'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Search objects across all spaces
+      tags:
+      - search
+  /spaces:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - default: 0
+        description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        maximum: 1000
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of spaces
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-space_Space'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: List spaces
+      tags:
+      - spaces
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space to create
+        in: body
+        name: name
+        required: true
+        schema:
+          $ref: '#/definitions/space.CreateSpaceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Space created successfully
+          schema:
+            $ref: '#/definitions/space.CreateSpaceResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Create space
+      tags:
+      - spaces
+  /spaces/{space_id}/members:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - default: 0
+        description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        maximum: 1000
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of members
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-space_Member'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: List members
+      tags:
+      - spaces
+  /spaces/{space_id}/objects:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - default: 0
+        description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        maximum: 1000
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of objects
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Object'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: List objects
+      tags:
+      - objects
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Object to create
+        in: body
+        name: object
+        required: true
+        schema:
+          $ref: '#/definitions/object.CreateObjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The created object
+          schema:
+            $ref: '#/definitions/object.ObjectResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Create object
+      tags:
+      - objects
+  /spaces/{space_id}/objects/{object_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Object ID
+        in: path
+        name: object_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The deleted object
+          schema:
+            $ref: '#/definitions/object.ObjectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/util.ForbiddenError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Delete object
+      tags:
+      - objects
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Object ID
+        in: path
+        name: object_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The requested object
+          schema:
+            $ref: '#/definitions/object.ObjectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Get object
+      tags:
+      - objects
+  /spaces/{space_id}/objects/{object_id}/export/{format}:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Object ID
+        in: path
+        name: object_id
+        required: true
+        type: string
+      - description: Export format
+        enum:
+        - markdown
+        - protobuf
+        in: path
+        name: format
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Object exported successfully
+          schema:
+            $ref: '#/definitions/export.ObjectExportResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Export object
+      tags:
+      - export
+  /spaces/{space_id}/search:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - default: 0
+        description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        maximum: 1000
+        name: limit
+        type: integer
+      - description: Search parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/search.SearchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of objects
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Object'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Search objects within a space
+      tags:
+      - search
+  /spaces/{space_id}/types:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - default: 0
+        description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        maximum: 1000
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of types
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Type'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: List types
+      tags:
+      - types
+  /spaces/{space_id}/types/{type_id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Type ID
+        in: path
+        name: type_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The requested type
+          schema:
+            $ref: '#/definitions/object.TypeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Get type
+      tags:
+      - types
+  /spaces/{space_id}/types/{type_id}/templates:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Type ID
+        in: path
+        name: type_id
+        required: true
+        type: string
+      - default: 0
+        description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - default: 100
+        description: The number of items to return
+        in: query
+        maximum: 1000
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of templates
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Template'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: List templates
+      tags:
+      - types
+  /spaces/{space_id}/types/{type_id}/templates/{template_id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Type ID
+        in: path
+        name: type_id
+        required: true
+        type: string
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: The requested template
+          schema:
+            $ref: '#/definitions/object.TemplateResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Get template
+      tags:
+      - types
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

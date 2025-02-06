@@ -59,7 +59,7 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
-		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater),
+		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -98,6 +98,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
 	}
 
+	p.EnableLayouts()
 	if p.isRelationDeleted(ctx) {
 		// todo: move this to separate component
 		go func() {

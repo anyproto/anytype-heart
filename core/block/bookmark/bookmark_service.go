@@ -3,10 +3,6 @@ package bookmark
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -266,7 +262,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := s.loadImage(spaceID, data.Title, data.ImageUrl)
+			hash, err := s.loadImage(spaceID, getFileNameFromURL(url, "cover"), data.ImageUrl)
 			if err != nil {
 				log.Errorf("load image: %s", err)
 				return
@@ -283,7 +279,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := s.loadImage(spaceID, "", data.FaviconUrl)
+			hash, err := s.loadImage(spaceID, getFileNameFromURL(url, "icon"), data.FaviconUrl)
 			if err != nil {
 				log.Errorf("load favicon: %s", err)
 				return
@@ -358,55 +354,35 @@ func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchP
 	return nil
 }
 
+func getFileNameFromURL(url, filename string) string {
+	u, err := uri.ParseURI(url)
+	if err != nil {
+		return ""
+	}
+	if u.Hostname() == "" {
+		return ""
+	}
+	var urlFileExt string
+	lastPath := strings.Split(u.Path, "/")
+	if len(lastPath) > 0 {
+		urlFileExt = filepath.Ext(lastPath[len(lastPath)-1])
+	}
+
+	source := strings.TrimPrefix(u.Hostname(), "www.")
+	source = strings.ReplaceAll(source, ".", "_")
+	if source != "" {
+		source += "_"
+	}
+	source += filename + urlFileExt
+	return source
+}
+
 func (s *service) loadImage(spaceId string, title, url string) (hash string, err error) {
 	uploader := s.fileUploaderFactory.NewUploader(spaceId, objectorigin.Bookmark())
 
-	tempDir := s.tempDirService.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download image: %s", resp.Status)
-	}
-
-	tmpFile, err := ioutil.TempFile(tempDir, "anytype_downloaded_file_*")
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(tmpFile.Name())
-
-	_, err = io.Copy(tmpFile, resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	_, err = tmpFile.Seek(0, io.SeekStart)
-	if err != nil {
-		return "", err
-	}
-
-	fileName := strings.Split(filepath.Base(url), "?")[0]
-	if value := resp.Header.Get("Content-Disposition"); value != "" {
-		contentDisposition := strings.Split(value, "filename=")
-		if len(contentDisposition) > 1 {
-			fileName = strings.Trim(contentDisposition[1], "\"")
-		}
-
-	}
-
-	if title != "" {
-		fileName = title
-	}
-	res := uploader.SetName(fileName).SetFile(tmpFile.Name()).SetImageKind(model.ImageKind_AutomaticallyAdded).Upload(ctx)
+	res := uploader.SetName(title).SetUrl(url).SetImageKind(model.ImageKind_AutomaticallyAdded).Upload(ctx)
 	return res.FileObjectId, res.Err
 }

@@ -30,7 +30,7 @@ type participant struct {
 }
 
 func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock, spaceIndex spaceindex.Store) *participant {
-	basicComponent := basic.NewBasic(sb, spaceIndex, f.layoutConverter, nil, f.lastUsedUpdater)
+	basicComponent := basic.NewBasic(sb, spaceIndex, f.layoutConverter, nil)
 	return &participant{
 		SmartBlock:       sb,
 		DetailsUpdatable: basicComponent,
@@ -100,7 +100,7 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 }
 
 func (p *participant) modifyDetails(newDetails *domain.Details) (err error) {
-	return p.DetailsUpdatable.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+	return p.DetailsUpdatable.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 		return current.Merge(newDetails), nil
 	})
 }

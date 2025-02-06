@@ -156,7 +156,7 @@ func Test_ImportSuccess(t *testing.T) {
 	})
 }
 
-func setupProcessService(t *testing.T, notificationProcess process.Notificationable) {
+func setupProcessService(t *testing.T, notificationProcess process.Progress) {
 	s := process.New()
 	a := &app.App{}
 	sender := mock_event.NewMockSender(t)
