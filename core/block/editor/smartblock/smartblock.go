@@ -163,7 +163,7 @@ type SmartBlock interface {
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
-	DisableLayouts()
+	EnableLayouts()
 	EnabledRelationAsDependentObjects()
 	AddHook(f HookCallback, events ...Hook)
 	AddHookOnce(id string, f HookCallback, events ...Hook)
@@ -236,7 +236,7 @@ type smartBlock struct {
 	lastDepDetails       map[string]*domain.Details
 	restrictions         restriction.Restrictions
 	isDeleted            bool
-	disableLayouts       bool
+	enableLayouts        bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -616,8 +616,12 @@ func (sb *smartBlock) IsLocked() bool {
 	return activeCount > 0
 }
 
-func (sb *smartBlock) DisableLayouts() {
-	sb.disableLayouts = true
+func (sb *smartBlock) EnableLayouts() {
+	sb.enableLayouts = true
+}
+
+func (sb *smartBlock) IsLayoutsEnabled() bool {
+	return sb.enableLayouts
 }
 
 func (sb *smartBlock) EnabledRelationAsDependentObjects() {
@@ -704,7 +708,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
 
-	msgs, act, err := state.ApplyState(sb.SpaceID(), s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
 		return
 	}
@@ -1058,7 +1062,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
-	msgs, act, err := state.ApplyState(sb.SpaceID(), s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
 		return err
 	}
@@ -1093,7 +1097,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
-	msgs, _, err := state.ApplyState(sb.SpaceID(), d.(*state.State), !sb.disableLayouts)
+	msgs, _, err := state.ApplyState(sb.SpaceID(), d.(*state.State), sb.enableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
 		// can't make diff - reopen doc

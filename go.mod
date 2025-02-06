@@ -7,8 +7,8 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.1.6
-	github.com/anyproto/any-sync v0.6.0-alpha.11.0.20250131145459-0bf102738a87
+	github.com/anyproto/any-store v0.1.7
+	github.com/anyproto/any-sync v0.6.0-alpha.12.0.20250206115628-80826e7a0ee7
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
@@ -31,7 +31,7 @@ require (
 	github.com/ethereum/go-ethereum v1.13.15
 	github.com/gin-gonic/gin v1.10.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/go-chi/chi/v5 v5.2.0
+	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-shiori/go-readability v0.0.0-20241012063810-92284fa8a71f
 	github.com/goccy/go-graphviz v0.2.9
 	github.com/gogo/protobuf v1.3.2
@@ -51,7 +51,7 @@ require (
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
 	github.com/huandu/skiplist v1.2.1
 	github.com/improbable-eng/grpc-web v0.15.0
-	github.com/ipfs/boxo v0.27.2
+	github.com/ipfs/boxo v0.27.4
 	github.com/ipfs/go-block-format v0.2.0
 	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-datastore v0.6.0
@@ -104,19 +104,18 @@ require (
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
-	golang.org/x/image v0.23.0
+	golang.org/x/image v0.24.0
 	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
 	golang.org/x/net v0.34.0
 	golang.org/x/oauth2 v0.25.0
 	golang.org/x/sys v0.29.0
-	golang.org/x/text v0.21.0
+	golang.org/x/text v0.22.0
 	google.golang.org/grpc v1.70.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.34
 	zombiezen.com/go/sqlite v1.4.0
-
 )
 
 require (
@@ -250,7 +249,7 @@ require (
 	github.com/prometheus/common v0.61.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/pseudomuto/protokit v0.2.1 // indirect
-	github.com/quic-go/quic-go v0.48.2 // indirect
+	github.com/quic-go/quic-go v0.49.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/rs/cors v1.11.0 // indirect
@@ -284,9 +283,9 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
-	golang.org/x/time v0.9.0 // indirect
+	golang.org/x/time v0.10.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241202173237-19429a94021a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241202173237-19429a94021a // indirect

@@ -378,7 +378,7 @@ var (
 		RelationKeyCoverType: {
 
 			DataSource:       model.Relation_details,
-			Description:      "1-image, 2-color, 3-gradient, 4-prebuilt bg image. Value stored in coverId",
+			Description:      "1-image, 2-color, 3-gradient, 4-prebuilt bg image, 5 - unsplash image. Value stored in coverId",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
 			Id:               "_brcoverType",

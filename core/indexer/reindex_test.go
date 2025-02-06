@@ -54,7 +54,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		virtualSpace := getMockSpace(indexerFx)
 
 		storage := mock_storage.NewMockClientStorage(t)
-		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 		indexerFx.storageService = storage
 
 		// when
@@ -92,7 +91,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		require.NoError(t, err)
 
 		storage := mock_storage.NewMockClientStorage(t)
-		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 		fx.storageService = storage
 
 		// when
@@ -128,7 +126,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		require.NoError(t, err)
 
 		storage := mock_storage.NewMockClientStorage(t)
-		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 		fx.storageService = storage
 
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()

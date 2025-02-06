@@ -50,7 +50,7 @@ func (r *clientStorage) AllDeletedTreeIds(ctx context.Context) (ids []string, er
 	return
 }
 
-func newClientStorage(ctx context.Context, spaceStorage spacestorage.SpaceStorage) (*clientStorage, error) {
+func NewClientStorage(ctx context.Context, spaceStorage spacestorage.SpaceStorage) (*clientStorage, error) {
 	storage := &clientStorage{
 		SpaceStorage: spaceStorage,
 		arena:        &anyenc.Arena{},

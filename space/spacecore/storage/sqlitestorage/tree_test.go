@@ -42,11 +42,13 @@ func TestTreeStorage_Methods(t *testing.T) {
 	ss, err := createSpaceStorage(fx.storageService, spacePayload)
 	require.NoError(t, err)
 	payload := treeTestPayload()
-	store, err := ss.CreateTreeStorage(payload)
+	var store oldTreeStorage
+	treeStore, err := ss.CreateTreeStorage(payload)
 	require.NoError(t, err)
 
-	store, err = ss.TreeStorage(payload.RootRawChange.Id)
+	treeStore, err = ss.TreeStorage(payload.RootRawChange.Id)
 	require.NoError(t, err)
+	store = treeStore.(oldTreeStorage)
 	testTreePayload(t, store, payload)
 
 	t.Run("update heads", func(t *testing.T) {

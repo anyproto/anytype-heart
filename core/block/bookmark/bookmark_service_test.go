@@ -159,6 +159,70 @@ func TestService_FetchBookmarkContent(t *testing.T) {
 	})
 }
 
+func TestGetFileNameFromURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		filename string
+		want     string
+	}{
+		{
+			name:     "Valid URL with file extension, includes www",
+			url:      "https://www.example.com/path/image.png",
+			filename: "myfile",
+			want:     "example_com_myfile.png",
+		},
+		{
+			name:     "Valid URL without file extension",
+			url:      "https://example.com/path/file",
+			filename: "myfile",
+			want:     "example_com_myfile",
+		},
+		{
+			name:     "Trailing slash, no explicit file name in path",
+			url:      "http://www.example.org/folder/",
+			filename: "test",
+			want:     "example_org_test",
+		},
+		{
+			name:     "Invalid URL format",
+			url:      "vvv",
+			filename: "file",
+			want:     "",
+		},
+		{
+			name:     "Empty path (no trailing slash)",
+			url:      "http://www.example.com",
+			filename: "file",
+			want:     "example_com_file",
+		},
+		{
+			name:     "Complex domain without www",
+			url:      "https://sub.example.co.uk/path/report.pdf",
+			filename: "report",
+			want:     "sub_example_co_uk_report.pdf",
+		},
+		{
+			name:     "URL with query parameters (should ignore queries)",
+			url:      "https://www.testsite.com/path/subpath/file.txt?key=value",
+			filename: "newfile",
+			want:     "testsite_com_newfile.txt",
+		},
+		{
+			name:     "URL ends with a dot-based extension in path but no file name",
+			url:      "https://www.example.net/path/.htaccess",
+			filename: "hidden",
+			want:     "example_net_hidden.htaccess",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getFileNameFromURL(tt.url, tt.filename)
+			assert.Equal(t, tt.want, got, "Output filename should match the expected value")
+		})
+	}
+}
+
 const testHtml = `<html><head>
 <title>Title</title>
 

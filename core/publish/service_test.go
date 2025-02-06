@@ -11,7 +11,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -20,6 +22,8 @@ import (
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
@@ -46,6 +50,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -135,7 +140,7 @@ func TestPublish(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		isPersonal := true
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		spaceService, err := prepareSpaceService(t, isPersonal)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -178,7 +183,7 @@ func TestPublish(t *testing.T) {
 	t.Run("success with space sharing", func(t *testing.T) {
 		// given
 		isPersonal := false
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		spaceService, err := prepareSpaceService(t, isPersonal)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -231,7 +236,7 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("success with space sharing - invite not exists", func(t *testing.T) {
 		isPersonal := false
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		spaceService, err := prepareSpaceService(t, isPersonal)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -279,7 +284,7 @@ func TestPublish(t *testing.T) {
 	t.Run("success for member", func(t *testing.T) {
 		// given
 		isPersonal := false
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		spaceService, err := prepareSpaceService(t, isPersonal)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -337,7 +342,7 @@ func TestPublish(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		// given
 		isPersonal := true
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		spaceService, err := prepareSpaceService(t, isPersonal)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -660,26 +665,31 @@ func TestService_PublishingList(t *testing.T) {
 	})
 }
 
-func prepaeSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService, error) {
+var ctx = context.Background()
+
+func prepareSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService, error) {
 	spaceService := mock_space.NewMockService(t)
 	space := mock_clientspace.NewMockSpace(t)
 	space.EXPECT().IsPersonal().Return(isPersonal)
 	space.EXPECT().Id().Return(spaceId)
 
-	storage, err := spacestorage.NewInMemorySpaceStorage(spacestorage.SpaceStorageCreatePayload{
+	store := createStore(ctx, t)
+
+	storage, err := spacestorage.Create(ctx, store, spacestorage.SpaceStorageCreatePayload{
 		AclWithId:           &consensusproto.RawRecordWithId{Id: "aclId"},
 		SpaceHeaderWithId:   &spacesyncproto.RawSpaceHeaderWithId{Id: spaceId},
 		SpaceSettingsWithId: &treechangeproto.RawTreeChangeWithId{Id: "settingsId"},
-	},
-	)
-	assert.NoError(t, err)
+	})
+	require.NoError(t, err)
 	objectHeads := []string{"heads"}
-	_, err = storage.CreateTreeStorage(treestorage.TreeStorageCreatePayload{
+	_, err = storage.CreateTreeStorage(ctx, treestorage.TreeStorageCreatePayload{
 		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: objectId},
 		Heads:         objectHeads,
 	})
 	assert.NoError(t, err)
-	space.EXPECT().Storage().Return(storage)
+	clientStorage, err := anystorage.NewClientStorage(ctx, storage)
+	assert.NoError(t, err)
+	space.EXPECT().Storage().Return(clientStorage)
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	return spaceService, err
 }
@@ -894,4 +904,23 @@ func createTestFile(fileName string, size int64) error {
 	file.Sync()
 	file.Close()
 	return nil
+}
+
+func createStore(ctx context.Context, t testing.TB) anystore.DB {
+	return createNamedStore(ctx, t, "changes.db")
+}
+
+func createNamedStore(ctx context.Context, t testing.TB, name string) anystore.DB {
+	path := filepath.Join(t.TempDir(), name)
+	db, err := anystore.Open(ctx, path, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := db.Close()
+		require.NoError(t, err)
+		unix.Rmdir(path)
+	})
+	return objecttree.TestStore{
+		DB:   db,
+		Path: path,
+	}
 }

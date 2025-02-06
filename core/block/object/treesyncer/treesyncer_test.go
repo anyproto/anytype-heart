@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/headsync/statestorage/mock_statestorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
@@ -32,6 +33,7 @@ type fixture struct {
 	nodeConf           *mock_nodeconf.MockService
 	syncStatus         *mock_treesyncer.MockSyncedTreeRemover
 	syncDetailsUpdater *mock_treesyncer.MockSyncDetailsUpdater
+	stateStorage       *mock_statestorage.MockStateStorage
 }
 
 func newFixture(t *testing.T, spaceId string) *fixture {
@@ -44,7 +46,9 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	syncStatus := mock_treesyncer.NewMockSyncedTreeRemover(t)
 	syncDetailsUpdater := mock_treesyncer.NewMockSyncDetailsUpdater(t)
 	spaceStorage := mock_spacestorage.NewMockSpaceStorage(ctrl)
-	spaceStorage.EXPECT().SpaceSettingsId().Return("spaceSettingsId").AnyTimes()
+	stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
+	spaceStorage.EXPECT().StateStorage().AnyTimes().Return(stateStorage)
+	stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
 
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, treeManager)).
@@ -64,6 +68,7 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 		nodeConf:           nodeConf,
 		syncStatus:         syncStatus,
 		syncDetailsUpdater: syncDetailsUpdater,
+		stateStorage:       stateStorage,
 	}
 }
 
