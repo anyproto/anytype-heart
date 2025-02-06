@@ -161,6 +161,9 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			if err != nil {
 				return nil, err
 			}
+			if spaceId != space.Id() {
+				return nil, fmt.Errorf("invalid space id for participant object")
+			}
 			participantState := state.NewDoc(id, nil).(*state.State)
 			// Set object type here in order to derive value of Type relation in smartblock.Init
 			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
