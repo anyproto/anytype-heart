@@ -157,7 +157,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		case smartblock.SmartBlockTypeBundledRelation:
 			return NewBundledRelation(id), nil
 		case smartblock.SmartBlockTypeParticipant:
-			spaceId, err := domain.ExtractSpaceId(id)
+			spaceId, _, err := domain.ParseParticipantId(id)
 			if err != nil {
 				return nil, err
 			}
