@@ -2907,7 +2907,7 @@ func TestState_FileRelationKeys(t *testing.T) {
 		keys := s.FileRelationKeys()
 
 		// then
-		assert.Equal(t, []domain.RelationKey{"coverId"}, keys)
+		assert.Empty(t, keys)
 	})
 	t.Run("unsplash cover", func(t *testing.T) {
 		// given

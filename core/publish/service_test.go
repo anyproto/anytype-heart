@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -21,10 +22,12 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject/mock_fileobject"
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/export"
@@ -32,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/core/identity/mock_identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
@@ -382,11 +386,12 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("limit error for members", func(t *testing.T) {
 		// given
-		spaceService := mock_space.NewMockService(t)
+		spaceService, err := prepaeSpaceService(t, false)
+		require.NoError(t, err)
 
 		expectedUri := "test"
 		testFile := "test"
-		err := createTestFile(testFile, membershipLimit+1)
+		err = createTestFile(testFile, membershipLimit+1)
 		assert.NoError(t, err)
 
 		objectTypeId := "customObjectType"
@@ -405,10 +410,14 @@ func TestPublish(t *testing.T) {
 			bundle.RelationKeyGlobalName: domain.String(globalName),
 		}))
 
+		inviteService := mock_inviteservice.NewMockInviteService(t)
+		inviteService.EXPECT().GetCurrent(mock.Anything, mock.Anything).Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists).Maybe()
+
 		svc := &service{
 			spaceService:    spaceService,
 			exportService:   exp,
 			identityService: identityService,
+			inviteService:   inviteService,
 		}
 
 		// when
@@ -421,11 +430,12 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("default limit error", func(t *testing.T) {
 		// given
-		spaceService := mock_space.NewMockService(t)
+		spaceService, err := prepaeSpaceService(t, false)
+		require.NoError(t, err)
 
 		expectedUri := "test"
 		testFile := "test"
-		err := createTestFile(testFile, defaultLimit+1)
+		err = createTestFile(testFile, defaultLimit+1)
 		assert.NoError(t, err)
 
 		objectTypeId := "customObjectType"
@@ -441,10 +451,14 @@ func TestPublish(t *testing.T) {
 		identityService := mock_identity.NewMockService(t)
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{}))
 
+		inviteService := mock_inviteservice.NewMockInviteService(t)
+		inviteService.EXPECT().GetCurrent(mock.Anything, mock.Anything).Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists).Maybe()
+
 		svc := &service{
 			spaceService:    spaceService,
 			exportService:   exp,
 			identityService: identityService,
+			inviteService:   inviteService,
 		}
 
 		// when
@@ -664,8 +678,9 @@ func TestService_PublishingList(t *testing.T) {
 func prepaeSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService, error) {
 	spaceService := mock_space.NewMockService(t)
 	space := mock_clientspace.NewMockSpace(t)
-	space.EXPECT().IsPersonal().Return(isPersonal)
-	space.EXPECT().Id().Return(spaceId)
+	space.EXPECT().IsPersonal().Return(isPersonal).Maybe()
+	space.EXPECT().Id().Return(spaceId).Maybe()
+	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe()
 
 	storage, err := spacestorage.NewInMemorySpaceStorage(spacestorage.SpaceStorageCreatePayload{
 		AclWithId:           &consensusproto.RawRecordWithId{Id: "aclId"},
@@ -680,7 +695,7 @@ func prepaeSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService,
 		Heads:         objectHeads,
 	})
 	assert.NoError(t, err)
-	space.EXPECT().Storage().Return(storage)
+	space.EXPECT().Storage().Return(storage).Maybe()
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	return spaceService, err
 }
@@ -820,7 +835,19 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	objectType.Doc = objectTypeDoc
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
 
-	file := smarttest.New(fileId)
+	fileService := mock_files.NewMockService(t)
+	fileData := mock_files.NewMockFile(t)
+	fileData.EXPECT().Reader(context.Background()).Return(testFile, nil)
+	fileData.EXPECT().Meta().Return(&files.FileMeta{Name: fileId})
+	fileData.EXPECT().LastModifiedDate().Return(time.Now().Unix())
+	fileData.EXPECT().MimeType().Return("text/plain")
+
+	fileObjectSb := smarttest.New(fileId)
+
+	fileObjectMock := mock_fileobject.NewMockFileObject(t)
+	fileObjectMock.EXPECT().GetFile().Return(fileData, nil)
+	file := &fileObjectWrapper{SmartBlock: fileObjectSb, FileObject: fileObjectMock}
+
 	fileDoc := file.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:     domain.String(fileId),
 		bundle.RelationKeyType:   domain.String(objectTypeId),
@@ -833,48 +860,29 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 		Key:    bundle.RelationKeyType.String(),
 		Format: model.RelationFormat_longtext,
 	})
-	file.Doc = fileDoc
-	file.SetType(smartblock.SmartBlockTypeFileObject)
-	file.SetSpaceId(spaceId)
-	space := mock_clientspace.NewMockSpace(t)
-	space.EXPECT().Id().Return(spaceId)
-	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{})
-	file.SetSpace(space)
+	fileObjectSb.Doc = fileDoc
+	fileObjectSb.SetType(smartblock.SmartBlockTypeFileObject)
+	fileObjectSb.SetSpaceId(spaceId)
+	space, err := spaceService.Get(context.Background(), spaceId)
+	require.NoError(t, err)
+	fileObjectSb.SetSpace(space)
 
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil).Times(2)
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
 
-	fileService := mock_files.NewMockService(t)
-	// fileObject := mock_files.NewMockFile(t)
-	// fileObject.EXPECT().Info().Return(&storage.FileInfo{
-	// 	Media: "file",
-	// })
-	// fileObject.EXPECT().Meta().Return(&files2.FileMeta{
-	// 	Name: testFile.Name(),
-	// })
-	// fileObject.EXPECT().Reader(context.Background()).Return(testFile, nil)
-	fileService.EXPECT().GetContentReader(context.Background(), spaceId, fileId, mock.Anything).Return(testFile, nil).Maybe()
-
-	fileObjectSb := smarttest.New("")
-	fileObject := &fileObjectWrapper{SmartBlock: fileObjectSb, FileObject: fileobject.NewFileObject(fileObjectSb, fileService)}
-
-	spaceService.EXPECT().Get(mock.Anything, spaceId).Return(space, nil).Maybe()
-	space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(s string, f func(editorsb.SmartBlock) error) error {
-		return f(fileObject)
-	}).Maybe()
-
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
+	ctx := context.Background()
 	a.Register(storeFixture)
-	a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
-	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter))
+	a.Register(testutil.PrepareMock(ctx, a, mockSender))
+	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(process.New())
-	a.Register(testutil.PrepareMock(context.Background(), a, spaceService))
-	a.Register(testutil.PrepareMock(context.Background(), a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
-	a.Register(testutil.PrepareMock(context.Background(), a, mock_account.NewMockService(t)))
-	a.Register(testutil.PrepareMock(context.Background(), a, mock_notifications.NewMockNotifications(t)))
-	a.Register(testutil.PrepareMock(context.Background(), a, fileService))
+	a.Register(testutil.PrepareMock(ctx, a, spaceService))
+	a.Register(testutil.PrepareMock(ctx, a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
+	a.Register(testutil.PrepareMock(ctx, a, mock_account.NewMockService(t)))
+	a.Register(testutil.PrepareMock(ctx, a, mock_notifications.NewMockNotifications(t)))
+	a.Register(testutil.PrepareMock(ctx, a, fileService))
 
 	exp := export.New()
 	err = exp.Init(a)
