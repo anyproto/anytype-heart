@@ -83,7 +83,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 				data[0].Relations[i] = transform(r, e.anonymized, anonymize.Relation)
 			}
 			osData := pbtypes.Sprint(data[0].ToProto())
-			er := os.WriteFile(localStorePath, []byte(osData), 0644)
+			er := os.WriteFile(localStorePath, []byte(osData), 0600)
 			if er != nil {
 				e.log.Printf("localstore.json write error: %v", err)
 			} else {
@@ -93,7 +93,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 			e.log.Printf("no data in objectstore")
 		}
 	}
-	err = os.WriteFile(logPath, logBuf.Bytes(), 0644)
+	err = os.WriteFile(logPath, logBuf.Bytes(), 0600)
 	if err != nil {
 		return
 	}

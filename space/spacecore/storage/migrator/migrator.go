@@ -41,7 +41,6 @@ type migrator struct {
 	newStorage      storage.ClientStorage
 	process         process.Service
 	path            string
-	oldPath         string
 	objectStorePath string
 	finisher        migratorfinisher.Service
 
@@ -62,7 +61,6 @@ func New() app.ComponentRunnable {
 func (m *migrator) Init(a *app.App) (err error) {
 	cfg := a.MustComponent("config").(pathProvider)
 	m.path = cfg.GetNewSpaceStorePath()
-	m.oldPath = cfg.GetOldSpaceStorePath()
 	m.objectStorePath = filepath.Join(cfg.GetRepoPath(), "objectstore")
 	m.oldStorage = app.MustComponent[oldstorage.ClientStorage](a)
 	m.newStorage = app.MustComponent[storage.ClientStorage](a)

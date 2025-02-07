@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type oldTreeStorage interface {
+	oldstorage.ChangesIterator
+	oldstorage.TreeStorage
+}
+
 func TestTreeStorage_Create(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.finish(t)

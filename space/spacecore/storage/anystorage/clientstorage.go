@@ -132,8 +132,8 @@ func (r *clientStorage) modifyState(ctx context.Context, isCreated bool) error {
 	})
 	_, err = r.clientColl.UpsertId(tx.Context(), clientDocumentKey, mod)
 	if err != nil {
-		tx.Rollback()
-		return err
+		rollErr := tx.Rollback()
+		return errors.Join(err, rollErr)
 	}
 	return tx.Commit()
 }

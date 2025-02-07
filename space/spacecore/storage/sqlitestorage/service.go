@@ -381,6 +381,7 @@ func (s *storageService) EstimateSize() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// nolint: gosec
 	return uint64(stat.Size()), nil
 }
 

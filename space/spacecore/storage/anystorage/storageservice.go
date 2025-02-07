@@ -11,10 +11,10 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 )
 
+// nolint: unused
 var log = logger.NewNamed(spacestorage.CName)
 
 func New(rootPath string) *storageService {
@@ -25,14 +25,13 @@ func New(rootPath string) *storageService {
 
 type storageService struct {
 	rootPath string
-	cache    ocache.OCache
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {
 	var files []string
 	fileInfo, err := os.ReadDir(s.rootPath)
 	if err != nil {
-		return files, fmt.Errorf("can't read datadir '%v': %v", s.rootPath, err)
+		return files, fmt.Errorf("can't read datadir '%v': %w", s.rootPath, err)
 	}
 	for _, file := range fileInfo {
 		if !strings.HasPrefix(file.Name(), ".") {

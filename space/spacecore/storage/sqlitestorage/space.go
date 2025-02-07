@@ -39,11 +39,6 @@ type spaceStorage struct {
 	header *spacesyncproto.RawSpaceHeaderWithId
 }
 
-type oldTreeStorage interface {
-	oldstorage.ChangesIterator
-	oldstorage.TreeStorage
-}
-
 func newSpaceStorage(s *storageService, spaceId string) (oldstorage.SpaceStorage, error) {
 	ss := &spaceStorage{
 		spaceId: spaceId,
