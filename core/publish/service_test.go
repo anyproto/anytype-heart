@@ -14,15 +14,13 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
-	"github.com/anyproto/any-sync/consensus/consensusproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"golang.org/x/sys/unix"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
@@ -50,7 +48,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage/mock_anystorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -670,28 +668,17 @@ var ctx = context.Background()
 func prepareSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService, error) {
 	spaceService := mock_space.NewMockService(t)
 	space := mock_clientspace.NewMockSpace(t)
+	ctrl := gomock.NewController(t)
 	space.EXPECT().IsPersonal().Return(isPersonal)
 	space.EXPECT().Id().Return(spaceId)
 
-	store := createStore(ctx, t)
-
-	storage, err := spacestorage.Create(ctx, store, spacestorage.SpaceStorageCreatePayload{
-		AclWithId:           &consensusproto.RawRecordWithId{Id: "aclId"},
-		SpaceHeaderWithId:   &spacesyncproto.RawSpaceHeaderWithId{Id: spaceId},
-		SpaceSettingsWithId: &treechangeproto.RawTreeChangeWithId{Id: "settingsId"},
-	})
-	require.NoError(t, err)
-	objectHeads := []string{"heads"}
-	_, err = storage.CreateTreeStorage(ctx, treestorage.TreeStorageCreatePayload{
-		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: objectId},
-		Heads:         objectHeads,
-	})
-	assert.NoError(t, err)
-	clientStorage, err := anystorage.NewClientStorage(ctx, storage)
-	assert.NoError(t, err)
-	space.EXPECT().Storage().Return(clientStorage)
+	st := mock_anystorage.NewMockClientSpaceStorage(t)
+	mockSt := mock_objecttree.NewMockStorage(ctrl)
+	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil)
+	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil)
+	space.EXPECT().Storage().Return(st)
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
-	return spaceService, err
+	return spaceService, nil
 }
 
 func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space.MockService) export.Export {

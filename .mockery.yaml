@@ -92,6 +92,9 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore/storage:
     interfaces:
       ClientStorage:
+  github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage:
+    interfaces:
+      ClientSpaceStorage:
   github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
