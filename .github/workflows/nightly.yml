@@ -125,6 +125,9 @@ jobs:
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
 
+      - name: create .release/ dir # need for "Pack *" steps
+        run: mkdir -p .release/
+
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")
