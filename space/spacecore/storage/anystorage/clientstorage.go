@@ -13,9 +13,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 )
 
-// TODO: [storage] add mark space created etc
-//  add tree root
-
 type ClientSpaceStorage interface {
 	spacestorage.SpaceStorage
 	HasTree(ctx context.Context, id string) (has bool, err error)
@@ -32,14 +29,12 @@ const (
 	clientCollectionKey = "_client"
 	clientDocumentKey   = "space"
 	createdKey          = "created"
-	// TODO: [storage] make it more obvious
-	rawChangeKey = "r"
+	rawChangeKey        = "r"
 )
 
 type clientStorage struct {
 	spacestorage.SpaceStorage
 	clientColl anystore.Collection
-	arena      *anyenc.Arena
 }
 
 func (r *clientStorage) AllDeletedTreeIds(ctx context.Context) (ids []string, err error) {
@@ -53,7 +48,6 @@ func (r *clientStorage) AllDeletedTreeIds(ctx context.Context) (ids []string, er
 func NewClientStorage(ctx context.Context, spaceStorage spacestorage.SpaceStorage) (*clientStorage, error) {
 	storage := &clientStorage{
 		SpaceStorage: spaceStorage,
-		arena:        &anyenc.Arena{},
 	}
 	anyStore := storage.AnyStore()
 	client, err := anyStore.Collection(ctx, clientCollectionKey)
@@ -120,12 +114,11 @@ func (r *clientStorage) modifyState(ctx context.Context, isCreated bool) error {
 	if err != nil {
 		return err
 	}
-	// TODO: [storage] change to arena pool or use mutexes
-	val := r.arena.NewTrue()
+	arena := &anyenc.Arena{}
+	val := arena.NewTrue()
 	if !isCreated {
-		val = r.arena.NewFalse()
+		val = arena.NewFalse()
 	}
-	defer r.arena.Reset()
 	mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
 		v.Set(createdKey, val)
 		return v, true, nil

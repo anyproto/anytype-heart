@@ -46,7 +46,6 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 }
 
 func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB, err error) {
-	// TODO: [storage] set anystore config from config
 	dbPath := path.Join(s.rootPath, id, "store.db")
 	if _, err := os.Stat(dbPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -54,7 +53,7 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 		}
 		return nil, err
 	}
-	return anystore.Open(ctx, dbPath, anyStoreConfig)
+	return anystore.Open(ctx, dbPath, anyStoreConfig())
 }
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
@@ -64,7 +63,7 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 		return nil, err
 	}
 	dbPath := path.Join(dirPath, "store.db")
-	return anystore.Open(ctx, dbPath, anyStoreConfig)
+	return anystore.Open(ctx, dbPath, anyStoreConfig())
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
@@ -125,9 +124,11 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 	return os.RemoveAll(dbPath)
 }
 
-var anyStoreConfig *anystore.Config = &anystore.Config{
-	ReadConnections: 4,
-	SQLiteConnectionOptions: map[string]string{
-		"synchronous": "off",
-	},
+func anyStoreConfig() *anystore.Config {
+	return &anystore.Config{
+		ReadConnections: 4,
+		SQLiteConnectionOptions: map[string]string{
+			"synchronous": "off",
+		},
+	}
 }
