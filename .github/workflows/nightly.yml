@@ -44,7 +44,7 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
 
       - name: Install brew and node deps
-        run: make install_brew_and_node_deps
+        run: make install-brew-and-node-deps
 
       - name: Checkout
         uses: actions/checkout@v3
@@ -105,7 +105,7 @@ jobs:
 
       - name: Cross-compile library mac/win/linux
         run: |
-          make cross_compile_library
+          make cross-compile-library
           ls -lha .
 
       - name: Make JS protos
