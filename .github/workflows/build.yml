@@ -51,9 +51,6 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-      - name: Install brew and node deps
-        if: runner.name != 'mac-mini-org-heart'
-        run: make install-brew-and-node-deps
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -63,6 +60,9 @@ jobs:
           key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-${{ matrix.go-version }}-
+      - name: Install brew and node deps
+        if: runner.name != 'mac-mini-org-heart'
+        run: make install-brew-and-node-deps
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
