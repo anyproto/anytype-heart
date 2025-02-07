@@ -25,6 +25,9 @@ var documentRelationsWhiteList = append(slices.Clone(allObjectsRelationsWhiteLis
 	bundle.RelationKeyIconEmoji.String(),
 	bundle.RelationKeyCoverType.String(),
 	bundle.RelationKeyCoverId.String(),
+	bundle.RelationKeyCoverX.String(),
+	bundle.RelationKeyCoverY.String(),
+	bundle.RelationKeyCoverScale.String(),
 )
 
 var todoRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyDone.String())
