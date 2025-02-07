@@ -33,7 +33,7 @@ cross-compile-library-darwin-amd64: $(OUTPUT_DIR)
 		go build -tags="$(BUILD_TAGS)" -ldflags="$(FLAGS)" -o darwin-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
 
 cross-compile-library-darwin-arm64: $(OUTPUT_DIR)
-	SDKROOT = $(shell xcrun --sdk macosx --show-sdk-path)
+	SDKROOT=$(shell xcrun --sdk macosx --show-sdk-path)
 	echo $(SDKROOT)
 	GOOS="darwin" \
 		CGO_CFLAGS="-mmacosx-version-min=11" \
