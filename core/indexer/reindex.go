@@ -47,6 +47,8 @@ const (
 	ForceMarketplaceReindex int32 = 1
 
 	ForceReindexDeletedObjectsCounter int32 = 1
+
+	ForceReindexParticipantsCounter int32 = 1
 )
 
 type allDeletedIdsProvider interface {
@@ -73,6 +75,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			BundledObjects:        ForceBundledObjectsReindexCounter,
 			AreOldFilesRemoved:    true,
 			ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
+			ReindexParticipants:   ForceReindexParticipantsCounter,
 		}
 	}
 
@@ -106,6 +109,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.ReindexDeletedObjects != ForceReindexDeletedObjectsCounter {
 		flags.deletedObjects = true
+	}
+	if checksums.ReindexParticipants != ForceReindexParticipantsCounter {
+		flags.removeParticipants = true
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
 		flags.eraseLinks = true
@@ -197,6 +203,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 
 	if flags.deletedObjects {
 		err = i.reindexDeletedObjects(space)
+		if err != nil {
+			log.Error("reindex deleted objects", zap.Error(err))
+		}
+	}
+
+	if flags.removeParticipants {
+		err = i.RemoveAclIndexes(space.Id())
 		if err != nil {
 			log.Error("reindex deleted objects", zap.Error(err))
 		}
@@ -495,6 +508,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		AreDeletedObjectsReindexed:       true,
 		LinksErase:                       ForceLinksReindexCounter,
 		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
+		ReindexParticipants:              ForceReindexParticipantsCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
