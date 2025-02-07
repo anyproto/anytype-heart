@@ -90,5 +90,8 @@
   "mentions",
   "chatId",
   "hasChat",
-  "timestamp"
+  "timestamp",
+  "recommendedFeaturedRelations",
+  "recommendedHiddenRelations",
+  "recommendedFileRelations"
 ]
