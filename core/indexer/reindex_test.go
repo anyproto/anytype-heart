@@ -190,6 +190,15 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 	err = fx.objectStore.SaveChecksums(spaceId2, &checksums)
 	require.NoError(t, err)
 
+	ctrl := gomock.NewController(t)
+	headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+	storage := mock_anystorage.NewMockClientSpaceStorage(t)
+	storage.EXPECT().HeadStorage().Return(headStorage)
+	headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().
+		DoAndReturn(func(ctx context.Context, opts headstorage.IterOpts, entryIter headstorage.EntryIterator) error {
+			return nil
+		})
+
 	for _, space := range []string{spaceId1, spaceId2} {
 		t.Run("reindex - participants deleted - when flag doesn't match", func(t *testing.T) {
 			// given
@@ -197,7 +206,7 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 
 			spc := mock_space.NewMockSpace(t)
 			spc.EXPECT().Id().Return(space)
-			spc.EXPECT().StoredIds().Return([]string{}).Maybe()
+			spc.EXPECT().Storage().Return(storage)
 			fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 
 			// when
