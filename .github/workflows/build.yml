@@ -40,19 +40,23 @@ jobs:
             echo "Invalid runner"
             exit 1
           fi
+
       - name: Install Go
         if: runner.name != 'mac-mini-org-heart'
         uses: actions/setup-go@v1
         with:
           go-version: 1.23.2
+
       - name: Setup GO
         run: |
           go version
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
+
       - name: Checkout
         uses: actions/checkout@v3
+
       - uses: actions/cache@v3
         with:
           path: |
@@ -60,9 +64,11 @@ jobs:
           key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-${{ matrix.go-version }}-
+
       - name: Install brew and node deps
         if: runner.name != 'mac-mini-org-heart'
         run: make install-brew-and-node-deps
+
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -86,21 +92,26 @@ jobs:
           echo $(pwd)/deps >> $GITHUB_PATH
           echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
+
       - name: Go mod download
         run: |
           go mod download
+
       - name: install protoc
         run: |
           make setup-protoc
+
       - name: setup go
         run: |
           make setup-go
           make setup-gomobile
           which gomobile
+
       - name: Cross-compile library mac/win/linux
         run: |
           make cross-compile-library
           ls -lha .
+
       - name: run perf tests
         if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
         env:
@@ -116,6 +127,7 @@ jobs:
           fi
           cd cmd/perftester/
           CGO_ENABLED="1" go run main.go $RUN_COUNT
+
       - name: Archive perf tests results
         if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
         uses: actions/upload-artifact@v4
@@ -123,6 +135,7 @@ jobs:
           name: pprofs
           path: |
             *.pprof
+
       - name: end run perf tests
         if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
         env:
@@ -132,6 +145,7 @@ jobs:
           echo "End running perf tests"
           gh run cancel ${{ github.run_id }}
           gh run watch ${{ github.run_id }}
+
       - name: Make JS protos
         if: github.event_name == 'push'
         run: |
@@ -141,6 +155,7 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+
       - name: Add system relations/types jsons
         run: |
           mkdir -p json/
@@ -148,50 +163,54 @@ jobs:
           cp pkg/lib/bundle/systemTypes.json ./json
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
+
+      - name: create .release/ dir # need for "Pack *" steps
+        run: mkdir -p .release/
+
       - name: Pack server win
         if: github.event_name == 'push'
         run: |
           declare -a arr=("windows-amd64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server.exe
-          zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
-          mv js_${VERSION}_${OSARCH}.zip .release/
+          for i in "${arr[@]}"; do
+            OSARCH=${i%.*}
+            cp ./${i}* ./grpc-server.exe
+            zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
+            mv js_${VERSION}_${OSARCH}.zip .release/
           done
+
       - name: Pack server osx
         if: github.event_name == 'push'
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-          mv js_${VERSION}_${OSARCH}.tar.gz .release/
+          for i in "${arr[@]}"; do
+            OSARCH=${i%.*}
+            cp ./${i}* ./grpc-server
+            tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
+            mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
+
       - name: Pack server unix amd64
         if: github.event_name == 'push'
         run: |
           declare -a arr=("linux-amd64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-          mv js_${VERSION}_${OSARCH}.tar.gz .release/
+          for i in "${arr[@]}"; do
+            OSARCH=${i%.*}
+            cp ./${i}* ./grpc-server
+            tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
+            mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
+
       - name: Pack server unix arm64
         if: github.event_name == 'push'
         run: |
           declare -a arr=("linux-arm64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-          mv js_${VERSION}_${OSARCH}.tar.gz .release/
+          for i in "${arr[@]}"; do
+            OSARCH=${i%.*}
+            cp ./${i}* ./grpc-server
+            tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
+            mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
+
       - name: Make swift protos
         run: |
           mkdir -p .release
@@ -202,6 +221,7 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+
       - name: Add system relations/types jsons
         run: |
           mkdir -p json/
@@ -210,6 +230,7 @@ jobs:
           cp pkg/lib/bundle/systemTypes.json ./json
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
+
       - name: Compile ios lib
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -227,6 +248,7 @@ jobs:
           gtar --exclude ".*" -czvf ios_framework.tar.gz Lib.xcframework protobuf json
           gradle publish
           mv ios_framework.tar.gz .release/ios_framework_${VERSION}.tar.gz
+
       - name: Make java protos
         run: |
           make protos-java
@@ -236,6 +258,7 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+
       - name: Add system relations/types jsons
         run: |
           mkdir -p json/
@@ -243,11 +266,13 @@ jobs:
           cp pkg/lib/bundle/systemTypes.json ./json
           cp pkg/lib/bundle/internalRelations.json ./json
           cp pkg/lib/bundle/internalTypes.json ./json
+
       - name: Compile android lib
         run: |
           gomobile bind -tags "$BUILD_TAG_NETWORK nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=android -androidapi 26 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
+
       - name: Publish android lib to maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -256,6 +281,7 @@ jobs:
           MAVEN_ARTIFACT_NAME: 'lib.aar'
         run: |
           gradle publish
+
       - name: Release
         if: github.event_name == 'push'
         env:
