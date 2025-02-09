@@ -113,7 +113,7 @@ func (s *SpaceService) GetSpace(ctx context.Context, spaceId string) (Space, err
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 			},
 		},
-		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
+		Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
