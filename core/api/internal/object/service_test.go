@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -40,14 +41,16 @@ const (
 
 type fixture struct {
 	*ObjectService
-	mwMock *mock_service.MockClientCommandsServer
+	mwMock      *mock_service.MockClientCommandsServer
+	eventSender *mock_event.MockSender
 }
 
 func newFixture(t *testing.T) *fixture {
 	mw := mock_service.NewMockClientCommandsServer(t)
+	eventService := mock_event.NewMockSender(t)
 
 	spaceService := space.NewService(mw)
-	objectService := NewService(mw, spaceService)
+	objectService := NewService(mw, spaceService, eventService)
 	objectService.AccountInfo = &model.AccountInfo{
 		TechSpaceId: mockedTechSpaceId,
 		GatewayUrl:  gatewayUrl,
@@ -56,6 +59,7 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{
 		ObjectService: objectService,
 		mwMock:        mw,
+		eventSender:   eventService,
 	}
 }
 
