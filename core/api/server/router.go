@@ -78,6 +78,7 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 
 		// Space
 		v1.GET("/spaces", space.GetSpacesHandler(s.spaceService))
+		v1.GET("/spaces/:space_id", space.GetSpaceHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members", space.GetMembersHandler(s.spaceService))
 		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
 

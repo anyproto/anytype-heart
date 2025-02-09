@@ -253,7 +253,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Space created successfully",
                         "schema": {
-                            "$ref": "#/definitions/space.CreateSpaceResponse"
+                            "$ref": "#/definitions/space.SpaceResponse"
                         }
                     },
                     "400": {
@@ -272,6 +272,55 @@ const docTemplate = `{
                         "description": "Rate limit exceeded",
                         "schema": {
                             "$ref": "#/definitions/util.RateLimitError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/spaces/{space_id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "spaces"
+                ],
+                "summary": "Get space",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Space",
+                        "schema": {
+                            "$ref": "#/definitions/space.SpaceResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "404": {
+                        "description": "Space not found",
+                        "schema": {
+                            "$ref": "#/definitions/util.NotFoundError"
                         }
                     },
                     "500": {
@@ -1556,19 +1605,6 @@ const docTemplate = `{
                 }
             }
         },
-        "space.CreateSpaceResponse": {
-            "type": "object",
-            "properties": {
-                "space": {
-                    "description": "The created space",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/space.Space"
-                        }
-                    ]
-                }
-            }
-        },
         "space.Member": {
             "type": "object",
             "properties": {
@@ -1712,6 +1748,19 @@ const docTemplate = `{
                     "description": "The id of the workspace object",
                     "type": "string",
                     "example": "bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y"
+                }
+            }
+        },
+        "space.SpaceResponse": {
+            "type": "object",
+            "properties": {
+                "space": {
+                    "description": "The space",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/space.Space"
+                        }
+                    ]
                 }
             }
         },

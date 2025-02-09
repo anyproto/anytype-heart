@@ -427,13 +427,6 @@ definitions:
         example: New Space
         type: string
     type: object
-  space.CreateSpaceResponse:
-    properties:
-      space:
-        allOf:
-        - $ref: '#/definitions/space.Space'
-        description: The created space
-    type: object
   space.Member:
     properties:
       global_name:
@@ -549,6 +542,13 @@ definitions:
         description: The id of the workspace object
         example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
         type: string
+    type: object
+  space.SpaceResponse:
+    properties:
+      space:
+        allOf:
+        - $ref: '#/definitions/space.Space'
+        description: The space
     type: object
   util.ForbiddenError:
     properties:
@@ -775,7 +775,7 @@ paths:
         "200":
           description: Space created successfully
           schema:
-            $ref: '#/definitions/space.CreateSpaceResponse'
+            $ref: '#/definitions/space.SpaceResponse'
         "400":
           description: Bad request
           schema:
@@ -793,6 +793,38 @@ paths:
           schema:
             $ref: '#/definitions/util.ServerError'
       summary: Create space
+      tags:
+      - spaces
+  /spaces/{space_id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Space
+          schema:
+            $ref: '#/definitions/space.SpaceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Space not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Get space
       tags:
       - spaces
   /spaces/{space_id}/members:

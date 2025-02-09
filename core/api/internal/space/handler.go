@@ -42,6 +42,38 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 	}
 }
 
+// GetSpaceHandler retrieves a space
+//
+//	@Summary	Get space
+//	@Tags		spaces
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string					true	"Space ID"
+//	@Success	200			{object}	SpaceResponse			"Space"
+//	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	util.NotFoundError		"Space not found"
+//	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Router		/spaces/{space_id} [get]
+func GetSpaceHandler(s *SpaceService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+
+		space, err := s.GetSpace(c.Request.Context(), spaceId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrWorkspaceNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedOpenWorkspace, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, SpaceResponse{Space: space})
+	}
+}
+
 // CreateSpaceHandler creates a new space
 //
 //	@Summary	Create space
@@ -49,7 +81,7 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 //	@Accept		json
 //	@Produce	json
 //	@Param		name	body		CreateSpaceRequest		true	"Space to create"
-//	@Success	200		{object}	CreateSpaceResponse		"Space created successfully"
+//	@Success	200		{object}	SpaceResponse			"Space created successfully"
 //	@Failure	400		{object}	util.ValidationError	"Bad request"
 //	@Failure	401		{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	423		{object}	util.RateLimitError		"Rate limit exceeded"
@@ -75,7 +107,7 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, CreateSpaceResponse{Space: space})
+		c.JSON(http.StatusOK, SpaceResponse{Space: space})
 	}
 }
 

@@ -1,11 +1,11 @@
 package space
 
-type CreateSpaceRequest struct {
-	Name string `json:"name" example:"New Space"` // The name of the space
+type SpaceResponse struct {
+	Space Space `json:"space"` // The space
 }
 
-type CreateSpaceResponse struct {
-	Space Space `json:"space"` // The created space
+type CreateSpaceRequest struct {
+	Name string `json:"name" example:"New Space"` // The name of the space
 }
 
 type Space struct {
