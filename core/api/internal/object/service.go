@@ -447,6 +447,16 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		}
 	}
 
+	memberLastModifiedBy, err := s.spaceService.GetMember(context.Background(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), lastModifiedById)
+	if err != nil {
+		memberLastModifiedBy = space.Member{}
+	}
+
+	memberCreator, err := s.spaceService.GetMember(context.Background(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId)
+	if err != nil {
+		memberCreator = space.Member{}
+	}
+
 	return []Detail{
 		{
 			Id: "last_modified_date",
@@ -457,7 +467,7 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "last_modified_by",
 			Details: map[string]interface{}{
-				"details": s.spaceService.GetParticipantDetails(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), lastModifiedById),
+				"details": memberLastModifiedBy,
 			},
 		},
 		{
@@ -469,7 +479,7 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "created_by",
 			Details: map[string]interface{}{
-				"details": s.spaceService.GetParticipantDetails(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId),
+				"details": memberCreator,
 			},
 		},
 		{

@@ -24,6 +24,8 @@ var (
 	ErrFailedGenerateRandomIcon = errors.New("failed to generate random icon")
 	ErrFailedCreateSpace        = errors.New("failed to create space")
 	ErrFailedListMembers        = errors.New("failed to retrieve list of members")
+	ErrFailedGetMember          = errors.New("failed to retrieve member")
+	ErrMemberNotFound           = errors.New("member not found")
 )
 
 type Service interface {
@@ -31,6 +33,7 @@ type Service interface {
 	GetSpace(ctx context.Context, spaceId string) (Space, error)
 	CreateSpace(ctx context.Context, name string) (Space, error)
 	ListMembers(ctx context.Context, spaceId string, offset int, limit int) ([]Member, int, bool, error)
+	GetMember(ctx context.Context, spaceId string, memberId string) (Member, error)
 }
 
 type SpaceService struct {
@@ -210,26 +213,27 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 	return members, total, hasMore, nil
 }
 
-func (s *SpaceService) GetParticipantDetails(mw service.ClientCommandsServer, spaceId string, participantId string) Member {
-	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+// GetMember returns the member with the given ID in the space with the given ID.
+func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId string) (Member, error) {
+	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(participantId),
+				Value:       pbtypes.String(memberId),
 			},
 		},
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String(), bundle.RelationKeyIdentity.String(), bundle.RelationKeyGlobalName.String(), bundle.RelationKeyParticipantPermissions.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return Member{}
+		return Member{}, ErrFailedGetMember
 	}
 
 	if len(resp.Records) == 0 {
-		return Member{}
+		return Member{}, ErrMemberNotFound
 	}
 
 	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
@@ -242,7 +246,7 @@ func (s *SpaceService) GetParticipantDetails(mw service.ClientCommandsServer, sp
 		Identity:   resp.Records[0].Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 		GlobalName: resp.Records[0].Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 		Role:       model.ParticipantPermissions_name[int32(resp.Records[0].Fields[bundle.RelationKeyParticipantPermissions.String()].GetNumberValue())],
-	}
+	}, nil
 }
 
 // getWorkspaceInfo returns the workspace info for the space with the given ID.

@@ -30,6 +30,10 @@ type Space struct {
 	NetworkId              string `json:"network_id" example:"N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU"`                                                                 // The network id of the space
 }
 
+type MemberResponse struct {
+	Member Member `json:"member"` // The member
+}
+
 type Member struct {
 	Type       string `json:"type" example:"member"`                                                                                                                                // The type of the object
 	Id         string `json:"id" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"` // The profile object id of the member

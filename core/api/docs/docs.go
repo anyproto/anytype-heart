@@ -390,6 +390,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/spaces/{space_id}/members/{member_id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "spaces"
+                ],
+                "summary": "Get member",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Member ID",
+                        "name": "member_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Member",
+                        "schema": {
+                            "$ref": "#/definitions/space.MemberResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "404": {
+                        "description": "Member not found",
+                        "schema": {
+                            "$ref": "#/definitions/util.NotFoundError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/spaces/{space_id}/objects": {
             "get": {
                 "consumes": [
@@ -1648,6 +1704,19 @@ const docTemplate = `{
                     "description": "The type of the object",
                     "type": "string",
                     "example": "member"
+                }
+            }
+        },
+        "space.MemberResponse": {
+            "type": "object",
+            "properties": {
+                "member": {
+                    "description": "The member",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/space.Member"
+                        }
+                    ]
                 }
             }
         },

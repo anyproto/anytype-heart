@@ -144,3 +144,37 @@ func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
 		pagination.RespondWithPagination(c, http.StatusOK, members, total, offset, limit, hasMore)
 	}
 }
+
+// GetMemberHandler retrieves a member in a space
+//
+//	@Summary	Get member
+//	@Tags		spaces
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string					true	"Space ID"
+//	@Param		member_id	path		string					true	"Member ID"
+//	@Success	200			{object}	MemberResponse			"Member"
+//	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure	404			{object}	util.NotFoundError		"Member not found"
+//	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Router		/spaces/{space_id}/members/{member_id} [get]
+func GetMemberHandler(s *SpaceService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		memberId := c.Param("member_id")
+
+		member, err := s.GetMember(c.Request.Context(), spaceId, memberId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrMemberNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrFailedGetMember, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, MemberResponse{Member: member})
+	}
+}

@@ -463,6 +463,13 @@ definitions:
         example: member
         type: string
     type: object
+  space.MemberResponse:
+    properties:
+      member:
+        allOf:
+        - $ref: '#/definitions/space.Member'
+        description: The member
+    type: object
   space.Space:
     properties:
       account_space_id:
@@ -865,6 +872,43 @@ paths:
           schema:
             $ref: '#/definitions/util.ServerError'
       summary: List members
+      tags:
+      - spaces
+  /spaces/{space_id}/members/{member_id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: Member ID
+        in: path
+        name: member_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Member
+          schema:
+            $ref: '#/definitions/space.MemberResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Member not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Get member
       tags:
       - spaces
   /spaces/{space_id}/objects:
