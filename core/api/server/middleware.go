@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
@@ -93,5 +95,23 @@ func (s *Server) ensureAccountInfo(accountService account.Service) gin.HandlerFu
 		s.searchService.AccountInfo = accInfo
 
 		c.Next()
+	}
+}
+
+// ensureAnalyticsEvent is a middleware that ensures broadcasting an analytics event after a successful request.
+func (s *Server) ensureAnalyticsEvent(code string, eventService event.Sender) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+
+		if c.Writer.Status() != http.StatusOK {
+			return
+		}
+
+		payload := util.NewAnalyticsEventForApi(c.Request.Context(), code)
+		eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfPayloadBroadcast{
+			PayloadBroadcast: &pb.EventPayloadBroadcast{
+				Payload: payload,
+			},
+		}))
 	}
 }

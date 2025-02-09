@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
-	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -46,17 +45,15 @@ const (
 
 type fixture struct {
 	*SearchService
-	mwMock      *mock_service.MockClientCommandsServer
-	eventSender *mock_event.MockSender
+	mwMock *mock_service.MockClientCommandsServer
 }
 
 func newFixture(t *testing.T) *fixture {
 	mw := mock_service.NewMockClientCommandsServer(t)
-	eventService := mock_event.NewMockSender(t)
 
 	spaceService := space.NewService(mw)
 	spaceService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId, GatewayUrl: gatewayUrl}
-	objectService := object.NewService(mw, spaceService, eventService)
+	objectService := object.NewService(mw, spaceService)
 	objectService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
 	searchService := NewService(mw, spaceService, objectService)
 	searchService.AccountInfo = &model.AccountInfo{
@@ -67,7 +64,6 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{
 		SearchService: searchService,
 		mwMock:        mw,
-		eventSender:   eventService,
 	}
 }
 

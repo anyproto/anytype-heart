@@ -42,9 +42,9 @@ func NewServer(mw service.ClientCommandsServer, accountService account.Service, 
 		spaceService:  space.NewService(mw),
 	}
 
-	s.objectService = object.NewService(mw, s.spaceService, eventService)
+	s.objectService = object.NewService(mw, s.spaceService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
-	s.engine = s.NewRouter(accountService, mw)
+	s.engine = s.NewRouter(mw, accountService, eventService)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
