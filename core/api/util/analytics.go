@@ -43,6 +43,8 @@ func NewAnalyticsEvent(code, origin, apiAppName string) *AnalyticsBroadcastEvent
 
 // NewAnalyticsEventForApi creates a new analytics event for api with app name from the context
 func NewAnalyticsEventForApi(ctx context.Context, code string) string {
-	apiAppName := ctx.Value("apiAppName").(string)
+	// TODO: enable when apiAppName is available in context
+	// apiAppName := ctx.Value("apiAppName").(string)
+	apiAppName := "api-app"
 	return NewAnalyticsEvent(code, "api", apiAppName).ToJSON()
 }
