@@ -27,6 +27,7 @@ type (
 	templateService interface {
 		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
 		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
+		SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error
 	}
 
 	bookmarkService interface {
@@ -171,7 +172,11 @@ func (s *service) createTemplate(
 	if err != nil {
 		return
 	}
-	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
+	id, resultDetails, err = s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
+	if e := s.templateService.SetDefaultTemplateInType(ctx, target, id); e != nil {
+		log.Errorf("failed to set defaultTemplateId to type: %v", e)
+	}
+	return
 }
 
 func (s *service) createCommonObject(

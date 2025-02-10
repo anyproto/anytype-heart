@@ -72,6 +72,10 @@ func (tts *testTemplateService) TemplateCloneInSpace(space clientspace.Space, id
 	return "", nil
 }
 
+func (tts *testTemplateService) SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error {
+	return nil
+}
+
 func TestService_CreateObject(t *testing.T) {
 	t.Run("template creation", func(t *testing.T) {
 		// given

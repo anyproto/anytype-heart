@@ -11,6 +11,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -58,6 +59,8 @@ type Service interface {
 	TemplateClone(spaceId string, id string) (templateId string, err error)
 
 	TemplateExportAll(ctx context.Context, path string) (string, error)
+
+	SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error
 
 	app.Component
 }
@@ -242,9 +245,24 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return "", fmt.Errorf("resolve spaceId: %w", err)
 	}
 
-	templateId, _, err = s.creator.CreateSmartBlockFromState(ctx, spaceId, objectTypeKeys, st)
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("get space: %w", err)
+	}
+
+	templateId, _, err = s.creator.CreateSmartBlockFromStateInSpace(ctx, spc, objectTypeKeys, st)
 	if err != nil {
 		return
+	}
+
+	typeId, err2 := spc.GetTypeIdByKey(ctx, objectTypeKeys[0])
+	if err2 != nil {
+		log.Errorf("failed to get typeId: %v", err2)
+		return
+	}
+
+	if err2 = s.SetDefaultTemplateInType(ctx, typeId, templateId); err != nil {
+		log.Errorf("failed to set defaultTemplateId to type: %v", err2)
 	}
 	return
 }
@@ -336,6 +354,23 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 		Zip:       true,
 	})
 	return path, err
+}
+
+// SetDefaultTemplateInType sets defaultTemplateId to type object in case it is empty
+func (s *service) SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error {
+	return cache.DoContext(s.picker, ctx, typeId, func(sb smartblock.SmartBlock) error {
+		if sb.Details().GetString(bundle.RelationKeyDefaultTemplateId) != "" {
+			return nil
+		}
+		ds := sb.(basic.DetailsSettable)
+		if ds == nil {
+			return fmt.Errorf("cannot set defaultTemplateId as type object does not support DetailsSettable interface")
+		}
+		return ds.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeyDefaultTemplateId,
+			Value: domain.String(templateId),
+		}}, false)
+	})
 }
 
 func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout, details *domain.Details) (st *state.State) {
