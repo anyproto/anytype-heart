@@ -3,6 +3,7 @@ package text
 import (
 	"unicode"
 	"unicode/utf16"
+	"unicode/utf8"
 )
 
 const TruncateEllipsis = " …"
@@ -11,42 +12,61 @@ func TruncateEllipsized(text string, length int) string {
 	return Truncate(text, length, TruncateEllipsis)
 }
 
-func Truncate(text string, length int, ending string) string {
-	length -= UTF16RuneCountString(ending)
-	if UTF16RuneCountString(text) <= length {
-		return text
+func Truncate(str string, maxLen int, ending string) string {
+	le := utf16LessOrEqual(str, maxLen)
+	if le {
+		return str
 	}
-	utf16Text := StrToUTF16(text)
-	var lastWordIndex, lastNonSpace, currentLen, endTextPos int
-	for i, r := range utf16Text {
-		currentLen++
-		if unicode.IsSpace(rune(r)) {
+
+	maxLen -= UTF16RuneCountString(ending)
+
+	var utf16Len,
+		lastWordIndex,
+		lastNonSpace int
+	for i, r := range str {
+		runeSize := utf16.RuneLen(r)
+		if unicode.IsSpace(r) {
 			lastWordIndex = lastNonSpace
-		} else if unicode.In(rune(r), unicode.Han, unicode.Hangul, unicode.Hiragana, unicode.Katakana) {
-			lastWordIndex = i
 		} else {
-			lastNonSpace = i + 1
+			lastNonSpace = i + utf8.RuneLen(r)
 		}
-		if currentLen > length {
+
+		utf16Len += runeSize
+		if utf16Len > maxLen {
+			var runeEnd int
 			if lastWordIndex == 0 {
-				endTextPos = i
+				runeEnd = i
 			} else {
-				endTextPos = lastWordIndex
+				runeEnd = lastWordIndex
 			}
-			out := utf16Text[0:endTextPos]
-			return UTF16ToStr(out) + ending
+			if ending == "" {
+				return str[:runeEnd]
+			} else {
+				return str[:runeEnd] + ending
+			}
 		}
 	}
-	return UTF16ToStr(utf16Text)
+
+	return str
+}
+
+func utf16LessOrEqual(str string, maxLen int) bool {
+	var n int
+	le := true
+	for _, s1 := range str {
+		n += utf16.RuneLen(s1)
+		if n > maxLen {
+			le = false
+			break
+		}
+	}
+	return le
 }
 
 func UTF16RuneCountString(str string) int {
-	buf := make([]uint16, 0, 2)
 	var n int
 	for _, s := range str {
-		buf = utf16.AppendRune(buf, s)
-		n += len(buf)
-		buf = buf[:0]
+		n += utf16.RuneLen(s)
 	}
 	return n
 }
