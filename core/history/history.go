@@ -93,7 +93,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	}
 
 	if err = h.injectLocalDetails(s, id, space); err != nil {
-		return nil, nil, fmt.Errorf("failed to inject local details to state: %v", err)
+		return nil, nil, fmt.Errorf("failed to inject local details to state: %w", err)
 	}
 
 	details, err := h.buildDetails(s, space)
@@ -542,6 +542,7 @@ func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId
 		return
 	}
 
+	// nolint:gosec
 	sbt = coresb.SmartBlockType(payload.SmartBlockType)
 	return
 }
