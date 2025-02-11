@@ -103,11 +103,12 @@ func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId strin
 		return nil, fmt.Errorf("failed to query object type, expected 1 record")
 	}
 
+	details := records[0].Details
 	allRecommendedRelations := lo.Uniq(slices.Concat(
-		records[0].Details.GetStringList(bundle.RelationKeyRecommendedRelations),
-		records[0].Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
-		records[0].Details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations),
-		records[0].Details.GetStringList(bundle.RelationKeyRecommendedFileRelations),
+		details.GetStringList(bundle.RelationKeyRecommendedRelations),
+		details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
+		details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations),
+		details.GetStringList(bundle.RelationKeyRecommendedFileRelations),
 	))
 
 	allRelationKeys := make([]string, 0, len(allRecommendedRelations))
