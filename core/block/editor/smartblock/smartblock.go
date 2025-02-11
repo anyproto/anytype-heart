@@ -1387,6 +1387,7 @@ func (sb *smartBlock) injectLayout(details *domain.Details) {
 	layout := model.ObjectType_basic // fallback
 	records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{sb.ObjectTypeID()})
 	if err == nil && len(records) != 0 {
+		// nolint:gosec
 		layout = model.ObjectTypeLayout(records[0].Details.GetInt64(bundle.RelationKeyRecommendedLayout))
 	}
 	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
