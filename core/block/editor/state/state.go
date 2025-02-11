@@ -1127,7 +1127,7 @@ func (s *State) FileRelationKeys() []domain.RelationKey {
 		}
 		if rel.Key == bundle.RelationKeyCoverId.String() {
 			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
-			if (coverType == 1 || coverType == 4) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
+			if (coverType == 1 || coverType == 4 || coverType == 5) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
 				keys = append(keys, domain.RelationKey(rel.Key))
 			}
 		}

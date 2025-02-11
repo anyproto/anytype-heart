@@ -865,6 +865,7 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 			Collection:               true,
 			NoHiddenBundledRelations: true,
 			NoBackLinks:              !e.includeBackLinks,
+			CreatorModifierWorkspace: true,
 		})
 		return nil
 	})
