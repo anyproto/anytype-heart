@@ -400,7 +400,7 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 	title = info.GetString(bundle.RelationKeyName)
 	// if object is a file
 	layout := info.GetInt64(bundle.RelationKeyLayout)
-	if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) || layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) {
+	if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) || layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) || layout == int64(model.ObjectType_pdf) {
 		ext := info.GetString(bundle.RelationKeyFileExt)
 		if ext != "" {
 			ext = "." + ext
