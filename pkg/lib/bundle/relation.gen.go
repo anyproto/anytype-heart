@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5694f1d0c15a9a770f961a84dd5ee2af89886c00522f4150c601d40dadc502e0"
+const RelationChecksum = "5ab9ec56da0e6ca128d3816206a22eecba2862ab4da1954407d4547922eb96b6"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -107,6 +107,7 @@ const (
 	RelationKeyIconOption                domain.RelationKey = "iconOption"
 	RelationKeySpaceAccessibility        domain.RelationKey = "spaceAccessibility"
 	RelationKeySpaceAccessType           domain.RelationKey = "spaceAccessType"
+	RelationKeySpaceUxType               domain.RelationKey = "spaceUxType"
 	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
 	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
@@ -1712,6 +1713,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space shareable status",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceUxType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Space UX type, see enum model.SpaceUxType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceUxType",
+			Key:              "spaceUxType",
+			MaxCount:         1,
+			Name:             "Space UX type",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

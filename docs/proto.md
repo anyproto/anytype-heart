@@ -1974,6 +1974,7 @@
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
     - [SpaceStatus](#anytype-model-SpaceStatus)
+    - [SpaceUxType](#anytype-model-SpaceUxType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -31290,6 +31291,19 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SpaceActive | 8 | SpaceActive - the space is active in the network |
 | SpaceJoining | 9 | SpaceJoining - the account is joining the space |
 | SpaceRemoving | 10 | SpaceRemoving - the account is removing from space or the space is removed from network |
+
+
+
+<a name="anytype-model-SpaceUxType"></a>
+
+### SpaceUxType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Chat | 0 | chat-first UX |
+| Data | 1 | objects-first UX |
+| Stream | 2 | stream UX (chat with limited amount of owners) |
 
 
  

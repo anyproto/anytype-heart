@@ -1016,6 +1016,12 @@ enum SpaceAccessType {
     Shared = 2;
 }
 
+enum SpaceUxType {
+    Chat = 0; // chat-first UX
+    Data = 1; // objects-first UX
+    Stream = 2; // stream UX (chat with limited amount of owners)
+}
+
 message Metadata {
     oneof payload {
         Payload.IdentityPayload identity = 1;
