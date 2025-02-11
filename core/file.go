@@ -140,7 +140,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 		return
 	})
 
-	if true {
+	if req.CreateTypeWidgetIfMissing {
 		var typeKey domain.TypeKey
 		switch fileType {
 		case model.BlockContentFile_Audio:
