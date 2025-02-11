@@ -103,9 +103,12 @@ func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId strin
 		return nil, fmt.Errorf("failed to query object type, expected 1 record")
 	}
 
-	recommendedRelations := records[0].Details.GetStringList(bundle.RelationKeyRecommendedRelations)
-	recommendedFeaturedRelations := records[0].Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
-	allRecommendedRelations := lo.Uniq(append(recommendedRelations, recommendedFeaturedRelations...))
+	allRecommendedRelations := lo.Uniq(slices.Concat(
+		records[0].Details.GetStringList(bundle.RelationKeyRecommendedRelations),
+		records[0].Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
+		records[0].Details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations),
+		records[0].Details.GetStringList(bundle.RelationKeyRecommendedFileRelations),
+	))
 
 	allRelationKeys := make([]string, 0, len(allRecommendedRelations))
 	err = s.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
