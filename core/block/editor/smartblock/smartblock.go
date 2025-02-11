@@ -312,7 +312,7 @@ func (sb *smartBlock) Type() smartblock.SmartBlockType {
 }
 
 func (sb *smartBlock) ObjectTypeID() string {
-	return sb.Doc.Details().GetString(bundle.RelationKeyType)
+	return sb.Doc.LocalDetails().GetString(bundle.RelationKeyType)
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
