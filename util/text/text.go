@@ -13,16 +13,18 @@ func TruncateEllipsized(text string, length int) string {
 }
 
 func Truncate(str string, maxLen int, ending string) string {
-	le := utf16LessOrEqual(str, maxLen)
-	if le {
+	if isUtf16LengthLessOrEqual(str, maxLen) {
 		return str
 	}
 
 	maxLen -= UTF16RuneCountString(ending)
 
-	var utf16Len,
-		lastWordIndex,
-		lastNonSpace int
+	var (
+		utf16Len      int
+		lastWordIndex int
+		lastNonSpace  int
+	)
+
 	for i, r := range str {
 		runeSize := utf16.RuneLen(r)
 		if unicode.IsSpace(r) {
@@ -50,17 +52,15 @@ func Truncate(str string, maxLen int, ending string) string {
 	return str
 }
 
-func utf16LessOrEqual(str string, maxLen int) bool {
+func isUtf16LengthLessOrEqual(str string, maxLen int) bool {
 	var n int
-	le := true
-	for _, s1 := range str {
-		n += utf16.RuneLen(s1)
+	for _, s := range str {
+		n += utf16.RuneLen(s)
 		if n > maxLen {
-			le = false
-			break
+			return false
 		}
 	}
-	return le
+	return true
 }
 
 func UTF16RuneCountString(str string) int {
