@@ -147,7 +147,7 @@ func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
 
 func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 3,
+		Version: 4,
 		Proc: func(s *state.State) {
 			layout, ok := ctx.State.Layout()
 			if !ok {
@@ -247,10 +247,12 @@ func (p *Page) StateMigrations() migration.Migrations {
 		},
 	}
 
+	// migration 3 is skipped
+	// migration 4 is applied only for ObjectType
 	if p.ObjectTypeKey() == bundle.TypeKeyObjectType {
 		migrations = append(migrations,
 			migration.Migration{
-				Version: 3,
+				Version: 4,
 				Proc: func(s *state.State) {
 					template.InitTemplate(s, p.getObjectTypeTemplates()...)
 				},
@@ -279,6 +281,6 @@ func (p *Page) getObjectTypeTemplates() []template.StateTransformer {
 
 	return []template.StateTransformer{
 		template.WithDataviewID(state.DataviewBlockID, dvContent, false),
-		template.WithDetail(bundle.RelationKeySetOf, domain.StringList([]string{p.Id()})),
+		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{p.Id()})),
 	}
 }
