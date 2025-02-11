@@ -191,6 +191,7 @@ func (m *migrator) run(ctx context.Context) (err error) {
 	return nil
 }
 
+// nolint:unused
 func (m *migrator) verify(ctx context.Context, fast bool) ([]*verificationReport, error) {
 	var reports []*verificationReport
 	err := m.doObjectStoreDb(ctx, func(db anystore.DB) error {
