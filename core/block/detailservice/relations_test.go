@@ -322,6 +322,8 @@ func TestService_ObjectTypeListConflictingRelations(t *testing.T) {
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
 					bundle.RelationKeyAssignee.URL(),
 					bundle.RelationKeyDone.URL(),
+				}),
+				bundle.RelationKeyRecommendedHiddenRelations: domain.StringList([]string{
 					bundle.RelationKeyCreatedDate.URL(),
 				}),
 			},
