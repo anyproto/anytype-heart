@@ -505,8 +505,33 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 			Details: rec.Details.ToProto(),
 		})
 	}
+
+	// TODO: GO-4222 remove this hack after primitives merge
+	injectLayout(details)
+
 	go sb.metaListener(recordsCh)
 	return
+}
+
+// TODO: GO-4222 remove this hack after primitives merge
+func injectLayout(details []*model.ObjectViewDetailsSet) {
+	rootDetailsProto := details[0].Details
+	rootDetails := domain.NewDetailsFromProto(rootDetailsProto)
+	if rootDetails.Has(bundle.RelationKeyLayout) {
+		// no hack needed if object contains layout detail
+		return
+	}
+	typeId := rootDetails.GetString(bundle.RelationKeyType)
+
+	layout := model.ObjectType_basic // fallback
+	for _, detailsModel := range details {
+		if detailsModel.Id == typeId {
+			// nolint:gosec
+			layout = model.ObjectTypeLayout(domain.NewDetailsFromProto(detailsModel.Details).GetInt64(bundle.RelationKeyRecommendedLayout))
+			break
+		}
+	}
+	rootDetailsProto.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(layout))
 }
 
 func (sb *smartBlock) partitionIdsBySpace(ids []string) map[string][]string {
@@ -1334,16 +1359,37 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 			heads = []string{lastChangeId}
 		}
 	}
+
+	details := sb.CombinedDetails()
+
+	// TODO: GO-4222 remove this hack after primitives merge
+	sb.injectLayout(details)
+
 	return DocInfo{
 		Id:             sb.Id(),
 		Space:          sb.Space(),
 		Links:          links,
 		Heads:          heads,
 		Creator:        creator,
-		Details:        sb.CombinedDetails(),
+		Details:        details,
 		Type:           sb.ObjectTypeKey(),
 		SmartblockType: sb.Type(),
 	}
+}
+
+// TODO: GO-4222 remove this hack after primitives merge
+func (sb *smartBlock) injectLayout(details *domain.Details) {
+	if details.Has(bundle.RelationKeyLayout) {
+		// no hack needed if object contains layout detail
+		return
+	}
+
+	layout := model.ObjectType_basic // fallback
+	records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{sb.ObjectTypeID()})
+	if err == nil && len(records) != 0 {
+		layout = model.ObjectTypeLayout(records[0].Details.GetInt64(bundle.RelationKeyRecommendedLayout))
+	}
+	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
 }
 
 func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
