@@ -96,8 +96,18 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			return nil
 		}
 
-		firstVal := arrVals[0]
-		if firstVal.Type() == anyenc.TypeString {
+		var arrayType anyenc.Type
+		for _, arrVal := range arrVals {
+			if arrVal.Type() == anyenc.TypeString {
+				arrayType = anyenc.TypeString
+				break
+			}
+			if arrVal.Type() == anyenc.TypeNumber {
+				arrayType = anyenc.TypeNumber
+				break
+			}
+		}
+		if arrayType == anyenc.TypeString {
 			res := make([]string, 0, len(arrVals))
 			for i, arrVal := range arrVals {
 				if arrVal.Type() != anyenc.TypeString {
@@ -113,9 +123,14 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			}
 			d.SetStringList(key, res)
 			return nil
-		} else if firstVal.Type() == anyenc.TypeNumber {
+		} else if arrayType == anyenc.TypeNumber {
 			res := make([]float64, 0, len(arrVals))
-			for _, arrVal := range arrVals {
+			for i, arrVal := range arrVals {
+				if arrVal.Type() != anyenc.TypeNumber {
+					// todo: make it not possible to create such an arrays and remove this
+					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected number, got %s", arrVal.Type()))
+					continue
+				}
 				v, err := arrVal.Float64()
 				if err != nil {
 					return fmt.Errorf("array item: number: %w", err)
@@ -125,11 +140,12 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			d.SetFloat64List(key, res)
 			return nil
 		} else {
+			// todo: make it not possible to create such an arrays and remove this
 			var elTypes []string
 			for _, arrVal := range arrVals {
 				elTypes = append(elTypes, arrVal.Type().String())
 			}
-			return fmt.Errorf("unsupported array type %s; all elements' types: %v", firstVal.Type(), elTypes)
+			return fmt.Errorf("unsupported array type %s; elements' types: %v", arrayType.String(), elTypes)
 		}
 	}
 	d.Set(key, Null())
