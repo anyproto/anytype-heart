@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
@@ -34,11 +35,12 @@ type Params struct {
 	IsPersonal      bool
 	OwnerMetadata   []byte
 	AdditionalComps []app.Component
+	GuestKey        crypto.PrivKey
 }
 
 func New(app *app.App, params Params) Loader {
 	child := app.ChildApp()
-	child.Register(builder.New()).
+	child.Register(builder.New(params.GuestKey)).
 		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclobjectmanager.New(params.OwnerMetadata)).
