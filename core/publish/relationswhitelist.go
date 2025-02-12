@@ -63,6 +63,7 @@ var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_objectType: derivedObjectsWhiteList,
 	model.ObjectType_relation:   relationsWhiteList,
 	model.ObjectType_file:       fileRelationsWhiteList,
+	model.ObjectType_pdf:        fileRelationsWhiteList,
 	model.ObjectType_dashboard:  allObjectsRelationsWhiteList,
 	model.ObjectType_image:      imageRelationsWhiteList,
 	model.ObjectType_note:       documentRelationsWhiteList,
