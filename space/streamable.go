@@ -19,7 +19,7 @@ func (s *service) AddStreamable(ctx context.Context, id string, guestKey crypto.
 		wait: wait,
 	}
 	s.mu.Unlock()
-	ctrl, err := s.factory.CreateStreamableSpace(ctx, guestKey, id)
+	ctrl, err := s.factory.CreateStreamableSpace(ctx, guestKey, id, s.accountMetadataPayload)
 	if err != nil {
 		s.mu.Lock()
 		close(wait)

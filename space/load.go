@@ -79,7 +79,7 @@ func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersisten
 	} else if info.EncodedKey == "" {
 		ctrl, err = s.factory.NewShareableSpace(ctx, info.SpaceID, info)
 	} else {
-		ctrl, err = s.factory.NewStreamableSpace(ctx, info.SpaceID, info)
+		ctrl, err = s.factory.NewStreamableSpace(ctx, info.SpaceID, info, s.accountMetadataPayload)
 	}
 	s.mu.Lock()
 	close(wait)

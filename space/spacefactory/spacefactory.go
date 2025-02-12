@@ -29,8 +29,8 @@ type SpaceFactory interface {
 	NewPersonalSpace(ctx context.Context, metadata []byte) (spacecontroller.SpaceController, error)
 	CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error)
 	NewShareableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)
-	CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string) (spacecontroller.SpaceController, error)
-	NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)
+	CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error)
+	NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo, metadata []byte) (spacecontroller.SpaceController, error)
 	CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
@@ -213,7 +213,7 @@ func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp 
 	return ctrl, err
 }
 
-func (s *spaceFactory) CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string) (spacecontroller.SpaceController, error) {
+func (s *spaceFactory) CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error) {
 	encodedKey, err := crypto.EncodeKeyToString(privKey)
 	if err != nil {
 		return nil, err
@@ -224,15 +224,15 @@ func (s *spaceFactory) CreateStreamableSpace(ctx context.Context, privKey crypto
 	if err := s.techSpace.SpaceViewCreate(ctx, id, false, info); err != nil {
 		return nil, err
 	}
-	return s.NewStreamableSpace(ctx, id, info)
+	return s.NewStreamableSpace(ctx, id, info, metadata)
 }
 
-func (s *spaceFactory) NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error) {
+func (s *spaceFactory) NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo, metadata []byte) (spacecontroller.SpaceController, error) {
 	decodedSignKey, err := crypto.DecodeKeyFromString(
 		info.EncodedKey,
 		crypto.UnmarshalEd25519PrivateKey,
 		nil)
-	ctrl, err := streamablespace.NewSpaceController(ctx, id, decodedSignKey, s.app)
+	ctrl, err := streamablespace.NewSpaceController(ctx, id, decodedSignKey, metadata, s.app)
 	if err != nil {
 		return nil, err
 	}

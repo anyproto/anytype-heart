@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
@@ -29,9 +30,10 @@ type AclObjectManager interface {
 	app.ComponentRunnable
 }
 
-func New(ownerMetadata []byte) AclObjectManager {
+func New(ownerMetadata []byte, isStream bool) AclObjectManager {
 	return &aclObjectManager{
 		ownerMetadata: ownerMetadata,
+		isStream:      isStream,
 	}
 }
 
@@ -49,9 +51,11 @@ type aclObjectManager struct {
 	notificationService aclnotifications.AclNotification
 	participantWatcher  participantwatcher.ParticipantWatcher
 	inviteMigrator      invitemigrator.InviteMigrator
+	accountService      accountservice.Service
 
 	ownerMetadata []byte
 	lastIndexed   string
+	isStream      bool
 	mx            sync.Mutex
 }
 
@@ -85,6 +89,7 @@ func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
+	a.accountService = app.MustComponent[accountservice.Service](ap)
 	a.participantWatcher = app.MustComponent[participantwatcher.ParticipantWatcher](ap)
 	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
 	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
@@ -176,7 +181,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Unlock()
 	decrypt := func(key crypto.PubKey) ([]byte, error) {
-		if a.ownerMetadata != nil {
+		if a.ownerMetadata != nil && !a.isStream {
 			return a.ownerMetadata, nil
 		}
 		return aclState.GetMetadata(key, true)
@@ -203,6 +208,14 @@ func (a *aclObjectManager) processAcl() (err error) {
 	err = a.processStates(states, upToDate, aclState.Identity())
 	if err != nil {
 		return
+	}
+	if a.isStream {
+		states = append(states, list.AccountState{
+			PubKey:          a.accountService.Account().SignKey.GetPublic(),
+			Permissions:     list.AclPermissionsReader,
+			Status:          list.StatusActive,
+			RequestMetadata: a.ownerMetadata,
+		})
 	}
 	err = a.status.SetAclIsEmpty(aclState.IsEmpty())
 	if err != nil {

@@ -27,7 +27,7 @@ type Personal interface {
 
 var log = logger.NewNamed("common.space.streamablespace")
 
-func NewSpaceController(ctx context.Context, spaceId string, privKey crypto.PrivKey, a *app.App) (spacecontroller.SpaceController, error) {
+func NewSpaceController(ctx context.Context, spaceId string, privKey crypto.PrivKey, metadata []byte, a *app.App) (spacecontroller.SpaceController, error) {
 	techSpace := a.MustComponent(techspace.CName).(techspace.TechSpace)
 	spaceCore := a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
 	newApp, err := makeStatusApp(a, spaceId)
@@ -41,6 +41,7 @@ func NewSpaceController(ctx context.Context, spaceId string, privKey crypto.Priv
 		status:    newApp.MustComponent(spacestatus.CName).(spacestatus.SpaceStatus),
 		spaceCore: spaceCore,
 		guestKey:  privKey,
+		metadata:  metadata,
 	}
 	sm, err := mode.NewStateMachine(s, log.With(zap.String("spaceId", s.spaceId)))
 	if err != nil {
