@@ -35,11 +35,11 @@ func NewServer(accountService account.Service, mw service.ClientCommandsServer) 
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw),
-		listService:   list.NewService(mw),
 		spaceService:  space.NewService(mw),
 	}
 
 	s.objectService = object.NewService(mw, s.spaceService)
+	s.listService = list.NewService(mw, s.objectService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
 	s.engine = s.NewRouter(accountService, mw)
 	s.KeyToToken = make(map[string]string)

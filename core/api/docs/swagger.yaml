@@ -1376,7 +1376,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Remove objects from list
       tags:
-      - list
+      - lists
     get:
       consumes:
       - application/json
@@ -1422,7 +1422,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Get objects in list
       tags:
-      - list
+      - lists
     patch:
       consumes:
       - application/json
@@ -1470,7 +1470,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Update object order in list
       tags:
-      - list
+      - lists
     post:
       consumes:
       - application/json
@@ -1518,7 +1518,7 @@ paths:
             $ref: '#/definitions/util.ServerError'
       summary: Add objects to list
       tags:
-      - list
+      - lists
 securityDefinitions:
   BasicAuth:
     type: basic

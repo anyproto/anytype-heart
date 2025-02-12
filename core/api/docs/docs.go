@@ -1073,7 +1073,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "list"
+                    "lists"
                 ],
                 "summary": "Get objects in list",
                 "parameters": [
@@ -1140,7 +1140,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "list"
+                    "lists"
                 ],
                 "summary": "Add objects to list",
                 "parameters": [
@@ -1212,7 +1212,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "list"
+                    "lists"
                 ],
                 "summary": "Remove objects from list",
                 "parameters": [
@@ -1284,7 +1284,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "list"
+                    "lists"
                 ],
                 "summary": "Update object order in list",
                 "parameters": [

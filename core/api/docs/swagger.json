@@ -1067,7 +1067,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "list"
+                    "lists"
                 ],
                 "summary": "Get objects in list",
                 "parameters": [
@@ -1134,7 +1134,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "list"
+                    "lists"
                 ],
                 "summary": "Add objects to list",
                 "parameters": [
@@ -1206,7 +1206,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "list"
+                    "lists"
                 ],
                 "summary": "Remove objects from list",
                 "parameters": [
@@ -1278,7 +1278,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "list"
+                    "lists"
                 ],
                 "summary": "Update object order in list",
                 "parameters": [

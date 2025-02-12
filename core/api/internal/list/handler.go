@@ -12,7 +12,7 @@ import (
 // GetObjectsInListHandler
 //
 //	@Summary	Get objects in list
-//	@Tags		list
+//	@Tags		lists
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string										true	"Space ID"
@@ -26,12 +26,12 @@ import (
 //	@Router		/v1/spaces/{space_id}/lists/{list_id}/objects [get]
 func GetObjectsInListHandler(s *ListService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		spaceID := c.Param("space_id")
-		listID := c.Param("list_id")
+		spaceId := c.Param("space_id")
+		listId := c.Param("list_id")
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		objects, total, hasMore, err := s.GetObjectsInList(c, spaceID, listID, offset, limit)
+		objects, total, hasMore, err := s.GetObjectsInList(c, spaceId, listId, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedGetObjectsInList, http.StatusInternalServerError),
 		)
@@ -49,7 +49,7 @@ func GetObjectsInListHandler(s *ListService) gin.HandlerFunc {
 // AddObjectsToListHandler
 //
 //	@Summary	Add objects to list
-//	@Tags		list
+//	@Tags		lists
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
@@ -63,8 +63,8 @@ func GetObjectsInListHandler(s *ListService) gin.HandlerFunc {
 //	@Router		/v1/spaces/{space_id}/lists/{list_id}/objects [post]
 func AddObjectsToListHandler(s *ListService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		spaceID := c.Param("space_id")
-		listID := c.Param("list_id")
+		spaceId := c.Param("space_id")
+		listId := c.Param("list_id")
 
 		objects := []string{}
 		if err := c.ShouldBindJSON(&objects); err != nil {
@@ -73,7 +73,7 @@ func AddObjectsToListHandler(s *ListService) gin.HandlerFunc {
 			return
 		}
 
-		err := s.AddObjectsToList(c, spaceID, listID, objects)
+		err := s.AddObjectsToList(c, spaceId, listId, objects)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedAddObjectsToList, http.StatusInternalServerError),
 		)
@@ -91,7 +91,7 @@ func AddObjectsToListHandler(s *ListService) gin.HandlerFunc {
 // RemoveObjectsFromListHandler
 //
 //	@Summary	Remove objects from list
-//	@Tags		list
+//	@Tags		lists
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
@@ -105,8 +105,8 @@ func AddObjectsToListHandler(s *ListService) gin.HandlerFunc {
 //	@Router		/v1/spaces/{space_id}/lists/{list_id}/objects [delete]
 func RemoveObjectsFromListHandler(s *ListService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		spaceID := c.Param("space_id")
-		listID := c.Param("list_id")
+		spaceId := c.Param("space_id")
+		listId := c.Param("list_id")
 
 		objects := []string{}
 		if err := c.ShouldBindJSON(&objects); err != nil {
@@ -115,7 +115,7 @@ func RemoveObjectsFromListHandler(s *ListService) gin.HandlerFunc {
 			return
 		}
 
-		err := s.RemoveObjectsFromList(c, spaceID, listID, objects)
+		err := s.RemoveObjectsFromList(c, spaceId, listId, objects)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedRemoveObjectsFromList, http.StatusInternalServerError),
 		)
@@ -133,7 +133,7 @@ func RemoveObjectsFromListHandler(s *ListService) gin.HandlerFunc {
 // UpdateObjectsInListHandler
 //
 //	@Summary	Update object order in list
-//	@Tags		list
+//	@Tags		lists
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
@@ -147,8 +147,8 @@ func RemoveObjectsFromListHandler(s *ListService) gin.HandlerFunc {
 //	@Router		/v1/spaces/{space_id}/lists/{list_id}/objects [patch]
 func UpdateObjectsInListHandler(s *ListService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		spaceID := c.Param("space_id")
-		listID := c.Param("list_id")
+		spaceId := c.Param("space_id")
+		listId := c.Param("list_id")
 
 		objects := []string{}
 		if err := c.ShouldBindJSON(&objects); err != nil {
@@ -157,7 +157,7 @@ func UpdateObjectsInListHandler(s *ListService) gin.HandlerFunc {
 			return
 		}
 
-		err := s.UpdateObjectsInList(c, spaceID, listID, objects)
+		err := s.UpdateObjectsInList(c, spaceId, listId, objects)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedUpdateObjectsInList, http.StatusInternalServerError),
 		)
