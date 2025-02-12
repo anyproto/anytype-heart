@@ -133,11 +133,11 @@ func (s *service) resolveValidTemplateId(templateId string, details *domain.Deta
 
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
-		return "", fmt.Errorf("failed to get space: %v", err)
+		return "", fmt.Errorf("failed to get space: %w", err)
 	}
 	templateTypeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to get template type id from space: %v", err)
+		return "", fmt.Errorf("failed to get template type id from space: %w", err)
 	}
 
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
@@ -160,7 +160,7 @@ func (s *service) resolveValidTemplateId(templateId string, details *domain.Deta
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("failed to query templates: %v", err)
+		return "", fmt.Errorf("failed to query templates: %w", err)
 	}
 
 	if len(records) == 0 {
