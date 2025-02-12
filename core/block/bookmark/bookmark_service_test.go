@@ -238,7 +238,7 @@ type templateServiceMock struct {
 	t *testing.T
 }
 
-func (m *templateServiceMock) CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error) {
+func (m *templateServiceMock) CreateTemplateStateWithDetails(templateId string, details *domain.Details, _ bool) (st *state.State, err error) {
 	assert.Empty(m.t, templateId)
 	assert.Equal(m.t, int64(model.ObjectType_bookmark), details.GetInt64(bundle.RelationKeyResolvedLayout))
 	return state.NewDoc("", nil).NewState(), nil

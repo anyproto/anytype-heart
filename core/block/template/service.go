@@ -50,7 +50,7 @@ var (
 )
 
 type Service interface {
-	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (st *state.State, err error)
 	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
 	ObjectApplyTemplate(contextId string, templateId string) error
 	TemplateCreateFromObject(ctx context.Context, id string) (templateId string, err error)
@@ -95,21 +95,25 @@ func (s *service) Init(a *app.App) error {
 }
 
 // CreateTemplateStateWithDetails creates clone of template object state with empty localDetails and updated objectTypes.
-// Blank template is created in case template object is deleted or blank/empty templateIв is provided
+// If withTemplateValidation=true, templateId is queried in store. If template is empty or not found, last edited template is taken.
+// Blank template is created in case template object is deleted or blank/empty templateId is provided
 func (s *service) CreateTemplateStateWithDetails(
 	templateId string,
 	details *domain.Details,
+	withTemplateValidation bool,
 ) (targetState *state.State, err error) {
-	templateId, err = s.resolveValidTemplateId(templateId, details)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve valid template id: %w", err)
+	if withTemplateValidation {
+		templateId, err = s.resolveValidTemplateId(templateId, details)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve valid template id: %w", err)
+		}
 	}
-
-	if templateId == BlankTemplateId || templateId == "" {
+	switch templateId {
+	case "", BlankTemplateId:
 		layout := details.GetInt64(bundle.RelationKeyResolvedLayout)
 		// nolint:gosec
 		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout), details)
-	} else {
+	default:
 		targetState, err = s.createCustomTemplateState(templateId)
 		if err != nil {
 			return
@@ -120,11 +124,12 @@ func (s *service) CreateTemplateStateWithDetails(
 	return targetState, nil
 }
 
-// resolveValidTemplateId tries to resolve valid template for
 func (s *service) resolveValidTemplateId(templateId string, details *domain.Details) (string, error) {
-	typeId := details.GetString(bundle.RelationKeyType)
-	spaceId := details.GetString(bundle.RelationKeySpaceId)
-	ctx := context.Background()
+	var (
+		typeId  = details.GetString(bundle.RelationKeyType)
+		spaceId = details.GetString(bundle.RelationKeySpaceId)
+		ctx     = context.Background()
+	)
 
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
@@ -173,6 +178,7 @@ func (s *service) resolveValidTemplateId(templateId string, details *domain.Deta
 		}
 	}
 
+	// if requested templateId was not found in store, we should use last modified template
 	return records[0].Details.GetString(bundle.RelationKeyId), nil
 }
 
@@ -264,7 +270,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 	return cache.Do(s.picker, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		ts, err := s.CreateTemplateStateWithDetails(templateId, orig.Details())
+		ts, err := s.CreateTemplateStateWithDetails(templateId, orig.Details(), false)
 		if err != nil {
 			return err
 		}

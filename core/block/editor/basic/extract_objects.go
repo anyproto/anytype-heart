@@ -22,7 +22,7 @@ type ObjectCreator interface {
 }
 
 type TemplateStateCreator interface {
-	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error)
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (*state.State, error)
 	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
 }
 
@@ -86,7 +86,7 @@ func (bs *basic) prepareObjectState(
 		return creator.CreateTemplateStateFromSmartBlock(bs, details), nil
 	}
 
-	return creator.CreateTemplateStateWithDetails(req.TemplateId, details)
+	return creator.CreateTemplateStateWithDetails(req.TemplateId, details, true)
 }
 
 func (bs *basic) prepareTargetObjectDetails(

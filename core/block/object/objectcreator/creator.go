@@ -25,7 +25,7 @@ import (
 
 type (
 	templateService interface {
-		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
+		CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (st *state.State, err error)
 		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
 		SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error
 	}
@@ -168,7 +168,7 @@ func (s *service) createTemplate(
 	details.Set(bundle.RelationKeySpaceId, domain.String(space.Id()))
 	details.Set(bundle.RelationKeyType, domain.String(typeId))
 
-	createState, err := s.templateService.CreateTemplateStateWithDetails("", details)
+	createState, err := s.templateService.CreateTemplateStateWithDetails("", details, false)
 	if err != nil {
 		return
 	}
@@ -197,7 +197,7 @@ func (s *service) createCommonObject(
 	details.Set(bundle.RelationKeyType, domain.String(typeId))
 	details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 
-	createState, err := s.templateService.CreateTemplateStateWithDetails(req.TemplateId, details)
+	createState, err := s.templateService.CreateTemplateStateWithDetails(req.TemplateId, details, true)
 	if err != nil {
 		return
 	}

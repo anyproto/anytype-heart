@@ -57,7 +57,7 @@ type testTemplateService struct {
 	templates map[string]*state.State
 }
 
-func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error) {
+func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (*state.State, error) {
 	if tts.templates != nil {
 		if st, found := tts.templates[templateId]; found {
 			return st, nil

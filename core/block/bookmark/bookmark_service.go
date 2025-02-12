@@ -56,7 +56,7 @@ type (
 	}
 
 	templateService interface {
-		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
+		CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (st *state.State, err error)
 	}
 )
 
@@ -160,7 +160,7 @@ func (s *service) CreateBookmarkObject(
 		objectDetails = rec.Details
 	} else {
 		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_bookmark))
-		creationState, err := s.templateService.CreateTemplateStateWithDetails("", details)
+		creationState, err := s.templateService.CreateTemplateStateWithDetails("", details, false)
 		if err != nil {
 			log.Errorf("failed to build state for bookmark: %v", err)
 		}
