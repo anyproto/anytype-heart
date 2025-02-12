@@ -113,6 +113,9 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 				if arrVal.Type() != anyenc.TypeString {
 					// todo: make it not possible to create such an arrays and remove this
 					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected string, got %s", arrVal.Type()))
+					if arrVal.Type() != anyenc.TypeNull {
+						return fmt.Errorf("array item: expected number, got %s", arrVal.Type())
+					}
 					continue
 				}
 				v, err := arrVal.StringBytes()
@@ -129,6 +132,9 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 				if arrVal.Type() != anyenc.TypeNumber {
 					// todo: make it not possible to create such an arrays and remove this
 					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected number, got %s", arrVal.Type()))
+					if arrVal.Type() != anyenc.TypeNull {
+						return fmt.Errorf("array item: expected number, got %s", arrVal.Type())
+					}
 					continue
 				}
 				v, err := arrVal.Float64()
