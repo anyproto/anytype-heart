@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
 	"github.com/anyproto/anytype-heart/core/api/internal/export"
+	"github.com/anyproto/anytype-heart/core/api/internal/list"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
@@ -65,6 +66,12 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 	{
 		// Export
 		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
+
+		// List
+		v1.GET("/v1/spaces/:space_id/lists/:list_id/objects", list.GetObjectsInListHandler(s.listService))
+		v1.POST("/v1/spaces/:space_id/lists/:list_id/objects", list.AddObjectsToListHandler(s.listService))
+		v1.DELETE("/v1/spaces/:space_id/lists/:list_id/objects", list.RemoveObjectsFromListHandler(s.listService))
+		v1.PATCH("/v1/spaces/:space_id/lists/:list_id/objects", list.UpdateObjectsInListHandler(s.listService))
 
 		// Object
 		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))

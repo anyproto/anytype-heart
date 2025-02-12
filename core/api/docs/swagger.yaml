@@ -1328,6 +1328,197 @@ paths:
       summary: Get template
       tags:
       - types
+  /v1/spaces/{space_id}/lists/{list_id}/objects:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: List ID
+        in: path
+        name: list_id
+        required: true
+        type: string
+      - description: List of object IDs
+        in: body
+        name: objects
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Objects removed successfully
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Remove objects from list
+      tags:
+      - list
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: List ID
+        in: path
+        name: list_id
+        required: true
+        type: string
+      - default: 0
+        description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        type: integer
+      - description: The number of items to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of objects
+          schema:
+            $ref: '#/definitions/pagination.PaginatedResponse-object_Object'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Get objects in list
+      tags:
+      - list
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: List ID
+        in: path
+        name: list_id
+        required: true
+        type: string
+      - description: List of object IDs
+        in: body
+        name: objects
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Objects updated successfully
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Update object order in list
+      tags:
+      - list
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        type: string
+      - description: List ID
+        in: path
+        name: list_id
+        required: true
+        type: string
+      - description: List of object IDs
+        in: body
+        name: objects
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Objects added successfully
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/util.ValidationError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.UnauthorizedError'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/util.NotFoundError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ServerError'
+      summary: Add objects to list
+      tags:
+      - list
 securityDefinitions:
   BasicAuth:
     type: basic

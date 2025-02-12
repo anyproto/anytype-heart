@@ -88,7 +88,6 @@ func (s *Server) ensureAccountInfo(accountService account.Service) gin.HandlerFu
 			return
 		}
 
-		s.exportService.AccountInfo = accInfo
 		s.objectService.AccountInfo = accInfo
 		s.spaceService.AccountInfo = accInfo
 		s.searchService.AccountInfo = accInfo
