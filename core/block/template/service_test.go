@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -53,7 +53,7 @@ func (t *testPicker) Init(_ *app.App) error { return nil }
 
 func (t *testPicker) Name() string { return "" }
 
-func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
+func newTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 	sb := smarttest.New(templateName)
 	details := []domain.Detail{
 		{
@@ -112,7 +112,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	t.Run("empty page name", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest(templateName, "")
+		tmpl := newTemplateTest(templateName, "")
 		s := service{picker: &testPicker{sb: tmpl}}
 
 		// when
@@ -132,7 +132,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			t.Run(fmt.Sprintf("custom page name and description - "+
 				"when template is %s and target detail is %s", templateName, addedDetail), func(t *testing.T) {
 				// given
-				tmpl := NewTemplateTest(templateName, "")
+				tmpl := newTemplateTest(templateName, "")
 				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 				details := domain.NewDetails()
 				details.Set(bundle.RelationKeyName, domain.String(addedDetail))
@@ -158,7 +158,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 	} {
 		t.Run("create blank template in case "+testCase[0], func(t *testing.T) {
 			// given
-			tmpl := NewTemplateTest(testCase[1], "")
+			tmpl := newTemplateTest(testCase[1], "")
 			s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 
 			// when
@@ -174,7 +174,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	t.Run("requested smartblock is not a template", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest(templateName, "")
+		tmpl := newTemplateTest(templateName, "")
 		tmpl.(*smarttest.SmartTest).Doc.(*state.State).SetObjectTypeKey(bundle.TypeKeyBook)
 		s := service{picker: &testPicker{}}
 
@@ -187,7 +187,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	t.Run("template typeKey is removed", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest(templateName, bundle.TypeKeyGoal.String())
+		tmpl := newTemplateTest(templateName, bundle.TypeKeyGoal.String())
 		s := service{picker: &testPicker{sb: tmpl}}
 
 		// when
@@ -263,7 +263,7 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 
 	t.Run("create state from template smartblock", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest("template", bundle.TypeKeyProject.String())
+		tmpl := newTemplateTest("template", bundle.TypeKeyProject.String())
 		s := service{}
 
 		// when
@@ -380,7 +380,7 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 
 		obj.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyNote})
 
-		sp := mock_space.NewMockSpace(t)
+		sp := mock_clientspace.NewMockSpace(t)
 		sp.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).Times(1).Return(bundle.TypeKeyNote.String(), nil)
 		obj.SetSpace(sp)
 

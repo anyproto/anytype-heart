@@ -100,6 +100,11 @@ func (s *service) CreateTemplateStateWithDetails(
 	templateId string,
 	details *domain.Details,
 ) (targetState *state.State, err error) {
+	templateId, err = s.resolveValidTemplateId(templateId, details)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve valid template id: %w", err)
+	}
+
 	if templateId == BlankTemplateId || templateId == "" {
 		layout := details.GetInt64(bundle.RelationKeyResolvedLayout)
 		// nolint:gosec
@@ -113,6 +118,62 @@ func (s *service) CreateTemplateStateWithDetails(
 
 	addDetailsToState(targetState, details)
 	return targetState, nil
+}
+
+// resolveValidTemplateId tries to resolve valid template for
+func (s *service) resolveValidTemplateId(templateId string, details *domain.Details) (string, error) {
+	typeId := details.GetString(bundle.RelationKeyType)
+	spaceId := details.GetString(bundle.RelationKeySpaceId)
+	ctx := context.Background()
+
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("failed to get space: %v", err)
+	}
+	templateTypeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to get template type id from space: %v", err)
+	}
+
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyType,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(templateTypeId),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(typeId),
+			},
+		},
+		Sorts: []database.SortRequest{{
+			RelationKey: bundle.RelationKeyLastModifiedDate,
+			Type:        model.BlockContentDataviewSort_Desc,
+		}},
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to query templates: %v", err)
+	}
+
+	if len(records) == 0 {
+		// if no valid templates presented, we shell create new object with blank template
+		return "", nil
+	}
+
+	if templateId == "" {
+		return records[0].Details.GetString(bundle.RelationKeyId), nil
+	}
+
+	for _, record := range records {
+		if record.Details.GetString(bundle.RelationKeyId) == templateId {
+			return templateId, nil
+		}
+	}
+
+	return records[0].Details.GetString(bundle.RelationKeyId), nil
 }
 
 // CreateTemplateStateFromSmartBlock duplicates the logic of CreateTemplateStateWithDetails but does not take the lock on smartBlock.
