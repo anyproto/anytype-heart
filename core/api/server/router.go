@@ -68,10 +68,10 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
 
 		// List
-		v1.GET("/v1/spaces/:space_id/lists/:list_id/objects", list.GetObjectsInListHandler(s.listService))
-		v1.POST("/v1/spaces/:space_id/lists/:list_id/objects", list.AddObjectsToListHandler(s.listService))
-		v1.DELETE("/v1/spaces/:space_id/lists/:list_id/objects", list.RemoveObjectsFromListHandler(s.listService))
-		v1.PATCH("/v1/spaces/:space_id/lists/:list_id/objects", list.UpdateObjectsInListHandler(s.listService))
+		v1.GET("/spaces/:space_id/lists/:list_id/objects", list.GetObjectsInListHandler(s.listService))
+		v1.POST("/spaces/:space_id/lists/:list_id/objects", list.AddObjectsToListHandler(s.listService))
+		v1.DELETE("/spaces/:space_id/lists/:list_id/objects", list.RemoveObjectsFromListHandler(s.listService))
+		v1.PATCH("/spaces/:space_id/lists/:list_id/objects", list.UpdateObjectsInListHandler(s.listService))
 
 		// Object
 		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
