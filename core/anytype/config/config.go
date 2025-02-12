@@ -158,7 +158,8 @@ func New(options ...func(*Config)) *Config {
 
 func (c *Config) Init(a *app.App) (err error) {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
-	if err = c.initFromFileAndEnv(repoPath); err != nil {
+	tmpPath := app.MustComponent[wallet.Wallet](a).TmpPath()
+	if err = c.initFromFileAndEnv(repoPath, tmpPath); err != nil {
 		return
 	}
 	if !c.PeferYamuxTransport {
@@ -181,7 +182,7 @@ func (c *Config) Init(a *app.App) (err error) {
 	return
 }
 
-func (c *Config) initFromFileAndEnv(repoPath string) error {
+func (c *Config) initFromFileAndEnv(repoPath, tmpPath string) error {
 	if repoPath == "" {
 		return fmt.Errorf("repo is missing")
 	}
@@ -195,6 +196,10 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		c.SqliteTempPath = filepath.Join(split[0], "cache")
 		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
 		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
+	}
+	if runtime.GOOS == "ios" {
+		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
+		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + tmpPath + "'"
 	}
 
 	if !c.DisableFileConfig {

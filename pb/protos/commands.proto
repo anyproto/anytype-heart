@@ -826,6 +826,7 @@ message Rpc {
                 string networkCustomConfigFilePath = 5; // config path for the custom network mode
                 bool preferYamuxTransport = 6; // optional, default is false, recommended in case of problems with QUIC transport
                 string jsonApiListenAddr = 7; // optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one
+                string tmpPath = 8; // optional, for mobiles
             }
 
             /**

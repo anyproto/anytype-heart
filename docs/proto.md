@@ -3710,6 +3710,7 @@ User can select an account from those, that came with an AccountAdd events
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
+| tmpPath | [string](#string) |  | optional, for mobiles |
 
 
 

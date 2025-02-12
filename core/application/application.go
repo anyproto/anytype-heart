@@ -26,6 +26,7 @@ type Service struct {
 	sessionSigningKey []byte
 
 	rootPath          string
+	tmpPath           string
 	clientWithVersion string
 	eventSender       event.Sender
 	sessions          session.Service

@@ -70,6 +70,10 @@ func (w *walletStub) RepoPath() string {
 	return w.tempDir
 }
 
+func (w *walletStub) TmpPath() string {
+	return w.tempDir
+}
+
 func (w *walletStub) Name() string { return wallet.CName }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
