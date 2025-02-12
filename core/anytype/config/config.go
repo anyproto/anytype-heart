@@ -198,6 +198,9 @@ func (c *Config) initFromFileAndEnv(repoPath, tmpPath string) error {
 		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
 	}
 	if runtime.GOOS == "ios" {
+		if tmpPath == "" || tmpPath == repoPath {
+			panic("wrong tmppath")
+		}
 		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
 		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + tmpPath + "'"
 	}
