@@ -59,6 +59,7 @@ type AclService interface {
 	Leave(ctx context.Context, spaceId string) (err error)
 	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
+	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte) error
 }
 
 func New() AclService {
@@ -98,6 +99,24 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 	err = a.spaceService.TechSpace().SetLocalInfo(ctx, info)
 	if err != nil {
 		return convertedOrInternalError("set local info", err)
+	}
+	return nil
+}
+
+func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte) error {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return convertedOrSpaceErr(err)
+	}
+	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: []list.AccountAdd{
+		{
+			Identity:    pubKey,
+			Metadata:    metadata,
+			Permissions: list.AclPermissionsReader,
+		},
+	}})
+	if err != nil {
+		return convertedOrAclRequestError(err)
 	}
 	return nil
 }
