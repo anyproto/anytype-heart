@@ -32,10 +32,34 @@ var pageRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyFeaturedRelations,
 	bundle.RelationKeyLinks,
 	bundle.RelationKeyBacklinks,
+	bundle.RelationKeyMentions,
 	bundle.RelationKeyLayoutAlign,
 }
 
 const objectTypeAllViewId = "all"
+var typeAndRelationRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeyUniqueKey,
+	bundle.RelationKeyIsReadonly,
+	bundle.RelationKeySourceObject,
+	bundle.RelationKeyLastUsedDate,
+	bundle.RelationKeyRevision,
+	bundle.RelationKeyIsHidden,
+}
+
+var typeRequiredRelations = append(typeAndRelationRequiredRelations,
+	bundle.RelationKeyRecommendedRelations,
+	bundle.RelationKeyRecommendedFeaturedRelations,
+	bundle.RelationKeyRecommendedHiddenRelations,
+	bundle.RelationKeyRecommendedFileRelations,
+	bundle.RelationKeyRecommendedLayout,
+	bundle.RelationKeySmartblockTypes,
+)
+
+var relationRequiredRelations = append(typeAndRelationRequiredRelations,
+	bundle.RelationKeyRelationFormat,
+	bundle.RelationKeyRelationFormatObjectTypes,
+	bundle.RelationKeyRelationKey,
+)
 
 type Page struct {
 	smartblock.SmartBlock
@@ -87,7 +111,7 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
-	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, pageRequiredRelations...)
+	appendRequiredInternalRelations(ctx)
 	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypeKeys()) == 0) && ctx.IsNewObject {
 		ctx.ObjectTypeKeys = []domain.TypeKey{bundle.TypeKeyPage}
 	}
@@ -111,6 +135,19 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		}()
 	}
 	return nil
+}
+
+func appendRequiredInternalRelations(ctx *smartblock.InitContext) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, pageRequiredRelations...)
+	if len(ctx.ObjectTypeKeys) != 1 {
+		return
+	}
+	switch ctx.ObjectTypeKeys[0] {
+	case bundle.TypeKeyObjectType:
+		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, typeRequiredRelations...)
+	case bundle.TypeKeyRelation:
+		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, relationRequiredRelations...)
+	}
 }
 
 func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
