@@ -61,6 +61,7 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 	}
 
 	rootPath := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).RootPath()
+	tmpPath := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).TmpPath()
 	accountId := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
 	conf := s.app.MustComponent(config.CName).(*config.Config)
 
@@ -89,7 +90,7 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 		return ErrFailedToStopApplication
 	}
 
-	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, conf.JsonApiListenAddr, conf.PeferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
+	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, conf.JsonApiListenAddr, conf.PeferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, tmpPath)
 	return err
 }
 
