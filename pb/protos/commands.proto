@@ -298,6 +298,7 @@ message Rpc {
                 string spaceName = 3;
                 string spaceIconCid = 4;
                 string creatorName = 5;
+                bool   isGuestUserInvite = 6;
 
                 message Error {
                     Code code = 1;

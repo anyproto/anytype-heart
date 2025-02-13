@@ -19105,6 +19105,7 @@ Available undo/redo operations
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
+| isGuestUserInvite | [bool](#bool) |  |  |
 
 
 
