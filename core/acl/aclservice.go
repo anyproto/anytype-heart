@@ -13,8 +13,10 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -60,10 +62,17 @@ type AclService interface {
 	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
 	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte) error
+	AddGuestAccount(ctx context.Context, spacerId string) (privKey crypto.PrivKey, err error)
 }
 
 func New() AclService {
 	return &aclService{}
+}
+
+type identityRepoClient interface {
+	app.Component
+	IdentityRepoPut(ctx context.Context, identity string, data []*identityrepoproto.Data) (err error)
+	IdentityRepoGet(ctx context.Context, identities []string, kinds []string) (res []*identityrepoproto.DataWithIdentity, err error)
 }
 
 type aclService struct {
@@ -73,6 +82,7 @@ type aclService struct {
 	inviteService    inviteservice.InviteService
 	accountService   account.Service
 	coordClient      coordinatorclient.CoordinatorClient
+	identityRepo     identityRepoClient
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -82,6 +92,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
+	a.identityRepo = app.MustComponent[identityRepoClient](ap)
 	return nil
 }
 
@@ -101,6 +112,58 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 		return convertedOrInternalError("set local info", err)
 	}
 	return nil
+}
+
+func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey, spaceId string) (metadata []byte, err error) {
+	identity := privKey.GetPublic().Account()
+	identityProfile := &model.IdentityProfile{
+		Identity:    identity,
+		Name:        fmt.Sprintf("Guest-%s", spaceId),
+		Description: "Guest user",
+	}
+	data, err := proto.Marshal(identityProfile)
+	if err != nil {
+		return nil, fmt.Errorf("marshal identity profile: %w", err)
+	}
+	metadataModel, symKey, err := space.DeriveAccountMetadata(privKey)
+	if err != nil {
+		return nil, fmt.Errorf("derive account metadata: %w", err)
+	}
+	data, err = symKey.Encrypt(data)
+	if err != nil {
+		return nil, fmt.Errorf("encrypt data: %w", err)
+	}
+	signature, err := privKey.Sign(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign profile data: %w", err)
+	}
+	err = a.identityRepo.IdentityRepoPut(ctx, identity, []*identityrepoproto.Data{
+		{
+			Kind:      "profile",
+			Data:      data,
+			Signature: signature,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to push identity: %w", err)
+	}
+	metadata, err = metadataModel.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("marshal metadata: %w", err)
+	}
+	return
+}
+
+func (a *aclService) AddGuestAccount(ctx context.Context, spacerId string) (privKey crypto.PrivKey, err error) {
+	pk, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := a.pushGuest(ctx, pk, spacerId)
+	if err != nil {
+		return nil, err
+	}
+	return pk, a.AddAccount(ctx, spacerId, pubKey, metadata)
 }
 
 func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte) error {
