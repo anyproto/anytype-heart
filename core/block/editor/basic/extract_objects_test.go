@@ -52,7 +52,7 @@ func (tts testTemplateService) AddTemplate(id string, st *state.State) {
 	tts.templates[id] = st
 }
 
-func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details *domain.Details) (st *state.State, err error) {
+func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details *domain.Details, _ bool) (st *state.State, err error) {
 	if id == "" {
 		st = state.NewDoc("", nil).NewState()
 		template.InitTemplate(st, template.WithEmpty,

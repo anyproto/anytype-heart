@@ -57,7 +57,7 @@ type testTemplateService struct {
 	templates map[string]*state.State
 }
 
-func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error) {
+func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (*state.State, error) {
 	if tts.templates != nil {
 		if st, found := tts.templates[templateId]; found {
 			return st, nil
@@ -70,6 +70,10 @@ func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string
 
 func (tts *testTemplateService) TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error) {
 	return "", nil
+}
+
+func (tts *testTemplateService) SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error {
+	return nil
 }
 
 func TestService_CreateObject(t *testing.T) {
