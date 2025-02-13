@@ -69,7 +69,7 @@ func (s *store) createDiffManager(ctx context.Context, curTreeHeads, seenHeads [
 			Include: true,
 		})
 	}
-	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, nil)
+	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, func(ids []string) {})
 	return
 }
 
