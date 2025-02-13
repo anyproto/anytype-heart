@@ -16,7 +16,7 @@ import (
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
 //	@Param		object_id	path		string					true	"Object ID"
-//	@Param		format		path		string					true	"Export format"
+//	@Param		format		path		string					true	"Export format" Enums(markdown,protobuf)
 //	@Success	200			{object}	ObjectExportResponse	"Object exported successfully"
 //	@Failure	400			{object}	util.ValidationError	"Bad request"
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"

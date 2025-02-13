@@ -15,8 +15,8 @@ import (
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
-//	@Param		offset	query		int									false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit	query		int									false	"The number of items to return"	default(100)
+//	@Param		offset	query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param		limit	query		int									false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success	200		{object}	pagination.PaginatedResponse[Space]	"List of spaces"
 //	@Failure	401		{object}	util.UnauthorizedError				"Unauthorized"
 //	@Failure	500		{object}	util.ServerError					"Internal server error"
@@ -48,7 +48,7 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 //	@Tags		spaces
 //	@Accept		json
 //	@Produce	json
-//	@Param		name	body		string					true	"Space Name"
+//	@Param		name	body		CreateSpaceRequest		true	"Space to create"
 //	@Success	200		{object}	CreateSpaceResponse		"Space created successfully"
 //	@Failure	400		{object}	util.ValidationError	"Bad request"
 //	@Failure	401		{object}	util.UnauthorizedError	"Unauthorized"
@@ -85,8 +85,8 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 //	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space ID"
-//	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"
-//	@Param		limit		query		int										false	"The number of items to return"	default(100)
+//	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param		limit		query		int										false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success	200			{object}	pagination.PaginatedResponse[Member]	"List of members"
 //	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
 //	@Failure	500			{object}	util.ServerError						"Internal server error"
