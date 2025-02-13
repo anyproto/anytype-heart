@@ -279,6 +279,7 @@ func (p *Page) getObjectTypeTemplates() []template.StateTransformer {
 		},
 	}, objectTypeAllViewId)
 
+	dvContent.Dataview.TargetObjectId = p.Id()
 	return []template.StateTransformer{
 		template.WithDataviewID(state.DataviewBlockID, dvContent, false),
 		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{p.Id()})),
