@@ -62,7 +62,7 @@ type AclService interface {
 	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
 	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte) error
-	AddGuestAccount(ctx context.Context, spacerId string) (privKey crypto.PrivKey, err error)
+	AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error)
 }
 
 func New() AclService {
@@ -154,16 +154,16 @@ func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey, spac
 	return
 }
 
-func (a *aclService) AddGuestAccount(ctx context.Context, spacerId string) (privKey crypto.PrivKey, err error) {
+func (a *aclService) AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error) {
 	pk, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return nil, err
 	}
-	metadata, err := a.pushGuest(ctx, pk, spacerId)
+	metadata, err := a.pushGuest(ctx, pk, spaceId)
 	if err != nil {
 		return nil, err
 	}
-	return pk, a.AddAccount(ctx, spacerId, pubKey, metadata)
+	return pk, a.AddAccount(ctx, spaceId, pubKey, metadata)
 }
 
 func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte) error {
