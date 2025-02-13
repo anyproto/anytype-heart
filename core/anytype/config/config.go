@@ -201,6 +201,7 @@ func (c *Config) initFromFileAndEnv(repoPath, tmpPath string) error {
 		if tmpPath == "" || tmpPath == repoPath {
 			panic("wrong tmppath")
 		}
+		c.SqliteTempPath = tmpPath
 		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
 		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + tmpPath + "'"
 	}
