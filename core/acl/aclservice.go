@@ -50,6 +50,7 @@ type AclService interface {
 	GenerateInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	RevokeInvite(ctx context.Context, spaceId string) error
 	GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
+	GetGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error)
 	Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error
@@ -420,7 +421,14 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	if err != nil {
 		return convertedOrInternalError("get invite payload", err)
 	}
-	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.InviteKey)
+	if invitePayload.InviteType == model.InvitePayload_JoinAsGuest {
+		guestKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.GuestKey)
+		if err != nil {
+			return convertedOrInternalError("unmarshal invite key", err)
+		}
+		return a.joinAsGuest(ctx, invitePayload.SpaceId, guestKey)
+	}
+	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.AclKey)
 	if err != nil {
 		return convertedOrInternalError("unmarshal invite key", err)
 	}
@@ -463,7 +471,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return domain.InviteView{}, convertedOrInternalError("view invite", err)
 	}
-	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.InviteKey)
+	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.AclKey)
 	if err != nil {
 		return domain.InviteView{}, convertedOrInternalError("unmarshal invite key", err)
 	}
@@ -552,6 +560,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 	if err != nil {
 		return
 	}
+
 	aclClient := acceptSpace.CommonSpace().AclClient()
 	res, err := aclClient.GenerateInvite()
 	if err != nil {
@@ -565,4 +574,31 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		}
 		return nil
 	})
+}
+
+func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
+	if spaceId == a.accountService.PersonalSpaceID() {
+		err = ErrPersonalSpace
+		return
+	}
+	current, err := a.inviteService.GetExistingGuestUserInvite(ctx, spaceId)
+	if err == nil {
+		return current, nil
+	}
+
+	// todo: race conds in case guest user already created?
+	// we can iterate users to find the guest key
+	guestKey, err := a.AddGuestAccount(ctx, spaceId)
+	if err != nil {
+		return domain.InviteInfo{}, convertedOrInternalError("add guest account", err)
+	}
+	info, err = a.inviteService.GenerateGuestUserInvite(ctx, spaceId, guestKey)
+	if err != nil {
+		return domain.InviteInfo{}, convertedOrInternalError("generate guest user invite", err)
+	}
+	return
+}
+
+func (a *aclService) joinAsGuest(ctx context.Context, spaceId string, guestUserKey crypto.PrivKey) (err error) {
+	return a.spaceService.AddStreamable(ctx, spaceId, guestUserKey)
 }

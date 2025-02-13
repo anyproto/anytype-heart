@@ -133,6 +133,13 @@ func (s *SpaceView) RemoveExistingInviteInfo() (fileCid string, err error) {
 	return fileCid, s.Apply(newState)
 }
 
+func (s *SpaceView) GetGuestUserInviteInfo() (fileCid string, fileKey string) {
+	details := s.CombinedDetails()
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteGuestFileCid)
+	fileKey = details.GetString(bundle.RelationKeySpaceInviteGuestFileKey)
+	return
+}
+
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return false, nil
 }
@@ -255,6 +262,7 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyIconImage,
 	bundle.RelationKeyIconOption,
 	bundle.RelationKeySpaceDashboardId,
+	bundle.RelationKeySpaceUxType,
 	bundle.RelationKeyCreatedDate,
 	bundle.RelationKeyChatId,
 }
@@ -263,6 +271,7 @@ func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
 	details := s.CombinedDetails()
 	data.Name = details.GetString(bundle.RelationKeyName)
 	data.IconImage = details.GetString(bundle.RelationKeyIconImage)
+	data.SpaceUxType = model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType))
 	return
 }
 

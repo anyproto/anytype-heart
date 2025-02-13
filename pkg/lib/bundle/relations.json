@@ -1003,6 +1003,16 @@
     "source": "derived"
   },
   {
+    "description": "Space UX type, see enum model.SpaceUxType",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceUxType",
+    "maxCount": 1,
+    "name": "Space UX type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "File path or url with original object",
     "format": "longtext",
     "hidden": true,
@@ -1179,6 +1189,26 @@
     "key": "spaceInviteFileKey",
     "maxCount": 1,
     "name": "Encoded encryption key of invite file for current space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "CID of invite file for  for guest user in the current space. It's stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteGuestFileCid",
+    "maxCount": 1,
+    "name": "Guest user invite file CID",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Encoded encryption key of invite file for guest user in the current space. It's stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteGuestFileKey",
+    "maxCount": 1,
+    "name": "Guest user invite file key",
     "readonly": true,
     "source": "details"
   },

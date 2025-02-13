@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5476eec47b788592383a39ab45bebdcf6133b178ed3b7551f5bbf6a23c8370ff"
+const RelationChecksum = "fbd022bbfac8ab6d471b12d300dc4b9405d95e7ceb9bbe57a908ad5e06793445"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyGuestKey                  domain.RelationKey = "guestKey"
@@ -108,6 +108,7 @@ const (
 	RelationKeyIconOption                domain.RelationKey = "iconOption"
 	RelationKeySpaceAccessibility        domain.RelationKey = "spaceAccessibility"
 	RelationKeySpaceAccessType           domain.RelationKey = "spaceAccessType"
+	RelationKeySpaceUxType               domain.RelationKey = "spaceUxType"
 	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
 	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
@@ -126,6 +127,8 @@ const (
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
+	RelationKeySpaceInviteGuestFileCid   domain.RelationKey = "spaceInviteGuestFileCid"
+	RelationKeySpaceInviteGuestFileKey   domain.RelationKey = "spaceInviteGuestFileKey"
 	RelationKeyParticipantPermissions    domain.RelationKey = "participantPermissions"
 	RelationKeyIdentity                  domain.RelationKey = "identity"
 	RelationKeyParticipantStatus         domain.RelationKey = "participantStatus"
@@ -1674,6 +1677,34 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceInviteGuestFileCid: {
+
+			DataSource:       model.Relation_details,
+			Description:      "CID of invite file for  for guest user in the current space. It's stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteGuestFileCid",
+			Key:              "spaceInviteGuestFileCid",
+			MaxCount:         1,
+			Name:             "Guest user invite file CID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteGuestFileKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Encoded encryption key of invite file for guest user in the current space. It's stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteGuestFileKey",
+			Key:              "spaceInviteGuestFileKey",
+			MaxCount:         1,
+			Name:             "Guest user invite file key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySpaceLocalStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -1727,6 +1758,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space shareable status",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceUxType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Space UX type, see enum model.SpaceUxType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceUxType",
+			Key:              "spaceUxType",
+			MaxCount:         1,
+			Name:             "Space UX type",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -107,6 +107,26 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 	}
 }
 
+func (mw *Middleware) SpaceInviteGetGuest(cctx context.Context, req *pb.RpcSpaceInviteGetGuestRequest) *pb.RpcSpaceInviteGetGuestResponse {
+	aclService := mustService[acl.AclService](mw)
+	inviteInfo, err := aclService.GetGuestUserInvite(cctx, req.SpaceId)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(inviteservice.ErrInvalidSpaceType, pb.RpcSpaceInviteGetGuestResponseError_INVALID_SPACE_TYPE),
+		)
+		return &pb.RpcSpaceInviteGetGuestResponse{
+			Error: &pb.RpcSpaceInviteGetGuestResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcSpaceInviteGetGuestResponse{
+		InviteCid:     inviteInfo.InviteFileCid,
+		InviteFileKey: inviteInfo.InviteFileKey,
+	}
+}
+
 func (mw *Middleware) SpaceInviteRevoke(cctx context.Context, req *pb.RpcSpaceInviteRevokeRequest) *pb.RpcSpaceInviteRevokeResponse {
 	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
 	err := aclService.RevokeInvite(cctx, req.SpaceId)
