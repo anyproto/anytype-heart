@@ -434,7 +434,7 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 					SpaceID:  s.SpaceId(),
 				})
 				if err != nil {
-					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
+					log.With("id", id).Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", err.Error())
 					continue
 				}
 				details.SetString(bundle.RelationKeyId, id)
@@ -444,12 +444,12 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 		}
 		doc, err := s.objects.FindId(s.componentCtx, id)
 		if err != nil {
-			log.Infof("QueryByIds failed to find id: %s", id)
+			log.With("id", id).Infof("QueryByIds failed to find id: %s", err.Error())
 			continue
 		}
 		details, err := domain.NewDetailsFromAnyEnc(doc.Value())
 		if err != nil {
-			log.Errorf("QueryByIds failed to extract details: %s", id)
+			log.With("id", id).Errorf("QueryByIds failed to extract details: %s", err.Error())
 			continue
 		}
 		records = append(records, database.Record{Details: details})

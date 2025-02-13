@@ -292,20 +292,6 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageId := urlParts[2]
 
-	var id domain.FullFileId
-	// Treat id as fileId. We need to handle raw fileIds for backward compatibility in case of spaceview. See editor.SpaceView for details.
-	if domain.IsFileId(imageId) {
-		id = domain.FullFileId{
-			FileId: domain.FileId(imageId),
-		}
-	} else {
-		var err error
-		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, imageId)
-		if err != nil {
-			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
-		}
-	}
-
 	retryOptions := []retry.Option{
 		retry.Context(ctx),
 		retry.Attempts(0),
@@ -316,6 +302,20 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	}
 
 	result, err := retry.DoWithData(func() (*getImageReaderResult, error) {
+		var id domain.FullFileId
+		// Treat id as fileId. We need to handle raw fileIds for backward compatibility in case of spaceview. See editor.SpaceView for details.
+		if domain.IsFileId(imageId) {
+			id = domain.FullFileId{
+				FileId: domain.FileId(imageId),
+			}
+		} else {
+			var err error
+			id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, imageId)
+			if err != nil {
+				return nil, fmt.Errorf("get file hash from object id: %w", err)
+			}
+		}
+
 		res, err := g.getImageReader(ctx, id, r)
 		if err != nil {
 			return nil, err
