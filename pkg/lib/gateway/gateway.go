@@ -30,7 +30,7 @@ import (
 const (
 	CName = "gateway"
 
-	defaultPort    = 59931
+	defaultPort    = 47800
 	getFileTimeout = 1 * time.Minute
 	requestLimit   = 32
 )
