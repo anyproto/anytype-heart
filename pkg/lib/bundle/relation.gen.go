@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f25286883f4f5ee6ec1126af2da75e86a91c35d8bacd4b72279c0ca1d5904c53"
+const RelationChecksum = "374aa57652dfcc9708b3249a57abb31a0dd702a441552940f77f7434effb7e4c"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -144,14 +144,15 @@ const (
 	RelationKeyChatId                       domain.RelationKey = "chatId"
 	RelationKeyMentions                     domain.RelationKey = "mentions"
 	RelationKeyTimestamp                    domain.RelationKey = "timestamp"
-	RelationKeyRecommendedFeaturedRelations domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyLayoutWidth                  domain.RelationKey = "layoutWidth"
 	RelationKeyResolvedLayout               domain.RelationKey = "resolvedLayout"
 	RelationKeySpaceOrder                   domain.RelationKey = "spaceOrder"
-	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
-	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
+	RelationKeyIconName                     domain.RelationKey = "iconName"
+	RelationKeyRecommendedFeaturedRelations domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations   domain.RelationKey = "recommendedHiddenRelations"
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
+	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
+	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 )
 
 var (
@@ -446,9 +447,10 @@ var (
 			Key:              "creator",
 			MaxCount:         1,
 			Name:             "Created by",
+			ObjectTypes:      []string{TypePrefix + "participant"},
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyDefaultTemplateId: {
@@ -747,6 +749,20 @@ var (
 			MaxCount:         1,
 			Name:             "Image",
 			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIconName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Choose icon for the type among custom Anytype icons",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_briconName",
+			Key:              "iconName",
+			MaxCount:         1,
+			Name:             "Icon name",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

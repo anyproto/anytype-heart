@@ -404,7 +404,10 @@
     "name": "Created by",
     "readonly": true,
     "source": "derived",
-    "revision": 1
+    "revision": 2,
+    "objectTypes": [
+      "participant"
+    ]
   },
   {
     "description": "Recommended layout for new templates and objects of specific objec",
@@ -1368,19 +1371,6 @@
     "source": "derived"
   },
   {
-    "description": "List of recommended featured relations",
-    "format": "object",
-    "hidden": true,
-    "key": "recommendedFeaturedRelations",
-    "maxCount": 0,
-    "name": "Recommended featured relations",
-    "objectTypes": [
-      "relation"
-    ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Width of object's layout",
     "format": "number",
     "hidden": true,
@@ -1411,22 +1401,25 @@
     "source": "details"
   },
   {
-    "description": "Default view type that will be used for new sets/collections",
-    "format": "number",
+    "description": "Choose icon for the type among custom Anytype icons",
+    "format": "longtext",
     "hidden": true,
-    "key": "defaultViewType",
+    "key": "iconName",
     "maxCount": 1,
-    "name": "Default view type",
+    "name": "Icon name",
     "readonly": false,
     "source": "details"
   },
   {
-    "description": "Default object type id that will be set to new sets/collections",
+    "description": "List of recommended featured relations",
     "format": "object",
     "hidden": true,
-    "key": "defaultTypeId",
-    "maxCount": 1,
-    "name": "Default type id",
+    "key": "recommendedFeaturedRelations",
+    "maxCount": 0,
+    "name": "Recommended featured relations",
+    "objectTypes": [
+      "relation"
+    ],
     "readonly": false,
     "source": "details"
   },
@@ -1453,6 +1446,26 @@
     "objectTypes": [
       "relation"
     ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Default view type that will be used for new sets/collections",
+    "format": "number",
+    "hidden": true,
+    "key": "defaultViewType",
+    "maxCount": 1,
+    "name": "Default view type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Default object type id that will be set to new sets/collections",
+    "format": "object",
+    "hidden": true,
+    "key": "defaultTypeId",
+    "maxCount": 1,
+    "name": "Default type id",
     "readonly": false,
     "source": "details"
   }
