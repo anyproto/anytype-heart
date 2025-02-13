@@ -543,6 +543,7 @@ message Rpc {
             message Request {
                 option (no_auth) = true;
                 string rootPath = 1; // Path to a wallet directory
+                string tmpPath = 2; // Path to a wallet directory
             }
 
             /**
@@ -577,6 +578,7 @@ message Rpc {
 
                 string rootPath = 1; // Path to a wallet directory
                 string mnemonic = 2; // Mnemonic of a wallet to recover
+                string tmpPath = 3;
             }
 
             /**

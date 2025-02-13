@@ -20033,6 +20033,7 @@ Front-end-to-middleware request to create a new wallet
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootPath | [string](#string) |  | Path to a wallet directory |
+| tmpPath | [string](#string) |  | Path to a wallet directory |
 
 
 
@@ -20151,6 +20152,7 @@ Front end to middleware request-to-recover-a wallet with this mnemonic and a roo
 | ----- | ---- | ----- | ----------- |
 | rootPath | [string](#string) |  | Path to a wallet directory |
 | mnemonic | [string](#string) |  | Mnemonic of a wallet to recover |
+| tmpPath | [string](#string) |  |  |
 
 
 
