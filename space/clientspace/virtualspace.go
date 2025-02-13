@@ -77,10 +77,6 @@ func (c *virtualCommonSpace) HandleStreamSyncRequest(ctx context.Context, req *s
 	return nil
 }
 
-func (c *virtualCommonSpace) HandleDeprecatedObjectSyncRequest(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
-	return
-}
-
 func (c *virtualCommonSpace) HandleStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
 	return nil
 }
@@ -113,7 +109,7 @@ func (c *virtualCommonSpace) DebugAllHeads() []headsync.TreeHeads {
 	return nil
 }
 
-func (c *virtualCommonSpace) Description() (desc commonspace.SpaceDescription, err error) {
+func (c *virtualCommonSpace) Description(ctx context.Context) (desc commonspace.SpaceDescription, err error) {
 	return
 }
 
