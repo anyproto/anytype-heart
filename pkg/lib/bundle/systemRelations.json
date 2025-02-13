@@ -90,5 +90,6 @@
   "mentions",
   "chatId",
   "hasChat",
-  "timestamp"
+  "timestamp",
+  "iconName"
 ]

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "7e14cc433fd3903623ab8f25cfdcfea52317aa59aee7b0925f1ba68afe46c5f5"
+const RelationChecksum = "88c644b280bd1de7662bbab38d6eb98fcd3b147022c35e67d355af35b0efdc8d"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -145,6 +145,7 @@ const (
 	RelationKeyMentions                  domain.RelationKey = "mentions"
 	RelationKeyTimestamp                 domain.RelationKey = "timestamp"
 	RelationKeySpaceOrder                domain.RelationKey = "spaceOrder"
+	RelationKeyIconName                  domain.RelationKey = "iconName"
 )
 
 var (
@@ -710,6 +711,20 @@ var (
 			MaxCount:         1,
 			Name:             "Image",
 			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIconName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Choose icon for the type among custom Anytype icons",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_briconName",
+			Key:              "iconName",
+			MaxCount:         1,
+			Name:             "Icon name",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
