@@ -69,12 +69,7 @@ func (s *store) createDiffManager(ctx context.Context, curTreeHeads, seenHeads [
 			Include: true,
 		})
 	}
-	onRemove := func(removed []string) {
-		for _, rem := range removed {
-			fmt.Println("[x]: removed", rem)
-		}
-	}
-	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
+	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, nil)
 	return
 }
 

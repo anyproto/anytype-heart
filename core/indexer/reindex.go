@@ -252,7 +252,6 @@ func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	if err != nil {
 		return fmt.Errorf("get deleted tree ids: %w", err)
 	}
-	fmt.Println("[x]: deletedIds", len(allIds))
 	for _, objectId := range allIds {
 		err = store.DeleteObject(objectId)
 		if err != nil {
