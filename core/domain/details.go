@@ -98,12 +98,12 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 
 		var arrayType anyenc.Type
 		for _, arrVal := range arrVals {
-			if arrVal.Type() == anyenc.TypeString {
-				arrayType = anyenc.TypeString
-				break
-			}
 			if arrVal.Type() == anyenc.TypeNumber {
 				arrayType = anyenc.TypeNumber
+				break
+			}
+			if arrVal.Type() == anyenc.TypeString {
+				arrayType = anyenc.TypeString
 				break
 			}
 		}
@@ -113,9 +113,6 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 				if arrVal.Type() != anyenc.TypeString {
 					// todo: make it not possible to create such an arrays and remove this
 					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected string, got %s", arrVal.Type()))
-					if arrVal.Type() != anyenc.TypeNull {
-						return fmt.Errorf("array item: expected string, got %s", arrVal.Type())
-					}
 					continue
 				}
 				v, err := arrVal.StringBytes()
@@ -132,9 +129,6 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 				if arrVal.Type() != anyenc.TypeNumber {
 					// todo: make it not possible to create such an arrays and remove this
 					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected number, got %s", arrVal.Type()))
-					if arrVal.Type() != anyenc.TypeNull {
-						return fmt.Errorf("array item: expected number, got %s", arrVal.Type())
-					}
 					continue
 				}
 				v, err := arrVal.Float64()
@@ -146,12 +140,16 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			d.SetFloat64List(key, res)
 			return nil
 		} else {
-			// todo: make it not possible to create such an arrays and remove this
 			var elTypes []string
 			for _, arrVal := range arrVals {
 				elTypes = append(elTypes, arrVal.Type().String())
 			}
-			return fmt.Errorf("unsupported array type %s; elements' types: %v", arrayType.String(), elTypes)
+
+			d.SetStringList(key, []string{})
+			log.With(zap.String("key", key.String())).Error(fmt.Sprintf("unsupported array: %v", elTypes))
+
+			// todo: make it not possible to create such an arrays and remove this logic
+			return nil
 		}
 	}
 	d.Set(key, Null())
