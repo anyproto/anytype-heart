@@ -564,7 +564,22 @@ func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (in
 	if err == nil {
 		return current, nil
 	}
+	var shareableStatus spaceinfo.ShareableStatus
+	err = a.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+		localInfo := spaceView.GetLocalInfo()
+		shareableStatus = localInfo.GetShareableStatus()
+		return nil
+	})
+	if err != nil {
+		return
+	}
 
+	if shareableStatus != spaceinfo.ShareableStatusShareable {
+		err = a.MakeShareable(ctx, spaceId)
+		if err != nil {
+			return
+		}
+	}
 	// todo: race conds in case guest user already created?
 	// we can iterate users to find the guest key
 	guestKey, err := a.AddGuestAccount(ctx, spaceId)
