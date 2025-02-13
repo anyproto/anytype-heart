@@ -392,7 +392,7 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	if err != nil {
 		return convertedOrInternalError("get invite payload", err)
 	}
-	if invitePayload.GuestKey != nil {
+	if invitePayload.InviteType == model.InvitePayload_JoinAsGuest {
 		guestKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.GuestKey)
 		if err != nil {
 			return convertedOrInternalError("unmarshal invite key", err)

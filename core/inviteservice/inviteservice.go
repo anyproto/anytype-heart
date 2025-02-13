@@ -341,6 +341,7 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, spaceId string, 
 			return nil, fmt.Errorf("marshal invite priv key: %w", err)
 		}
 		invitePayload.GuestKey = rawGuestKey
+		invitePayload.InviteType = model.InvitePayload_JoinAsGuest
 	} else {
 		return nil, fmt.Errorf("acl key or guest key should be provided")
 	}
