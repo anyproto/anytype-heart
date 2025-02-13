@@ -119,7 +119,7 @@ func (r *wallet) RepoPath() string {
 }
 
 func (r *wallet) TmpPath() string {
-	return r.repoPath
+	return r.tmpPath
 }
 
 func (r *wallet) RootPath() string {
