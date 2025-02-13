@@ -32,7 +32,7 @@ var documentRelationsWhiteList = append(slices.Clone(allObjectsRelationsWhiteLis
 
 var todoRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyDone.String())
 
-var bookmarkRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyPicture.String())
+var bookmarkRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyPicture.String(), bundle.RelationKeySource.String())
 
 var derivedObjectsWhiteList = append(slices.Clone(allObjectsRelationsWhiteList), bundle.RelationKeyUniqueKey.String())
 
