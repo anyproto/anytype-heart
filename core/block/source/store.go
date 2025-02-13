@@ -144,7 +144,7 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	}
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         s.accountKeysService.Account().SignKey,
+		Key:         s.ObjectTree.AclList().AclState().Key(),
 		IsEncrypted: true,
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),
