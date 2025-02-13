@@ -84,8 +84,6 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.1.7 h1:E3DntI+JXo3h7v0WTUJWH+nm7G4MV0PNOXZ6SFzQ2OU=
 github.com/anyproto/any-store v0.1.7/go.mod h1:nbyRoJYOlvSWU1xDOrmgPP96UeoTf4eYZ9k+qqLK9k8=
-github.com/anyproto/any-sync v0.5.27-0.20250212175439-b8a25f932951 h1:C6I+hdVqRVw8Vb2GUr1O8y5lxLuTLpZGaAehoBT/ccM=
-github.com/anyproto/any-sync v0.5.27-0.20250212175439-b8a25f932951/go.mod h1:KpvX9YJsZ1toFMBtk624s9/RuqVFlPvj46KR8ME7gdY=
 github.com/anyproto/any-sync v0.6.1-0.20250211164908-1e374945e140 h1:/BVzi1qRGB8lRtIRoer5bm3qpMIR+/ApGNJoH4iyNVA=
 github.com/anyproto/any-sync v0.6.1-0.20250211164908-1e374945e140/go.mod h1:IzKkSSiugDozAwh/KPCzY8n41EXaBRu3jpeFgu+thY4=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=
@@ -678,8 +676,8 @@ github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxv
 github.com/konsorten/go-windows-terminal-sequences v1.0.3/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/koron/go-ssdp v0.0.4 h1:1IDwrghSKYM7yLf7XCzbByg2sJ/JcNOZRXS2jczTwz0=
 github.com/koron/go-ssdp v0.0.4/go.mod h1:oDXq+E5IL5q0U8uSBcoAXzTzInwy5lEgC91HoKtbmZk=
-github.com/kovidgoyal/imaging v1.6.3 h1:iNPpv7ygiaB/NOztc6APMT7yr9UwBS+rOZwIbAdtyY8=
-github.com/kovidgoyal/imaging v1.6.3/go.mod h1:sHvcLOOVhJuto2IoNdPLEqnAUoL5ZfHEF0PpNH+882g=
+github.com/kovidgoyal/imaging v1.6.4 h1:K0idhRPXnRrJBKnBYcTfI1HTWSNDeAn7hYDvf9I0dCk=
+github.com/kovidgoyal/imaging v1.6.4/go.mod h1:bEIgsaZmXlvFfkv/CUxr9rJook6AQkJnpB5EPosRfRY=
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
