@@ -277,6 +277,7 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 					model.ObjectType_image,
 					model.ObjectType_video,
 					model.ObjectType_audio,
+					model.ObjectType_pdf,
 				}),
 			},
 			{
