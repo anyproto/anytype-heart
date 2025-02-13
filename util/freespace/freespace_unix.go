@@ -10,6 +10,7 @@ func GetFreeDiskSpace(path string) (freeSpace uint64, err error) {
 	if err != nil {
 		return 0, err
 	}
+	// nolint: gosec
 	freeSpace = stat.Bavail * uint64(stat.Bsize)
 	return freeSpace, nil
 }
