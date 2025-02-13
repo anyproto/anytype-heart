@@ -392,7 +392,7 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	if err != nil {
 		return convertedOrInternalError("get invite payload", err)
 	}
-	if invitePayload.InviteType == model.InvitePayload_JoinAsGuest {
+	if invitePayload.GuestKey != nil {
 		guestKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.GuestKey)
 		if err != nil {
 			return convertedOrInternalError("unmarshal invite key", err)
@@ -441,6 +441,15 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	res, err := a.inviteService.View(ctx, inviteCid, inviteFileKey)
 	if err != nil {
 		return domain.InviteView{}, convertedOrInternalError("view invite", err)
+	}
+	if res.IsGuestUserInvite() {
+		return domain.InviteView{
+			SpaceId:      res.SpaceId,
+			GuestKey:     res.GuestKey,
+			SpaceName:    res.SpaceName,
+			SpaceIconCid: res.SpaceIconCid,
+			CreatorName:  res.CreatorName,
+		}, nil
 	}
 	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.AclKey)
 	if err != nil {

@@ -246,10 +246,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 		}
 		deps.AccountService = &customAccountService{acc}
 	}
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{
-		TreeSyncer: treesyncer.NewTreeSyncer(id),
-		SyncStatus: statusService,
-	})
+	cc, err := s.commonSpace.NewSpace(ctx, id, deps)
 	if err != nil {
 		return
 	}

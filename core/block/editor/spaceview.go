@@ -84,7 +84,8 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	info := spaceinfo.NewSpacePersistentInfoFromState(ctx.State)
 	newInfo := spaceinfo.NewSpacePersistentInfo(spaceId)
 	newInfo.SetAccountStatus(info.GetAccountStatus()).
-		SetAclHeadId(info.GetAclHeadId())
+		SetAclHeadId(info.GetAclHeadId()).
+		SetEncodedKey(info.EncodedKey)
 	s.setSpacePersistentInfo(ctx.State, newInfo)
 	localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
 	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
