@@ -66,7 +66,7 @@ func GatewayAddr() string {
 	}
 
 	port := defaultPort
-	for {
+	for range 100 {
 		ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 		if err == nil {
 			_ = ln.Close()
