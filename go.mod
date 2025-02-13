@@ -294,7 +294,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
-	modernc.org/libc v1.61.13 // indirect
+	modernc.org/libc v1.61.9 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.8.2 // indirect
 	modernc.org/sqlite v1.34.5 // indirect
@@ -322,3 +322,5 @@ replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.202402
 replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38
 
 replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
+
+replace modernc.org/libc => modernc.org/libc v1.61.0
