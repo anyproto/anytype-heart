@@ -24,14 +24,13 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/constant"
-	"github.com/anyproto/anytype-heart/util/netutil"
 	"github.com/anyproto/anytype-heart/util/svg"
 )
 
 const (
 	CName = "gateway"
 
-	defaultPort    = 47800
+	defaultPort    = 59931
 	getFileTimeout = 1 * time.Minute
 	requestLimit   = 32
 )
@@ -66,10 +65,14 @@ func GatewayAddr() string {
 		return addr
 	}
 
-	port, err := netutil.GetRandomPort()
-	if err != nil {
-		log.Errorf("failed to get random port for gateway, go with the default %d", defaultPort)
-		port = defaultPort
+	port := defaultPort
+	for {
+		ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+		if err == nil {
+			_ = ln.Close()
+			break
+		}
+		port++
 	}
 
 	return fmt.Sprintf("127.0.0.1:%d", port)
