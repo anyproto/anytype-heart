@@ -1636,7 +1636,8 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1;
                 string spaceId = 2;
-                bool withChat = 3;
+                string templateId = 3;
+                bool withChat = 4;
             }
 
             message Response {
@@ -5784,6 +5785,7 @@ message Rpc {
                 string contextId = 1;
                 string blockId = 2;
                 string url = 3;
+                string templateId = 4;
             }
 
             message Response {
@@ -5809,6 +5811,7 @@ message Rpc {
                 string targetId = 2;
                 anytype.model.Block.Position position = 3;
                 string url = 4;
+                string templateId = 5;
             }
 
             message Response {

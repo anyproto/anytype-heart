@@ -53,7 +53,7 @@ type CommonOperations interface {
 	FeaturedRelationRemove(ctx session.Context, relations ...string) error
 
 	ReplaceLink(oldId, newId string) error
-	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc TemplateStateCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc templateStateCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
 	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
 	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)

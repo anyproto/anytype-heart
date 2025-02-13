@@ -113,8 +113,10 @@ type builtinObjects interface {
 }
 
 type templateService interface {
-	CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (*state.State, error)
-	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
+	CreateTemplateStateWithDetails(
+		spaceId, templateId, typeId string, layout model.ObjectTypeLayout, details *domain.Details, withTemplateValidation bool,
+	) (st *state.State, err error)
+	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, typeId string, layout model.ObjectTypeLayout, details *domain.Details) *state.State
 }
 
 type openedObjects struct {

@@ -21,9 +21,11 @@ type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 }
 
-type TemplateStateCreator interface {
-	CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (*state.State, error)
-	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
+type templateStateCreator interface {
+	CreateTemplateStateWithDetails(
+		spaceId, templateId, typeId string, layout model.ObjectTypeLayout, details *domain.Details, withTemplateValidation bool,
+	) (st *state.State, err error)
+	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, typeId string, layout model.ObjectTypeLayout, details *domain.Details) *state.State
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -31,7 +33,7 @@ type TemplateStateCreator interface {
 func (bs *basic) ExtractBlocksToObjects(
 	ctx session.Context,
 	objectCreator ObjectCreator,
-	templateStateCreator TemplateStateCreator,
+	templateStateCreator templateStateCreator,
 	req pb.RpcBlockListConvertToObjectsRequest,
 ) (linkIds []string, err error) {
 	typeUniqueKey, err := domain.UnmarshalUniqueKey(req.ObjectTypeUniqueKey)
@@ -75,32 +77,24 @@ func (bs *basic) ExtractBlocksToObjects(
 }
 
 func (bs *basic) prepareObjectState(
-	uk domain.UniqueKey, root simple.Block, creator TemplateStateCreator, req pb.RpcBlockListConvertToObjectsRequest,
+	uk domain.UniqueKey, root simple.Block, creator templateStateCreator, req pb.RpcBlockListConvertToObjectsRequest,
 ) (*state.State, error) {
-	details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), uk, root)
+	objType, err := bs.objectStore.GetObjectByUniqueKey(uk)
 	if err != nil {
-		return nil, fmt.Errorf("prepare target details: %w", err)
+		return nil, fmt.Errorf("failed to get type from store: %w", err)
 	}
+	var (
+		// nolint:gosec
+		layout  = model.ObjectTypeLayout(objType.GetInt64(bundle.RelationKeyRecommendedLayout))
+		typeId  = objType.GetString(bundle.RelationKeyId)
+		details = createTargetObjectDetails(root.Model().GetText().GetText(), layout)
+	)
 
 	if req.ContextId == req.TemplateId {
-		return creator.CreateTemplateStateFromSmartBlock(bs, details), nil
+		return creator.CreateTemplateStateFromSmartBlock(bs, typeId, layout, details), nil
 	}
 
-	return creator.CreateTemplateStateWithDetails(req.TemplateId, details, true)
-}
-
-func (bs *basic) prepareTargetObjectDetails(
-	spaceID string,
-	typeUniqueKey domain.UniqueKey,
-	rootBlock simple.Block,
-) (*domain.Details, error) {
-	objType, err := bs.objectStore.GetObjectByUniqueKey(typeUniqueKey)
-	if err != nil {
-		return nil, err
-	}
-	rawLayout := objType.GetInt64(bundle.RelationKeyRecommendedLayout)
-	details := createTargetObjectDetails(rootBlock.Model().GetText().GetText(), model.ObjectTypeLayout(rawLayout))
-	return details, nil
+	return creator.CreateTemplateStateWithDetails(bs.SpaceID(), req.TemplateId, typeId, layout, details, true)
 }
 
 func insertBlocksToState(

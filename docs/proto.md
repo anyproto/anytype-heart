@@ -5580,6 +5580,7 @@ Makes blocks copy by given ids and paste it to shown place
 | targetId | [string](#string) |  |  |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | url | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -5640,6 +5641,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -14246,6 +14248,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | spaceId | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
 
 
