@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -408,12 +409,42 @@ func (c *layoutConverter) insertTypeLevelFieldsToDataview(block *model.BlockCont
 		return fmt.Errorf("failed to get type object: expected 1 record")
 	}
 
-	viewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
+	rawViewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
 	defaultTypeId := records[0].Details.GetString(bundle.RelationKeyDefaultTypeId)
 
 	// nolint:gosec
-	block.Dataview.Views[0].Type = model.BlockContentDataviewViewType(viewType)
+	viewType := model.BlockContentDataviewViewType(rawViewType)
+	block.Dataview.Views[0].Type = viewType
 	block.Dataview.Views[0].DefaultObjectTypeId = defaultTypeId
+	insertGroupRelationKey(block, viewType)
 
 	return nil
+}
+
+func insertGroupRelationKey(block *model.BlockContentOfDataview, viewType model.BlockContentDataviewViewType) {
+	var formats map[model.RelationFormat]struct{}
+	switch viewType {
+	case model.BlockContentDataviewView_Kanban:
+		formats = map[model.RelationFormat]struct{}{
+			model.RelationFormat_status:   {},
+			model.RelationFormat_tag:      {},
+			model.RelationFormat_checkbox: {},
+		}
+	case model.BlockContentDataviewView_Calendar:
+		formats = map[model.RelationFormat]struct{}{model.RelationFormat_date: {}}
+	default:
+		return
+	}
+
+	for _, relLink := range block.Dataview.RelationLinks {
+		_, found := formats[relLink.Format]
+		if !found {
+			continue
+		}
+		relation, err := bundle.GetRelation(domain.RelationKey(relLink.Key))
+		if errors.Is(err, bundle.ErrNotFound) || (relation != nil && !relation.Hidden) {
+			block.Dataview.Views[0].GroupRelationKey = relLink.Key
+			return
+		}
+	}
 }

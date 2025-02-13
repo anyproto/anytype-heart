@@ -570,54 +570,6 @@ func (_c *MockService_SetDetails_Call) RunAndReturn(run func(session.Context, st
 	return _c
 }
 
-// SetDetailsAndUpdateLastUsed provides a mock function with given fields: ctx, objectId, details
-func (_m *MockService) SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []domain.Detail) error {
-	ret := _m.Called(ctx, objectId, details)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetDetailsAndUpdateLastUsed")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, []domain.Detail) error); ok {
-		r0 = rf(ctx, objectId, details)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockService_SetDetailsAndUpdateLastUsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDetailsAndUpdateLastUsed'
-type MockService_SetDetailsAndUpdateLastUsed_Call struct {
-	*mock.Call
-}
-
-// SetDetailsAndUpdateLastUsed is a helper method to define mock.On call
-//   - ctx session.Context
-//   - objectId string
-//   - details []domain.Detail
-func (_e *MockService_Expecter) SetDetailsAndUpdateLastUsed(ctx interface{}, objectId interface{}, details interface{}) *MockService_SetDetailsAndUpdateLastUsed_Call {
-	return &MockService_SetDetailsAndUpdateLastUsed_Call{Call: _e.mock.On("SetDetailsAndUpdateLastUsed", ctx, objectId, details)}
-}
-
-func (_c *MockService_SetDetailsAndUpdateLastUsed_Call) Run(run func(ctx session.Context, objectId string, details []domain.Detail)) *MockService_SetDetailsAndUpdateLastUsed_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].([]domain.Detail))
-	})
-	return _c
-}
-
-func (_c *MockService_SetDetailsAndUpdateLastUsed_Call) Return(_a0 error) *MockService_SetDetailsAndUpdateLastUsed_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockService_SetDetailsAndUpdateLastUsed_Call) RunAndReturn(run func(session.Context, string, []domain.Detail) error) *MockService_SetDetailsAndUpdateLastUsed_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SetDetailsList provides a mock function with given fields: ctx, objectIds, details
 func (_m *MockService) SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) error {
 	ret := _m.Called(ctx, objectIds, details)

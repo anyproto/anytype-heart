@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -193,8 +194,16 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
-		return err
+	if localPublishDir := os.Getenv("ANYTYPE_LOCAL_PUBLISH_DIR"); localPublishDir != "" {
+		err := os.CopyFS(localPublishDir, os.DirFS(tempPublishDir))
+		if err != nil {
+			log.Error("publishing to local dir error", zap.Error(err))
+			return err
+		}
+	} else {
+		if err := s.publishToServer(ctx, spaceId, pageId, uri, version, tempPublishDir); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -288,11 +297,15 @@ func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEnt
 		return err
 	}
 
+	details := snapshot.GetSnapshot().GetData().GetDetails()
+	if source := pbtypes.GetString(details, bundle.RelationKeySource.String()); source != "" {
+		source = filepath.ToSlash(source)
+		details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
+	}
 	jsonData, err := jsonM.MarshalToString(&snapshot)
 	if err != nil {
 		return err
 	}
-
 	fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
 	uberSnapshot.PbFiles[fileNameKey] = jsonData
 	return nil

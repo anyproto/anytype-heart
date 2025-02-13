@@ -4,8 +4,10 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -34,9 +36,12 @@ func collectInfoFromDetails(s *pb.SnapshotWithType, info *useCaseInfo) {
 			cr.isUsed = true
 			info.customTypesAndRelations[k] = cr
 		}
-		values := pbtypes.GetStringListValue(v)
-		for _, val := range values {
-			if k == bundle.RelationKeyRecommendedRelations.String() {
+		if slices.Contains([]domain.RelationKey{
+			bundle.RelationKeyRecommendedRelations, bundle.RelationKeyRecommendedFeaturedRelations,
+			bundle.RelationKeyRecommendedHiddenRelations, bundle.RelationKeyRecommendedFileRelations,
+		}, domain.RelationKey(k)) {
+			values := pbtypes.GetStringListValue(v)
+			for _, val := range values {
 				if key, found := info.relations[val]; found {
 					if cr, foundToo := info.customTypesAndRelations[string(key)]; foundToo {
 						cr.isUsed = true

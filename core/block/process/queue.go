@@ -1,11 +1,12 @@
 package process
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"sync/atomic"
 
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -49,7 +50,7 @@ func (s *service) NewQueue(info pb.ModelProcess, workers int, noProgress bool, n
 		id:                  info.Id,
 		info:                info,
 		state:               pb.ModelProcess_None,
-		msgs:                mb.New(0),
+		msgs:                mb.New[Task](0),
 		done:                make(chan struct{}),
 		cancel:              make(chan struct{}),
 		s:                   s,
@@ -66,7 +67,7 @@ type queue struct {
 	id                  string
 	info                pb.ModelProcess
 	state               pb.ModelProcessState
-	msgs                *mb.MB
+	msgs                *mb.MB[Task]
 	wg                  *sync.WaitGroup
 	done, cancel        chan struct{}
 	pTotal, pDone       int64
@@ -106,7 +107,7 @@ func (p *queue) Add(ts ...Task) (err error) {
 		return
 	}
 	for _, t := range ts {
-		if err = p.msgs.Add(t); err != nil {
+		if err = p.msgs.Add(context.Background(), t); err != nil {
 			return ErrQueueDone
 		}
 		atomic.AddInt64(&p.pTotal, 1)
@@ -123,7 +124,7 @@ func (p *queue) Wait(ts ...Task) (err error) {
 	p.m.Unlock()
 	var done = make(chan struct{}, len(ts))
 	for _, t := range ts {
-		if err = p.msgs.Add(taskFunction(t, done)); err != nil {
+		if err = p.msgs.Add(context.Background(), taskFunction(t, done)); err != nil {
 			return ErrQueueDone
 		}
 		atomic.AddInt64(&p.pTotal, 1)
@@ -267,15 +268,15 @@ func (p *queue) checkRunning(checkStarted bool) (err error) {
 func (p *queue) worker() {
 	defer p.wg.Done()
 	for {
-		msgs := p.msgs.WaitMax(1)
+		msgs, err := p.msgs.NewCond().WithMax(1).Wait(context.Background())
+		if err != nil {
+			log.Errorf("failed wait: %v", err)
+			return
+		}
 		if len(msgs) == 0 {
 			return
 		}
-		if f, ok := msgs[0].(func()); ok {
-			f()
-		} else if t, ok := msgs[0].(Task); ok {
-			t()
-		}
+		msgs[0]()
 		atomic.AddInt64(&p.pDone, 1)
 	}
 }

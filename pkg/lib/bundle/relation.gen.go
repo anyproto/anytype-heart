@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "2cd8997ed52909b8c95269a2b2b5c27f6797d97df03b532576b9fa662acb4c62"
+const RelationChecksum = "f25286883f4f5ee6ec1126af2da75e86a91c35d8bacd4b72279c0ca1d5904c53"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -385,7 +385,7 @@ var (
 		RelationKeyCoverType: {
 
 			DataSource:       model.Relation_details,
-			Description:      "1-image, 2-color, 3-gradient, 4-prebuilt bg image. Value stored in coverId",
+			Description:      "1-image, 2-color, 3-gradient, 4-prebuilt bg image, 5 - unsplash image. Value stored in coverId",
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
 			Id:               "_brcoverType",

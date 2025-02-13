@@ -20,8 +20,9 @@ func (d *mockDeriver) DeriveObjectID(ctx context.Context, key domain.UniqueKey) 
 }
 
 func TestFillRecommendedRelations(t *testing.T) {
-	defaultRecFeatRelIds := buildRelationIds(defaultRecommendedFeaturedRelationKeys)
+	defaultRecFeatRelIds := buildRelationIds(defaultFeaturedRelationKeys)
 	defaultRecRelIds := buildRelationIds(defaultRecommendedRelationKeys)
+	defaultRecHiddenRelIds := buildRelationIds(defaultHiddenRelationKeys)
 
 	for _, tc := range []struct {
 		name     string
@@ -54,7 +55,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 		{
 			"intersect both with featured and system",
 			[]string{bundle.RelationKeyBacklinks.BundledURL(), bundle.RelationKeyAddedDate.BundledURL(), bundle.RelationKeyCreatedDate.BundledURL()},
-			lo.Uniq(append([]string{bundle.RelationKeyAddedDate.URL(), bundle.RelationKeyCreatedDate.URL()}, defaultRecRelIds...)),
+			lo.Uniq(append([]string{bundle.RelationKeyCreatedDate.URL()}, defaultRecRelIds...)),
 		},
 		{
 			"exclude description",
@@ -76,7 +77,8 @@ func TestFillRecommendedRelations(t *testing.T) {
 			assert.False(t, isAlreadyFilled)
 			assert.Equal(t, tc.expected, details.GetStringList(bundle.RelationKeyRecommendedRelations))
 			assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
-			assert.Len(t, keys, len(tc.expected)+3)
+			assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
+			assert.Len(t, keys, len(tc.expected)+3+8) // 3 featured and 8 hidden
 		})
 	}
 
@@ -135,7 +137,8 @@ func TestFillRecommendedRelations(t *testing.T) {
 			assert.False(t, isAlreadyFilled)
 			assert.Equal(t, tc.expected, details.GetStringList(bundle.RelationKeyRecommendedRelations))
 			assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
-			assert.Len(t, keys, len(tc.expected)+3)
+			assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
+			assert.Len(t, keys, len(tc.expected)+3+8) // 3 featured and 8 hidden
 		})
 	}
 
@@ -158,17 +161,15 @@ func TestFillRecommendedRelations(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.False(t, isAlreadyFilled)
-		assert.Equal(t, append([]string{
-			bundle.RelationKeyOrigin.URL(),
-			bundle.RelationKeyAddedDate.URL(),
-		}, buildRelationIds(defaultRecommendedRelationKeys)...), details.GetStringList(bundle.RelationKeyRecommendedRelations))
+		assert.Equal(t, buildRelationIds(defaultRecommendedRelationKeys), details.GetStringList(bundle.RelationKeyRecommendedRelations))
 		assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+		assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
 		assert.Equal(t, []string{
 			bundle.RelationKeyFileExt.URL(),
 			bundle.RelationKeyCameraIso.URL(),
 			bundle.RelationKeyAperture.URL(),
 		}, details.GetStringList(bundle.RelationKeyRecommendedFileRelations))
-		assert.Len(t, keys, 11)
+		assert.Len(t, keys, 17)
 	})
 }
 

@@ -217,13 +217,17 @@ func (h *MD) renderFile(buf writer, in *renderState, b *model.Block) {
 	if file == nil || file.State != model.BlockContentFile_Done {
 		return
 	}
-	name := escape.MarkdownCharacters(html.EscapeString(file.Name))
+	title, filename, ok := h.getLinkInfo(file.TargetObjectId)
+	if !ok {
+		filename = h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name))
+		title = filepath.Base(file.Name)
+	}
 	buf.WriteString(in.indent)
 	if file.Type != model.BlockContentFile_Image {
-		fmt.Fprintf(buf, "[%s](%s)    \n", name, h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name)))
+		fmt.Fprintf(buf, "[%s](%s)    \n", title, filename)
 		h.fileHashes = append(h.fileHashes, file.TargetObjectId)
 	} else {
-		fmt.Fprintf(buf, "![%s](%s)    \n", name, h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name)))
+		fmt.Fprintf(buf, "![%s](%s)    \n", title, filename)
 		h.imageHashes = append(h.imageHashes, file.TargetObjectId)
 	}
 }
@@ -394,12 +398,27 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 		return
 	}
 	title = info.GetString(bundle.RelationKeyName)
+	// if object is a file
+	layout := info.GetInt64(bundle.RelationKeyLayout)
+	if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) || layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) {
+		ext := info.GetString(bundle.RelationKeyFileExt)
+		if ext != "" {
+			ext = "." + ext
+		}
+		title = strings.TrimSuffix(title, ext)
+		if title == "" {
+			title = docId
+		}
+		filename = h.fn.Get("files", docId, title, ext)
+		return
+	}
 	if title == "" {
 		title = info.GetString(bundle.RelationKeySnippet)
 	}
 	if title == "" {
 		title = docId
 	}
+
 	filename = h.fn.Get("", docId, title, h.Ext())
 	return
 }

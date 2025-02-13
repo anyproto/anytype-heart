@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/pkg/errors"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -60,7 +59,6 @@ type service struct {
 	bookmarkService bookmarkService
 	spaceService    space.Service
 	templateService templateService
-	lastUsedUpdater lastused.ObjectUsageUpdater
 	archiver        objectArchiver
 }
 
@@ -73,7 +71,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.bookmarkService = app.MustComponent[bookmarkService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[templateService](a)
-	s.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	s.archiver = app.MustComponent[objectArchiver](a)
 	return nil
 }

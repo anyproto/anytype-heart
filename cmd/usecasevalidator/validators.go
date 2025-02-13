@@ -101,11 +101,6 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 					fmt.Println("WARNING: object", id, "is a template with no target type included in the archive, so it will be skipped")
 					return errSkipObject
 				}
-				if k == bundle.RelationKeyRecommendedRelations.String() {
-					// TODO: remove this fix as most of users should obtain version with fixed export of derived objects in GO-2821
-					delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyRecommendedRelations.String())
-					return nil
-				}
 				err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
 			}
 		}
