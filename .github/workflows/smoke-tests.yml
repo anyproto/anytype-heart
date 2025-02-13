@@ -17,7 +17,7 @@ jobs:
         run: git clone --depth=1 https://github.com/anyproto/anytype-test.git .
 
       - name: Create config.yml file from secret
-        run: echo "${{ secrets.CONFIG_YML_CONTENT }}" > config.yml
+        run: echo "${{ secrets.ANY_SYNC_NETWORK_STAGE1 }}" > config.yml
 
       - name: Set up Go
         uses: actions/setup-go@v5
