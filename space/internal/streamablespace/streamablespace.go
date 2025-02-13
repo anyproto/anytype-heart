@@ -114,7 +114,6 @@ func (s *spaceController) SpaceId() string {
 func (s *spaceController) newLoader() loader.Loader {
 	return loader.New(s.app, loader.Params{
 		SpaceId:       s.spaceId,
-		IsPersonal:    true,
 		OwnerMetadata: s.metadata,
 		GuestKey:      s.guestKey,
 	})
