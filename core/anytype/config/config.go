@@ -205,6 +205,7 @@ func (c *Config) initFromFileAndEnv(repoPath, tmpPath string) error {
 		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
 		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + tmpPath + "'"
 		_ = os.Setenv("SQLITE_TMPDIR", "'"+tmpPath+"'")
+		println("### 1:" + tmpPath)
 	}
 
 	if !c.DisableFileConfig {
