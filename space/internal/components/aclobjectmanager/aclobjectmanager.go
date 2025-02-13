@@ -2,6 +2,7 @@ package aclobjectmanager
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sync"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -30,10 +32,10 @@ type AclObjectManager interface {
 	app.ComponentRunnable
 }
 
-func New(ownerMetadata []byte, isStream bool) AclObjectManager {
+func New(ownerMetadata []byte, guestKey crypto.PrivKey) AclObjectManager {
 	return &aclObjectManager{
 		ownerMetadata: ownerMetadata,
-		isStream:      isStream,
+		guestKey:      guestKey,
 	}
 }
 
@@ -55,7 +57,7 @@ type aclObjectManager struct {
 
 	ownerMetadata []byte
 	lastIndexed   string
-	isStream      bool
+	guestKey      crypto.PrivKey
 	mx            sync.Mutex
 }
 
@@ -181,7 +183,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Unlock()
 	decrypt := func(key crypto.PubKey) ([]byte, error) {
-		if a.ownerMetadata != nil && !a.isStream {
+		if a.ownerMetadata != nil && a.guestKey == nil {
 			return a.ownerMetadata, nil
 		}
 		return aclState.GetMetadata(key, true)
@@ -205,17 +207,27 @@ func (a *aclObjectManager) processAcl() (err error) {
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
 	upToDate = statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
+	if a.guestKey != nil {
+		el, res := lo.Find(states, func(item list.AccountState) bool {
+			return item.PubKey.Account() == a.guestKey.GetPublic().Account()
+		})
+		if !res {
+			err = fmt.Errorf("guest key not found")
+			return
+		}
+		states = append(states, list.AccountState{
+			PubKey:          a.accountService.Account().SignKey.GetPublic(),
+			Permissions:     el.Permissions,
+			Status:          el.Status,
+			RequestMetadata: a.ownerMetadata,
+		})
+		states = lo.Filter(states, func(item list.AccountState, index int) bool {
+			return item.PubKey.Account() != a.guestKey.GetPublic().Account()
+		})
+	}
 	err = a.processStates(states, upToDate, aclState.Identity())
 	if err != nil {
 		return
-	}
-	if a.isStream {
-		states = append(states, list.AccountState{
-			PubKey:          a.accountService.Account().SignKey.GetPublic(),
-			Permissions:     list.AclPermissionsReader,
-			Status:          list.StatusActive,
-			RequestMetadata: a.ownerMetadata,
-		})
 	}
 	err = a.status.SetAclIsEmpty(aclState.IsEmpty())
 	if err != nil {

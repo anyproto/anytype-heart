@@ -43,7 +43,7 @@ func New(app *app.App, params Params) Loader {
 	child.Register(builder.New(params.GuestKey)).
 		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).
-		Register(aclobjectmanager.New(params.OwnerMetadata, params.GuestKey != nil)).
+		Register(aclobjectmanager.New(params.OwnerMetadata, params.GuestKey)).
 		Register(invitemigrator.New()).
 		Register(participantwatcher.New()).
 		Register(migration.New())

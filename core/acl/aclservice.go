@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -115,38 +114,10 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 	return nil
 }
 
-func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey, spaceId string) (metadata []byte, err error) {
-	identity := privKey.GetPublic().Account()
-	identityProfile := &model.IdentityProfile{
-		Identity:    identity,
-		Name:        fmt.Sprintf("Guest-%s", spaceId),
-		Description: "Guest user",
-	}
-	data, err := proto.Marshal(identityProfile)
-	if err != nil {
-		return nil, fmt.Errorf("marshal identity profile: %w", err)
-	}
-	metadataModel, symKey, err := space.DeriveAccountMetadata(privKey)
+func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey) (metadata []byte, err error) {
+	metadataModel, _, err := space.DeriveAccountMetadata(privKey)
 	if err != nil {
 		return nil, fmt.Errorf("derive account metadata: %w", err)
-	}
-	data, err = symKey.Encrypt(data)
-	if err != nil {
-		return nil, fmt.Errorf("encrypt data: %w", err)
-	}
-	signature, err := privKey.Sign(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign profile data: %w", err)
-	}
-	err = a.identityRepo.IdentityRepoPut(ctx, identity, []*identityrepoproto.Data{
-		{
-			Kind:      "profile",
-			Data:      data,
-			Signature: signature,
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to push identity: %w", err)
 	}
 	metadata, err = metadataModel.Marshal()
 	if err != nil {
@@ -160,7 +131,7 @@ func (a *aclService) AddGuestAccount(ctx context.Context, spaceId string) (privK
 	if err != nil {
 		return nil, err
 	}
-	metadata, err := a.pushGuest(ctx, pk, spaceId)
+	metadata, err := a.pushGuest(ctx, pk)
 	if err != nil {
 		return nil, err
 	}
