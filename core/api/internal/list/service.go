@@ -45,7 +45,8 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 		CollectionId: listId,
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchSubscribeResponseError_NULL {
+	// TODO: returned error from ObjectSearchSubscribe is inconsistent with other RPCs: Error is nil instead of Code being NULL
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchSubscribeResponseError_NULL {
 		return nil, 0, false, ErrFailedGetObjectsInList
 	}
 
