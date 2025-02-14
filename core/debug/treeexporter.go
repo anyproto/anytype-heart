@@ -45,17 +45,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	}()
 	anyStore, err := anystore.Open(ctx, dbPath, nil)
 	if err != nil {
-		// code := sqlite.ErrCode(err)
-		// if errors.Is(err, anystore.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen {
-		// 	if err = os.RemoveAll(dbPath); err != nil {
-		// 		return
-		// 	}
-		// 	anyStore, err = anystore.Open(ctx, dbPath, nil)
-		// 	if err != nil {
-		// 		return
-		// 	}
-		// }
-		return "", err
+		return
 	}
 	defer func() {
 		_ = anyStore.Close()
@@ -83,7 +73,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	} else {
 		if len(data) > 0 {
 			// TODO: [storage] fix details, take from main
-			data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Details)
+			// data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Struct)
 			data[0].Snippet = transform(data[0].Snippet, e.anonymized, anonymize.Text)
 			for i, r := range data[0].Relations {
 				data[0].Relations[i] = transform(r, e.anonymized, anonymize.Relation)
