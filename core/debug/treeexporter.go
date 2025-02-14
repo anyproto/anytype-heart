@@ -3,6 +3,7 @@ package debug
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	stdlog "log"
@@ -12,6 +13,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"zombiezen.com/go/sqlite"
 
 	"github.com/anyproto/anytype-heart/core/debug/exporter"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -49,7 +51,16 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	}
 	anyStore, err := anystore.Open(ctx, dbPath, nil)
 	if err != nil {
-		return
+		code := sqlite.ErrCode(err)
+		if errors.Is(err, anystore.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen {
+			if err = os.RemoveAll(dbPath); err != nil {
+				return
+			}
+			anyStore, err = anystore.Open(ctx, dbPath, nil)
+			if err != nil {
+				return
+			}
+		}
 	}
 	defer func() {
 		_ = anyStore.Close()
