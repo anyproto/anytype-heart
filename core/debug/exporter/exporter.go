@@ -61,23 +61,23 @@ func ExportTree(ctx context.Context, params ExportParams) error {
 		return err
 	}
 	var (
-		changeBuilder = objecttree.NewChangeBuilder(crypto.NewKeyStorage(), params.Readable.Header())
+		changeBuilder = objecttree.NewChangeBuilder(crypto.NewKeyStorage(), writeTree.Header())
 		converter     = params.Converter
 		changes       []*treechangeproto.RawTreeChangeWithId
 	)
-	err = params.Readable.IterateRoot(
+	err = writeTree.IterateRoot(
 		func(change *objecttree.Change, decrypted []byte) (any, error) {
 			return converter.Unmarshall(change.DataType, decrypted)
 		},
 		func(change *objecttree.Change) bool {
-			if change.Id == params.Readable.Id() {
+			if change.Id == writeTree.Id() {
 				return true
 			}
 			var (
 				data     []byte
 				dataType string
 			)
-			data, dataType, err := converter.Marshall(change.Model)
+			data, dataType, err = converter.Marshall(change.Model)
 			if err != nil {
 				return false
 			}
@@ -97,7 +97,7 @@ func ExportTree(ctx context.Context, params ExportParams) error {
 		return err
 	}
 	payload := objecttree.RawChangesPayload{
-		NewHeads:   params.Readable.Heads(),
+		NewHeads:   writeTree.Heads(),
 		RawChanges: changes,
 	}
 	res, err := writeTree.AddRawChanges(ctx, payload)
