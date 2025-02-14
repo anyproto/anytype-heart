@@ -115,6 +115,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				RootId: mockedObjectId,
 				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
@@ -129,20 +130,8 @@ func TestObjectService_ListObjects(t *testing.T) {
 							},
 						},
 					},
-				},
-			},
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-		}).Once()
-
-		// Mock type resolution
-		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
-			SpaceId:  mockedSpaceId,
-			ObjectId: mockedTypeId,
-		}).Return(&pb.RpcObjectShowResponse{
-			ObjectView: &model.ObjectView{
-				RootId: mockedTypeId,
-				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedTypeId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),
@@ -260,6 +249,7 @@ func TestObjectService_GetObject(t *testing.T) {
 					RootId: mockedObjectId,
 					Details: []*model.ObjectViewDetailsSet{
 						{
+							Id: mockedObjectId,
 							Details: &types.Struct{
 								Fields: map[string]*types.Value{
 									bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
@@ -274,32 +264,20 @@ func TestObjectService_GetObject(t *testing.T) {
 								},
 							},
 						},
-					},
-				},
-			}, nil).Once()
-
-		// Mock type resolution
-		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
-			SpaceId:  mockedSpaceId,
-			ObjectId: mockedTypeId,
-		}).Return(&pb.RpcObjectShowResponse{
-			ObjectView: &model.ObjectView{
-				RootId: mockedTypeId,
-				Details: []*model.ObjectViewDetailsSet{
-					{
-						Details: &types.Struct{
-							Fields: map[string]*types.Value{
-								bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),
-								bundle.RelationKeyName.String():      pbtypes.String(mockedTypeName),
-								bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedTypeUniqueKey),
-								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedTypeIcon),
+						{
+							Id: mockedTypeId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),
+									bundle.RelationKeyName.String():      pbtypes.String(mockedTypeName),
+									bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedTypeUniqueKey),
+									bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedTypeIcon),
+								},
 							},
 						},
 					},
 				},
-			},
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-		}).Once()
+			}, nil).Once()
 
 		// Mock participant details
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
@@ -424,6 +402,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 				RootId: mockedNewObjectId,
 				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedNewObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():        pbtypes.String(mockedNewObjectId),
@@ -435,20 +414,8 @@ func TestObjectService_CreateObject(t *testing.T) {
 							},
 						},
 					},
-				},
-			},
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-		}).Once()
-
-		// Mock type resolution
-		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
-			SpaceId:  mockedSpaceId,
-			ObjectId: mockedTypeId,
-		}).Return(&pb.RpcObjectShowResponse{
-			ObjectView: &model.ObjectView{
-				RootId: mockedTypeId,
-				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedTypeId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),

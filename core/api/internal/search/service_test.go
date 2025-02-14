@@ -275,20 +275,8 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 							},
 						},
 					},
-				},
-			},
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-		}, nil).Once()
-
-		// Mock type resolution
-		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
-			SpaceId:  mockedSpaceId,
-			ObjectId: mockedType,
-		}).Return(&pb.RpcObjectShowResponse{
-			ObjectView: &model.ObjectView{
-				RootId: mockedType,
-				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedType,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String(): pbtypes.String(mockedType),
@@ -298,7 +286,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				},
 			},
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-		}).Once()
+		}, nil).Once()
 
 		// Mock participant details
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
@@ -357,13 +345,13 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			} else if detail.Id == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["date"])
 			} else if detail.Id == "created_by" {
-				require.Equal(t, mockedParticipantId, detail.Details["details"].(space.Member).Id)
-				require.Equal(t, mockedParticipantName, detail.Details["details"].(space.Member).Name)
-				require.Equal(t, gatewayUrl+"/image/"+mockedParticipantImage, detail.Details["details"].(space.Member).Icon)
-				require.Equal(t, mockedParticipantIdentity, detail.Details["details"].(space.Member).Identity)
-				require.Equal(t, mockedParticipantGlobalName, detail.Details["details"].(space.Member).GlobalName)
+				require.Equal(t, mockedParticipantId, detail.Details["object"].(space.Member).Id)
+				require.Equal(t, mockedParticipantName, detail.Details["object"].(space.Member).Name)
+				require.Equal(t, gatewayUrl+"/image/"+mockedParticipantImage, detail.Details["object"].(space.Member).Icon)
+				require.Equal(t, mockedParticipantIdentity, detail.Details["object"].(space.Member).Identity)
+				require.Equal(t, mockedParticipantGlobalName, detail.Details["object"].(space.Member).GlobalName)
 			} else if detail.Id == "last_modified_by" {
-				require.Equal(t, mockedParticipantId, detail.Details["details"].(space.Member).Id)
+				require.Equal(t, mockedParticipantId, detail.Details["object"].(space.Member).Id)
 			}
 		}
 
@@ -473,6 +461,7 @@ func TestSearchService_Search(t *testing.T) {
 				RootId: mockedRootId,
 				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedRootId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
@@ -484,20 +473,8 @@ func TestSearchService_Search(t *testing.T) {
 							},
 						},
 					},
-				},
-			},
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-		}).Once()
-
-		// Mock type resolution
-		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
-			SpaceId:  mockedSpaceId,
-			ObjectId: mockedType,
-		}).Return(&pb.RpcObjectShowResponse{
-			ObjectView: &model.ObjectView{
-				RootId: mockedType,
-				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedType,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String(): pbtypes.String(mockedType),

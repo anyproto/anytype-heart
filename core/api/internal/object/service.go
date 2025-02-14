@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -126,23 +127,19 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 	}
 
 	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
-	objectType, err := s.GetType(ctx, spaceId, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue())
-	if err != nil {
-		return Object{}, err
-	}
 
 	object := Object{
 		Object:  "object",
 		Id:      resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:    icon,
-		Type:    objectType,
+		Type:    s.getTypeFromDetails(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
 		Snippet: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:  model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue())],
 		SpaceId: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		RootId:  resp.ObjectView.RootId,
-		Blocks:  s.GetBlocks(resp),
-		Details: s.GetDetails(resp),
+		Blocks:  s.getBlocks(resp),
+		Details: s.getDetails(resp),
 	}
 
 	return object, nil
@@ -433,8 +430,32 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 	}, nil
 }
 
-// GetDetails returns the list of details from the ObjectShowResponse.
-func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
+// getTypeFromDetails returns the type from the details of the ObjectShowResponse.
+func (s *ObjectService) getTypeFromDetails(typeId string, details []*model.ObjectViewDetailsSet) Type {
+	var objectTypeDetail *types.Struct
+	for _, detail := range details {
+		if detail.Id == typeId {
+			objectTypeDetail = detail.GetDetails()
+			break
+		}
+	}
+
+	if objectTypeDetail == nil {
+		return Type{}
+	}
+
+	return Type{
+		Object:            "type",
+		Id:                typeId,
+		UniqueKey:         objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:              objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+	}
+}
+
+// getDetails returns the list of details from the ObjectShowResponse.
+func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 	relationFormatMap := s.getRelationFormatMap(resp.ObjectView.RelationLinks)
 	creator := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreator.String()].GetStringValue()
 	lastModifiedBy := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedBy.String()].GetStringValue()
@@ -470,8 +491,8 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "last_modified_by",
 			Details: map[string]interface{}{
-				"type":    relationFormatMap[bundle.RelationKeyLastModifiedBy.String()],
-				"details": memberLastModifiedBy,
+				"type":   relationFormatMap[bundle.RelationKeyLastModifiedBy.String()],
+				"object": memberLastModifiedBy,
 			},
 		},
 		{
@@ -484,8 +505,8 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "created_by",
 			Details: map[string]interface{}{
-				"type":    relationFormatMap[bundle.RelationKeyCreator.String()],
-				"details": memberCreator,
+				"type":   relationFormatMap[bundle.RelationKeyCreator.String()],
+				"object": memberCreator,
 			},
 		},
 		{
@@ -508,6 +529,9 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 // getRelationFormatMapFromResponse returns the map of relation key to relation format from the ObjectShowResponse.
 func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink) map[string]string {
 	var relationFormatToName = model.RelationFormat_name
+	var mu sync.Mutex
+
+	mu.Lock()
 	relationFormatToName[int32(model.RelationFormat_tag)] = "multi_select"
 	relationFormatToName[int32(model.RelationFormat_status)] = "select"
 
@@ -515,6 +539,7 @@ func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink
 	for _, detail := range relationLinks {
 		relationFormatMap[detail.Key] = relationFormatToName[int32(detail.Format)]
 	}
+	mu.Unlock()
 
 	return relationFormatMap
 }
@@ -544,8 +569,8 @@ func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	return tags
 }
 
-// GetBlocks returns the list of blocks from the ObjectShowResponse.
-func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
+// getBlocks returns the list of blocks from the ObjectShowResponse.
+func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}
 
 	for _, block := range resp.ObjectView.Blocks {
