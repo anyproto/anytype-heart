@@ -113,7 +113,7 @@ func (m *migrator) run(ctx context.Context) (err error) {
 	defer func() {
 		progress.Finish(err)
 	}()
-	migrator := migration.NewSpaceMigrator(m.oldStorage, m.newStorage, 5, m.path)
+	migrator := migration.NewSpaceMigrator(m.oldStorage, m.newStorage, 10, m.path)
 	allIds, err := m.oldStorage.AllSpaceIds()
 	if err != nil {
 		return err
