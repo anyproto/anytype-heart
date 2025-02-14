@@ -3,7 +3,6 @@ package debug
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	stdlog "log"
@@ -13,7 +12,6 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"zombiezen.com/go/sqlite"
 
 	"github.com/anyproto/anytype-heart/core/debug/exporter"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -45,22 +43,19 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	defer func() {
 		_ = os.RemoveAll(exportDirPath)
 	}()
-	err = os.Mkdir(dbPath, 0755)
-	if err != nil {
-		return
-	}
 	anyStore, err := anystore.Open(ctx, dbPath, nil)
 	if err != nil {
-		code := sqlite.ErrCode(err)
-		if errors.Is(err, anystore.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen {
-			if err = os.RemoveAll(dbPath); err != nil {
-				return
-			}
-			anyStore, err = anystore.Open(ctx, dbPath, nil)
-			if err != nil {
-				return
-			}
-		}
+		// code := sqlite.ErrCode(err)
+		// if errors.Is(err, anystore.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen {
+		// 	if err = os.RemoveAll(dbPath); err != nil {
+		// 		return
+		// 	}
+		// 	anyStore, err = anystore.Open(ctx, dbPath, nil)
+		// 	if err != nil {
+		// 		return
+		// 	}
+		// }
+		return "", err
 	}
 	defer func() {
 		_ = anyStore.Close()

@@ -29,13 +29,13 @@ import (
 
 var (
 	file        = flag.String("f", "", "path to debug file")
-	fromRoot    = flag.Bool("r", false, "build from root of the tree")
-	makeJson    = flag.Bool("j", false, "generate json file")
-	makeTree    = flag.Bool("t", false, "generate graphviz file")
-	printState  = flag.Bool("s", false, "print result state debug")
+	fromRoot    = flag.Bool("r", true, "build from root of the tree")
+	makeJson    = flag.Bool("j", true, "generate json file")
+	makeTree    = flag.Bool("t", true, "generate graphviz file")
+	printState  = flag.Bool("s", true, "print result state debug")
 	changeIdx   = flag.Int("c", -1, "build tree before given index and print change")
-	objectStore = flag.Bool("o", false, "show object store info")
-	fileHashes  = flag.Bool("h", false, "show file hashes in state")
+	objectStore = flag.Bool("o", true, "show object store info")
+	fileHashes  = flag.Bool("h", true, "show file hashes in state")
 )
 
 func main() {
