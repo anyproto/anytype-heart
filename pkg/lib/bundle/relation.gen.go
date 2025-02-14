@@ -9,150 +9,146 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "460240ba0541ccdfe2977b1af09b14a558eb062cbc10ea467c51a7dc8af78d0d"
+const RelationChecksum = "7669c498207b7ab4126c830c8fb451b7fbadc8e04d14621a02323768d4b0dffc"
 const (
-	RelationKeyTag                       domain.RelationKey = "tag"
-	RelationKeyCamera                    domain.RelationKey = "camera"
-	RelationKeyHeightInPixels            domain.RelationKey = "heightInPixels"
-	RelationKeyCreatedDate               domain.RelationKey = "createdDate"
-	RelationKeyToBeDeletedDate           domain.RelationKey = "toBeDeletedDate"
-	RelationKeyRelationFormatObjectTypes domain.RelationKey = "relationFormatObjectTypes"
-	RelationKeyRelationKey               domain.RelationKey = "relationKey"
-	RelationKeyRelationOptionColor       domain.RelationKey = "relationOptionColor"
-	RelationKeyLatestAclHeadId           domain.RelationKey = "latestAclHeadId"
-	RelationKeyDone                      domain.RelationKey = "done"
-	RelationKeyMediaArtistURL            domain.RelationKey = "mediaArtistURL"
-	RelationKeyTemplateIsBundled         domain.RelationKey = "templateIsBundled"
-	RelationKeyRestrictions              domain.RelationKey = "restrictions"
-	RelationKeyReadersLimit              domain.RelationKey = "readersLimit"
-	RelationKeyWritersLimit              domain.RelationKey = "writersLimit"
-	RelationKeySharedSpacesLimit         domain.RelationKey = "sharedSpacesLimit"
-	RelationKeyIsHighlighted             domain.RelationKey = "isHighlighted"
-	RelationKeyTasks                     domain.RelationKey = "tasks"
-	RelationKeySnippet                   domain.RelationKey = "snippet"
-	RelationKeyRelationFormat            domain.RelationKey = "relationFormat"
-	RelationKeyRelationReadonlyValue     domain.RelationKey = "relationReadonlyValue"
-	RelationKeyIconImage                 domain.RelationKey = "iconImage"
-	RelationKeyIngredients               domain.RelationKey = "ingredients"
-	RelationKeyGenre                     domain.RelationKey = "genre"
-	RelationKeyReleasedYear              domain.RelationKey = "releasedYear"
-	RelationKeyCoverScale                domain.RelationKey = "coverScale"
-	RelationKeyRelationDefaultValue      domain.RelationKey = "relationDefaultValue"
-	RelationKeyLinkedProjects            domain.RelationKey = "linkedProjects"
-	RelationKeyAudioAlbum                domain.RelationKey = "audioAlbum"
-	RelationKeyLayoutAlign               domain.RelationKey = "layoutAlign"
-	RelationKeyStatus                    domain.RelationKey = "status"
-	RelationKeyIsHidden                  domain.RelationKey = "isHidden"
-	RelationKeyIsHiddenDiscovery         domain.RelationKey = "isHiddenDiscovery"
-	RelationKeyMediaArtistName           domain.RelationKey = "mediaArtistName"
-	RelationKeyEmail                     domain.RelationKey = "email"
-	RelationKeyCompany                   domain.RelationKey = "company"
-	RelationKeyAperture                  domain.RelationKey = "aperture"
-	RelationKeyLastModifiedDate          domain.RelationKey = "lastModifiedDate"
-	RelationKeyRecommendedRelations      domain.RelationKey = "recommendedRelations"
-	RelationKeyCreator                   domain.RelationKey = "creator"
-	RelationKeyRecommendedLayout         domain.RelationKey = "recommendedLayout"
-	RelationKeyLastOpenedDate            domain.RelationKey = "lastOpenedDate"
-	RelationKeyAuthor                    domain.RelationKey = "author"
-	RelationKeyArtist                    domain.RelationKey = "artist"
-	RelationKeyDueDate                   domain.RelationKey = "dueDate"
-	RelationKeyIconEmoji                 domain.RelationKey = "iconEmoji"
-	RelationKeyCoverType                 domain.RelationKey = "coverType"
-	RelationKeyCoverY                    domain.RelationKey = "coverY"
-	RelationKeyTime                      domain.RelationKey = "time"
-	RelationKeySizeInBytes               domain.RelationKey = "sizeInBytes"
-	RelationKeyCollectionOf              domain.RelationKey = "collectionOf"
-	RelationKeyIsReadonly                domain.RelationKey = "isReadonly"
-	RelationKeyAddedDate                 domain.RelationKey = "addedDate"
-	RelationKeyAssignee                  domain.RelationKey = "assignee"
-	RelationKeyExposure                  domain.RelationKey = "exposure"
-	RelationKeyTargetObjectType          domain.RelationKey = "targetObjectType"
-	RelationKeyIsFavorite                domain.RelationKey = "isFavorite"
-	RelationKeyWorkspaceId               domain.RelationKey = "workspaceId"
-	RelationKeySpaceId                   domain.RelationKey = "spaceId"
-	RelationKeyAudioGenre                domain.RelationKey = "audioGenre"
-	RelationKeyName                      domain.RelationKey = "name"
-	RelationKeyMood                      domain.RelationKey = "mood"
-	RelationKeyAudioLyrics               domain.RelationKey = "audioLyrics"
-	RelationKeyFocalRatio                domain.RelationKey = "focalRatio"
-	RelationKeyPriority                  domain.RelationKey = "priority"
-	RelationKeyFileMimeType              domain.RelationKey = "fileMimeType"
-	RelationKeyType                      domain.RelationKey = "type"
-	RelationKeyLayout                    domain.RelationKey = "layout"
-	RelationKeyAudioAlbumTrackNumber     domain.RelationKey = "audioAlbumTrackNumber"
-	RelationKeyInternalFlags             domain.RelationKey = "internalFlags"
-	RelationKeyCoverX                    domain.RelationKey = "coverX"
-	RelationKeyDescription               domain.RelationKey = "description"
-	RelationKeyPicture                   domain.RelationKey = "picture"
-	RelationKeyId                        domain.RelationKey = "id"
-	RelationKeyUrl                       domain.RelationKey = "url"
-	RelationKeyCameraIso                 domain.RelationKey = "cameraIso"
-	RelationKeyIsDeleted                 domain.RelationKey = "isDeleted"
-	RelationKeyLinks                     domain.RelationKey = "links"
-	RelationKeyCoverId                   domain.RelationKey = "coverId"
-	RelationKeyLastModifiedBy            domain.RelationKey = "lastModifiedBy"
-	RelationKeyRelationMaxCount          domain.RelationKey = "relationMaxCount"
-	RelationKeyWidthInPixels             domain.RelationKey = "widthInPixels"
-	RelationKeyProgress                  domain.RelationKey = "progress"
-	RelationKeySetOf                     domain.RelationKey = "setOf"
-	RelationKeyIsArchived                domain.RelationKey = "isArchived"
-	RelationKeyFileExt                   domain.RelationKey = "fileExt"
-	RelationKeyFeaturedRelations         domain.RelationKey = "featuredRelations"
-	RelationKeyPhone                     domain.RelationKey = "phone"
-	RelationKeySmartblockTypes           domain.RelationKey = "smartblockTypes"
-	RelationKeySource                    domain.RelationKey = "source"
-	RelationKeySourceObject              domain.RelationKey = "sourceObject"
-	RelationKeyOldAnytypeID              domain.RelationKey = "oldAnytypeID"
-	RelationKeySpaceDashboardId          domain.RelationKey = "spaceDashboardId"
-	RelationKeyIconOption                domain.RelationKey = "iconOption"
-	RelationKeySpaceAccessibility        domain.RelationKey = "spaceAccessibility"
-	RelationKeySpaceAccessType           domain.RelationKey = "spaceAccessType"
-	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
-	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
-	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
-	RelationKeyFileIndexingStatus        domain.RelationKey = "fileIndexingStatus"
-	RelationKeyLastChangeId              domain.RelationKey = "lastChangeId"
-	RelationKeyStarred                   domain.RelationKey = "starred"
-	RelationKeyDefaultTemplateId         domain.RelationKey = "defaultTemplateId"
-	RelationKeyUniqueKey                 domain.RelationKey = "uniqueKey"
-	RelationKeyBacklinks                 domain.RelationKey = "backlinks"
-	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
-	RelationKeyOrigin                    domain.RelationKey = "origin"
-	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
-	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
-	RelationKeySpaceShareableStatus      domain.RelationKey = "spaceShareableStatus"
-	RelationKeyIsAclShared               domain.RelationKey = "isAclShared"
-	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
-	RelationKeySpaceInviteFileCid        domain.RelationKey = "spaceInviteFileCid"
-	RelationKeySpaceInviteFileKey        domain.RelationKey = "spaceInviteFileKey"
-	RelationKeyParticipantPermissions    domain.RelationKey = "participantPermissions"
-	RelationKeyIdentity                  domain.RelationKey = "identity"
-	RelationKeyParticipantStatus         domain.RelationKey = "participantStatus"
-	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
-	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
-	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
-	RelationKeyFileId                    domain.RelationKey = "fileId"
-	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
-	RelationKeyRevision                  domain.RelationKey = "revision"
-	RelationKeyImageKind                 domain.RelationKey = "imageKind"
-	RelationKeyImportType                domain.RelationKey = "importType"
-	RelationKeyGlobalName                domain.RelationKey = "globalName"
-	RelationKeySyncStatus                domain.RelationKey = "syncStatus"
-	RelationKeySyncDate                  domain.RelationKey = "syncDate"
-	RelationKeySyncError                 domain.RelationKey = "syncError"
-	RelationKeyHasChat                   domain.RelationKey = "hasChat"
-	RelationKeyChatId                    domain.RelationKey = "chatId"
-	RelationKeyMentions                  domain.RelationKey = "mentions"
-	RelationKeyTimestamp                 domain.RelationKey = "timestamp"
-	RelationKeyFileVariantIds            domain.RelationKey = "fileVariantIds"
-	RelationKeyFileVariantPaths          domain.RelationKey = "fileVariantPaths"
-	RelationKeyFileVariantKeys           domain.RelationKey = "fileVariantKeys"
-	RelationKeyFileVariantWidths         domain.RelationKey = "fileVariantWidths"
-	RelationKeyFileVariantChecksums      domain.RelationKey = "fileVariantChecksums"
-	RelationKeyFileVariantMills          domain.RelationKey = "fileVariantMills"
-	RelationKeyFileVariantOptions        domain.RelationKey = "fileVariantOptions"
-	RelationKeyFileSourceChecksum        domain.RelationKey = "fileSourceChecksum"
-	RelationKeySpaceOrder                domain.RelationKey = "spaceOrder"
+	RelationKeyTag                          domain.RelationKey = "tag"
+	RelationKeyCamera                       domain.RelationKey = "camera"
+	RelationKeyHeightInPixels               domain.RelationKey = "heightInPixels"
+	RelationKeyCreatedDate                  domain.RelationKey = "createdDate"
+	RelationKeyToBeDeletedDate              domain.RelationKey = "toBeDeletedDate"
+	RelationKeyRelationFormatObjectTypes    domain.RelationKey = "relationFormatObjectTypes"
+	RelationKeyRelationKey                  domain.RelationKey = "relationKey"
+	RelationKeyRelationOptionColor          domain.RelationKey = "relationOptionColor"
+	RelationKeyLatestAclHeadId              domain.RelationKey = "latestAclHeadId"
+	RelationKeyDone                         domain.RelationKey = "done"
+	RelationKeyMediaArtistURL               domain.RelationKey = "mediaArtistURL"
+	RelationKeyTemplateIsBundled            domain.RelationKey = "templateIsBundled"
+	RelationKeyRestrictions                 domain.RelationKey = "restrictions"
+	RelationKeyReadersLimit                 domain.RelationKey = "readersLimit"
+	RelationKeyWritersLimit                 domain.RelationKey = "writersLimit"
+	RelationKeySharedSpacesLimit            domain.RelationKey = "sharedSpacesLimit"
+	RelationKeyIsHighlighted                domain.RelationKey = "isHighlighted"
+	RelationKeyTasks                        domain.RelationKey = "tasks"
+	RelationKeySnippet                      domain.RelationKey = "snippet"
+	RelationKeyRelationFormat               domain.RelationKey = "relationFormat"
+	RelationKeyRelationReadonlyValue        domain.RelationKey = "relationReadonlyValue"
+	RelationKeyIconImage                    domain.RelationKey = "iconImage"
+	RelationKeyIngredients                  domain.RelationKey = "ingredients"
+	RelationKeyGenre                        domain.RelationKey = "genre"
+	RelationKeyReleasedYear                 domain.RelationKey = "releasedYear"
+	RelationKeyCoverScale                   domain.RelationKey = "coverScale"
+	RelationKeyRelationDefaultValue         domain.RelationKey = "relationDefaultValue"
+	RelationKeyLinkedProjects               domain.RelationKey = "linkedProjects"
+	RelationKeyAudioAlbum                   domain.RelationKey = "audioAlbum"
+	RelationKeyLayoutAlign                  domain.RelationKey = "layoutAlign"
+	RelationKeyStatus                       domain.RelationKey = "status"
+	RelationKeyIsHidden                     domain.RelationKey = "isHidden"
+	RelationKeyIsHiddenDiscovery            domain.RelationKey = "isHiddenDiscovery"
+	RelationKeyMediaArtistName              domain.RelationKey = "mediaArtistName"
+	RelationKeyEmail                        domain.RelationKey = "email"
+	RelationKeyCompany                      domain.RelationKey = "company"
+	RelationKeyAperture                     domain.RelationKey = "aperture"
+	RelationKeyLastModifiedDate             domain.RelationKey = "lastModifiedDate"
+	RelationKeyRecommendedRelations         domain.RelationKey = "recommendedRelations"
+	RelationKeyCreator                      domain.RelationKey = "creator"
+	RelationKeyRecommendedLayout            domain.RelationKey = "recommendedLayout"
+	RelationKeyLastOpenedDate               domain.RelationKey = "lastOpenedDate"
+	RelationKeyAuthor                       domain.RelationKey = "author"
+	RelationKeyArtist                       domain.RelationKey = "artist"
+	RelationKeyDueDate                      domain.RelationKey = "dueDate"
+	RelationKeyIconEmoji                    domain.RelationKey = "iconEmoji"
+	RelationKeyCoverType                    domain.RelationKey = "coverType"
+	RelationKeyCoverY                       domain.RelationKey = "coverY"
+	RelationKeyTime                         domain.RelationKey = "time"
+	RelationKeySizeInBytes                  domain.RelationKey = "sizeInBytes"
+	RelationKeyCollectionOf                 domain.RelationKey = "collectionOf"
+	RelationKeyIsReadonly                   domain.RelationKey = "isReadonly"
+	RelationKeyAddedDate                    domain.RelationKey = "addedDate"
+	RelationKeyAssignee                     domain.RelationKey = "assignee"
+	RelationKeyExposure                     domain.RelationKey = "exposure"
+	RelationKeyTargetObjectType             domain.RelationKey = "targetObjectType"
+	RelationKeyIsFavorite                   domain.RelationKey = "isFavorite"
+	RelationKeyWorkspaceId                  domain.RelationKey = "workspaceId"
+	RelationKeySpaceId                      domain.RelationKey = "spaceId"
+	RelationKeyAudioGenre                   domain.RelationKey = "audioGenre"
+	RelationKeyName                         domain.RelationKey = "name"
+	RelationKeyMood                         domain.RelationKey = "mood"
+	RelationKeyAudioLyrics                  domain.RelationKey = "audioLyrics"
+	RelationKeyFocalRatio                   domain.RelationKey = "focalRatio"
+	RelationKeyPriority                     domain.RelationKey = "priority"
+	RelationKeyFileMimeType                 domain.RelationKey = "fileMimeType"
+	RelationKeyType                         domain.RelationKey = "type"
+	RelationKeyLayout                       domain.RelationKey = "layout"
+	RelationKeyAudioAlbumTrackNumber        domain.RelationKey = "audioAlbumTrackNumber"
+	RelationKeyInternalFlags                domain.RelationKey = "internalFlags"
+	RelationKeyCoverX                       domain.RelationKey = "coverX"
+	RelationKeyDescription                  domain.RelationKey = "description"
+	RelationKeyPicture                      domain.RelationKey = "picture"
+	RelationKeyId                           domain.RelationKey = "id"
+	RelationKeyUrl                          domain.RelationKey = "url"
+	RelationKeyCameraIso                    domain.RelationKey = "cameraIso"
+	RelationKeyIsDeleted                    domain.RelationKey = "isDeleted"
+	RelationKeyLinks                        domain.RelationKey = "links"
+	RelationKeyCoverId                      domain.RelationKey = "coverId"
+	RelationKeyLastModifiedBy               domain.RelationKey = "lastModifiedBy"
+	RelationKeyRelationMaxCount             domain.RelationKey = "relationMaxCount"
+	RelationKeyWidthInPixels                domain.RelationKey = "widthInPixels"
+	RelationKeyProgress                     domain.RelationKey = "progress"
+	RelationKeySetOf                        domain.RelationKey = "setOf"
+	RelationKeyIsArchived                   domain.RelationKey = "isArchived"
+	RelationKeyFileExt                      domain.RelationKey = "fileExt"
+	RelationKeyFeaturedRelations            domain.RelationKey = "featuredRelations"
+	RelationKeyPhone                        domain.RelationKey = "phone"
+	RelationKeySmartblockTypes              domain.RelationKey = "smartblockTypes"
+	RelationKeySource                       domain.RelationKey = "source"
+	RelationKeySourceObject                 domain.RelationKey = "sourceObject"
+	RelationKeyOldAnytypeID                 domain.RelationKey = "oldAnytypeID"
+	RelationKeySpaceDashboardId             domain.RelationKey = "spaceDashboardId"
+	RelationKeyIconOption                   domain.RelationKey = "iconOption"
+	RelationKeySpaceAccessibility           domain.RelationKey = "spaceAccessibility"
+	RelationKeySpaceAccessType              domain.RelationKey = "spaceAccessType"
+	RelationKeySourceFilePath               domain.RelationKey = "sourceFilePath"
+	RelationKeyFileSyncStatus               domain.RelationKey = "fileSyncStatus"
+	RelationKeyFileBackupStatus             domain.RelationKey = "fileBackupStatus"
+	RelationKeyFileIndexingStatus           domain.RelationKey = "fileIndexingStatus"
+	RelationKeyLastChangeId                 domain.RelationKey = "lastChangeId"
+	RelationKeyStarred                      domain.RelationKey = "starred"
+	RelationKeyDefaultTemplateId            domain.RelationKey = "defaultTemplateId"
+	RelationKeyUniqueKey                    domain.RelationKey = "uniqueKey"
+	RelationKeyBacklinks                    domain.RelationKey = "backlinks"
+	RelationKeyIsUninstalled                domain.RelationKey = "isUninstalled"
+	RelationKeyOrigin                       domain.RelationKey = "origin"
+	RelationKeySpaceLocalStatus             domain.RelationKey = "spaceLocalStatus"
+	RelationKeySpaceRemoteStatus            domain.RelationKey = "spaceRemoteStatus"
+	RelationKeySpaceShareableStatus         domain.RelationKey = "spaceShareableStatus"
+	RelationKeyIsAclShared                  domain.RelationKey = "isAclShared"
+	RelationKeySpaceAccountStatus           domain.RelationKey = "spaceAccountStatus"
+	RelationKeySpaceInviteFileCid           domain.RelationKey = "spaceInviteFileCid"
+	RelationKeySpaceInviteFileKey           domain.RelationKey = "spaceInviteFileKey"
+	RelationKeyParticipantPermissions       domain.RelationKey = "participantPermissions"
+	RelationKeyIdentity                     domain.RelationKey = "identity"
+	RelationKeyParticipantStatus            domain.RelationKey = "participantStatus"
+	RelationKeyIdentityProfileLink          domain.RelationKey = "identityProfileLink"
+	RelationKeyProfileOwnerIdentity         domain.RelationKey = "profileOwnerIdentity"
+	RelationKeyTargetSpaceId                domain.RelationKey = "targetSpaceId"
+	RelationKeyFileId                       domain.RelationKey = "fileId"
+	RelationKeyLastUsedDate                 domain.RelationKey = "lastUsedDate"
+	RelationKeyRevision                     domain.RelationKey = "revision"
+	RelationKeyImageKind                    domain.RelationKey = "imageKind"
+	RelationKeyImportType                   domain.RelationKey = "importType"
+	RelationKeyGlobalName                   domain.RelationKey = "globalName"
+	RelationKeySyncStatus                   domain.RelationKey = "syncStatus"
+	RelationKeySyncDate                     domain.RelationKey = "syncDate"
+	RelationKeySyncError                    domain.RelationKey = "syncError"
+	RelationKeyHasChat                      domain.RelationKey = "hasChat"
+	RelationKeyChatId                       domain.RelationKey = "chatId"
+	RelationKeyMentions                     domain.RelationKey = "mentions"
+	RelationKeyTimestamp                    domain.RelationKey = "timestamp"
+	RelationKeySpaceOrder                   domain.RelationKey = "spaceOrder"
+	RelationKeyIconName                     domain.RelationKey = "iconName"
+	RelationKeyRecommendedFeaturedRelations domain.RelationKey = "recommendedFeaturedRelations"
+	RelationKeyRecommendedHiddenRelations   domain.RelationKey = "recommendedHiddenRelations"
+	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 )
 
 var (
@@ -447,9 +443,10 @@ var (
 			Key:              "creator",
 			MaxCount:         1,
 			Name:             "Created by",
+			ObjectTypes:      []string{TypePrefix + "participant"},
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyDefaultTemplateId: {
@@ -614,20 +611,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyFileSourceChecksum: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brfileSourceChecksum",
-			Key:              "fileSourceChecksum",
-			MaxCount:         1,
-			Name:             "Underlying file id",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyFileSyncStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -638,97 +621,6 @@ var (
 			Key:              "fileSyncStatus",
 			MaxCount:         1,
 			Name:             "File sync status",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFileVariantChecksums: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brfileVariantChecksums",
-			Key:              "fileVariantChecksums",
-			Name:             "Underlying file id",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFileVariantIds: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brfileVariantIds",
-			Key:              "fileVariantIds",
-			Name:             "Underlying file id",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFileVariantKeys: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brfileVariantKeys",
-			Key:              "fileVariantKeys",
-			Name:             "Underlying file id",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFileVariantMills: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brfileVariantMills",
-			Key:              "fileVariantMills",
-			Name:             "Underlying file id",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFileVariantOptions: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brfileVariantOptions",
-			Key:              "fileVariantOptions",
-			Name:             "Underlying file id",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFileVariantPaths: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brfileVariantPaths",
-			Key:              "fileVariantPaths",
-			Name:             "Underlying file id",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFileVariantWidths: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_number,
-			Hidden:           true,
-			Id:               "_brfileVariantWidths",
-			Key:              "fileVariantWidths",
-			Name:             "Underlying file id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -823,6 +715,20 @@ var (
 			MaxCount:         1,
 			Name:             "Image",
 			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIconName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Choose icon for the type among custom Anytype icons",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_briconName",
+			Key:              "iconName",
+			MaxCount:         1,
+			Name:             "Icon name",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1400,6 +1306,48 @@ var (
 			MaxCount:         1,
 			Name:             "Readers limit",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRecommendedFeaturedRelations: {
+
+			DataSource:       model.Relation_details,
+			Description:      "List of recommended featured relations",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brrecommendedFeaturedRelations",
+			Key:              "recommendedFeaturedRelations",
+			Name:             "Recommended featured relations",
+			ObjectTypes:      []string{TypePrefix + "relation"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRecommendedFileRelations: {
+
+			DataSource:       model.Relation_details,
+			Description:      "List of recommended file-specific relations",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brrecommendedFileRelations",
+			Key:              "recommendedFileRelations",
+			Name:             "Recommended file relations",
+			ObjectTypes:      []string{TypePrefix + "relation"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRecommendedHiddenRelations: {
+
+			DataSource:       model.Relation_details,
+			Description:      "List of recommended relations that are hidden in layout",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brrecommendedHiddenRelations",
+			Key:              "recommendedHiddenRelations",
+			Name:             "Recommended hidden relations",
+			ObjectTypes:      []string{TypePrefix + "relation"},
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -118,7 +119,8 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
-	ids, _, err := i.store.SpaceIndex(spaceId).QueryObjectIds(database.Query{
+	store := i.store.SpaceIndex(spaceId)
+	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout,
@@ -128,16 +130,16 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 		},
 	})
 	if err != nil {
-		return
+		return fmt.Errorf("remove acl: %w", err)
 	}
-	return i.store.SpaceIndex(spaceId).DeleteDetails(i.runCtx, ids)
+	return store.DeleteDetails(i.runCtx, ids)
 }
 
 func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {
-		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store, i.storageService)
+		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}
 	i.lock.Unlock()
