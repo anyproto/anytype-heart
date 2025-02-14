@@ -9,21 +9,18 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
 	ErrFailedGetObjectsInList      = errors.New("failed to get objects in list")
 	ErrFailedAddObjectsToList      = errors.New("failed to add objects to list")
 	ErrFailedRemoveObjectsFromList = errors.New("failed to remove objects from list")
-	ErrFailedUpdateObjectsInList   = errors.New("failed to update objects in list")
 )
 
 type Service interface {
-	GetObjectsInList(ctx context.Context, spaceId string, listId string, offset, limit int) ([]*model.Object, int, bool, error)
+	GetObjectsInList(ctx context.Context, spaceId string, listId string, offset, limit int) ([]object.Object, int, bool, error)
 	AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
-	UpdateObjectsInList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 }
 
 type ListService struct {
@@ -88,27 +85,6 @@ func (s *ListService) RemoveObjectsFromList(ctx context.Context, spaceId string,
 
 	if resp.Error.Code != pb.RpcObjectCollectionRemoveResponseError_NULL {
 		return ErrFailedRemoveObjectsFromList
-	}
-
-	return nil
-}
-
-// UpdateObjectsInList updates an object in a list
-func (s *ListService) UpdateObjectsInList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
-	resp := s.mw.BlockDataviewObjectOrderUpdate(ctx, &pb.RpcBlockDataviewObjectOrderUpdateRequest{
-		ContextId: listId,
-		BlockId:   "dataview",
-		ObjectOrders: []*model.BlockContentDataviewObjectOrder{
-			{
-				ViewId:    "", // TODO: handle viewId
-				GroupId:   "",
-				ObjectIds: objectIds,
-			},
-		},
-	})
-
-	if resp.Error.Code != pb.RpcBlockDataviewObjectOrderUpdateResponseError_NULL {
-		return ErrFailedUpdateObjectsInList
 	}
 
 	return nil
