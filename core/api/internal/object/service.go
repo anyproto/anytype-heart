@@ -117,7 +117,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		ObjectId: objectId,
 	})
 
-	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND || resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue() {
 		return Object{}, ErrObjectNotFound
 	}
 
