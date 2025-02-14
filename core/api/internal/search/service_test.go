@@ -353,9 +353,9 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		// check details
 		for _, detail := range objects[0].Details {
 			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["created_date"])
+				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["date"])
 			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
+				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["date"])
 			} else if detail.Id == "created_by" {
 				require.Equal(t, mockedParticipantId, detail.Details["details"].(space.Member).Id)
 				require.Equal(t, mockedParticipantName, detail.Details["details"].(space.Member).Name)
@@ -370,7 +370,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		// check tags
 		tags := []object.Tag{}
 		for _, detail := range objects[0].Details {
-			if tagList, ok := detail.Details["tags"].([]object.Tag); ok {
+			if tagList, ok := detail.Details["multi_select"].([]object.Tag); ok {
 				for _, tag := range tagList {
 					tags = append(tags, tag)
 				}

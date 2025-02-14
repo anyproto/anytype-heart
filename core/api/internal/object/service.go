@@ -435,6 +435,7 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 
 // GetDetails returns the list of details from the ObjectShowResponse.
 func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
+	relationFormatMap := s.getRelationFormatMap(resp.ObjectView.RelationLinks)
 	creator := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreator.String()].GetStringValue()
 	lastModifiedBy := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedBy.String()].GetStringValue()
 
@@ -462,40 +463,60 @@ func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		{
 			Id: "last_modified_date",
 			Details: map[string]interface{}{
-				"last_modified_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue()),
+				"type": relationFormatMap[bundle.RelationKeyLastModifiedDate.String()],
+				"date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue()),
 			},
 		},
 		{
 			Id: "last_modified_by",
 			Details: map[string]interface{}{
+				"type":    relationFormatMap[bundle.RelationKeyLastModifiedBy.String()],
 				"details": memberLastModifiedBy,
 			},
 		},
 		{
 			Id: "created_date",
 			Details: map[string]interface{}{
-				"created_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreatedDate.String()].GetNumberValue()),
+				"type": relationFormatMap[bundle.RelationKeyCreatedDate.String()],
+				"date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreatedDate.String()].GetNumberValue()),
 			},
 		},
 		{
 			Id: "created_by",
 			Details: map[string]interface{}{
+				"type":    relationFormatMap[bundle.RelationKeyCreator.String()],
 				"details": memberCreator,
 			},
 		},
 		{
 			Id: "last_opened_date",
 			Details: map[string]interface{}{
-				"last_opened_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastOpenedDate.String()].GetNumberValue()),
+				"type": relationFormatMap[bundle.RelationKeyLastOpenedDate.String()],
+				"date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastOpenedDate.String()].GetNumberValue()),
 			},
 		},
 		{
 			Id: "tags",
 			Details: map[string]interface{}{
-				"tags": s.getTags(resp),
+				"type":         relationFormatMap[bundle.RelationKeyTag.String()],
+				"multi_select": s.getTags(resp),
 			},
 		},
 	}
+}
+
+// getRelationFormatMapFromResponse returns the map of relation key to relation format from the ObjectShowResponse.
+func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink) map[string]string {
+	var relationFormatToName = model.RelationFormat_name
+	relationFormatToName[int32(model.RelationFormat_tag)] = "multi_select"
+	relationFormatToName[int32(model.RelationFormat_status)] = "select"
+
+	relationFormatMap := map[string]string{}
+	for _, detail := range relationLinks {
+		relationFormatMap[detail.Key] = relationFormatToName[int32(detail.Format)]
+	}
+
+	return relationFormatMap
 }
 
 // getTags returns the list of tags from the ObjectShowResponse

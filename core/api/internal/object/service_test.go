@@ -202,15 +202,15 @@ func TestObjectService_ListObjects(t *testing.T) {
 
 		for _, detail := range objects[0].Details {
 			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["created_date"])
+				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["date"])
 			} else if detail.Id == "created_by" {
 				require.Empty(t, detail.Details["created_by"])
 			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
+				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["date"])
 			} else if detail.Id == "last_modified_by" {
 				require.Empty(t, detail.Details["last_modified_by"])
 			} else if detail.Id == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["last_opened_date"])
+				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["date"])
 			} else if detail.Id == "tags" {
 				require.Empty(t, detail.Details["tags"])
 			} else {
@@ -346,15 +346,15 @@ func TestObjectService_GetObject(t *testing.T) {
 
 		for _, detail := range object.Details {
 			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["created_date"])
+				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["date"])
 			} else if detail.Id == "created_by" {
 				require.Empty(t, detail.Details["created_by"])
 			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
+				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["date"])
 			} else if detail.Id == "last_modified_by" {
 				require.Empty(t, detail.Details["last_modified_by"])
 			} else if detail.Id == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["last_opened_date"])
+				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["date"])
 			} else if detail.Id == "tags" {
 				require.Empty(t, detail.Details["tags"])
 			} else {
