@@ -15,10 +15,11 @@ type ObjectResponse struct {
 }
 
 type Object struct {
-	Type    string   `json:"type" example:"Page"`                                                                          // The type of the object
+	Object  string   `json:"object" example:"object"`                                                                      // The data model of the object
 	Id      string   `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
 	Name    string   `json:"name" example:"My object"`                                                                     // The name of the object
 	Icon    string   `json:"icon" example:"📄"`                                                                             // The icon of the object
+	Type    Type     `json:"type"`                                                                                         // The type of the object
 	Snippet string   `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
 	Layout  string   `json:"layout" example:"basic"`                                                                       // The layout of the object
 	SpaceId string   `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
@@ -73,7 +74,7 @@ type TypeResponse struct {
 }
 
 type Type struct {
-	Type              string `json:"type" example:"type"`                                                      // The type of the object
+	Object            string `json:"object" example:"type"`                                                    // The data model of the object
 	Id                string `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type
 	UniqueKey         string `json:"unique_key" example:"ot-page"`                                             // The unique key of the type
 	Name              string `json:"name" example:"Page"`                                                      // The name of the type
@@ -86,8 +87,8 @@ type TemplateResponse struct {
 }
 
 type Template struct {
-	Type string `json:"type" example:"template"`                                                  // The type of the object
-	Id   string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template
-	Name string `json:"name" example:"My template"`                                               // The name of the template
-	Icon string `json:"icon" example:"📄"`                                                         // The icon of the template
+	Object string `json:"object" example:"template"`                                                // The data model of the object
+	Id     string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template
+	Name   string `json:"name" example:"My template"`                                               // The name of the template
+	Icon   string `json:"icon" example:"📄"`                                                         // The icon of the template
 }

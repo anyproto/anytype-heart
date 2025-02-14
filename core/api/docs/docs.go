@@ -1517,6 +1517,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "My object"
                 },
+                "object": {
+                    "description": "The data model of the object",
+                    "type": "string",
+                    "example": "object"
+                },
                 "root_id": {
                     "description": "The id of the object's root",
                     "type": "string",
@@ -1534,8 +1539,11 @@ const docTemplate = `{
                 },
                 "type": {
                     "description": "The type of the object",
-                    "type": "string",
-                    "example": "Page"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/object.Type"
+                        }
+                    ]
                 }
             }
         },
@@ -1570,8 +1578,8 @@ const docTemplate = `{
                     "type": "string",
                     "example": "My template"
                 },
-                "type": {
-                    "description": "The type of the object",
+                "object": {
+                    "description": "The data model of the object",
                     "type": "string",
                     "example": "template"
                 }
@@ -1654,15 +1662,15 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Page"
                 },
+                "object": {
+                    "description": "The data model of the object",
+                    "type": "string",
+                    "example": "type"
+                },
                 "recommended_layout": {
                     "description": "The recommended layout of the type",
                     "type": "string",
                     "example": "todo"
-                },
-                "type": {
-                    "description": "The type of the object",
-                    "type": "string",
-                    "example": "type"
                 },
                 "unique_key": {
                     "description": "The unique key of the type",
@@ -1902,6 +1910,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "John Doe"
                 },
+                "object": {
+                    "description": "The data model of the object",
+                    "type": "string",
+                    "example": "member"
+                },
                 "role": {
                     "description": "The role of the member",
                     "type": "string",
@@ -1912,11 +1925,6 @@ const docTemplate = `{
                         "NoPermission"
                     ],
                     "example": "Owner"
-                },
-                "type": {
-                    "description": "The type of the object",
-                    "type": "string",
-                    "example": "member"
                 }
             }
         },
@@ -1996,6 +2004,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU"
                 },
+                "object": {
+                    "description": "The data model of the object",
+                    "type": "string",
+                    "example": "space"
+                },
                 "profile_object_id": {
                     "description": "The id of the profile object",
                     "type": "string",
@@ -2015,11 +2028,6 @@ const docTemplate = `{
                     "description": "The timezone of the account",
                     "type": "string",
                     "example": ""
-                },
-                "type": {
-                    "description": "The type of the object",
-                    "type": "string",
-                    "example": "space"
                 },
                 "widgets_id": {
                     "description": "The id of the widgets",

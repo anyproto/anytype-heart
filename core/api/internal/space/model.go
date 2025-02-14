@@ -9,7 +9,7 @@ type CreateSpaceRequest struct {
 }
 
 type Space struct {
-	Type                   string `json:"type" example:"space"`                                                                                                                  // The type of the object
+	Object                 string `json:"object" example:"space"`                                                                                                                // The data model of the object
 	Id                     string `json:"id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`                                                // The id of the space
 	Name                   string `json:"name" example:"My Space"`                                                                                                               // The name of the space
 	Icon                   string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"`                               // The icon of the space
@@ -35,7 +35,7 @@ type MemberResponse struct {
 }
 
 type Member struct {
-	Type       string `json:"type" example:"member"`                                                                                                                                // The type of the object
+	Object     string `json:"object" example:"member"`                                                                                                                              // The data model of the object
 	Id         string `json:"id" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"` // The profile object id of the member
 	Name       string `json:"name" example:"John Doe"`                                                                                                                              // The name of the member
 	Icon       string `json:"icon" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"`                                    // The icon of the member

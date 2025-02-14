@@ -126,16 +126,17 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 	}
 
 	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
-	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue())
+	objectType, err := s.GetType(ctx, spaceId, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue())
 	if err != nil {
 		return Object{}, err
 	}
 
 	object := Object{
-		Type:    objectTypeName,
+		Object:  "object",
 		Id:      resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:    icon,
+		Type:    objectType,
 		Snippet: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:  model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue())],
 		SpaceId: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
@@ -299,7 +300,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 
 	for _, record := range paginatedTypes {
 		types = append(types, Type{
-			Type:              "type",
+			Object:            "type",
 			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			UniqueKey:         record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -326,7 +327,7 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 	}
 
 	return Type{
-		Type:              "type",
+		Object:            "type",
 		Id:                typeId,
 		UniqueKey:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -399,10 +400,10 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		}
 
 		templates = append(templates, Template{
-			Type: "template",
-			Id:   templateId,
-			Name: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+			Object: "template",
+			Id:     templateId,
+			Name:   templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Icon:   templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
 		})
 	}
 
@@ -425,10 +426,10 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 	}
 
 	return Template{
-		Type: "template",
-		Id:   templateId,
-		Name: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+		Object: "template",
+		Id:     templateId,
+		Name:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
 	}, nil
 }
 

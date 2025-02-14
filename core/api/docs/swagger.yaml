@@ -176,6 +176,10 @@ definitions:
         description: The name of the object
         example: My object
         type: string
+      object:
+        description: The data model of the object
+        example: object
+        type: string
       root_id:
         description: The id of the object's root
         example: bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u
@@ -190,9 +194,9 @@ definitions:
         example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
         type: string
       type:
+        allOf:
+        - $ref: '#/definitions/object.Type'
         description: The type of the object
-        example: Page
-        type: string
     type: object
   object.ObjectResponse:
     properties:
@@ -215,8 +219,8 @@ definitions:
         description: The name of the template
         example: My template
         type: string
-      type:
-        description: The type of the object
+      object:
+        description: The data model of the object
         example: template
         type: string
     type: object
@@ -279,13 +283,13 @@ definitions:
         description: The name of the type
         example: Page
         type: string
+      object:
+        description: The data model of the object
+        example: type
+        type: string
       recommended_layout:
         description: The recommended layout of the type
         example: todo
-        type: string
-      type:
-        description: The type of the object
-        example: type
         type: string
       unique_key:
         description: The unique key of the type
@@ -449,6 +453,10 @@ definitions:
         description: The name of the member
         example: John Doe
         type: string
+      object:
+        description: The data model of the object
+        example: member
+        type: string
       role:
         description: The role of the member
         enum:
@@ -457,10 +465,6 @@ definitions:
         - Owner
         - NoPermission
         example: Owner
-        type: string
-      type:
-        description: The type of the object
-        example: member
         type: string
     type: object
   space.MemberResponse:
@@ -520,6 +524,10 @@ definitions:
         description: The network id of the space
         example: N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU
         type: string
+      object:
+        description: The data model of the object
+        example: space
+        type: string
       profile_object_id:
         description: The id of the profile object
         example: bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4
@@ -536,10 +544,6 @@ definitions:
       timezone:
         description: The timezone of the account
         example: ""
-        type: string
-      type:
-        description: The type of the object
-        example: space
         type: string
       widgets_id:
         description: The id of the widgets

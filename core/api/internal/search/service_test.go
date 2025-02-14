@@ -35,7 +35,6 @@ const (
 	mockedTagId2                = "mocked-tag-id-2"
 	mockedTagValue2             = "mocked-tag-value-2"
 	mockedTagColor2             = "mocked-tag-color-2"
-	mockedObjectTypeName        = "mocked-object-type-name"
 	mockedParticipantName       = "mocked-participant-name"
 	mockedParticipantIcon       = "mocked-participant-icon"
 	mockedParticipantImage      = "mocked-participant-image"
@@ -282,26 +281,23 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}, nil).Once()
 
 		// Mock type resolution
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedType),
-				},
-			},
-			Keys: []string{bundle.RelationKeyName.String()},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectTypeName),
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedType,
+		}).Return(&pb.RpcObjectShowResponse{
+			ObjectView: &model.ObjectView{
+				RootId: mockedType,
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String(): pbtypes.String(mockedType),
+							},
+						},
 					},
 				},
 			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
 
 		// Mock participant details
@@ -346,10 +342,10 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
-		require.Equal(t, mockedObjectTypeName, objects[0].Type)
-		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
-		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectId, objects[0].Id)
+		require.Equal(t, mockedObjectName, objects[0].Name)
+		require.Equal(t, mockedType, objects[0].Type.Id)
+		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
 		require.Equal(t, "🌐", objects[0].Icon)
 		require.Equal(t, "This is a sample text block", objects[0].Blocks[2].Text.Text)
@@ -494,26 +490,23 @@ func TestSearchService_Search(t *testing.T) {
 		}).Once()
 
 		// Mock type resolution
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedType),
-				},
-			},
-			Keys: []string{bundle.RelationKeyName.String()},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectTypeName),
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedType,
+		}).Return(&pb.RpcObjectShowResponse{
+			ObjectView: &model.ObjectView{
+				RootId: mockedType,
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String(): pbtypes.String(mockedType),
+							},
+						},
 					},
 				},
 			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
 
 		// Mock participant details
@@ -546,8 +539,9 @@ func TestSearchService_Search(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
-		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectId, objects[0].Id)
+		require.Equal(t, mockedObjectName, objects[0].Name)
+		require.Equal(t, mockedType, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
 

@@ -198,7 +198,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 		icon := util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
 
 		member := Member{
-			Type:       "member",
+			Object:     "member",
 			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:       icon,
@@ -239,7 +239,7 @@ func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId s
 	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
 
 	return Member{
-		Type:       "member",
+		Object:     "member",
 		Id:         resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:       icon,
@@ -261,7 +261,7 @@ func (s *SpaceService) getWorkspaceInfo(spaceId string, name string, icon string
 	}
 
 	return Space{
-		Type:                   "space",
+		Object:                 "space",
 		Id:                     spaceId,
 		Name:                   name,
 		Icon:                   icon,
