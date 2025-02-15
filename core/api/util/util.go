@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
@@ -16,6 +17,11 @@ var (
 	ErrFailedSearchType = errors.New("failed to search for type")
 	ErrorTypeNotFound   = errors.New("type not found")
 )
+
+func PosixToISO8601(posix float64) string {
+	t := time.Unix(int64(posix), 0).UTC()
+	return t.Format(time.RFC3339)
+}
 
 // GetIconFromEmojiOrImage returns the icon to use for the object, which can be either an emoji or an image url
 func GetIconFromEmojiOrImage(accountInfo *model.AccountInfo, iconEmoji string, iconImage string) string {
@@ -65,7 +71,7 @@ func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId s
 				Value:       pbtypes.String(relationKey),
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {

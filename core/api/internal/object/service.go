@@ -3,8 +3,6 @@ package object
 import (
 	"context"
 	"errors"
-	"sync"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/iancoleman/strcase"
@@ -462,15 +460,58 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 	linkedRelations := resp.ObjectView.RelationLinks
 	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
 
+	// system relations to be excluded
+	excludeRelations := map[string]bool{
+		bundle.RelationKeyId.String():                true,
+		bundle.RelationKeySpaceId.String():           true,
+		bundle.RelationKeyName.String():              true,
+		bundle.RelationKeyIconEmoji.String():         true,
+		bundle.RelationKeyIconImage.String():         true,
+		bundle.RelationKeyType.String():              true,
+		bundle.RelationKeyLayout.String():            true,
+		bundle.RelationKeyIsFavorite.String():        true,
+		bundle.RelationKeyIsArchived.String():        true,
+		bundle.RelationKeyIsDeleted.String():         true,
+		bundle.RelationKeyIsHidden.String():          true,
+		bundle.RelationKeyWorkspaceId.String():       true,
+		bundle.RelationKeyInternalFlags.String():     true,
+		bundle.RelationKeyRestrictions.String():      true,
+		bundle.RelationKeyOrigin.String():            true,
+		bundle.RelationKeySnippet.String():           true,
+		bundle.RelationKeySyncStatus.String():        true,
+		bundle.RelationKeySyncError.String():         true,
+		bundle.RelationKeySyncDate.String():          true,
+		bundle.RelationKeyCoverId.String():           true,
+		bundle.RelationKeyCoverType.String():         true,
+		bundle.RelationKeyCoverScale.String():        true,
+		bundle.RelationKeyCoverX.String():            true,
+		bundle.RelationKeyCoverY.String():            true,
+		bundle.RelationKeyMentions.String():          true,
+		bundle.RelationKeyOldAnytypeID.String():      true,
+		bundle.RelationKeySource.String():            true,
+		bundle.RelationKeySourceFilePath.String():    true,
+		bundle.RelationKeyImportType.String():        true,
+		bundle.RelationKeyTargetObjectType.String():  true,
+		bundle.RelationKeyFeaturedRelations.String(): true,
+		bundle.RelationKeySetOf.String():             true,
+		bundle.RelationKeyLinks.String():             true,
+		bundle.RelationKeyBacklinks.String():         true,
+		bundle.RelationKeySourceObject.String():      true,
+	}
+
 	var details []Detail
 	for _, r := range linkedRelations {
+		if _, isExcluded := excludeRelations[r.Key]; isExcluded {
+			continue
+		}
+
 		if val, ok := primaryDetailFields[r.Key]; ok {
-			relName := s.getRelationName(r.Key, resp)
+			id, name := s.getRelation(r.Key, resp)
 			format := relationFormatMap[r.Key]
 			details = append(details, Detail{
-				Id: strcase.ToSnake(relName),
+				Id: id,
 				Details: map[string]interface{}{
-					"name": relName,
+					"name": name,
 					"type": format,
 					format: s.convertValue(val, format, r.Key, resp.ObjectView.Details),
 				},
@@ -480,24 +521,25 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 	return details
 }
 
-// getRelationName returns the relation name from the RelationKey or the resolved relation name.
-func (s *ObjectService) getRelationName(key string, resp *pb.RpcObjectShowResponse) string {
+// getRelationName returns the relation id and relation name from the ObjectShowResponse.
+func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) (id string, name string) {
 	relation, err := bundle.GetRelation(domain.RelationKey(key))
 	if err != nil {
 		relation, err = util.ResolveRelationKeyToRelationName(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
 		if err != nil {
-			return key
+			return strcase.ToSnake(key), key
 		}
+		return key, relation.Name
 	}
 
-	// custom relation names
+	// special cases of relation keys and names
 	if key == bundle.RelationKeyCreator.String() {
-		return "Created By"
+		return "created_by", "Created By"
 	} else if key == bundle.RelationKeyCreatedDate.String() {
-		return "Created Date"
+		return "created_date", "Created Date"
 	}
 
-	return relation.Name
+	return strcase.ToSnake(key), relation.Name
 }
 
 // convertValue converts a protobuf types.Value into a native Go value.
@@ -507,7 +549,7 @@ func (s *ObjectService) convertValue(value *types.Value, format string, key stri
 		return nil
 	case *types.Value_NumberValue:
 		if format == "date" {
-			return PosixToISO8601(kind.NumberValue)
+			return util.PosixToISO8601(kind.NumberValue)
 		}
 		return kind.NumberValue
 	case *types.Value_StringValue:
@@ -534,11 +576,7 @@ func (s *ObjectService) convertValue(value *types.Value, format string, key stri
 		}
 
 		if format == "select" || format == "multi_select" {
-			return s.getTags(&pb.RpcObjectShowResponse{
-				ObjectView: &model.ObjectView{
-					Details: details,
-				},
-			})
+			return s.getTags(key, details)
 		}
 
 		return list
@@ -549,10 +587,10 @@ func (s *ObjectService) convertValue(value *types.Value, format string, key stri
 
 // getRelationFormatMapFromResponse returns the map of relation key to relation format from the ObjectShowResponse.
 func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink) map[string]string {
-	var relationFormatToName = model.RelationFormat_name
-	var mu sync.Mutex
-
-	mu.Lock()
+	relationFormatToName := make(map[int32]string, len(model.RelationFormat_name))
+	for k, v := range model.RelationFormat_name {
+		relationFormatToName[k] = v
+	}
 	relationFormatToName[int32(model.RelationFormat_longtext)] = "text"
 	relationFormatToName[int32(model.RelationFormat_shorttext)] = "text"
 	relationFormatToName[int32(model.RelationFormat_tag)] = "multi_select"
@@ -562,23 +600,22 @@ func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink
 	for _, detail := range relationLinks {
 		relationFormatMap[detail.Key] = relationFormatToName[int32(detail.Format)]
 	}
-	mu.Unlock()
 
 	return relationFormatMap
 }
 
 // getTags returns the list of tags from the ObjectShowResponse
-func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
+func (s *ObjectService) getTags(key string, details []*model.ObjectViewDetailsSet) []Tag {
 	tags := []Tag{}
 
-	tagField, ok := resp.ObjectView.Details[0].Details.Fields["tag"]
+	tagField, ok := details[0].Details.Fields[key]
 	if !ok || tagField.GetListValue() == nil {
 		return tags
 	}
 
 	for _, tagId := range tagField.GetListValue().Values {
 		id := tagId.GetStringValue()
-		for _, detail := range resp.ObjectView.Details {
+		for _, detail := range details {
 			if detail.Id == id {
 				tags = append(tags, Tag{
 					Id:    id,
@@ -642,9 +679,4 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	}
 
 	return blocks
-}
-
-func PosixToISO8601(posix float64) string {
-	t := time.Unix(int64(posix), 0).UTC()
-	return t.Format(time.RFC3339)
 }
