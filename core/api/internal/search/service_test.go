@@ -284,7 +284,30 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 						},
 					},
 				},
+				RelationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyLastModifiedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyLastModifiedBy.String(),
+						Format: model.RelationFormat_object,
+					},
+					{
+						Key:    bundle.RelationKeyCreatedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyCreator.String(),
+						Format: model.RelationFormat_object,
+					},
+					{
+						Key:    bundle.RelationKeyTag.String(),
+						Format: model.RelationFormat_tag,
+					},
+				},
 			},
+
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}, nil).Once()
 
@@ -485,30 +508,6 @@ func TestSearchService_Search(t *testing.T) {
 			},
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
-
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(""),
-				},
-			},
-			Keys: []string{bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{},
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Twice()
 
 		// when
 		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)

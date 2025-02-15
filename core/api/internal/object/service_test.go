@@ -27,6 +27,7 @@ const (
 	mockedObjectName          = "mocked-object-name"
 	mockedObjectSnippet       = "mocked-object-snippet"
 	mockedObjectIcon          = "🔍"
+	mockedParticipantId       = "mocked-participant-id"
 	mockedObjectTypeUniqueKey = "ot-page"
 	mockedTypeId              = "mocked-type-id"
 	mockedTypeName            = "mocked-type-name"
@@ -122,11 +123,21 @@ func TestObjectService_ListObjects(t *testing.T) {
 								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
 								bundle.RelationKeySnippet.String():          pbtypes.String(mockedObjectSnippet),
 								bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
-								bundle.RelationKeyType.String():             pbtypes.String(mockedTypeId),
 								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
+								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String(mockedParticipantId),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
+								bundle.RelationKeyCreator.String():          pbtypes.String(mockedParticipantId),
 								bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
 								bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
+								bundle.RelationKeyType.String():             pbtypes.String(mockedTypeId),
+							},
+						},
+					},
+					{
+						Id: mockedParticipantId,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String(): pbtypes.String(mockedParticipantId),
 							},
 						},
 					},
@@ -142,6 +153,32 @@ func TestObjectService_ListObjects(t *testing.T) {
 						},
 					},
 				},
+				RelationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyLastModifiedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyLastModifiedBy.String(),
+						Format: model.RelationFormat_object,
+					},
+					{
+						Key:    bundle.RelationKeyCreatedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyCreator.String(),
+						Format: model.RelationFormat_object,
+					},
+					{
+						Key:    bundle.RelationKeyLastOpenedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyTag.String(),
+						Format: model.RelationFormat_tag,
+					},
+				},
 			},
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
@@ -154,7 +191,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(""),
+					Value:       pbtypes.String(mockedParticipantId),
 				},
 			},
 			Keys: []string{
@@ -169,7 +206,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 		}).Return(&pb.RpcObjectSearchResponse{
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			Records: []*types.Struct{
-				{},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String(mockedParticipantId),
+					},
+				},
 			},
 		}).Twice()
 
@@ -187,17 +228,17 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
 		require.Equal(t, mockedObjectIcon, objects[0].Icon)
-		require.Equal(t, 6, len(objects[0].Details))
+		require.Equal(t, 5, len(objects[0].Details))
 
 		for _, detail := range objects[0].Details {
 			if detail.Id == "created_date" {
 				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["date"])
 			} else if detail.Id == "created_by" {
-				require.Empty(t, detail.Details["created_by"])
+				require.Equal(t, mockedParticipantId, detail.Details["object"].(space.Member).Id)
 			} else if detail.Id == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["date"])
 			} else if detail.Id == "last_modified_by" {
-				require.Empty(t, detail.Details["last_modified_by"])
+				require.Equal(t, mockedParticipantId, detail.Details["object"].(space.Member).Id)
 			} else if detail.Id == "last_opened_date" {
 				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["date"])
 			} else if detail.Id == "tags" {
@@ -276,35 +317,34 @@ func TestObjectService_GetObject(t *testing.T) {
 							},
 						},
 					},
+					RelationLinks: []*model.RelationLink{
+						{
+							Key:    bundle.RelationKeyLastModifiedDate.String(),
+							Format: model.RelationFormat_date,
+						},
+						{
+							Key:    bundle.RelationKeyLastModifiedBy.String(),
+							Format: model.RelationFormat_object,
+						},
+						{
+							Key:    bundle.RelationKeyCreatedDate.String(),
+							Format: model.RelationFormat_date,
+						},
+						{
+							Key:    bundle.RelationKeyCreator.String(),
+							Format: model.RelationFormat_object,
+						},
+						{
+							Key:    bundle.RelationKeyLastOpenedDate.String(),
+							Format: model.RelationFormat_date,
+						},
+						{
+							Key:    bundle.RelationKeyTag.String(),
+							Format: model.RelationFormat_tag,
+						},
+					},
 				},
 			}, nil).Once()
-
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(""),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{
-				{},
-			},
-		}).Twice()
 
 		// when
 		object, err := fx.GetObject(ctx, mockedSpaceId, mockedObjectId)
@@ -320,7 +360,7 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
 		require.Equal(t, mockedObjectName, object.Icon)
-		require.Equal(t, 6, len(object.Details))
+		require.Equal(t, 3, len(object.Details))
 
 		for _, detail := range object.Details {
 			if detail.Id == "created_date" {
@@ -429,33 +469,6 @@ func TestObjectService_CreateObject(t *testing.T) {
 			},
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
-
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(""),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{
-				{},
-			},
-		}).Twice()
 
 		// when
 		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{

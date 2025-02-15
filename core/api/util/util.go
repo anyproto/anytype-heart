@@ -54,3 +54,29 @@ func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, u
 
 	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
 }
+
+func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId string, relationKey string) (relation *model.Relation, err error) {
+	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(relationKey),
+			},
+		},
+		Keys: []string{bundle.RelationKeyId.String()},
+	})
+
+	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return &model.Relation{}, ErrFailedSearchType
+	}
+
+	if len(resp.Records) == 0 {
+		return &model.Relation{}, ErrorTypeNotFound
+	}
+
+	return &model.Relation{
+		Name: resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
+	}, nil
+}

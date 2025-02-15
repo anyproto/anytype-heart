@@ -29,13 +29,14 @@ type Object struct {
 }
 
 type Block struct {
-	Id              string   `json:"id" example:"64394517de52ad5acb89c66c"`                                                                      // The id of the block
-	ChildrenIds     []string `json:"children_ids" example:"['6797ce8ecda913cde14b02dc']"`                                                        // The ids of the block's children
-	BackgroundColor string   `json:"background_color" example:"red"`                                                                             // The background color of the block
-	Align           string   `json:"align" enums:"AlignLeft,AlignCenter,AlignRight,AlignJustify" example:"AlignLeft"`                            // The alignment of the block
-	VerticalAlign   string   `json:"vertical_align" enums:"VerticalAlignTop,VerticalAlignMiddle,VerticalAlignBottom" example:"VerticalAlignTop"` // The vertical alignment of the block
-	Text            *Text    `json:"text,omitempty"`                                                                                             // The text of the block, if applicable
-	File            *File    `json:"file,omitempty"`                                                                                             // The file of the block, if applicable
+	Id              string    `json:"id" example:"64394517de52ad5acb89c66c"`                                                                      // The id of the block
+	ChildrenIds     []string  `json:"children_ids" example:"['6797ce8ecda913cde14b02dc']"`                                                        // The ids of the block's children
+	BackgroundColor string    `json:"background_color" example:"red"`                                                                             // The background color of the block
+	Align           string    `json:"align" enums:"AlignLeft,AlignCenter,AlignRight,AlignJustify" example:"AlignLeft"`                            // The alignment of the block
+	VerticalAlign   string    `json:"vertical_align" enums:"VerticalAlignTop,VerticalAlignMiddle,VerticalAlignBottom" example:"VerticalAlignTop"` // The vertical alignment of the block
+	Text            *Text     `json:"text,omitempty"`                                                                                             // The text of the block, if applicable
+	File            *File     `json:"file,omitempty"`                                                                                             // The file of the block, if applicable
+	Relation        *Relation `json:"relation,omitempty"`                                                                                         // The relation of the block, if applicable
 }
 
 type Text struct {
@@ -56,6 +57,11 @@ type File struct {
 	TargetObjectId string `json:"target_object_id"` // The target object id of the file
 	State          string `json:"state"`            // The state of the file
 	Style          string `json:"style"`            // The style of the file
+}
+
+// TODO: fill in the relation struct
+type Relation struct {
+	Id string
 }
 
 type Detail struct {

@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -454,75 +456,94 @@ func (s *ObjectService) getTypeFromDetails(typeId string, details []*model.Objec
 	}
 }
 
-// getDetails returns the list of details from the ObjectShowResponse.
+// getDetails returns a list of details by iterating over all relations found in the RelationLinks and mapping their format and value.
 func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 	relationFormatMap := s.getRelationFormatMap(resp.ObjectView.RelationLinks)
-	creator := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreator.String()].GetStringValue()
-	lastModifiedBy := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedBy.String()].GetStringValue()
+	linkedRelations := resp.ObjectView.RelationLinks
+	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
 
-	var creatorId, lastModifiedById string
-	for _, detail := range resp.ObjectView.Details {
-		if detail.Id == creator {
-			creatorId = detail.Id
+	var details []Detail
+	for _, r := range linkedRelations {
+		if val, ok := primaryDetailFields[r.Key]; ok {
+			relName := s.getRelationName(r.Key, resp)
+			format := relationFormatMap[r.Key]
+			details = append(details, Detail{
+				Id: strcase.ToSnake(relName),
+				Details: map[string]interface{}{
+					"name": relName,
+					"type": format,
+					format: s.convertValue(val, format, r.Key, resp.ObjectView.Details),
+				},
+			})
 		}
-		if detail.Id == lastModifiedBy {
-			lastModifiedById = detail.Id
+	}
+	return details
+}
+
+// getRelationName returns the relation name from the RelationKey or the resolved relation name.
+func (s *ObjectService) getRelationName(key string, resp *pb.RpcObjectShowResponse) string {
+	relation, err := bundle.GetRelation(domain.RelationKey(key))
+	if err != nil {
+		relation, err = util.ResolveRelationKeyToRelationName(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
+		if err != nil {
+			return key
 		}
 	}
 
-	memberLastModifiedBy, err := s.spaceService.GetMember(context.Background(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), lastModifiedById)
-	if err != nil {
-		memberLastModifiedBy = space.Member{}
+	// custom relation names
+	if key == bundle.RelationKeyCreator.String() {
+		return "Created By"
+	} else if key == bundle.RelationKeyCreatedDate.String() {
+		return "Created Date"
 	}
 
-	memberCreator, err := s.spaceService.GetMember(context.Background(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId)
-	if err != nil {
-		memberCreator = space.Member{}
-	}
+	return relation.Name
+}
 
-	return []Detail{
-		{
-			Id: "last_modified_date",
-			Details: map[string]interface{}{
-				"type": relationFormatMap[bundle.RelationKeyLastModifiedDate.String()],
-				"date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue()),
-			},
-		},
-		{
-			Id: "last_modified_by",
-			Details: map[string]interface{}{
-				"type":   relationFormatMap[bundle.RelationKeyLastModifiedBy.String()],
-				"object": memberLastModifiedBy,
-			},
-		},
-		{
-			Id: "created_date",
-			Details: map[string]interface{}{
-				"type": relationFormatMap[bundle.RelationKeyCreatedDate.String()],
-				"date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreatedDate.String()].GetNumberValue()),
-			},
-		},
-		{
-			Id: "created_by",
-			Details: map[string]interface{}{
-				"type":   relationFormatMap[bundle.RelationKeyCreator.String()],
-				"object": memberCreator,
-			},
-		},
-		{
-			Id: "last_opened_date",
-			Details: map[string]interface{}{
-				"type": relationFormatMap[bundle.RelationKeyLastOpenedDate.String()],
-				"date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastOpenedDate.String()].GetNumberValue()),
-			},
-		},
-		{
-			Id: "tags",
-			Details: map[string]interface{}{
-				"type":         relationFormatMap[bundle.RelationKeyTag.String()],
-				"multi_select": s.getTags(resp),
-			},
-		},
+// convertValue converts a protobuf types.Value into a native Go value.
+func (s *ObjectService) convertValue(value *types.Value, format string, key string, details []*model.ObjectViewDetailsSet) interface{} {
+	switch kind := value.Kind.(type) {
+	case *types.Value_NullValue:
+		return nil
+	case *types.Value_NumberValue:
+		if format == "date" {
+			return PosixToISO8601(kind.NumberValue)
+		}
+		return kind.NumberValue
+	case *types.Value_StringValue:
+		if key == bundle.RelationKeyCreator.String() || key == bundle.RelationKeyLastModifiedBy.String() {
+			member, err := s.spaceService.GetMember(context.Background(), details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
+			if err != nil {
+				return nil
+			}
+			return member
+		}
+		return kind.StringValue
+	case *types.Value_BoolValue:
+		return kind.BoolValue
+	case *types.Value_StructValue:
+		m := make(map[string]interface{})
+		for k, v := range kind.StructValue.Fields {
+			m[k] = s.convertValue(v, format, key, details)
+		}
+		return m
+	case *types.Value_ListValue:
+		var list []interface{}
+		for _, v := range kind.ListValue.Values {
+			list = append(list, s.convertValue(v, format, key, details))
+		}
+
+		if format == "select" || format == "multi_select" {
+			return s.getTags(&pb.RpcObjectShowResponse{
+				ObjectView: &model.ObjectView{
+					Details: details,
+				},
+			})
+		}
+
+		return list
+	default:
+		return nil
 	}
 }
 
@@ -532,6 +553,8 @@ func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink
 	var mu sync.Mutex
 
 	mu.Lock()
+	relationFormatToName[int32(model.RelationFormat_longtext)] = "text"
+	relationFormatToName[int32(model.RelationFormat_shorttext)] = "text"
 	relationFormatToName[int32(model.RelationFormat_tag)] = "multi_select"
 	relationFormatToName[int32(model.RelationFormat_status)] = "select"
 
@@ -576,6 +599,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	for _, block := range resp.ObjectView.Blocks {
 		var text *Text
 		var file *File
+		var relation *Relation
 
 		switch content := block.Content.(type) {
 		case *model.BlockContentOfText:
@@ -598,8 +622,12 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 				State:          model.BlockContentFileState_name[int32(content.File.State)],
 				Style:          model.BlockContentFileStyle_name[int32(content.File.Style)],
 			}
-			// TODO: other content types?
+		case *model.BlockContentOfRelation:
+			relation = &Relation{
+				Id: content.Relation.Key,
+			}
 		}
+		// TODO: other content types?
 
 		blocks = append(blocks, Block{
 			Id:              block.Id,
@@ -609,6 +637,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 			VerticalAlign:   model.BlockVerticalAlign_name[int32(block.VerticalAlign)],
 			Text:            text,
 			File:            file,
+			Relation:        relation,
 		})
 	}
 
