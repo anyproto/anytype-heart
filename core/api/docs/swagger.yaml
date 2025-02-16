@@ -56,6 +56,10 @@ definitions:
         description: The id of the block
         example: 64394517de52ad5acb89c66c
         type: string
+      relation:
+        allOf:
+        - $ref: '#/definitions/object.Relation'
+        description: The relation of the block, if applicable
       text:
         allOf:
         - $ref: '#/definitions/object.Text'
@@ -204,6 +208,11 @@ definitions:
         allOf:
         - $ref: '#/definitions/object.Object'
         description: The object
+    type: object
+  object.Relation:
+    properties:
+      id:
+        type: string
     type: object
   object.Template:
     properties:
@@ -615,9 +624,6 @@ definitions:
             type: string
         type: object
     type: object
-externalDocs:
-  description: OpenAPI
-  url: https://swagger.io/resources/open-api/
 host: localhost:31009
 info:
   contact:
@@ -1476,6 +1482,8 @@ paths:
       tags:
       - lists
 securityDefinitions:
-  BasicAuth:
-    type: basic
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

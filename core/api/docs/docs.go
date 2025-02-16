@@ -1356,6 +1356,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "64394517de52ad5acb89c66c"
                 },
+                "relation": {
+                    "description": "The relation of the block, if applicable",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/object.Relation"
+                        }
+                    ]
+                },
                 "text": {
                     "description": "The text of the block, if applicable",
                     "allOf": [
@@ -1557,6 +1565,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/object.Object"
                         }
                     ]
+                }
+            }
+        },
+        "object.Relation": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
                 }
             }
         },
@@ -2140,13 +2156,11 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
-        "BasicAuth": {
-            "type": "basic"
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
-    },
-    "externalDocs": {
-        "description": "OpenAPI",
-        "url": "https://swagger.io/resources/open-api/"
     }
 }`
 

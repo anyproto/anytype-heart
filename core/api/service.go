@@ -60,7 +60,9 @@ func (s *apiService) Name() (name string) {
 //	@license.url				https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
 //	@host						localhost:31009
 //	@BasePath					/v1
-//	@securityDefinitions.basic	BasicAuth
+//	@securityDefinitions.apikey	ApiKeyAuth
+//	@in							header
+//	@name						Authorization
 //	@externalDocs.description	OpenAPI
 //	@externalDocs.url			https://swagger.io/resources/open-api/
 func (s *apiService) Init(a *app.App) (err error) {
