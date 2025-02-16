@@ -58,7 +58,7 @@ func (s *apiService) Name() (name string) {
 //	@contact.email					support@anytype.io
 //	@license.name					Any Source Available License 1.0
 //	@license.url					https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
-//	@host							localhost:31009
+//	@host							http://localhost:31009
 //	@BasePath						/v1
 //	@securitydefinitions.bearerauth	BearerAuth
 //	@externalDocs.description		OpenAPI

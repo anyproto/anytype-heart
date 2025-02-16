@@ -1660,4 +1660,4 @@ paths:
       tags:
       - lists
 servers:
-- url: localhost:31009/v1
+- url: http://localhost:31009/v1
