@@ -21,6 +21,7 @@ import (
 //	@Failure	400			{object}	util.ValidationError	"Bad request"
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/objects/{object_id}/export/{format} [post]
 func GetObjectExportHandler(s *ExportService) gin.HandlerFunc {
 	return func(c *gin.Context) {

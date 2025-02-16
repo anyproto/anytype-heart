@@ -169,10 +169,10 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.6 // indirect
-	github.com/go-openapi/spec v0.20.4 // indirect
-	github.com/go-openapi/swag v0.19.15 // indirect
+	github.com/go-openapi/jsonpointer v0.19.6 // indirect
+	github.com/go-openapi/jsonreference v0.20.2 // indirect
+	github.com/go-openapi/spec v0.20.9 // indirect
+	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/go-pkgz/expirable-cache/v3 v3.0.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -220,7 +220,7 @@ require (
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-libp2p v0.38.2 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.62 // indirect
@@ -265,6 +265,8 @@ require (
 	github.com/spf13/viper v1.15.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
+	github.com/sv-tools/openapi v0.2.1 // indirect
+	github.com/swaggo/swag/v2 v2.0.0-rc4 // indirect
 	github.com/tetratelabs/wazero v1.8.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect

@@ -20,7 +20,7 @@ var (
 type Service interface {
 	GetObjectsInList(ctx context.Context, spaceId string, listId string, offset, limit int) ([]object.Object, int, bool, error)
 	AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error
-	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
+	RemoveObjectFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 }
 
 type ListService struct {
@@ -76,11 +76,11 @@ func (s *ListService) AddObjectsToList(ctx context.Context, spaceId string, list
 	return nil
 }
 
-// RemoveObjectsFromList removes objects from a list
-func (s *ListService) RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+// RemoveObjectFromList removes objects from a list
+func (s *ListService) RemoveObjectFromList(ctx context.Context, spaceId string, listId string, objectId string) error {
 	resp := s.mw.ObjectCollectionRemove(ctx, &pb.RpcObjectCollectionRemoveRequest{
 		ContextId: spaceId,
-		ObjectIds: objectIds,
+		ObjectIds: []string{objectId},
 	})
 
 	if resp.Error.Code != pb.RpcObjectCollectionRemoveResponseError_NULL {

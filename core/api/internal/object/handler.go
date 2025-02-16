@@ -13,7 +13,6 @@ import (
 //
 //	@Summary	List objects
 //	@Tags		objects
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space ID"
 //	@Param		offset		query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
@@ -21,6 +20,7 @@ import (
 //	@Success	200			{object}	pagination.PaginatedResponse[Object]	"List of objects"
 //	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
 //	@Failure	500			{object}	util.ServerError						"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/objects [get]
 func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -49,7 +49,6 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 //
 //	@Summary	Get object
 //	@Tags		objects
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
 //	@Param		object_id	path		string					true	"Object ID"
@@ -57,6 +56,7 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/objects/{object_id} [get]
 func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -83,7 +83,6 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 //
 //	@Summary	Delete object
 //	@Tags		objects
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
 //	@Param		object_id	path		string					true	"Object ID"
@@ -93,6 +92,7 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
 //	@Failure	423			{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/objects/{object_id} [delete]
 func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -129,6 +129,7 @@ func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	423			{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/objects [post]
 func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -165,7 +166,6 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 //
 //	@Summary	List types
 //	@Tags		types
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string								true	"Space ID"
 //	@Param		offset		query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
@@ -173,6 +173,7 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Success	200			{object}	pagination.PaginatedResponse[Type]	"List of types"
 //	@Failure	401			{object}	util.UnauthorizedError				"Unauthorized"
 //	@Failure	500			{object}	util.ServerError					"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/types [get]
 func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -199,7 +200,6 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 //
 //	@Summary	Get type
 //	@Tags		types
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
 //	@Param		type_id		path		string					true	"Type ID"
@@ -207,6 +207,7 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/types/{type_id} [get]
 func GetTypeHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -233,7 +234,6 @@ func GetTypeHandler(s *ObjectService) gin.HandlerFunc {
 //
 //	@Summary	List templates
 //	@Tags		types
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space ID"
 //	@Param		type_id		path		string									true	"Type ID"
@@ -242,6 +242,7 @@ func GetTypeHandler(s *ObjectService) gin.HandlerFunc {
 //	@Success	200			{object}	pagination.PaginatedResponse[Template]	"List of templates"
 //	@Failure	401			{object}	util.UnauthorizedError					"Unauthorized"
 //	@Failure	500			{object}	util.ServerError						"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/types/{type_id}/templates [get]
 func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -272,7 +273,6 @@ func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 //
 //	@Summary	Get template
 //	@Tags		types
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
 //	@Param		type_id		path		string					true	"Type ID"
@@ -281,6 +281,7 @@ func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Resource not found"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/types/{type_id}/templates/{template_id} [get]
 func GetTemplateHandler(s *ObjectService) gin.HandlerFunc {
 	return func(c *gin.Context) {

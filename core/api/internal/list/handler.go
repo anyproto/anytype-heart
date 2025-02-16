@@ -13,7 +13,6 @@ import (
 //
 //	@Summary	Get objects in list
 //	@Tags		lists
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string										true	"Space ID"
 //	@Param		list_id		path		string										true	"List ID"
@@ -23,6 +22,7 @@ import (
 //	@Failure	401			{object}	util.UnauthorizedError						"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError							"Not found"
 //	@Failure	500			{object}	util.ServerError							"Internal server error"
+//	@Security	bearerauth
 //	@Router		/v1/spaces/{space_id}/lists/{list_id}/objects [get]
 func GetObjectsInListHandler(s *ListService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -60,6 +60,7 @@ func GetObjectsInListHandler(s *ListService) gin.HandlerFunc {
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Not found"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
+//	@Security	bearerauth
 //	@Router		/v1/spaces/{space_id}/lists/{list_id}/objects [post]
 func AddObjectsToListHandler(s *ListService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -88,34 +89,28 @@ func AddObjectsToListHandler(s *ListService) gin.HandlerFunc {
 	}
 }
 
-// RemoveObjectsFromListHandler
+// RemoveObjectFromListHandler
 //
-//	@Summary	Remove objects from list
+//	@Summary	Remove object from list
 //	@Tags		lists
-//	@Accept		json
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space ID"
 //	@Param		list_id		path		string					true	"List ID"
-//	@Param		objects		body		[]string				true	"List of object IDs"
+//	@Param		object_id		path		string				true	"Object ID"
 //	@Success	200			{object}	string					"Objects removed successfully"
 //	@Failure	400			{object}	util.ValidationError	"Bad request"
 //	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure	404			{object}	util.NotFoundError		"Not found"
 //	@Failure	500			{object}	util.ServerError		"Internal server error"
-//	@Router		/v1/spaces/{space_id}/lists/{list_id}/objects [delete]
-func RemoveObjectsFromListHandler(s *ListService) gin.HandlerFunc {
+//	@Security	bearerauth
+//	@Router		/v1/spaces/{space_id}/lists/{list_id}/objects/{object_id} [delete]
+func RemoveObjectFromListHandler(s *ListService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
+		objectId := c.Param("object_id")
 
-		objects := []string{}
-		if err := c.ShouldBindJSON(&objects); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
-			c.JSON(http.StatusBadRequest, apiErr)
-			return
-		}
-
-		err := s.RemoveObjectsFromList(c, spaceId, listId, objects)
+		err := s.RemoveObjectFromList(c, spaceId, listId, objectId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedRemoveObjectsFromList, http.StatusInternalServerError),
 		)

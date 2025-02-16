@@ -49,22 +49,20 @@ func (s *apiService) Name() (name string) {
 
 // Init initializes the API service.
 //
-//	@title						Anytype API
-//	@version					1.0
-//	@description				This API allows interaction with Anytype resources such as spaces, objects and types.
-//	@termsOfService				https://anytype.io/terms_of_use
-//	@contact.name				Anytype Support
-//	@contact.url				https://anytype.io/contact
-//	@contact.email				support@anytype.io
-//	@license.name				Any Source Available License 1.0
-//	@license.url				https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
-//	@host						localhost:31009
-//	@BasePath					/v1
-//	@securityDefinitions.apikey	ApiKeyAuth
-//	@in							header
-//	@name						Authorization
-//	@externalDocs.description	OpenAPI
-//	@externalDocs.url			https://swagger.io/resources/open-api/
+//	@title							Anytype API
+//	@version						1.0
+//	@description					This API allows interaction with Anytype resources such as spaces, objects and types.
+//	@termsOfService					https://anytype.io/terms_of_use
+//	@contact.name					Anytype Support
+//	@contact.url					https://anytype.io/contact
+//	@contact.email					support@anytype.io
+//	@license.name					Any Source Available License 1.0
+//	@license.url					https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
+//	@host							localhost:31009
+//	@BasePath						/v1
+//	@securitydefinitions.bearerauth	BearerAuth
+//	@externalDocs.description		OpenAPI
+//	@externalDocs.url				https://swagger.io/resources/open-api/
 func (s *apiService) Init(a *app.App) (err error) {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
 	s.accountService = a.MustComponent(account.CName).(account.Service)

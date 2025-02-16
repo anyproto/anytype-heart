@@ -21,6 +21,7 @@ import (
 //	@Success	200		{object}	pagination.PaginatedResponse[object.Object]	"List of objects"
 //	@Failure	401		{object}	util.UnauthorizedError						"Unauthorized"
 //	@Failure	500		{object}	util.ServerError							"Internal server error"
+//	@Security	bearerauth
 //	@Router		/search [post]
 func GlobalSearchHandler(s *SearchService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -62,6 +63,7 @@ func GlobalSearchHandler(s *SearchService) gin.HandlerFunc {
 //	@Success	200			{object}	pagination.PaginatedResponse[object.Object]	"List of objects"
 //	@Failure	401			{object}	util.UnauthorizedError						"Unauthorized"
 //	@Failure	500			{object}	util.ServerError							"Internal server error"
+//	@Security	bearerauth
 //	@Router		/spaces/{space_id}/search [post]
 func SearchHandler(s *SearchService) gin.HandlerFunc {
 	return func(c *gin.Context) {
