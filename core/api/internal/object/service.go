@@ -560,6 +560,12 @@ func (s *ObjectService) convertValue(value *types.Value, format string, key stri
 			}
 			return member
 		}
+
+		// TODO: investigate how this is possible? select option not list and not returned in further details
+		if format == "select" || format == "multi_select" {
+			return s.resolveTag(details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
+		}
+
 		return kind.StringValue
 	case *types.Value_BoolValue:
 		return kind.BoolValue
@@ -602,6 +608,28 @@ func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink
 	}
 
 	return relationFormatMap
+}
+
+// TODO: remove once bug of select option not being returned in details is fixed
+func (s *ObjectService) resolveTag(spaceId, tagId string) Tag {
+	if tagId == "" {
+		return Tag{}
+	}
+
+	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: tagId,
+	})
+
+	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return Tag{}
+	}
+
+	return Tag{
+		Id:    tagId,
+		Name:  resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Color: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
+	}
 }
 
 // getTags returns the list of tags from the ObjectShowResponse
