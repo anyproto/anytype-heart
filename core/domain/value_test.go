@@ -244,3 +244,43 @@ func TestValue_Empty(t *testing.T) {
 		assert.Equal(t, tc.want, tc.value.IsEmpty())
 	}
 }
+
+func TestTryWrapToStringList(t *testing.T) {
+	for i, tc := range []struct {
+		in     Value
+		want   []string
+		wantOk bool
+	}{
+		{
+			in:     String(""),
+			want:   []string{},
+			wantOk: true,
+		},
+		{
+			in:     String("foo"),
+			want:   []string{"foo"},
+			wantOk: true,
+		},
+		{
+			in:     StringList([]string{"foo", "bar"}),
+			want:   []string{"foo", "bar"},
+			wantOk: true,
+		},
+		{
+			in:     Float64(123.456),
+			want:   nil,
+			wantOk: false,
+		},
+		{
+			in:     Invalid(),
+			want:   nil,
+			wantOk: false,
+		},
+	} {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			got, gotOk := tc.in.TryWrapToStringList()
+			assert.Equal(t, tc.want, got)
+			assert.Equal(t, tc.wantOk, gotOk)
+		})
+	}
+}
