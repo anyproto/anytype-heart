@@ -338,6 +338,12 @@ else
 	@golangci-lint run -v ./... --new-from-rev=origin/main --timeout 15m --fix
 endif
 
+swagger:
+	@echo 'Generating swagger docs...'
+	@swag init --v3.1 -q -d core/api -g service.go -o core/api/docs
+	@echo 'Formatting swagger docs...'
+	@swag fmt -d core/api
+
 ### Tantivy Section
 
 REPO := anyproto/tantivy-go
