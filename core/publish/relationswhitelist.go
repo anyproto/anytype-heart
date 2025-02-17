@@ -25,11 +25,14 @@ var documentRelationsWhiteList = append(slices.Clone(allObjectsRelationsWhiteLis
 	bundle.RelationKeyIconEmoji.String(),
 	bundle.RelationKeyCoverType.String(),
 	bundle.RelationKeyCoverId.String(),
+	bundle.RelationKeyCoverX.String(),
+	bundle.RelationKeyCoverY.String(),
+	bundle.RelationKeyCoverScale.String(),
 )
 
 var todoRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyDone.String())
 
-var bookmarkRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyPicture.String())
+var bookmarkRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyPicture.String(), bundle.RelationKeySource.String())
 
 var derivedObjectsWhiteList = append(slices.Clone(allObjectsRelationsWhiteList), bundle.RelationKeyUniqueKey.String())
 
@@ -60,6 +63,7 @@ var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_objectType: derivedObjectsWhiteList,
 	model.ObjectType_relation:   relationsWhiteList,
 	model.ObjectType_file:       fileRelationsWhiteList,
+	model.ObjectType_pdf:        fileRelationsWhiteList,
 	model.ObjectType_dashboard:  allObjectsRelationsWhiteList,
 	model.ObjectType_image:      imageRelationsWhiteList,
 	model.ObjectType_note:       documentRelationsWhiteList,
