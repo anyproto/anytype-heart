@@ -526,11 +526,11 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) (id string, name string) {
 	relation, err := bundle.GetRelation(domain.RelationKey(key))
 	if err != nil {
-		relation, err = util.ResolveRelationKeyToRelationName(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
+		name, err = util.ResolveRelationKeyToRelationName(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
 		if err != nil {
-			return strcase.ToSnake(key), key
+			return key, key
 		}
-		return key, relation.Name
+		return key, name
 	}
 
 	// special cases of relation keys and names

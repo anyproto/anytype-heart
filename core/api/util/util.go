@@ -61,7 +61,7 @@ func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, u
 	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
 }
 
-func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId string, relationKey string) (relation *model.Relation, err error) {
+func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId string, relationKey string) (relation string, err error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -70,19 +70,22 @@ func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId s
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(relationKey),
 			},
+			{
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyLayout.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return &model.Relation{}, ErrFailedSearchType
+		return "", ErrFailedSearchType
 	}
 
 	if len(resp.Records) == 0 {
-		return &model.Relation{}, ErrorTypeNotFound
+		return "", ErrorTypeNotFound
 	}
 
-	return &model.Relation{
-		Name: resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
-	}, nil
+	return resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(), nil
 }
