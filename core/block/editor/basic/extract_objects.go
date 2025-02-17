@@ -6,9 +6,9 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -21,19 +21,12 @@ type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 }
 
-type templateStateCreator interface {
-	CreateTemplateStateWithDetails(
-		spaceId, templateId, typeId string, layout model.ObjectTypeLayout, details *domain.Details, withTemplateValidation bool,
-	) (st *state.State, err error)
-	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, typeId string, layout model.ObjectTypeLayout, details *domain.Details) *state.State
-}
-
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
 func (bs *basic) ExtractBlocksToObjects(
 	ctx session.Context,
 	objectCreator ObjectCreator,
-	templateStateCreator templateStateCreator,
+	templateStateCreator templateSvc.Service,
 	req pb.RpcBlockListConvertToObjectsRequest,
 ) (linkIds []string, err error) {
 	typeUniqueKey, err := domain.UnmarshalUniqueKey(req.ObjectTypeUniqueKey)
@@ -77,7 +70,7 @@ func (bs *basic) ExtractBlocksToObjects(
 }
 
 func (bs *basic) prepareObjectState(
-	uk domain.UniqueKey, root simple.Block, creator templateStateCreator, req pb.RpcBlockListConvertToObjectsRequest,
+	uk domain.UniqueKey, root simple.Block, templateService templateSvc.Service, req pb.RpcBlockListConvertToObjectsRequest,
 ) (*state.State, error) {
 	objType, err := bs.objectStore.GetObjectByUniqueKey(uk)
 	if err != nil {
@@ -90,11 +83,20 @@ func (bs *basic) prepareObjectState(
 		details = createTargetObjectDetails(root.Model().GetText().GetText(), layout)
 	)
 
-	if req.ContextId == req.TemplateId {
-		return creator.CreateTemplateStateFromSmartBlock(bs, typeId, layout, details), nil
+	ctr := templateSvc.CreateTemplateRequest{
+		SpaceId:                bs.SpaceID(),
+		TemplateId:             req.TemplateId,
+		TypeId:                 typeId,
+		Layout:                 layout,
+		Details:                details,
+		WithTemplateValidation: true,
 	}
 
-	return creator.CreateTemplateStateWithDetails(bs.SpaceID(), req.TemplateId, typeId, layout, details, true)
+	if req.ContextId == req.TemplateId {
+		return templateService.CreateTemplateStateFromSmartBlock(bs, ctr), nil
+	}
+
+	return templateService.CreateTemplateStateWithDetails(ctr)
 }
 
 func insertBlocksToState(

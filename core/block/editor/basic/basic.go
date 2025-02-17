@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -53,7 +54,7 @@ type CommonOperations interface {
 	FeaturedRelationRemove(ctx session.Context, relations ...string) error
 
 	ReplaceLink(oldId, newId string) error
-	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc templateStateCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc templateSvc.Service, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
 	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
 	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)

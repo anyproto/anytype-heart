@@ -1685,8 +1685,8 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1;
                 string spaceId = 2;
-                string templateId = 3;
-                bool withChat = 4;
+                bool withChat = 3;
+                string templateId = 4;
             }
 
             message Response {
@@ -1821,6 +1821,7 @@ message Rpc {
                 google.protobuf.Struct details = 4;
                 bool addPageContent = 5;
                 bool withChat = 6;
+                string templateId = 7;
             }
 
             message Response {
@@ -6197,31 +6198,6 @@ message Rpc {
                 string targetObjectId = 3;
                 repeated anytype.model.Block.Content.Dataview.View view = 4;
                 ResponseEvent event = 5;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-
-        message CreateBookmark {
-            message Request {
-                string contextId = 1;
-                string blockId = 2;
-                string url = 3;
-                string spaceId = 4;
-            }
-            message Response {
-                Error error = 1;
-                string id = 2;
 
                 message Error {
                     Code code = 1;

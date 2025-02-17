@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -24,14 +25,6 @@ import (
 )
 
 type (
-	templateService interface {
-		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
-		SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error
-		CreateTemplateStateWithDetails(
-			spaceId, templateId, typeId string, layout model.ObjectTypeLayout, details *domain.Details, withTemplateValidation bool,
-		) (st *state.State, err error)
-	}
-
 	bookmarkService interface {
 		CreateObjectAndFetch(
 			ctx context.Context, spaceId, templateId string, details *domain.Details,
@@ -63,7 +56,7 @@ type service struct {
 	objectStore     objectstore.ObjectStore
 	bookmarkService bookmarkService
 	spaceService    space.Service
-	templateService templateService
+	templateService template.Service
 	archiver        objectArchiver
 }
 
@@ -75,7 +68,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmarkService = app.MustComponent[bookmarkService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.templateService = app.MustComponent[templateService](a)
+	s.templateService = app.MustComponent[template.Service](a)
 	s.archiver = app.MustComponent[objectArchiver](a)
 	return nil
 }
@@ -167,7 +160,14 @@ func (s *service) createTemplate(
 		return "", nil, fmt.Errorf("failed to derive object type id: %w", err)
 	}
 
-	createState, err := s.templateService.CreateTemplateStateWithDetails(space.Id(), "", typeId, layout, details, false)
+	createState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{
+		SpaceId:                space.Id(),
+		TemplateId:             "",
+		TypeId:                 typeId,
+		Layout:                 layout,
+		Details:                details,
+		WithTemplateValidation: false,
+	})
 	if err != nil {
 		return
 	}
@@ -191,7 +191,14 @@ func (s *service) createCommonObject(
 		return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
 	}
 
-	createState, err := s.templateService.CreateTemplateStateWithDetails(space.Id(), req.TemplateId, typeId, layout, details, true)
+	createState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{
+		SpaceId:                space.Id(),
+		TemplateId:             req.TemplateId,
+		TypeId:                 typeId,
+		Layout:                 layout,
+		Details:                details,
+		WithTemplateValidation: true,
+	})
 	if err != nil {
 		return
 	}
