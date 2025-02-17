@@ -275,12 +275,13 @@
   },
   {
     "format": "longtext",
-    "hidden": false,
+    "hidden": true,
     "key": "relationDefaultValue",
     "maxCount": 1,
     "name": "Default value",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "format": "object",
@@ -848,12 +849,13 @@
   {
     "description": "Relation allows multi values",
     "format": "number",
-    "hidden": false,
+    "hidden": true,
     "key": "relationMaxCount",
     "maxCount": 1,
     "name": "Max values",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Width of image/video in pixels",
@@ -877,7 +879,7 @@
   {
     "description": "Point to the object types or realtions used to aggregate the set. Empty means object of all types will be aggregated ",
     "format": "object",
-    "hidden": false,
+    "hidden": true,
     "key": "setOf",
     "maxCount": 0,
     "name": "Set of",
@@ -885,7 +887,8 @@
       "objectType"
     ],
     "readonly": true,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Hides the object",
@@ -1260,10 +1263,11 @@
     "format": "shorttext",
     "key": "profileOwnerIdentity",
     "maxCount": 1,
-    "hidden": false,
+    "hidden": true,
     "name": "Anytype Identity",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Relation that indicates the real space id on the spaceView",
@@ -1328,12 +1332,13 @@
   {
     "description": "Name of profile that the user could be mentioned by",
     "format": "shorttext",
-    "hidden": false,
+    "hidden": true,
     "key": "globalName",
     "maxCount": 1,
     "name": "Global name",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "revision": 1
   },
   {
     "description": "Object sync status",
@@ -1406,6 +1411,26 @@
     "source": "derived"
   },
   {
+    "description": "Width of object's layout",
+    "format": "number",
+    "hidden": true,
+    "key": "layoutWidth",
+    "maxCount": 1,
+    "name": "Layout width",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Layout resolved based on object self layout and type recommended layout",
+    "format": "number",
+    "hidden": true,
+    "key": "resolvedLayout",
+    "maxCount": 1,
+    "name": "Resolved layout",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Space order",
     "format": "longtext",
     "hidden": true,
@@ -1461,6 +1486,26 @@
     "objectTypes": [
       "relation"
     ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Default view type that will be used for new sets/collections",
+    "format": "number",
+    "hidden": true,
+    "key": "defaultViewType",
+    "maxCount": 1,
+    "name": "Default view type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Default object type id that will be set to new sets/collections",
+    "format": "object",
+    "hidden": true,
+    "key": "defaultTypeId",
+    "maxCount": 1,
+    "name": "Default type id",
     "readonly": false,
     "source": "details"
   }

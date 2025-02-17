@@ -8,8 +8,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -41,14 +43,14 @@ var (
 	log = logging.Logger("template")
 
 	templateIsPreferableRelationKeys = []domain.RelationKey{
-		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout,
+		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyResolvedLayout,
 		bundle.RelationKeyIconEmoji, bundle.RelationKeyCoverId,
-		bundle.RelationKeySourceObject,
+		bundle.RelationKeySourceObject, bundle.RelationKeySetOf,
 	}
 )
 
 type Service interface {
-	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (st *state.State, err error)
 	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
 	ObjectApplyTemplate(contextId string, templateId string) error
 	TemplateCreateFromObject(ctx context.Context, id string) (templateId string, err error)
@@ -57,6 +59,8 @@ type Service interface {
 	TemplateClone(spaceId string, id string) (templateId string, err error)
 
 	TemplateExportAll(ctx context.Context, path string) (string, error)
+
+	SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error
 
 	app.Component
 }
@@ -91,15 +95,25 @@ func (s *service) Init(a *app.App) error {
 }
 
 // CreateTemplateStateWithDetails creates clone of template object state with empty localDetails and updated objectTypes.
-// Blank template is created in case template object is deleted or blank/empty templateIв is provided
+// If withTemplateValidation=true, templateId is queried in store. If template is empty or not found, last edited template is taken.
+// Blank template is created in case template object is deleted or blank/empty templateId is provided
 func (s *service) CreateTemplateStateWithDetails(
 	templateId string,
 	details *domain.Details,
+	withTemplateValidation bool,
 ) (targetState *state.State, err error) {
-	if templateId == BlankTemplateId || templateId == "" {
-		layout := details.GetInt64(bundle.RelationKeyLayout)
-		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
-	} else {
+	if withTemplateValidation {
+		templateId, err = s.resolveValidTemplateId(templateId, details)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve valid template id: %w", err)
+		}
+	}
+	switch templateId {
+	case "", BlankTemplateId:
+		layout := details.GetInt64(bundle.RelationKeyResolvedLayout)
+		// nolint:gosec
+		targetState = s.createBlankTemplateState(model.ObjectTypeLayout(layout), details)
+	default:
 		targetState, err = s.createCustomTemplateState(templateId)
 		if err != nil {
 			return
@@ -110,13 +124,72 @@ func (s *service) CreateTemplateStateWithDetails(
 	return targetState, nil
 }
 
+func (s *service) resolveValidTemplateId(templateId string, details *domain.Details) (string, error) {
+	var (
+		typeId  = details.GetString(bundle.RelationKeyType)
+		spaceId = details.GetString(bundle.RelationKeySpaceId)
+		ctx     = context.Background()
+	)
+
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("failed to get space: %w", err)
+	}
+	templateTypeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to get template type id from space: %w", err)
+	}
+
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyType,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(templateTypeId),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(typeId),
+			},
+		},
+		Sorts: []database.SortRequest{{
+			RelationKey: bundle.RelationKeyLastModifiedDate,
+			Type:        model.BlockContentDataviewSort_Desc,
+		}},
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to query templates: %w", err)
+	}
+
+	if len(records) == 0 {
+		// if no valid templates presented, we shell create new object with blank template
+		return "", nil
+	}
+
+	if templateId == "" {
+		return records[0].Details.GetString(bundle.RelationKeyId), nil
+	}
+
+	for _, record := range records {
+		if record.Details.GetString(bundle.RelationKeyId) == templateId {
+			return templateId, nil
+		}
+	}
+
+	// if requested templateId was not found in store, we should use last modified template
+	return records[0].Details.GetString(bundle.RelationKeyId), nil
+}
+
 // CreateTemplateStateFromSmartBlock duplicates the logic of CreateTemplateStateWithDetails but does not take the lock on smartBlock.
 // if building of state fails, state of blank template is returned
 func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State {
 	st, err := s.buildState(sb)
 	if err != nil {
-		layout := details.GetInt64(bundle.RelationKeyLayout)
-		st = s.createBlankTemplateState(model.ObjectTypeLayout(layout))
+		layout := details.GetInt64(bundle.RelationKeyResolvedLayout)
+		// nolint:gosec
+		st = s.createBlankTemplateState(model.ObjectTypeLayout(layout), nil)
 	}
 	addDetailsToState(st, details)
 	return st
@@ -131,7 +204,7 @@ func extractTargetDetails(originDetails *domain.Details, templateDetails *domain
 		templateVal := templateDetails.Get(key)
 		if templateVal.Ok() {
 			inTemplateEmpty := templateVal.IsEmpty()
-			if key == bundle.RelationKeyLayout {
+			if key == bundle.RelationKeyResolvedLayout {
 				// layout = 0 is actually basic layout, so it counts
 				inTemplateEmpty = false
 			}
@@ -158,7 +231,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		return nil
 	})
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return s.createBlankTemplateState(model.ObjectType_basic), nil
+		return s.createBlankTemplateState(model.ObjectType_basic, nil), nil
 	}
 	return
 }
@@ -197,7 +270,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 	return cache.Do(s.picker, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		ts, err := s.CreateTemplateStateWithDetails(templateId, orig.Details())
+		ts, err := s.CreateTemplateStateWithDetails(templateId, orig.Details(), false)
 		if err != nil {
 			return err
 		}
@@ -239,9 +312,24 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return "", fmt.Errorf("resolve spaceId: %w", err)
 	}
 
-	templateId, _, err = s.creator.CreateSmartBlockFromState(ctx, spaceId, objectTypeKeys, st)
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("get space: %w", err)
+	}
+
+	templateId, _, err = s.creator.CreateSmartBlockFromStateInSpace(ctx, spc, objectTypeKeys, st)
 	if err != nil {
 		return
+	}
+
+	typeId, err2 := spc.GetTypeIdByKey(ctx, objectTypeKeys[0])
+	if err2 != nil {
+		log.Errorf("failed to get typeId: %v", err2)
+		return
+	}
+
+	if err2 = s.SetDefaultTemplateInType(ctx, typeId, templateId); err != nil {
+		log.Errorf("failed to set defaultTemplateId to type: %v", err2)
 	}
 	return
 }
@@ -335,7 +423,24 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	return path, err
 }
 
-func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *state.State) {
+// SetDefaultTemplateInType sets defaultTemplateId to type object in case it is empty
+func (s *service) SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error {
+	return cache.DoContext(s.picker, ctx, typeId, func(sb smartblock.SmartBlock) error {
+		if sb.Details().GetString(bundle.RelationKeyDefaultTemplateId) != "" {
+			return nil
+		}
+		ds := sb.(basic.DetailsSettable)
+		if ds == nil {
+			return fmt.Errorf("cannot set defaultTemplateId as type object does not support DetailsSettable interface")
+		}
+		return ds.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeyDefaultTemplateId,
+			Value: domain.String(templateId),
+		}}, false)
+	})
+}
+
+func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout, details *domain.Details) (st *state.State) {
 	st = state.NewDoc(BlankTemplateId, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
@@ -344,7 +449,13 @@ func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *s
 		template.WithDetail(bundle.RelationKeyTag, domain.StringList(nil)),
 		template.WithTitle,
 	)
-	if err := s.converter.Convert(st, model.ObjectType_basic, layout); err != nil {
+	if slices.Contains([]model.ObjectTypeLayout{model.ObjectType_set, model.ObjectType_collection}, layout) && details != nil {
+		template.InitTemplate(st,
+			template.WithDetail(bundle.RelationKeySpaceId, details.Get(bundle.RelationKeySpaceId)),
+			template.WithDetail(bundle.RelationKeyType, details.Get(bundle.RelationKeyType)),
+		)
+	}
+	if err := s.converter.Convert(st, model.ObjectType_basic, layout, true); err != nil {
 		log.Errorf("failed to set '%s' layout to blank template: %v", layout.String(), err)
 	}
 	return

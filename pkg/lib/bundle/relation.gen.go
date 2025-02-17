@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "4b92f75c5d9d473a5acd023834926abfe145e78277490a4ef345fad279904c52"
+const RelationChecksum = "9336b6e523c303fe9600d8b8e3d0911521bd7e3c4eeeb5591bdb45099543c8e7"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
@@ -148,11 +148,15 @@ const (
 	RelationKeyChatId                       domain.RelationKey = "chatId"
 	RelationKeyMentions                     domain.RelationKey = "mentions"
 	RelationKeyTimestamp                    domain.RelationKey = "timestamp"
+	RelationKeyLayoutWidth                  domain.RelationKey = "layoutWidth"
+	RelationKeyResolvedLayout               domain.RelationKey = "resolvedLayout"
 	RelationKeySpaceOrder                   domain.RelationKey = "spaceOrder"
 	RelationKeyIconName                     domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations   domain.RelationKey = "recommendedHiddenRelations"
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
+	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
+	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 )
 
 var (
@@ -467,6 +471,34 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyDefaultTypeId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Default object type id that will be set to new sets/collections",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdefaultTypeId",
+			Key:              "defaultTypeId",
+			MaxCount:         1,
+			Name:             "Default type id",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDefaultViewType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Default view type that will be used for new sets/collections",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brdefaultViewType",
+			Key:              "defaultViewType",
+			MaxCount:         1,
+			Name:             "Default view type",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyDescription: {
 
 			DataSource:       model.Relation_details,
@@ -659,12 +691,14 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Name of profile that the user could be mentioned by",
 			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
 			Id:               "_brglobalName",
 			Key:              "globalName",
 			MaxCount:         1,
 			Name:             "Global name",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyGuestKey: {
@@ -1098,6 +1132,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyLayoutWidth: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Width of object's layout",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brlayoutWidth",
+			Key:              "layoutWidth",
+			MaxCount:         1,
+			Name:             "Layout width",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyLinkedProjects: {
 
 			DataSource:       model.Relation_details,
@@ -1292,12 +1340,14 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Link the profile object to specific Identity",
 			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
 			Id:               "_brprofileOwnerIdentity",
 			Key:              "profileOwnerIdentity",
 			MaxCount:         1,
 			Name:             "Anytype Identity",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyProgress: {
@@ -1402,12 +1452,14 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
 			Id:               "_brrelationDefaultValue",
 			Key:              "relationDefaultValue",
 			MaxCount:         1,
 			Name:             "Default value",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationFormat: {
@@ -1456,12 +1508,14 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Relation allows multi values",
 			Format:           model.RelationFormat_number,
+			Hidden:           true,
 			Id:               "_brrelationMaxCount",
 			Key:              "relationMaxCount",
 			MaxCount:         1,
 			Name:             "Max values",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationOptionColor: {
@@ -1505,6 +1559,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyResolvedLayout: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Layout resolved based on object self layout and type recommended layout",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brresolvedLayout",
+			Key:              "resolvedLayout",
+			MaxCount:         1,
+			Name:             "Resolved layout",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyRestrictions: {
 
 			DataSource:       model.Relation_derived,
@@ -1537,12 +1605,14 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Point to the object types or realtions used to aggregate the set. Empty means object of all types will be aggregated ",
 			Format:           model.RelationFormat_object,
+			Hidden:           true,
 			Id:               "_brsetOf",
 			Key:              "setOf",
 			Name:             "Set of",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeySharedSpacesLimit: {

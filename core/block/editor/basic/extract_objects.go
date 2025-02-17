@@ -22,7 +22,7 @@ type ObjectCreator interface {
 }
 
 type TemplateStateCreator interface {
-	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error)
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (*state.State, error)
 	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
 }
 
@@ -86,7 +86,7 @@ func (bs *basic) prepareObjectState(
 		return creator.CreateTemplateStateFromSmartBlock(bs, details), nil
 	}
 
-	return creator.CreateTemplateStateWithDetails(req.TemplateId, details)
+	return creator.CreateTemplateStateWithDetails(req.TemplateId, details, true)
 }
 
 func (bs *basic) prepareTargetObjectDetails(
@@ -178,7 +178,7 @@ func removeBlocks(state *state.State, descendants []simple.Block) {
 
 func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *domain.Details {
 	details := domain.NewDetails()
-	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(layout))
 	// Without this check title will be duplicated in template.WithNameToFirstBlock
 	if layout != model.ObjectType_note {
 		details.SetString(bundle.RelationKeyName, nameText)
@@ -252,5 +252,6 @@ func copySubtreeOfBlocks(s *state.State, oldRootId string, oldBlocks []simple.Bl
 }
 
 func hasNoteLayout(s *state.State) bool {
-	return model.ObjectTypeLayout(s.Details().GetInt64(bundle.RelationKeyLayout)) == model.ObjectType_note
+	//nolint:gosec
+	return model.ObjectTypeLayout(s.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)) == model.ObjectType_note
 }

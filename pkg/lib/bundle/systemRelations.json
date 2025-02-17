@@ -93,8 +93,11 @@
   "timestamp",
   "guestKey",
   "iconName",
-  "timestamp",
   "recommendedFeaturedRelations",
   "recommendedHiddenRelations",
-  "recommendedFileRelations"
+  "recommendedFileRelations",
+  "layoutWidth",
+  "defaultViewType",
+  "defaultTypeId",
+  "resolvedLayout"
 ]
