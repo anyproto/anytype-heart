@@ -25,6 +25,9 @@ func (s *Service) AccountMigrate(ctx context.Context, req *pb.RpcAccountMigrateR
 	if s.rootPath == "" {
 		s.rootPath = req.RootPath
 	}
+	if s.tmpPath == "" {
+		s.tmpPath = req.TmpPath
+	}
 	return s.migrationManager.getOrCreateMigration(req.RootPath, req.Id).wait()
 }
 
@@ -53,7 +56,7 @@ func (s *Service) migrate(ctx context.Context, id string) error {
 	cfg.DisableNetworkIdCheck = true
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res),
+		anytype.BootstrapWallet(s.rootPath, s.tmpPath, res),
 		s.eventSender,
 	}
 	a := &app.App{}

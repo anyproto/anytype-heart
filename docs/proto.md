@@ -3496,6 +3496,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  |  |
+| tmpPath | [string](#string) |  |  |
 
 
 

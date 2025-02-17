@@ -324,4 +324,4 @@ replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
 
 replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
 
-replace modernc.org/libc => modernc.org/libc v1.61.0
+replace modernc.org/libc => gitlab.com/fat-fellow/libc v1.61.14-0.20250217122555-532f460adbbc

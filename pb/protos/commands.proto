@@ -819,6 +819,7 @@ message Rpc {
                 option (no_auth) = true;
                 string id = 1; // Id of a selected account
                 string rootPath = 2;
+                string tmpPath = 3;
             }
 
             message Response {
