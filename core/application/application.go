@@ -31,16 +31,20 @@ type Service struct {
 	eventSender       event.Sender
 	sessions          session.Service
 	traceRecorder     *traceRecorder
+	migrationManager  *migrationManager
 
 	appAccountStartInProcessCancel      context.CancelFunc
 	appAccountStartInProcessCancelMutex sync.Mutex
 }
 
 func New() *Service {
-	return &Service{
+	s := &Service{
 		sessions:      session.New(),
 		traceRecorder: &traceRecorder{},
 	}
+	m := newMigrationManager(s)
+	s.migrationManager = m
+	return s
 }
 
 func (s *Service) GetApp() *app.App {
