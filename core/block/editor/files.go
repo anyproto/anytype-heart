@@ -36,6 +36,7 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 		Text:              stext.NewText(sb, store, f.eventSender),
 		fileObjectService: f.fileObjectService,
 		reconciler:        f.fileReconciler,
+		accountService:    f.accountService,
 	}
 }
 
@@ -46,6 +47,7 @@ type File struct {
 	stext.Text
 	fileObjectService fileobject.Service
 	reconciler        reconciler.Reconciler
+	accountService    accountService
 }
 
 func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -88,7 +90,10 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 
 	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}), smartblock.HookBeforeApply)
 
-	if !ctx.IsNewObject {
+	creator := ctx.State.LocalDetails().GetString(bundle.RelationKeyCreator)
+	myParticipantId := f.accountService.MyParticipantId(f.SpaceID())
+
+	if !ctx.IsNewObject && creator == myParticipantId {
 		fullId := domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}
 		err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
 		if err != nil {
