@@ -113,7 +113,7 @@ type builtinObjects interface {
 }
 
 type templateService interface {
-	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error)
+	CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (*state.State, error)
 	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
 }
 
