@@ -120,6 +120,28 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
 		}).Once()
 
+		// Mock template type resolution
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyUniqueKey.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("ot-template"),
+				},
+			},
+			Keys: []string{bundle.RelationKeyId.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String(mockedType),
+					},
+				},
+			},
+		}).Once()
+
 		// Mock objects in space
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
@@ -147,6 +169,12 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 							RelationKey: bundle.RelationKeyIsHidden.String(),
 							Condition:   model.BlockContentDataviewFilter_NotEqual,
 							Value:       pbtypes.Bool(true),
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyType.String(),
+							Condition:   model.BlockContentDataviewFilter_NotEqual,
+							Value:       pbtypes.String(mockedType),
 						},
 						{
 							Operator: model.BlockContentDataviewFilter_Or,
@@ -406,6 +434,28 @@ func TestSearchService_Search(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
+		// Mock template type resolution
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyUniqueKey.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("ot-template"),
+				},
+			},
+			Keys: []string{bundle.RelationKeyId.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String(mockedType),
+					},
+				},
+			},
+		}).Once()
+
 		// Mock objects in space
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
@@ -433,6 +483,12 @@ func TestSearchService_Search(t *testing.T) {
 							RelationKey: bundle.RelationKeyIsHidden.String(),
 							Condition:   model.BlockContentDataviewFilter_NotEqual,
 							Value:       pbtypes.Bool(true),
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: bundle.RelationKeyType.String(),
+							Condition:   model.BlockContentDataviewFilter_NotEqual,
+							Value:       pbtypes.String(mockedType),
 						},
 						{
 							Operator: model.BlockContentDataviewFilter_Or,
@@ -530,6 +586,28 @@ func TestSearchService_Search(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
+		// Mock template type resolution
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyUniqueKey.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("ot-template"),
+				},
+			},
+			Keys: []string{bundle.RelationKeyId.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String(mockedType),
+					},
+				},
+			},
+		}).Once()
+
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -549,6 +627,28 @@ func TestSearchService_Search(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+
+		// Mock template type resolution
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyUniqueKey.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("ot-template"),
+				},
+			},
+			Keys: []string{bundle.RelationKeyId.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String(mockedType),
+					},
+				},
+			},
+		}).Once()
 
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_UNKNOWN_ERROR},

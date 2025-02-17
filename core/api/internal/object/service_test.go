@@ -65,6 +65,29 @@ func TestObjectService_ListObjects(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
+		// Mock template type resolution
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyUniqueKey.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("ot-template"),
+				},
+			},
+			Keys: []string{bundle.RelationKeyId.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String(mockedTypeId),
+					},
+				},
+			},
+		}).Once()
+
+		// Mock object search
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -81,6 +104,18 @@ func TestObjectService_ListObjects(t *testing.T) {
 						int(model.ObjectType_collection),
 						int(model.ObjectType_participant),
 					}...),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyType.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String(mockedTypeId),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
 				},
 			},
 			Sorts: []*model.BlockContentDataviewSort{{
@@ -257,14 +292,74 @@ func TestObjectService_ListObjects(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
-			Return(&pb.RpcObjectSearchResponse{
-				Records: []*types.Struct{},
-				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			}).Once()
+		// Mock template type resolution
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyUniqueKey.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("ot-template"),
+				},
+			},
+			Keys: []string{bundle.RelationKeyId.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String(mockedTypeId),
+					},
+				},
+			},
+		}).Once()
+
+		// Mock object search
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value: pbtypes.IntList([]int{
+						int(model.ObjectType_basic),
+						int(model.ObjectType_profile),
+						int(model.ObjectType_todo),
+						int(model.ObjectType_note),
+						int(model.ObjectType_bookmark),
+						int(model.ObjectType_set),
+						int(model.ObjectType_collection),
+						int(model.ObjectType_participant),
+					}...),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyType.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String(mockedTypeId),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Sorts: []*model.BlockContentDataviewSort{{
+				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
+				Type:           model.BlockContentDataviewSort_Desc,
+				Format:         model.RelationFormat_longtext,
+				IncludeTime:    true,
+				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+			}},
+			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.ListObjects(ctx, "empty-space", offset, limit)
+		objects, total, hasMore, err := fx.ListObjects(ctx, mockedSpaceId, offset, limit)
 
 		// then
 		require.NoError(t, err)
