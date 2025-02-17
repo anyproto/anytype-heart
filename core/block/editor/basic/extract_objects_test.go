@@ -319,7 +319,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, tc.typeKey).Marshal(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil, nil).ExtractBlocksToObjects(ctx, creator, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
 			assert.NoError(t, err)
 
 			gotBlockIds := []string{}
@@ -374,7 +374,7 @@ func TestExtractObjects(t *testing.T) {
 			}},
 		}
 		ctx := session.NewContext()
-		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil, nil).ExtractBlocksToObjects(ctx, creator, ts, req)
+		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
 		assert.NoError(t, err)
 		var block *model.Block
 		for _, block = range sb.Blocks() {
@@ -407,7 +407,7 @@ func TestExtractObjects(t *testing.T) {
 			}},
 		}
 		ctx := session.NewContext()
-		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil, nil).ExtractBlocksToObjects(ctx, creator, ts, req)
+		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
 		assert.NoError(t, err)
 		var addedBlocks []*model.Block
 		for _, message := range sb.Results.Events {

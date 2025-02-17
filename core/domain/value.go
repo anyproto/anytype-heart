@@ -290,7 +290,11 @@ func (v Value) TryWrapToStringList() ([]string, bool) {
 	}
 	s, ok := v.TryString()
 	if ok {
-		return []string{s}, true
+		if s == "" {
+			return []string{}, true
+		} else {
+			return []string{s}, true
+		}
 	}
 	return nil, false
 }

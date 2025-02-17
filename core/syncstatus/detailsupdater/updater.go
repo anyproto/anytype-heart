@@ -198,6 +198,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if details == nil {
 				details = domain.NewDetails()
 			}
+			// todo: make the checks consistent here and in setSyncDetails
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
 			}
@@ -223,6 +224,14 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
+		if sb.LocalDetails().Has(bundle.RelationKeySyncStatus) {
+			// do cleanup because of previous sync relations indexation problem
+			st := sb.NewState()
+			st.LocalDetails().Delete(bundle.RelationKeySyncDate)
+			st.LocalDetails().Delete(bundle.RelationKeySyncStatus)
+			st.LocalDetails().Delete(bundle.RelationKeySyncError)
+			return sb.Apply(st, smartblock.KeepInternalFlags)
+		}
 		return nil
 	}
 	st := sb.NewState()
