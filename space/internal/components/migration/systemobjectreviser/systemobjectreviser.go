@@ -96,7 +96,7 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	if bundleObject.GetInt64(revisionKey) <= localObject.GetInt64(revisionKey) {
 		return false, nil
 	}
-	details := buildDiffDetails(bundleObject, localObject)
+	details, absentKeys := buildDiffDetails(bundleObject, localObject)
 
 	recRelsDetail, err := checkListOfSpaceSpecificObjects(ctx, space, bundle.RelationKeyRecommendedRelations, bundleObject, localObject)
 	if err != nil {
@@ -116,13 +116,14 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 		details.Set(relFormatOTDetail.Key, relFormatOTDetail.Value)
 	}
 
-	if details.Len() > 0 {
+	if details.Len() > 0 || len(absentKeys) > 0 {
 		log.Debug("updating system object", zap.String("key", uk.InternalKey()), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, localObject.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
 			for key, value := range details.Iterate() {
 				st.SetDetail(key, value)
 			}
+			st.RemoveDetail(absentKeys...)
 			return sb.Apply(st)
 		}); err != nil {
 			return true, fmt.Errorf("failed to update system object '%s' in space '%s': %w", uk.InternalKey(), space.Id(), err)
@@ -155,8 +156,8 @@ func getBundleSystemObjectDetails(uk domain.UniqueKey) *domain.Details {
 	}
 }
 
-func buildDiffDetails(origin, current *domain.Details) *domain.Details {
-	diff, _ := domain.StructDiff(current, origin)
+func buildDiffDetails(origin, current *domain.Details) (details *domain.Details, absentKeys []domain.RelationKey) {
+	diff, absentKeys := domain.StructDiff(current, origin)
 	diff = diff.CopyOnlyKeys(
 		bundle.RelationKeyName,
 		bundle.RelationKeyDescription,
@@ -166,13 +167,20 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 		bundle.RelationKeyRelationReadonlyValue,
 		bundle.RelationKeyRelationMaxCount,
 		bundle.RelationKeyIconEmoji,
+		bundle.RelationKeyIconOption,
+		bundle.RelationKeyIconName,
 	)
 
-	details := domain.NewDetails()
+	details = domain.NewDetails()
 	for key, value := range diff.Iterate() {
 		details.Set(key, value)
 	}
-	return details
+
+	absentKeys = lo.Intersect(absentKeys, []domain.RelationKey{
+		bundle.RelationKeyIconEmoji,
+	})
+
+	return details, absentKeys
 }
 
 func checkListOfSpaceSpecificObjects(

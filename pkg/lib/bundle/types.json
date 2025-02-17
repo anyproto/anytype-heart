@@ -5,7 +5,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "🍲",
+    "iconColor": 3,
+    "iconName": "pizza",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -21,13 +22,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "📝",
+    "iconColor": 2,
+    "iconName": "create",
     "hidden": false,
     "layout": "note",
     "relations": [
       "tag"
     ],
-    "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory"
+    "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory",
+    "revision": 1
   },
   {
     "id": "contact",
@@ -35,7 +38,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "📇",
+    "iconColor": 7,
+    "iconName": "id-card",
     "hidden": false,
     "layout": "profile",
     "relations": [
@@ -52,7 +56,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "🔖",
+    "iconColor": 3,
+    "iconName": "bookmark",
     "hidden": false,
     "layout": "bookmark",
     "relations": [
@@ -60,7 +65,8 @@
       "source",
       "picture"
     ],
-    "description": "URL that is stored as Object and may be categorised and linked with objects"
+    "description": "URL that is stored as Object and may be categorised and linked with objects",
+    "revision": 1
   },
   {
     "id": "date",
@@ -68,7 +74,8 @@
     "types": [
       "Date"
     ],
-    "emoji": "📅",
+    "iconColor": 8,
+    "iconName": "calendar",
     "hidden": true,
     "layout": "date",
     "relations": [
@@ -82,7 +89,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "✅",
+    "iconColor": 9,
+    "iconName": "checkbox",
     "hidden": false,
     "layout": "todo",
     "relations": [
@@ -95,7 +103,8 @@
       "tasks",
       "linkedProjects"
     ],
-    "description": "A piece of work to be done or undertaken"
+    "description": "A piece of work to be done or undertaken",
+    "revision": 1
   },
   {
     "id": "relation",
@@ -104,7 +113,8 @@
       "SubObject",
       "BundledRelation"
     ],
-    "emoji": "🔗",
+    "iconColor": 6,
+    "iconName": "share-social",
     "hidden": true,
     "layout": "relation",
     "relations": [
@@ -113,7 +123,8 @@
       "relationDefaultValue",
       "relationFormatObjectTypes"
     ],
-    "description": "Meaningful connection between objects"
+    "description": "Meaningful connection between objects",
+    "revision": 1
   },
   {
     "id": "book",
@@ -121,7 +132,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "📘",
+    "iconColor": 1,
+    "iconName": "book",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -139,7 +151,8 @@
     "types": [
       "File"
     ],
-    "emoji": "📽",
+    "iconColor": 5,
+    "iconName": "videocam",
     "hidden": false,
     "layout": "file",
     "relations": [
@@ -157,7 +170,7 @@
     ],
     "description": "The recording of moving visual images",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "dashboard",
@@ -178,7 +191,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "🍿",
+    "iconColor": 4,
+    "iconName": "film",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -195,14 +209,16 @@
       "SubObject",
       "BundledObjectType"
     ],
-    "emoji": "🥚",
+    "iconColor": 8,
+    "iconName": "extension-puzzle",
     "hidden": false,
     "layout": "objectType",
     "relations": [
       "recommendedRelations",
       "recommendedLayout"
     ],
-    "description": "Object that contains a definition of some object type"
+    "description": "Object that contains a definition of some object type",
+    "revision": 1
   },
   {
     "id": "relationOption",
@@ -210,7 +226,6 @@
     "types": [
       "SubObject"
     ],
-    "emoji": "🥚",
     "hidden": true,
     "layout": "relationOption",
     "relations": [],
@@ -222,14 +237,16 @@
     "types": [
       "Workspace"
     ],
-    "emoji": "🌎",
+    "iconColor": 9,
+    "iconName": "folder",
     "hidden": true,
     "layout": "space",
     "relations": [
       "tag"
     ],
     "description": "Workspace",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "spaceView",
@@ -237,7 +254,8 @@
     "types": [
       "SpaceView"
     ],
-    "emoji": "🌎",
+    "iconColor": 9,
+    "iconName": "folder",
     "hidden": true,
     "layout": "spaceView",
     "relations": [
@@ -252,7 +270,8 @@
     "types": [
       "Participant"
     ],
-    "emoji": "\uD83E\uDDD1",
+    "iconColor": 1,
+    "iconName": "person",
     "hidden": false,
     "layout": "participant",
     "relations": [
@@ -260,7 +279,7 @@
     ],
     "description": "Anytype identity as a space participant",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "template",
@@ -268,7 +287,8 @@
     "types": [
       "Template"
     ],
-    "emoji": "\uD83E\uDDE9",
+    "iconColor": 7,
+    "iconName": "copy",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -276,7 +296,7 @@
       "templateIsBundled"
     ],
     "description": "Sample object that has already some details in place and used to create objects from",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "set",
@@ -284,14 +304,16 @@
     "types": [
       "Page"
     ],
-    "emoji": "🔎",
+    "iconColor": 5,
+    "iconName": "search",
     "hidden": false,
     "layout": "set",
     "relations": [
       "tag",
       "setOf"
     ],
-    "description": "Query all objects in your space based on types and relations"
+    "description": "Query all objects in your space based on types and relations",
+    "revision": 1
   },
   {
     "id": "collection",
@@ -299,13 +321,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "🗂️",
+    "iconColor": 6,
+    "iconName": "layers",
     "hidden": false,
     "layout": "collection",
     "relations": [
       "tag"
     ],
-    "description": "Collect objects in one place, use different views to organize them"
+    "description": "Collect objects in one place, use different views to organize them",
+    "revision": 1
   },
   {
     "id": "diaryEntry",
@@ -313,7 +337,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "✨",
+    "iconColor": 2,
+    "iconName":"reader",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -328,13 +353,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "📄",
+    "iconColor": 7,
+    "iconName": "document",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag"
     ],
-    "description": "Blank canvas with Title"
+    "description": "Blank canvas with Title",
+    "revision": 1
   },
   {
     "id": "image",
@@ -342,7 +369,8 @@
     "types": [
       "File"
     ],
-    "emoji": "🏞",
+    "iconColor": 9,
+    "iconName": "image",
     "hidden": false,
     "layout": "image",
     "relations": [
@@ -361,7 +389,7 @@
     ],
     "description": "A representation of the external form of a person or thing in art",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "profile",
@@ -370,13 +398,15 @@
       "Page",
       "ProfilePage"
     ],
-    "emoji": "🧍",
+    "iconColor": 1,
+    "iconName": "man",
     "hidden": false,
     "layout": "profile",
     "relations": [
       "tag"
     ],
-    "description": "Homo sapiens"
+    "description": "Homo sapiens",
+    "revision": 1
   },
   {
     "id": "audio",
@@ -384,7 +414,8 @@
     "types": [
       "File"
     ],
-    "emoji": "🎵",
+    "iconColor": 4,
+    "iconName": "musical-notes",
     "hidden": false,
     "layout": "file",
     "relations": [
@@ -402,7 +433,7 @@
     ],
     "description": "Sound when recorded, with ability to reproduce",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "goal",
@@ -410,7 +441,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "🎯",
+    "iconColor": 3,
+    "iconName": "flag",
     "hidden": false,
     "layout": "todo",
     "relations": [
@@ -428,7 +460,8 @@
     "types": [
       "File"
     ],
-    "emoji": "📎",
+    "iconColor": 6,
+    "iconName": "attach",
     "hidden": false,
     "layout": "file",
     "relations": [
@@ -440,7 +473,7 @@
     ],
     "description": "Computer resource for recording data in a computer storage device",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "project",
@@ -448,7 +481,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "🔨",
+    "iconColor": 1,
+    "iconName": "hammer",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -463,14 +497,16 @@
     "types": [
       "ChatObject"
     ],
-    "emoji": "💬",
+    "iconColor": 6,
+    "iconName": "chatbubble",
     "hidden": true,
     "layout": "chat",
     "relations": [
         "tag",
         "description"
     ],
-    "description": "A chat [deprecated]"
+    "description": "A chat [deprecated]",
+    "revision": 1
   },
   {
     "id": "chatDerived",
@@ -478,7 +514,8 @@
     "types": [
       "ChatDerivedObject"
     ],
-    "emoji": "",
+    "iconColor": 6,
+    "iconName": "chatbubble",
     "hidden": true,
     "layout": "chatDerived",
     "relations": [
@@ -486,6 +523,6 @@
       "description"
     ],
     "description": "A chat derived object",
-    "revision": 1
+    "revision": 2
   }
 ]
