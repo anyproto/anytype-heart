@@ -521,19 +521,20 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 
 	var details []Detail
 	for _, r := range linkedRelations {
-		if _, isExcluded := excludeRelations[r.Key]; isExcluded {
+		key := r.Key
+		if _, isExcluded := excludeRelations[key]; isExcluded {
 			continue
 		}
 
-		if val, ok := primaryDetailFields[r.Key]; ok {
-			id, name := s.getRelation(r.Key, resp)
-			format := relationFormatMap[r.Key]
+		if val, ok := primaryDetailFields[key]; ok {
+			id, name := s.getRelation(key, resp)
+			format := relationFormatMap[key]
 			details = append(details, Detail{
 				Id: id,
 				Details: map[string]interface{}{
 					"name": name,
 					"type": format,
-					format: s.convertValue(val, format, r.Key, resp.ObjectView.Details),
+					format: s.convertValue(key, val, format, resp.ObjectView.Details),
 				},
 			})
 		}
@@ -563,7 +564,7 @@ func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) 
 }
 
 // convertValue converts a protobuf types.Value into a native Go value.
-func (s *ObjectService) convertValue(value *types.Value, format string, key string, details []*model.ObjectViewDetailsSet) interface{} {
+func (s *ObjectService) convertValue(key string, value *types.Value, format string, details []*model.ObjectViewDetailsSet) interface{} {
 	switch kind := value.Kind.(type) {
 	case *types.Value_NullValue:
 		return nil
@@ -592,13 +593,13 @@ func (s *ObjectService) convertValue(value *types.Value, format string, key stri
 	case *types.Value_StructValue:
 		m := make(map[string]interface{})
 		for k, v := range kind.StructValue.Fields {
-			m[k] = s.convertValue(v, format, key, details)
+			m[k] = s.convertValue(key, v, format, details)
 		}
 		return m
 	case *types.Value_ListValue:
 		var list []interface{}
 		for _, v := range kind.ListValue.Values {
-			list = append(list, s.convertValue(v, format, key, details))
+			list = append(list, s.convertValue(key, v, format, details))
 		}
 
 		if format == "select" || format == "multi_select" {

@@ -375,6 +375,46 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Twice()
 
+		// Mock tag-1 open
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTagId1,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String():                pbtypes.String(mockedTagValue1),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor1),
+							},
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
+		// Mock tag-2 open
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTagId2,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String():                pbtypes.String(mockedTagValue2),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor2),
+							},
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
 		// when
 		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
 
