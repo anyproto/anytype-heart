@@ -99,9 +99,6 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		if err != nil {
 			log.Errorf("failed to ensure file added to sync queue: %v", err)
 		}
-		f.AddHook(func(applyInfo smartblock.ApplyInfo) error {
-			return f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, applyInfo.State.Details())
-		}, smartblock.HookOnStateRebuild)
 	}
 	return nil
 }
