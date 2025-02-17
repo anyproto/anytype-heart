@@ -497,6 +497,7 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		bundle.RelationKeyLinks.String():             true,
 		bundle.RelationKeyBacklinks.String():         true,
 		bundle.RelationKeySourceObject.String():      true,
+		bundle.RelationKeyLayoutAlign.String():       true,
 	}
 
 	var details []Detail
