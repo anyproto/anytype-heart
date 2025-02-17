@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/nodeconf"
@@ -392,7 +391,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if len(recs) == 0 {
 		return domain.InviteView{}, fmt.Errorf("no acl records found for space: %s, %w", res.SpaceId, ErrAclRequestFailed)
 	}
-	store, err := liststorage.NewInMemoryAclListStorage(recs[0].Id, recs)
+	store, err := list.NewInMemoryStorage(recs[0].Id, recs)
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}

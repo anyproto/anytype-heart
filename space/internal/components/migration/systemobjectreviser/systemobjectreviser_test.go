@@ -316,4 +316,27 @@ func TestReviseSystemObject(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, toRevise)
 	})
+
+	t.Run("relationFormatObjectTypes list is updated", func(t *testing.T) {
+		// given
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:                  domain.Int64(bundle.MustGetRelation(bundle.RelationKeyCreator).Revision - 1),
+			bundle.RelationKeySourceObject:              domain.String("_brcreator"),
+			bundle.RelationKeyUniqueKey:                 domain.String("rel-creator"),
+			bundle.RelationKeyRelationFormatObjectTypes: domain.StringList([]string{}),
+		})
+		space := mock_space.NewMockSpace(t)
+		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
+		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return addr.RelationKeyToIdPrefix + key.InternalKey(), nil
+		}).Maybe()
+
+		// when
+		toRevise, err := reviseObject(ctx, log, space, rel)
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, toRevise)
+	})
 }

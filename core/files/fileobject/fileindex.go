@@ -105,6 +105,7 @@ func (ind *indexer) initQuery() {
 					model.ObjectType_image,
 					model.ObjectType_video,
 					model.ObjectType_audio,
+					model.ObjectType_pdf,
 				}),
 			},
 			{

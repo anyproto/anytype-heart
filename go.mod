@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.7
-	github.com/anyproto/any-sync v0.5.26
+	github.com/anyproto/any-sync v0.6.0
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
@@ -51,7 +51,7 @@ require (
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
 	github.com/huandu/skiplist v1.2.1
 	github.com/improbable-eng/grpc-web v0.15.0
-	github.com/ipfs/boxo v0.27.2
+	github.com/ipfs/boxo v0.27.4
 	github.com/ipfs/go-block-format v0.2.0
 	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-datastore v0.6.0
@@ -62,7 +62,7 @@ require (
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.17.11
-	github.com/kovidgoyal/imaging v1.6.3
+	github.com/kovidgoyal/imaging v1.6.4
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.9
@@ -108,6 +108,7 @@ require (
 	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
 	golang.org/x/net v0.35.0
 	golang.org/x/oauth2 v0.26.0
+	golang.org/x/sys v0.30.0
 	golang.org/x/text v0.22.0
 	google.golang.org/grpc v1.70.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
@@ -115,7 +116,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.34
 	zombiezen.com/go/sqlite v1.4.0
-
 )
 
 require (
@@ -249,7 +249,7 @@ require (
 	github.com/prometheus/common v0.61.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/pseudomuto/protokit v0.2.1 // indirect
-	github.com/quic-go/quic-go v0.48.2 // indirect
+	github.com/quic-go/quic-go v0.49.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/rs/cors v1.11.0 // indirect
@@ -284,9 +284,8 @@ require (
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
-	golang.org/x/time v0.9.0 // indirect
+	golang.org/x/time v0.10.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241202173237-19429a94021a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241202173237-19429a94021a // indirect
