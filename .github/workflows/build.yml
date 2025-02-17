@@ -143,86 +143,14 @@ jobs:
         if: github.event_name == 'push'
         run: |
           make protos-js
-          mv dist/js/pb protobuf
-          mkdir -p protobuf/protos
-          cp pb/protos/*.proto ./protobuf/protos
-          cp pb/protos/service/*.proto ./protobuf/protos
-          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+          make ci-js-protos
 
-      - name: Add system relations/types jsons
-        run: |
-          mkdir -p json/
-          cp pkg/lib/bundle/systemRelations.json ./json
-          cp pkg/lib/bundle/systemTypes.json ./json
-          cp pkg/lib/bundle/internalRelations.json ./json
-          cp pkg/lib/bundle/internalTypes.json ./json
-
-      - name: create .release/ dir # need for "Pack *" steps
-        run: mkdir -p .release/
-
-      - name: Pack server win
+      - name: Pack servers
         if: github.event_name == 'push'
-        run: |
-          declare -a arr=("windows-amd64")
-          for i in "${arr[@]}"; do
-            OSARCH=${i%.*}
-            cp ./${i}* ./grpc-server.exe
-            zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
-            mv js_${VERSION}_${OSARCH}.zip .release/
-          done
-
-      - name: Pack server osx
-        if: github.event_name == 'push'
-        run: |
-          declare -a arr=("darwin-amd64" "darwin-arm64")
-          for i in "${arr[@]}"; do
-            OSARCH=${i%.*}
-            cp ./${i}* ./grpc-server
-            tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-            mv js_${VERSION}_${OSARCH}.tar.gz .release/
-          done
-
-      - name: Pack server unix amd64
-        if: github.event_name == 'push'
-        run: |
-          declare -a arr=("linux-amd64")
-          for i in "${arr[@]}"; do
-            OSARCH=${i%.*}
-            cp ./${i}* ./grpc-server
-            tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-            mv js_${VERSION}_${OSARCH}.tar.gz .release/
-          done
-
-      - name: Pack server unix arm64
-        if: github.event_name == 'push'
-        run: |
-          declare -a arr=("linux-arm64")
-          for i in "${arr[@]}"; do
-            OSARCH=${i%.*}
-            cp ./${i}* ./grpc-server
-            tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-            mv js_${VERSION}_${OSARCH}.tar.gz .release/
-          done
+        run: make pack-server
 
       - name: Make swift protos
-        run: |
-          mkdir -p .release
-          make protos-swift
-          rm -rf protobuf
-          mv dist/ios/protobuf protobuf
-          mkdir -p protobuf/protos
-          cp pb/protos/*.proto ./protobuf/protos
-          cp pb/protos/service/*.proto ./protobuf/protos
-          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-
-      - name: Add system relations/types jsons
-        run: |
-          mkdir -p json/
-          cp pkg/lib/bundle/systemRelations.json ./json
-          cp pkg/lib/bundle/relations.json ./json
-          cp pkg/lib/bundle/systemTypes.json ./json
-          cp pkg/lib/bundle/internalRelations.json ./json
-          cp pkg/lib/bundle/internalTypes.json ./json
+        run: make swift-protos
 
       - name: Compile ios lib
         env:
@@ -230,41 +158,14 @@ jobs:
           GITHUB_USER: ${{ github.actor }}
           MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
           MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
-        run: |
-          go install github.com/vektra/mockery/v2@v2.47.0
-          go install go.uber.org/mock/mockgen@v0.5.0
-          make test-deps
-          gomobile bind -tags "$BUILD_TAG_NETWORK nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
-          mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
-          go run cmd/iosrepack/main.go
-          mv dist/ios/Lib.xcframework .
-          gtar --exclude ".*" -czvf ios_framework.tar.gz Lib.xcframework protobuf json
-          gradle publish
-          mv ios_framework.tar.gz .release/ios_framework_${VERSION}.tar.gz
+          PUBLISH_GRADLE: 1
+        run: make compile-ios-lib
 
       - name: Make java protos
-        run: |
-          make protos-java
-          rm -rf protobuf
-          mv dist/android/pb protobuf
-          mkdir -p protobuf/protos
-          cp pb/protos/*.proto ./protobuf/protos
-          cp pb/protos/service/*.proto ./protobuf/protos
-          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-
-      - name: Add system relations/types jsons
-        run: |
-          mkdir -p json/
-          cp pkg/lib/bundle/systemRelations.json ./json
-          cp pkg/lib/bundle/systemTypes.json ./json
-          cp pkg/lib/bundle/internalRelations.json ./json
-          cp pkg/lib/bundle/internalTypes.json ./json
+        run: make ci-java-protos
 
       - name: Compile android lib
-        run: |
-          gomobile bind -tags "$BUILD_TAG_NETWORK nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=android -androidapi 26 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
-          gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
-          mv android_lib_${VERSION}.tar.gz .release/
+        run: make compile-android-lib
 
       - name: Publish android lib to maven
         env:
