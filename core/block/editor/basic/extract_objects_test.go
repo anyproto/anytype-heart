@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/block/template/mock_template"
@@ -45,51 +44,6 @@ func (tc testCreator) CreateSmartBlockFromState(_ context.Context, _ string, _ [
 	object.Doc = createState
 
 	return id, nil, nil
-}
-
-func blankTemplate() *state.State {
-	st := state.NewDoc("", nil).NewState()
-	template.InitTemplate(st, template.WithEmpty,
-		template.WithDefaultFeaturedRelations,
-		template.WithFeaturedRelations,
-		template.WithRequiredRelations,
-		template.WithTitle,
-	)
-	return st
-}
-
-type testTemplateService struct {
-	templates map[string]*state.State
-}
-
-func (tts testTemplateService) AddTemplate(id string, st *state.State) {
-	tts.templates[id] = st
-}
-
-func (tts testTemplateService) CreateTemplateStateWithDetails(
-	_, templateId, _ string, _ model.ObjectTypeLayout, details *domain.Details, _ bool,
-) (st *state.State, err error) {
-	if templateId == "" {
-		st = state.NewDoc("", nil).NewState()
-		template.InitTemplate(st, template.WithEmpty,
-			template.WithDefaultFeaturedRelations,
-			template.WithFeaturedRelations,
-			template.WithRequiredRelations,
-			template.WithTitle,
-		)
-	} else {
-		st = tts.templates[templateId]
-	}
-	templateDetails := st.Details()
-	newDetails := templateDetails.Merge(details)
-	st.SetDetails(newDetails)
-	return st, nil
-}
-
-func (tts testTemplateService) CreateTemplateStateFromSmartBlock(
-	sb smartblock.SmartBlock, _ string, _ model.ObjectTypeLayout, _ *domain.Details,
-) *state.State {
-	return tts.templates[sb.Id()]
 }
 
 func assertNoCommonElements(t *testing.T, a, b []string) {
@@ -261,7 +215,7 @@ func TestExtractObjects(t *testing.T) {
 			wantObjectsWithTexts: [][]string{
 				{
 					"text A", "text B", "text B.1",
-					"text 3", "text 3.1", "text 3.1.1",
+					"text 3.1", "text 3.1.1",
 				},
 			},
 			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
@@ -279,12 +233,12 @@ func TestExtractObjects(t *testing.T) {
 				// first object
 				{
 					"text A", "text B", "text B.1",
-					"text 2", "text 2.1",
+					"text 2.1",
 				},
 				// second object
 				{
 					"text A", "text B", "text B.1",
-					"text 3", "text 3.1", "text 3.1.1",
+					"text 3.1", "text 3.1.1",
 				},
 			},
 			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
@@ -321,14 +275,10 @@ func TestExtractObjects(t *testing.T) {
 				assert.Equal(t, tc.templateId, req.TemplateId)
 				switch tc.templateId {
 				case objectId:
-					tmpl = sb.NewState()
+					return sb.NewState(), nil
 				default:
-					tmpl = makeTemplateState(tc.templateId)
+					return makeTemplateState(tc.templateId), nil
 				}
-				// templateDetails := tmpl.Details()
-				// newDetails := templateDetails.Merge(req.Details)
-				// tmpl.SetDetails(newDetails)
-				return tmpl, nil
 			}).Maybe()
 			fixture.ts.EXPECT().CreateTemplateStateFromSmartBlock(mock.Anything, mock.Anything).RunAndReturn(func(_ smartblock.SmartBlock, _ templateSvc.CreateTemplateRequest) *state.State {
 				switch tc.templateId {
