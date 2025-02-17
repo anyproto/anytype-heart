@@ -52,9 +52,10 @@ func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest,
 
 	allResponses := make([]*pb.RpcObjectSearchResponse, 0, len(spaces))
 	for _, space := range spaces {
-		// Resolve object type IDs per space, as they are unique per space
+		// Resolve template type and object type IDs per space, as they are unique per space
+		templateFilter := s.prepareTemplateFilter(space.Id)
 		typeFilters := s.prepareObjectTypeFilters(space.Id, request.Types)
-		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, typeFilters)
+		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
 
 		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 			SpaceId: space.Id,
@@ -113,9 +114,10 @@ func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest,
 // Search retrieves a paginated list of objects from a specific space that match the search parameters.
 func (s *SearchService) Search(ctx context.Context, spaceId string, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error) {
 	baseFilters := s.prepareBaseFilters()
+	templateFilter := s.prepareTemplateFilter(spaceId)
 	queryFilters := s.prepareQueryFilter(request.Query)
 	typeFilters := s.prepareObjectTypeFilters(spaceId, request.Types)
-	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, queryFilters, typeFilters)
+	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
 
 	sorts := s.prepareSorts(request.Sort)
 	dateToSortAfter := sorts[0].RelationKey
@@ -194,6 +196,23 @@ func (s *SearchService) prepareBaseFilters() []*model.BlockContentDataviewFilter
 	}
 }
 
+// prepareTemplateFilter returns a filter that excludes templates from the search results.
+func (s *SearchService) prepareTemplateFilter(spaceId string) []*model.BlockContentDataviewFilter {
+	typeId, err := util.ResolveUniqueKeyToTypeId(s.mw, spaceId, "ot-template")
+	if err != nil {
+		return nil
+	}
+
+	return []*model.BlockContentDataviewFilter{
+		{
+			Operator:    model.BlockContentDataviewFilter_No,
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String(typeId),
+		},
+	}
+}
+
 // prepareQueryFilter combines object name and snippet filters with an OR condition.
 func (s *SearchService) prepareQueryFilter(searchQuery string) []*model.BlockContentDataviewFilter {
 	if searchQuery == "" {
@@ -243,7 +262,7 @@ func (s *SearchService) prepareObjectTypeFilters(spaceId string, objectTypes []s
 		nestedFilters = append(nestedFilters, &model.BlockContentDataviewFilter{
 			Operator:    model.BlockContentDataviewFilter_No,
 			RelationKey: bundle.RelationKeyType.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
 			Value:       pbtypes.String(typeId),
 		})
 	}

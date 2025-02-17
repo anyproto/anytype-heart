@@ -64,10 +64,13 @@ func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceServic
 
 // ListObjects retrieves a paginated list of objects in a specific space.
 func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []Object, total int, hasMore bool, err error) {
+	typeId, err := util.ResolveUniqueKeyToTypeId(s.mw, spaceId, "ot-template")
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: pbtypes.IntList([]int{
@@ -80,6 +83,18 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 					int(model.ObjectType_collection),
 					int(model.ObjectType_participant),
 				}...),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(typeId),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyIsHidden.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Bool(true),
 			},
 		},
 		Sorts: []*model.BlockContentDataviewSort{{
@@ -268,11 +283,13 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 			},
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyIsHidden.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       pbtypes.Bool(true),
@@ -340,6 +357,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String("ot-template"),
@@ -362,6 +380,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(templateTypeId),
