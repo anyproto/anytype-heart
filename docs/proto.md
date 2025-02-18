@@ -30387,6 +30387,8 @@ Used to decode block meta only, without the content itself
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 | revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
 | restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
+| iconColor | [int64](#int64) |  | color of object type icon |
+| iconName | [string](#string) |  | name of object type icon |
 
 
 
