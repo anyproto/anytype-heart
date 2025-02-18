@@ -49,3 +49,23 @@ func (mw *Middleware) AIAutofill(ctx context.Context, req *pb.RpcAIAutofillReque
 	}
 	return r
 }
+
+func (mw *Middleware) AIWebsiteProcess(ctx context.Context, req *pb.RpcAIWebsiteProcessRequest) *pb.RpcAIWebsiteProcessResponse {
+	aiService := mustService[ai.AI](mw)
+
+	result, err := aiService.WebsiteProcess(ctx, req)
+	code := mapErrorCode(nil,
+		errToCode(ai.ErrRateLimitExceeded, pb.RpcAIWebsiteProcessResponseError_RATE_LIMIT_EXCEEDED),
+		errToCode(ai.ErrEndpointNotReachable, pb.RpcAIWebsiteProcessResponseError_ENDPOINT_NOT_REACHABLE),
+		errToCode(ai.ErrModelNotFound, pb.RpcAIWebsiteProcessResponseError_MODEL_NOT_FOUND),
+		errToCode(ai.ErrAuthRequired, pb.RpcAIWebsiteProcessResponseError_AUTH_REQUIRED))
+
+	r := &pb.RpcAIWebsiteProcessResponse{
+		Error: &pb.RpcAIWebsiteProcessResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		ObjectId: result.ObjectId,
+	}
+	return r
+}

@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -35,6 +36,7 @@ var (
 type AI interface {
 	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error)
 	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error)
+	WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (*WebsiteProcessResult, error)
 	app.ComponentRunnable
 }
 
@@ -71,6 +73,13 @@ type WritingToolsResult struct {
 
 type AutofillResult struct {
 	Choices []string
+}
+
+type WebsiteProcessResult struct {
+	// Type            string            // "recipe", "hotel", or "book"
+	// Relations       map[string]string // e.g. {"portions": "2", "prep_time": "40 minutes", ...}
+	// MarkdownSummary string            // e.g. "## Pasta with tomato sauce and basil.\n A classic Italian dish ..."
+	ObjectId string
 }
 
 func New() AI {
@@ -174,6 +183,133 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 	}
 
 	return AutofillResult{Choices: []string{extractedAnswer}}, nil
+}
+
+// WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary.
+func (ai *AIService) WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (*WebsiteProcessResult, error) {
+	content, err := FetchAndExtract(params.Url)
+	if err != nil {
+		return nil, err
+	}
+
+	ai.setAPIConfig(params.Config)
+	websiteType, err := ai.ClassifyWebsiteContent(ctx, content)
+	if err != nil {
+		return nil, fmt.Errorf("could not classify website content: %w", err)
+	}
+
+	prompts, ok := websiteExtractionPrompts[websiteType]
+	if !ok {
+		return nil, fmt.Errorf("no extraction prompts for website type: %s", websiteType)
+	}
+
+	relationPrompt := fmt.Sprintf(prompts.RelationPrompt, content)
+	summaryPrompt := fmt.Sprintf(prompts.SummaryPrompt, content)
+
+	var (
+		relationsResult map[string]string
+		summaryResult   string
+		relErr, sumErr  error
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		pc := &PromptConfig{
+			SystemPrompt: "",
+			UserPrompt:   relationPrompt,
+			Temperature:  0,
+			JSONMode:     true,
+		}
+		ai.responseParser = parsing.NewWebsiteProcessParser()
+
+		answer, err := ai.newChat(ctx, 1, pc, ai.responseParser)
+		if err != nil {
+			relErr = err
+			return
+		}
+		extractedAnswer, err := ai.extractAnswerByMode(answer, 1)
+
+		var relations map[string]string
+		if err := json.Unmarshal([]byte(extractedAnswer), &relations); err != nil {
+			relErr = err
+			return
+		}
+		relationsResult = relations
+	}()
+
+	go func() {
+		defer wg.Done()
+		pc := &PromptConfig{
+			SystemPrompt: "",
+			UserPrompt:   summaryPrompt,
+			Temperature:  0.2,
+			JSONMode:     false,
+		}
+		ai.responseParser = parsing.NewWebsiteProcessParser()
+		answer, err := ai.newChat(ctx, 2, pc, ai.responseParser)
+		if err != nil {
+			sumErr = err
+			return
+		}
+		summaryResult = answer
+	}()
+
+	wg.Wait()
+	if relErr != nil {
+		return nil, fmt.Errorf("relation extraction failed: %w", relErr)
+	}
+	if sumErr != nil {
+		return nil, fmt.Errorf("summary extraction failed: %w", sumErr)
+	}
+
+	log.Infof("website processed successfully, type: %s", websiteType)
+	log.Debugf("relations: %v", relationsResult)
+	log.Debugf("summary: %s", summaryResult)
+
+	return &WebsiteProcessResult{
+		// Type:            websiteType,
+		// Relations:       relationsResult,
+		// MarkdownSummary: summaryResult,
+		// TODO: create object with extracted data and return its Id
+		ObjectId: "123",
+	}, nil
+}
+
+func (ai *AIService) ClassifyWebsiteContent(ctx context.Context, content string) (string, error) {
+	systemPrompt := `You are a classification assistant. 
+Your task is to classify text into one of the following categories: "recipe", "hotel", or "book".
+Return ONLY the category name. Do NOT add explanations, punctuation, or extra words.
+If uncertain, answer with best possible guess. If none apply, answer with "none".`
+	userPrompt := fmt.Sprintf(`Classify the following content into one of the categories: "recipe", "hotel", or "book".
+Answer with ONLY one of these words, nothing else.
+
+Content:
+---
+%s
+---
+`, content[:min(len(content), 1000)])
+	ai.promptConfig = &PromptConfig{
+		SystemPrompt: systemPrompt,
+		UserPrompt:   userPrompt,
+		Temperature:  0.2,
+		JSONMode:     false,
+	}
+
+	answer, err := ai.chat(ctx, 0)
+	if err != nil {
+		return "", err
+	}
+
+	classification := strings.ToLower(strings.TrimSpace(answer))
+	switch classification {
+	case "recipe", "hotel", "book":
+		return classification, nil
+	default:
+		return "", fmt.Errorf("invalid classification: %s", classification)
+	}
 }
 
 func (ai *AIService) setAPIConfig(params *pb.RpcAIProviderConfig) {

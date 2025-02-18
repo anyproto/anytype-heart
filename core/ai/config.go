@@ -124,3 +124,21 @@ var autofillPrompts = map[pb.RpcAIAutofillRequestAutofillMode]struct {
 		User:   "",
 	},
 }
+
+var websiteExtractionPrompts = map[string]struct {
+	RelationPrompt string // JSON mode prompt to extract key-value relations
+	SummaryPrompt  string // Plain text prompt for a markdown summary
+}{
+	"recipe": {
+		RelationPrompt: "Extract the following details from the recipe: servings, cuisine, cooking time, course type, and difficulty. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The following content is from the website: '%s'",
+		SummaryPrompt:  "Generate a concise markdown summary of the recipe with key highlights (ingredients, taste, etc.). The content is: '%s'",
+	},
+	"hotel": {
+		RelationPrompt: "Extract the following details about the hotel: star rating, location, room types, amenities, and check-in/check-out times. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The content is: '%s'",
+		SummaryPrompt:  "Generate a concise markdown summary for the hotel, including ambience, services, and location highlights. The content is: '%s'",
+	},
+	"book": {
+		RelationPrompt: "Extract key details about the book: title, author, publication date, genre, and number of pages. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The content is: '%s'",
+		SummaryPrompt:  "Generate a concise markdown summary of the book, focusing on the synopsis and main highlights. The content is: '%s'",
+	},
+}

@@ -3,6 +3,8 @@ package ai
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -25,13 +27,14 @@ type modelTestConfig struct {
 }
 
 type providerTestConfig struct {
-	name                   string
-	provider               pb.RpcAIProvider
-	writingToolsBaseParams pb.RpcAIWritingToolsRequest
-	autofillBaseParams     pb.RpcAIAutofillRequest
-	skipInputLanguageTest  bool // check supported languages for llama models
-	skipAuthTest           bool // server side providers require auth
-	models                 []modelTestConfig
+	name                     string
+	provider                 pb.RpcAIProvider
+	writingToolsBaseParams   pb.RpcAIWritingToolsRequest
+	autofillBaseParams       pb.RpcAIAutofillRequest
+	websiteProcessBaseParams pb.RpcAIWebsiteProcessRequest
+	skipInputLanguageTest    bool // check supported languages for llama models
+	skipAuthTest             bool // server side providers require auth
+	models                   []modelTestConfig
 }
 
 func copyProviderConfig(original *pb.RpcAIProviderConfig) *pb.RpcAIProviderConfig {
@@ -388,5 +391,100 @@ func runAutofillTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg
 		assert.NotEmpty(t, result.Choices)
 		assert.Equal(t, 1, len(result.Choices))
 		assert.Equal(t, "movie", result.Choices[0])
+	})
+}
+
+// WebsiteProcess
+// ***
+func TestWebsiteProcess(t *testing.T) {
+	providerFilter := os.Getenv("TEST_PROVIDER")
+
+	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
+	if openaiAPIKey == "" {
+		log.Warn("OPENAI_API_KEY not found, using default invalid token")
+		openaiAPIKey = "default-invalid-token"
+	}
+
+	testConfigs := []providerTestConfig{
+		{
+			name:     "Ollama",
+			provider: pb.RpcAI_OLLAMA,
+			websiteProcessBaseParams: pb.RpcAIWebsiteProcessRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_OLLAMA,
+					Endpoint:    "http://localhost:11434/v1/chat/completions",
+					Model:       "llama3.2:3b",
+					Token:       "",
+					Temperature: 0,
+				},
+				Url: "https://www.allrecipes.com/recipe/228872/oven-baked-chicken-teriyaki/",
+			},
+			models: []modelTestConfig{
+				{
+					modelName: "llama3.2:3b",
+					// TODO: add proper assertions
+				},
+			},
+		},
+		{
+			name:     "OpenAI",
+			provider: pb.RpcAI_OPENAI,
+			websiteProcessBaseParams: pb.RpcAIWebsiteProcessRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_OPENAI,
+					Endpoint:    "https://api.openai.com/v1/chat/completions",
+					Model:       "gpt-4o-mini",
+					Token:       openaiAPIKey,
+					Temperature: 0,
+				},
+				Url: "https://www.allrecipes.com/recipe/228872/oven-baked-chicken-teriyaki/",
+			},
+			models: []modelTestConfig{
+				{
+					modelName: "gpt-4o-mini",
+					// TODO: add proper assertions
+				},
+			},
+		},
+	}
+
+	for _, cfg := range testConfigs {
+		if providerFilter != "" && providerFilter != cfg.provider.String() {
+			continue
+		}
+
+		t.Run(cfg.name, func(t *testing.T) {
+			// Create a local HTTP test server to simulate website content.
+			// The content includes the keyword "ingredient" so that classifyContent returns "recipe".
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				data, err := os.ReadFile("wikipedia.html")
+				if err != nil {
+					t.Fatal(err)
+				}
+				w.Write(data)
+			}))
+			defer ts.Close()
+
+			service := New()
+
+			for _, modelCfg := range cfg.models {
+				t.Run(modelCfg.modelName, func(t *testing.T) {
+					runWebsiteProcessTests(t, service, cfg, modelCfg, ts.URL)
+				})
+			}
+		})
+	}
+}
+
+func runWebsiteProcessTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg modelTestConfig, url string) {
+	t.Run("ValidResponse", func(t *testing.T) {
+		params := cfg.websiteProcessBaseParams
+		params.Config.Model = modelCfg.modelName
+		// params.Url = cfg.websiteProcessBaseParams.Url
+		params.Url = url
+		result, err := service.WebsiteProcess(context.Background(), &params)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.ObjectId)
 	})
 }

@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/anyproto/anytype-heart/core/ai/parsing"
 )
 
 // ChatRequest represents the structure of the request payload for the chat API.
@@ -204,4 +206,70 @@ func (ai *AIService) extractAnswerByMode(jsonData string, mode int) (string, err
 	}
 
 	return ai.responseParser.ExtractContent(mode, respStruct)
+}
+
+// newChat should be used for concurrent chat requests to avoid conflicts with global ai.promptConfig.
+func (ai *AIService) newChat(ctx context.Context, mode int, pc *PromptConfig, rp parsing.ResponseParser) (string, error) {
+	payload := ChatRequest{
+		Model: ai.apiConfig.Model,
+		Messages: []map[string]string{
+			{"role": "system", "content": pc.SystemPrompt},
+			{"role": "user", "content": pc.UserPrompt},
+		},
+		Temperature: pc.Temperature,
+		Stream:      true,
+	}
+
+	if pc.JSONMode {
+		key, exists := rp.ModeToField()[mode]
+		if !exists {
+			return "", fmt.Errorf("unknown mode: %d", mode)
+		}
+		payload.ResponseFormat = map[string]interface{}{
+			"type": "json_schema",
+			"json_schema": map[string]interface{}{
+				"name":   key + "_response",
+				"strict": true,
+				"schema": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						key: map[string]interface{}{
+							"type": "string",
+						},
+					},
+					"additionalProperties": false,
+					"required":             []string{key},
+				},
+			},
+		}
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := ai.sendChatRequest(ctx, data)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("error: received non-200 status code %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	answerChunks, err := ai.parseChatResponse(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var answerBuilder strings.Builder
+	for _, chunk := range *answerChunks {
+		for _, choice := range chunk.Choices {
+			answerBuilder.WriteString(choice.Delta.Content)
+		}
+	}
+	return answerBuilder.String(), nil
 }
