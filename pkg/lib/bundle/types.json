@@ -5,7 +5,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 3,
+    "iconColor": 4,
     "iconName": "pizza",
     "hidden": false,
     "layout": "basic",
@@ -38,7 +38,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 7,
+    "iconColor": 8,
     "iconName": "id-card",
     "hidden": false,
     "layout": "profile",
@@ -56,7 +56,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 3,
+    "iconColor": 4,
     "iconName": "bookmark",
     "hidden": false,
     "layout": "bookmark",
@@ -74,7 +74,7 @@
     "types": [
       "Date"
     ],
-    "iconColor": 8,
+    "iconColor": 9,
     "iconName": "calendar",
     "hidden": true,
     "layout": "date",
@@ -89,7 +89,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 9,
+    "iconColor": 10,
     "iconName": "checkbox",
     "hidden": false,
     "layout": "todo",
@@ -113,7 +113,7 @@
       "SubObject",
       "BundledRelation"
     ],
-    "iconColor": 6,
+    "iconColor": 7,
     "iconName": "share-social",
     "hidden": true,
     "layout": "relation",
@@ -132,7 +132,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 1,
+    "iconColor": 3,
     "iconName": "book",
     "hidden": false,
     "layout": "basic",
@@ -151,7 +151,7 @@
     "types": [
       "File"
     ],
-    "iconColor": 5,
+    "iconColor": 6,
     "iconName": "videocam",
     "hidden": false,
     "layout": "file",
@@ -191,7 +191,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 4,
+    "iconColor": 5,
     "iconName": "film",
     "hidden": false,
     "layout": "basic",
@@ -209,7 +209,7 @@
       "SubObject",
       "BundledObjectType"
     ],
-    "iconColor": 8,
+    "iconColor": 9,
     "iconName": "extension-puzzle",
     "hidden": false,
     "layout": "objectType",
@@ -237,7 +237,7 @@
     "types": [
       "Workspace"
     ],
-    "iconColor": 9,
+    "iconColor": 10,
     "iconName": "folder",
     "hidden": true,
     "layout": "space",
@@ -254,7 +254,7 @@
     "types": [
       "SpaceView"
     ],
-    "iconColor": 9,
+    "iconColor": 10,
     "iconName": "folder",
     "hidden": true,
     "layout": "spaceView",
@@ -270,7 +270,7 @@
     "types": [
       "Participant"
     ],
-    "iconColor": 1,
+    "iconColor": 3,
     "iconName": "person",
     "hidden": false,
     "layout": "participant",
@@ -287,7 +287,7 @@
     "types": [
       "Template"
     ],
-    "iconColor": 7,
+    "iconColor": 8,
     "iconName": "copy",
     "hidden": false,
     "layout": "basic",
@@ -304,7 +304,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 5,
+    "iconColor": 6,
     "iconName": "search",
     "hidden": false,
     "layout": "set",
@@ -321,7 +321,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 6,
+    "iconColor": 7,
     "iconName": "layers",
     "hidden": false,
     "layout": "collection",
@@ -353,7 +353,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 7,
+    "iconColor": 8,
     "iconName": "document",
     "hidden": false,
     "layout": "basic",
@@ -369,7 +369,7 @@
     "types": [
       "File"
     ],
-    "iconColor": 9,
+    "iconColor": 10,
     "iconName": "image",
     "hidden": false,
     "layout": "image",
@@ -398,7 +398,7 @@
       "Page",
       "ProfilePage"
     ],
-    "iconColor": 1,
+    "iconColor": 3,
     "iconName": "man",
     "hidden": false,
     "layout": "profile",
@@ -414,7 +414,7 @@
     "types": [
       "File"
     ],
-    "iconColor": 4,
+    "iconColor": 5,
     "iconName": "musical-notes",
     "hidden": false,
     "layout": "file",
@@ -441,7 +441,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 3,
+    "iconColor": 4,
     "iconName": "flag",
     "hidden": false,
     "layout": "todo",
@@ -460,7 +460,7 @@
     "types": [
       "File"
     ],
-    "iconColor": 6,
+    "iconColor": 7,
     "iconName": "attach",
     "hidden": false,
     "layout": "file",
@@ -481,7 +481,7 @@
     "types": [
       "Page"
     ],
-    "iconColor": 1,
+    "iconColor": 3,
     "iconName": "hammer",
     "hidden": false,
     "layout": "basic",
@@ -497,7 +497,7 @@
     "types": [
       "ChatObject"
     ],
-    "iconColor": 6,
+    "iconColor": 7,
     "iconName": "chatbubble",
     "hidden": true,
     "layout": "chat",
@@ -514,7 +514,7 @@
     "types": [
       "ChatDerivedObject"
     ],
-    "iconColor": 6,
+    "iconColor": 7,
     "iconName": "chatbubble",
     "hidden": true,
     "layout": "chatDerived",

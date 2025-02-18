@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "5ba85942cfd9f696ce7b056bc6acba224dc4d5800be4b4ede1f6380f32d0c059"
+const TypeChecksum = "8b5a2d97ee8edc22e38681198208688334aaa3b5a8062a91c262112e309f706c"
 const (
 	TypePrefix = "_ot"
 )
@@ -50,7 +50,7 @@ var (
 		TypeKeyAudio: {
 
 			Description:            "Sound when recorded, with ability to reproduce",
-			IconColor:              4,
+			IconColor:              5,
 			IconName:               "musical-notes",
 			Layout:                 model.ObjectType_file,
 			Name:                   "Audio",
@@ -64,7 +64,7 @@ var (
 		TypeKeyBook: {
 
 			Description:   "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover",
-			IconColor:     1,
+			IconColor:     3,
 			IconName:      "book",
 			Layout:        model.ObjectType_basic,
 			Name:          "Book",
@@ -76,7 +76,7 @@ var (
 		TypeKeyBookmark: {
 
 			Description:   "URL that is stored as Object and may be categorised and linked with objects",
-			IconColor:     3,
+			IconColor:     4,
 			IconName:      "bookmark",
 			Layout:        model.ObjectType_bookmark,
 			Name:          "Bookmark",
@@ -90,7 +90,7 @@ var (
 
 			Description:   "A chat [deprecated]",
 			Hidden:        true,
-			IconColor:     6,
+			IconColor:     7,
 			IconName:      "chatbubble",
 			Layout:        model.ObjectType_chat,
 			Name:          "Chat [deprecated]",
@@ -104,7 +104,7 @@ var (
 
 			Description:   "A chat derived object",
 			Hidden:        true,
-			IconColor:     6,
+			IconColor:     7,
 			IconName:      "chatbubble",
 			Layout:        model.ObjectType_chatDerived,
 			Name:          "Chat Derived Object",
@@ -117,7 +117,7 @@ var (
 		TypeKeyCollection: {
 
 			Description:   "Collect objects in one place, use different views to organize them",
-			IconColor:     6,
+			IconColor:     7,
 			IconName:      "layers",
 			Layout:        model.ObjectType_collection,
 			Name:          "Collection",
@@ -130,7 +130,7 @@ var (
 		TypeKeyContact: {
 
 			Description:   "Information to make action of communicating or meeting with Human or Company",
-			IconColor:     7,
+			IconColor:     8,
 			IconName:      "id-card",
 			Layout:        model.ObjectType_profile,
 			Name:          "Contact",
@@ -155,7 +155,7 @@ var (
 
 			Description:   "Gregorian calendar date",
 			Hidden:        true,
-			IconColor:     8,
+			IconColor:     9,
 			IconName:      "calendar",
 			Layout:        model.ObjectType_date,
 			Name:          "Date",
@@ -179,7 +179,7 @@ var (
 		TypeKeyFile: {
 
 			Description:            "Computer resource for recording data in a computer storage device",
-			IconColor:              6,
+			IconColor:              7,
 			IconName:               "attach",
 			Layout:                 model.ObjectType_file,
 			Name:                   "File",
@@ -193,7 +193,7 @@ var (
 		TypeKeyGoal: {
 
 			Description:   "The object of a person's ambition or effort; an aim or desired result",
-			IconColor:     3,
+			IconColor:     4,
 			IconName:      "flag",
 			Layout:        model.ObjectType_todo,
 			Name:          "Goal",
@@ -205,7 +205,7 @@ var (
 		TypeKeyImage: {
 
 			Description:            "A representation of the external form of a person or thing in art",
-			IconColor:              9,
+			IconColor:              10,
 			IconName:               "image",
 			Layout:                 model.ObjectType_image,
 			Name:                   "Image",
@@ -219,7 +219,7 @@ var (
 		TypeKeyMovie: {
 
 			Description:   "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images",
-			IconColor:     4,
+			IconColor:     5,
 			IconName:      "film",
 			Layout:        model.ObjectType_basic,
 			Name:          "Movie",
@@ -244,7 +244,7 @@ var (
 		TypeKeyObjectType: {
 
 			Description:   "Object that contains a definition of some object type",
-			IconColor:     8,
+			IconColor:     9,
 			IconName:      "extension-puzzle",
 			Layout:        model.ObjectType_objectType,
 			Name:          "Type",
@@ -257,7 +257,7 @@ var (
 		TypeKeyPage: {
 
 			Description:   "Blank canvas with Title",
-			IconColor:     7,
+			IconColor:     8,
 			IconName:      "document",
 			Layout:        model.ObjectType_basic,
 			Name:          "Page",
@@ -270,7 +270,7 @@ var (
 		TypeKeyParticipant: {
 
 			Description:            "Anytype identity as a space participant",
-			IconColor:              1,
+			IconColor:              3,
 			IconName:               "person",
 			Layout:                 model.ObjectType_participant,
 			Name:                   "Space member",
@@ -284,7 +284,7 @@ var (
 		TypeKeyProfile: {
 
 			Description:   "Homo sapiens",
-			IconColor:     1,
+			IconColor:     3,
 			IconName:      "man",
 			Layout:        model.ObjectType_profile,
 			Name:          "Human",
@@ -297,7 +297,7 @@ var (
 		TypeKeyProject: {
 
 			Description:   "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
-			IconColor:     1,
+			IconColor:     3,
 			IconName:      "hammer",
 			Layout:        model.ObjectType_basic,
 			Name:          "Project",
@@ -309,7 +309,7 @@ var (
 		TypeKeyRecipe: {
 
 			Description:   "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
-			IconColor:     3,
+			IconColor:     4,
 			IconName:      "pizza",
 			Layout:        model.ObjectType_basic,
 			Name:          "Recipe",
@@ -322,7 +322,7 @@ var (
 
 			Description:   "Meaningful connection between objects",
 			Hidden:        true,
-			IconColor:     6,
+			IconColor:     7,
 			IconName:      "share-social",
 			Layout:        model.ObjectType_relation,
 			Name:          "Relation",
@@ -346,7 +346,7 @@ var (
 		TypeKeySet: {
 
 			Description:   "Query all objects in your space based on types and relations",
-			IconColor:     5,
+			IconColor:     6,
 			IconName:      "search",
 			Layout:        model.ObjectType_set,
 			Name:          "Set",
@@ -360,7 +360,7 @@ var (
 
 			Description:            "Workspace",
 			Hidden:                 true,
-			IconColor:              9,
+			IconColor:              10,
 			IconName:               "folder",
 			Layout:                 model.ObjectType_space,
 			Name:                   "Space",
@@ -375,7 +375,7 @@ var (
 
 			Description:            "Space",
 			Hidden:                 true,
-			IconColor:              9,
+			IconColor:              10,
 			IconName:               "folder",
 			Layout:                 model.ObjectType_spaceView,
 			Name:                   "Space",
@@ -388,7 +388,7 @@ var (
 		TypeKeyTask: {
 
 			Description:   "A piece of work to be done or undertaken",
-			IconColor:     9,
+			IconColor:     10,
 			IconName:      "checkbox",
 			Layout:        model.ObjectType_todo,
 			Name:          "Task",
@@ -401,7 +401,7 @@ var (
 		TypeKeyTemplate: {
 
 			Description:   "Sample object that has already some details in place and used to create objects from",
-			IconColor:     7,
+			IconColor:     8,
 			IconName:      "copy",
 			Layout:        model.ObjectType_basic,
 			Name:          "Template",
@@ -414,7 +414,7 @@ var (
 		TypeKeyVideo: {
 
 			Description:            "The recording of moving visual images",
-			IconColor:              5,
+			IconColor:              6,
 			IconName:               "videocam",
 			Layout:                 model.ObjectType_file,
 			Name:                   "Video",
