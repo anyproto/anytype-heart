@@ -3,7 +3,6 @@ package anystorage
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 )
 
@@ -25,20 +25,21 @@ func New(rootPath string) *storageService {
 
 type storageService struct {
 	rootPath string
+	store    anystore.DB
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {
-	var files []string
-	fileInfo, err := os.ReadDir(s.rootPath)
+	collNames, err := s.store.GetCollectionNames(context.Background())
 	if err != nil {
-		return files, fmt.Errorf("can't read datadir '%v': %w", s.rootPath, err)
+		return nil, err
 	}
-	for _, file := range fileInfo {
-		if !strings.HasPrefix(file.Name(), ".") {
-			files = append(files, file.Name())
+	for _, collName := range collNames {
+		if strings.Contains(collName, objecttree.CollName) {
+			split := strings.Split(collName, "-")
+			ids = append(ids, split[0])
 		}
 	}
-	return files, nil
+	return
 }
 
 func (s *storageService) Run(ctx context.Context) (err error) {
@@ -46,28 +47,18 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 }
 
 func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB, err error) {
-	dbPath := path.Join(s.rootPath, id, "store.db")
-	if _, err := os.Stat(dbPath); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, spacestorage.ErrSpaceStorageMissing
-		}
-		return nil, err
-	}
-	return anystore.Open(ctx, dbPath, anyStoreConfig())
+	return s.store, nil
 }
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
-	dirPath := path.Join(s.rootPath, id)
-	err = os.MkdirAll(dirPath, 0755)
-	if err != nil {
-		return nil, err
-	}
-	dbPath := path.Join(dirPath, "store.db")
-	return anystore.Open(ctx, dbPath, anyStoreConfig())
+	return s.store, nil
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
-	return nil
+	if s.store == nil {
+		return nil
+	}
+	return s.store.Close()
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
@@ -77,7 +68,9 @@ func (s *storageService) Init(a *app.App) (err error) {
 			return err
 		}
 	}
-	return nil
+	path := path.Join(s.rootPath, "store.db")
+	s.store, err = anystore.Open(context.Background(), path, anyStoreConfig())
+	return
 }
 
 func (s *storageService) Name() (name string) {
@@ -91,6 +84,9 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 	}
 	st, err := spacestorage.New(ctx, id, db)
 	if err != nil {
+		if errors.Is(err, anystore.ErrCollectionNotFound) {
+			return nil, spacestorage.ErrSpaceStorageMissing
+		}
 		return nil, err
 	}
 	return NewClientStorage(ctx, st)
@@ -120,8 +116,22 @@ func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacest
 }
 
 func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string) error {
-	dbPath := path.Join(s.rootPath, spaceId)
-	return os.RemoveAll(dbPath)
+	collNames, err := s.store.GetCollectionNames(context.Background())
+	if err != nil {
+		return err
+	}
+	for _, collName := range collNames {
+		if strings.Contains(collName, spaceId) {
+			coll, err := s.store.OpenCollection(context.Background(), collName)
+			if err == nil {
+				err := coll.Drop(ctx)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func anyStoreConfig() *anystore.Config {

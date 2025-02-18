@@ -50,7 +50,7 @@ func NewClientStorage(ctx context.Context, spaceStorage spacestorage.SpaceStorag
 		SpaceStorage: spaceStorage,
 	}
 	anyStore := storage.AnyStore()
-	client, err := anyStore.Collection(ctx, clientCollectionKey)
+	client, err := anyStore.Collection(ctx, spaceStorage.Id()+"-"+clientCollectionKey)
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +59,7 @@ func NewClientStorage(ctx context.Context, spaceStorage spacestorage.SpaceStorag
 }
 
 func (r *clientStorage) Close(ctx context.Context) (err error) {
-	spaceStorageErr := r.SpaceStorage.Close(ctx)
-	anyStoreErr := r.SpaceStorage.AnyStore().Close()
-	return errors.Join(spaceStorageErr, anyStoreErr)
+	return r.SpaceStorage.Close(ctx)
 }
 
 func (r *clientStorage) HasTree(ctx context.Context, id string) (has bool, err error) {
@@ -75,7 +73,7 @@ func (r *clientStorage) HasTree(ctx context.Context, id string) (has bool, err e
 
 func (r *clientStorage) TreeRoot(ctx context.Context, id string) (root *treechangeproto.RawTreeChangeWithId, err error) {
 	// it should be faster to do it that way, instead of calling TreeStorage
-	coll, err := r.SpaceStorage.AnyStore().OpenCollection(ctx, objecttree.CollName)
+	coll, err := r.SpaceStorage.AnyStore().OpenCollection(ctx, r.Id()+"-"+objecttree.CollName)
 	if err != nil {
 		return nil, err
 	}

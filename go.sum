@@ -86,6 +86,8 @@ github.com/anyproto/any-store v0.1.7 h1:E3DntI+JXo3h7v0WTUJWH+nm7G4MV0PNOXZ6SFzQ
 github.com/anyproto/any-store v0.1.7/go.mod h1:nbyRoJYOlvSWU1xDOrmgPP96UeoTf4eYZ9k+qqLK9k8=
 github.com/anyproto/any-sync v0.6.1-0.20250214123950-af130ce7288a h1:lWDE3HbxqzTcvLjxgv2b6wq7Z1EUWQrqEIc/v0oVOhA=
 github.com/anyproto/any-sync v0.6.1-0.20250214123950-af130ce7288a/go.mod h1:pT5MmhwuD/jzjVBkV1WHYb4KTgwiWZ7obRDCCbFIdGg=
+github.com/anyproto/any-sync v0.6.1-0.20250218222806-0d1a303941a1 h1:O+XlzJkQPu5PQaNrftP33KqpusBtOWTaLdkuHuQPH7c=
+github.com/anyproto/any-sync v0.6.1-0.20250218222806-0d1a303941a1/go.mod h1:pT5MmhwuD/jzjVBkV1WHYb4KTgwiWZ7obRDCCbFIdGg=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a/go.mod h1:4fkueCZcGniSMXkrwESO8zzERrh/L7WHimRNWecfGM0=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
