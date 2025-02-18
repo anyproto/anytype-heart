@@ -2,6 +2,8 @@ package parsing
 
 import (
 	"fmt"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 // AutofillParser is a ResponseParser for Autofill responses.
@@ -24,11 +26,11 @@ type AutofillResponse struct {
 func NewAutofillParser() *AutofillParser {
 	return &AutofillParser{
 		modeToField: map[int]string{
-			0: "tag",
-			1: "relation",
-			2: "type",
-			3: "title",
-			4: "description",
+			int(pb.RpcAIAutofillRequest_TAG):         "tag",
+			int(pb.RpcAIAutofillRequest_RELATION):    "relation",
+			int(pb.RpcAIAutofillRequest_TYPE):        "type",
+			int(pb.RpcAIAutofillRequest_TITLE):       "title",
+			int(pb.RpcAIAutofillRequest_DESCRIPTION): "description",
 		},
 	}
 }

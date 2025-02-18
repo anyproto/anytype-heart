@@ -2,6 +2,8 @@ package parsing
 
 import (
 	"fmt"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 // WritingToolsParser is a ResponseParser for WritingTools responses.
@@ -32,18 +34,18 @@ type WritingToolsResponse struct {
 func NewWritingToolsParser() *WritingToolsParser {
 	return &WritingToolsParser{
 		modeToField: map[int]string{
-			1:  "summary",
-			2:  "corrected",
-			3:  "shortened",
-			4:  "expanded",
-			5:  "bullet",
-			6:  "table",
-			7:  "casual",
-			8:  "funny",
-			9:  "confident",
-			10: "straight",
-			11: "professional",
-			12: "translation",
+			int(pb.RpcAIWritingToolsRequest_SUMMARIZE):       "summary",
+			int(pb.RpcAIWritingToolsRequest_GRAMMAR):         "corrected",
+			int(pb.RpcAIWritingToolsRequest_SHORTEN):         "shortened",
+			int(pb.RpcAIWritingToolsRequest_EXPAND):          "expanded",
+			int(pb.RpcAIWritingToolsRequest_BULLET):          "bullet",
+			int(pb.RpcAIWritingToolsRequest_TABLE):           "table",
+			int(pb.RpcAIWritingToolsRequest_CASUAL):          "casual",
+			int(pb.RpcAIWritingToolsRequest_FUNNY):           "funny",
+			int(pb.RpcAIWritingToolsRequest_CONFIDENT):       "confident",
+			int(pb.RpcAIWritingToolsRequest_STRAIGHTFORWARD): "straight",
+			int(pb.RpcAIWritingToolsRequest_PROFESSIONAL):    "professional",
+			int(pb.RpcAIWritingToolsRequest_TRANSLATE):       "translation",
 		},
 	}
 }
