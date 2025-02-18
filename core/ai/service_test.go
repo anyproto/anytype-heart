@@ -41,6 +41,8 @@ func copyProviderConfig(original *pb.RpcAIProviderConfig) *pb.RpcAIProviderConfi
 	return proto.Clone(original).(*pb.RpcAIProviderConfig)
 }
 
+// WritingTools
+// ***
 func TestWritingTools(t *testing.T) {
 	providerFilter := os.Getenv("TEST_PROVIDER")
 
@@ -190,85 +192,6 @@ func TestWritingTools(t *testing.T) {
 	}
 }
 
-func TestAutofill(t *testing.T) {
-	providerFilter := os.Getenv("TEST_PROVIDER")
-
-	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
-	if openaiAPIKey == "" {
-		log.Warn("OPENAI_API_KEY not found, using default invalid token")
-		openaiAPIKey = "default-invalid-token"
-	}
-
-	testConfigs := []providerTestConfig{
-		{
-			name:     "Ollama",
-			provider: pb.RpcAI_OLLAMA,
-			autofillBaseParams: pb.RpcAIAutofillRequest{
-				Config: &pb.RpcAIProviderConfig{
-					Provider:    pb.RpcAI_OLLAMA,
-					Endpoint:    "http://localhost:11434/v1/chat/completions",
-					Model:       "llama3.2:3b",
-					Token:       "",
-					Temperature: 0,
-				},
-				Mode:    0,
-				Options: []string{"book", "movie", "song"},
-				Context: []string{"I am reading a"},
-			},
-			skipInputLanguageTest: false,
-			skipAuthTest:          true,
-			models: []modelTestConfig{
-				{
-					modelName: "llama3.2:3b",
-					// TODO: refactor types
-				},
-			},
-		},
-		{
-			name:     "OpenAI",
-			provider: pb.RpcAI_OPENAI,
-			autofillBaseParams: pb.RpcAIAutofillRequest{
-				Config: &pb.RpcAIProviderConfig{
-					Provider:    pb.RpcAI_OPENAI,
-					Endpoint:    "https://api.openai.com/v1/chat/completions",
-					Model:       "gpt-4o-mini",
-					Token:       openaiAPIKey,
-					Temperature: 0,
-				},
-				Mode:    0,
-				Options: []string{"book", "movie", "song"},
-				Context: []string{"I am reading a"},
-			},
-			skipInputLanguageTest: true,
-			skipAuthTest:          false,
-			models: []modelTestConfig{
-				{
-					modelName: "gpt-4o-mini",
-					// TODO: refactor types
-				},
-			},
-		},
-	}
-
-	for _, cfg := range testConfigs {
-		cfg := cfg
-		if providerFilter != "" && providerFilter != cfg.provider.String() {
-			continue
-		}
-
-		t.Run(cfg.name, func(t *testing.T) {
-			service := New()
-
-			for _, modelCfg := range cfg.models {
-				modelCfg := modelCfg
-				t.Run(modelCfg.modelName, func(t *testing.T) {
-					runAutofillTests(t, service, cfg, modelCfg)
-				})
-			}
-		})
-	}
-}
-
 func runWritingToolsTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg modelTestConfig) {
 	t.Run("InvalidEndpoint", func(t *testing.T) {
 		params := cfg.writingToolsBaseParams
@@ -361,6 +284,87 @@ func runWritingToolsTests(t *testing.T, service AI, cfg providerTestConfig, mode
 			t.Errorf("Expected JSON extraction not provided for %s", modelCfg.modelName)
 		}
 	})
+}
+
+// Autofill
+// ***
+func TestAutofill(t *testing.T) {
+	providerFilter := os.Getenv("TEST_PROVIDER")
+
+	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
+	if openaiAPIKey == "" {
+		log.Warn("OPENAI_API_KEY not found, using default invalid token")
+		openaiAPIKey = "default-invalid-token"
+	}
+
+	testConfigs := []providerTestConfig{
+		{
+			name:     "Ollama",
+			provider: pb.RpcAI_OLLAMA,
+			autofillBaseParams: pb.RpcAIAutofillRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_OLLAMA,
+					Endpoint:    "http://localhost:11434/v1/chat/completions",
+					Model:       "llama3.2:3b",
+					Token:       "",
+					Temperature: 0,
+				},
+				Mode:    0,
+				Options: []string{"book", "movie", "song"},
+				Context: []string{"I am reading a"},
+			},
+			skipInputLanguageTest: false,
+			skipAuthTest:          true,
+			models: []modelTestConfig{
+				{
+					modelName: "llama3.2:3b",
+					// TODO: refactor types
+				},
+			},
+		},
+		{
+			name:     "OpenAI",
+			provider: pb.RpcAI_OPENAI,
+			autofillBaseParams: pb.RpcAIAutofillRequest{
+				Config: &pb.RpcAIProviderConfig{
+					Provider:    pb.RpcAI_OPENAI,
+					Endpoint:    "https://api.openai.com/v1/chat/completions",
+					Model:       "gpt-4o-mini",
+					Token:       openaiAPIKey,
+					Temperature: 0,
+				},
+				Mode:    0,
+				Options: []string{"book", "movie", "song"},
+				Context: []string{"I am reading a"},
+			},
+			skipInputLanguageTest: true,
+			skipAuthTest:          false,
+			models: []modelTestConfig{
+				{
+					modelName: "gpt-4o-mini",
+					// TODO: refactor types
+				},
+			},
+		},
+	}
+
+	for _, cfg := range testConfigs {
+		cfg := cfg
+		if providerFilter != "" && providerFilter != cfg.provider.String() {
+			continue
+		}
+
+		t.Run(cfg.name, func(t *testing.T) {
+			service := New()
+
+			for _, modelCfg := range cfg.models {
+				modelCfg := modelCfg
+				t.Run(modelCfg.modelName, func(t *testing.T) {
+					runAutofillTests(t, service, cfg, modelCfg)
+				})
+			}
+		})
+	}
 }
 
 func runAutofillTests(t *testing.T, service AI, cfg providerTestConfig, modelCfg modelTestConfig) {
