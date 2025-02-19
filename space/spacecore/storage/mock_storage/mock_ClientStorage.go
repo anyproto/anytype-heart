@@ -82,6 +82,53 @@ func (_c *MockClientStorage_AllSpaceIds_Call) RunAndReturn(run func() ([]string,
 	return _c
 }
 
+// BindSpaceID provides a mock function with given fields: spaceID, objectID
+func (_m *MockClientStorage) BindSpaceID(spaceID string, objectID string) error {
+	ret := _m.Called(spaceID, objectID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BindSpaceID")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(spaceID, objectID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClientStorage_BindSpaceID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BindSpaceID'
+type MockClientStorage_BindSpaceID_Call struct {
+	*mock.Call
+}
+
+// BindSpaceID is a helper method to define mock.On call
+//   - spaceID string
+//   - objectID string
+func (_e *MockClientStorage_Expecter) BindSpaceID(spaceID interface{}, objectID interface{}) *MockClientStorage_BindSpaceID_Call {
+	return &MockClientStorage_BindSpaceID_Call{Call: _e.mock.On("BindSpaceID", spaceID, objectID)}
+}
+
+func (_c *MockClientStorage_BindSpaceID_Call) Run(run func(spaceID string, objectID string)) *MockClientStorage_BindSpaceID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockClientStorage_BindSpaceID_Call) Return(err error) *MockClientStorage_BindSpaceID_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClientStorage_BindSpaceID_Call) RunAndReturn(run func(string, string) error) *MockClientStorage_BindSpaceID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Close provides a mock function with given fields: ctx
 func (_m *MockClientStorage) Close(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -128,9 +175,9 @@ func (_c *MockClientStorage_Close_Call) RunAndReturn(run func(context.Context) e
 	return _c
 }
 
-// CreateSpaceStorage provides a mock function with given fields: ctx, payload
-func (_m *MockClientStorage) CreateSpaceStorage(ctx context.Context, payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
-	ret := _m.Called(ctx, payload)
+// CreateSpaceStorage provides a mock function with given fields: payload
+func (_m *MockClientStorage) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
+	ret := _m.Called(payload)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateSpaceStorage")
@@ -138,19 +185,19 @@ func (_m *MockClientStorage) CreateSpaceStorage(ctx context.Context, payload spa
 
 	var r0 spacestorage.SpaceStorage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error)); ok {
-		return rf(ctx, payload)
+	if rf, ok := ret.Get(0).(func(spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error)); ok {
+		return rf(payload)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, spacestorage.SpaceStorageCreatePayload) spacestorage.SpaceStorage); ok {
-		r0 = rf(ctx, payload)
+	if rf, ok := ret.Get(0).(func(spacestorage.SpaceStorageCreatePayload) spacestorage.SpaceStorage); ok {
+		r0 = rf(payload)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(spacestorage.SpaceStorage)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, spacestorage.SpaceStorageCreatePayload) error); ok {
-		r1 = rf(ctx, payload)
+	if rf, ok := ret.Get(1).(func(spacestorage.SpaceStorageCreatePayload) error); ok {
+		r1 = rf(payload)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -164,15 +211,14 @@ type MockClientStorage_CreateSpaceStorage_Call struct {
 }
 
 // CreateSpaceStorage is a helper method to define mock.On call
-//   - ctx context.Context
 //   - payload spacestorage.SpaceStorageCreatePayload
-func (_e *MockClientStorage_Expecter) CreateSpaceStorage(ctx interface{}, payload interface{}) *MockClientStorage_CreateSpaceStorage_Call {
-	return &MockClientStorage_CreateSpaceStorage_Call{Call: _e.mock.On("CreateSpaceStorage", ctx, payload)}
+func (_e *MockClientStorage_Expecter) CreateSpaceStorage(payload interface{}) *MockClientStorage_CreateSpaceStorage_Call {
+	return &MockClientStorage_CreateSpaceStorage_Call{Call: _e.mock.On("CreateSpaceStorage", payload)}
 }
 
-func (_c *MockClientStorage_CreateSpaceStorage_Call) Run(run func(ctx context.Context, payload spacestorage.SpaceStorageCreatePayload)) *MockClientStorage_CreateSpaceStorage_Call {
+func (_c *MockClientStorage_CreateSpaceStorage_Call) Run(run func(payload spacestorage.SpaceStorageCreatePayload)) *MockClientStorage_CreateSpaceStorage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(spacestorage.SpaceStorageCreatePayload))
+		run(args[0].(spacestorage.SpaceStorageCreatePayload))
 	})
 	return _c
 }
@@ -182,7 +228,7 @@ func (_c *MockClientStorage_CreateSpaceStorage_Call) Return(_a0 spacestorage.Spa
 	return _c
 }
 
-func (_c *MockClientStorage_CreateSpaceStorage_Call) RunAndReturn(run func(context.Context, spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error)) *MockClientStorage_CreateSpaceStorage_Call {
+func (_c *MockClientStorage_CreateSpaceStorage_Call) RunAndReturn(run func(spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error)) *MockClientStorage_CreateSpaceStorage_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -234,6 +280,62 @@ func (_c *MockClientStorage_DeleteSpaceStorage_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// GetSpaceID provides a mock function with given fields: objectID
+func (_m *MockClientStorage) GetSpaceID(objectID string) (string, error) {
+	ret := _m.Called(objectID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSpaceID")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
+		return rf(objectID)
+	}
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(objectID)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(objectID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientStorage_GetSpaceID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSpaceID'
+type MockClientStorage_GetSpaceID_Call struct {
+	*mock.Call
+}
+
+// GetSpaceID is a helper method to define mock.On call
+//   - objectID string
+func (_e *MockClientStorage_Expecter) GetSpaceID(objectID interface{}) *MockClientStorage_GetSpaceID_Call {
+	return &MockClientStorage_GetSpaceID_Call{Call: _e.mock.On("GetSpaceID", objectID)}
+}
+
+func (_c *MockClientStorage_GetSpaceID_Call) Run(run func(objectID string)) *MockClientStorage_GetSpaceID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClientStorage_GetSpaceID_Call) Return(spaceID string, err error) *MockClientStorage_GetSpaceID_Call {
+	_c.Call.Return(spaceID, err)
+	return _c
+}
+
+func (_c *MockClientStorage_GetSpaceID_Call) RunAndReturn(run func(string) (string, error)) *MockClientStorage_GetSpaceID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: a
 func (_m *MockClientStorage) Init(a *app.App) error {
 	ret := _m.Called(a)
@@ -276,6 +378,98 @@ func (_c *MockClientStorage_Init_Call) Return(err error) *MockClientStorage_Init
 }
 
 func (_c *MockClientStorage_Init_Call) RunAndReturn(run func(*app.App) error) *MockClientStorage_Init_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsSpaceCreated provides a mock function with given fields: id
+func (_m *MockClientStorage) IsSpaceCreated(id string) bool {
+	ret := _m.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsSpaceCreated")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(id)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockClientStorage_IsSpaceCreated_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsSpaceCreated'
+type MockClientStorage_IsSpaceCreated_Call struct {
+	*mock.Call
+}
+
+// IsSpaceCreated is a helper method to define mock.On call
+//   - id string
+func (_e *MockClientStorage_Expecter) IsSpaceCreated(id interface{}) *MockClientStorage_IsSpaceCreated_Call {
+	return &MockClientStorage_IsSpaceCreated_Call{Call: _e.mock.On("IsSpaceCreated", id)}
+}
+
+func (_c *MockClientStorage_IsSpaceCreated_Call) Run(run func(id string)) *MockClientStorage_IsSpaceCreated_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClientStorage_IsSpaceCreated_Call) Return(created bool) *MockClientStorage_IsSpaceCreated_Call {
+	_c.Call.Return(created)
+	return _c
+}
+
+func (_c *MockClientStorage_IsSpaceCreated_Call) RunAndReturn(run func(string) bool) *MockClientStorage_IsSpaceCreated_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkSpaceCreated provides a mock function with given fields: id
+func (_m *MockClientStorage) MarkSpaceCreated(id string) error {
+	ret := _m.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkSpaceCreated")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClientStorage_MarkSpaceCreated_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkSpaceCreated'
+type MockClientStorage_MarkSpaceCreated_Call struct {
+	*mock.Call
+}
+
+// MarkSpaceCreated is a helper method to define mock.On call
+//   - id string
+func (_e *MockClientStorage_Expecter) MarkSpaceCreated(id interface{}) *MockClientStorage_MarkSpaceCreated_Call {
+	return &MockClientStorage_MarkSpaceCreated_Call{Call: _e.mock.On("MarkSpaceCreated", id)}
+}
+
+func (_c *MockClientStorage_MarkSpaceCreated_Call) Run(run func(id string)) *MockClientStorage_MarkSpaceCreated_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClientStorage_MarkSpaceCreated_Call) Return(err error) *MockClientStorage_MarkSpaceCreated_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClientStorage_MarkSpaceCreated_Call) RunAndReturn(run func(string) error) *MockClientStorage_MarkSpaceCreated_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -413,6 +607,52 @@ func (_c *MockClientStorage_SpaceExists_Call) Return(_a0 bool) *MockClientStorag
 }
 
 func (_c *MockClientStorage_SpaceExists_Call) RunAndReturn(run func(string) bool) *MockClientStorage_SpaceExists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UnmarkSpaceCreated provides a mock function with given fields: id
+func (_m *MockClientStorage) UnmarkSpaceCreated(id string) error {
+	ret := _m.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnmarkSpaceCreated")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClientStorage_UnmarkSpaceCreated_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmarkSpaceCreated'
+type MockClientStorage_UnmarkSpaceCreated_Call struct {
+	*mock.Call
+}
+
+// UnmarkSpaceCreated is a helper method to define mock.On call
+//   - id string
+func (_e *MockClientStorage_Expecter) UnmarkSpaceCreated(id interface{}) *MockClientStorage_UnmarkSpaceCreated_Call {
+	return &MockClientStorage_UnmarkSpaceCreated_Call{Call: _e.mock.On("UnmarkSpaceCreated", id)}
+}
+
+func (_c *MockClientStorage_UnmarkSpaceCreated_Call) Run(run func(id string)) *MockClientStorage_UnmarkSpaceCreated_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClientStorage_UnmarkSpaceCreated_Call) Return(err error) *MockClientStorage_UnmarkSpaceCreated_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClientStorage_UnmarkSpaceCreated_Call) RunAndReturn(run func(string) error) *MockClientStorage_UnmarkSpaceCreated_Call {
 	_c.Call.Return(run)
 	return _c
 }

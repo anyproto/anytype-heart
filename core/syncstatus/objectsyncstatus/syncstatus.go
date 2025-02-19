@@ -94,7 +94,7 @@ func (s *syncStatusService) Init(a *app.App) (err error) {
 	s.updateIntervalSecs = syncUpdateInterval
 	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
-	s.spaceSettingsId = spaceStorage.StateStorage().SettingsId()
+	s.spaceSettingsId = spaceStorage.SpaceSettingsId()
 	s.periodicSync = periodicsync.NewPeriodicSync(
 		s.updateIntervalSecs,
 		s.updateTimeout,
