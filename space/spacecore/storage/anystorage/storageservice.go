@@ -7,11 +7,14 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"go.uber.org/atomic"
+	"go.uber.org/zap"
 )
 
 // nolint: unused
@@ -20,6 +23,70 @@ var log = logger.NewNamed(spacestorage.CName)
 func New(rootPath string) *storageService {
 	return &storageService{
 		rootPath: rootPath,
+	}
+}
+
+type checkpointStore struct {
+	anystore.DB
+	checkpointAfterWrite time.Duration
+	checkpointForce      time.Duration
+	lastWrite            atomic.Time
+	lastCheckpoint       atomic.Time
+	ctx                  context.Context
+	cancel               context.CancelFunc
+}
+
+func newCheckpointStore(db anystore.DB) *checkpointStore {
+	ctx, cancel := context.WithCancel(context.Background())
+	s := &checkpointStore{
+		DB:                   db,
+		checkpointAfterWrite: time.Second,
+		checkpointForce:      time.Second * 10,
+		ctx:                  ctx,
+		cancel:               cancel,
+	}
+	go s.run()
+	return s
+}
+
+func (s *checkpointStore) needCheckpoint() bool {
+	now := time.Now()
+	lastWrite := s.lastWrite.Load()
+	lastCheckpoint := s.lastCheckpoint.Load()
+
+	if lastCheckpoint.Before(lastWrite) && now.Sub(lastWrite) > s.checkpointAfterWrite {
+		return true
+	}
+
+	if now.Sub(lastCheckpoint) > s.checkpointForce {
+		return true
+	}
+	return false
+}
+
+func (s *checkpointStore) SetLastWrite() {
+	s.lastWrite.Store(time.Now())
+}
+
+func (s *checkpointStore) Close() error {
+	s.cancel()
+	return s.DB.Close()
+}
+
+func (s *checkpointStore) run() {
+	for {
+		select {
+		case <-time.After(s.checkpointAfterWrite):
+		case <-s.ctx.Done():
+			return
+		}
+		if s.needCheckpoint() {
+			st := time.Now()
+			if err := s.DB.Checkpoint(s.ctx, false); err != nil {
+				log.Warn("checkpoint error", zap.Error(err))
+			}
+			log.Debug("checkpoint", zap.Duration("dur", time.Since(st)))
+		}
 	}
 }
 
@@ -53,7 +120,11 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 		}
 		return nil, err
 	}
-	return anystore.Open(ctx, dbPath, anyStoreConfig())
+	db, err = anystore.Open(ctx, dbPath, anyStoreConfig())
+	if err != nil {
+		return
+	}
+	return newCheckpointStore(db), nil
 }
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
@@ -63,7 +134,11 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 		return nil, err
 	}
 	dbPath := path.Join(dirPath, "store.db")
-	return anystore.Open(ctx, dbPath, anyStoreConfig())
+	db, err = anystore.Open(ctx, dbPath, anyStoreConfig())
+	if err != nil {
+		return
+	}
+	return newCheckpointStore(db), nil
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
