@@ -143,7 +143,7 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {
-		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store)
+		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store, i.storageService)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}
 	i.lock.Unlock()

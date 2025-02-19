@@ -58,7 +58,7 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.updateSpaceIsDeleted, err = s.writeDb.Prepare(`UPDATE spaces SET isDeleted = ? WHERE id = ?`); err != nil {
 		return
 	}
-	if s.stmt.treeIdsBySpace, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND type != 1 AND deleteStatus IS NULL`); err != nil {
+	if s.stmt.treeIdsBySpace, err = s.readDb.Prepare(`SELECT id FROM trees WHERE spaceId = ? AND type != 1`); err != nil {
 		return
 	}
 	if s.stmt.deleteTree, err = s.writeDb.Prepare(`
@@ -88,12 +88,6 @@ func initStmts(s *storageService) (err error) {
 	if s.stmt.hasChange, err = s.readDb.Prepare(`SELECT COUNT(*) FROM changes WHERE id = ? AND treeId = ?`); err != nil {
 		return
 	}
-	if s.stmt.listChanges, err = s.readDb.Prepare(`SELECT id FROM changes WHERE treeId = ? ORDER BY id`); err != nil {
-		return
-	}
-	if s.stmt.iterateChanges, err = s.readDb.Prepare(`SELECT id, data FROM changes WHERE treeId = ? ORDER BY id`); err != nil {
-		return
-	}
 	if s.stmt.updateTreeHeads, err = s.writeDb.Prepare(`UPDATE trees SET heads = ? WHERE id = ?`); err != nil {
 		return
 	}
@@ -116,9 +110,6 @@ func initStmts(s *storageService) (err error) {
 		return
 	}
 	if s.stmt.upsertBind, err = s.writeDb.Prepare(`INSERT INTO binds (objectId, spaceId) VALUES (?, ?) ON CONFLICT (objectId) DO UPDATE SET spaceId = ?`); err != nil {
-		return
-	}
-	if s.stmt.getAllBinds, err = s.writeDb.Prepare(`SELECT objectId FROM binds WHERE spaceId = ?`); err != nil {
 		return
 	}
 	if s.stmt.deleteSpace, err = s.writeDb.Prepare(`DELETE FROM spaces WHERE id = ?`); err != nil {

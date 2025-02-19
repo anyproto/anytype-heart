@@ -28,34 +28,6 @@ func TestStorageService_BindSpaceID(t *testing.T) {
 	assert.Equal(t, "spaceId2", spaceId)
 }
 
-func TestStorageService_GetBoundObjectIds(t *testing.T) {
-	t.Run("no bindings", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		spaceId := "spaceId"
-
-		ids, err := fx.GetBoundObjectIds(spaceId)
-		require.NoError(t, err)
-
-		assert.Empty(t, ids)
-	})
-
-	t.Run("ok", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		spaceId := "spaceId"
-		require.NoError(t, fx.BindSpaceID(spaceId, "objectId1"))
-		require.NoError(t, fx.BindSpaceID(spaceId, "objectId2"))
-
-		ids, err := fx.GetBoundObjectIds(spaceId)
-		require.NoError(t, err)
-
-		assert.ElementsMatch(t, []string{"objectId1", "objectId2"}, ids)
-	})
-}
-
 func TestStorageService_DeleteSpaceStorage(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.finish(t)
@@ -220,7 +192,7 @@ type testConfig struct {
 	tmpDir string
 }
 
-func (t *testConfig) GetSqliteStorePath() string {
+func (t *testConfig) GetSpaceStorePath() string {
 	return filepath.Join(t.tmpDir, "spaceStore.db")
 }
 func (t *testConfig) GetTempDirPath() string {
