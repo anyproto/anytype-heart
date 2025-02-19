@@ -7,6 +7,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -28,6 +29,16 @@ type indexerFixture struct {
 	objectStoreFixture *objectstore.StoreFixture
 }
 
+type dummyAccountService struct{}
+
+func (s dummyAccountService) MyParticipantId(spaceId string) string {
+	return ""
+}
+
+func (s dummyAccountService) Init(_ *app.App) error { return nil }
+
+func (s dummyAccountService) Name() string { return "dummyAccountService" }
+
 func newIndexerFixture(t *testing.T) *indexerFixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	fileService := mock_files.NewMockService(t)
@@ -37,8 +48,9 @@ func newIndexerFixture(t *testing.T) *indexerFixture {
 	fileService.EXPECT().GetContentReader(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(buf, nil).Maybe()
 
 	svc := &service{
-		objectStore: objectStore,
-		fileService: fileService,
+		objectStore:    objectStore,
+		fileService:    fileService,
+		accountService: &dummyAccountService{},
 	}
 	ind := svc.newIndexer()
 
