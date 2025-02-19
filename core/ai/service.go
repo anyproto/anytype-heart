@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/go-shiori/go-readability"
 	"github.com/pemistahl/lingua-go"
 
 	"github.com/anyproto/anytype-heart/core/ai/parsing"
@@ -40,7 +42,7 @@ type AI interface {
 	ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error)
 
 	// internal
-	WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, url string) (*WebsiteProcessResult, error)
+	WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error)
 	ClassifyWebsiteContent(ctx context.Context, content string) (string, error)
 
 	app.ComponentRunnable
@@ -192,10 +194,11 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 }
 
 // WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.
-func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, url string) (*WebsiteProcessResult, error) {
-	content, err := FetchAndExtract(url)
+func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error) {
+	article, err := readability.FromReader(bytes.NewReader(websiteData), nil)
+	content := article.Content
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not process website content: %w", err)
 	}
 
 	ai.setAPIConfig(provider)
