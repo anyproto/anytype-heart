@@ -320,7 +320,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 
 	if req.AdditionalDetails != nil {
 		for k, v := range req.AdditionalDetails.Iterate() {
-			createState.SetDetailAndBundledRelation(k, v)
+			createState.SetDetail(k, v)
 		}
 	}
 

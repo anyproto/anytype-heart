@@ -234,7 +234,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 			sb := smarttest.New(testFileObjectId)
 
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
+			st.SetDetail(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 			return apply(sb)
 		})
@@ -261,7 +261,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 			sb := smarttest.New(testFileObjectId)
 
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(""))
+			st.SetDetail(bundle.RelationKeyFileId, domain.String(""))
 
 			return apply(sb)
 		})

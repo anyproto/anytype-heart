@@ -195,12 +195,7 @@ func (st *SmartTest) AddHookOnce(id string, f smartblock.HookCallback, events ..
 }
 
 func (st *SmartTest) HasRelation(s *state.State, key string) bool {
-	for _, rel := range s.GetRelationLinks() {
-		if rel.Key == key {
-			return true
-		}
-	}
-	return false
+	return s.HasRelation(domain.RelationKey(key))
 }
 
 func (st *SmartTest) Relations(s *state.State) relationutils.Relations {
@@ -213,20 +208,6 @@ func (st *SmartTest) DefaultObjectTypeUrl() string {
 
 func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
-}
-
-func (st *SmartTest) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error) {
-	for _, key := range relationKeys {
-		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-			Key:    key.String(),
-			Format: 0, // todo
-		})
-	}
-	return nil
-}
-
-func (st *SmartTest) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
-	return st.AddRelationLinks(nil, relationKeys...)
 }
 
 func (st *SmartTest) CheckSubscriptions() (changed bool) {

@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -171,10 +170,6 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_shorttext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyName: domain.String("Title Text"),
 	}))
@@ -191,10 +186,6 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyName: domain.String("Title Text"),
 	}))
@@ -211,10 +202,6 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_shorttext,
-	})
 	// Empty value for relation key
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyName: domain.String(""),
@@ -230,10 +217,6 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	// Relation with wrong format
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_email, // Wrong format
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyName: domain.String("Title Text"),
 	}))

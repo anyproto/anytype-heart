@@ -184,25 +184,24 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	}).(*state.State)
 	converter := &fakeConverter{}
 
-	relations := []*model.RelationLink{
-		{
-			Key:    "relation1",
-			Format: model.RelationFormat_file,
-		},
-		{
-			Key:    "relation2",
-			Format: model.RelationFormat_tag,
-		},
-		{
-			Key:    "relation3",
-			Format: model.RelationFormat_status,
-		},
-		{
-			Key:    "relation4",
-			Format: model.RelationFormat_object,
-		},
-	}
-	stateWithLinks.AddRelationLinks(relations...)
+	// relations := []*model.RelationLink{
+	// 	{
+	// 		Key:    "relation1",
+	// 		Format: model.RelationFormat_file,
+	// 	},
+	// 	{
+	// 		Key:    "relation2",
+	// 		Format: model.RelationFormat_tag,
+	// 	},
+	// 	{
+	// 		Key:    "relation3",
+	// 		Format: model.RelationFormat_status,
+	// 	},
+	// 	{
+	// 		Key:    "relation4",
+	// 		Format: model.RelationFormat_object,
+	// 	},
+	// }
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
@@ -227,10 +226,6 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	t.Run("save backlinks", func(t *testing.T) {
 		st := stateWithLinks.Copy()
 		st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList([]string{"link1"}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyBacklinks.String(),
-			Format: model.RelationFormat_object,
-		})
 		objectIDs := DependentObjectIDs(st, converter, Flags{Details: true})
 		assert.Len(t, objectIDs, 1)
 		assert.Contains(t, objectIDs, "link1")
@@ -238,10 +233,6 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	t.Run("skip backlinks", func(t *testing.T) {
 		st := stateWithLinks.Copy()
 		st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList([]string{"link1"}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyBacklinks.String(),
-			Format: model.RelationFormat_object,
-		})
 		objectIDs := DependentObjectIDs(st, converter, Flags{Details: true, NoBackLinks: true})
 		assert.Len(t, objectIDs, 0)
 	})
@@ -290,29 +281,28 @@ func buildStateWithLinks() *state.State {
 			}}),
 	}).(*state.State)
 
-	relations := []*model.RelationLink{
-		{
-			Key:    "relation1",
-			Format: model.RelationFormat_file,
-		},
-		{
-			Key:    "relation2",
-			Format: model.RelationFormat_tag,
-		},
-		{
-			Key:    "relation3",
-			Format: model.RelationFormat_status,
-		},
-		{
-			Key:    "relation4",
-			Format: model.RelationFormat_object,
-		},
-		{
-			Key:    "relation5",
-			Format: model.RelationFormat_date,
-		},
-	}
-	stateWithLinks.AddRelationLinks(relations...)
+	// relations := []*model.RelationLink{
+	// 	{
+	// 		Key:    "relation1",
+	// 		Format: model.RelationFormat_file,
+	// 	},
+	// 	{
+	// 		Key:    "relation2",
+	// 		Format: model.RelationFormat_tag,
+	// 	},
+	// 	{
+	// 		Key:    "relation3",
+	// 		Format: model.RelationFormat_status,
+	// 	},
+	// 	{
+	// 		Key:    "relation4",
+	// 		Format: model.RelationFormat_object,
+	// 	},
+	// 	{
+	// 		Key:    "relation5",
+	// 		Format: model.RelationFormat_date,
+	// 	},
+	// }
 	stateWithLinks.SetDetail("relation1", domain.StringList([]string{"file"}))
 	stateWithLinks.SetDetail("relation2", domain.StringList([]string{"option1"}))
 	stateWithLinks.SetDetail("relation3", domain.StringList([]string{"option2"}))
@@ -344,25 +334,24 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 	// given
 	stateWithLinks := state.NewDoc("root", nil).(*state.State)
-	relations := []*model.RelationLink{
-		{
-			Key:    "relation1",
-			Format: model.RelationFormat_date,
-		},
-		{
-			Key:    bundle.RelationKeyCreatedDate.String(),
-			Format: model.RelationFormat_date,
-		},
-		{
-			Key:    bundle.RelationKeyCreator.String(),
-			Format: model.RelationFormat_object,
-		},
-		{
-			Key:    bundle.RelationKeyLastModifiedBy.String(),
-			Format: model.RelationFormat_object,
-		},
-	}
-	stateWithLinks.AddRelationLinks(relations...)
+	// relations := []*model.RelationLink{
+	// 	{
+	// 		Key:    "relation1",
+	// 		Format: model.RelationFormat_date,
+	// 	},
+	// 	{
+	// 		Key:    bundle.RelationKeyCreatedDate.String(),
+	// 		Format: model.RelationFormat_date,
+	// 	},
+	// 	{
+	// 		Key:    bundle.RelationKeyCreator.String(),
+	// 		Format: model.RelationFormat_object,
+	// 	},
+	// 	{
+	// 		Key:    bundle.RelationKeyLastModifiedBy.String(),
+	// 		Format: model.RelationFormat_object,
+	// 	},
+	// }
 	stateWithLinks.SetDetail("relation1", domain.Int64(time.Now().Unix()))
 	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(time.Now().Unix()))
 	stateWithLinks.SetDetail(bundle.RelationKeyCreator, domain.String("creator"))

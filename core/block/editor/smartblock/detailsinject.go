@@ -87,7 +87,7 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		}
 
 		if creatorIdentityObjectId != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, domain.String(creatorIdentityObjectId))
+			s.SetDetail(bundle.RelationKeyProfileOwnerIdentity, domain.String(creatorIdentityObjectId))
 		}
 	} else {
 		// make sure we don't have this relation for other objects
@@ -104,24 +104,24 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 	}
 
 	if creatorIdentityObjectId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, domain.String(creatorIdentityObjectId))
+		s.SetDetail(bundle.RelationKeyCreator, domain.String(creatorIdentityObjectId))
 	} else {
 		// For derived objects we set current identity
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, domain.String(sb.currentParticipantId))
+		s.SetDetail(bundle.RelationKeyCreator, domain.String(sb.currentParticipantId))
 	}
 
 	if originalCreated := s.OriginalCreatedTimestamp(); originalCreated > 0 {
 		// means we have imported object, so we need to set original created date
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, domain.Int64(originalCreated))
+		s.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(originalCreated))
 		// Only set AddedDate once because we have a side effect with treeCreatedDate:
 		// - When we import object, treeCreateDate is set to time.Now()
 		// - But after push it is changed to original modified date
 		// - So after account recovery we will get treeCreateDate = original modified date, which is not equal to AddedDate
 		if s.Details().GetInt64(bundle.RelationKeyAddedDate) == 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, domain.Int64(treeCreatedDate))
+			s.SetDetail(bundle.RelationKeyAddedDate, domain.Int64(treeCreatedDate))
 		}
 	} else {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, domain.Int64(treeCreatedDate))
+		s.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(treeCreatedDate))
 	}
 
 	return nil
@@ -132,13 +132,13 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	// TODO Pick from source
 	id := s.RootId()
 	if id != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id))
+		s.SetDetail(bundle.RelationKeyId, domain.String(id))
 	}
 
 	if v, ok := s.Details().TryInt64(bundle.RelationKeyFileBackupStatus); ok {
 		status := filesyncstatus.Status(v)
 		// Clients expect syncstatus constants in this relation
-		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, domain.Int64(status.ToSyncStatus()))
+		s.SetDetail(bundle.RelationKeyFileSyncStatus, domain.Int64(status.ToSyncStatus()))
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
@@ -152,7 +152,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if spaceID != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(spaceID))
+		s.SetDetail(bundle.RelationKeySpaceId, domain.String(spaceID))
 	} else {
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, s.LocalDetails().GetString(bundle.RelationKeySpaceId))
 	}
@@ -162,7 +162,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeID))
+		s.SetDetail(bundle.RelationKeyType, domain.String(typeID))
 	}
 
 	if uki := s.UniqueKeyInternal(); uki != "" {
@@ -177,7 +177,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		if err != nil {
 			log.Errorf("failed to get unique key for %s: %v", uki, err)
 		} else {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, domain.String(uk.Marshal()))
+			s.SetDetail(bundle.RelationKeyUniqueKey, domain.String(uk.Marshal()))
 		}
 	}
 
@@ -190,7 +190,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 
 	snippet := s.Snippet()
 	if snippet != "" || s.LocalDetails() != nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, domain.String(snippet))
+		s.SetDetail(bundle.RelationKeySnippet, domain.String(snippet))
 	}
 
 	// Set isDeleted relation only if isUninstalled is present in details
@@ -199,7 +199,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		if isUninstalled {
 			isDeleted = true
 		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(isDeleted))
+		s.SetDetail(bundle.RelationKeyIsDeleted, domain.Bool(isDeleted))
 	}
 
 	sb.injectResolvedLayout(s)
@@ -220,7 +220,7 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 		if err != nil {
 			return err
 		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, domain.String(chatId))
+		s.SetDetail(bundle.RelationKeyChatId, domain.String(chatId))
 	}
 	return nil
 }
@@ -231,7 +231,7 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	}
 	rawValue := s.Details().Get(bundle.RelationKeyLayout)
 	if rawValue.Ok() {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+		s.SetDetail(bundle.RelationKeyResolvedLayout, rawValue)
 		return
 	}
 
@@ -241,7 +241,7 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 			return
 		}
 		log.Errorf("failed to find id of object type. Falling back to basic layout")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return
 	}
 
@@ -256,7 +256,7 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 		records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
 		if err != nil || len(records) != 1 {
 			log.Errorf("failed to query object %s: %v", typeObjectId, err)
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+			s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 			return
 		}
 		rawValue = records[0].Details.Get(bundle.RelationKeyRecommendedLayout)
@@ -264,11 +264,11 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 
 	if !rawValue.Ok() {
 		log.Errorf("failed to get recommended layout from details of type. Fallback to basic layout")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return
 	}
 
-	s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+	s.SetDetail(bundle.RelationKeyResolvedLayout, rawValue)
 }
 
 // changeResolvedLayoutForObjects changes resolvedLayout for object of this type and deletes Layout relation
@@ -323,7 +323,7 @@ func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage,
 			err = sb.space.Do(id, func(b SmartBlock) error {
 				st := b.NewState()
 				st.RemoveDetail(bundle.RelationKeyLayout)
-				st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+				st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 				return b.Apply(st)
 			})
 			if err != nil {
@@ -361,7 +361,7 @@ func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage,
 
 		err = sb.space.Do(id, func(b SmartBlock) error {
 			st := b.NewState()
-			st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+			st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 			return b.Apply(st, KeepInternalFlags, NotPushChanges)
 		})
 		if err != nil {

@@ -97,9 +97,6 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			"oldKey": domain.String("test"),
 		}))
-		doc.AddRelationLinks(&model.RelationLink{
-			Key: "oldKey",
-		})
 		// when
 		oc.updateKeys(doc, oldToNew)
 
@@ -142,9 +139,6 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			"key": domain.String("test"),
 		}))
-		doc.AddRelationLinks(&model.RelationLink{
-			Key: "key",
-		})
 		// when
 		oc.updateKeys(doc, oldToNew)
 

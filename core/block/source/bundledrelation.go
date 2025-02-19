@@ -78,7 +78,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 		return nil, err
 	}
 	for k, v := range d.Iterate() {
-		s.SetDetailAndBundledRelation(k, v)
+		s.SetDetail(k, v)
 	}
 	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil

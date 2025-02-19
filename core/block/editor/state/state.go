@@ -47,6 +47,10 @@ var (
 	ErrRestricted = errors.New("restricted")
 )
 
+type relationLinkGetter interface {
+	GetRelationLink(key string) (*model.RelationLink, error)
+}
+
 type Doc interface {
 	RootId() string
 	NewState() *State
@@ -57,7 +61,8 @@ type Doc interface {
 	CombinedDetails() *domain.Details
 	LocalDetails() *domain.Details
 
-	GetRelationLinks() pbtypes.RelationLinks
+	AllRelationKeys() []domain.RelationKey
+	AddRelationKeys(keys ...domain.RelationKey)
 
 	ObjectTypeKeys() []domain.TypeKey
 	ObjectTypeKey() domain.TypeKey
@@ -119,7 +124,6 @@ type State struct {
 	fileKeys          []pb.ChangeFileKeys // Deprecated
 	details           *domain.Details
 	localDetails      *domain.Details
-	relationLinks     pbtypes.RelationLinks
 	notifications     map[string]*model.Notification
 	deviceStore       map[string]*model.DeviceInfo
 
@@ -173,11 +177,9 @@ func (s *State) filterRelations(filters *Filters) {
 	resultDetails := domain.NewDetails()
 	layout, _ := s.Layout()
 	relationKeys := filters.RelationsWhiteList[layout]
-	var updatedRelationLinks pbtypes.RelationLinks
 	for key, value := range s.details.Iterate() {
 		if slices.Contains(relationKeys, key) {
 			resultDetails.Set(key, value)
-			updatedRelationLinks = append(updatedRelationLinks, s.relationLinks.Get(key.String()))
 			continue
 		}
 	}
@@ -189,7 +191,6 @@ func (s *State) filterRelations(filters *Filters) {
 	for key, value := range s.localDetails.Iterate() {
 		if slices.Contains(relationKeys, key) {
 			resultLocalDetails.Set(key, value)
-			updatedRelationLinks = append(updatedRelationLinks, s.relationLinks.Get(key.String()))
 			continue
 		}
 	}
@@ -197,7 +198,6 @@ func (s *State) filterRelations(filters *Filters) {
 	if resultLocalDetails.Len() == 0 {
 		s.localDetails = nil
 	}
-	s.relationLinks = updatedRelationLinks
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -620,40 +620,6 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 		})})
 	}
 
-	if s.parent != nil && s.relationLinks != nil {
-		added, removed := s.relationLinks.Diff(s.parent.relationLinks)
-
-		if len(added)+len(removed) > 0 {
-			action.RelationLinks = &undo.RelationLinks{
-				Before: s.parent.relationLinks,
-				After:  s.relationLinks,
-			}
-		}
-
-		if len(removed) > 0 {
-			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
-				event.NewMessage(s.SpaceID(), &pb.EventMessageValueOfObjectRelationsRemove{
-					ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
-						Id:           s.RootId(),
-						RelationKeys: removed,
-					},
-				},
-				),
-			})...)
-		}
-		if len(added) > 0 {
-			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
-				event.NewMessage(s.SpaceID(), &pb.EventMessageValueOfObjectRelationsAmend{
-					ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
-						Id:            s.RootId(),
-						RelationLinks: added,
-					},
-				},
-				),
-			})...)
-		}
-	}
-
 	// generate changes
 	s.fillChanges(msgs)
 
@@ -704,10 +670,6 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
-	}
-
-	if s.parent != nil && s.relationLinks != nil {
-		s.parent.relationLinks = s.relationLinks
 	}
 
 	if s.parent != nil && s.localDetails != nil {
@@ -763,10 +725,6 @@ func (s *State) intermediateApply() {
 	}
 	if s.localDetails != nil {
 		s.parent.localDetails = s.localDetails
-	}
-
-	if s.relationLinks != nil {
-		s.parent.relationLinks = s.relationLinks
 	}
 
 	if s.objectTypeKeys != nil {
@@ -872,10 +830,6 @@ func (s *State) StringDebug() string {
 	buf := bytes.NewBuffer(nil)
 	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
 	fmt.Fprintf(buf, "ObjectTypeKeys: %v\n", s.ObjectTypeKeys())
-	fmt.Fprintf(buf, "Relations:\n")
-	for _, rel := range s.relationLinks {
-		fmt.Fprintf(buf, "\t%v\n", rel)
-	}
 
 	fmt.Fprintf(buf, "\nDetails:\n")
 	arena := &anyenc.Arena{}
@@ -920,16 +874,9 @@ func (s *State) SetDetails(d *domain.Details) *State {
 	return s
 }
 
-// SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
-func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value domain.Value) {
-	s.AddBundledRelationLinks(key)
-	s.SetDetail(key, value)
-	return
-}
-
 func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 	if s.localDetails == nil && s.parent != nil {
-		d := s.parent.Details()
+		d := s.parent.LocalDetails()
 		if d != nil {
 			// optimisation so we don't need to copy the struct if nothing has changed
 			if prev := d.Get(key); prev.Ok() && prev.Equal(value) {
@@ -1039,7 +986,7 @@ func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
 
 func (s *State) InjectLocalDetails(localDetails *domain.Details) {
 	for k, v := range localDetails.Iterate() {
-		s.SetDetailAndBundledRelation(k, v)
+		s.SetDetail(k, v)
 	}
 }
 
@@ -1061,6 +1008,10 @@ func (s *State) Details() *domain.Details {
 		return s.parent.Details()
 	}
 	return s.details
+}
+
+func (s *State) AllRelationKeys() []domain.RelationKey {
+	return append(s.Details().Keys(), s.LocalDetails().Keys()...)
 }
 
 // ObjectTypeKeys returns the object types keys of the object
@@ -1115,20 +1066,24 @@ func (s *State) Snippet() string {
 	return textutil.TruncateEllipsized(builder.String(), snippetMaxSize)
 }
 
-func (s *State) FileRelationKeys() []domain.RelationKey {
+func (s *State) FileRelationKeys(relLinkGetter relationLinkGetter) []domain.RelationKey {
 	var keys []domain.RelationKey
-	for _, rel := range s.GetRelationLinks() {
+	for _, key := range s.AllRelationKeys() {
 		// coverId can contain both hash or predefined cover id
-		if rel.Format == model.RelationFormat_file {
-			key := domain.RelationKey(rel.Key)
-			if slice.FindPos(keys, key) == -1 {
+		if key == bundle.RelationKeyCoverId {
+			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
+			if (coverType == 1 || coverType == 4 || coverType == 5) && slice.FindPos(keys, key) == -1 {
 				keys = append(keys, key)
 			}
+			continue
 		}
-		if rel.Key == bundle.RelationKeyCoverId.String() {
-			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
-			if (coverType == 1 || coverType == 4 || coverType == 5) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
-				keys = append(keys, domain.RelationKey(rel.Key))
+		relLink, err := relLinkGetter.GetRelationLink(key.String())
+		if err != nil {
+			continue
+		}
+		if relLink.Format == model.RelationFormat_file {
+			if slice.FindPos(keys, key) == -1 {
+				keys = append(keys, key)
 			}
 		}
 	}
@@ -1136,18 +1091,18 @@ func (s *State) FileRelationKeys() []domain.RelationKey {
 }
 
 // IterateLinkedFiles iterates over all file object ids in blocks and details
-func (s *State) IterateLinkedFiles(proc func(id string)) {
+func (s *State) IterateLinkedFiles(relLinkGetter relationLinkGetter, proc func(id string)) {
 	s.Iterate(func(block simple.Block) (isContinue bool) {
 		if iter, ok := block.(simple.LinkedFilesIterator); ok {
 			iter.IterateLinkedFiles(proc)
 		}
 		return true
 	})
-	s.IterateLinkedFilesInDetails(proc)
+	s.iterateLinkedFilesInDetails(relLinkGetter, proc)
 }
 
-func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
-	s.ModifyLinkedFilesInDetails(func(id string) string {
+func (s *State) iterateLinkedFilesInDetails(relLinkGetter relationLinkGetter, proc func(id string)) {
+	s.ModifyLinkedFilesInDetails(relLinkGetter, func(id string) string {
 		proc(id)
 		return id
 	})
@@ -1155,13 +1110,13 @@ func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
 
 // ModifyLinkedFilesInDetails iterates over all file object ids in details and modifies them using modifier function.
 // Detail is saved only if at least one id is changed
-func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
+func (s *State) ModifyLinkedFilesInDetails(relLinkGetter relationLinkGetter, modifier func(id string) string) {
 	details := s.Details()
 	if details == nil {
 		return
 	}
 
-	for _, key := range s.FileRelationKeys() {
+	for _, key := range s.FileRelationKeys(relLinkGetter) {
 		if key == bundle.RelationKeyCoverId {
 			v := details.GetString(bundle.RelationKeyCoverId)
 			_, err := cid.Decode(v)
@@ -1177,14 +1132,18 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 
 // ModifyLinkedObjectsInDetails iterates over all object ids in details and modifies them using modifier function.
 // Detail is saved only if at least one id is changed
-func (s *State) ModifyLinkedObjectsInDetails(modifier func(id string) string) {
+func (s *State) ModifyLinkedObjectsInDetails(relLinkGetter relationLinkGetter, modifier func(id string) string) {
 	details := s.Details()
 	if details == nil {
 		return
 	}
-	for _, rel := range s.GetRelationLinks() {
-		if rel.Format == model.RelationFormat_object {
-			s.modifyIdsInDetail(details, domain.RelationKey(rel.Key), modifier)
+	for _, key := range s.AllRelationKeys() {
+		relLink, err := relLinkGetter.GetRelationLink(key.String())
+		if err != nil {
+			continue
+		}
+		if relLink.Format == model.RelationFormat_object {
+			s.modifyIdsInDetail(details, key, modifier)
 		}
 	}
 }
@@ -1348,7 +1307,6 @@ func (s *State) Copy() *State {
 		rootId:                   s.rootId,
 		details:                  s.Details().Copy(),
 		localDetails:             s.LocalDetails().Copy(),
-		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
 		objectTypeKeys:           objTypes,
 		noObjectType:             s.noObjectType,
 		migrationVersion:         s.migrationVersion,
@@ -1364,14 +1322,8 @@ func (s *State) Copy() *State {
 	return copy
 }
 
-func (s *State) HasRelation(key string) bool {
-	links := s.GetRelationLinks()
-	for _, link := range links {
-		if link.Key == key {
-			return true
-		}
-	}
-	return false
+func (s *State) HasRelation(key domain.RelationKey) bool {
+	return slices.Contains(s.AllRelationKeys(), key)
 }
 
 func (s *State) Len() (l int) {
@@ -1757,51 +1709,23 @@ func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 
-// AddRelationLinks adds relation links to the state in case they are not already present
-func (s *State) AddRelationLinks(links ...*model.RelationLink) {
-	relLinks := s.GetRelationLinks()
-	for _, l := range links {
-		if !relLinks.Has(l.Key) {
-			relLinks = append(relLinks, l)
-		}
-	}
-	s.relationLinks = relLinks
-}
-
-func (s *State) PickRelationLinks() pbtypes.RelationLinks {
-	if s.relationLinks != nil {
-		return s.relationLinks
-	}
-	if s.parent != nil {
-		return s.parent.PickRelationLinks()
-	}
-	return nil
-}
-
+// deprecated
 func (s *State) GetRelationLinks() pbtypes.RelationLinks {
-	if s.relationLinks != nil {
-		return s.relationLinks
-	}
-	if s.parent != nil {
-		parentLinks := s.parent.PickRelationLinks()
-		s.relationLinks = parentLinks.Copy()
-		return s.relationLinks
-	}
 	return nil
+}
+
+// AddRelationKeys adds details with null value, if no detail corresponding to key was presented
+func (s *State) AddRelationKeys(keys ...domain.RelationKey) {
+	allKeys := s.AllRelationKeys()
+	for _, key := range keys {
+		if slices.Contains(allKeys, key) {
+			continue
+		}
+		s.SetDetail(key, domain.Null())
+	}
 }
 
 func (s *State) RemoveRelation(keys ...domain.RelationKey) {
-	relLinks := s.GetRelationLinks()
-	relLinksFiltered := make(pbtypes.RelationLinks, 0, len(relLinks))
-	for _, link := range relLinks {
-		if slice.FindPos(keys, domain.RelationKey(link.Key)) >= 0 {
-			continue
-		}
-		relLinksFiltered = append(relLinksFiltered, &model.RelationLink{
-			Key:    link.Key,
-			Format: link.Format,
-		})
-	}
 	// remove detail value
 	s.RemoveDetail(keys...)
 	// remove from the list of featured relations
@@ -1817,7 +1741,6 @@ func (s *State) RemoveRelation(keys ...domain.RelationKey) {
 	if foundInFeatured {
 		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(featuredList))
 	}
-	s.relationLinks = relLinksFiltered
 	return
 }
 
@@ -1886,21 +1809,6 @@ func (s *State) SelectRoots(ids []string) []string {
 		}
 	}
 	return res
-}
-
-func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
-	existingLinks := s.PickRelationLinks()
-
-	var links []*model.RelationLink
-	for _, key := range keys {
-		if !existingLinks.Has(key.String()) {
-			rel := bundle.MustGetRelation(key)
-			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
-		}
-	}
-	if len(links) > 0 {
-		s.AddRelationLinks(links...)
-	}
 }
 
 func (s *State) GetNotificationById(id string) *model.Notification {

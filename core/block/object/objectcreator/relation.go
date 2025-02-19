@@ -43,13 +43,13 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	} else if bundle.HasRelation(key) {
 		object.SetString(bundle.RelationKeySourceObject, string(addr.BundledRelationURLPrefix+key))
 	}
-	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, string(key))
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key.String())
 	if err != nil {
 		return "", nil, err
 	}
 	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.SetString(bundle.RelationKeyId, id)
-	object.SetString(bundle.RelationKeyRelationKey, string(key))
+	object.SetString(bundle.RelationKeyRelationKey, key.String())
 	if details.GetInt64(bundle.RelationKeyRelationFormat) == int64(model.RelationFormat_status) {
 		object.SetInt64(bundle.RelationKeyRelationMaxCount, 1)
 	}

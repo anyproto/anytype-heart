@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -44,7 +45,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -151,9 +151,9 @@ type SmartBlock interface {
 	RegisterSession(session.Context)
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
+	// deprecated
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error)
 	RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetIsDeleted()
@@ -266,12 +266,7 @@ func (sb *smartBlock) Tree() objecttree.ObjectTree {
 }
 
 func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
-	for _, rel := range s.GetRelationLinks() {
-		if rel.Key == key {
-			return true
-		}
-	}
-	return false
+	return s.HasRelation(domain.RelationKey(key))
 }
 
 func (sb *smartBlock) Id() string {
@@ -343,23 +338,13 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 
 	injectRequiredRelationLinks := func(s *state.State) {
-		s.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
-		s.AddBundledRelationLinks(ctx.RequiredInternalRelationKeys...)
+		s.AddRelationKeys(bundle.RequiredInternalRelations...)
+		s.AddRelationKeys(ctx.RequiredInternalRelationKeys...)
 	}
 	injectRequiredRelationLinks(ctx.State)
 	injectRequiredRelationLinks(ctx.State.ParentState())
 
-	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
-		return
-	}
-	// Add bundled relations
-	var relKeys []domain.RelationKey
-	for k, _ := range ctx.State.Details().Iterate() {
-		if bundle.HasRelation(k) {
-			relKeys = append(relKeys, k)
-		}
-	}
-	ctx.State.AddBundledRelationLinks(relKeys...)
+	ctx.State.AddRelationKeys(ctx.RelationKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
 		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(ctx.State)
 	}
@@ -741,7 +726,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, domain.String(sb.currentParticipantId))
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, domain.Int64(lastModified.Unix()))
 		}
-		fileDetailsKeys := st.FileRelationKeys()
+		fileDetailsKeys := st.FileRelationKeys(sb.objectStore.SpaceIndex(sb.SpaceID()))
 		var fileDetailsKeysFiltered []domain.RelationKey
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
@@ -815,7 +800,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if hasDepIds(sb.GetRelationLinks(), &act) {
+	if sb.hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
 	afterReportChangeTime := time.Now()
@@ -907,24 +892,6 @@ func (sb *smartBlock) History() undo.History {
 	return sb.undo
 }
 
-func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
-	if len(relationKeys) == 0 {
-		return
-	}
-	// todo: filter-out existing relation links?
-	// in the most cases it should save as an objectstore query
-	relations, err := sb.spaceIndex.FetchRelationByKeys(relationKeys...)
-	if err != nil {
-		return
-	}
-	links := make([]*model.RelationLink, 0, len(relations))
-	for _, r := range relations {
-		links = append(links, r.RelationLink())
-	}
-	s.AddRelationLinks(links...)
-	return
-}
-
 func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	for _, id := range ids {
@@ -970,7 +937,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		})
 	}
 	sb.storeFileKeys(s)
-	if hasDepIds(sb.GetRelationLinks(), &act) || isBacklinksChanged(msgs) {
+	if sb.hasDepIds(&act) || isBacklinksChanged(msgs) {
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
@@ -1057,7 +1024,7 @@ func (sb *smartBlock) closeLocked() (err error) {
 	return
 }
 
-func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
+func (sb *smartBlock) hasDepIds(act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
@@ -1070,13 +1037,16 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 		}
 
 		for k, after := range act.Details.After.Iterate() {
-			rel := relations.Get(string(k))
-			if rel != nil && (rel.Format == model.RelationFormat_status ||
-				rel.Format == model.RelationFormat_tag ||
-				rel.Format == model.RelationFormat_object ||
-				rel.Format == model.RelationFormat_file ||
-				isCoverId(k)) {
-
+			rel, err := sb.objectStore.SpaceIndex(sb.SpaceID()).GetRelationLink(string(k))
+			if err != nil || rel == nil {
+				continue
+			}
+			if slices.Contains([]model.RelationFormat{
+				model.RelationFormat_status,
+				model.RelationFormat_tag,
+				model.RelationFormat_object,
+				model.RelationFormat_file,
+			}, rel.Format) || isCoverId(k) {
 				before := act.Details.Before.Get(k)
 				// Check that value is actually changed
 				if !before.Ok() || !before.Equal(after) {
@@ -1180,13 +1150,13 @@ func (sb *smartBlock) AddHookOnce(id string, f HookCallback, events ...Hook) {
 
 // deprecated, use RelationLinks instead
 func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
-	var links []*model.RelationLink
+	var keys []domain.RelationKey
 	if s == nil {
-		links = sb.Doc.GetRelationLinks()
+		keys = sb.Doc.AllRelationKeys()
 	} else {
-		links = s.GetRelationLinks()
+		keys = s.AllRelationKeys()
 	}
-	rels, _ := sb.spaceIndex.FetchRelationByLinks(links)
+	rels, _ := sb.spaceIndex.FetchRelationByKeys(keys...)
 	return rels
 }
 
@@ -1274,7 +1244,7 @@ func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
 		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
+		s.SetDetail(bundle.RelationKeyIsReadonly, domain.Bool(true))
 	}
 }
 

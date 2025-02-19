@@ -461,14 +461,6 @@ func (s *Service) AddRelationBlock(ctx session.Context, req pb.RpcBlockRelationA
 	})
 }
 
-func (s *Service) GetRelations(ctx session.Context, objectId string) (relations []*model.Relation, err error) {
-	err = cache.Do(s, objectId, func(b smartblock.SmartBlock) error {
-		relations = b.Relations(nil).Models()
-		return nil
-	})
-	return
-}
-
 func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTypeUniqueKeys []string) (err error) {
 	return cache.Do(s, objectId, func(b basic.CommonOperations) error {
 		objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeUniqueKeys))

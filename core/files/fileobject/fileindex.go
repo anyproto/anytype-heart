@@ -237,13 +237,6 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 
 	st.SetObjectTypeKey(typeKey)
 	prevDetails := st.CombinedDetails()
-
-	keys := make([]domain.RelationKey, 0, details.Len())
-	for k, _ := range details.Iterate() {
-		keys = append(keys, k)
-	}
-	st.AddBundledRelationLinks(keys...)
-
 	details = prevDetails.Merge(details)
 	st.SetDetails(details)
 

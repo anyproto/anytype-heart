@@ -18,7 +18,7 @@ func (sb *smartBlock) updateBackLinks(s *state.State) {
 		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err)
 		return
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, domain.StringList(backLinks))
+	s.SetDetail(bundle.RelationKeyBacklinks, domain.StringList(backLinks))
 }
 
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
@@ -51,7 +51,7 @@ func (sb *smartBlock) injectMentions(s *state.State) {
 		NoImages:                 true,
 	})
 	mentions = slice.RemoveMut(mentions, sb.Id())
-	s.SetDetailAndBundledRelation(bundle.RelationKeyMentions, domain.StringList(mentions))
+	s.SetDetail(bundle.RelationKeyMentions, domain.StringList(mentions))
 }
 
 func isBacklinksChanged(msgs []simple.EventMessage) bool {

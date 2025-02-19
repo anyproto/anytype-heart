@@ -69,7 +69,7 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	}
 	sbType := objectTypeKeysToSmartBlockType(objectTypeKeys)
 
-	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(spc.Id()))
+	createState.SetDetail(bundle.RelationKeySpaceId, domain.String(spc.Id()))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),

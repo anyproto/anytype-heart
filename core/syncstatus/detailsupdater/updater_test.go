@@ -90,8 +90,8 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 			sb := smarttest.New(objectId)
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
-			st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
+			st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+			st.SetDetail(bundle.RelationKeySpaceId, domain.String("spaceId"))
 			err := apply(sb)
 			require.NoError(t, err)
 
@@ -158,9 +158,9 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 				sb := smarttest.New(objectId)
 				st := sb.Doc.(*state.State)
-				st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
-				st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_file)))
-				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Limited)))
+				st.SetDetail(bundle.RelationKeySpaceId, domain.String("spaceId"))
+				st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_file)))
+				st.SetDetail(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Limited)))
 				err := apply(sb)
 				require.NoError(t, err)
 
@@ -188,9 +188,9 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 			space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 				sb := smarttest.New(objectId)
 				st := sb.Doc.(*state.State)
-				st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
-				st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_file)))
-				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
+				st.SetDetail(bundle.RelationKeySpaceId, domain.String("spaceId"))
+				st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_file)))
+				st.SetDetail(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
 				err := apply(sb)
 				require.NoError(t, err)
 
@@ -240,8 +240,8 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 		space.EXPECT().DoCtx(mock.Anything, objectId, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 			sb := smarttest.New(objectId)
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+			st.SetDetail(bundle.RelationKeySpaceId, domain.String("spaceId"))
+			st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 			err := apply(sb)
 			require.NoError(t, err)
 
@@ -275,7 +275,7 @@ func TestSyncStatusUpdater_setSyncDetails(t *testing.T) {
 		fx := newFixture(t)
 		sb := smarttest.New("id")
 		st := sb.Doc.(*state.State)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
+		st.SetDetail(bundle.RelationKeySpaceId, domain.String("spaceId"))
 		// when
 		err := fx.setSyncDetails(sb, domain.ObjectSyncStatusError, domain.SyncErrorNetworkError)
 		assert.Nil(t, err)

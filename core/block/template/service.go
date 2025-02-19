@@ -190,7 +190,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
 	)
-	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(sb.Id()))
+	st.SetDetail(bundle.RelationKeySourceObject, domain.String(sb.Id()))
 	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
 	st.SetOriginalCreatedTimestamp(0)
 	st.SetLocalDetails(nil)
@@ -266,7 +266,7 @@ func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (temp
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled)
 		st.SetLocalDetails(nil)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(id))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(id))
 
 		targetObjectTypeBundledId := st.Details().GetString(bundle.RelationKeyTargetObjectType)
 		targetObjectTypeKey, err := bundle.TypeKeyFromUrl(targetObjectTypeBundledId)
@@ -277,7 +277,7 @@ func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (temp
 		if err != nil {
 			return fmt.Errorf("get target object type id: %w", err)
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyTargetObjectType, domain.String(targetObjectTypeId))
+		st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String(targetObjectTypeId))
 		return nil
 	}); err != nil {
 		return

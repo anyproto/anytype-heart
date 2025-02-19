@@ -43,9 +43,9 @@ func collectInfoFromDetails(s *pb.SnapshotWithType, info *useCaseInfo) {
 			values := pbtypes.GetStringListValue(v)
 			for _, val := range values {
 				if key, found := info.relations[val]; found {
-					if cr, foundToo := info.customTypesAndRelations[string(key)]; foundToo {
+					if cr, foundToo := info.customTypesAndRelations[key.String()]; foundToo {
 						cr.isUsed = true
-						info.customTypesAndRelations[string(key)] = cr
+						info.customTypesAndRelations[key.String()] = cr
 					}
 				}
 			}

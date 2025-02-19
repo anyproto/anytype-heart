@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -159,25 +160,37 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			return nil
 		}
 
-		for _, rel := range sb.GetRelationLinks() {
-			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
+		for _, key := range sb.AllRelationKeys() {
+
+			relLink, err := i.store.SpaceIndex(sb.SpaceID()).GetRelationLink(key.String())
+			if err == nil && relLink != nil && relLink.Format != model.RelationFormat_shorttext && relLink.Format != model.RelationFormat_longtext {
 				continue
 			}
-			val := sb.Details().GetString(domain.RelationKey(rel.Key))
+			if err != nil {
+				log.Warnf("fulltext index: failed to get relation link: %v", err)
+			}
+
+			val := sb.Details().GetString(key)
 			if val == "" {
-				val = sb.LocalDetails().GetString(domain.RelationKey(rel.Key))
+				val = sb.LocalDetails().GetString(key)
 				if val == "" {
 					continue
 				}
 			}
+
+			// skip details that hold object ids
+			if _, decodeErr := cid.Decode(val); decodeErr == nil {
+				continue
+			}
+
 			// skip readonly and hidden system relations
-			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
+			if bundledRel, err := bundle.PickRelation(key); err == nil {
 				layout, _ := sb.Layout()
 				skip := bundledRel.ReadOnly || bundledRel.Hidden
-				if rel.Key == bundle.RelationKeyName.String() {
+				if key == bundle.RelationKeyName {
 					skip = false
 				}
-				if layout == model.ObjectType_note && rel.Key == bundle.RelationKeySnippet.String() {
+				if layout == model.ObjectType_note && key == bundle.RelationKeySnippet {
 					// index snippet only for notes, so we will be able to do fast prefix queries
 					skip = false
 				}
@@ -188,12 +201,12 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			}
 
 			doc := ftsearch.SearchDoc{
-				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
+				Id:      domain.NewObjectPathWithRelation(id, key.String()).String(),
 				SpaceId: sb.SpaceID(),
 				Text:    val,
 			}
 
-			if rel.Key == bundle.RelationKeyName.String() {
+			if key == bundle.RelationKeyName {
 				layout, layoutValid := sb.Layout()
 				if layoutValid {
 					if _, contains := filesLayouts[layout]; !contains {

@@ -61,13 +61,14 @@ func (sn *SnapshotModel) ToProto() *pb.ChangeSnapshot {
 }
 
 type StateSnapshot struct {
-	Blocks                   []*model.Block
-	Details                  *domain.Details
-	FileKeys                 *types.Struct
-	ExtraRelations           []*model.Relation
-	ObjectTypes              []string
-	Collections              *types.Struct
-	RemovedCollectionKeys    []string
+	Blocks                []*model.Block
+	Details               *domain.Details
+	FileKeys              *types.Struct
+	ExtraRelations        []*model.Relation
+	ObjectTypes           []string
+	Collections           *types.Struct
+	RemovedCollectionKeys []string
+	// deprecated
 	RelationLinks            []*model.RelationLink
 	Key                      string
 	OriginalCreatedTimestamp int64
@@ -83,7 +84,6 @@ func (sn *StateSnapshot) ToProto() *model.SmartBlockSnapshotBase {
 		ObjectTypes:              sn.ObjectTypes,
 		Collections:              sn.Collections,
 		RemovedCollectionKeys:    sn.RemovedCollectionKeys,
-		RelationLinks:            sn.RelationLinks,
 		Key:                      sn.Key,
 		OriginalCreatedTimestamp: sn.OriginalCreatedTimestamp,
 		FileInfo:                 sn.FileInfo,
@@ -99,7 +99,6 @@ func NewStateSnapshotFromProto(sn *model.SmartBlockSnapshotBase) *StateSnapshot 
 		ObjectTypes:              sn.ObjectTypes,
 		Collections:              sn.Collections,
 		RemovedCollectionKeys:    sn.RemovedCollectionKeys,
-		RelationLinks:            sn.RelationLinks,
 		Key:                      sn.Key,
 		OriginalCreatedTimestamp: sn.OriginalCreatedTimestamp,
 		FileInfo:                 sn.FileInfo,

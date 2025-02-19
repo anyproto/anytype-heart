@@ -70,7 +70,7 @@ func (s *dsObjectStore) FetchRelationByKeys(keys ...domain.RelationKey) (relatio
 			continue
 		}
 
-		uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, string(key))
+		uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key.String())
 		if err != nil {
 			return nil, err
 		}

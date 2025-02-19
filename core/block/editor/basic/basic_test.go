@@ -609,7 +609,6 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfRelation{
 				Relation: &model.BlockContentRelation{},
 			}}))
-		sb.AddRelationLinks(nil, "testRelKey")
 	}
 	t.Run("correct", func(t *testing.T) {
 		sb := smarttest.New("test")
@@ -657,8 +656,6 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	sb := smarttest.New("test")
 	s := sb.NewState()
 	template.WithTitle(s)
-	s.AddBundledRelationLinks(bundle.RelationKeyName)
-	s.AddBundledRelationLinks(bundle.RelationKeyDescription)
 	require.NoError(t, sb.Apply(s))
 
 	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
@@ -691,7 +688,6 @@ func TestBasic_ReplaceLink(t *testing.T) {
 	sb := smarttest.New("test")
 	s := sb.NewState()
 	s.SetDetail("link", domain.String(oldId))
-	s.AddRelationLinks(&model.RelationLink{Key: "link", Format: model.RelationFormat_object})
 	template.WithDescription(s)
 	newBlocks := []simple.Block{
 		simple.New(&model.Block{Content: &model.BlockContentOfLink{

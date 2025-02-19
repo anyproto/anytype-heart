@@ -69,10 +69,6 @@ func (bs *basic) updateDetails(ctx session.Context, update func(current *domain.
 	}
 	s.SetDetails(newDetails)
 
-	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
-		return nil, nil, err
-	}
-
 	return oldDetails, newDetails, bs.Apply(s)
 }
 
@@ -111,9 +107,6 @@ func (bs *basic) createDetailUpdate(st *state.State, detail domain.Detail) (doma
 	if detail.Value.Ok() {
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
 			return domain.Detail{}, fmt.Errorf("special case: %w", err)
-		}
-		if err := bs.addRelationLink(st, detail.Key); err != nil {
-			return domain.Detail{}, err
 		}
 		if err := bs.validateDetailFormat(bs.SpaceID(), detail.Key, detail.Value); err != nil {
 			return domain.Detail{}, fmt.Errorf("failed to validate relation: %w", err)
@@ -267,30 +260,6 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 		// nolint:gosec
 		return bs.layoutConverter.CheckRecommendedLayoutConversionAllowed(st, model.ObjectTypeLayout(detail.Value.Int64()))
 	}
-	return nil
-}
-
-func (bs *basic) addRelationLink(st *state.State, relationKey domain.RelationKey) error {
-	relLink, err := bs.objectStore.GetRelationLink(relationKey.String())
-	if err != nil || relLink == nil {
-		return fmt.Errorf("failed to get relation: %w", err)
-	}
-	st.AddRelationLinks(relLink)
-	return nil
-}
-
-// addRelationLinks is deprecated and will be removed in release 7
-func (bs *basic) addRelationLinks(st *state.State, relationKeys ...domain.RelationKey) error {
-	if len(relationKeys) == 0 {
-		return nil
-	}
-	// this code depends on the objectstore being indexed, but can be run on start with empty account
-	// todo: remove this code in release because we will no longer need relationLinks
-	relations, err := bs.objectStore.FetchRelationByKeys(relationKeys...)
-	if err != nil || relations == nil {
-		return fmt.Errorf("failed to get relations: %w", err)
-	}
-	st.AddRelationLinks(relations.RelationLinks()...)
 	return nil
 }
 

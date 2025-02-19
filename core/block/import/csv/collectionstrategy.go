@@ -211,9 +211,8 @@ func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.
 				},
 			}),
 		}).NewState()
-		details, relationLinks := getDetailsForObject(csvTable[i], relations, path, i, params.TransposeRowsAndColumns)
+		details := getDetailsForObject(csvTable[i], relations, path, i, params.TransposeRowsAndColumns)
 		st.SetDetails(details)
-		st.AddRelationLinks(relationLinks...)
 		template.InitTemplate(st, template.WithTitle)
 		sn := provideObjectSnapshot(st, details)
 		snapshots = append(snapshots, sn)
@@ -235,23 +234,18 @@ func buildSourcePath(path string, i int, transpose bool) string {
 		transposePart
 }
 
-func getDetailsForObject(relationsValues []string, relations []*model.Relation, path string, objectOrderIndex int, transpose bool) (*domain.Details, []*model.RelationLink) {
+func getDetailsForObject(relationsValues []string, relations []*model.Relation, path string, objectOrderIndex int, transpose bool) *domain.Details {
 	details := domain.NewDetails()
-	relationLinks := make([]*model.RelationLink, 0)
 	for j, value := range relationsValues {
 		if len(relations) <= j {
 			break
 		}
 		relation := relations[j]
 		details.SetString(domain.RelationKey(relation.Key), value)
-		relationLinks = append(relationLinks, &model.RelationLink{
-			Key:    relation.Key,
-			Format: relation.Format,
-		})
 	}
 	details.SetString(bundle.RelationKeySourceFilePath, buildSourcePath(path, objectOrderIndex, transpose))
 	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_basic))
-	return details, relationLinks
+	return details
 }
 
 func provideObjectSnapshot(st *state.State, details *domain.Details) *common.Snapshot {
@@ -260,10 +254,9 @@ func provideObjectSnapshot(st *state.State, details *domain.Details) *common.Sna
 		Snapshot: &common.SnapshotModel{
 			SbType: smartblock.SmartBlockTypePage,
 			Data: &common.StateSnapshot{
-				Blocks:        st.Blocks(),
-				Details:       details,
-				RelationLinks: st.GetRelationLinks(),
-				ObjectTypes:   []string{bundle.TypeKeyPage.String()},
+				Blocks:      st.Blocks(),
+				Details:     details,
+				ObjectTypes: []string{bundle.TypeKeyPage.String()},
 			},
 		},
 	}
@@ -288,11 +281,10 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *domain.Details, st *
 
 func (c *CollectionStrategy) provideCollectionSnapshots(details *domain.Details, st *state.State, p string) *common.Snapshot {
 	sn := &common.StateSnapshot{
-		Blocks:        st.Blocks(),
-		Details:       details,
-		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
-		Collections:   st.Store(),
-		RelationLinks: st.GetRelationLinks(),
+		Blocks:      st.Blocks(),
+		Details:     details,
+		ObjectTypes: []string{bundle.TypeKeyCollection.String()},
+		Collections: st.Store(),
 	}
 
 	snapshot := &common.Snapshot{

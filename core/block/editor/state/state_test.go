@@ -2127,7 +2127,7 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.False(t, st.Details().Has("relationKey"))
+		assert.True(t, st.Details().Has("relationKey"))
 	})
 }
 
@@ -2177,7 +2177,7 @@ func TestState_ApplyChangeIgnoreErrRelationAdd(t *testing.T) {
 		}),
 	}).(*State)
 
-	t.Run("apply RelationAdd change: add new relation", func(t *testing.T) {
+	t.Run("apply RelationAdd change: add new detail with nil value", func(t *testing.T) {
 		// given
 		change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfRelationAdd{
 			RelationAdd: &pb.ChangeRelationAdd{
@@ -2194,7 +2194,9 @@ func TestState_ApplyChangeIgnoreErrRelationAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Contains(t, st.GetRelationLinks(), &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
+		assert.Len(t, st.AllRelationKeys(), 1)
+		assert.True(t, st.HasRelation("relation1"))
+		assert.True(t, st.Details().Get("relation1").IsNull())
 	})
 
 	t.Run("apply RelationAdd change: add already existing relation - no changes", func(t *testing.T) {
@@ -2214,7 +2216,9 @@ func TestState_ApplyChangeIgnoreErrRelationAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Contains(t, st.GetRelationLinks(), &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
+		assert.Len(t, st.AllRelationKeys(), 1)
+		assert.True(t, st.HasRelation("relation1"))
+		assert.True(t, st.Details().Get("relation1").IsNull())
 	})
 }
 
@@ -2227,17 +2231,13 @@ func TestState_ApplyChangeIgnoreErrRelationRemove(t *testing.T) {
 			}),
 		}).(*State)
 
-		st.AddRelationLinks([]*model.RelationLink{
-			{
-				Key:    "relation1",
-				Format: model.RelationFormat_longtext,
-			},
-			{
-				Key:    "relation2",
-				Format: model.RelationFormat_shorttext,
-			},
-		}...)
-		originLength := len(st.GetRelationLinks())
+		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"relation1":                         domain.String("value1"),
+			"relation2":                         domain.Int64(42),
+			"relation3":                         domain.StringList([]string{"a", "z"}),
+			bundle.RelationKeyFeaturedRelations: domain.StringList([]string{"relation1", "relation3"}),
+		}))
+		originLength := len(st.AllRelationKeys())
 		change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfRelationRemove{
 			RelationRemove: &pb.ChangeRelationRemove{
 				RelationKey: []string{"relation1", "relation2"},
@@ -2248,7 +2248,8 @@ func TestState_ApplyChangeIgnoreErrRelationRemove(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Len(t, st.GetRelationLinks(), originLength-2)
+		assert.Len(t, st.AllRelationKeys(), originLength-2)
+		assert.Len(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), 1)
 	})
 }
 
@@ -2726,274 +2727,152 @@ func TestState_SetDeviceName(t *testing.T) {
 	})
 }
 
-func TestAddBundledRealtionLinks(t *testing.T) {
-	t.Run("with relationLinks in state", func(t *testing.T) {
-		t.Run("empty", func(t *testing.T) {
-			st := &State{
-				relationLinks: []*model.RelationLink{},
-			}
-			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
-
-			want := &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-					{
-						Key:    bundle.RelationKeyPriority.String(),
-						Format: model.RelationFormat_number,
-					},
-				},
-			}
-
-			assert.Equal(t, want, st)
-		})
-		t.Run("one already exists, one not", func(t *testing.T) {
-			st := &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-				},
-			}
-			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
-
-			want := &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-					{
-						Key:    bundle.RelationKeyPriority.String(),
-						Format: model.RelationFormat_number,
-					},
-				},
-			}
-
-			assert.Equal(t, want, st)
-		})
-	})
-	t.Run("with relationLinks only in parent state", func(t *testing.T) {
-		st := &State{
-			relationLinks: nil,
-			parent: &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-				},
-			},
-		}
-		st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
-
-		want := &State{
-			relationLinks: []*model.RelationLink{
-				{
-					Key:    bundle.RelationKeyName.String(),
-					Format: model.RelationFormat_shorttext,
-				},
-				{
-					Key:    bundle.RelationKeyPriority.String(),
-					Format: model.RelationFormat_number,
-				},
-			},
-			parent: &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-				},
-			},
-		}
-
-		assert.Equal(t, want, st)
-	})
-}
-
-func TestState_FileRelationKeys(t *testing.T) {
-	t.Run("no file relations", func(t *testing.T) {
-		// given
-		s := &State{}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Empty(t, keys)
-	})
-	t.Run("there are file relations", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Format: model.RelationFormat_file, Key: "fileKey1"},
-				{Format: model.RelationFormat_file, Key: "fileKey2"},
-			},
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		expectedKeys := []domain.RelationKey{"fileKey1", "fileKey2"}
-		assert.ElementsMatch(t, keys, expectedKeys)
-	})
-	t.Run("duplicated file relations", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Format: model.RelationFormat_file, Key: "fileKey1"},
-				{Format: model.RelationFormat_file, Key: "fileKey1"},
-			},
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		expectedKeys := []domain.RelationKey{"fileKey1"}
-		assert.ElementsMatch(t, keys, expectedKeys)
-	})
-	t.Run("coverId relation", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(1),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		expectedKeys := []domain.RelationKey{bundle.RelationKeyCoverId}
-		assert.ElementsMatch(t, keys, expectedKeys)
-	})
-	t.Run("skip coverId relation", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(2),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Len(t, keys, 0)
-	})
-	t.Run("skip gradient coverId relation", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(3),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Len(t, keys, 0)
-	})
-	t.Run("mixed relations", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Format: model.RelationFormat_file, Key: "fileKey1"},
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(4),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		expectedKeys := []domain.RelationKey{"fileKey1", bundle.RelationKeyCoverId}
-		assert.ElementsMatch(t, keys, expectedKeys, "Expected both file keys and cover ID")
-	})
-	t.Run("coverType not in details", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Len(t, keys, 0)
-	})
-	t.Run("unsplash cover", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(5),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Len(t, keys, 1)
-	})
-}
-
-func TestState_AddRelationLinks(t *testing.T) {
-	t.Run("add new link", func(t *testing.T) {
-		// given
-		s := &State{}
-		newLink := &model.RelationLink{
-			Key:    "newLink",
-			Format: model.RelationFormat_shorttext,
-		}
-
-		// when
-		s.AddRelationLinks(newLink)
-
-		// then
-		assert.True(t, s.GetRelationLinks().Has("newLink"))
-	})
-	t.Run("add existing link", func(t *testing.T) {
-		// given
-		s := &State{}
-		newLink := &model.RelationLink{
-			Key:    "existingLink",
-			Format: model.RelationFormat_shorttext,
-		}
-
-		// when
-		s.AddRelationLinks(newLink)
-		s.AddRelationLinks(newLink)
-
-		// then
-		assert.True(t, s.GetRelationLinks().Has("existingLink"))
-		assert.Len(t, s.GetRelationLinks(), 1)
-	})
-}
+// func TestState_FileRelationKeys(t *testing.T) {
+// 	t.Run("no file relations", func(t *testing.T) {
+// 		// given
+// 		s := &State{}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		assert.Empty(t, keys)
+// 	})
+// 	t.Run("there are file relations", func(t *testing.T) {
+// 		// given
+// 		s := &State{
+// 			relationLinks: pbtypes.RelationLinks{
+// 				{Format: model.RelationFormat_file, Key: "fileKey1"},
+// 				{Format: model.RelationFormat_file, Key: "fileKey2"},
+// 			},
+// 		}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		expectedKeys := []domain.RelationKey{"fileKey1", "fileKey2"}
+// 		assert.ElementsMatch(t, keys, expectedKeys)
+// 	})
+// 	t.Run("duplicated file relations", func(t *testing.T) {
+// 		// given
+// 		s := &State{
+// 			relationLinks: pbtypes.RelationLinks{
+// 				{Format: model.RelationFormat_file, Key: "fileKey1"},
+// 				{Format: model.RelationFormat_file, Key: "fileKey1"},
+// 			},
+// 		}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		expectedKeys := []domain.RelationKey{"fileKey1"}
+// 		assert.ElementsMatch(t, keys, expectedKeys)
+// 	})
+// 	t.Run("coverId relation", func(t *testing.T) {
+// 		// given
+// 		s := &State{
+// 			relationLinks: pbtypes.RelationLinks{
+// 				{Key: bundle.RelationKeyCoverId.String()},
+// 			},
+// 			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+// 				bundle.RelationKeyCoverType: domain.Int64(1),
+// 			}),
+// 		}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		expectedKeys := []domain.RelationKey{bundle.RelationKeyCoverId}
+// 		assert.ElementsMatch(t, keys, expectedKeys)
+// 	})
+// 	t.Run("skip coverId relation", func(t *testing.T) {
+// 		// given
+// 		s := &State{
+// 			relationLinks: pbtypes.RelationLinks{
+// 				{Key: bundle.RelationKeyCoverId.String()},
+// 			},
+// 			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+// 				bundle.RelationKeyCoverType: domain.Int64(2),
+// 			}),
+// 		}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		assert.Len(t, keys, 0)
+// 	})
+// 	t.Run("skip gradient coverId relation", func(t *testing.T) {
+// 		// given
+// 		s := &State{
+// 			relationLinks: pbtypes.RelationLinks{
+// 				{Key: bundle.RelationKeyCoverId.String()},
+// 			},
+// 			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+// 				bundle.RelationKeyCoverType: domain.Int64(3),
+// 			}),
+// 		}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		assert.Len(t, keys, 0)
+// 	})
+// 	t.Run("mixed relations", func(t *testing.T) {
+// 		// given
+// 		s := &State{
+// 			relationLinks: pbtypes.RelationLinks{
+// 				{Format: model.RelationFormat_file, Key: "fileKey1"},
+// 				{Key: bundle.RelationKeyCoverId.String()},
+// 			},
+// 			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+// 				bundle.RelationKeyCoverType: domain.Int64(4),
+// 			}),
+// 		}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		expectedKeys := []domain.RelationKey{"fileKey1", bundle.RelationKeyCoverId}
+// 		assert.ElementsMatch(t, keys, expectedKeys, "Expected both file keys and cover ID")
+// 	})
+// 	t.Run("coverType not in details", func(t *testing.T) {
+// 		// given
+// 		s := &State{
+// 			relationLinks: pbtypes.RelationLinks{
+// 				{Key: bundle.RelationKeyCoverId.String()},
+// 			},
+// 		}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		assert.Len(t, keys, 0)
+// 	})
+// 	t.Run("unsplash cover", func(t *testing.T) {
+// 		// given
+// 		s := &State{
+// 			relationLinks: pbtypes.RelationLinks{
+// 				{Key: bundle.RelationKeyCoverId.String()},
+// 			},
+// 			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+// 				bundle.RelationKeyCoverType: domain.Int64(5),
+// 			}),
+// 		}
+//
+// 		// when
+// 		keys := s.FileRelationKeys()
+//
+// 		// then
+// 		assert.Len(t, keys, 1)
+// 	})
+// }
 
 func TestFilter(t *testing.T) {
 	t.Run("remove blocks", func(t *testing.T) {
@@ -3008,23 +2887,6 @@ func TestFilter(t *testing.T) {
 			bundle.RelationKeyAssignee:       domain.String("assignee"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyCoverType.String(),
-			Format: model.RelationFormat_number,
-		},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyName.String(),
-				Format: model.RelationFormat_longtext,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyAssignee.String(),
-				Format: model.RelationFormat_object,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyResolvedLayout.String(),
-				Format: model.RelationFormat_number,
-			},
-		)
 
 		// when
 		filteredState := st.Filter(&Filters{RemoveBlocks: true})
@@ -3045,23 +2907,6 @@ func TestFilter(t *testing.T) {
 			bundle.RelationKeyAssignee:       domain.String("assignee"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyCoverType.String(),
-			Format: model.RelationFormat_number,
-		},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyName.String(),
-				Format: model.RelationFormat_longtext,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyAssignee.String(),
-				Format: model.RelationFormat_object,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyResolvedLayout.String(),
-				Format: model.RelationFormat_number,
-			},
-		)
 
 		// when
 		filteredState := st.Filter(&Filters{RelationsWhiteList: map[model.ObjectTypeLayout][]domain.RelationKey{
@@ -3071,8 +2916,7 @@ func TestFilter(t *testing.T) {
 		// then
 		assert.Equal(t, filteredState.details.Len(), 1)
 		assert.Equal(t, filteredState.localDetails.Len(), 0)
-		assert.Len(t, filteredState.relationLinks, 1)
-		assert.Equal(t, bundle.RelationKeyAssignee.String(), filteredState.relationLinks[0].Key)
+		assert.True(t, filteredState.details.Has(bundle.RelationKeyAssignee))
 	})
 	t.Run("empty white list relations", func(t *testing.T) {
 		// given
@@ -3086,23 +2930,6 @@ func TestFilter(t *testing.T) {
 			bundle.RelationKeyAssignee:       domain.String("assignee"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyCoverType.String(),
-			Format: model.RelationFormat_number,
-		},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyName.String(),
-				Format: model.RelationFormat_longtext,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyAssignee.String(),
-				Format: model.RelationFormat_object,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyResolvedLayout.String(),
-				Format: model.RelationFormat_number,
-			},
-		)
 
 		// when
 		filteredState := st.Filter(&Filters{RelationsWhiteList: map[model.ObjectTypeLayout][]domain.RelationKey{
@@ -3112,6 +2939,5 @@ func TestFilter(t *testing.T) {
 		// then
 		assert.Equal(t, filteredState.details.Len(), 0)
 		assert.Equal(t, filteredState.localDetails.Len(), 0)
-		assert.Len(t, filteredState.relationLinks, 0)
 	})
 }

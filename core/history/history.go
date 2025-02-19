@@ -570,17 +570,17 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 }
 
 func (h *history) injectLocalDetails(s *state.State, id domain.FullID, space clientspace.Space) error {
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id.ObjectID))
-	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
+	s.SetDetail(bundle.RelationKeyId, domain.String(id.ObjectID))
+	s.SetDetail(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
 	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
 	if err != nil {
 		return fmt.Errorf("get type id by key: %w", err)
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeId))
+	s.SetDetail(bundle.RelationKeyType, domain.String(typeId))
 
 	rawValue := s.Details().Get(bundle.RelationKeyLayout)
 	if rawValue.Ok() {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+		s.SetDetail(bundle.RelationKeyResolvedLayout, rawValue)
 		return nil
 	}
 
@@ -590,7 +590,7 @@ func (h *history) injectLocalDetails(s *state.State, id domain.FullID, space cli
 			return nil
 		}
 		log.Errorf("failed to find id of object type. Falling back to basic layout")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return nil
 	}
 
@@ -601,17 +601,17 @@ func (h *history) injectLocalDetails(s *state.State, id domain.FullID, space cli
 	records, err := h.objectStore.SpaceIndex(id.SpaceID).QueryByIds([]string{typeObjectId})
 	if err != nil || len(records) != 1 {
 		log.Errorf("failed to query object %s: %v. Fallback to basic layout", typeObjectId, err)
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return nil
 	}
 	rawValue = records[0].Details.Get(bundle.RelationKeyRecommendedLayout)
 
 	if !rawValue.Ok() {
 		log.Errorf("failed to get recommended layout from details of type. Fallback to basic layout")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return nil
 	}
 
-	s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+	s.SetDetail(bundle.RelationKeyResolvedLayout, rawValue)
 	return nil
 }

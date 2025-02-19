@@ -119,15 +119,14 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	}
 
 	// fix divergence between extra relations and simple block relations
+	var keysToAdd []domain.RelationKey
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if _, ok := b.(relation.Block); ok {
-			relKey := b.Model().GetRelation().Key
-			if !st.HasRelation(relKey) {
-				st.AddBundledRelationLinks(domain.RelationKey(relKey))
-			}
+			keysToAdd = append(keysToAdd, domain.RelationKey(b.Model().GetRelation().Key))
 		}
 		return true
 	})
+	st.AddRelationKeys(keysToAdd...)
 
 	if err = b.validate(st); err != nil {
 		return

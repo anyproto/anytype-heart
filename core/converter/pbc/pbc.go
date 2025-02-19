@@ -29,13 +29,12 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 	st := p.s.NewState()
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
-			Blocks:        st.BlocksToSave(),
-			Details:       st.CombinedDetails().ToProto(),
-			ObjectTypes:   domain.MarshalTypeKeys(st.ObjectTypeKeys()),
-			Collections:   st.Store(),
-			RelationLinks: st.PickRelationLinks(),
-			Key:           p.s.UniqueKeyInternal(),
-			FileInfo:      st.GetFileInfo().ToModel(),
+			Blocks:      st.BlocksToSave(),
+			Details:     st.CombinedDetails().ToProto(),
+			ObjectTypes: domain.MarshalTypeKeys(st.ObjectTypeKeys()),
+			Collections: st.Store(),
+			Key:         p.s.UniqueKeyInternal(),
+			FileInfo:    st.GetFileInfo().ToModel(),
 		},
 	}
 	mo := &pb.SnapshotWithType{
