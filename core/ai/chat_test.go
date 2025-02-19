@@ -260,9 +260,10 @@ func TestExtractAnswerByMode(t *testing.T) {
 		fx.responseParser = parsing.NewWritingToolsParser()
 
 		jsonData := `{"summary":"This is a summary"}`
-		result, err := fx.extractAnswerByMode(jsonData, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		result, err := fx.responseParser.ExtractContent(jsonData, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		strResult, _ := result.AsString()
 		require.NoError(t, err)
-		require.Equal(t, "This is a summary", result)
+		require.Equal(t, "This is a summary", strResult)
 	})
 
 	t.Run("valid autofill mode", func(t *testing.T) {
@@ -270,9 +271,10 @@ func TestExtractAnswerByMode(t *testing.T) {
 		fx.responseParser = parsing.NewAutofillParser()
 
 		jsonData := `{"tag":"tag1"}`
-		result, err := fx.extractAnswerByMode(jsonData, int(pb.RpcAIAutofillRequest_TAG))
+		result, err := fx.responseParser.ExtractContent(jsonData, int(pb.RpcAIAutofillRequest_TAG))
+		strResult, _ := result.AsString()
 		require.NoError(t, err)
-		require.Equal(t, "tag1", result)
+		require.Equal(t, "tag1", strResult)
 	})
 
 	t.Run("empty writingtools response", func(t *testing.T) {
@@ -280,7 +282,7 @@ func TestExtractAnswerByMode(t *testing.T) {
 		fx.responseParser = parsing.NewWritingToolsParser()
 
 		jsonData := `{"summary":""}`
-		_, err := fx.extractAnswerByMode(jsonData, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		_, err := fx.responseParser.ExtractContent(jsonData, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "empty")
 	})
@@ -290,7 +292,7 @@ func TestExtractAnswerByMode(t *testing.T) {
 		fx.responseParser = parsing.NewAutofillParser()
 
 		jsonData := `{"tag":""}`
-		_, err := fx.extractAnswerByMode(jsonData, int(pb.RpcAIAutofillRequest_TAG))
+		_, err := fx.responseParser.ExtractContent(jsonData, int(pb.RpcAIAutofillRequest_TAG))
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "empty")
 	})
@@ -300,7 +302,7 @@ func TestExtractAnswerByMode(t *testing.T) {
 		fx.responseParser = parsing.NewWritingToolsParser()
 
 		jsonData := `{}`
-		_, err := fx.extractAnswerByMode(jsonData, -1)
+		_, err := fx.responseParser.ExtractContent(jsonData, -1)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unknown mode")
 	})

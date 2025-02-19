@@ -182,15 +182,3 @@ func (ai *AIService) chat(ctx context.Context, mode int, promptConfig *PromptCon
 	log.Info("chat response: ", answerBuilder.String())
 	return answerBuilder.String(), nil
 }
-
-// extractAnswerByMode extracts the relevant content from the JSON response based on the mode.
-func (ai *AIService) extractAnswerByMode(jsonData string, mode int) (string, error) {
-	respStruct := ai.responseParser.NewResponseStruct()
-
-	err := json.Unmarshal([]byte(jsonData), &respStruct)
-	if err != nil {
-		return "", fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
-	}
-
-	return ai.responseParser.ExtractContent(mode, respStruct)
-}

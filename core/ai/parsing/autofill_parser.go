@@ -1,6 +1,7 @@
 package parsing
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -57,30 +58,37 @@ func (p *AutofillParser) ModeToSchema() map[int]func(key string) map[string]inte
 }
 
 // ExtractContent extracts the relevant field based on mode.
-func (p *AutofillParser) ExtractContent(mode int, response interface{}) (string, error) {
-	afResp, ok := response.(*AutofillResponse)
+func (p *AutofillParser) ExtractContent(jsonData string, mode int) (ParsedResult, error) {
+	respStruct := p.NewResponseStruct()
+
+	err := json.Unmarshal([]byte(jsonData), &respStruct)
+	if err != nil {
+		return ParsedResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
+	}
+
+	afResp, ok := respStruct.(*AutofillResponse)
 	if !ok {
-		return "", fmt.Errorf("invalid response type, expected *AutofillResponse")
+		return ParsedResult{}, fmt.Errorf("invalid response type, expected *AutofillResponse")
 	}
 
 	fieldName, exists := p.modeToField[mode]
 	if !exists {
-		return "", fmt.Errorf("unknown mode: %d", mode)
+		return ParsedResult{}, fmt.Errorf("unknown mode: %d", mode)
 	}
 
 	// Switch on fieldName to extract
 	switch fieldName {
 	case "tag":
-		return afResp.Tag, CheckEmpty(afResp.Tag, mode)
+		return ParsedResult{Raw: afResp.Tag}, CheckEmpty(afResp.Tag, mode)
 	case "relation":
-		return afResp.Relation, CheckEmpty(afResp.Relation, mode)
+		return ParsedResult{Raw: afResp.Relation}, CheckEmpty(afResp.Relation, mode)
 	case "type":
-		return afResp.Type, CheckEmpty(afResp.Type, mode)
+		return ParsedResult{Raw: afResp.Type}, CheckEmpty(afResp.Type, mode)
 	case "title":
-		return afResp.Title, CheckEmpty(afResp.Title, mode)
+		return ParsedResult{Raw: afResp.Title}, CheckEmpty(afResp.Title, mode)
 	case "description":
-		return afResp.Description, CheckEmpty(afResp.Description, mode)
+		return ParsedResult{Raw: afResp.Description}, CheckEmpty(afResp.Description, mode)
 	default:
-		return "", fmt.Errorf("field %s is not recognized", fieldName)
+		return ParsedResult{}, fmt.Errorf("field %s is not recognized", fieldName)
 	}
 }

@@ -1,6 +1,9 @@
 package parsing
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // ResponseParser defines how to parse and extract content from the model's JSON response.
 // It abstracts away the differences between different types of tasks (e.g., WritingTools vs. Autofill).
@@ -16,7 +19,7 @@ type ResponseParser interface {
 
 	// ExtractContent uses the mode and the already-unmarshalled response struct to
 	// return the final answer string. Returns an error if extraction fails.
-	ExtractContent(mode int, response interface{}) (string, error)
+	ExtractContent(jsonData string, mode int) (ParsedResult, error)
 }
 
 // CheckEmpty checks if the content is empty and returns an error if it is.
@@ -27,60 +30,124 @@ func CheckEmpty(content string, mode int) error {
 	return nil
 }
 
-// FieldDef defines the configuration for a field in the JSON schema.
-type FieldDef struct {
-	Type  string // e.g., "string", "number", etc.
-	Array bool   // if true, the field is an array of the specified type
-}
-
-// FlexibleSchema dynamically creates a JSON schema.
-// - key: a base key used to form the schema name (e.g., "myField" or "relations").
-// - fields: a map of field names to their definitions.
-// - required: a slice of required field names; if nil, all fields will be required.
-func FlexibleSchema(key string, fields map[string]FieldDef, required []string) map[string]interface{} {
-	// If no required slice is provided, default to all keys from the fields map.
-	if required == nil {
-		for field := range fields {
-			required = append(required, field)
+// convertDefinitionToSchema recursively converts a user-defined schema definition
+// (which can be a primitive type, a map for nested objects, or a slice for arrays)
+// into the corresponding JSON Schema fragment.
+func convertDefinitionToSchema(def interface{}) map[string]interface{} {
+	switch t := def.(type) {
+	case string:
+		// If the definition is a string, assume it represents a primitive type.
+		return map[string]interface{}{
+			"type": t,
 		}
-	}
-
-	// Build the properties map for the JSON schema.
-	properties := make(map[string]interface{})
-	for field, def := range fields {
-		if def.Array {
-			properties[field] = map[string]interface{}{
+	case map[string]interface{}:
+		// If it's a map, treat it as an object with properties.
+		properties := make(map[string]interface{})
+		required := []string{}
+		for key, subDef := range t {
+			properties[key] = convertDefinitionToSchema(subDef)
+			// Assume every key in the map is required.
+			required = append(required, key)
+		}
+		return map[string]interface{}{
+			"type":                 "object",
+			"properties":           properties,
+			"required":             required,
+			"additionalProperties": false,
+		}
+	case []interface{}:
+		// If it's a slice, assume it defines an array.
+		// We use the first element of the slice to define the item type.
+		if len(t) == 0 {
+			// Default to an array of strings if the slice is empty.
+			return map[string]interface{}{
 				"type": "array",
 				"items": map[string]interface{}{
-					"type": def.Type,
+					"type": "string",
 				},
 			}
-		} else {
-			properties[field] = map[string]interface{}{
-				"type": def.Type,
-			}
+		}
+		return map[string]interface{}{
+			"type":  "array",
+			"items": convertDefinitionToSchema(t[0]),
+		}
+	default:
+		// Fallback to a string type if the definition is not recognized.
+		return map[string]interface{}{
+			"type": "string",
 		}
 	}
+}
 
-	// Build and return the final JSON schema.
+// BuildJSONSchema wraps the inner schema (produced by convertDefinitionToSchema)
+// under a top-level property defined by 'key'. This is useful if you need a JSON
+// schema that expects an object with a single property (e.g., { "relations": { ... } }).
+func BuildJSONSchema(key string, def interface{}) map[string]interface{} {
+	innerSchema := convertDefinitionToSchema(def)
 	return map[string]interface{}{
 		"type": "json_schema",
 		"json_schema": map[string]interface{}{
 			"name":   key + "_response",
 			"strict": true,
 			"schema": map[string]interface{}{
-				"type":                 "object",
-				"properties":           properties,
+				"type": "object",
+				"properties": map[string]interface{}{
+					key: innerSchema,
+				},
+				"required":             []string{key},
 				"additionalProperties": false,
-				"required":             required,
 			},
 		},
 	}
 }
 
 func SingleStringSchema(key string) map[string]interface{} {
-	fields := map[string]FieldDef{
-		key: {Type: "string"},
+	return BuildJSONSchema(key, "string")
+}
+
+type ParsedResult struct {
+	// Raw holds the underlying parsed value.
+	Raw interface{}
+}
+
+// AsString returns the parsed result as a JSON-encoded string.
+// If the underlying value is a map, it will be marshaled to JSON.
+func (pr ParsedResult) AsString() (string, error) {
+	switch v := pr.Raw.(type) {
+	case string:
+		return v, nil
+	case map[string]interface{}:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	default:
+		return "", fmt.Errorf("unexpected type %T", v)
 	}
-	return FlexibleSchema(key, fields, nil)
+}
+
+// AsMap returns the parsed result as a map[string]string.
+// If the underlying value is a string, it will attempt to unmarshal it.
+func (pr ParsedResult) AsMap() (map[string]string, error) {
+	switch v := pr.Raw.(type) {
+	case map[string]interface{}:
+		result := make(map[string]string)
+		for key, value := range v {
+			strValue, ok := value.(string)
+			if !ok {
+				return nil, fmt.Errorf("unexpected value type %T for key %s", value, key)
+			}
+			result[key] = strValue
+		}
+		return result, nil
+	case string:
+		var m map[string]string
+		if err := json.Unmarshal([]byte(v), &m); err != nil {
+			return nil, err
+		}
+		return m, nil
+	default:
+		return nil, fmt.Errorf("unexpected type %T", v)
+	}
 }

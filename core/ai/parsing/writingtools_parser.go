@@ -1,6 +1,7 @@
 package parsing
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -79,44 +80,51 @@ func (p *WritingToolsParser) ModeToSchema() map[int]func(key string) map[string]
 }
 
 // ExtractContent extracts the relevant field based on mode.
-func (p *WritingToolsParser) ExtractContent(mode int, response interface{}) (string, error) {
-	wtResp, ok := response.(*WritingToolsResponse)
+func (p *WritingToolsParser) ExtractContent(jsonData string, mode int) (ParsedResult, error) {
+	respStruct := p.NewResponseStruct()
+
+	err := json.Unmarshal([]byte(jsonData), &respStruct)
+	if err != nil {
+		return ParsedResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
+	}
+
+	wtResp, ok := respStruct.(*WritingToolsResponse)
 	if !ok {
-		return "", fmt.Errorf("invalid response type, expected *WritingToolsResponse")
+		return ParsedResult{}, fmt.Errorf("invalid response type, expected *WritingToolsResponse")
 	}
 
 	fieldName, exists := p.modeToField[mode]
 	if !exists {
-		return "", fmt.Errorf("unknown mode: %d", mode)
+		return ParsedResult{}, fmt.Errorf("unknown mode: %d", mode)
 	}
 
 	// Extract the correct field based on fieldName.
 	switch fieldName {
 	case "summary":
-		return wtResp.Summary, CheckEmpty(wtResp.Summary, mode)
+		return ParsedResult{Raw: wtResp.Summary}, CheckEmpty(wtResp.Summary, mode)
 	case "corrected":
-		return wtResp.Corrected, CheckEmpty(wtResp.Corrected, mode)
+		return ParsedResult{Raw: wtResp.Corrected}, CheckEmpty(wtResp.Corrected, mode)
 	case "shortened":
-		return wtResp.Shortened, CheckEmpty(wtResp.Shortened, mode)
+		return ParsedResult{Raw: wtResp.Shortened}, CheckEmpty(wtResp.Shortened, mode)
 	case "expanded":
-		return wtResp.Expanded, CheckEmpty(wtResp.Expanded, mode)
+		return ParsedResult{Raw: wtResp.Expanded}, CheckEmpty(wtResp.Expanded, mode)
 	case "bullet":
-		return wtResp.Bullet, CheckEmpty(wtResp.Bullet, mode)
+		return ParsedResult{Raw: wtResp.Bullet}, CheckEmpty(wtResp.Bullet, mode)
 	case "table":
-		return wtResp.Table, CheckEmpty(wtResp.Table, mode)
+		return ParsedResult{Raw: wtResp.Table}, CheckEmpty(wtResp.Table, mode)
 	case "casual":
-		return wtResp.Casual, CheckEmpty(wtResp.Casual, mode)
+		return ParsedResult{Raw: wtResp.Casual}, CheckEmpty(wtResp.Casual, mode)
 	case "funny":
-		return wtResp.Funny, CheckEmpty(wtResp.Funny, mode)
+		return ParsedResult{Raw: wtResp.Funny}, CheckEmpty(wtResp.Funny, mode)
 	case "confident":
-		return wtResp.Confident, CheckEmpty(wtResp.Confident, mode)
+		return ParsedResult{Raw: wtResp.Confident}, CheckEmpty(wtResp.Confident, mode)
 	case "straight":
-		return wtResp.Straight, CheckEmpty(wtResp.Straight, mode)
+		return ParsedResult{Raw: wtResp.Straight}, CheckEmpty(wtResp.Straight, mode)
 	case "professional":
-		return wtResp.Professional, CheckEmpty(wtResp.Professional, mode)
+		return ParsedResult{Raw: wtResp.Professional}, CheckEmpty(wtResp.Professional, mode)
 	case "translation":
-		return wtResp.Translation, CheckEmpty(wtResp.Translation, mode)
+		return ParsedResult{Raw: wtResp.Translation}, CheckEmpty(wtResp.Translation, mode)
 	default:
-		return "", fmt.Errorf("field %s is not recognized", fieldName)
+		return ParsedResult{}, fmt.Errorf("field %s is not recognized", fieldName)
 	}
 }

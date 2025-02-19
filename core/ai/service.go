@@ -3,7 +3,6 @@ package ai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -148,14 +147,19 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 
 	// extract answer value from json response, except for default mode
 	if params.Mode != 0 {
-		extractedAnswer, err := ai.extractAnswerByMode(answer, int(params.Mode))
+		rawAnswer, err := ai.responseParser.ExtractContent(answer, int(params.Mode))
+		if err != nil {
+			return WritingToolsResult{}, err
+		}
+
+		strResult, err := rawAnswer.AsString()
 		if err != nil {
 			return WritingToolsResult{}, err
 		}
 
 		// fix lmstudio newline issue for table responses
-		extractedAnswer = strings.ReplaceAll(extractedAnswer, "\\\\n", "\n")
-		return WritingToolsResult{Answer: extractedAnswer}, nil
+		strResult = strings.ReplaceAll(strResult, "\\\\n", "\n")
+		return WritingToolsResult{Answer: strResult}, nil
 	}
 
 	return WritingToolsResult{Answer: answer}, nil
@@ -185,12 +189,16 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 		return AutofillResult{}, err
 	}
 
-	extractedAnswer, err := ai.extractAnswerByMode(answer, int(params.Mode))
+	rawAnswer, err := ai.responseParser.ExtractContent(answer, int(params.Mode))
 	if err != nil {
 		return AutofillResult{}, err
 	}
 
-	return AutofillResult{Choices: []string{extractedAnswer}}, nil
+	strResult, err := rawAnswer.AsString()
+	if err != nil {
+		return AutofillResult{}, err
+	}
+	return AutofillResult{Choices: []string{strResult}}, nil
 }
 
 // WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.
@@ -240,14 +248,18 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 			relErr = err
 			return
 		}
-		extractedAnswer, err := ai.extractAnswerByMode(answer, websiteTypeToMode[websiteType])
-
-		var relations map[string]string
-		if err := json.Unmarshal([]byte(extractedAnswer), &relations); err != nil {
+		rawAnswer, err := ai.responseParser.ExtractContent(answer, websiteTypeToMode[websiteType])
+		if err != nil {
 			relErr = err
 			return
 		}
-		relationsResult = relations
+
+		mapResult, err := rawAnswer.AsMap()
+		if err != nil {
+			relErr = err
+			return
+		}
+		relationsResult = mapResult
 	}()
 
 	go func() {
@@ -305,12 +317,17 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 		return "", err
 	}
 
-	extractedAnswer, err := ai.extractAnswerByMode(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+	rawAnswer, err := ai.responseParser.ExtractContent(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 	if err != nil {
 		return "", err
 	}
 
-	return extractedAnswer, nil
+	strAnswer, err := rawAnswer.AsString()
+	if err != nil {
+		return "", err
+	}
+
+	return strAnswer, nil
 }
 
 // ClassifyWebsiteContent classifies content into a single category.
