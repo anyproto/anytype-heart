@@ -242,9 +242,6 @@ func sortItems[T Item](items []T) {
 func (q *Queue[T]) Close() error {
 	q.ctxCancel()
 	err := q.batcher.Close()
-	if err != nil {
-		q.logger.Error("close batcher", zap.Error(err))
-	}
 	q.lock.Lock()
 	isStarted := q.isStarted
 	q.lock.Unlock()
@@ -252,7 +249,7 @@ func (q *Queue[T]) Close() error {
 	if isStarted {
 		<-q.closedCh
 	}
-	return nil
+	return errors.Join(err, q.storage.Close())
 }
 
 // Add item to If item with the same key already in queue, input item will be ignored

@@ -14,6 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+const nodeUsageKey = "node_usage"
+
 type NodeUsage struct {
 	AccountBytesLimit int
 	TotalBytesUsage   int
@@ -101,7 +103,7 @@ func (s *fileSync) precacheNodeUsage() {
 	_, ok, err := s.getCachedNodeUsage()
 	// Init cache with default limits
 	if !ok || err != nil {
-		err = s.store.setNodeUsage(NodeUsage{
+		err = s.nodeUsageCache.Set("node_usage", NodeUsage{
 			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
 		if err != nil {
@@ -135,7 +137,7 @@ func (s *fileSync) UpdateNodeUsage(ctx context.Context) error {
 }
 
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
-	usage, err := s.store.getNodeUsage()
+	usage, err := s.nodeUsageCache.Get(nodeUsageKey)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return NodeUsage{}, false, nil
 	}
@@ -177,7 +179,7 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 		BytesLeft:         left,
 		Spaces:            spaces,
 	}
-	err = s.store.setNodeUsage(usage)
+	err = s.nodeUsageCache.Set(nodeUsageKey, usage)
 	if err != nil {
 		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
 	}

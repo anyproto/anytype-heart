@@ -1,17 +1,20 @@
 package keyvaluestore
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
-
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 )
+
+const valueKey = "_v"
 
 var ErrNotFound = fmt.Errorf("not found")
 
-// Store is a simple generic key-value store backed by Badger
+// Store is a simple generic key-value store backed by any-store
 type Store[T any] interface {
 	Get(key string) (T, error)
 	Set(key string, value T) error
@@ -20,76 +23,96 @@ type Store[T any] interface {
 }
 
 type store[T any] struct {
-	prefix []byte
-	db     *badger.DB
+	coll      anystore.Collection
+	arenaPool *anyenc.ArenaPool
 
 	marshaller   func(T) ([]byte, error)
 	unmarshaller func([]byte) (T, error)
 }
 
 func New[T any](
-	db *badger.DB,
-	prefix []byte,
+	db anystore.DB,
+	collectionName string,
 	marshaller func(T) ([]byte, error),
 	unmarshaller func([]byte) (T, error),
-) Store[T] {
+) (Store[T], error) {
+
+	coll, err := db.Collection(context.Background(), collectionName)
+	if err != nil {
+		return nil, fmt.Errorf("init collection: %w", err)
+	}
+
 	return &store[T]{
-		prefix:       prefix,
-		db:           db,
+		coll:         coll,
 		marshaller:   marshaller,
 		unmarshaller: unmarshaller,
-	}
+		arenaPool:    &anyenc.ArenaPool{},
+	}, nil
 }
 
 // NewJson creates a new Store that marshals and unmarshals values as JSON
 func NewJson[T any](
-	db *badger.DB,
-	prefix []byte,
-) Store[T] {
-	return &store[T]{
-		prefix:       prefix,
-		db:           db,
-		marshaller:   JsonMarshal[T],
-		unmarshaller: JsonUnmarshal[T],
-	}
+	db anystore.DB,
+	collectionName string,
+) (Store[T], error) {
+	return New[T](db, collectionName, JsonMarshal[T], JsonUnmarshal[T])
 }
 
 func (s *store[T]) Get(key string) (T, error) {
-	val, err := badgerhelper.GetValue(s.db, s.makeKey(key), s.unmarshaller)
-	if badgerhelper.IsNotFound(err) {
-		return val, ErrNotFound
+	var res T
+	doc, err := s.coll.FindId(context.Background(), key)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return res, ErrNotFound
 	}
-	return val, err
+	if err != nil {
+		return res, err
+	}
+
+	raw := doc.Value().GetBytes(valueKey)
+	if raw == nil {
+		return res, ErrNotFound
+	}
+
+	return s.unmarshaller(raw)
 }
 
 func (s *store[T]) Has(key string) (bool, error) {
-	var ok bool
-	err := s.db.View(func(txn *badger.Txn) error {
-		var err error
-		ok, err = badgerhelper.Has(txn, s.makeKey(key))
-		return err
-	})
-	return ok, err
+	_, err := s.coll.FindId(context.Background(), key)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (s *store[T]) Set(key string, value T) error {
-	return s.db.Update(func(txn *badger.Txn) error {
-		raw, err := s.marshaller(value)
-		if err != nil {
-			return fmt.Errorf("marhsal: %w", err)
-		}
-		return txn.Set(s.makeKey(key), raw)
-	})
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	raw, err := s.marshaller(value)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+
+	doc := arena.NewObject()
+	doc.Set("id", arena.NewString(key))
+	doc.Set(valueKey, arena.NewBinary(raw))
+
+	return s.coll.UpsertOne(context.Background(), doc)
 }
 
 func (s *store[T]) Delete(key string) error {
-	return s.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete(s.makeKey(key))
-	})
-}
-
-func (s *store[T]) makeKey(key string) []byte {
-	return append(s.prefix, []byte(key)...)
+	err := s.coll.DeleteId(context.Background(), key)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	return err
 }
 
 func JsonMarshal[T any](val T) ([]byte, error) {

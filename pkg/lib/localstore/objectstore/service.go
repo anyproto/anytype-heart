@@ -49,6 +49,8 @@ type CrossSpace interface {
 type ObjectStore interface {
 	app.ComponentRunnable
 
+	GetCommonDb() anystore.DB
+
 	IterateSpaceIndex(func(store spaceindex.Store) error) error
 	SpaceIndex(spaceId string) spaceindex.Store
 	GetCrdtDb(spaceId string) anystore.DB
@@ -171,6 +173,15 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
 
+	err = ensureDirExists(s.objectStorePath)
+	if err != nil {
+		return err
+	}
+	err = s.openDatabase(context.Background(), filepath.Join(s.objectStorePath, "objects.db"))
+	if err != nil {
+		return fmt.Errorf("open db: %w", err)
+	}
+
 	return nil
 }
 
@@ -181,15 +192,6 @@ func (s *dsObjectStore) Name() (name string) {
 func (s *dsObjectStore) Run(ctx context.Context) error {
 	s.techSpaceId = s.techSpaceIdProvider.TechSpaceId()
 
-	err := ensureDirExists(s.objectStorePath)
-	if err != nil {
-		return err
-	}
-	err = s.openDatabase(ctx, filepath.Join(s.objectStorePath, "objects.db"))
-	if err != nil {
-		return fmt.Errorf("open db: %w", err)
-	}
-
 	store, err := spaceresolverstore.New(s.componentCtx, s.anyStore)
 	if err != nil {
 		return fmt.Errorf("new space resolver store: %w", err)
@@ -198,6 +200,10 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 	s.Store = store
 
 	return err
+}
+
+func (s *dsObjectStore) GetCommonDb() anystore.DB {
+	return s.anyStore
 }
 
 func (s *dsObjectStore) setDefaultConfig() {

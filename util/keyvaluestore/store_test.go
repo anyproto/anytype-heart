@@ -1,25 +1,28 @@
 package keyvaluestore
 
 import (
+	"context"
+	"path/filepath"
 	"testing"
 
-	"github.com/dgraph-io/badger/v4"
+	anystore "github.com/anyproto/any-store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStore(t *testing.T) {
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	db, err := anystore.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, db.Close())
 	})
 
-	kv := New(db, []byte("test/"), func(v string) ([]byte, error) {
+	kv, err := New(db, "test", func(v string) ([]byte, error) {
 		return []byte(v), nil
 	}, func(v []byte) (string, error) {
 		return string(v), nil
 	})
+	require.NoError(t, err)
 
 	key := "foo"
 

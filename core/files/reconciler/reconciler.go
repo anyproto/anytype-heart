@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -75,23 +74,30 @@ func (r *reconciler) Init(a *app.App) error {
 
 	r.fileSync.OnUploaded(r.markAsReconciled)
 
-	dbProvider := app.MustComponent[datastore.Datastore](a)
-	db, err := dbProvider.LocalStorage()
-	if err != nil {
-		return fmt.Errorf("get badger: %w", err)
-	}
-
-	r.isStartedStore = keyvaluestore.NewJson[bool](db, []byte("file_reconciler/is_started"))
-	r.deletedFiles = keyvaluestore.New(db, []byte("file_reconciler/deleted_files"), func(_ struct{}) ([]byte, error) {
-		return []byte(""), nil
-	}, func(data []byte) (struct{}, error) {
-		return struct{}{}, nil
-	})
-	r.rebindQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, []byte("queue/file_reconciler/rebind"), makeQueueItem), log, r.rebindHandler)
 	return nil
 }
 
 func (r *reconciler) Run(ctx context.Context) error {
+	db := r.objectStore.GetCommonDb()
+
+	var err error
+	r.isStartedStore, err = keyvaluestore.NewJson[bool](db, "file_reconciler/is_started")
+	if err != nil {
+		return fmt.Errorf("init isStartedStore: %w", err)
+	}
+
+	r.deletedFiles, err = keyvaluestore.New(db, "file_reconciler/deleted_files", func(_ struct{}) ([]byte, error) {
+		return []byte(""), nil
+	}, func(data []byte) (struct{}, error) {
+		return struct{}{}, nil
+	})
+
+	rebindQueueStore, err := persistentqueue.NewAnystoreStorage(ctx, db, "queue/file_reconciler/rebind", makeQueueItem)
+	if err != nil {
+		return fmt.Errorf("init rebindQueueStore: %w", err)
+	}
+	r.rebindQueue = persistentqueue.New(rebindQueueStore, log, r.rebindHandler)
+
 	isStarted, err := r.isStartedStore.Get(isStartedStoreKey)
 	if err != nil && !errors.Is(err, keyvaluestore.ErrNotFound) {
 		log.Error("get isStarted", zap.Error(err))
