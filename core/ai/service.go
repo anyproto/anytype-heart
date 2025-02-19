@@ -205,7 +205,7 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error) {
 	article, err := readability.FromReader(bytes.NewReader(websiteData), nil)
 	content := article.Content
-	if err != nil {
+	if err != nil || content == "" {
 		return nil, fmt.Errorf("could not process website content: %w", err)
 	}
 
