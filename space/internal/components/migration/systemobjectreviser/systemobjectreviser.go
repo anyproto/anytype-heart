@@ -97,22 +97,24 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	}
 	details := buildDiffDetails(bundleObject, localObject, isSystem)
 
-	recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
-	if err != nil {
-		log.Error("failed to check recommended relations", zap.Error(err))
-	}
+	if isSystem {
+		recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
+		if err != nil {
+			log.Error("failed to check recommended relations", zap.Error(err))
+		}
 
-	for _, recRelsDetail := range recRelsDetails {
-		details.Set(recRelsDetail.Key, recRelsDetail.Value)
-	}
+		for _, recRelsDetail := range recRelsDetails {
+			details.Set(recRelsDetail.Key, recRelsDetail.Value)
+		}
 
-	relFormatOTDetail, err := checkRelationFormatObjectTypes(ctx, space, bundleObject, localObject)
-	if err != nil {
-		log.Error("failed to check relation format object types", zap.Error(err))
-	}
+		relFormatOTDetail, err := checkRelationFormatObjectTypes(ctx, space, bundleObject, localObject)
+		if err != nil {
+			log.Error("failed to check relation format object types", zap.Error(err))
+		}
 
-	if relFormatOTDetail != nil {
-		details.Set(relFormatOTDetail.Key, relFormatOTDetail.Value)
+		if relFormatOTDetail != nil {
+			details.Set(relFormatOTDetail.Key, relFormatOTDetail.Value)
+		}
 	}
 
 	if details.Len() > 0 {
