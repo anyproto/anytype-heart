@@ -6,6 +6,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -13,8 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
+	"github.com/anyproto/anytype-heart/core/block/template/mock_template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -42,36 +44,6 @@ func (tc testCreator) CreateSmartBlockFromState(_ context.Context, _ string, _ [
 	object.Doc = createState
 
 	return id, nil, nil
-}
-
-type testTemplateService struct {
-	templates map[string]*state.State
-}
-
-func (tts testTemplateService) AddTemplate(id string, st *state.State) {
-	tts.templates[id] = st
-}
-
-func (tts testTemplateService) CreateTemplateStateWithDetails(id string, details *domain.Details, _ bool) (st *state.State, err error) {
-	if id == "" {
-		st = state.NewDoc("", nil).NewState()
-		template.InitTemplate(st, template.WithEmpty,
-			template.WithDefaultFeaturedRelations,
-			template.WithFeaturedRelations,
-			template.WithRequiredRelations,
-			template.WithTitle,
-		)
-	} else {
-		st = tts.templates[id]
-	}
-	templateDetails := st.Details()
-	newDetails := templateDetails.Merge(details)
-	st.SetDetails(newDetails)
-	return st, nil
-}
-
-func (tts testTemplateService) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State {
-	return tts.templates[sb.Id()]
 }
 
 func assertNoCommonElements(t *testing.T, a, b []string) {
@@ -243,7 +215,7 @@ func TestExtractObjects(t *testing.T) {
 			wantObjectsWithTexts: [][]string{
 				{
 					"text A", "text B", "text B.1",
-					"text 3", "text 3.1", "text 3.1.1",
+					"text 3.1", "text 3.1.1",
 				},
 			},
 			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
@@ -261,12 +233,12 @@ func TestExtractObjects(t *testing.T) {
 				// first object
 				{
 					"text A", "text B", "text B.1",
-					"text 2", "text 2.1",
+					"text 2.1",
 				},
 				// second object
 				{
 					"text A", "text B", "text B.1",
-					"text 3", "text 3.1", "text 3.1.1",
+					"text 3.1", "text 3.1.1",
 				},
 			},
 			wantDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
@@ -299,14 +271,23 @@ func TestExtractObjects(t *testing.T) {
 			sb := makeTestObject()
 			creator.Add(sb)
 
-			ts := testTemplateService{templates: map[string]*state.State{}}
-			var tmpl *state.State
-			if tc.templateId == objectId {
-				tmpl = sb.NewState()
-			} else {
-				tmpl = makeTemplateState(tc.templateId)
-			}
-			ts.AddTemplate(tc.templateId, tmpl)
+			fixture.ts.EXPECT().CreateTemplateStateWithDetails(mock.Anything).RunAndReturn(func(req templateSvc.CreateTemplateRequest) (tmpl *state.State, err error) {
+				assert.Equal(t, tc.templateId, req.TemplateId)
+				switch tc.templateId {
+				case objectId:
+					return sb.NewState(), nil
+				default:
+					return makeTemplateState(tc.templateId), nil
+				}
+			}).Maybe()
+			fixture.ts.EXPECT().CreateTemplateStateFromSmartBlock(mock.Anything, mock.Anything).RunAndReturn(func(_ smartblock.SmartBlock, _ templateSvc.CreateTemplateRequest) *state.State {
+				switch tc.templateId {
+				case objectId:
+					return sb.NewState()
+				default:
+					return makeTemplateState(tc.templateId)
+				}
+			}).Maybe()
 
 			if tc.typeKey == "" {
 				tc.typeKey = bundle.TypeKeyNote.String()
@@ -319,7 +300,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, tc.typeKey).Marshal(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, fixture.ts, req)
 			assert.NoError(t, err)
 
 			gotBlockIds := []string{}
@@ -359,12 +340,21 @@ func TestExtractObjects(t *testing.T) {
 		sb := makeTestObject()
 		creator.Add(sb)
 
-		ts := testTemplateService{templates: map[string]*state.State{}}
 		tmpl := makeTemplateState("template")
-		ts.AddTemplate("template", tmpl)
+		fixture.ts.EXPECT().CreateTemplateStateWithDetails(mock.Anything).RunAndReturn(func(req templateSvc.CreateTemplateRequest) (*state.State, error) {
+			assert.Equal(t, "template", req.TemplateId)
+			templateDetails := tmpl.Details()
+			newDetails := templateDetails.Merge(req.Details)
+			tmpl.SetDetails(newDetails)
+			return tmpl, nil
+		})
+		fixture.ts.EXPECT().CreateTemplateStateFromSmartBlock(mock.Anything, mock.Anything).RunAndReturn(func(_ smartblock.SmartBlock, _ templateSvc.CreateTemplateRequest) *state.State {
+			return tmpl
+		}).Maybe()
 
 		req := pb.RpcBlockListConvertToObjectsRequest{
 			ContextId:           "test",
+			TemplateId:          "template",
 			BlockIds:            []string{"1"},
 			ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
 			Block: &model.Block{Id: "newId", Content: &model.BlockContentOfLink{
@@ -374,7 +364,7 @@ func TestExtractObjects(t *testing.T) {
 			}},
 		}
 		ctx := session.NewContext()
-		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
+		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, fixture.ts, req)
 		assert.NoError(t, err)
 		var block *model.Block
 		for _, block = range sb.Blocks() {
@@ -392,12 +382,21 @@ func TestExtractObjects(t *testing.T) {
 		sb := makeTestObject()
 		creator.Add(sb)
 
-		ts := testTemplateService{templates: map[string]*state.State{}}
 		tmpl := makeTemplateState("template")
-		ts.AddTemplate("template", tmpl)
+		fixture.ts.EXPECT().CreateTemplateStateWithDetails(mock.Anything).RunAndReturn(func(req templateSvc.CreateTemplateRequest) (*state.State, error) {
+			assert.Equal(t, "template", req.TemplateId)
+			templateDetails := tmpl.Details()
+			newDetails := templateDetails.Merge(req.Details)
+			tmpl.SetDetails(newDetails)
+			return tmpl, nil
+		})
+		fixture.ts.EXPECT().CreateTemplateStateFromSmartBlock(mock.Anything, mock.Anything).RunAndReturn(func(_ smartblock.SmartBlock, _ templateSvc.CreateTemplateRequest) *state.State {
+			return tmpl
+		}).Maybe()
 
 		req := pb.RpcBlockListConvertToObjectsRequest{
 			ContextId:           "test",
+			TemplateId:          "template",
 			BlockIds:            []string{"1", "2"},
 			ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
 			Block: &model.Block{Id: "newId", Content: &model.BlockContentOfLink{
@@ -407,7 +406,7 @@ func TestExtractObjects(t *testing.T) {
 			}},
 		}
 		ctx := session.NewContext()
-		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, ts, req)
+		_, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter(), nil).ExtractBlocksToObjects(ctx, creator, fixture.ts, req)
 		assert.NoError(t, err)
 		var addedBlocks []*model.Block
 		for _, message := range sb.Results.Events {
@@ -612,11 +611,11 @@ func generateState(root string, blocks []simple.Block) *state.State {
 type fixture struct {
 	t     *testing.T
 	store *spaceindex.StoreFixture
+	ts    *mock_template.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
 	objectStore := spaceindex.NewStoreFixture(t)
-
 	objectStore.AddObjects(t, []spaceindex.TestObject{
 		{
 			bundle.RelationKeyId:                domain.String("id1"),
@@ -630,8 +629,11 @@ func newFixture(t *testing.T) *fixture {
 		},
 	})
 
+	ts := mock_template.NewMockService(t)
+
 	return &fixture{
 		t:     t,
 		store: objectStore,
+		ts:    ts,
 	}
 }
