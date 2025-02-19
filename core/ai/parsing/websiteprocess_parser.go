@@ -6,9 +6,8 @@ import (
 
 // WebsiteProcessParser is a ResponseParser for WebsiteProcess responses.
 type WebsiteProcessParser struct {
-	// modeToField maps modes to the name of the field in WebsiteProcessResponse that should be returned.
-	// For example: 1 -> "relation", etc.
-	modeToField map[int]string
+	modeToField  map[int]string
+	modeToSchema map[int]func(key string) map[string]interface{}
 }
 
 // WebsiteProcessResponse represents the structure of the response for different WebsiteProcess modes.
@@ -20,7 +19,41 @@ type WebsiteProcessResponse struct {
 func NewWebsiteProcessParser() *WebsiteProcessParser {
 	return &WebsiteProcessParser{
 		modeToField: map[int]string{
-			1: "relations",
+			1: "relations", // recipe
+			2: "relations", // company
+			3: "relations", // event
+		},
+		modeToSchema: map[int]func(key string) map[string]interface{}{
+			1: func(key string) map[string]interface{} { // recipe
+				fields := map[string]FieldDef{
+					"servings":    {Type: "string"},
+					"cuisine":     {Type: "string"},
+					"cookingTime": {Type: "string"},
+					"courseType":  {Type: "string"},
+					"difficulty":  {Type: "string"},
+				}
+				return FlexibleSchema(key, fields, nil)
+			},
+			2: func(key string) map[string]interface{} { // company
+				fields := map[string]FieldDef{
+					"name":         {Type: "string"},
+					"industry":     {Type: "string"},
+					"size":         {Type: "string"},
+					"location":     {Type: "string"},
+					"foundingYear": {Type: "string"},
+				}
+				return FlexibleSchema(key, fields, nil)
+			},
+			3: func(key string) map[string]interface{} { // event
+				fields := map[string]FieldDef{
+					"name":     {Type: "string"},
+					"date":     {Type: "string"},
+					"location": {Type: "string"},
+					"duration": {Type: "string"},
+					"type":     {Type: "string"},
+				}
+				return FlexibleSchema(key, fields, nil)
+			},
 		},
 	}
 }
@@ -33,6 +66,11 @@ func (p *WebsiteProcessParser) NewResponseStruct() interface{} {
 // ModeToField returns the modeToField map.
 func (p *WebsiteProcessParser) ModeToField() map[int]string {
 	return p.modeToField
+}
+
+// ModeToSchema returns the modeToSchema map.
+func (p *WebsiteProcessParser) ModeToSchema() map[int]func(key string) map[string]interface{} {
+	return p.modeToSchema
 }
 
 // ExtractContent extracts the relevant field based on mode.

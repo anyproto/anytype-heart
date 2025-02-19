@@ -9,9 +9,8 @@ import (
 // WritingToolsParser is a ResponseParser for WritingTools responses.
 // It knows how to extract the correct field from the WritingToolsResponse based on the mode.
 type WritingToolsParser struct {
-	// modeToField maps modes to the name of the field in WritingToolsResponse that should be returned.
-	// For example: 1 -> "Summary", 2 -> "Corrected", etc.
-	modeToField map[int]string
+	modeToField  map[int]string
+	modeToSchema map[int]func(key string) map[string]interface{}
 }
 
 // WritingToolsResponse represents the structure of the content response for different writing tool modes.
@@ -47,6 +46,20 @@ func NewWritingToolsParser() *WritingToolsParser {
 			int(pb.RpcAIWritingToolsRequest_PROFESSIONAL):    "professional",
 			int(pb.RpcAIWritingToolsRequest_TRANSLATE):       "translation",
 		},
+		modeToSchema: map[int]func(key string) map[string]interface{}{
+			int(pb.RpcAIWritingToolsRequest_SUMMARIZE):       SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_GRAMMAR):         SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_SHORTEN):         SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_EXPAND):          SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_BULLET):          SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_TABLE):           SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_CASUAL):          SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_FUNNY):           SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_CONFIDENT):       SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_STRAIGHTFORWARD): SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_PROFESSIONAL):    SingleStringSchema,
+			int(pb.RpcAIWritingToolsRequest_TRANSLATE):       SingleStringSchema,
+		},
 	}
 }
 
@@ -58,6 +71,11 @@ func (p *WritingToolsParser) NewResponseStruct() interface{} {
 // ModeToField returns the modeToField map.
 func (p *WritingToolsParser) ModeToField() map[int]string {
 	return p.modeToField
+}
+
+// ModeToSchema returns the modeToSchema map.
+func (p *WritingToolsParser) ModeToSchema() map[int]func(key string) map[string]interface{} {
+	return p.modeToSchema
 }
 
 // ExtractContent extracts the relevant field based on mode.

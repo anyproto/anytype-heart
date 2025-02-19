@@ -8,9 +8,8 @@ import (
 
 // AutofillParser is a ResponseParser for Autofill responses.
 type AutofillParser struct {
-	// modeToField maps modes to the name of the field in AutofillResponse that should be returned.
-	// For example: 1 -> "tag", 2 -> "relation", etc.
-	modeToField map[int]string
+	modeToField  map[int]string
+	modeToSchema map[int]func(key string) map[string]interface{}
 }
 
 // AutofillResponse represents the structure of the response for different autofill modes.
@@ -32,6 +31,13 @@ func NewAutofillParser() *AutofillParser {
 			int(pb.RpcAIAutofillRequest_TITLE):       "title",
 			int(pb.RpcAIAutofillRequest_DESCRIPTION): "description",
 		},
+		modeToSchema: map[int]func(key string) map[string]interface{}{
+			int(pb.RpcAIAutofillRequest_TAG):         SingleStringSchema,
+			int(pb.RpcAIAutofillRequest_RELATION):    SingleStringSchema,
+			int(pb.RpcAIAutofillRequest_TYPE):        SingleStringSchema,
+			int(pb.RpcAIAutofillRequest_TITLE):       SingleStringSchema,
+			int(pb.RpcAIAutofillRequest_DESCRIPTION): SingleStringSchema,
+		},
 	}
 }
 
@@ -43,6 +49,11 @@ func (p *AutofillParser) NewResponseStruct() interface{} {
 // ModeToField returns the modeToField map.
 func (p *AutofillParser) ModeToField() map[int]string {
 	return p.modeToField
+}
+
+// ModeToSchema returns the modeToSchema map.
+func (p *AutofillParser) ModeToSchema() map[int]func(key string) map[string]interface{} {
+	return p.modeToSchema
 }
 
 // ExtractContent extracts the relevant field based on mode.

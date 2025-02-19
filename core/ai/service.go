@@ -214,6 +214,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 
 	relationPrompt := fmt.Sprintf(prompts.RelationPrompt, content)
 	summaryPrompt := fmt.Sprintf(prompts.SummaryPrompt, content)
+	websiteTypeToMode := map[string]int{"recipe": 1, "company": 2, "event": 3}
 
 	var (
 		relationsResult map[string]string
@@ -234,12 +235,12 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 		}
 		ai.responseParser = parsing.NewWebsiteProcessParser()
 
-		answer, err := ai.chat(ctx, 1, promptConfig)
+		answer, err := ai.chat(ctx, websiteTypeToMode[websiteType], promptConfig)
 		if err != nil {
 			relErr = err
 			return
 		}
-		extractedAnswer, err := ai.extractAnswerByMode(answer, 1)
+		extractedAnswer, err := ai.extractAnswerByMode(answer, websiteTypeToMode[websiteType])
 
 		var relations map[string]string
 		if err := json.Unmarshal([]byte(extractedAnswer), &relations); err != nil {
