@@ -378,6 +378,27 @@ func TestInjectResolvedLayout(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
+	t.Run("layout is resolved from object store, because layout relation is deleted", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", nil).NewState()
+		st.SetDetail(bundle.RelationKeyCoverId, domain.String("red"))
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyProfile.URL()))
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_todo))
+		st.ParentState().SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_todo))
+
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyProfile.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_profile),
+		}})
+
+		// when
+		fx.injectResolvedLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_profile), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
 }
 
 func TestChangeResolvedLayoutForObjects(t *testing.T) {
