@@ -53,6 +53,8 @@ var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRecommendedFileRelations,
 	bundle.RelationKeyRecommendedLayout,
 	bundle.RelationKeySmartblockTypes,
+	bundle.RelationKeyIconOption,
+	bundle.RelationKeyIconName,
 )
 
 var relationRequiredRelations = append(typeAndRelationRequiredRelations,

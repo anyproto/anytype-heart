@@ -244,10 +244,6 @@
     - [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response)
     - [Rpc.BlockBookmark.Fetch.Response.Error](#anytype-Rpc-BlockBookmark-Fetch-Response-Error)
     - [Rpc.BlockDataview](#anytype-Rpc-BlockDataview)
-    - [Rpc.BlockDataview.CreateBookmark](#anytype-Rpc-BlockDataview-CreateBookmark)
-    - [Rpc.BlockDataview.CreateBookmark.Request](#anytype-Rpc-BlockDataview-CreateBookmark-Request)
-    - [Rpc.BlockDataview.CreateBookmark.Response](#anytype-Rpc-BlockDataview-CreateBookmark-Response)
-    - [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error)
     - [Rpc.BlockDataview.CreateFromExistingObject](#anytype-Rpc-BlockDataview-CreateFromExistingObject)
     - [Rpc.BlockDataview.CreateFromExistingObject.Request](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Request)
     - [Rpc.BlockDataview.CreateFromExistingObject.Response](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response)
@@ -1354,7 +1350,6 @@
     - [Rpc.Block.Upload.Response.Error.Code](#anytype-Rpc-Block-Upload-Response-Error-Code)
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-CreateAndFetch-Response-Error-Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-Fetch-Response-Error-Code)
-    - [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code)
     - [Rpc.BlockDataview.CreateFromExistingObject.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Remove-Response-Error-Code)
@@ -5714,6 +5709,7 @@ Makes blocks copy by given ids and paste it to shown place
 | targetId | [string](#string) |  |  |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | url | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -5774,6 +5770,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -5816,66 +5813,6 @@ Makes blocks copy by given ids and paste it to shown place
 
 ### Rpc.BlockDataview
 
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark"></a>
-
-### Rpc.BlockDataview.CreateBookmark
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Request"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| url | [string](#string) |  |  |
-| spaceId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error) |  |  |
-| id | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -14383,6 +14320,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | spaceId | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -14446,6 +14384,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | addPageContent | [bool](#bool) |  |  |
 | withChat | [bool](#bool) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -21903,19 +21842,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 
@@ -30486,6 +30412,8 @@ Used to decode block meta only, without the content itself
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 | revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
 | restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
+| iconColor | [int64](#int64) |  | color of object type icon |
+| iconName | [string](#string) |  | name of object type icon |
 
 
 

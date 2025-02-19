@@ -165,6 +165,8 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 		bundle.RelationKeyRelationReadonlyValue,
 		bundle.RelationKeyRelationMaxCount,
 		bundle.RelationKeyIconEmoji,
+		bundle.RelationKeyIconOption,
+		bundle.RelationKeyIconName,
 	)
 
 	details := domain.NewDetails()

@@ -11,11 +11,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/template"
+	"github.com/anyproto/anytype-heart/core/block/template/mock_template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/dateutil"
@@ -26,7 +27,7 @@ const spaceId = "spc1"
 type fixture struct {
 	spaceService    *mock_space.MockService
 	spc             *mock_clientspace.MockSpace
-	templateService *testTemplateService
+	templateService *mock_template.MockService
 	objectStore     *objectstore.StoreFixture
 	service         Service
 }
@@ -35,7 +36,7 @@ func newFixture(t *testing.T) *fixture {
 	spaceService := mock_space.NewMockService(t)
 	spc := mock_clientspace.NewMockSpace(t)
 
-	templateSvc := &testTemplateService{}
+	templateSvc := mock_template.NewMockService(t)
 	store := objectstore.NewStoreFixture(t)
 
 	s := &service{
@@ -53,29 +54,6 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-type testTemplateService struct {
-	templates map[string]*state.State
-}
-
-func (tts *testTemplateService) CreateTemplateStateWithDetails(templateId string, details *domain.Details, withTemplateValidation bool) (*state.State, error) {
-	if tts.templates != nil {
-		if st, found := tts.templates[templateId]; found {
-			return st, nil
-		}
-	}
-	st := state.NewDoc(templateId, nil).NewState()
-	st.SetDetails(details)
-	return st, nil
-}
-
-func (tts *testTemplateService) TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error) {
-	return "", nil
-}
-
-func (tts *testTemplateService) SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error {
-	return nil
-}
-
 func TestService_CreateObject(t *testing.T) {
 	t.Run("template creation", func(t *testing.T) {
 		// given
@@ -86,6 +64,17 @@ func TestService_CreateObject(t *testing.T) {
 		f.spc.EXPECT().Id().Return(spaceId)
 		f.spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
 			return key.Marshal(), nil
+		})
+
+		f.templateService.EXPECT().CreateTemplateStateWithDetails(mock.Anything).RunAndReturn(func(req template.CreateTemplateRequest) (*state.State, error) {
+			st := state.NewDoc(req.TemplateId, nil).NewState()
+			st.SetDetails(req.Details)
+			return st, nil
+		})
+		f.templateService.EXPECT().SetDefaultTemplateInType(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, typeId string, templateId string) error {
+			assert.Equal(t, "test", templateId)
+			assert.Equal(t, bundle.TypeKeyTask.URL(), typeId)
+			return nil
 		})
 
 		f.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
