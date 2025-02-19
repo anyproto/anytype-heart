@@ -9,8 +9,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-
-	"github.com/anyproto/anytype-heart/core/ai/parsing"
 )
 
 // ChatRequest represents the structure of the request payload for the chat API.
@@ -66,24 +64,24 @@ func (psr *prefixStrippingReader) Read(p []byte) (int, error) {
 }
 
 // createChatRequest creates the JSON payload for the chat API request.
-func (ai *AIService) createChatRequest(mode int) ([]byte, error) {
+func (ai *AIService) createChatRequest(mode int, promptConfig *PromptConfig) ([]byte, error) {
 	payload := ChatRequest{
 		Model: ai.apiConfig.Model,
 		Messages: []map[string]string{
 			{
 				"role":    "system",
-				"content": ai.promptConfig.SystemPrompt,
+				"content": promptConfig.SystemPrompt,
 			},
 			{
 				"role":    "user",
-				"content": ai.promptConfig.UserPrompt,
+				"content": promptConfig.UserPrompt,
 			},
 		},
-		Temperature: ai.promptConfig.Temperature,
+		Temperature: promptConfig.Temperature,
 		Stream:      true,
 	}
 
-	if ai.promptConfig.JSONMode {
+	if promptConfig.JSONMode {
 		key, exists := ai.responseParser.ModeToField()[mode]
 		if !exists {
 			return nil, fmt.Errorf("unknown mode: %d", mode)
@@ -150,8 +148,8 @@ func (ai *AIService) parseChatResponse(body io.Reader) (*[]ChatResponse, error) 
 }
 
 // chat sends a chat request and returns the parsed chat response as a string.
-func (ai *AIService) chat(ctx context.Context, mode int) (string, error) {
-	jsonData, err := ai.createChatRequest(mode)
+func (ai *AIService) chat(ctx context.Context, mode int, promptConfig *PromptConfig) (string, error) {
+	jsonData, err := ai.createChatRequest(mode, promptConfig)
 	if err != nil {
 		return "", fmt.Errorf("error creating the payload: %w", err)
 	}
@@ -206,70 +204,4 @@ func (ai *AIService) extractAnswerByMode(jsonData string, mode int) (string, err
 	}
 
 	return ai.responseParser.ExtractContent(mode, respStruct)
-}
-
-// newChat should be used for concurrent chat requests to avoid conflicts with global ai.promptConfig.
-func (ai *AIService) newChat(ctx context.Context, mode int, pc *PromptConfig, rp parsing.ResponseParser) (string, error) {
-	payload := ChatRequest{
-		Model: ai.apiConfig.Model,
-		Messages: []map[string]string{
-			{"role": "system", "content": pc.SystemPrompt},
-			{"role": "user", "content": pc.UserPrompt},
-		},
-		Temperature: pc.Temperature,
-		Stream:      true,
-	}
-
-	if pc.JSONMode {
-		key, exists := rp.ModeToField()[mode]
-		if !exists {
-			return "", fmt.Errorf("unknown mode: %d", mode)
-		}
-		payload.ResponseFormat = map[string]interface{}{
-			"type": "json_schema",
-			"json_schema": map[string]interface{}{
-				"name":   key + "_response",
-				"strict": true,
-				"schema": map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						key: map[string]interface{}{
-							"type": "string",
-						},
-					},
-					"additionalProperties": false,
-					"required":             []string{key},
-				},
-			},
-		}
-	}
-
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := ai.sendChatRequest(ctx, data)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("error: received non-200 status code %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	answerChunks, err := ai.parseChatResponse(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var answerBuilder strings.Builder
-	for _, chunk := range *answerChunks {
-		for _, choice := range chunk.Choices {
-			answerBuilder.WriteString(choice.Delta.Content)
-		}
-	}
-	return answerBuilder.String(), nil
 }

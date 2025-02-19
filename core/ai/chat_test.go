@@ -19,6 +19,7 @@ import (
 
 type fixture struct {
 	*AIService
+	promptConfig   *PromptConfig
 	mockHttpClient *mock_ai.MockHttpClient
 }
 
@@ -31,16 +32,18 @@ func newFixture(t *testing.T) *fixture {
 			Model:    "test-model",
 			Endpoint: "http://example.com",
 		},
-		promptConfig: &PromptConfig{
-			SystemPrompt: "system",
-			UserPrompt:   "user",
-			Temperature:  0.1,
-			JSONMode:     false,
-		},
+	}
+
+	promptConfig := &PromptConfig{
+		SystemPrompt: "system",
+		UserPrompt:   "user",
+		Temperature:  0.1,
+		JSONMode:     false,
 	}
 
 	return &fixture{
 		AIService:      aiService,
+		promptConfig:   promptConfig,
 		mockHttpClient: mockHttpClient,
 	}
 }
@@ -104,7 +107,7 @@ func TestCreateChatRequest(t *testing.T) {
 		fx := newFixture(t)
 		fx.responseParser = parsing.NewWritingToolsParser()
 
-		data, err := fx.createChatRequest(int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		data, err := fx.createChatRequest(int(pb.RpcAIWritingToolsRequest_SUMMARIZE), fx.promptConfig)
 		require.NoError(t, err)
 
 		var req ChatRequest
@@ -125,7 +128,7 @@ func TestCreateChatRequest(t *testing.T) {
 		fx.responseParser = parsing.NewWritingToolsParser()
 		fx.promptConfig.JSONMode = true
 
-		data, err := fx.createChatRequest(int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		data, err := fx.createChatRequest(int(pb.RpcAIWritingToolsRequest_SUMMARIZE), fx.promptConfig)
 		require.NoError(t, err)
 
 		var req ChatRequest
@@ -164,7 +167,7 @@ data: [DONE]
 		}
 		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-		result, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		result, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE), fx.promptConfig)
 		require.NoError(t, err)
 		require.Equal(t, "Hello world!", result)
 		fx.mockHttpClient.AssertExpectations(t)
@@ -180,7 +183,7 @@ data: [DONE]
 		}
 		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE), fx.promptConfig)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "model not found")
 		fx.mockHttpClient.AssertExpectations(t)
@@ -196,7 +199,7 @@ data: [DONE]
 		}
 		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE), fx.promptConfig)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid for endpoint")
 		fx.mockHttpClient.AssertExpectations(t)
@@ -212,7 +215,7 @@ data: [DONE]
 		}
 		fx.mockHttpClient.On("Do", mock.AnythingOfType("*http.Request")).Return(resp, nil)
 
-		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+		_, err := fx.chat(context.Background(), int(pb.RpcAIWritingToolsRequest_SUMMARIZE), fx.promptConfig)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "rate limit exceeded")
 		fx.mockHttpClient.AssertExpectations(t)

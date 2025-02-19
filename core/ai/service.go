@@ -43,7 +43,6 @@ type AI interface {
 type AIService struct {
 	mu             sync.Mutex
 	apiConfig      *APIConfig
-	promptConfig   *PromptConfig
 	httpClient     HttpClient
 	responseParser parsing.ResponseParser
 }
@@ -76,10 +75,9 @@ type AutofillResult struct {
 }
 
 type WebsiteProcessResult struct {
-	// Type            string            // "recipe", "hotel", or "book"
-	// Relations       map[string]string // e.g. {"portions": "2", "prep_time": "40 minutes", ...}
-	// MarkdownSummary string            // e.g. "## Pasta with tomato sauce and basil.\n A classic Italian dish ..."
-	ObjectId string
+	Type            string            // "recipe", "hotel", or "book"
+	Relations       map[string]string // e.g. {"portions": "2", "prep_time": "40 minutes", ...}
+	MarkdownSummary string            // e.g. "## Pasta with tomato sauce and basil.\n A classic Italian dish ..."
 }
 
 func New() AI {
@@ -126,7 +124,7 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 	}
 
 	ai.setAPIConfig(params.Config)
-	ai.promptConfig = &PromptConfig{
+	promptConfig := &PromptConfig{
 		SystemPrompt: writingToolsPrompts[params.Mode].System,
 		UserPrompt:   fmt.Sprintf(writingToolsPrompts[params.Mode].User, text),
 		Temperature:  params.Config.Temperature,
@@ -134,7 +132,7 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 	}
 	ai.responseParser = parsing.NewWritingToolsParser()
 
-	answer, err := ai.chat(ctx, int(params.Mode))
+	answer, err := ai.chat(ctx, int(params.Mode), promptConfig)
 	if err != nil {
 		return WritingToolsResult{}, err
 	}
@@ -163,7 +161,7 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 	log.Infof("received autofill request with options: %s and context: %s", params.Options, params.Context)
 
 	ai.setAPIConfig(params.Config)
-	ai.promptConfig = &PromptConfig{
+	promptConfig := &PromptConfig{
 		SystemPrompt: autofillPrompts[params.Mode].System,
 		// TODO: create prompt with options and context
 		UserPrompt:  fmt.Sprintf(autofillPrompts[params.Mode].User, optionsStr, contextStr),
@@ -172,7 +170,7 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 	}
 	ai.responseParser = parsing.NewAutofillParser()
 
-	answer, err := ai.chat(ctx, int(params.Mode))
+	answer, err := ai.chat(ctx, int(params.Mode), promptConfig)
 	if err != nil {
 		return AutofillResult{}, err
 	}
@@ -217,7 +215,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsite
 
 	go func() {
 		defer wg.Done()
-		pc := &PromptConfig{
+		promptConfig := &PromptConfig{
 			SystemPrompt: "",
 			UserPrompt:   relationPrompt,
 			Temperature:  0,
@@ -225,7 +223,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsite
 		}
 		ai.responseParser = parsing.NewWebsiteProcessParser()
 
-		answer, err := ai.newChat(ctx, 1, pc, ai.responseParser)
+		answer, err := ai.chat(ctx, 1, promptConfig)
 		if err != nil {
 			relErr = err
 			return
@@ -242,14 +240,14 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsite
 
 	go func() {
 		defer wg.Done()
-		pc := &PromptConfig{
+		promptConfig := &PromptConfig{
 			SystemPrompt: "",
 			UserPrompt:   summaryPrompt,
 			Temperature:  0.2,
 			JSONMode:     false,
 		}
 		ai.responseParser = parsing.NewWebsiteProcessParser()
-		answer, err := ai.newChat(ctx, 2, pc, ai.responseParser)
+		answer, err := ai.chat(ctx, 2, promptConfig)
 		if err != nil {
 			sumErr = err
 			return
@@ -270,35 +268,23 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsite
 	log.Debugf("summary: %s", summaryResult)
 
 	return &WebsiteProcessResult{
-		// Type:            websiteType,
-		// Relations:       relationsResult,
-		// MarkdownSummary: summaryResult,
-		// TODO: create object with extracted data and return its Id
-		ObjectId: "123",
+		Type:            websiteType,
+		Relations:       relationsResult,
+		MarkdownSummary: summaryResult,
 	}, nil
 }
 
 func (ai *AIService) ClassifyWebsiteContent(ctx context.Context, content string) (string, error) {
-	systemPrompt := `You are a classification assistant. 
-Your task is to classify text into one of the following categories: "recipe", "hotel", or "book".
-Return ONLY the category name. Do NOT add explanations, punctuation, or extra words.
-If uncertain, answer with best possible guess. If none apply, answer with "none".`
-	userPrompt := fmt.Sprintf(`Classify the following content into one of the categories: "recipe", "hotel", or "book".
-Answer with ONLY one of these words, nothing else.
-
-Content:
----
-%s
----
-`, content[:min(len(content), 1000)])
-	ai.promptConfig = &PromptConfig{
+	systemPrompt := classificationPrompts["type"].System
+	userPrompt := fmt.Sprintf(classificationPrompts["type"].User, content[:min(len(content), 1000)])
+	promptConfig := &PromptConfig{
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
-		Temperature:  0.2,
+		Temperature:  0,
 		JSONMode:     false,
 	}
 
-	answer, err := ai.chat(ctx, 0)
+	answer, err := ai.chat(ctx, 0, promptConfig)
 	if err != nil {
 		return "", err
 	}

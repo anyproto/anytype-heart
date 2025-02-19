@@ -142,3 +142,13 @@ var websiteExtractionPrompts = map[string]struct {
 		SummaryPrompt:  "Generate a concise markdown summary of the book, focusing on the synopsis and main highlights. The content is: '%s'",
 	},
 }
+
+var classificationPrompts = map[string]struct {
+	System string
+	User   string
+}{
+	"type": {
+		System: "You are a classification assistant. Your task is to classify text into one of the following categories: 'recipe', 'hotel', or 'book'. Return ONLY the category name. Do NOT add explanations, punctuation, or extra words. If uncertain, answer with best possible guess. If none apply, answer with 'none'",
+		User:   "Classify the following content into one of the categories: 'recipe', 'hotel', or 'book'. Answer with ONLY one of these words, nothing else. The content is: '%s'",
+	},
+}
