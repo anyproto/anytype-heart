@@ -336,7 +336,7 @@ message Block {
         }
 
         message Dataview {
-            repeated string source = 1;
+            repeated string source = 1; // can be set for detached(without TargetObjectId) inline sets
             repeated View views = 2;
             string activeView = 3; // do not generate changes for this field
             // deprecated
@@ -344,7 +344,7 @@ message Block {
             repeated GroupOrder groupOrders = 12;
             repeated ObjectOrder objectOrders = 13;
             repeated anytype.model.RelationLink relationLinks = 5;
-            string TargetObjectId = 6;
+            string TargetObjectId = 6; // empty for original set/collection objects and for detached inline sets
             bool isCollection = 14;
 
             message View {
@@ -1018,6 +1018,12 @@ enum SpaceAccessType {
     Shared = 2;
 }
 
+enum SpaceUxType {
+    Chat = 0; // chat-first UX
+    Data = 1; // objects-first UX
+    Stream = 2; // stream UX (chat with limited amount of owners)
+}
+
 message Metadata {
     oneof payload {
         Payload.IdentityPayload identity = 1;
@@ -1187,11 +1193,18 @@ message Invite {
 message InvitePayload {
     string creatorIdentity = 1;
     string creatorName = 2;
-    bytes inviteKey = 3;
+    bytes aclKey = 3;
     string spaceId = 4;
     string spaceName = 5;
     string spaceIconCid = 6;
     repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
+
+    InviteType inviteType = 8;
+    bytes guestKey = 9;
+    enum InviteType {
+        JoinAsMember = 0; // aclKey contains the key to sign the ACL record
+        JoinAsGuest = 1; // guestKey contains the privateKey of the guest user
+    }
 }
 
 message IdentityProfile {

@@ -1,10 +1,13 @@
-package exporter
+package treearchive
 
 import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -40,18 +43,22 @@ func (m MarshalledJsonChange) MarshalJSON() ([]byte, error) {
 
 type TreeImporter interface {
 	ObjectTree() objecttree.ReadableObjectTree
-	State() (*state.State, error)
+	State() (*state.State, error) // set fullStateChain to true to get full state chain, otherwise only the last state will be returned
+	Import(fromRoot bool, beforeId string) error
 	Json() (TreeJson, error)
 	ChangeAt(idx int) (IdChange, error)
 }
 
 type treeImporter struct {
-	objectTree objecttree.ReadableObjectTree
+	listStorage liststorage.ListStorage
+	treeStorage treestorage.TreeStorage
+	objectTree  objecttree.ReadableObjectTree
 }
 
-func NewTreeImporter(objectTree objecttree.ReadableObjectTree) TreeImporter {
+func NewTreeImporter(listStorage liststorage.ListStorage, treeStorage treestorage.TreeStorage) TreeImporter {
 	return &treeImporter{
-		objectTree: objectTree,
+		listStorage: listStorage,
+		treeStorage: treeStorage,
 	}
 }
 
@@ -74,6 +81,25 @@ func (t *treeImporter) State() (*state.State, error) {
 		return nil, err
 	}
 	return st, nil
+}
+
+func (t *treeImporter) Import(fullTree bool, beforeId string) (err error) {
+	aclList, err := list.BuildAclList(t.listStorage, list.NoOpAcceptorVerifier{})
+	if err != nil {
+		return
+	}
+	var heads []string
+	if !fullTree {
+		heads = []string{beforeId}
+	}
+	t.objectTree, err = objecttree.BuildNonVerifiableHistoryTree(objecttree.HistoryTreeParams{
+		TreeStorage:     t.treeStorage,
+		AclList:         aclList,
+		Heads:           heads,
+		IncludeBeforeId: true,
+	})
+
+	return
 }
 
 func (t *treeImporter) Json() (treeJson TreeJson, err error) {

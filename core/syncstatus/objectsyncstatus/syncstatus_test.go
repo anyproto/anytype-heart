@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/headsync/statestorage/mock_statestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
@@ -175,9 +174,7 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	ctrl := gomock.NewController(t)
 	service := mock_nodeconf.NewMockService(ctrl)
 	storage := mock_spacestorage.NewMockSpaceStorage(ctrl)
-	stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
-	storage.EXPECT().StateStorage().AnyTimes().Return(stateStorage)
-	stateStorage.EXPECT().SettingsId().AnyTimes().Return(testSpaceSettingsId)
+	storage.EXPECT().SpaceSettingsId().Return(testSpaceSettingsId)
 
 	spaceState := &spacestate.SpaceState{SpaceId: spaceId}
 	config := &config.Config{}

@@ -11,6 +11,7 @@ type SpacePersistentInfo struct {
 	SpaceID       string
 	AccountStatus *AccountStatus
 	AclHeadId     string
+	EncodedKey    string
 }
 
 func NewSpacePersistentInfo(spaceId string) SpacePersistentInfo {
@@ -21,7 +22,8 @@ func NewSpacePersistentInfoFromState(st state.Doc) SpacePersistentInfo {
 	details := st.CombinedDetails()
 	spaceInfo := NewSpacePersistentInfo(details.GetString(bundle.RelationKeyTargetSpaceId))
 	spaceInfo.SetAccountStatus(AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))).
-		SetAclHeadId(details.GetString(bundle.RelationKeyLatestAclHeadId))
+		SetAclHeadId(details.GetString(bundle.RelationKeyLatestAclHeadId)).
+		SetEncodedKey(details.GetString(bundle.RelationKeyGuestKey))
 	return spaceInfo
 }
 
@@ -32,6 +34,9 @@ func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInf
 	}
 	if s.AclHeadId != "" {
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, domain.String(s.AclHeadId))
+	}
+	if s.EncodedKey != "" {
+		st.SetDetail(bundle.RelationKeyGuestKey, domain.String(s.EncodedKey))
 	}
 	return s
 }
@@ -55,6 +60,11 @@ func (s *SpacePersistentInfo) SetAccountStatus(status AccountStatus) *SpacePersi
 
 func (s *SpacePersistentInfo) SetAclHeadId(aclHeadId string) *SpacePersistentInfo {
 	s.AclHeadId = aclHeadId
+	return s
+}
+
+func (s *SpacePersistentInfo) SetEncodedKey(encodedKey string) *SpacePersistentInfo {
+	s.EncodedKey = encodedKey
 	return s
 }
 

@@ -75,14 +75,16 @@ func (w *walletStub) Name() string { return wallet.CName }
 func NewStoreFixture(t testing.TB) *StoreFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	walletService := newWalletStub(t)
+
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
 
 	dataStore, err := datastore.NewInMemory()
 	require.NoError(t, err)
 
-	testApp.Register(newWalletStub(t))
 	testApp.Register(dataStore)
+	testApp.Register(walletService)
 	err = fullText.Init(testApp)
 	require.NoError(t, err)
 	err = fullText.Run(context.Background())
@@ -98,7 +100,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		fts:                 fullText,
 		sourceService:       &detailsFromId{},
 		arenaPool:           &anyenc.ArenaPool{},
-		objectStorePath:     t.TempDir(),
+		repoPath:            walletService.RepoPath(),
 		oldStore:            oldStore,
 		spaceIndexes:        map[string]spaceindex.Store{},
 		techSpaceIdProvider: &stubTechSpaceIdProvider{},

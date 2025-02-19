@@ -91,6 +91,7 @@
   "chatId",
   "hasChat",
   "timestamp",
+  "guestKey",
   "iconName",
   "recommendedFeaturedRelations",
   "recommendedHiddenRelations",

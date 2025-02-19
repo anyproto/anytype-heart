@@ -119,6 +119,20 @@ func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
 	return fileCid, w.Apply(newState)
 }
 
+func (w *Workspaces) SetGuestInviteFileInfo(fileCid string, fileKey string) (err error) {
+	st := w.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteGuestFileCid, domain.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteGuestFileKey, domain.String(fileKey))
+	return w.Apply(st)
+}
+
+func (w *Workspaces) GetExistingGuestInviteInfo() (fileCid string, fileKey string) {
+	details := w.CombinedDetails()
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteGuestFileCid)
+	fileKey = details.GetString(bundle.RelationKeySpaceInviteGuestFileKey)
+	return
+}
+
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }

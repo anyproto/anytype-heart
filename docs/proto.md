@@ -1171,6 +1171,10 @@
     - [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request)
     - [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response)
     - [Rpc.Space.InviteGetCurrent.Response.Error](#anytype-Rpc-Space-InviteGetCurrent-Response-Error)
+    - [Rpc.Space.InviteGetGuest](#anytype-Rpc-Space-InviteGetGuest)
+    - [Rpc.Space.InviteGetGuest.Request](#anytype-Rpc-Space-InviteGetGuest-Request)
+    - [Rpc.Space.InviteGetGuest.Response](#anytype-Rpc-Space-InviteGetGuest-Response)
+    - [Rpc.Space.InviteGetGuest.Response.Error](#anytype-Rpc-Space-InviteGetGuest-Response-Error)
     - [Rpc.Space.InviteRevoke](#anytype-Rpc-Space-InviteRevoke)
     - [Rpc.Space.InviteRevoke.Request](#anytype-Rpc-Space-InviteRevoke-Request)
     - [Rpc.Space.InviteRevoke.Response](#anytype-Rpc-Space-InviteRevoke-Response)
@@ -1587,8 +1591,10 @@
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
+    - [Rpc.Space.InviteGenerate.Request.InviteType](#anytype-Rpc-Space-InviteGenerate-Request-InviteType)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
+    - [Rpc.Space.InviteGetGuest.Response.Error.Code](#anytype-Rpc-Space-InviteGetGuest-Response-Error-Code)
     - [Rpc.Space.InviteRevoke.Response.Error.Code](#anytype-Rpc-Space-InviteRevoke-Response-Error-Code)
     - [Rpc.Space.InviteView.Response.Error.Code](#anytype-Rpc-Space-InviteView-Response-Error-Code)
     - [Rpc.Space.Join.Response.Error.Code](#anytype-Rpc-Space-Join-Response-Error-Code)
@@ -1996,6 +2002,7 @@
     - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
+    - [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus)
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
@@ -2018,6 +2025,7 @@
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
     - [SpaceStatus](#anytype-model-SpaceStatus)
+    - [SpaceUxType](#anytype-model-SpaceUxType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -2080,6 +2088,7 @@
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | SpaceInviteGenerate | [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request) | [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response) |  |
 | SpaceInviteGetCurrent | [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request) | [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response) |  |
+| SpaceInviteGetGuest | [Rpc.Space.InviteGetGuest.Request](#anytype-Rpc-Space-InviteGetGuest-Request) | [Rpc.Space.InviteGetGuest.Response](#anytype-Rpc-Space-InviteGetGuest-Response) |  |
 | SpaceInviteRevoke | [Rpc.Space.InviteRevoke.Request](#anytype-Rpc-Space-InviteRevoke-Request) | [Rpc.Space.InviteRevoke.Response](#anytype-Rpc-Space-InviteRevoke-Response) |  |
 | SpaceInviteView | [Rpc.Space.InviteView.Request](#anytype-Rpc-Space-InviteView-Request) | [Rpc.Space.InviteView.Response](#anytype-Rpc-Space-InviteView-Response) |  |
 | SpaceJoin | [Rpc.Space.Join.Request](#anytype-Rpc-Space-Join-Request) | [Rpc.Space.Join.Response](#anytype-Rpc-Space-Join-Response) |  |
@@ -12393,6 +12402,7 @@ Get marks list in the selected range in text block.
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
+| createTypeWidgetIfMissing | [bool](#bool) |  | experimental flag to auto-create type widget if missing |
 
 
 
@@ -14479,6 +14489,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
+| createTypeWidgetIfMissing | [bool](#bool) |  | experimental flag to auto-create type widget if missing |
 
 
 
@@ -19216,6 +19227,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
+| inviteType | [Rpc.Space.InviteGenerate.Request.InviteType](#anytype-Rpc-Space-InviteGenerate-Request-InviteType) |  |  |
 
 
 
@@ -19306,6 +19318,64 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest"></a>
+
+### Rpc.Space.InviteGetGuest
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest-Request"></a>
+
+### Rpc.Space.InviteGetGuest.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest-Response"></a>
+
+### Rpc.Space.InviteGetGuest.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.InviteGetGuest.Response.Error](#anytype-Rpc-Space-InviteGetGuest-Response-Error) |  |  |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest-Response-Error"></a>
+
+### Rpc.Space.InviteGetGuest.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.InviteGetGuest.Response.Error.Code](#anytype-Rpc-Space-InviteGetGuest-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19408,6 +19478,7 @@ Available undo/redo operations
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
+| isGuestUserInvite | [bool](#bool) |  |  |
 
 
 
@@ -25113,6 +25184,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Space-InviteGenerate-Request-InviteType"></a>
+
+### Rpc.Space.InviteGenerate.Request.InviteType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Member | 0 |  |
+| Guest | 1 |  |
+
+
+
 <a name="anytype-Rpc-Space-InviteGenerate-Response-Error-Code"></a>
 
 ### Rpc.Space.InviteGenerate.Response.Error.Code
@@ -25142,6 +25225,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NO_ACTIVE_INVITE | 101 |  |
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest-Response-Error-Code"></a>
+
+### Rpc.Space.InviteGetGuest.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INVALID_SPACE_TYPE | 101 |  |
 
 
 
@@ -29468,14 +29565,14 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| source | [string](#string) | repeated |  |
+| source | [string](#string) | repeated | can be set for detached(without TargetObjectId) inline sets |
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
 | activeView | [string](#string) |  | do not generate changes for this field |
 | relations | [Relation](#anytype-model-Relation) | repeated | deprecated |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
-| TargetObjectId | [string](#string) |  |  |
+| TargetObjectId | [string](#string) |  | empty for original set/collection objects and for detached inline sets |
 | isCollection | [bool](#bool) |  |  |
 
 
@@ -30246,11 +30343,13 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | creatorIdentity | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
-| inviteKey | [bytes](#bytes) |  |  |
+| aclKey | [bytes](#bytes) |  |  |
 | spaceId | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
+| inviteType | [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType) |  |  |
+| guestKey | [bytes](#bytes) |  |  |
 
 
 
@@ -31630,6 +31729,18 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
+<a name="anytype-model-InvitePayload-InviteType"></a>
+
+### InvitePayload.InviteType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| JoinAsMember | 0 | aclKey contains the key to sign the ACL record |
+| JoinAsGuest | 1 | guestKey contains the privateKey of the guest user |
+
+
+
 <a name="anytype-model-LinkPreview-Type"></a>
 
 ### LinkPreview.Type
@@ -32005,6 +32116,19 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SpaceActive | 8 | SpaceActive - the space is active in the network |
 | SpaceJoining | 9 | SpaceJoining - the account is joining the space |
 | SpaceRemoving | 10 | SpaceRemoving - the account is removing from space or the space is removed from network |
+
+
+
+<a name="anytype-model-SpaceUxType"></a>
+
+### SpaceUxType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Chat | 0 | chat-first UX |
+| Data | 1 | objects-first UX |
+| Stream | 2 | stream UX (chat with limited amount of owners) |
 
 
  

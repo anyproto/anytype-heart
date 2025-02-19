@@ -102,7 +102,7 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
 	spaceStorage := app.MustComponent[spacestorage.SpaceStorage](a)
-	t.spaceSettingsId = spaceStorage.StateStorage().SettingsId()
+	t.spaceSettingsId = spaceStorage.SpaceSettingsId()
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)

@@ -3,7 +3,7 @@ package sqlitestorage
 import (
 	"testing"
 
-	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
+	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +56,7 @@ func TestListStorage_SetHead(t *testing.T) {
 
 }
 
-func testList(t *testing.T, store oldstorage.ListStorage, root *consensusproto.RawRecordWithId, head string) {
+func testList(t *testing.T, store liststorage.ListStorage, root *consensusproto.RawRecordWithId, head string) {
 	require.Equal(t, store.Id(), root.Id)
 
 	aclRoot, err := store.Root()
