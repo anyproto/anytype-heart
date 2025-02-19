@@ -37,6 +37,7 @@ type AI interface {
 	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error)
 	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error)
 	WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (*WebsiteProcessResult, error)
+	WebsiteProcessWithObjectCreate(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (objectId string, err error)
 	app.ComponentRunnable
 }
 
@@ -272,6 +273,17 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsite
 		Relations:       relationsResult,
 		MarkdownSummary: summaryResult,
 	}, nil
+}
+
+func (ai *AIService) WebsiteProcessWithObjectCreate(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (objectId string, err error) {
+	result, err := ai.WebsiteProcess(ctx, params)
+	if err != nil {
+		return "", err
+	}
+	log.Infof("result received: %v", result)
+
+	// TODO: create object with extracted data
+	return "", nil
 }
 
 func (ai *AIService) ClassifyWebsiteContent(ctx context.Context, content string) (string, error) {
