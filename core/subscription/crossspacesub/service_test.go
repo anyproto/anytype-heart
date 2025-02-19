@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
@@ -106,8 +106,8 @@ func TestSubscribe(t *testing.T) {
 
 		// Add objects
 		obj1 := objectstore.TestObject{
-			bundle.RelationKeyId:     domain.String("participant1"),
-			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
 		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 			obj1,
@@ -126,9 +126,9 @@ func TestSubscribe(t *testing.T) {
 
 		t.Run("update object", func(t *testing.T) {
 			obj1 = objectstore.TestObject{
-				bundle.RelationKeyId:     domain.String("participant1"),
-				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
-				bundle.RelationKeyName:   domain.String("John Doe"),
+				bundle.RelationKeyId:             domain.String("participant1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyName:           domain.String("John Doe"),
 			}
 			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 				obj1,
@@ -171,8 +171,8 @@ func TestSubscribe(t *testing.T) {
 
 			// Add objects
 			obj1 := objectstore.TestObject{
-				bundle.RelationKeyId:     domain.String("participant1"),
-				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyId:             domain.String("participant1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
 			}
 			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 				obj1,
@@ -191,8 +191,8 @@ func TestSubscribe(t *testing.T) {
 
 			// Add another objects
 			obj2 := objectstore.TestObject{
-				bundle.RelationKeyId:     domain.String("participant2"),
-				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyId:             domain.String("participant2"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
 			}
 			fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 				obj2,
@@ -218,8 +218,8 @@ func TestSubscribe(t *testing.T) {
 
 			// Add objects
 			obj1 := objectstore.TestObject{
-				bundle.RelationKeyId:     domain.String("participant3"),
-				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyId:             domain.String("participant3"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
 			}
 			fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{
 				obj1,
@@ -249,12 +249,12 @@ func TestSubscribe(t *testing.T) {
 			givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
 		})
 		obj1 := objectstore.TestObject{
-			bundle.RelationKeyId:     domain.String("participant1"),
-			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
 		}
 		obj2 := objectstore.TestObject{
-			bundle.RelationKeyId:     domain.String("participant2"),
-			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
 		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 			obj1,
@@ -314,8 +314,8 @@ func TestUnsubscribe(t *testing.T) {
 
 		// Add objects
 		obj1 := objectstore.TestObject{
-			bundle.RelationKeyId:     domain.String("participant1"),
-			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_participant)),
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
 		}
 		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
 			obj1,
@@ -403,10 +403,10 @@ func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, 
 func givenRequest() subscriptionservice.SubscribeRequest {
 	return subscriptionservice.SubscribeRequest{
 		NoDepSubscription: true,
-		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyLayout.String(), bundle.RelationKeyName.String()},
+		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyName.String()},
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_participant)),
 			},
@@ -418,7 +418,7 @@ func givenSpaceViewObject(id string, targetSpaceId string, accountStatus model.A
 	return objectstore.TestObject{
 		bundle.RelationKeyId:                 domain.String(id),
 		bundle.RelationKeyTargetSpaceId:      domain.String(targetSpaceId),
-		bundle.RelationKeyLayout:             domain.Int64(int64(model.ObjectType_spaceView)),
+		bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
 		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(accountStatus)),
 		bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(localStatus)),
 	}

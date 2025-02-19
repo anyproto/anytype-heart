@@ -76,6 +76,7 @@ type service struct {
 	objectStore     objectstore.ObjectStore
 	spaceIdResolver idresolver.Resolver
 	migrationQueue  *persistentqueue.Queue[*migrationItem]
+	accountService  accountService
 	objectArchiver  objectArchiver
 
 	indexer *indexer
@@ -117,6 +118,8 @@ func (s *service) Init(a *app.App) error {
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.objectArchiver = app.MustComponent[objectArchiver](a)
+	s.accountService = app.MustComponent[accountService](a)
+
 	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()
@@ -345,6 +348,7 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeyFileId, fileId.String())
 	// Use general file layout. It will be changed for proper layout after indexing
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_file))
 	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_file))
 	details.SetInt64(bundle.RelationKeyFileIndexingStatus, int64(model.FileIndexingStatus_NotIndexed))
 	details.SetInt64(bundle.RelationKeySyncStatus, int64(domain.ObjectSyncStatusQueued))

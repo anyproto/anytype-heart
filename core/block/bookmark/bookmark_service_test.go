@@ -10,6 +10,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator/mock_objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/template"
+	"github.com/anyproto/anytype-heart/core/block/template/mock_template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -34,10 +36,11 @@ func (ds *detailsSetter) SetDetails(session.Context, string, []domain.Detail) er
 type fixture struct {
 	s *service
 
-	creator      *mock_objectcreator.MockService
-	space        *mock_clientspace.MockSpace
-	spaceService *mock_space.MockService
-	store        *objectstore.StoreFixture
+	creator         *mock_objectcreator.MockService
+	space           *mock_clientspace.MockSpace
+	spaceService    *mock_space.MockService
+	store           *objectstore.StoreFixture
+	templateService *mock_template.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -48,20 +51,23 @@ func newFixture(t *testing.T) *fixture {
 
 	store := objectstore.NewStoreFixture(t)
 	creator := mock_objectcreator.NewMockService(t)
+	templateService := mock_template.NewMockService(t)
 
 	s := &service{
-		detailsSetter: &detailsSetter{},
-		creator:       creator,
-		store:         store,
-		spaceService:  spaceSvc,
+		detailsSetter:   &detailsSetter{},
+		creator:         creator,
+		store:           store,
+		spaceService:    spaceSvc,
+		templateService: templateService,
 	}
 
 	return &fixture{
-		s:            s,
-		creator:      creator,
-		space:        spc,
-		spaceService: spaceSvc,
-		store:        store,
+		s:               s,
+		creator:         creator,
+		space:           spc,
+		spaceService:    spaceSvc,
+		store:           store,
+		templateService: templateService,
 	}
 }
 
@@ -74,14 +80,18 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 			func(_ context.Context, spcId string, keys []domain.TypeKey, state *state.State) (string, *domain.Details, error) {
 				assert.Equal(t, spaceId, spcId)
 				assert.Equal(t, []domain.TypeKey{bundle.TypeKeyBookmark}, keys)
-				assert.Equal(t, details, state.Details())
 
 				return "some_id", nil, nil
 			},
 		).Once()
+		fx.templateService.EXPECT().CreateTemplateStateWithDetails(mock.Anything).RunAndReturn(func(req template.CreateTemplateRequest) (*state.State, error) {
+			assert.Empty(t, req.TemplateId)
+			assert.Equal(t, model.ObjectType_bookmark, req.Layout)
+			return state.NewDoc("", nil).NewState(), nil
+		})
 
 		// when
-		_, _, err := fx.s.CreateBookmarkObject(nil, spaceId, details, func() *bookmark.ObjectContent { return nil })
+		_, _, err := fx.s.CreateBookmarkObject(nil, spaceId, "", details, func() *bookmark.ObjectContent { return nil })
 
 		// then
 		assert.NoError(t, err)
@@ -101,7 +111,7 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 		}})
 
 		// when
-		id, _, err := fx.s.CreateBookmarkObject(nil, spaceId, details, func() *bookmark.ObjectContent {
+		id, _, err := fx.s.CreateBookmarkObject(nil, spaceId, "", details, func() *bookmark.ObjectContent {
 			return &bookmark.ObjectContent{BookmarkContent: &model.BlockContentBookmark{}}
 		})
 
