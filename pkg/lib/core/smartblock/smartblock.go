@@ -38,9 +38,10 @@ const (
 	SmartBlockTypeSpaceView      = SmartBlockType(model.SmartBlockType_SpaceView)
 	SmartBlockTypeRelationOption = SmartBlockType(model.SmartBlockType_STRelationOption)
 
-	SmartBlockTypeMissingObject      = SmartBlockType(model.SmartBlockType_MissingObject)
-	SmartBlockTypeNotificationObject = SmartBlockType(model.SmartBlockType_NotificationObject)
-	SmartBlockTypeDevicesObject      = SmartBlockType(model.SmartBlockType_DevicesObject)
+	SmartBlockTypeMissingObject          = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeNotificationObject     = SmartBlockType(model.SmartBlockType_NotificationObject)
+	SmartBlockTypeDevicesObject          = SmartBlockType(model.SmartBlockType_DevicesObject)
+	SmartBlockTypeEphemeralVirtualObject = SmartBlockType(model.SmartBlockType_EphemeralVirtualObject)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
@@ -72,12 +73,11 @@ func (sbt SmartBlockType) IsOneOf(sbts ...SmartBlockType) bool {
 // Indexable determines if the object of specific type need to be proceeded by the indexer in order to appear in sets
 func (sbt SmartBlockType) Indexable() (fulltext, details, outgoingLinks bool) {
 	switch sbt {
-	case SmartBlockTypeDate, SmartBlockTypeAccountOld, SmartBlockTypeNotificationObject, SmartBlockTypeDevicesObject:
+	case SmartBlockTypeDate, SmartBlockTypeAccountOld, SmartBlockTypeNotificationObject, SmartBlockTypeDevicesObject, SmartBlockTypeAccountObject, SmartBlockTypeEphemeralVirtualObject:
 		return false, false, false
 	case SmartBlockTypeWidget, SmartBlockTypeArchive, SmartBlockTypeHome:
 		return false, true, false
 	case SmartBlockTypeWorkspace,
-		SmartBlockTypeAccountObject,
 		SmartBlockTypeChatObject,
 		SmartBlockTypeChatDerivedObject,
 		SmartBlockTypeSpaceView:

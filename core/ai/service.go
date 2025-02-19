@@ -13,11 +13,21 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/go-shiori/go-readability"
+	"github.com/google/uuid"
 	"github.com/pemistahl/lingua-go"
 
 	"github.com/anyproto/anytype-heart/core/ai/parsing"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
+	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -49,7 +59,10 @@ type AI interface {
 }
 
 type AIService struct {
-	mu             sync.Mutex
+	mu       sync.Mutex
+	exporter export.Export
+	source   source.Service
+
 	apiConfig      *APIConfig
 	httpClient     HttpClient
 	responseParser parsing.ResponseParser
@@ -95,6 +108,9 @@ func New() AI {
 }
 
 func (ai *AIService) Init(a *app.App) (err error) {
+	ai.exporter = app.MustComponent[export.Export](a)
+	ai.source = app.MustComponent[source.Service](a)
+
 	return nil
 }
 
@@ -290,10 +306,21 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 	ai.mu.Lock()
 	defer ai.mu.Unlock()
 
+	res, err := ai.exporter.ExportInMemory(ctx, params.SpaceId, params.ObjectIds, model.Export_Markdown, true)
+	if err != nil {
+		return "", err
+	}
+
+	s := strings.Builder{}
+	for _, r := range res {
+		s.Write(r)
+		s.WriteString("==========\n")
+		s.WriteString("\n")
+	}
 	ai.setAPIConfig(params.Config)
 	promptConfig := &PromptConfig{
 		SystemPrompt: listSummaryPrompts["list"].System,
-		UserPrompt:   listSummaryPrompts["list"].User,
+		UserPrompt:   fmt.Sprintf(listSummaryPrompts["list"].User, params.Prompt, s.String()),
 		Temperature:  params.Config.Temperature,
 		JSONMode:     true,
 	}
@@ -309,7 +336,36 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 		return "", err
 	}
 
-	return extractedAnswer, nil
+	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(extractedAnswer), "", nil)
+	resultId := uuid.New().String()
+	if len(rootBlockIds) == 0 {
+		for _, b := range blocks {
+			rootBlockIds = append(rootBlockIds, b.Id)
+		}
+	}
+	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{}})
+	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks:  blocks,
+			Details: common.GetCommonDetails(resultId, "AI response", "🧠", model.ObjectType_basic).ToProto(),
+			Key:     bundle.TypeKeyPage.String(),
+		},
+	})
+
+	st := dc.NewState()
+
+	err = ai.source.RegisterStaticSource(ai.source.NewStaticSource(source.StaticSourceParams{
+		Id: domain.FullID{
+			SpaceID:  params.SpaceId,
+			ObjectID: resultId,
+		},
+		SbType: smartblock.SmartBlockTypeEphemeralVirtualObject,
+		State:  st,
+	}))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("anytype://object?objectId=%s&spaceId=%s", resultId, params.SpaceId), nil
 }
 
 // ClassifyWebsiteContent classifies content into a single category.

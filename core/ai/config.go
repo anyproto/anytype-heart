@@ -148,8 +148,8 @@ var listSummaryPrompts = map[string]struct {
 	User   string
 }{
 	"list": {
-		System: "",
-		User:   "",
+		System: "You are a helpful assistant answering user questions based on the given context. As a context you will receive the multiple markdown pages separated by ====== delimiter. Make the answer concise and respond in markdown as a header and add if there is any additional information, elaborate below",
+		User:   "User request: `%s`. Context: ```%s```",
 	},
 }
 

@@ -3088,6 +3088,7 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| spaceId | [string](#string) |  |  |
 | objectIds | [string](#string) | repeated |  |
 | prompt | [string](#string) |  |  |
 
@@ -15899,6 +15900,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
 | linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
 | includeBacklinks | [bool](#bool) |  |  |
+| includeRelationsHeaderInMarkdown | [bool](#bool) |  |  |
 
 
 
@@ -32070,6 +32072,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ChatObject | 537 | Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
+| EphemeralVirtualObject | 546 | used to show virtual objects, like AI response generated on the fly |
 
 
 

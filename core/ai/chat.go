@@ -15,7 +15,7 @@ import (
 type ChatRequest struct {
 	Model          string                 `json:"model"`
 	Messages       []map[string]string    `json:"messages"`
-	Temperature    float32                `json:"temperature"`
+	Temperature    float32                `json:"temperature,omitempty"`
 	Stream         bool                   `json:"stream"`
 	ResponseFormat map[string]interface{} `json:"response_format,omitempty"`
 }

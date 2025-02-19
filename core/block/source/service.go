@@ -206,6 +206,12 @@ func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.Sm
 			CreatorId: addr.AnytypeProfileId,
 		}
 		return s.NewStaticSource(params), nil
+	case smartblock.SmartBlockTypeEphemeralVirtualObject:
+		params := StaticSourceParams{
+			SbType:    smartblock.SmartBlockTypeEphemeralVirtualObject,
+			CreatorId: addr.AnytypeProfileId,
+		}
+		return s.NewStaticSource(params), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err
