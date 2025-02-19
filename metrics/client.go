@@ -15,6 +15,8 @@ var (
 	sendingTimeLimit     = time.Minute
 	sendingQueueLimitMin = 10
 	sendingQueueLimitMax = 100
+	sendingMaxAttempt    = 10
+	sendingMaxSize       = 2000
 )
 
 type client struct {
@@ -94,6 +96,11 @@ func (c *client) startSendingBatchMessages(info anymetry.AppInfoProvider) {
 			}
 			attempt++
 		}
+		if attempt > sendingMaxAttempt && clientBatcher.Len() > sendingMaxSize {
+			// throttle to not make client send bazillion events
+			clientBatcher.GetAll()
+			attempt = 0
+		}
 		select {
 		case <-c.ctx.Done():
 			return
@@ -149,7 +156,6 @@ func (c *client) recordAggregatedData() {
 	toSend := c.aggregatableMap
 	c.aggregatableMap = make(map[string]SamplableEvent)
 	c.lock.Unlock()
-	// итерейтим сразу старую мапу и скармливаем ГЦ
 	for _, ev := range toSend {
 		c.send(ev)
 	}

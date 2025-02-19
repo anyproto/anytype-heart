@@ -420,3 +420,28 @@ func (c *LongMethodEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEv
 	properties.Set("stack", arena.NewString(c.stack))
 	return event
 }
+
+type ChangeEvent struct {
+	baseInfo
+	ChangeName string
+	ObjectId   string
+	SpaceId    string
+	SbType     string
+	Size       int
+	Attached   int
+}
+
+func (c *ChangeEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
+}
+
+func (c *ChangeEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
+	event, properties := setupProperties(arena, "ChangeEvent")
+	properties.Set("changeName", arena.NewString(c.ChangeName))
+	properties.Set("objectId", arena.NewString(c.ObjectId))
+	properties.Set("spaceId", arena.NewString(c.SpaceId))
+	properties.Set("sbType", arena.NewString(c.SbType))
+	properties.Set("size", arena.NewNumberInt(c.Size))
+	properties.Set("attached", arena.NewNumberInt(c.Attached))
+	return event
+}
