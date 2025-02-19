@@ -133,13 +133,13 @@ var websiteExtractionPrompts = map[string]struct {
 		RelationPrompt: "Extract the following details from the recipe: servings, cuisine, cooking time, course type, and difficulty. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The following content is from the website: '%s'",
 		SummaryPrompt:  "Generate a concise markdown summary of the recipe with key highlights (ingredients, taste, etc.). The content is: '%s'",
 	},
-	"hotel": {
-		RelationPrompt: "Extract the following details about the hotel: star rating, location, room types, amenities, and check-in/check-out times. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The content is: '%s'",
-		SummaryPrompt:  "Generate a concise markdown summary for the hotel, including ambience, services, and location highlights. The content is: '%s'",
+	"company": {
+		RelationPrompt: "Extract the following details about the company: name, industry, size, location, and founding year. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The content is: '%s'",
+		SummaryPrompt:  "Generate a concise markdown summary for the company, focusing on just the key facts mentioned. The content is: '%s'",
 	},
-	"book": {
-		RelationPrompt: "Extract key details about the book: title, author, publication date, genre, and number of pages. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The content is: '%s'",
-		SummaryPrompt:  "Generate a concise markdown summary of the book, focusing on the synopsis and main highlights. The content is: '%s'",
+	"event": {
+		RelationPrompt: "Extract key details about the event: name, date, location, duration, and type. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The content is: '%s'",
+		SummaryPrompt:  "Generate a concise markdown summary of the event, focusing on the main highlights and key details. The content is: '%s'",
 	},
 }
 
@@ -158,7 +158,7 @@ var classificationPrompts = map[string]struct {
 	User   string
 }{
 	"type": {
-		System: "You are a classification assistant. Your task is to classify text into one of the following categories: 'recipe', 'hotel', or 'book'. Return ONLY the category name. Do NOT add explanations, punctuation, or extra words. If uncertain, answer with best possible guess. If none apply, answer with 'none'",
-		User:   "Classify the following content into one of the categories: 'recipe', 'hotel', or 'book'. Answer with ONLY one of these words, nothing else. The content is: '%s'",
+		System: "You are a classification assistant. Your task is to classify text into one of the following categories: 'recipe', 'company', or 'event'. Return ONLY the category name. Do NOT add explanations, punctuation, or extra words. If uncertain, answer with best possible guess. If none apply, answer with 'none'",
+		User:   "Classify the following content into one of the categories: 'recipe', 'company', or 'event'. Answer with ONLY one of these words, nothing else. The content is: '%s'",
 	},
 }

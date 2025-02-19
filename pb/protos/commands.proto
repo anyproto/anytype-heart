@@ -4097,7 +4097,8 @@ message Rpc {
         message ListSummary {
             message Request {
                 ProviderConfig config = 1;
-                string contextId = 2;
+                repeated string objectIds = 2;
+                string prompt = 3;
             }
 
             message Response {

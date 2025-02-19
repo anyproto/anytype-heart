@@ -83,7 +83,7 @@ type AutofillResult struct {
 }
 
 type WebsiteProcessResult struct {
-	Type            string            // "recipe", "hotel", or "book"
+	Type            string            // "recipe", "company", or "event"
 	Relations       map[string]string // e.g. {"portions": "2", "prep_time": "40 minutes", ...}
 	MarkdownSummary string            // e.g. "## Pasta with tomato sauce and basil.\n A classic Italian dish ..."
 }
@@ -229,7 +229,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 		promptConfig := &PromptConfig{
 			SystemPrompt: "",
 			UserPrompt:   relationPrompt,
-			Temperature:  0,
+			Temperature:  provider.Temperature,
 			JSONMode:     true,
 		}
 		ai.responseParser = parsing.NewWebsiteProcessParser()
@@ -254,7 +254,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 		promptConfig := &PromptConfig{
 			SystemPrompt: "",
 			UserPrompt:   summaryPrompt,
-			Temperature:  0.2,
+			Temperature:  provider.Temperature,
 			JSONMode:     false,
 		}
 		ai.responseParser = parsing.NewWebsiteProcessParser()
@@ -330,7 +330,7 @@ func (ai *AIService) ClassifyWebsiteContent(ctx context.Context, content string)
 
 	classification := strings.ToLower(strings.TrimSpace(answer))
 	switch classification {
-	case "recipe", "hotel", "book":
+	case "recipe", "company", "event":
 		return classification, nil
 	default:
 		return "", fmt.Errorf("invalid classification: %s", classification)
