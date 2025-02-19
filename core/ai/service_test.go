@@ -3,10 +3,12 @@ package ai
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/joho/godotenv"
@@ -423,7 +425,9 @@ func TestWebsiteProcess(t *testing.T) {
 					Token:       openaiAPIKey,
 					Temperature: 0,
 				},
-				Url: "https://www.allrecipes.com/recipe/228872/oven-baked-chicken-teriyaki/",
+				// Url: "https://www.allrecipes.com/recipe/228872/oven-baked-chicken-teriyaki/",
+				// Url: "https://theorg.com/org/stripe",
+				// Url: "https://www.visitberlin.de/en/event/contemporary-art-humboldt-forum",
 			},
 			models: []modelTestConfig{
 				{
@@ -442,15 +446,15 @@ func TestWebsiteProcess(t *testing.T) {
 		t.Run(cfg.name, func(t *testing.T) {
 			// Create a local HTTP test server to simulate website content.
 			// The content includes the keyword "ingredient" so that classifyContent returns "recipe".
-			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-				data, err := os.ReadFile("wikipedia.html")
-				if err != nil {
-					t.Fatal(err)
-				}
-				w.Write(data)
-			}))
-			defer ts.Close()
+			// ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// 	w.WriteHeader(http.StatusOK)
+			// 	data, err := os.ReadFile("wikipedia.html")
+			// 	if err != nil {
+			// 		t.Fatal(err)
+			// 	}
+			// 	w.Write(data)
+			// }))
+			// defer ts.Close()
 
 			service := New()
 
@@ -468,11 +472,37 @@ func runWebsiteProcessTests(t *testing.T, service AI, cfg providerTestConfig, mo
 		params := cfg.websiteProcessBaseParams
 		params.Config.Model = modelCfg.modelName
 		// params.Url = cfg.websiteProcessBaseParams.Url
-		params.Url = url
-		result, err := service.WebsiteProcess(context.Background(), params.Config, params.Url)
+
+		htmlBytes, err := fetchWebsite(url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := service.WebsiteProcess(context.Background(), params.Config, htmlBytes)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, result.Type)
 		assert.NotEmpty(t, result.Relations)
 		assert.NotEmpty(t, result.MarkdownSummary)
 	})
+}
+
+func fetchWebsite(url string) ([]byte, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; AnytypeBot/1.0; +https://anytype.io/bot)")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error fetching website: %s", resp.Status)
+	}
+	htmlBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return htmlBytes, nil
 }

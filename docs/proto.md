@@ -3088,7 +3088,8 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
-| contextId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
+| prompt | [string](#string) |  |  |
 
 
 
