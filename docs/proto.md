@@ -54,11 +54,11 @@
     - [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request)
     - [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response)
     - [Rpc.AI.Autofill.Response.Error](#anytype-Rpc-AI-Autofill-Response-Error)
+    - [Rpc.AI.ListSummary](#anytype-Rpc-AI-ListSummary)
+    - [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request)
+    - [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response)
+    - [Rpc.AI.ListSummary.Response.Error](#anytype-Rpc-AI-ListSummary-Response-Error)
     - [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig)
-    - [Rpc.AI.WebsiteProcess](#anytype-Rpc-AI-WebsiteProcess)
-    - [Rpc.AI.WebsiteProcess.Request](#anytype-Rpc-AI-WebsiteProcess-Request)
-    - [Rpc.AI.WebsiteProcess.Response](#anytype-Rpc-AI-WebsiteProcess-Response)
-    - [Rpc.AI.WebsiteProcess.Response.Error](#anytype-Rpc-AI-WebsiteProcess-Response-Error)
     - [Rpc.AI.WritingTools](#anytype-Rpc-AI-WritingTools)
     - [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request)
     - [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response)
@@ -1304,8 +1304,8 @@
   
     - [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode)
     - [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code)
+    - [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code)
     - [Rpc.AI.Provider](#anytype-Rpc-AI-Provider)
-    - [Rpc.AI.WebsiteProcess.Response.Error.Code](#anytype-Rpc-AI-WebsiteProcess-Response-Error-Code)
     - [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language)
     - [Rpc.AI.WritingTools.Request.WritingMode](#anytype-Rpc-AI-WritingTools-Request-WritingMode)
     - [Rpc.AI.WritingTools.Response.Error.Code](#anytype-Rpc-AI-WritingTools-Response-Error-Code)
@@ -2312,7 +2312,7 @@
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | AI |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
-| AIWebsiteProcess | [Rpc.AI.WebsiteProcess.Request](#anytype-Rpc-AI-WebsiteProcess-Request) | [Rpc.AI.WebsiteProcess.Response](#anytype-Rpc-AI-WebsiteProcess-Response) |  |
+| AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
 
  
 
@@ -3046,6 +3046,64 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-AI-ListSummary"></a>
+
+### Rpc.AI.ListSummary
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListSummary-Request"></a>
+
+### Rpc.AI.ListSummary.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| contextId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListSummary-Response"></a>
+
+### Rpc.AI.ListSummary.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.ListSummary.Response.Error](#anytype-Rpc-AI-ListSummary-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListSummary-Response-Error"></a>
+
+### Rpc.AI.ListSummary.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-AI-ProviderConfig"></a>
 
 ### Rpc.AI.ProviderConfig
@@ -3059,64 +3117,6 @@ Response – message from a middleware.
 | model | [string](#string) |  |  |
 | token | [string](#string) |  |  |
 | temperature | [float](#float) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-AI-WebsiteProcess"></a>
-
-### Rpc.AI.WebsiteProcess
-
-
-
-
-
-
-
-<a name="anytype-Rpc-AI-WebsiteProcess-Request"></a>
-
-### Rpc.AI.WebsiteProcess.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
-| url | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-AI-WebsiteProcess-Response"></a>
-
-### Rpc.AI.WebsiteProcess.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.AI.WebsiteProcess.Response.Error](#anytype-Rpc-AI-WebsiteProcess-Response-Error) |  |  |
-| objectId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-AI-WebsiteProcess-Response-Error"></a>
-
-### Rpc.AI.WebsiteProcess.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.AI.WebsiteProcess.Response.Error.Code](#anytype-Rpc-AI-WebsiteProcess-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -21179,23 +21179,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-AI-Provider"></a>
+<a name="anytype-Rpc-AI-ListSummary-Response-Error-Code"></a>
 
-### Rpc.AI.Provider
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| OLLAMA | 0 |  |
-| OPENAI | 1 |  |
-| LMSTUDIO | 2 |  |
-| LLAMACPP | 3 | ... |
-
-
-
-<a name="anytype-Rpc-AI-WebsiteProcess-Response-Error-Code"></a>
-
-### Rpc.AI.WebsiteProcess.Response.Error.Code
+### Rpc.AI.ListSummary.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -21207,6 +21193,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ENDPOINT_NOT_REACHABLE | 101 |  |
 | MODEL_NOT_FOUND | 102 |  |
 | AUTH_REQUIRED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-AI-Provider"></a>
+
+### Rpc.AI.Provider
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OLLAMA | 0 |  |
+| OPENAI | 1 |  |
+| LMSTUDIO | 2 |  |
+| LLAMACPP | 3 | ... |
 
 
 

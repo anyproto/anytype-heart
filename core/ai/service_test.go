@@ -31,10 +31,13 @@ type providerTestConfig struct {
 	provider                 pb.RpcAIProvider
 	writingToolsBaseParams   pb.RpcAIWritingToolsRequest
 	autofillBaseParams       pb.RpcAIAutofillRequest
-	websiteProcessBaseParams pb.RpcAIWebsiteProcessRequest
-	skipInputLanguageTest    bool // check supported languages for llama models
-	skipAuthTest             bool // server side providers require auth
-	models                   []modelTestConfig
+	websiteProcessBaseParams struct {
+		Config *pb.RpcAIProviderConfig
+		Url    string
+	}
+	skipInputLanguageTest bool // check supported languages for llama models
+	skipAuthTest          bool // server side providers require auth
+	models                []modelTestConfig
 }
 
 func copyProviderConfig(original *pb.RpcAIProviderConfig) *pb.RpcAIProviderConfig {
@@ -407,29 +410,12 @@ func TestWebsiteProcess(t *testing.T) {
 
 	testConfigs := []providerTestConfig{
 		{
-			name:     "Ollama",
-			provider: pb.RpcAI_OLLAMA,
-			websiteProcessBaseParams: pb.RpcAIWebsiteProcessRequest{
-				Config: &pb.RpcAIProviderConfig{
-					Provider:    pb.RpcAI_OLLAMA,
-					Endpoint:    "http://localhost:11434/v1/chat/completions",
-					Model:       "llama3.2:3b",
-					Token:       "",
-					Temperature: 0,
-				},
-				Url: "https://www.allrecipes.com/recipe/228872/oven-baked-chicken-teriyaki/",
-			},
-			models: []modelTestConfig{
-				{
-					modelName: "llama3.2:3b",
-					// TODO: add proper assertions
-				},
-			},
-		},
-		{
 			name:     "OpenAI",
 			provider: pb.RpcAI_OPENAI,
-			websiteProcessBaseParams: pb.RpcAIWebsiteProcessRequest{
+			websiteProcessBaseParams: struct {
+				Config *pb.RpcAIProviderConfig
+				Url    string
+			}{
 				Config: &pb.RpcAIProviderConfig{
 					Provider:    pb.RpcAI_OPENAI,
 					Endpoint:    "https://api.openai.com/v1/chat/completions",
@@ -470,7 +456,7 @@ func TestWebsiteProcess(t *testing.T) {
 
 			for _, modelCfg := range cfg.models {
 				t.Run(modelCfg.modelName, func(t *testing.T) {
-					runWebsiteProcessTests(t, service, cfg, modelCfg, ts.URL)
+					runWebsiteProcessTests(t, service, cfg, modelCfg, cfg.websiteProcessBaseParams.Url)
 				})
 			}
 		})
@@ -483,8 +469,10 @@ func runWebsiteProcessTests(t *testing.T, service AI, cfg providerTestConfig, mo
 		params.Config.Model = modelCfg.modelName
 		// params.Url = cfg.websiteProcessBaseParams.Url
 		params.Url = url
-		result, err := service.WebsiteProcess(context.Background(), &params)
+		result, err := service.WebsiteProcess(context.Background(), params.Config, params.Url)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, result.ObjectId)
+		assert.NotEmpty(t, result.Type)
+		assert.NotEmpty(t, result.Relations)
+		assert.NotEmpty(t, result.MarkdownSummary)
 	})
 }

@@ -143,6 +143,16 @@ var websiteExtractionPrompts = map[string]struct {
 	},
 }
 
+var listSummaryPrompts = map[string]struct {
+	System string
+	User   string
+}{
+	"list": {
+		System: "",
+		User:   "",
+	},
+}
+
 var classificationPrompts = map[string]struct {
 	System string
 	User   string

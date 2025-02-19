@@ -50,18 +50,18 @@ func (mw *Middleware) AIAutofill(ctx context.Context, req *pb.RpcAIAutofillReque
 	return r
 }
 
-func (mw *Middleware) AIWebsiteProcess(ctx context.Context, req *pb.RpcAIWebsiteProcessRequest) *pb.RpcAIWebsiteProcessResponse {
+func (mw *Middleware) AIListSummary(ctx context.Context, req *pb.RpcAIListSummaryRequest) *pb.RpcAIListSummaryResponse {
 	aiService := mustService[ai.AI](mw)
 
-	objectId, err := aiService.WebsiteProcessWithObjectCreate(ctx, req)
+	objectId, err := aiService.ListSummary(ctx, req)
 	code := mapErrorCode(nil,
-		errToCode(ai.ErrRateLimitExceeded, pb.RpcAIWebsiteProcessResponseError_RATE_LIMIT_EXCEEDED),
-		errToCode(ai.ErrEndpointNotReachable, pb.RpcAIWebsiteProcessResponseError_ENDPOINT_NOT_REACHABLE),
-		errToCode(ai.ErrModelNotFound, pb.RpcAIWebsiteProcessResponseError_MODEL_NOT_FOUND),
-		errToCode(ai.ErrAuthRequired, pb.RpcAIWebsiteProcessResponseError_AUTH_REQUIRED))
+		errToCode(ai.ErrRateLimitExceeded, pb.RpcAIListSummaryResponseError_RATE_LIMIT_EXCEEDED),
+		errToCode(ai.ErrEndpointNotReachable, pb.RpcAIListSummaryResponseError_ENDPOINT_NOT_REACHABLE),
+		errToCode(ai.ErrModelNotFound, pb.RpcAIListSummaryResponseError_MODEL_NOT_FOUND),
+		errToCode(ai.ErrAuthRequired, pb.RpcAIListSummaryResponseError_AUTH_REQUIRED))
 
-	r := &pb.RpcAIWebsiteProcessResponse{
-		Error: &pb.RpcAIWebsiteProcessResponseError{
+	r := &pb.RpcAIListSummaryResponse{
+		Error: &pb.RpcAIListSummaryResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

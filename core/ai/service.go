@@ -34,10 +34,15 @@ var (
 )
 
 type AI interface {
+	// client facing
 	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error)
 	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error)
-	WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (*WebsiteProcessResult, error)
-	WebsiteProcessWithObjectCreate(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (objectId string, err error)
+	ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error)
+
+	// internal
+	WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, url string) (*WebsiteProcessResult, error)
+	ClassifyWebsiteContent(ctx context.Context, content string) (string, error)
+
 	app.ComponentRunnable
 }
 
@@ -103,6 +108,7 @@ func (ai *AIService) Close(_ context.Context) (err error) {
 	return nil
 }
 
+// WritingTools generates a text response based on the input text and mode.
 func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error) {
 	ai.mu.Lock()
 	defer ai.mu.Unlock()
@@ -153,6 +159,7 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 	return WritingToolsResult{Answer: answer}, nil
 }
 
+// Autofill generates suggestions based on the provided options and context.
 func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error) {
 	ai.mu.Lock()
 	defer ai.mu.Unlock()
@@ -184,14 +191,14 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 	return AutofillResult{Choices: []string{extractedAnswer}}, nil
 }
 
-// WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary.
-func (ai *AIService) WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (*WebsiteProcessResult, error) {
-	content, err := FetchAndExtract(params.Url)
+// WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.
+func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, url string) (*WebsiteProcessResult, error) {
+	content, err := FetchAndExtract(url)
 	if err != nil {
 		return nil, err
 	}
 
-	ai.setAPIConfig(params.Config)
+	ai.setAPIConfig(provider)
 	websiteType, err := ai.ClassifyWebsiteContent(ctx, content)
 	if err != nil {
 		return nil, fmt.Errorf("could not classify website content: %w", err)
@@ -275,17 +282,34 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, params *pb.RpcAIWebsite
 	}, nil
 }
 
-func (ai *AIService) WebsiteProcessWithObjectCreate(ctx context.Context, params *pb.RpcAIWebsiteProcessRequest) (objectId string, err error) {
-	result, err := ai.WebsiteProcess(ctx, params)
+// ListSummary answers user questions about a list of items.
+func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error) {
+	ai.mu.Lock()
+	defer ai.mu.Unlock()
+
+	ai.setAPIConfig(params.Config)
+	promptConfig := &PromptConfig{
+		SystemPrompt: listSummaryPrompts["list"].System,
+		UserPrompt:   listSummaryPrompts["list"].User,
+		Temperature:  params.Config.Temperature,
+		JSONMode:     true,
+	}
+	ai.responseParser = parsing.NewWritingToolsParser()
+
+	answer, err := ai.chat(ctx, int(pb.RpcAIWritingToolsRequest_SUMMARIZE), promptConfig)
 	if err != nil {
 		return "", err
 	}
-	log.Infof("result received: %v", result)
 
-	// TODO: create object with extracted data
-	return "", nil
+	extractedAnswer, err := ai.extractAnswerByMode(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+	if err != nil {
+		return "", err
+	}
+
+	return extractedAnswer, nil
 }
 
+// ClassifyWebsiteContent classifies content into a single category.
 func (ai *AIService) ClassifyWebsiteContent(ctx context.Context, content string) (string, error) {
 	systemPrompt := classificationPrompts["type"].System
 	userPrompt := fmt.Sprintf(classificationPrompts["type"].User, content[:min(len(content), 1000)])

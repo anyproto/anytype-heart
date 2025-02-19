@@ -4094,10 +4094,10 @@ message Rpc {
             }
         }
 
-        message WebsiteProcess {
+        message ListSummary {
             message Request {
                 ProviderConfig config = 1;
-                string url = 2;
+                string contextId = 2;
             }
 
             message Response {
