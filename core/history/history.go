@@ -263,7 +263,7 @@ func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details [
 		Details: rootDetails.ToProto(),
 	}}
 
-	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, objectlink.Flags{
+	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, h.objectStore.SpaceIndex(spc.Id()), objectlink.Flags{
 		Blocks:    true,
 		Details:   true,
 		Relations: false,

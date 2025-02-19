@@ -258,6 +258,7 @@ func TestMigrateIds(t *testing.T) {
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().IsPersonal().Return(true)
+		space.EXPECT().Id().Return("space")
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(expectedFileObjectId, nil)
 
 		fx.MigrateFileIdsInBlocks(st, space)

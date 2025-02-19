@@ -310,7 +310,7 @@ func (e *exportContext) exportDocs(ctx context.Context,
 }
 
 func (e *exportContext) exportGraphJson(ctx context.Context, succeed int, wr writer, queue process.Queue) int {
-	mc := graphjson.NewMultiConverter(e.sbtProvider)
+	mc := graphjson.NewMultiConverter(e.sbtProvider, e.objectStore)
 	mc.SetKnownDocs(e.docs.transformToDetailsMap())
 	var werr error
 	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, queue); werr != nil {
@@ -324,7 +324,7 @@ func (e *exportContext) exportDotAndSVG(ctx context.Context, succeed int, wr wri
 	if e.format == model.Export_SVG {
 		format = dot.ExportFormatSVG
 	}
-	mc := dot.NewMultiConverter(format, e.sbtProvider)
+	mc := dot.NewMultiConverter(format, e.sbtProvider, e.objectStore)
 	mc.SetKnownDocs(e.docs.transformToDetailsMap())
 	var werr error
 	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, queue); werr != nil {
@@ -488,7 +488,8 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsIds []string) ([]string, error) {
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
 		st := sb.NewState().Copy().Filter(e.getStateFilters(id))
-		viewDependentObjectsIds = append(viewDependentObjectsIds, objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{Blocks: true})...)
+		depIds := objectlink.DependentObjectIDs(st, sb.Space(), e.objectStore.SpaceIndex(sb.SpaceID()), objectlink.Flags{Blocks: true})
+		viewDependentObjectsIds = append(viewDependentObjectsIds, depIds...)
 		return nil
 	})
 	if err != nil {
@@ -855,7 +856,7 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 	var links []string
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
 		st := sb.NewState().Copy().Filter(e.getStateFilters(id))
-		links = objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{
+		links = objectlink.DependentObjectIDs(st, sb.Space(), e.objectStore.SpaceIndex(sb.SpaceID()), objectlink.Flags{
 			Blocks:                   true,
 			Details:                  true,
 			Collection:               true,

@@ -1709,11 +1709,6 @@ func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 
-// deprecated
-func (s *State) GetRelationLinks() pbtypes.RelationLinks {
-	return nil
-}
-
 // AddRelationKeys adds details with null value, if no detail corresponding to key was presented
 func (s *State) AddRelationKeys(keys ...domain.RelationKey) {
 	allKeys := s.AllRelationKeys()

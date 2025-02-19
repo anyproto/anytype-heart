@@ -489,7 +489,7 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 			continue
 		}
 		if relLink.Format == model.RelationFormat_object {
-			// TODO: review this logic, as object relations can hold string list
+			// TODO: GO-4284 review this logic, as object relations can hold string list
 			if details.GetString(key) == oldId {
 				s.SetDetail(key, domain.String(newId))
 			}

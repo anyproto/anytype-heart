@@ -22,7 +22,7 @@ import (
 var log = logging.Logger("objectlink")
 
 type (
-	KeyToIDConverter interface {
+	keyToIDConverter interface {
 		GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 		GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 	}
@@ -34,6 +34,10 @@ type (
 
 	spaceIdResolver interface {
 		ResolveSpaceID(id string) (spaceId string, err error)
+	}
+
+	relationLinkGetter interface {
+		GetRelationLink(key string) (relationLink *model.RelationLink, err error)
 	}
 )
 
@@ -52,7 +56,7 @@ type Flags struct {
 	NoBackLinks bool
 }
 
-func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
+func DependentObjectIDs(s *state.State, converter keyToIDConverter, relLinkGetter relationLinkGetter, flags Flags) (ids []string) {
 	// TODO Blocks is always true
 	if flags.Blocks {
 		ids = collectIdsFromBlocks(s, flags)
@@ -62,16 +66,16 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 		ids = append(ids, collectIdsFromTypes(s, converter)...)
 	}
 
-	var det *domain.Details
+	var details *domain.Details
 	if flags.Details {
-		det = s.CombinedDetails()
+		details = s.CombinedDetails()
 	}
 
-	for _, rel := range s.GetRelationLinks() {
+	for _, key := range s.AllRelationKeys() {
 		if flags.Relations {
-			id, err := converter.GetRelationIdByKey(context.Background(), domain.RelationKey(rel.Key))
+			id, err := converter.GetRelationIdByKey(context.Background(), key)
 			if err != nil {
-				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", rel.Key, err)
+				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", key, err)
 				continue
 			}
 			ids = append(ids, id)
@@ -81,7 +85,18 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 			continue
 		}
 
-		ids = append(ids, collectIdsFromDetail(rel, det, flags)...)
+		var relLink *model.RelationLink
+		if relLinkGetter != nil {
+			relLink, _ = relLinkGetter.GetRelationLink(key.String())
+		}
+
+		if relLink == nil {
+			// TODO: GO-4284 test this logic
+			// let's fallback to object format, so we don't miss dependencies
+			relLink = &model.RelationLink{Key: key.String(), Format: model.RelationFormat_object}
+		}
+
+		ids = append(ids, collectIdsFromDetail(relLink, details, flags)...)
 	}
 
 	if flags.Collection {
@@ -96,8 +111,15 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 	return
 }
 
-func DependentObjectIDsPerSpace(rootSpaceId string, s *state.State, converter KeyToIDConverter, resolver spaceIdResolver, flags Flags) map[string][]string {
-	ids := DependentObjectIDs(s, converter, flags)
+func DependentObjectIDsPerSpace(
+	rootSpaceId string,
+	s *state.State,
+	converter keyToIDConverter,
+	resolver spaceIdResolver,
+	relLinksGetter relationLinkGetter,
+	flags Flags,
+) map[string][]string {
+	ids := DependentObjectIDs(s, converter, relLinksGetter, flags)
 	perSpace := map[string][]string{}
 	for _, id := range ids {
 		if dateObject, parseErr := dateutil.BuildDateObjectFromId(id); parseErr == nil {
@@ -153,7 +175,7 @@ func collectIdsFromBlocks(s *state.State, flags Flags) (ids []string) {
 	return ids
 }
 
-func collectIdsFromTypes(s *state.State, converter KeyToIDConverter) (ids []string) {
+func collectIdsFromTypes(s *state.State, converter keyToIDConverter) (ids []string) {
 	for _, objectTypeKey := range s.ObjectTypeKeys() {
 		if objectTypeKey == "" { // TODO is it possible?
 			log.Errorf("sb %s has empty ot", s.RootId())

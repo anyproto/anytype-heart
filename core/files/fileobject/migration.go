@@ -56,7 +56,7 @@ func (s *service) MigrateFileIdsInDetails(st *state.State, spc source.Space) {
 	if !spc.IsPersonal() {
 		return
 	}
-	index := s.objectStore.SpaceIndex(st.SpaceID())
+	index := s.objectStore.SpaceIndex(spc.Id())
 	st.ModifyLinkedFilesInDetails(index, func(id string) string {
 		return s.migrateFileId(spc.(clientspace.Space), st.RootId(), id)
 	})
