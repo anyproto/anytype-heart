@@ -261,7 +261,7 @@ func TestExtractAnswerByMode(t *testing.T) {
 
 		jsonData := `{"summary":"This is a summary"}`
 		result, err := fx.responseParser.ExtractContent(jsonData, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
-		strResult, _ := result.AsString()
+		strResult, _ := result.String()
 		require.NoError(t, err)
 		require.Equal(t, "This is a summary", strResult)
 	})
@@ -272,7 +272,7 @@ func TestExtractAnswerByMode(t *testing.T) {
 
 		jsonData := `{"tag":"tag1"}`
 		result, err := fx.responseParser.ExtractContent(jsonData, int(pb.RpcAIAutofillRequest_TAG))
-		strResult, _ := result.AsString()
+		strResult, _ := result.String()
 		require.NoError(t, err)
 		require.Equal(t, "tag1", strResult)
 	})

@@ -11,12 +11,10 @@ type WebsiteProcessParser struct {
 	modeToSchema map[int]func(key string) map[string]interface{}
 }
 
-// WebsiteProcessResponse represents the structure of the response for different WebsiteProcess modes.
 type WebsiteProcessResponse struct {
 	Relations struct{} `json:"relations,omitempty"`
 }
 
-// NewWebsiteProcessParser returns a new WebsiteProcessParser instance.
 func NewWebsiteProcessParser() *WebsiteProcessParser {
 	return &WebsiteProcessParser{
 		modeToField: map[int]string{
@@ -56,50 +54,34 @@ func NewWebsiteProcessParser() *WebsiteProcessParser {
 	}
 }
 
-// NewResponseStruct returns a new WebsiteProcessResponse instance.
-func (p *WebsiteProcessParser) NewResponseStruct() interface{} {
-	var genericResponse map[string]interface{}
-	return &genericResponse
-}
-
-// ModeToField returns the modeToField map.
 func (p *WebsiteProcessParser) ModeToField() map[int]string {
 	return p.modeToField
 }
 
-// ModeToSchema returns the modeToSchema map.
 func (p *WebsiteProcessParser) ModeToSchema() map[int]func(key string) map[string]interface{} {
 	return p.modeToSchema
 }
 
-// ExtractContent extracts the relevant field based on mode.
-func (p *WebsiteProcessParser) ExtractContent(jsonData string, mode int) (ParsedResult, error) {
-	respStruct := p.NewResponseStruct()
-
-	err := json.Unmarshal([]byte(jsonData), &respStruct)
-	if err != nil {
-		return ParsedResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
-	}
-
-	respMap, ok := respStruct.(*map[string]interface{})
-	if !ok {
-		return ParsedResult{}, fmt.Errorf("invalid response type, expected *map[string]interface{}")
+func (p *WebsiteProcessParser) ExtractContent(jsonData string, mode int) (ExtractionResult, error) {
+	var respMap map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonData), &respMap); err != nil {
+		return ExtractionResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
 	}
 
 	fieldName, exists := p.modeToField[mode]
 	if !exists {
-		return ParsedResult{}, fmt.Errorf("unknown mode: %d", mode)
+		return ExtractionResult{}, fmt.Errorf("unknown mode: %d", mode)
 	}
 
-	fieldValue, exists := (*respMap)[fieldName]
+	fieldValue, exists := respMap[fieldName]
 	if !exists {
-		return ParsedResult{}, fmt.Errorf("field %s not found in response", fieldName)
+		return ExtractionResult{}, fmt.Errorf("field %s not found in response", fieldName)
 	}
 
 	nestedMap, ok := fieldValue.(map[string]interface{})
 	if !ok {
-		return ParsedResult{}, fmt.Errorf("field %s is not an object", fieldName)
+		return ExtractionResult{}, fmt.Errorf("field %s is not an object", fieldName)
 	}
 
-	return ParsedResult{Raw: nestedMap}, nil
+	return ExtractionResult{Raw: nestedMap}, nil
 }

@@ -13,7 +13,6 @@ type AutofillParser struct {
 	modeToSchema map[int]func(key string) map[string]interface{}
 }
 
-// AutofillResponse represents the structure of the response for different autofill modes.
 type AutofillResponse struct {
 	Tag         string `json:"tag,omitempty"`
 	Relation    string `json:"relation,omitempty"`
@@ -22,7 +21,6 @@ type AutofillResponse struct {
 	Description string `json:"description,omitempty"`
 }
 
-// NewAutofillParser returns a new AutofillParser instance.
 func NewAutofillParser() *AutofillParser {
 	return &AutofillParser{
 		modeToField: map[int]string{
@@ -42,53 +40,37 @@ func NewAutofillParser() *AutofillParser {
 	}
 }
 
-// NewResponseStruct returns a new AutofillResponse instance.
-func (p *AutofillParser) NewResponseStruct() interface{} {
-	return &AutofillResponse{}
-}
-
-// ModeToField returns the modeToField map.
 func (p *AutofillParser) ModeToField() map[int]string {
 	return p.modeToField
 }
 
-// ModeToSchema returns the modeToSchema map.
 func (p *AutofillParser) ModeToSchema() map[int]func(key string) map[string]interface{} {
 	return p.modeToSchema
 }
 
-// ExtractContent extracts the relevant field based on mode.
-func (p *AutofillParser) ExtractContent(jsonData string, mode int) (ParsedResult, error) {
-	respStruct := p.NewResponseStruct()
-
-	err := json.Unmarshal([]byte(jsonData), &respStruct)
-	if err != nil {
-		return ParsedResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
-	}
-
-	afResp, ok := respStruct.(*AutofillResponse)
-	if !ok {
-		return ParsedResult{}, fmt.Errorf("invalid response type, expected *AutofillResponse")
+func (p *AutofillParser) ExtractContent(jsonData string, mode int) (ExtractionResult, error) {
+	var afResp AutofillResponse
+	if err := json.Unmarshal([]byte(jsonData), &afResp); err != nil {
+		return ExtractionResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
 	}
 
 	fieldName, exists := p.modeToField[mode]
 	if !exists {
-		return ParsedResult{}, fmt.Errorf("unknown mode: %d", mode)
+		return ExtractionResult{}, fmt.Errorf("unknown mode: %d", mode)
 	}
 
-	// Switch on fieldName to extract
 	switch fieldName {
 	case "tag":
-		return ParsedResult{Raw: afResp.Tag}, CheckEmpty(afResp.Tag, mode)
+		return ExtractionResult{Raw: afResp.Tag}, checkEmpty(afResp.Tag, mode)
 	case "relation":
-		return ParsedResult{Raw: afResp.Relation}, CheckEmpty(afResp.Relation, mode)
+		return ExtractionResult{Raw: afResp.Relation}, checkEmpty(afResp.Relation, mode)
 	case "type":
-		return ParsedResult{Raw: afResp.Type}, CheckEmpty(afResp.Type, mode)
+		return ExtractionResult{Raw: afResp.Type}, checkEmpty(afResp.Type, mode)
 	case "title":
-		return ParsedResult{Raw: afResp.Title}, CheckEmpty(afResp.Title, mode)
+		return ExtractionResult{Raw: afResp.Title}, checkEmpty(afResp.Title, mode)
 	case "description":
-		return ParsedResult{Raw: afResp.Description}, CheckEmpty(afResp.Description, mode)
+		return ExtractionResult{Raw: afResp.Description}, checkEmpty(afResp.Description, mode)
 	default:
-		return ParsedResult{}, fmt.Errorf("field %s is not recognized", fieldName)
+		return ExtractionResult{}, fmt.Errorf("field %s is not recognized", fieldName)
 	}
 }

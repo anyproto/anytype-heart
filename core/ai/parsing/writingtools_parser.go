@@ -8,13 +8,11 @@ import (
 )
 
 // WritingToolsParser is a ResponseParser for WritingTools responses.
-// It knows how to extract the correct field from the WritingToolsResponse based on the mode.
 type WritingToolsParser struct {
 	modeToField  map[int]string
 	modeToSchema map[int]func(key string) map[string]interface{}
 }
 
-// WritingToolsResponse represents the structure of the content response for different writing tool modes.
 type WritingToolsResponse struct {
 	Summary      string `json:"summary,omitempty"`
 	Corrected    string `json:"corrected,omitempty"`
@@ -30,7 +28,6 @@ type WritingToolsResponse struct {
 	Translation  string `json:"translation,omitempty"`
 }
 
-// NewWritingToolsParser returns a new WritingToolsParser instance.
 func NewWritingToolsParser() *WritingToolsParser {
 	return &WritingToolsParser{
 		modeToField: map[int]string{
@@ -64,67 +61,55 @@ func NewWritingToolsParser() *WritingToolsParser {
 	}
 }
 
-// NewResponseStruct returns a new WritingToolsResponse instance.
-func (p *WritingToolsParser) NewResponseStruct() interface{} {
+func (p *WritingToolsParser) newResponseStruct() interface{} {
 	return &WritingToolsResponse{}
 }
 
-// ModeToField returns the modeToField map.
 func (p *WritingToolsParser) ModeToField() map[int]string {
 	return p.modeToField
 }
 
-// ModeToSchema returns the modeToSchema map.
 func (p *WritingToolsParser) ModeToSchema() map[int]func(key string) map[string]interface{} {
 	return p.modeToSchema
 }
 
-// ExtractContent extracts the relevant field based on mode.
-func (p *WritingToolsParser) ExtractContent(jsonData string, mode int) (ParsedResult, error) {
-	respStruct := p.NewResponseStruct()
-
-	err := json.Unmarshal([]byte(jsonData), &respStruct)
-	if err != nil {
-		return ParsedResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
-	}
-
-	wtResp, ok := respStruct.(*WritingToolsResponse)
-	if !ok {
-		return ParsedResult{}, fmt.Errorf("invalid response type, expected *WritingToolsResponse")
+func (p *WritingToolsParser) ExtractContent(jsonData string, mode int) (ExtractionResult, error) {
+	var wtResp WritingToolsResponse
+	if err := json.Unmarshal([]byte(jsonData), &wtResp); err != nil {
+		return ExtractionResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
 	}
 
 	fieldName, exists := p.modeToField[mode]
 	if !exists {
-		return ParsedResult{}, fmt.Errorf("unknown mode: %d", mode)
+		return ExtractionResult{}, fmt.Errorf("unknown mode: %d", mode)
 	}
 
-	// Extract the correct field based on fieldName.
 	switch fieldName {
 	case "summary":
-		return ParsedResult{Raw: wtResp.Summary}, CheckEmpty(wtResp.Summary, mode)
+		return ExtractionResult{Raw: wtResp.Summary}, checkEmpty(wtResp.Summary, mode)
 	case "corrected":
-		return ParsedResult{Raw: wtResp.Corrected}, CheckEmpty(wtResp.Corrected, mode)
+		return ExtractionResult{Raw: wtResp.Corrected}, checkEmpty(wtResp.Corrected, mode)
 	case "shortened":
-		return ParsedResult{Raw: wtResp.Shortened}, CheckEmpty(wtResp.Shortened, mode)
+		return ExtractionResult{Raw: wtResp.Shortened}, checkEmpty(wtResp.Shortened, mode)
 	case "expanded":
-		return ParsedResult{Raw: wtResp.Expanded}, CheckEmpty(wtResp.Expanded, mode)
+		return ExtractionResult{Raw: wtResp.Expanded}, checkEmpty(wtResp.Expanded, mode)
 	case "bullet":
-		return ParsedResult{Raw: wtResp.Bullet}, CheckEmpty(wtResp.Bullet, mode)
+		return ExtractionResult{Raw: wtResp.Bullet}, checkEmpty(wtResp.Bullet, mode)
 	case "table":
-		return ParsedResult{Raw: wtResp.Table}, CheckEmpty(wtResp.Table, mode)
+		return ExtractionResult{Raw: wtResp.Table}, checkEmpty(wtResp.Table, mode)
 	case "casual":
-		return ParsedResult{Raw: wtResp.Casual}, CheckEmpty(wtResp.Casual, mode)
+		return ExtractionResult{Raw: wtResp.Casual}, checkEmpty(wtResp.Casual, mode)
 	case "funny":
-		return ParsedResult{Raw: wtResp.Funny}, CheckEmpty(wtResp.Funny, mode)
+		return ExtractionResult{Raw: wtResp.Funny}, checkEmpty(wtResp.Funny, mode)
 	case "confident":
-		return ParsedResult{Raw: wtResp.Confident}, CheckEmpty(wtResp.Confident, mode)
+		return ExtractionResult{Raw: wtResp.Confident}, checkEmpty(wtResp.Confident, mode)
 	case "straight":
-		return ParsedResult{Raw: wtResp.Straight}, CheckEmpty(wtResp.Straight, mode)
+		return ExtractionResult{Raw: wtResp.Straight}, checkEmpty(wtResp.Straight, mode)
 	case "professional":
-		return ParsedResult{Raw: wtResp.Professional}, CheckEmpty(wtResp.Professional, mode)
+		return ExtractionResult{Raw: wtResp.Professional}, checkEmpty(wtResp.Professional, mode)
 	case "translation":
-		return ParsedResult{Raw: wtResp.Translation}, CheckEmpty(wtResp.Translation, mode)
+		return ExtractionResult{Raw: wtResp.Translation}, checkEmpty(wtResp.Translation, mode)
 	default:
-		return ParsedResult{}, fmt.Errorf("field %s is not recognized", fieldName)
+		return ExtractionResult{}, fmt.Errorf("field %s is not recognized", fieldName)
 	}
 }

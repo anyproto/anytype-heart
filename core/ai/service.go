@@ -152,7 +152,7 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 			return WritingToolsResult{}, err
 		}
 
-		strResult, err := rawAnswer.AsString()
+		strResult, err := rawAnswer.String()
 		if err != nil {
 			return WritingToolsResult{}, err
 		}
@@ -194,7 +194,7 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 		return AutofillResult{}, err
 	}
 
-	strResult, err := rawAnswer.AsString()
+	strResult, err := rawAnswer.String()
 	if err != nil {
 		return AutofillResult{}, err
 	}
@@ -254,7 +254,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 			return
 		}
 
-		mapResult, err := rawAnswer.AsMap()
+		mapResult, err := rawAnswer.Map()
 		if err != nil {
 			relErr = err
 			return
@@ -322,7 +322,7 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 		return "", err
 	}
 
-	strAnswer, err := rawAnswer.AsString()
+	strAnswer, err := rawAnswer.String()
 	if err != nil {
 		return "", err
 	}
