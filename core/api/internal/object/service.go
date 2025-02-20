@@ -3,13 +3,14 @@ package object
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -63,10 +64,13 @@ func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceServic
 
 // ListObjects retrieves a paginated list of objects in a specific space.
 func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []Object, total int, hasMore bool, err error) {
+	typeId, err := util.ResolveUniqueKeyToTypeId(s.mw, spaceId, "ot-template")
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: pbtypes.IntList([]int{
@@ -79,6 +83,18 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 					int(model.ObjectType_collection),
 					int(model.ObjectType_participant),
 				}...),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(typeId),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyIsHidden.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Bool(true),
 			},
 		},
 		Sorts: []*model.BlockContentDataviewSort{{
@@ -117,7 +133,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		ObjectId: objectId,
 	})
 
-	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND || resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue() {
 		return Object{}, ErrObjectNotFound
 	}
 
@@ -126,22 +142,19 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 	}
 
 	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
-	objectTypeName, err := util.ResolveTypeToName(s.mw, spaceId, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue())
-	if err != nil {
-		return Object{}, err
-	}
 
 	object := Object{
-		Type:    objectTypeName,
+		Object:  "object",
 		Id:      resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:    icon,
+		Type:    s.getTypeFromDetails(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
 		Snippet: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:  model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue())],
 		SpaceId: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		RootId:  resp.ObjectView.RootId,
-		Blocks:  s.GetBlocks(resp),
-		Details: s.GetDetails(resp),
+		Blocks:  s.getBlocks(resp),
+		Details: s.getDetails(resp),
 	}
 
 	return object, nil
@@ -270,11 +283,13 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 			},
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyIsHidden.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       pbtypes.Bool(true),
@@ -299,7 +314,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 
 	for _, record := range paginatedTypes {
 		types = append(types, Type{
-			Type:              "type",
+			Object:            "type",
 			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			UniqueKey:         record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -326,7 +341,7 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 	}
 
 	return Type{
-		Type:              "type",
+		Object:            "type",
 		Id:                typeId,
 		UniqueKey:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -342,6 +357,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String("ot-template"),
@@ -364,6 +380,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
+				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(templateTypeId),
@@ -399,10 +416,10 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		}
 
 		templates = append(templates, Template{
-			Type: "template",
-			Id:   templateId,
-			Name: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+			Object: "template",
+			Id:     templateId,
+			Name:   templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Icon:   templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
 		})
 	}
 
@@ -425,80 +442,229 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 	}
 
 	return Template{
-		Type: "template",
-		Id:   templateId,
-		Name: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+		Object: "template",
+		Id:     templateId,
+		Name:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
 	}, nil
 }
 
-// GetDetails returns the list of details from the ObjectShowResponse.
-func (s *ObjectService) GetDetails(resp *pb.RpcObjectShowResponse) []Detail {
-	creator := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreator.String()].GetStringValue()
-	lastModifiedBy := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedBy.String()].GetStringValue()
-
-	var creatorId, lastModifiedById string
-	for _, detail := range resp.ObjectView.Details {
-		if detail.Id == creator {
-			creatorId = detail.Id
-		}
-		if detail.Id == lastModifiedBy {
-			lastModifiedById = detail.Id
+// getTypeFromDetails returns the type from the details of the ObjectShowResponse.
+func (s *ObjectService) getTypeFromDetails(typeId string, details []*model.ObjectViewDetailsSet) Type {
+	var objectTypeDetail *types.Struct
+	for _, detail := range details {
+		if detail.Id == typeId {
+			objectTypeDetail = detail.GetDetails()
+			break
 		}
 	}
 
-	return []Detail{
-		{
-			Id: "last_modified_date",
-			Details: map[string]interface{}{
-				"last_modified_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastModifiedDate.String()].GetNumberValue()),
-			},
-		},
-		{
-			Id: "last_modified_by",
-			Details: map[string]interface{}{
-				"details": s.spaceService.GetParticipantDetails(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), lastModifiedById),
-			},
-		},
-		{
-			Id: "created_date",
-			Details: map[string]interface{}{
-				"created_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyCreatedDate.String()].GetNumberValue()),
-			},
-		},
-		{
-			Id: "created_by",
-			Details: map[string]interface{}{
-				"details": s.spaceService.GetParticipantDetails(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), creatorId),
-			},
-		},
-		{
-			Id: "last_opened_date",
-			Details: map[string]interface{}{
-				"last_opened_date": PosixToISO8601(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLastOpenedDate.String()].GetNumberValue()),
-			},
-		},
-		{
-			Id: "tags",
-			Details: map[string]interface{}{
-				"tags": s.getTags(resp),
-			},
-		},
+	if objectTypeDetail == nil {
+		return Type{}
+	}
+
+	return Type{
+		Object:            "type",
+		Id:                typeId,
+		UniqueKey:         objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:              objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+	}
+}
+
+// getDetails returns a list of details by iterating over all relations found in the RelationLinks and mapping their format and value.
+func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
+	relationFormatMap := s.getRelationFormatMap(resp.ObjectView.RelationLinks)
+	linkedRelations := resp.ObjectView.RelationLinks
+	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
+
+	// system relations to be excluded
+	excludeRelations := map[string]bool{
+		bundle.RelationKeyId.String():                true,
+		bundle.RelationKeySpaceId.String():           true,
+		bundle.RelationKeyName.String():              true,
+		bundle.RelationKeyIconEmoji.String():         true,
+		bundle.RelationKeyIconImage.String():         true,
+		bundle.RelationKeyType.String():              true,
+		bundle.RelationKeyLayout.String():            true,
+		bundle.RelationKeyIsFavorite.String():        true,
+		bundle.RelationKeyIsArchived.String():        true,
+		bundle.RelationKeyIsDeleted.String():         true,
+		bundle.RelationKeyIsHidden.String():          true,
+		bundle.RelationKeyWorkspaceId.String():       true,
+		bundle.RelationKeyInternalFlags.String():     true,
+		bundle.RelationKeyRestrictions.String():      true,
+		bundle.RelationKeyOrigin.String():            true,
+		bundle.RelationKeySnippet.String():           true,
+		bundle.RelationKeySyncStatus.String():        true,
+		bundle.RelationKeySyncError.String():         true,
+		bundle.RelationKeySyncDate.String():          true,
+		bundle.RelationKeyCoverId.String():           true,
+		bundle.RelationKeyCoverType.String():         true,
+		bundle.RelationKeyCoverScale.String():        true,
+		bundle.RelationKeyCoverX.String():            true,
+		bundle.RelationKeyCoverY.String():            true,
+		bundle.RelationKeyMentions.String():          true,
+		bundle.RelationKeyOldAnytypeID.String():      true,
+		bundle.RelationKeySource.String():            true,
+		bundle.RelationKeySourceFilePath.String():    true,
+		bundle.RelationKeyImportType.String():        true,
+		bundle.RelationKeyTargetObjectType.String():  true,
+		bundle.RelationKeyFeaturedRelations.String(): true,
+		bundle.RelationKeySetOf.String():             true,
+		bundle.RelationKeyLinks.String():             true,
+		bundle.RelationKeyBacklinks.String():         true,
+		bundle.RelationKeySourceObject.String():      true,
+		bundle.RelationKeyLayoutAlign.String():       true,
+	}
+
+	var details []Detail
+	for _, r := range linkedRelations {
+		key := r.Key
+		if _, isExcluded := excludeRelations[key]; isExcluded {
+			continue
+		}
+
+		if val, ok := primaryDetailFields[key]; ok {
+			id, name := s.getRelation(key, resp)
+			format := relationFormatMap[key]
+			details = append(details, Detail{
+				Id: id,
+				Details: map[string]interface{}{
+					"name": name,
+					"type": format,
+					format: s.convertValue(key, val, format, resp.ObjectView.Details),
+				},
+			})
+		}
+	}
+	return details
+}
+
+// getRelationName returns the relation id and relation name from the ObjectShowResponse.
+func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) (id string, name string) {
+	relation, err := bundle.GetRelation(domain.RelationKey(key))
+	if err != nil {
+		name, err = util.ResolveRelationKeyToRelationName(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
+		if err != nil {
+			return key, key
+		}
+		return key, name
+	}
+
+	// special cases of relation keys and names
+	if key == bundle.RelationKeyCreator.String() {
+		return "created_by", "Created By"
+	} else if key == bundle.RelationKeyCreatedDate.String() {
+		return "created_date", "Created Date"
+	}
+
+	return strcase.ToSnake(key), relation.Name
+}
+
+// convertValue converts a protobuf types.Value into a native Go value.
+func (s *ObjectService) convertValue(key string, value *types.Value, format string, details []*model.ObjectViewDetailsSet) interface{} {
+	switch kind := value.Kind.(type) {
+	case *types.Value_NullValue:
+		return nil
+	case *types.Value_NumberValue:
+		if format == "date" {
+			return util.PosixToISO8601(kind.NumberValue)
+		}
+		return kind.NumberValue
+	case *types.Value_StringValue:
+		if key == bundle.RelationKeyCreator.String() || key == bundle.RelationKeyLastModifiedBy.String() {
+			member, err := s.spaceService.GetMember(context.Background(), details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
+			if err != nil {
+				return nil
+			}
+			return member
+		}
+
+		// TODO: investigate how this is possible? select option not list and not returned in further details
+		if format == "select" || format == "multi_select" {
+			return s.resolveTag(details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
+		}
+
+		return kind.StringValue
+	case *types.Value_BoolValue:
+		return kind.BoolValue
+	case *types.Value_StructValue:
+		m := make(map[string]interface{})
+		for k, v := range kind.StructValue.Fields {
+			m[k] = s.convertValue(key, v, format, details)
+		}
+		return m
+	case *types.Value_ListValue:
+		var list []interface{}
+		for _, v := range kind.ListValue.Values {
+			list = append(list, s.convertValue(key, v, format, details))
+		}
+
+		if format == "select" || format == "multi_select" {
+			return s.getTags(key, details)
+		}
+
+		return list
+	default:
+		return nil
+	}
+}
+
+// getRelationFormatMapFromResponse returns the map of relation key to relation format from the ObjectShowResponse.
+func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink) map[string]string {
+	relationFormatToName := make(map[int32]string, len(model.RelationFormat_name))
+	for k, v := range model.RelationFormat_name {
+		relationFormatToName[k] = v
+	}
+	relationFormatToName[int32(model.RelationFormat_longtext)] = "text"
+	relationFormatToName[int32(model.RelationFormat_shorttext)] = "text"
+	relationFormatToName[int32(model.RelationFormat_tag)] = "multi_select"
+	relationFormatToName[int32(model.RelationFormat_status)] = "select"
+
+	relationFormatMap := map[string]string{}
+	for _, detail := range relationLinks {
+		relationFormatMap[detail.Key] = relationFormatToName[int32(detail.Format)]
+	}
+
+	return relationFormatMap
+}
+
+// TODO: remove once bug of select option not being returned in details is fixed
+func (s *ObjectService) resolveTag(spaceId, tagId string) Tag {
+	if tagId == "" {
+		return Tag{}
+	}
+
+	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: tagId,
+	})
+
+	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return Tag{}
+	}
+
+	return Tag{
+		Id:    tagId,
+		Name:  resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Color: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
 	}
 }
 
 // getTags returns the list of tags from the ObjectShowResponse
-func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
+func (s *ObjectService) getTags(key string, details []*model.ObjectViewDetailsSet) []Tag {
 	tags := []Tag{}
 
-	tagField, ok := resp.ObjectView.Details[0].Details.Fields["tag"]
+	tagField, ok := details[0].Details.Fields[key]
 	if !ok || tagField.GetListValue() == nil {
 		return tags
 	}
 
 	for _, tagId := range tagField.GetListValue().Values {
 		id := tagId.GetStringValue()
-		for _, detail := range resp.ObjectView.Details {
+		for _, detail := range details {
 			if detail.Id == id {
 				tags = append(tags, Tag{
 					Id:    id,
@@ -512,13 +678,14 @@ func (s *ObjectService) getTags(resp *pb.RpcObjectShowResponse) []Tag {
 	return tags
 }
 
-// GetBlocks returns the list of blocks from the ObjectShowResponse.
-func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
+// getBlocks returns the list of blocks from the ObjectShowResponse.
+func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}
 
 	for _, block := range resp.ObjectView.Blocks {
 		var text *Text
 		var file *File
+		var relation *Relation
 
 		switch content := block.Content.(type) {
 		case *model.BlockContentOfText:
@@ -541,8 +708,12 @@ func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 				State:          model.BlockContentFileState_name[int32(content.File.State)],
 				Style:          model.BlockContentFileStyle_name[int32(content.File.Style)],
 			}
-			// TODO: other content types?
+		case *model.BlockContentOfRelation:
+			relation = &Relation{
+				Id: content.Relation.Key,
+			}
 		}
+		// TODO: other content types?
 
 		blocks = append(blocks, Block{
 			Id:              block.Id,
@@ -552,13 +723,9 @@ func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 			VerticalAlign:   model.BlockVerticalAlign_name[int32(block.VerticalAlign)],
 			Text:            text,
 			File:            file,
+			Relation:        relation,
 		})
 	}
 
 	return blocks
-}
-
-func PosixToISO8601(posix float64) string {
-	t := time.Unix(int64(posix), 0).UTC()
-	return t.Format(time.RFC3339)
 }
