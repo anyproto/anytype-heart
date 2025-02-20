@@ -1,5 +1,4 @@
 run:
-  #deadline: 15m
   timeout:  15m
   # didn't run linter on tests
   tests: false
@@ -26,8 +25,6 @@ linters-settings:
     report-no-exported: true
   goimports:
     local-prefixes: github.com/anyproto/anytype-heart
-#  govet:
-#    check-shadowing: false
   funlen:
     lines: 120
     statements: 100
@@ -73,8 +70,6 @@ linters:
     - govet
     - unconvert
     - errorlint
-  #max-issues-per-linter: 0
-  #max-same-issues: 0
 
 severity:
   default-severity: error
