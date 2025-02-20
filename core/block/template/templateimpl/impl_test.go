@@ -449,9 +449,13 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 		sp := mock_clientspace.NewMockSpace(t)
 		sp.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).Times(1).Return(bundle.TypeKeyNote.String(), nil)
 		obj.SetSpace(sp)
+		obj.SetSpaceId("space")
+
+		store := objectstore.NewStoreFixture(t)
+		s := &service{store: store}
 
 		// when
-		st, err := buildTemplateStateFromObject(obj)
+		st, err := s.buildTemplateStateFromObject(obj)
 
 		// then
 		assert.NoError(t, err)

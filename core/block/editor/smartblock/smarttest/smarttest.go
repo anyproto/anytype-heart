@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -196,10 +195,6 @@ func (st *SmartTest) AddHookOnce(id string, f smartblock.HookCallback, events ..
 
 func (st *SmartTest) HasRelation(s *state.State, key string) bool {
 	return s.HasRelation(domain.RelationKey(key))
-}
-
-func (st *SmartTest) Relations(s *state.State) relationutils.Relations {
-	return nil
 }
 
 func (st *SmartTest) DefaultObjectTypeUrl() string {

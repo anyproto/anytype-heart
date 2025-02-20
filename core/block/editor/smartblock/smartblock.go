@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -151,8 +150,6 @@ type SmartBlock interface {
 	RegisterSession(session.Context)
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
-	// deprecated
-	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
 	RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
@@ -337,12 +334,12 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
 
-	injectRequiredRelationLinks := func(s *state.State) {
+	injectRequiredRelations := func(s *state.State) {
 		s.AddRelationKeys(bundle.RequiredInternalRelations...)
 		s.AddRelationKeys(ctx.RequiredInternalRelationKeys...)
 	}
-	injectRequiredRelationLinks(ctx.State)
-	injectRequiredRelationLinks(ctx.State.ParentState())
+	injectRequiredRelations(ctx.State)
+	injectRequiredRelations(ctx.State.ParentState())
 
 	ctx.State.AddRelationKeys(ctx.RelationKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
@@ -1146,18 +1143,6 @@ func (sb *smartBlock) AddHookOnce(id string, f HookCallback, events ...Hook) {
 		sb.AddHook(f, events...)
 		sb.hooksOnce[id] = struct{}{}
 	}
-}
-
-// deprecated, use RelationLinks instead
-func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
-	var keys []domain.RelationKey
-	if s == nil {
-		keys = sb.Doc.AllRelationKeys()
-	} else {
-		keys = s.AllRelationKeys()
-	}
-	rels, _ := sb.spaceIndex.FetchRelationByKeys(keys...)
-	return rels
 }
 
 func (sb *smartBlock) execHooks(event Hook, info ApplyInfo) (err error) {

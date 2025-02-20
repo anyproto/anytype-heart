@@ -14,8 +14,6 @@ import (
 
 	pb "github.com/anyproto/anytype-heart/pb"
 
-	relationutils "github.com/anyproto/anytype-heart/core/relationutils"
-
 	restriction "github.com/anyproto/anytype-heart/core/block/restriction"
 
 	session "github.com/anyproto/anytype-heart/core/session"
@@ -1700,54 +1698,6 @@ func (_c *MockAccountObject_RegisterSession_Call) Return() *MockAccountObject_Re
 }
 
 func (_c *MockAccountObject_RegisterSession_Call) RunAndReturn(run func(session.Context)) *MockAccountObject_RegisterSession_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Relations provides a mock function with given fields: s
-func (_m *MockAccountObject) Relations(s *state.State) relationutils.Relations {
-	ret := _m.Called(s)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Relations")
-	}
-
-	var r0 relationutils.Relations
-	if rf, ok := ret.Get(0).(func(*state.State) relationutils.Relations); ok {
-		r0 = rf(s)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(relationutils.Relations)
-		}
-	}
-
-	return r0
-}
-
-// MockAccountObject_Relations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Relations'
-type MockAccountObject_Relations_Call struct {
-	*mock.Call
-}
-
-// Relations is a helper method to define mock.On call
-//   - s *state.State
-func (_e *MockAccountObject_Expecter) Relations(s interface{}) *MockAccountObject_Relations_Call {
-	return &MockAccountObject_Relations_Call{Call: _e.mock.On("Relations", s)}
-}
-
-func (_c *MockAccountObject_Relations_Call) Run(run func(s *state.State)) *MockAccountObject_Relations_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*state.State))
-	})
-	return _c
-}
-
-func (_c *MockAccountObject_Relations_Call) Return(_a0 relationutils.Relations) *MockAccountObject_Relations_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockAccountObject_Relations_Call) RunAndReturn(run func(*state.State) relationutils.Relations) *MockAccountObject_Relations_Call {
 	_c.Call.Return(run)
 	return _c
 }

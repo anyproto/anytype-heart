@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -22,10 +21,6 @@ type Change struct {
 
 type Details struct {
 	Before, After *domain.Details
-}
-
-type RelationLinks struct {
-	Before, After []*model.RelationLink
 }
 
 type ObjectType struct {
@@ -46,18 +41,17 @@ func (cs CarriageState) IsEmpty() bool {
 }
 
 type Action struct {
-	Add           []simple.Block
-	Change        []Change
-	Remove        []simple.Block
-	Details       *Details
-	RelationLinks *RelationLinks
-	Group         string
-	ObjectTypes   *ObjectType
-	CarriageInfo  CarriageInfo
+	Add          []simple.Block
+	Change       []Change
+	Remove       []simple.Block
+	Details      *Details
+	Group        string
+	ObjectTypes  *ObjectType
+	CarriageInfo CarriageInfo
 }
 
 func (a Action) IsEmpty() bool {
-	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.ObjectTypes == nil && a.RelationLinks == nil
+	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.ObjectTypes == nil
 }
 
 func (a Action) Merge(b Action) (result Action) {
