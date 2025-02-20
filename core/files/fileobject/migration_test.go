@@ -209,6 +209,7 @@ func TestMigrateIds(t *testing.T) {
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().IsPersonal().Return(true)
+		space.EXPECT().Id().Return("spaceId2")
 
 		fx.objectStore.AddObjects(t, "spaceId2", []objectstore.TestObject{
 			{

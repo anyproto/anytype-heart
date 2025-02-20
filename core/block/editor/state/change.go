@@ -238,9 +238,11 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 	return
 }
 
-// TODO: review this logic
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
-	// TODO: add check that detail is not local or derived
+	// TODO: GO-4284 review this logic
+	if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(set.Key)) {
+		return nil
+	}
 	det := s.Details()
 	if det == nil {
 		det = domain.NewDetails()
@@ -266,7 +268,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	return nil
 }
 
-// TODO: review this logic !!!
+// TODO: GO-4284 review this logic !!!
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	keys := s.AllRelationKeys()
 	for _, r := range add.RelationLinks {
@@ -666,6 +668,10 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	curDetails := s.Details()
 
 	for k, v := range curDetails.Iterate() {
+		// TODO: GO-4282 Test this logic !
+		if slices.Contains(bundle.LocalAndDerivedRelationKeys, k) {
+			continue
+		}
 		prevValue := prev.Get(k)
 		if !prevValue.Ok() || !prevValue.Equal(v) {
 			ch = append(ch, &pb.ChangeContent{
@@ -677,6 +683,10 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	}
 
 	for k, _ := range prev.Iterate() {
+		// TODO: GO-4282 Test this logic !
+		if slices.Contains(bundle.LocalAndDerivedRelationKeys, k) {
+			continue
+		}
 		if !curDetails.Has(k) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{

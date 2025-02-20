@@ -646,6 +646,7 @@ func TestHistory_DiffVersions(t *testing.T) {
 		currChange := []*objecttree.Change{
 			provideBlockEmptyChange(objectId, account),
 			provideBlockCreateChange(blSmartBlock, account),
+			// relationAdd acts like detailsSet with Null value
 			provideRelationAddChange(account, &model.RelationLink{
 				Key:    relationKey,
 				Format: model.RelationFormat_tag,
@@ -661,7 +662,9 @@ func TestHistory_DiffVersions(t *testing.T) {
 			provideDetailsSetChange(account, relationKey2, pbtypes.String("value2")),
 
 			provideDetailsSetChange(account, relationKey, pbtypes.String("value")),
+			// relationRemove acts like detailsUnset
 			provideRelationRemoveChange(account, relationKey1),
+			// relationAdd acts like detailsSet with Null value
 			provideRelationAddChange(account, &model.RelationLink{
 				Key:    "key3",
 				Format: model.RelationFormat_tag,
@@ -698,7 +701,19 @@ func TestHistory_DiffVersions(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, changes, 4)
+		assert.Len(t, changes, 2)
+
+		keys := []string{relationKey, "key3"}
+		values := []*types.Value{pbtypes.String("value"), pbtypes.Null()}
+		assert.Len(t, changes[0].GetObjectDetailsAmend().Details, 2)
+		assert.Contains(t, keys, changes[0].GetObjectDetailsAmend().Details[0].Key)
+		assert.Contains(t, keys, changes[0].GetObjectDetailsAmend().Details[1].Key)
+		assert.Contains(t, values, changes[0].GetObjectDetailsAmend().Details[0].Value)
+		assert.Contains(t, values, changes[0].GetObjectDetailsAmend().Details[1].Value)
+
+		assert.Len(t, changes[1].GetObjectDetailsUnset().Keys, 2)
+		assert.Contains(t, changes[1].GetObjectDetailsUnset().Keys, relationKey1)
+		assert.Contains(t, changes[1].GetObjectDetailsUnset().Keys, relationKey2)
 	})
 	t.Run("object diff -local relations changes", func(t *testing.T) {
 		// given
@@ -754,10 +769,11 @@ func TestHistory_DiffVersions(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, changes, 2)
-		assert.Len(t, changes[1].GetObjectRelationsAmend().RelationLinks, 1)
-		assert.Equal(t, changes[1].GetObjectRelationsAmend().RelationLinks[0].Key, relationKey)
-		assert.Len(t, changes[0].GetObjectRelationsRemove().RelationKeys, 1)
-		assert.Equal(t, changes[0].GetObjectRelationsRemove().RelationKeys[0], relationKey1)
+		assert.Len(t, changes[0].GetObjectDetailsAmend().Details, 1)
+		assert.Equal(t, relationKey, changes[0].GetObjectDetailsAmend().Details[0].Key)
+		assert.Equal(t, pbtypes.Null(), changes[0].GetObjectDetailsAmend().Details[0].Value)
+		assert.Len(t, changes[1].GetObjectDetailsUnset().Keys, 1)
+		assert.Equal(t, relationKey1, changes[1].GetObjectDetailsUnset().Keys[0])
 	})
 
 	t.Run("object diff - no changes", func(t *testing.T) {
