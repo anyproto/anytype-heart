@@ -266,7 +266,7 @@ func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []st
 
 func (s *service) processFailedIdentities(res []*identityrepoproto.DataWithIdentity, failedIdentities []string) ([]*identityrepoproto.DataWithIdentity, error) {
 	for _, identity := range failedIdentities {
-		rawData, err := s.identityProfileCacheStore.Get(identity)
+		rawData, err := s.identityProfileCacheStore.Get(context.Background(), identity)
 		if errors.Is(err, keyvaluestore.ErrNotFound) {
 			continue
 		}
@@ -326,7 +326,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 			return fmt.Errorf("index icon image: %w", err)
 		}
 
-		return s.identityProfileCacheStore.Set(profile.Identity, rawProfile)
+		return s.identityProfileCacheStore.Set(context.Background(), profile.Identity, rawProfile)
 	}
 
 	return nil
@@ -392,7 +392,7 @@ func (s *service) fetchGlobalNames(identities []string) error {
 		s.identityGlobalNames[identity] = result
 		s.lock.Unlock()
 
-		err := s.identityGlobalNameCacheStore.Set(identity, result.Name)
+		err := s.identityGlobalNameCacheStore.Set(context.Background(), identity, result.Name)
 		if err != nil {
 			log.Error("save global name", zap.String("identity", identity), zap.Error(err))
 		}
@@ -409,7 +409,7 @@ func makeGlobalNameKey(identity string) []byte {
 }
 
 func (s *service) getCachedIdentityProfile(identity string) (*identityrepoproto.DataWithIdentity, error) {
-	rawData, err := s.identityProfileCacheStore.Get(identity)
+	rawData, err := s.identityProfileCacheStore.Get(context.Background(), identity)
 	if errors.Is(err, keyvaluestore.ErrNotFound) {
 		return nil, nil
 	}
@@ -428,7 +428,7 @@ func (s *service) getCachedIdentityProfile(identity string) (*identityrepoproto.
 }
 
 func (s *service) getCachedGlobalName(identity string) (string, error) {
-	rawData, err := s.identityGlobalNameCacheStore.Get(identity)
+	rawData, err := s.identityGlobalNameCacheStore.Get(context.Background(), identity)
 	if badgerhelper.IsNotFound(err) {
 		return "", nil
 	}

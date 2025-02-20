@@ -74,7 +74,7 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 	}
 	var limitReachedErr *errLimitReached
 	if errors.As(err, &limitReachedErr) {
-		setErr := s.isLimitReachedErrorLogged.Set(it.ObjectId, true)
+		setErr := s.isLimitReachedErrorLogged.Set(context.Background(), it.ObjectId, true)
 		if setErr != nil {
 			log.Error("set limit reached error logged", zap.String("objectId", it.ObjectId), zap.Error(setErr))
 		}
@@ -159,7 +159,7 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		var limitErrorIsLogged bool
 		if limitErr != nil {
 			var hasErr error
-			limitErrorIsLogged, hasErr = s.isLimitReachedErrorLogged.Has(it.ObjectId)
+			limitErrorIsLogged, hasErr = s.isLimitReachedErrorLogged.Has(context.Background(), it.ObjectId)
 			if hasErr != nil {
 				log.Error("check if limit reached error is logged", zap.String("objectId", it.ObjectId), zap.Error(hasErr))
 			}
@@ -279,14 +279,14 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 	ctx = filestorage.ContextWithDoNotCache(ctx)
 	log.Debug("uploading file", zap.String("fileId", fileId.String()))
 
-	blocksAvailability, err := s.blocksAvailabilityCache.Get(fileId.String())
+	blocksAvailability, err := s.blocksAvailabilityCache.Get(context.Background(), fileId.String())
 	if err != nil || blocksAvailability.totalBytesToUpload() == 0 {
 		// Ignore error from cache and calculate blocks availability
 		blocksAvailability, err = s.checkBlocksAvailability(ctx, spaceID, fileId)
 		if err != nil {
 			return fmt.Errorf("check blocks availability: %w", err)
 		}
-		err = s.blocksAvailabilityCache.Set(fileId.String(), blocksAvailability)
+		err = s.blocksAvailabilityCache.Set(context.Background(), fileId.String(), blocksAvailability)
 		if err != nil {
 			log.Error("cache blocks availability", zap.String("fileId", fileId.String()), zap.Error(err))
 		}
@@ -341,11 +341,11 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 		return fmt.Errorf("walk file blocks: %w", err)
 	}
 
-	err = s.blocksAvailabilityCache.Delete(fileId.String())
+	err = s.blocksAvailabilityCache.Delete(context.Background(), fileId.String())
 	if err != nil {
 		log.Warn("delete blocks availability cache entry", zap.String("fileId", fileId.String()), zap.Error(err))
 	}
-	err = s.isLimitReachedErrorLogged.Delete(fileId.String())
+	err = s.isLimitReachedErrorLogged.Delete(context.Background(), fileId.String())
 	if err != nil {
 		log.Warn("delete limit reached error logged", zap.String("fileId", fileId.String()), zap.Error(err))
 	}

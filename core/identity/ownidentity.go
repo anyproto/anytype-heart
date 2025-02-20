@@ -225,7 +225,7 @@ func (s *ownProfileSubscription) handleGlobalNameUpdate(globalName string) {
 	identityProfile := s.prepareIdentityProfile()
 	s.detailsLock.Unlock()
 
-	err := s.identityGlobalNameCacheStore.Set(s.myIdentity, globalName)
+	err := s.identityGlobalNameCacheStore.Set(context.Background(), s.myIdentity, globalName)
 	if err != nil {
 		log.Error("save global name", zap.String("identity", s.myIdentity), zap.Error(err))
 	}
@@ -277,7 +277,7 @@ func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Conte
 		return fmt.Errorf("failed to push identity: %w", err)
 	}
 
-	return s.identityProfileCacheStore.Set(identityProfile.Identity, data)
+	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, data)
 }
 
 func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityProfile, error) {

@@ -98,7 +98,7 @@ func (r *reconciler) Init(a *app.App) error {
 }
 
 func (r *reconciler) Run(ctx context.Context) error {
-	isStarted, err := r.isStartedStore.Get(isStartedStoreKey)
+	isStarted, err := r.isStartedStore.Get(context.Background(), isStartedStoreKey)
 	if err != nil && !errors.Is(err, keyvaluestore.ErrNotFound) {
 		log.Error("get isStarted", zap.Error(err))
 	}
@@ -111,7 +111,7 @@ func (r *reconciler) Run(ctx context.Context) error {
 }
 
 func (r *reconciler) Start(ctx context.Context) error {
-	err := r.isStartedStore.Set(isStartedStoreKey, true)
+	err := r.isStartedStore.Set(context.Background(), isStartedStoreKey, true)
 	if err != nil {
 		return fmt.Errorf("set isStarted: %w", err)
 	}
@@ -156,7 +156,7 @@ func (r *reconciler) needToRebind(details *domain.Details) (bool, error) {
 		return false, nil
 	}
 	fileId := domain.FileId(details.GetString(bundle.RelationKeyFileId))
-	return r.deletedFiles.Has(fileId.String())
+	return r.deletedFiles.Has(context.Background(), fileId.String())
 }
 
 func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persistentqueue.Action, error) {
@@ -178,7 +178,7 @@ func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFil
 	if !r.isRunning() {
 		return nil
 	}
-	return r.deletedFiles.Delete(fileId.FileId.String())
+	return r.deletedFiles.Delete(context.Background(), fileId.FileId.String())
 }
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
@@ -214,7 +214,7 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 			if err != nil {
 				log.Error("add to deletion queue", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
 			}
-			err = r.deletedFiles.Set(fileId.FileId.String(), struct{}{})
+			err = r.deletedFiles.Set(context.Background(), fileId.FileId.String(), struct{}{})
 			if err != nil {
 				log.Error("add to deleted files", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
 			}

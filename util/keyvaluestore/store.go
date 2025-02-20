@@ -17,10 +17,15 @@ var ErrNotFound = fmt.Errorf("not found")
 
 // Store is a simple generic key-value store backed by any-store
 type Store[T any] interface {
-	Get(key string) (T, error)
-	Set(key string, value T) error
-	Delete(key string) error
-	Has(key string) (bool, error)
+	Get(ctx context.Context, key string) (T, error)
+	Set(ctx context.Context, key string, value T) error
+	Delete(ctx context.Context, key string) error
+	Has(ctx context.Context, key string) (bool, error)
+	ListAllValues(ctx context.Context) ([]T, error)
+
+	// Proxies for any-store transactions
+	ReadTx(ctx context.Context) (anystore.ReadTx, error)
+	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }
 
 type store[T any] struct {
@@ -59,9 +64,17 @@ func NewJson[T any](
 	return New[T](db, collectionName, JsonMarshal[T], JsonUnmarshal[T])
 }
 
-func (s *store[T]) Get(key string) (T, error) {
+func (s *store[T]) ReadTx(ctx context.Context) (anystore.ReadTx, error) {
+	return s.coll.ReadTx(ctx)
+}
+
+func (s *store[T]) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	return s.coll.WriteTx(ctx)
+}
+
+func (s *store[T]) Get(ctx context.Context, key string) (T, error) {
 	var res T
-	doc, err := s.coll.FindId(context.Background(), key)
+	doc, err := s.coll.FindId(ctx, key)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return res, ErrNotFound
 	}
@@ -77,8 +90,33 @@ func (s *store[T]) Get(key string) (T, error) {
 	return s.unmarshaller(raw)
 }
 
-func (s *store[T]) Has(key string) (bool, error) {
-	_, err := s.coll.FindId(context.Background(), key)
+func (s *store[T]) ListAllValues(ctx context.Context) ([]T, error) {
+	iter, err := s.coll.Find(nil).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("init iter: %w", err)
+	}
+	defer iter.Close()
+
+	var res []T
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get document: %w", err)
+		}
+		raw := doc.Value().GetBytes(valueKey)
+
+		val, err := s.unmarshaller(raw)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal: %w", err)
+		}
+
+		res = append(res, val)
+	}
+	return res, nil
+}
+
+func (s *store[T]) Has(ctx context.Context, key string) (bool, error) {
+	_, err := s.coll.FindId(ctx, key)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return false, nil
 	}
@@ -89,7 +127,7 @@ func (s *store[T]) Has(key string) (bool, error) {
 	return true, nil
 }
 
-func (s *store[T]) Set(key string, value T) error {
+func (s *store[T]) Set(ctx context.Context, key string, value T) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -105,11 +143,11 @@ func (s *store[T]) Set(key string, value T) error {
 	doc.Set("id", arena.NewString(key))
 	doc.Set(valueKey, arena.NewBinary(raw))
 
-	return s.coll.UpsertOne(context.Background(), doc)
+	return s.coll.UpsertOne(ctx, doc)
 }
 
-func (s *store[T]) Delete(key string) error {
-	err := s.coll.DeleteId(context.Background(), key)
+func (s *store[T]) Delete(ctx context.Context, key string) error {
+	err := s.coll.DeleteId(ctx, key)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil
 	}

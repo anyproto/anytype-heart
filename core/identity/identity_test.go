@@ -194,9 +194,9 @@ func TestIdentityProfileCache(t *testing.T) {
 		// Global name is cached separately
 		wantProfile.GlobalName = globalName
 
-		err = fx.service.identityProfileCacheStore.Set(identity, wantData)
+		err = fx.service.identityProfileCacheStore.Set(context.Background(), identity, wantData)
 		require.NoError(t, err)
-		err = fx.service.identityGlobalNameCacheStore.Set(identity, globalName)
+		err = fx.service.identityGlobalNameCacheStore.Set(context.Background(), identity, globalName)
 		require.NoError(t, err)
 
 		var (
@@ -232,7 +232,7 @@ func TestIdentityProfileCache(t *testing.T) {
 		// Global name is cached separately
 		wantProfile.GlobalName = globalName
 
-		err = fx.service.identityGlobalNameCacheStore.Set(identity, globalName)
+		err = fx.service.identityGlobalNameCacheStore.Set(context.Background(), identity, globalName)
 		require.NoError(t, err)
 
 		var called uint64
@@ -243,7 +243,7 @@ func TestIdentityProfileCache(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = fx.service.identityProfileCacheStore.Set(identity, wantData)
+		err = fx.service.identityProfileCacheStore.Set(context.Background(), identity, wantData)
 		require.NoError(t, err)
 
 		time.Sleep(testObserverPeriod * 2)
@@ -493,9 +493,9 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 				Found: false,
 				Name:  "",
 			})
-			err = fx.service.identityProfileCacheStore.Set(identity, wantData)
+			err = fx.service.identityProfileCacheStore.Set(context.Background(), identity, wantData)
 			require.NoError(t, err)
-			err = fx.service.identityGlobalNameCacheStore.Set(identity, globalName)
+			err = fx.service.identityGlobalNameCacheStore.Set(context.Background(), identity, globalName)
 			require.NoError(t, err)
 		}
 		fx.nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).Return(&nameserviceproto.BatchNameByAddressResponse{Results: nsServiceResult}, nil)
