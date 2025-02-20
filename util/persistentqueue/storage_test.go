@@ -1,7 +1,6 @@
 package persistentqueue
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,7 +10,7 @@ func TestStorage(t *testing.T) {
 	db := newAnystore(t)
 	defer db.Close()
 
-	storage, err := NewAnystoreStorage(context.Background(), db, "test", makeTestItem)
+	storage, err := NewAnystoreStorage(db, "test", makeTestItem)
 	require.NoError(t, err)
 
 	item1 := &testItem{

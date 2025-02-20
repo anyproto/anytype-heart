@@ -3,6 +3,7 @@ package objectstore
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/anyproto/any-store/anyenc"
@@ -109,6 +110,12 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		_ = fullText.Close(context.Background())
 		_ = ds.Close(context.Background())
 	})
+
+	err = ensureDirExists(ds.objectStorePath)
+	require.NoError(t, err)
+
+	err = ds.openDatabase(context.Background(), filepath.Join(ds.objectStorePath, "objects.db"))
+	require.NoError(t, err)
 
 	err = ds.Run(ctx)
 	require.NoError(t, err)

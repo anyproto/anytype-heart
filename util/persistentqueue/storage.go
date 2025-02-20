@@ -21,21 +21,19 @@ type Storage[T Item] interface {
 }
 
 type anystoreStorage[T Item] struct {
-	ctx         context.Context
 	coll        anystore.Collection
 	factoryFunc FactoryFunc[T]
 	arena       *anyenc.Arena
 }
 
-func NewAnystoreStorage[T Item](ctx context.Context, db anystore.DB, collectionName string, factoryFunc FactoryFunc[T]) (Storage[T], error) {
-	coll, err := db.Collection(ctx, collectionName)
+func NewAnystoreStorage[T Item](db anystore.DB, collectionName string, factoryFunc FactoryFunc[T]) (Storage[T], error) {
+	coll, err := db.Collection(context.Background(), collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("collection: %w", err)
 	}
 
 	return &anystoreStorage[T]{
 		coll:        coll,
-		ctx:         ctx,
 		factoryFunc: factoryFunc,
 		arena:       &anyenc.Arena{},
 	}, nil
@@ -55,11 +53,11 @@ func (s *anystoreStorage[T]) Put(item T) error {
 		doc.Set("id", s.arena.NewString(item.Key()))
 	}
 
-	return s.coll.UpsertOne(s.ctx, doc)
+	return s.coll.UpsertOne(context.Background(), doc)
 }
 
 func (s *anystoreStorage[T]) Delete(key string) error {
-	err := s.coll.DeleteId(s.ctx, key)
+	err := s.coll.DeleteId(context.Background(), key)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil
 	}
@@ -68,7 +66,7 @@ func (s *anystoreStorage[T]) Delete(key string) error {
 
 func (s *anystoreStorage[T]) List() ([]T, error) {
 	var items []T
-	iter, err := s.coll.Find(nil).Iter(s.ctx)
+	iter, err := s.coll.Find(nil).Iter(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("create iterator: %w", err)
 	}

@@ -74,30 +74,30 @@ func (r *reconciler) Init(a *app.App) error {
 
 	r.fileSync.OnUploaded(r.markAsReconciled)
 
-	return nil
-}
-
-func (r *reconciler) Run(ctx context.Context) error {
 	db := r.objectStore.GetCommonDb()
 
 	var err error
-	r.isStartedStore, err = keyvaluestore.NewJson[bool](db, "file_reconciler/is_started")
-	if err != nil {
-		return fmt.Errorf("init isStartedStore: %w", err)
-	}
-
 	r.deletedFiles, err = keyvaluestore.New(db, "file_reconciler/deleted_files", func(_ struct{}) ([]byte, error) {
 		return []byte(""), nil
 	}, func(data []byte) (struct{}, error) {
 		return struct{}{}, nil
 	})
 
-	rebindQueueStore, err := persistentqueue.NewAnystoreStorage(ctx, db, "queue/file_reconciler/rebind", makeQueueItem)
+	rebindQueueStore, err := persistentqueue.NewAnystoreStorage(db, "queue/file_reconciler/rebind", makeQueueItem)
 	if err != nil {
 		return fmt.Errorf("init rebindQueueStore: %w", err)
 	}
 	r.rebindQueue = persistentqueue.New(rebindQueueStore, log, r.rebindHandler)
 
+	r.isStartedStore, err = keyvaluestore.NewJson[bool](db, "file_reconciler/is_started")
+	if err != nil {
+		return fmt.Errorf("init isStartedStore: %w", err)
+	}
+
+	return nil
+}
+
+func (r *reconciler) Run(ctx context.Context) error {
 	isStarted, err := r.isStartedStore.Get(isStartedStoreKey)
 	if err != nil && !errors.Is(err, keyvaluestore.ErrNotFound) {
 		log.Error("get isStarted", zap.Error(err))

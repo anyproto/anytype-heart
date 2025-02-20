@@ -22,7 +22,7 @@ import (
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -49,8 +49,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 	localFileStorage := filestorage.NewInMemory()
 	fx.localFileStorage = localFileStorage
 
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
 	ctrl := gomock.NewController(t)
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().Name().Return(wallet2.CName)
@@ -58,7 +56,7 @@ func newFixture(t *testing.T, limit int) *fixture {
 
 	fx.a.Register(fx.fileService).
 		Register(localFileStorage).
-		Register(dataStoreProvider).
+		Register(objectstore.NewStoreFixture(t)).
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.fileSync).
 		Register(sender).

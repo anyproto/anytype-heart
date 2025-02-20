@@ -28,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/mutex"
 )
 
@@ -88,9 +87,6 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 	require.NoError(t, err)
 
 	svcRef := svc.(*service)
-	db, err := dataStoreProvider.LocalStorage()
-	require.NoError(t, err)
-	svcRef.db = db
 	// TODO
 	// svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
 	fx := &fixture{
@@ -198,9 +194,9 @@ func TestIdentityProfileCache(t *testing.T) {
 		// Global name is cached separately
 		wantProfile.GlobalName = globalName
 
-		err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+		err = fx.service.identityProfileCacheStore.Set(identity, wantData)
 		require.NoError(t, err)
-		err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+		err = fx.service.identityGlobalNameCacheStore.Set(identity, globalName)
 		require.NoError(t, err)
 
 		var (
@@ -236,7 +232,7 @@ func TestIdentityProfileCache(t *testing.T) {
 		// Global name is cached separately
 		wantProfile.GlobalName = globalName
 
-		err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+		err = fx.service.identityGlobalNameCacheStore.Set(identity, globalName)
 		require.NoError(t, err)
 
 		var called uint64
@@ -247,7 +243,7 @@ func TestIdentityProfileCache(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+		err = fx.service.identityProfileCacheStore.Set(identity, wantData)
 		require.NoError(t, err)
 
 		time.Sleep(testObserverPeriod * 2)
@@ -497,9 +493,9 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 				Found: false,
 				Name:  "",
 			})
-			err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+			err = fx.service.identityProfileCacheStore.Set(identity, wantData)
 			require.NoError(t, err)
-			err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+			err = fx.service.identityGlobalNameCacheStore.Set(identity, globalName)
 			require.NoError(t, err)
 		}
 		fx.nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).Return(&nameserviceproto.BatchNameByAddressResponse{Results: nsServiceResult}, nil)

@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
 const nodeUsageKey = "node_usage"
@@ -138,7 +138,7 @@ func (s *fileSync) UpdateNodeUsage(ctx context.Context) error {
 
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
 	usage, err := s.nodeUsageCache.Get(nodeUsageKey)
-	if errors.Is(err, badger.ErrKeyNotFound) {
+	if errors.Is(err, keyvaluestore.ErrNotFound) {
 		return NodeUsage{}, false, nil
 	}
 	if err != nil {

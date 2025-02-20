@@ -130,7 +130,7 @@ func (s *service) Init(a *app.App) error {
 		migrationQueueCtx = context.WithValue(migrationQueueCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(1*time.Minute))
 	}
 
-	migrationQueueStore, err := persistentqueue.NewAnystoreStorage(context.Background(), s.objectStore.GetCommonDb(), "queue/file_migration", makeMigrationItem)
+	migrationQueueStore, err := persistentqueue.NewAnystoreStorage(s.objectStore.GetCommonDb(), "queue/file_migration", makeMigrationItem)
 	if err != nil {
 		return fmt.Errorf("init migration queue store: %w", err)
 	}

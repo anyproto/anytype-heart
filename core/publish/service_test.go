@@ -23,8 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/sys/unix"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
@@ -389,7 +387,7 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("limit error for members", func(t *testing.T) {
 		// given
-		spaceService, err := prepaeSpaceService(t, false)
+		spaceService, err := prepareSpaceService(t, false)
 		require.NoError(t, err)
 
 		expectedUri := "test"
@@ -433,7 +431,7 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("default limit error", func(t *testing.T) {
 		// given
-		spaceService, err := prepaeSpaceService(t, false)
+		spaceService, err := prepareSpaceService(t, false)
 		require.NoError(t, err)
 
 		expectedUri := "test"

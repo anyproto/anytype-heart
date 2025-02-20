@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -23,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -51,18 +51,13 @@ func TestCancelDeletion(t *testing.T) {
 	a.Register(fileService)
 	a.Register(testutil.PrepareMock(ctx, a, rpcStoreService))
 	a.Register(testutil.PrepareMock(ctx, a, sender))
+	a.Register(objectstore.NewStoreFixture(t))
 	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 
 	s := New().(*fileSync)
 	err = s.Init(a)
-
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
-	require.NoError(t, err)
-	s.store, err = newFileSyncStore(db)
-	require.NoError(t, err)
-
 	require.NoError(t, err)
 
 	testObjectId1 := "objectId1"

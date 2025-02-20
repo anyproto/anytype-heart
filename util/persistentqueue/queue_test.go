@@ -57,7 +57,7 @@ func runTestQueue(t *testing.T, handlerFunc HandlerFunc[*testItem]) *Queue[*test
 func newTestQueueWithDb(t *testing.T, db anystore.DB, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
 	log := logging.Logger("test")
 
-	storage, err := NewAnystoreStorage[*testItem](context.Background(), db, "test_queue", makeTestItem)
+	storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
 	require.NoError(t, err)
 
 	q := New[*testItem](storage, log.Desugar(), handlerFunc)
@@ -367,7 +367,7 @@ func TestWithHandlerTickPeriod(t *testing.T) {
 	t.Run("pause on ActionRetry", func(t *testing.T) {
 		db := newAnystore(t)
 		log := logging.Logger("test")
-		storage, err := NewAnystoreStorage[*testItem](context.Background(), db, "test_queue", makeTestItem)
+		storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
 		require.NoError(t, err)
 
 		tickerPeriod := 50 * time.Millisecond
@@ -393,7 +393,7 @@ func TestWithHandlerTickPeriod(t *testing.T) {
 		db := newAnystore(t)
 		log := logging.Logger("test")
 
-		storage, err := NewAnystoreStorage[*testItem](context.Background(), db, "test_queue", makeTestItem)
+		storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
 		require.NoError(t, err)
 
 		tickerPeriod := 50 * time.Millisecond
@@ -426,7 +426,7 @@ func TestWithContext(t *testing.T) {
 	testRootCtx := context.WithValue(context.Background(), testContextKey, "testValue")
 
 	wait := make(chan struct{})
-	storage, err := NewAnystoreStorage[*testItem](context.Background(), db, "test_queue", makeTestItem)
+	storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
 	require.NoError(t, err)
 
 	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {

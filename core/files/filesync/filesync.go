@@ -105,6 +105,45 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
 
+	db := s.dbProvider.GetCommonDb()
+
+	s.blocksAvailabilityCache, err = keyvaluestore.NewJson[*blocksAvailabilityResponse](db, "filesync/bytes_to_upload")
+	if err != nil {
+		return fmt.Errorf("init blocks availability cache: %w", err)
+	}
+	s.isLimitReachedErrorLogged, err = keyvaluestore.NewJson[bool](db, "filesync/limit_reached_error_logged")
+	if err != nil {
+		return fmt.Errorf("init limit reached error logged cache: %w", err)
+	}
+	s.nodeUsageCache, err = keyvaluestore.NewJson[NodeUsage](db, "filesync/node_usage")
+	if err != nil {
+		return fmt.Errorf("init node usage cache: %w", err)
+	}
+
+	uploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/uploading", makeQueueItem)
+	if err != nil {
+		return fmt.Errorf("init uploading queue storage: %w", err)
+	}
+	s.uploadingQueue = persistentqueue.New(uploadingQueueStorage, log.Logger, s.uploadingHandler)
+
+	retryUploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/retry_uploading", makeQueueItem)
+	if err != nil {
+		return fmt.Errorf("init retry uploading queue storage: %w", err)
+	}
+	s.retryUploadingQueue = persistentqueue.New(retryUploadingQueueStorage, log.Logger, s.retryingHandler, persistentqueue.WithRetryPause(loopTimeout))
+
+	deletionQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/deletion", makeDeletionQueueItem)
+	if err != nil {
+		return fmt.Errorf("init deletion queue storage: %w", err)
+	}
+	s.deletionQueue = persistentqueue.New(deletionQueueStorage, log.Logger, s.deletionHandler)
+
+	retryDeletionQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/retry_deletion", makeDeletionQueueItem)
+	if err != nil {
+		return fmt.Errorf("init retry deletion queue storage: %w", err)
+	}
+	s.retryDeletionQueue = persistentqueue.New(retryDeletionQueueStorage, log.Logger, s.retryDeletionHandler, persistentqueue.WithRetryPause(loopTimeout))
+
 	return
 }
 
@@ -140,45 +179,6 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 	if s.cfg.IsLocalOnlyMode() {
 		return
 	}
-
-	db := s.dbProvider.GetCommonDb()
-
-	s.blocksAvailabilityCache, err = keyvaluestore.NewJson[*blocksAvailabilityResponse](db, "filesync/bytes_to_upload")
-	if err != nil {
-		return fmt.Errorf("init blocks availability cache: %w", err)
-	}
-	s.isLimitReachedErrorLogged, err = keyvaluestore.NewJson[bool](db, "filesync/limit_reached_error_logged")
-	if err != nil {
-		return fmt.Errorf("init limit reached error logged cache: %w", err)
-	}
-	s.nodeUsageCache, err = keyvaluestore.NewJson[NodeUsage](db, "filesync/node_usage")
-	if err != nil {
-		return fmt.Errorf("init node usage cache: %w", err)
-	}
-
-	uploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(s.loopCtx, db, "filesync/uploading", makeQueueItem)
-	if err != nil {
-		return fmt.Errorf("init uploading queue storage: %w", err)
-	}
-	s.uploadingQueue = persistentqueue.New(uploadingQueueStorage, log.Logger, s.uploadingHandler)
-
-	retryUploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(s.loopCtx, db, "filesync/retry_uploading", makeQueueItem)
-	if err != nil {
-		return fmt.Errorf("init retry uploading queue storage: %w", err)
-	}
-	s.retryUploadingQueue = persistentqueue.New(retryUploadingQueueStorage, log.Logger, s.retryingHandler, persistentqueue.WithRetryPause(loopTimeout))
-
-	deletionQueueStorage, err := persistentqueue.NewAnystoreStorage(s.loopCtx, db, "filesync/deletion", makeDeletionQueueItem)
-	if err != nil {
-		return fmt.Errorf("init deletion queue storage: %w", err)
-	}
-	s.deletionQueue = persistentqueue.New(deletionQueueStorage, log.Logger, s.deletionHandler)
-
-	retryDeletionQueueStorage, err := persistentqueue.NewAnystoreStorage(s.loopCtx, db, "filesync/retry_deletion", makeDeletionQueueItem)
-	if err != nil {
-		return fmt.Errorf("init retry deletion queue storage: %w", err)
-	}
-	s.retryDeletionQueue = persistentqueue.New(retryDeletionQueueStorage, log.Logger, s.retryDeletionHandler, persistentqueue.WithRetryPause(loopTimeout))
 
 	s.uploadingQueue.Run()
 	s.retryUploadingQueue.Run()

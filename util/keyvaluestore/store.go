@@ -12,6 +12,7 @@ import (
 
 const valueKey = "_v"
 
+// TODO Change to any-store or domain error
 var ErrNotFound = fmt.Errorf("not found")
 
 // Store is a simple generic key-value store backed by any-store
@@ -123,4 +124,20 @@ func JsonUnmarshal[T any](data []byte) (T, error) {
 	var val T
 	err := json.Unmarshal(data, &val)
 	return val, err
+}
+
+func BytesMarshal(val []byte) ([]byte, error) {
+	return val, nil
+}
+
+func BytesUnmarshal(data []byte) ([]byte, error) {
+	return data, nil
+}
+
+func StringMarshal(val string) ([]byte, error) {
+	return []byte(val), nil
+}
+
+func StringUnmarshal(data []byte) (string, error) {
+	return string(data), nil
 }

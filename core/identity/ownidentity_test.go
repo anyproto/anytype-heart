@@ -19,12 +19,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
 type ownSubscriptionFixture struct {
@@ -68,8 +68,7 @@ func newOwnSubscriptionFixture(t *testing.T) *ownSubscriptionFixture {
 	techSpace := mock_techspace.NewMockTechSpace(t)
 	coordinatorClient := newInMemoryIdentityRepo()
 	fileAclService := mock_fileacl.NewMockService(t)
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
+
 	testObserver := &testObserver{}
 	ctrl := gomock.NewController(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
@@ -82,12 +81,12 @@ func newOwnSubscriptionFixture(t *testing.T) *ownSubscriptionFixture {
 
 	accountService.EXPECT().AccountID().Return("identity1")
 
-	err = dataStoreProvider.Run(context.Background())
+	identityProfileCacheStore, err := keyvaluestore.New(objectStore.GetCommonDb(), "identity_profile", keyvaluestore.BytesMarshal, keyvaluestore.BytesUnmarshal)
 	require.NoError(t, err)
-	// db, err := dataStoreProvider.LocalStorage()
-	// require.NoError(t, err)
+	identityGlobalNameCacheStore, err := keyvaluestore.New(objectStore.GetCommonDb(), "global_name", keyvaluestore.StringMarshal, keyvaluestore.StringUnmarshal)
+	require.NoError(t, err)
 
-	sub := newOwnProfileSubscription(spaceService, objectStore, accountService, coordinatorClient, fileAclService, testObserver, nsClient, dataStoreProvider, testBatchTimeout)
+	sub := newOwnProfileSubscription(spaceService, objectStore, accountService, coordinatorClient, fileAclService, testObserver, nsClient, testBatchTimeout, identityGlobalNameCacheStore, identityProfileCacheStore)
 
 	return &ownSubscriptionFixture{
 		ownProfileSubscription: sub,
