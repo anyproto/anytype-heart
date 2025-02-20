@@ -638,6 +638,13 @@ openapi: 3.1.0
 paths:
   /auth/display_code:
     post:
+      description: This endpoint initiates a secure authentication flow by generating
+        a new challenge. Clients must supply the name of the application (via a query
+        parameter) that is requesting authentication. On success, the service returns
+        a unique challenge ID. This challenge ID must then be used with the token
+        endpoint (see below) to solve the challenge and retrieve an authentication
+        token. In essence, this endpoint “boots up” the login process and is the first
+        step in a multi-phase authentication sequence.
       parameters:
       - description: App name requesting the challenge
         in: query
@@ -674,6 +681,13 @@ paths:
       - auth
   /auth/token:
     post:
+      description: After receiving a challenge ID from the display_code endpoint,
+        the client calls this endpoint to provide the corresponding 4-digit code (also
+        via a query parameter) along with the challenge ID. The endpoint verifies
+        that the challenge solution is correct and, if it is, returns an ephemeral
+        session token together with a permanent app key. These tokens are then used
+        in subsequent API requests to authorize access. This endpoint is central to
+        ensuring that only properly authenticated sessions can access further resources.
       parameters:
       - description: Challenge ID
         in: query
@@ -716,6 +730,14 @@ paths:
       - auth
   /search:
     post:
+      description: This endpoint executes a global search over every space the user
+        has access to. It accepts pagination parameters (offset and limit) and a JSON
+        body containing search criteria. The criteria include a search query string,
+        an optional list of object types, and sort options (e.g. ascending/descending
+        by creation, modification, or last opened dates). Internally, the endpoint
+        aggregates results from each space, merges and sorts them (after last modified
+        date by default), and returns a unified, paginated list of objects that match
+        the search parameters.
       parameters:
       - description: The number of items to skip before starting to collect the result
           set
@@ -764,6 +786,10 @@ paths:
       - search
   /spaces:
     get:
+      description: Retrieves a paginated list of all spaces that are accessible by
+        the authenticated user. Each space record contains detailed information such
+        as the space ID, name, icon (derived either from an emoji or image URL), and
+        additional metadata. This endpoint is key to displaying a user’s workspaces.
       parameters:
       - description: The number of items to skip before starting to collect the result
           set
@@ -804,6 +830,12 @@ paths:
       tags:
       - spaces
     post:
+      description: Creates a new workspace (or space) based on a supplied name in
+        the JSON request body. The endpoint is subject to rate limiting and automatically
+        applies default configurations such as generating a random icon and initializing
+        the workspace with default settings (for example, a default dashboard or home
+        page). On success, the new space’s full metadata is returned, enabling the
+        client to immediately switch context to the new space.
       requestBody:
         content:
           application/json:
@@ -849,6 +881,10 @@ paths:
       - spaces
   /spaces/{space_id}:
     get:
+      description: Fetches full details about a single space identified by its space
+        ID. The response includes metadata such as the space name, icon, and various
+        workspace IDs (home, archive, profile, etc.). This detailed view supports
+        use cases such as displaying space-specific settings.
       parameters:
       - description: Space ID
         in: path
@@ -888,6 +924,11 @@ paths:
       - spaces
   /spaces/{space_id}/members:
     get:
+      description: Returns a paginated list of members belonging to the specified
+        space. Each member record includes the member’s profile ID, name, icon (which
+        may be derived from an emoji or image), network identity, global name, and
+        role (e.g. Reader, Writer, Owner). This endpoint supports collaborative features
+        by allowing clients to show who is in a space and manage access rights.
       parameters:
       - description: Space ID
         in: path
@@ -935,6 +976,10 @@ paths:
       - spaces
   /spaces/{space_id}/members/{member_id}:
     get:
+      description: Fetches detailed information about a single member within a space.
+        The endpoint returns the member’s identifier, name, icon, identity, global
+        name, and role. This is useful for user profile pages, permission management,
+        and displaying member-specific information in collaborative environments.
       parameters:
       - description: Space ID
         in: path
@@ -980,6 +1025,12 @@ paths:
       - spaces
   /spaces/{space_id}/objects:
     get:
+      description: Retrieves a paginated list of objects in the given space. The endpoint
+        takes query parameters for pagination (offset and limit) and returns detailed
+        data about each object including its ID, name, icon, type information, a snippet
+        of the content (if applicable), layout, space ID, blocks and details. It is
+        intended for building views where users can see all objects in a space at
+        a glance.
       parameters:
       - description: Space ID
         in: path
@@ -1026,6 +1077,14 @@ paths:
       tags:
       - objects
     post:
+      description: Creates a new object in the specified space using a JSON payload.
+        The creation process is subject to rate limiting. The payload must include
+        key details such as the object name, icon, description, body content (which
+        may support Markdown), source URL (required for bookmark objects), template
+        identifier, and the unique key for the object type. Post-creation, additional
+        operations (like setting featured relations or fetching bookmark metadata)
+        may occur. The endpoint then returns the full object data, ready for further
+        interactions.
       parameters:
       - description: Space ID
         in: path
@@ -1078,6 +1137,11 @@ paths:
       - objects
   /spaces/{space_id}/objects/{object_id}:
     delete:
+      description: This endpoint “deletes” an object by marking it as archived. The
+        deletion process is performed safely and is subject to rate limiting. It returns
+        the object’s details after it has been archived. Proper error handling is
+        in place for situations such as when the object isn’t found or the deletion
+        cannot be performed because of permission issues.
       parameters:
       - description: Space ID
         in: path
@@ -1134,6 +1198,12 @@ paths:
       tags:
       - objects
     get:
+      description: Fetches the full details of a single object identified by the object
+        ID within the specified space. The response includes not only basic metadata
+        (ID, name, icon, type) but also the complete set of blocks (which may include
+        text, files, and relations) and extra details (such as timestamps and linked
+        member information). This endpoint is essential when a client needs to render
+        or edit the full object view.
       parameters:
       - description: Space ID
         in: path
@@ -1179,6 +1249,13 @@ paths:
       - objects
   /spaces/{space_id}/objects/{object_id}/export/{format}:
     post:
+      description: This endpoint exports a single object from the specified space
+        into a desired format. The export format is provided as a path parameter (currently
+        supporting “markdown” and “protobuf”), and clients can optionally specify
+        an export path in the request body. The endpoint calls an export service which
+        converts the object’s content into the requested format and returns the file
+        path where the exported data is stored. It is useful for data backup, sharing,
+        or further processing.
       parameters:
       - description: Space ID
         in: path
@@ -1238,6 +1315,12 @@ paths:
       - export
   /spaces/{space_id}/search:
     post:
+      description: This endpoint performs a focused search within a single space (specified
+        by the space_id path parameter). Like the global search, it accepts pagination
+        parameters and a JSON payload containing the search query, object types, and
+        sorting preferences. The search is limited to the provided space and returns
+        a list of objects that match the query. This allows clients to implement space‑specific
+        filtering without having to process extraneous results.
       parameters:
       - description: Space ID
         in: path
@@ -1292,6 +1375,11 @@ paths:
       - search
   /spaces/{space_id}/types:
     get:
+      description: This endpoint retrieves a paginated list of object types (e.g.
+        'Page', 'Note', 'Task') available within the specified space. Each type’s
+        record includes its unique identifier, unique key, display name, icon, and
+        a recommended layout. Clients use this information when offering choices for
+        object creation or for filtering objects by type.
       parameters:
       - description: Space ID
         in: path
@@ -1339,6 +1427,11 @@ paths:
       - types
   /spaces/{space_id}/types/{type_id}:
     get:
+      description: Fetches detailed information about one specific object type by
+        its ID. This includes the type’s unique key, name, icon, and recommended layout.
+        This detailed view assists clients in understanding the expected structure
+        and style for objects of that type and in guiding the user interface (such
+        as displaying appropriate icons or layout hints).
       parameters:
       - description: Space ID
         in: path
@@ -1384,6 +1477,11 @@ paths:
       - types
   /spaces/{space_id}/types/{type_id}/templates:
     get:
+      description: This endpoint returns a paginated list of templates that are associated
+        with a specific object type within a space. Templates provide pre‑configured
+        structures for creating new objects. Each template record contains its identifier,
+        name, and icon, so that clients can offer users a selection of templates when
+        creating objects.
       parameters:
       - description: Space ID
         in: path
@@ -1437,6 +1535,10 @@ paths:
       - types
   /spaces/{space_id}/types/{type_id}/templates/{template_id}:
     get:
+      description: Fetches full details for one template associated with a particular
+        object type in a space. The response provides the template’s identifier, name,
+        icon, and any other relevant metadata. This endpoint is useful when a client
+        needs to preview or apply a template to prefill object creation fields.
       parameters:
       - description: Space ID
         in: path
@@ -1488,6 +1590,10 @@ paths:
       - types
   /v1/spaces/{space_id}/lists/{list_id}/objects:
     get:
+      description: Returns a paginated list of objects that are associated with a
+        specific list (or collection) within a space. This endpoint helps clients
+        to manage grouped objects (for example, tasks within a list) by returning
+        detailed object information for each item of the list.
       parameters:
       - description: Space ID
         in: path
@@ -1544,6 +1650,10 @@ paths:
       tags:
       - lists
     post:
+      description: Enables clients to add one or more objects to a specific list by
+        submitting a JSON array of object IDs. Upon success, the endpoint returns
+        a confirmation message. This endpoint is vital for building user interfaces
+        that allow drag‑and‑drop or multi‑select additions to collections.
       parameters:
       - description: Space ID
         in: path
@@ -1604,6 +1714,11 @@ paths:
       - lists
   /v1/spaces/{space_id}/lists/{list_id}/objects/{object_id}:
     delete:
+      description: Removes a given object from the specified list in a space. The
+        endpoint takes the space, list, and object identifiers as path parameters.
+        It's subject to rate limiting and returns a success message on completion.
+        It is used for dynamically managing collections without affecting the underlying
+        object data.
       parameters:
       - description: Space ID
         in: path

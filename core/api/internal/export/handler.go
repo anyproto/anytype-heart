@@ -10,19 +10,20 @@ import (
 
 // GetObjectExportHandler exports an object in specified format
 //
-//	@Summary	Export object
-//	@Tags		export
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path		string					true	"Space ID"
-//	@Param		object_id	path		string					true	"Object ID"
-//	@Param		format		path		string					true	"Export format" Enums(markdown,protobuf)
-//	@Success	200			{object}	ObjectExportResponse	"Object exported successfully"
-//	@Failure	400			{object}	util.ValidationError	"Bad request"
-//	@Failure	401			{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure	500			{object}	util.ServerError		"Internal server error"
-//	@Security	bearerauth
-//	@Router		/spaces/{space_id}/objects/{object_id}/export/{format} [post]
+//	@Summary		Export object
+//	@Description	This endpoint exports a single object from the specified space into a desired format. The export format is provided as a path parameter (currently supporting “markdown” and “protobuf”), and clients can optionally specify an export path in the request body. The endpoint calls an export service which converts the object’s content into the requested format and returns the file path where the exported data is stored. It is useful for data backup, sharing, or further processing.
+//	@Tags			export
+//	@Accept			json
+//	@Produce		json
+//	@Param			space_id	path		string					true	"Space ID"
+//	@Param			object_id	path		string					true	"Object ID"
+//	@Param			format		path		string					true	"Export format"	Enums(markdown,protobuf)
+//	@Success		200			{object}	ObjectExportResponse	"Object exported successfully"
+//	@Failure		400			{object}	util.ValidationError	"Bad request"
+//	@Failure		401			{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		500			{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/objects/{object_id}/export/{format} [post]
 func GetObjectExportHandler(s *ExportService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
