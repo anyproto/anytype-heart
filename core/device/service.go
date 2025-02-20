@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -52,12 +52,12 @@ type devices struct {
 func (d *devices) Init(a *app.App) (err error) {
 	d.spaceService = app.MustComponent[space.Service](a)
 	d.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
-	datastoreService := app.MustComponent[datastore.Datastore](a)
-	db, err := datastoreService.LocalStorage()
+
+	objectStore := app.MustComponent[objectstore.ObjectStore](a)
+	d.store, err = NewStore(objectStore.GetCommonDb())
 	if err != nil {
 		return fmt.Errorf("failed to initialize notification store %w", err)
 	}
-	d.store = NewStore(db)
 	return nil
 }
 

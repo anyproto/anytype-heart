@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
@@ -267,7 +268,7 @@ func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []st
 func (s *service) processFailedIdentities(res []*identityrepoproto.DataWithIdentity, failedIdentities []string) ([]*identityrepoproto.DataWithIdentity, error) {
 	for _, identity := range failedIdentities {
 		rawData, err := s.identityProfileCacheStore.Get(context.Background(), identity)
-		if errors.Is(err, keyvaluestore.ErrNotFound) {
+		if errors.Is(err, anystore.ErrDocNotFound) {
 			continue
 		}
 		if err != nil {
@@ -410,7 +411,7 @@ func makeGlobalNameKey(identity string) []byte {
 
 func (s *service) getCachedIdentityProfile(identity string) (*identityrepoproto.DataWithIdentity, error) {
 	rawData, err := s.identityProfileCacheStore.Get(context.Background(), identity)
-	if errors.Is(err, keyvaluestore.ErrNotFound) {
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil, nil
 	}
 	if err != nil {

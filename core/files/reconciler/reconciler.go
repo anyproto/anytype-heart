@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
@@ -99,7 +100,7 @@ func (r *reconciler) Init(a *app.App) error {
 
 func (r *reconciler) Run(ctx context.Context) error {
 	isStarted, err := r.isStartedStore.Get(context.Background(), isStartedStoreKey)
-	if err != nil && !errors.Is(err, keyvaluestore.ErrNotFound) {
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		log.Error("get isStarted", zap.Error(err))
 	}
 	r.lock.Lock()

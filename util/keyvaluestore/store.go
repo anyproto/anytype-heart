@@ -12,9 +12,6 @@ import (
 
 const valueKey = "_v"
 
-// TODO Change to any-store or domain error
-var ErrNotFound = fmt.Errorf("not found")
-
 // Store is a simple generic key-value store backed by any-store
 type Store[T any] interface {
 	Get(ctx context.Context, key string) (T, error)
@@ -75,16 +72,13 @@ func (s *store[T]) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 func (s *store[T]) Get(ctx context.Context, key string) (T, error) {
 	var res T
 	doc, err := s.coll.FindId(ctx, key)
-	if errors.Is(err, anystore.ErrDocNotFound) {
-		return res, ErrNotFound
-	}
 	if err != nil {
 		return res, err
 	}
 
 	raw := doc.Value().GetBytes(valueKey)
 	if raw == nil {
-		return res, ErrNotFound
+		return res, anystore.ErrDocNotFound
 	}
 
 	return s.unmarshaller(raw)
