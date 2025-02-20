@@ -688,8 +688,8 @@ func prepareSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService
 
 	st := mock_anystorage.NewMockClientSpaceStorage(t)
 	mockSt := mock_objecttree.NewMockStorage(ctrl)
-	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil)
-	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil)
+	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil).Maybe()
+	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil).AnyTimes()
 	space.EXPECT().Storage().Return(st).Maybe()
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	return spaceService, nil
