@@ -343,7 +343,7 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 			rootBlockIds = append(rootBlockIds, b.Id)
 		}
 	}
-	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{}})
+	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}})
 	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:  blocks,
@@ -365,7 +365,7 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("anytype://object?objectId=%s&spaceId=%s", resultId, params.SpaceId), nil
+	return resultId, nil
 }
 
 // ClassifyWebsiteContent classifies content into a single category.
