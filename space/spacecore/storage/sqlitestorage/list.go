@@ -6,12 +6,14 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
 )
 
-func newListStorage(ss *spaceStorage, treeId string) (liststorage.ListStorage, error) {
+var ErrUnknownRecord = errors.New("record does not exist")
+
+func newListStorage(ss *spaceStorage, treeId string) (oldstorage.ListStorage, error) {
 	ts := &listStorage{
 		listId:       treeId,
 		spaceStorage: ss,
@@ -38,7 +40,7 @@ type listStorage struct {
 func (t *listStorage) Root() (*consensusproto.RawRecordWithId, error) {
 	tch, err := t.spaceStorage.TreeRoot(t.listId)
 	if err != nil {
-		return nil, replaceNoRowsErr(err, liststorage.ErrUnknownRecord)
+		return nil, replaceNoRowsErr(err, ErrUnknownRecord)
 	}
 	return &consensusproto.RawRecordWithId{
 		Payload: tch.RawChange,
@@ -66,7 +68,7 @@ func (t *listStorage) SetHead(headId string) error {
 func (t *listStorage) GetRawRecord(ctx context.Context, id string) (*consensusproto.RawRecordWithId, error) {
 	tch, err := t.spaceStorage.TreeRoot(id)
 	if err != nil {
-		return nil, replaceNoRowsErr(err, liststorage.ErrUnknownRecord)
+		return nil, replaceNoRowsErr(err, ErrUnknownRecord)
 	}
 	return &consensusproto.RawRecordWithId{
 		Payload: tch.RawChange,

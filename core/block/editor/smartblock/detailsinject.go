@@ -245,7 +245,14 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 		return
 	}
 
-	if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
+	var parentLayoutValue domain.Value
+	parent := s.ParentState()
+	if parent != nil {
+		parentLayoutValue = parent.Details().Get(bundle.RelationKeyLayout)
+	}
+
+	if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() && !parentLayoutValue.Ok() {
+		// we can leave current value as is, if layout is not being unset right now
 		return
 	}
 

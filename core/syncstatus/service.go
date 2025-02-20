@@ -68,7 +68,7 @@ func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
 		prevStatus := sb.Details().GetInt64(bundle.RelationKeyFileBackupStatus)
 		newStatus := int64(status)
-		if prevStatus == newStatus {
+		if prevStatus == newStatus || prevStatus == int64(filesyncstatus.Synced) {
 			return nil
 		}
 		st := sb.NewState()

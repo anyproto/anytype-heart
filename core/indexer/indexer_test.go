@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -50,7 +49,6 @@ func TestIndexer(t *testing.T) {
 				)))
 
 			smartTest.SetType(coresb.SmartBlockTypePage)
-			indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 			indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
 
 			// when
@@ -78,7 +76,6 @@ func TestIndexer(t *testing.T) {
 				)))
 
 			smartTest.SetType(coresb.SmartBlockTypePage)
-			indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 			indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "randomHash")
 
 			// when
@@ -107,7 +104,6 @@ func TestIndexer(t *testing.T) {
 			)))
 
 		smartTest.SetType(coresb.SmartBlockTypePage)
-		indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 		indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
 
 		// when

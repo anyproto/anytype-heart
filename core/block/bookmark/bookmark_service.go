@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
@@ -35,8 +36,13 @@ const CName = "bookmark"
 type ContentFuture func() *bookmark.ObjectContent
 
 type Service interface {
-	CreateObjectAndFetch(ctx context.Context, spaceId string, details *domain.Details) (objectID string, newDetails *domain.Details, err error)
-	CreateBookmarkObject(ctx context.Context, spaceId string, details *domain.Details, getContent ContentFuture) (objectId string, newDetails *domain.Details, err error)
+	CreateObjectAndFetch(
+		ctx context.Context, spaceId, templateId string, details *domain.Details,
+	) (objectID string, newDetails *domain.Details, err error)
+	CreateBookmarkObject(
+		ctx context.Context, spaceId, templateId string, details *domain.Details, getContent ContentFuture,
+	) (objectId string, newDetails *domain.Details, err error)
+
 	UpdateObject(objectId string, getContent *bookmark.ObjectContent) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
 	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
@@ -54,10 +60,6 @@ type (
 	DetailsSetter interface {
 		SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error)
 	}
-
-	templateService interface {
-		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
-	}
 )
 
 type service struct {
@@ -68,7 +70,7 @@ type service struct {
 	tempDirService      core.TempDirProvider
 	spaceService        space.Service
 	fileUploaderFactory fileuploader.Service
-	templateService     templateService
+	templateService     template.Service
 }
 
 func New() Service {
@@ -83,7 +85,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	s.fileUploaderFactory = app.MustComponent[fileuploader.Service](a)
-	s.templateService = app.MustComponent[templateService](a)
+	s.templateService = app.MustComponent[template.Service](a)
 	return nil
 }
 
@@ -94,7 +96,7 @@ func (s *service) Name() (name string) {
 var log = logging.Logger("anytype-mw-bookmark")
 
 func (s *service) CreateObjectAndFetch(
-	ctx context.Context, spaceId string, details *domain.Details,
+	ctx context.Context, spaceId, templateId string, details *domain.Details,
 ) (objectID string, newDetails *domain.Details, err error) {
 	source := details.GetString(bundle.RelationKeySource)
 	var res ContentFuture
@@ -109,17 +111,17 @@ func (s *service) CreateObjectAndFetch(
 			return nil
 		}
 	}
-	return s.CreateBookmarkObject(ctx, spaceId, details, res)
+	return s.CreateBookmarkObject(ctx, spaceId, templateId, details, res)
 }
 
 func (s *service) CreateBookmarkObject(
-	ctx context.Context, spaceID string, details *domain.Details, getContent ContentFuture,
+	ctx context.Context, spaceId, templateId string, details *domain.Details, getContent ContentFuture,
 ) (objectId string, objectDetails *domain.Details, err error) {
 	if details == nil {
 		return "", nil, fmt.Errorf("empty details")
 	}
 
-	spc, err := s.spaceService.Get(ctx, spaceID)
+	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
@@ -129,7 +131,7 @@ func (s *service) CreateBookmarkObject(
 	}
 	url := details.GetString(bundle.RelationKeySource)
 
-	records, err := s.store.SpaceIndex(spaceID).Query(database.Query{
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Sorts: []database.SortRequest{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate,
@@ -159,15 +161,20 @@ func (s *service) CreateBookmarkObject(
 		objectId = rec.Details.GetString(bundle.RelationKeyId)
 		objectDetails = rec.Details
 	} else {
-		details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_bookmark))
-		creationState, err := s.templateService.CreateTemplateStateWithDetails("", details)
+		creationState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{
+			SpaceId:                spaceId,
+			TemplateId:             templateId,
+			TypeId:                 typeId,
+			Layout:                 model.ObjectType_bookmark,
+			Details:                details,
+			WithTemplateValidation: true,
+		})
 		if err != nil {
 			log.Errorf("failed to build state for bookmark: %v", err)
 		}
-		creationState.SetDetails(details)
 		objectId, objectDetails, err = s.creator.CreateSmartBlockFromState(
 			ctx,
-			spaceID,
+			spaceId,
 			[]domain.TypeKey{bundle.TypeKeyBookmark},
 			creationState,
 		)

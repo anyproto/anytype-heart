@@ -1234,11 +1234,12 @@ func removeInternalFlags(s *state.State) {
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
-	rawRestrictions := make([]float64, len(sb.Restrictions().Object))
-	for i, r := range sb.Restrictions().Object {
-		rawRestrictions[i] = float64(r)
+	currentRestrictions := restriction.NewObjectRestrictionsFromValue(s.LocalDetails().Get(bundle.RelationKeyRestrictions))
+	if currentRestrictions.Equal(sb.Restrictions().Object) {
+		return
 	}
-	s.SetLocalDetail(bundle.RelationKeyRestrictions, domain.Float64List(rawRestrictions))
+
+	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
 
 	// todo: verify this logic with clients
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&

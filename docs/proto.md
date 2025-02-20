@@ -87,6 +87,14 @@
     - [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request)
     - [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error)
+    - [Rpc.Account.Migrate](#anytype-Rpc-Account-Migrate)
+    - [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request)
+    - [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response)
+    - [Rpc.Account.Migrate.Response.Error](#anytype-Rpc-Account-Migrate-Response-Error)
+    - [Rpc.Account.MigrateCancel](#anytype-Rpc-Account-MigrateCancel)
+    - [Rpc.Account.MigrateCancel.Request](#anytype-Rpc-Account-MigrateCancel-Request)
+    - [Rpc.Account.MigrateCancel.Response](#anytype-Rpc-Account-MigrateCancel-Response)
+    - [Rpc.Account.MigrateCancel.Response.Error](#anytype-Rpc-Account-MigrateCancel-Response-Error)
     - [Rpc.Account.Move](#anytype-Rpc-Account-Move)
     - [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request)
     - [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response)
@@ -236,10 +244,6 @@
     - [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response)
     - [Rpc.BlockBookmark.Fetch.Response.Error](#anytype-Rpc-BlockBookmark-Fetch-Response-Error)
     - [Rpc.BlockDataview](#anytype-Rpc-BlockDataview)
-    - [Rpc.BlockDataview.CreateBookmark](#anytype-Rpc-BlockDataview-CreateBookmark)
-    - [Rpc.BlockDataview.CreateBookmark.Request](#anytype-Rpc-BlockDataview-CreateBookmark-Request)
-    - [Rpc.BlockDataview.CreateBookmark.Response](#anytype-Rpc-BlockDataview-CreateBookmark-Response)
-    - [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error)
     - [Rpc.BlockDataview.CreateFromExistingObject](#anytype-Rpc-BlockDataview-CreateFromExistingObject)
     - [Rpc.BlockDataview.CreateFromExistingObject.Request](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Request)
     - [Rpc.BlockDataview.CreateFromExistingObject.Response](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response)
@@ -1302,6 +1306,8 @@
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
+    - [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code)
+    - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
@@ -1340,7 +1346,6 @@
     - [Rpc.Block.Upload.Response.Error.Code](#anytype-Rpc-Block-Upload-Response-Error-Code)
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-CreateAndFetch-Response-Error-Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-Fetch-Response-Error-Code)
-    - [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code)
     - [Rpc.BlockDataview.CreateFromExistingObject.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Remove-Response-Error-Code)
@@ -2038,6 +2043,8 @@
 | WorkspaceSetInfo | [Rpc.Workspace.SetInfo.Request](#anytype-Rpc-Workspace-SetInfo-Request) | [Rpc.Workspace.SetInfo.Response](#anytype-Rpc-Workspace-SetInfo-Response) |  |
 | WorkspaceExport | [Rpc.Workspace.Export.Request](#anytype-Rpc-Workspace-Export-Request) | [Rpc.Workspace.Export.Response](#anytype-Rpc-Workspace-Export-Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request) | [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response) | Account *** |
+| AccountMigrate | [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request) | [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response) |  |
+| AccountMigrateCancel | [Rpc.Account.MigrateCancel.Request](#anytype-Rpc-Account-MigrateCancel-Request) | [Rpc.Account.MigrateCancel.Response](#anytype-Rpc-Account-MigrateCancel-Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
@@ -3476,6 +3483,119 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Migrate"></a>
+
+### Rpc.Account.Migrate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Migrate-Request"></a>
+
+### Rpc.Account.Migrate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Id of a selected account |
+| rootPath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Migrate-Response"></a>
+
+### Rpc.Account.Migrate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.Migrate.Response.Error](#anytype-Rpc-Account-Migrate-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Migrate-Response-Error"></a>
+
+### Rpc.Account.Migrate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel"></a>
+
+### Rpc.Account.MigrateCancel
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel-Request"></a>
+
+### Rpc.Account.MigrateCancel.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Id of a selected account |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel-Response"></a>
+
+### Rpc.Account.MigrateCancel.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.MigrateCancel.Response.Error](#anytype-Rpc-Account-MigrateCancel-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel-Response-Error"></a>
+
+### Rpc.Account.MigrateCancel.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -5580,6 +5700,7 @@ Makes blocks copy by given ids and paste it to shown place
 | targetId | [string](#string) |  |  |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | url | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -5640,6 +5761,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -5682,66 +5804,6 @@ Makes blocks copy by given ids and paste it to shown place
 
 ### Rpc.BlockDataview
 
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark"></a>
-
-### Rpc.BlockDataview.CreateBookmark
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Request"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| url | [string](#string) |  |  |
-| spaceId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error) |  |  |
-| id | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -14247,6 +14309,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | spaceId | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -14310,6 +14373,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | addPageContent | [bool](#bool) |  |  |
 | withChat | [bool](#bool) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -21160,6 +21224,35 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Account-Migrate-Response-Error-Code"></a>
+
+### Rpc.Account.Migrate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | Id or root path is wrong |
+| ACCOUNT_NOT_FOUND | 101 |  |
+| CANCELED | 102 |  |
+| NOT_ENOUGH_FREE_SPACE | 103 | TODO: [storage] Add specific error codes for migration problems |
+
+
+
+<a name="anytype-Rpc-Account-MigrateCancel-Response-Error-Code"></a>
+
+### Rpc.Account.MigrateCancel.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | Id or root path is wrong |
+
+
+
 <a name="anytype-Rpc-Account-Move-Response-Error-Code"></a>
 
 ### Rpc.Account.Move.Response.Error.Code
@@ -21255,6 +21348,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 | ACCOUNT_IS_DELETED | 111 |  |
 | ACCOUNT_LOAD_IS_CANCELED | 112 |  |
+| ACCOUNT_STORE_NOT_MIGRATED | 113 |  |
 | CONFIG_FILE_NOT_FOUND | 200 |  |
 | CONFIG_FILE_INVALID | 201 |  |
 | CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
@@ -21677,19 +21771,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 
@@ -30232,6 +30313,8 @@ Used to decode block meta only, without the content itself
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 | revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
 | restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
+| iconColor | [int64](#int64) |  | color of object type icon |
+| iconName | [string](#string) |  | name of object type icon |
 
 
 

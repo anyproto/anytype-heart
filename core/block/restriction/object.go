@@ -3,14 +3,12 @@ package restriction
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -189,6 +187,16 @@ func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
 
 type ObjectRestrictions []model.RestrictionsObjectRestriction
 
+func NewObjectRestrictionsFromValue(v domain.Value) ObjectRestrictions {
+	raw := v.Int64List()
+	restrictions := make(ObjectRestrictions, len(raw))
+	for i, restriction := range raw {
+		// nolint:gosec
+		restrictions[i] = model.RestrictionsObjectRestriction(restriction)
+	}
+	return restrictions
+}
+
 func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (err error) {
 	for _, r := range cr {
 		for _, er := range or {
@@ -218,12 +226,12 @@ func (or ObjectRestrictions) Copy() ObjectRestrictions {
 	return obj
 }
 
-func (or ObjectRestrictions) ToPB() *types.Value {
-	var ints = make([]int, len(or))
+func (or ObjectRestrictions) ToValue() domain.Value {
+	var ints = make([]int64, len(or))
 	for i, v := range or {
-		ints[i] = int(v)
+		ints[i] = int64(v)
 	}
-	return pbtypes.IntList(ints...)
+	return domain.Int64List(ints)
 }
 
 func getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {

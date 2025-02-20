@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -24,13 +25,10 @@ import (
 )
 
 type (
-	templateService interface {
-		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
-		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
-	}
-
 	bookmarkService interface {
-		CreateObjectAndFetch(ctx context.Context, spaceId string, details *domain.Details) (objectID string, newDetails *domain.Details, err error)
+		CreateObjectAndFetch(
+			ctx context.Context, spaceId, templateId string, details *domain.Details,
+		) (objectID string, newDetails *domain.Details, err error)
 	}
 
 	objectArchiver interface {
@@ -58,7 +56,7 @@ type service struct {
 	objectStore     objectstore.ObjectStore
 	bookmarkService bookmarkService
 	spaceService    space.Service
-	templateService templateService
+	templateService template.Service
 	archiver        objectArchiver
 }
 
@@ -70,7 +68,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmarkService = app.MustComponent[bookmarkService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.templateService = app.MustComponent[templateService](a)
+	s.templateService = app.MustComponent[template.Service](a)
 	s.archiver = app.MustComponent[objectArchiver](a)
 	return nil
 }
@@ -126,7 +124,7 @@ func (s *service) createObjectInSpace(
 
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
-		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
+		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), req.TemplateId, details)
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)
 	case bundle.TypeKeyRelation:
@@ -157,21 +155,27 @@ func (s *service) createTemplate(
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
 	}
-	details.SetInt64(bundle.RelationKeyResolvedLayout, layout)
-
 	typeId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, req.ObjectTypeKey.String()))
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to derive object type id: %w", err)
 	}
-	// we should enrich details with spaceId, type and layout to use type object to form state of new object
-	details.Set(bundle.RelationKeySpaceId, domain.String(space.Id()))
-	details.Set(bundle.RelationKeyType, domain.String(typeId))
 
-	createState, err := s.templateService.CreateTemplateStateWithDetails("", details)
+	createState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{
+		SpaceId:                space.Id(),
+		TemplateId:             "",
+		TypeId:                 typeId,
+		Layout:                 layout,
+		Details:                details,
+		WithTemplateValidation: false,
+	})
 	if err != nil {
 		return
 	}
-	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
+	id, resultDetails, err = s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
+	if e := s.templateService.SetDefaultTemplateInType(ctx, target, id); e != nil {
+		log.Errorf("failed to set defaultTemplateId to type: %v", e)
+	}
+	return
 }
 
 func (s *service) createCommonObject(
@@ -187,24 +191,26 @@ func (s *service) createCommonObject(
 		return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
 	}
 
-	// we should enrich details with spaceId, type and layout to use type object to form state of new object
-	details.Set(bundle.RelationKeySpaceId, domain.String(space.Id()))
-	details.Set(bundle.RelationKeyType, domain.String(typeId))
-	details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
-
-	createState, err := s.templateService.CreateTemplateStateWithDetails(req.TemplateId, details)
+	createState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{
+		SpaceId:                space.Id(),
+		TemplateId:             req.TemplateId,
+		TypeId:                 typeId,
+		Layout:                 layout,
+		Details:                details,
+		WithTemplateValidation: true,
+	})
 	if err != nil {
 		return
 	}
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
 }
 
-func (s *service) getTypeRecommendedLayout(typeId domain.FullID) (int64, error) {
+func (s *service) getTypeRecommendedLayout(typeId domain.FullID) (model.ObjectTypeLayout, error) {
 	ot, err := s.objectStore.SpaceIndex(typeId.SpaceID).GetObjectType(typeId.ObjectID)
 	if err != nil {
 		return 0, err
 	}
-	return int64(ot.Layout), nil
+	return ot.Layout, nil
 }
 
 // buildDateObject does not create real date object. It just builds date object details
