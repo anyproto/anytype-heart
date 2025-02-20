@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -42,7 +43,19 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 	return
 }
 
+func (s *storageService) checkpointLoop() {
+	for {
+		select {
+		case <-time.After(time.Second):
+		}
+		if s.store != nil {
+			s.store.Checkpoint(context.Background(), false)
+		}
+	}
+}
+
 func (s *storageService) Run(ctx context.Context) (err error) {
+	go s.checkpointLoop()
 	return nil
 }
 
@@ -138,7 +151,7 @@ func anyStoreConfig() *anystore.Config {
 	return &anystore.Config{
 		ReadConnections: 4,
 		SQLiteConnectionOptions: map[string]string{
-			"synchronous": "off",
+			"synchronous": "full",
 		},
 	}
 }
