@@ -334,7 +334,7 @@ func StructDiffIntoEventsWithSubIds(
 	)
 
 	for k, v := range diff.Iterate() {
-		key := string(k)
+		key := k.String()
 		if len(filterKeys) > 0 && slice.FindPos(filterKeys, k) == -1 {
 			continue
 		}

@@ -1034,7 +1034,7 @@ func (sb *smartBlock) hasDepIds(act *undo.Action) bool {
 		}
 
 		for k, after := range act.Details.After.Iterate() {
-			rel, err := sb.objectStore.SpaceIndex(sb.SpaceID()).GetRelationLink(string(k))
+			rel, err := sb.objectStore.SpaceIndex(sb.SpaceID()).GetRelationLink(k.String())
 			if err != nil || rel == nil {
 				continue
 			}

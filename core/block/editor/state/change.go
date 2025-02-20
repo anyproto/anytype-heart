@@ -668,7 +668,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	curDetails := s.Details()
 
 	for k, v := range curDetails.Iterate() {
-		// TODO: GO-4282 Test this logic !
+		// TODO: GO-4284 Test this logic !
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, k) {
 			continue
 		}
@@ -676,21 +676,21 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 		if !prevValue.Ok() || !prevValue.Equal(v) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsSet{
-					DetailsSet: &pb.ChangeDetailsSet{Key: string(k), Value: v.ToProto()},
+					DetailsSet: &pb.ChangeDetailsSet{Key: k.String(), Value: v.ToProto()},
 				},
 			})
 		}
 	}
 
 	for k, _ := range prev.Iterate() {
-		// TODO: GO-4282 Test this logic !
+		// TODO: GO-4284 Test this logic !
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, k) {
 			continue
 		}
 		if !curDetails.Has(k) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{
-					DetailsUnset: &pb.ChangeDetailsUnset{Key: string(k)},
+					DetailsUnset: &pb.ChangeDetailsUnset{Key: k.String()},
 				},
 			})
 		}
