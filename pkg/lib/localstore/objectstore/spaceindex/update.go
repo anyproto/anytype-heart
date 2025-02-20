@@ -9,14 +9,10 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
-	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -237,14 +233,6 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		return fmt.Errorf("upsert details: %w", err)
 	}
 	return nil
-}
-
-func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
-	return badgerhelper.GetValueTxn(txn, key, func(raw []byte) (*model.ObjectDetails, error) {
-		var res model.ObjectDetails
-		err := proto.Unmarshal(raw, &res)
-		return &res, err
-	})
 }
 
 func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links []string) (added []string, removed []string, err error) {
