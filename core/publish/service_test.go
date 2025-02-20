@@ -23,8 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/sys/unix"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
@@ -389,7 +387,7 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("limit error for members", func(t *testing.T) {
 		// given
-		spaceService, err := prepaeSpaceService(t, false)
+		spaceService, err := prepareSpaceService(t, false)
 		require.NoError(t, err)
 
 		expectedUri := "test"
@@ -433,7 +431,7 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("default limit error", func(t *testing.T) {
 		// given
-		spaceService, err := prepaeSpaceService(t, false)
+		spaceService, err := prepareSpaceService(t, false)
 		require.NoError(t, err)
 
 		expectedUri := "test"
@@ -690,8 +688,8 @@ func prepareSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService
 
 	st := mock_anystorage.NewMockClientSpaceStorage(t)
 	mockSt := mock_objecttree.NewMockStorage(ctrl)
-	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil)
-	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil)
+	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil).Maybe()
+	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil).AnyTimes()
 	space.EXPECT().Storage().Return(st).Maybe()
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	return spaceService, nil
