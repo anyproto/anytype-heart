@@ -12,9 +12,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 )
-
-const nodeUsageKey = "node_usage"
 
 type NodeUsage struct {
 	AccountBytesLimit int
@@ -137,7 +136,7 @@ func (s *fileSync) UpdateNodeUsage(ctx context.Context) error {
 }
 
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
-	usage, err := s.nodeUsageCache.Get(context.Background(), nodeUsageKey)
+	usage, err := s.nodeUsageCache.Get(context.Background(), anystoreprovider.SystemKeys.NodeUsage())
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return NodeUsage{}, false, nil
 	}
@@ -179,7 +178,7 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 		BytesLeft:         left,
 		Spaces:            spaces,
 	}
-	err = s.nodeUsageCache.Set(context.Background(), nodeUsageKey, usage)
+	err = s.nodeUsageCache.Set(context.Background(), anystoreprovider.SystemKeys.NodeUsage(), usage)
 	if err != nil {
 		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
 	}

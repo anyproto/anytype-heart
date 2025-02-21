@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
 var log = logging.Logger("anytype-localstore")
@@ -93,8 +94,10 @@ type dsObjectStore struct {
 
 	indexerChecksums anystore.Collection
 	virtualSpaces    anystore.Collection
-	system           anystore.Collection
-	fulltextQueue    anystore.Collection
+
+	fileKeys      keyvaluestore.Store[map[string]string]
+	accountStatus keyvaluestore.Store[*coordinatorproto.SpaceStatusPayload]
+	fulltextQueue anystore.Collection
 
 	arenaPool *anyenc.ArenaPool
 
@@ -146,8 +149,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
 
-	s.initCollections(s.componentCtx)
-	return nil
+	return s.initCollections(s.componentCtx)
 }
 
 func (s *dsObjectStore) Name() (name string) {
@@ -176,24 +178,31 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 
 	fulltextQueue, err := store.Collection(ctx, "fulltext_queue")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open fulltextQueue collection: %w", err))
+		return fmt.Errorf("open fulltextQueue collection: %w", err)
 	}
-	system := s.anystoreProvider.GetCommonCollection()
+
+	fileKeys, err := keyvaluestore.NewJson[map[string]string](store, "file_keys")
+	if err != nil {
+		return fmt.Errorf("open file_keys collection: %w", err)
+	}
+
+	system := s.anystoreProvider.GetSystemCollection()
+	s.accountStatus = keyvaluestore.NewJsonFromCollection[*coordinatorproto.SpaceStatusPayload](system)
 
 	indexerChecksums, err := store.Collection(ctx, "indexerChecksums")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open indexerChecksums collection: %w", err))
+		return fmt.Errorf("open indexerChecksums collection: %w", err)
 	}
 	virtualSpaces, err := store.Collection(ctx, "virtualSpaces")
 	if err != nil {
-		return errors.Join(store.Close(), fmt.Errorf("open virtualSpaces collection: %w", err))
+		return fmt.Errorf("open virtualSpaces collection: %w", err)
 	}
 
 	s.db = store
 	s.fulltextQueue = fulltextQueue
-	s.system = system
 	s.indexerChecksums = indexerChecksums
 	s.virtualSpaces = virtualSpaces
+	s.fileKeys = fileKeys
 
 	return nil
 }

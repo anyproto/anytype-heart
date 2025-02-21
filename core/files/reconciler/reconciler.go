@@ -26,8 +26,7 @@ import (
 )
 
 const (
-	CName             = "core.files.reconciler"
-	isStartedStoreKey = "value"
+	CName = "core.files.reconciler"
 )
 
 var log = logging.Logger(CName).Desugar()
@@ -92,16 +91,13 @@ func (r *reconciler) Init(a *app.App) error {
 	}
 	r.rebindQueue = persistentqueue.New(rebindQueueStore, log, r.rebindHandler)
 
-	r.isStartedStore, err = keyvaluestore.NewJson[bool](db, "file_reconciler/is_started")
-	if err != nil {
-		return fmt.Errorf("init isStartedStore: %w", err)
-	}
+	r.isStartedStore = keyvaluestore.NewJsonFromCollection[bool](provider.GetSystemCollection())
 
 	return nil
 }
 
 func (r *reconciler) Run(ctx context.Context) error {
-	isStarted, err := r.isStartedStore.Get(context.Background(), isStartedStoreKey)
+	isStarted, err := r.isStartedStore.Get(context.Background(), anystoreprovider.SystemKeys.FileReconcilerStarted())
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		log.Error("get isStarted", zap.Error(err))
 	}
@@ -114,7 +110,7 @@ func (r *reconciler) Run(ctx context.Context) error {
 }
 
 func (r *reconciler) Start(ctx context.Context) error {
-	err := r.isStartedStore.Set(context.Background(), isStartedStoreKey, true)
+	err := r.isStartedStore.Set(context.Background(), anystoreprovider.SystemKeys.FileReconcilerStarted(), true)
 	if err != nil {
 		return fmt.Errorf("set isStarted: %w", err)
 	}

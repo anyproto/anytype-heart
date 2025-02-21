@@ -53,12 +53,20 @@ func New[T any](
 		return nil, fmt.Errorf("init collection: %w", err)
 	}
 
+	return NewFromCollection(coll, marshaller, unmarshaller), nil
+}
+
+func NewFromCollection[T any](
+	coll anystore.Collection,
+	marshaller func(T) ([]byte, error),
+	unmarshaller func([]byte) (T, error),
+) Store[T] {
 	return &store[T]{
 		coll:         coll,
 		marshaller:   marshaller,
 		unmarshaller: unmarshaller,
 		arenaPool:    &anyenc.ArenaPool{},
-	}, nil
+	}
 }
 
 // NewJson creates a new Store that marshals and unmarshals values as JSON
@@ -67,6 +75,10 @@ func NewJson[T any](
 	collectionName string,
 ) (Store[T], error) {
 	return New[T](db, collectionName, JsonMarshal[T], JsonUnmarshal[T])
+}
+
+func NewJsonFromCollection[T any](coll anystore.Collection) Store[T] {
+	return NewFromCollection[T](coll, JsonMarshal[T], JsonUnmarshal[T])
 }
 
 func (s *store[T]) ReadTx(ctx context.Context) (anystore.ReadTx, error) {

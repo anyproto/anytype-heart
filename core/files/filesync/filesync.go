@@ -113,10 +113,7 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("init limit reached error logged cache: %w", err)
 	}
-	s.nodeUsageCache, err = keyvaluestore.NewJson[NodeUsage](db, "filesync/node_usage")
-	if err != nil {
-		return fmt.Errorf("init node usage cache: %w", err)
-	}
+	s.nodeUsageCache = keyvaluestore.NewJsonFromCollection[NodeUsage](provider.GetSystemCollection())
 
 	uploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/uploading", makeQueueItem)
 	if err != nil {

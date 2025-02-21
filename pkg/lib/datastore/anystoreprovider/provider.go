@@ -22,14 +22,39 @@ const CName = "anystore-provider"
 
 var log = logging.LoggerNotSugared(CName)
 
+type systemKeys struct {
+}
+
+func (k systemKeys) PaymentCacheKey(ver int) string {
+	return fmt.Sprintf("payments_subscription_v%d", ver)
+}
+
+func (k systemKeys) PortKey() string {
+	return "drpc_server_port"
+}
+
+func (k systemKeys) NodeUsage() string {
+	return "node_usage"
+}
+
+func (k systemKeys) FileReconcilerStarted() string {
+	return "file_reconciler_started"
+}
+
+func (k systemKeys) AccountStatus() string {
+	return "account_status"
+}
+
+var SystemKeys = systemKeys{}
+
 type Provider interface {
 	// GetCommonDb returns an instance of anystore common across spaces
 	GetCommonDb() anystore.DB
 
-	// GetCommonCollection returns a collection for various system thing. It should be used with
+	// GetSystemCollection returns a collection for various system thing. It should be used with
 	// static keys like:
 	//   const accountStatusKey = "account_status"
-	GetCommonCollection() anystore.Collection
+	GetSystemCollection() anystore.Collection
 
 	GetSpaceIndexDb(spaceId string) (anystore.DB, error)
 	GetCrdtDb(spaceId string) anystore.DB
@@ -168,7 +193,7 @@ func (s *provider) GetCommonDb() anystore.DB {
 	return s.commonDb.db
 }
 
-func (s *provider) GetCommonCollection() anystore.Collection {
+func (s *provider) GetSystemCollection() anystore.Collection {
 	return s.systemCollection
 }
 

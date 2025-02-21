@@ -3,7 +3,6 @@ package clientserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -15,13 +14,13 @@ import (
 	"github.com/anyproto/any-sync/net/transport/quic"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
 const (
 	CName           = "client.space.clientserver"
 	PreferredSchema = transport.Quic
-	portKey         = "drpc/server/port"
 )
 
 var log = logger.NewNamed(CName)
@@ -44,14 +43,14 @@ type DbProvider interface {
 
 type clientServer struct {
 	quic          quic.Quic
-	provider      DbProvider
+	provider      anystoreprovider.Provider
 	port          int
 	storage       keyvaluestore.Store[int]
 	serverStarted bool
 }
 
 func (s *clientServer) Init(a *app.App) (err error) {
-	s.provider = app.MustComponent[DbProvider](a)
+	s.provider = app.MustComponent[anystoreprovider.Provider](a)
 	s.quic = a.MustComponent(quic.CName).(quic.Quic)
 	return nil
 }
@@ -74,11 +73,9 @@ func (s *clientServer) Port() int {
 }
 
 func (s *clientServer) startServer(ctx context.Context) (err error) {
-	s.storage, err = keyvaluestore.NewJson[int](s.provider.GetCommonDb(), "system")
-	if err != nil {
-		return fmt.Errorf("init keyvalue store: %w", err)
-	}
-	oldPort, err := s.storage.Get(ctx, portKey)
+	s.storage = keyvaluestore.NewJsonFromCollection[int](s.provider.GetSystemCollection())
+
+	oldPort, err := s.storage.Get(ctx, anystoreprovider.SystemKeys.PortKey())
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return
 	}
@@ -86,7 +83,7 @@ func (s *clientServer) startServer(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	return s.storage.Set(ctx, portKey, s.port)
+	return s.storage.Set(ctx, anystoreprovider.SystemKeys.PortKey(), s.port)
 }
 
 func (s *clientServer) parsePort(addr string) (int, error) {

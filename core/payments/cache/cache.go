@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 	"errors"
-	"strconv"
 	"sync"
 	"time"
 
@@ -36,8 +35,6 @@ const (
 	cacheLifetimeDurExplorer = 24 * time.Hour
 	cacheLifetimeDurOther    = 10 * time.Minute
 )
-
-var dbKey = "payments/subscription/v" + strconv.Itoa(cacheLastVersion)
 
 type StorageStruct struct {
 	// not to migrate old storage to new format, but just to check the validity of the cache
@@ -117,11 +114,7 @@ func (s *cacheservice) Name() (name string) {
 func (s *cacheservice) Init(a *app.App) (err error) {
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 
-	// TODO Use one collections for system things that exists only as the single instance
-	s.db, err = keyvaluestore.NewJson[*StorageStruct](provider.GetCommonDb(), "payments_cache")
-	if err != nil {
-		return err
-	}
+	s.db = keyvaluestore.NewJsonFromCollection[*StorageStruct](provider.GetSystemCollection())
 	return nil
 }
 
@@ -323,12 +316,12 @@ func (s *cacheservice) get() (out *StorageStruct, err error) {
 	if s.db == nil {
 		return nil, ErrCacheDbNotInitialized
 	}
-	return s.db.Get(context.Background(), dbKey)
+	return s.db.Get(context.Background(), anystoreprovider.SystemKeys.PaymentCacheKey(cacheLastVersion))
 }
 
 func (s *cacheservice) set(in *StorageStruct) (err error) {
 	if s.db == nil {
 		return ErrCacheDbNotInitialized
 	}
-	return s.db.Set(context.Background(), dbKey, in)
+	return s.db.Set(context.Background(), anystoreprovider.SystemKeys.PaymentCacheKey(cacheLastVersion), in)
 }
