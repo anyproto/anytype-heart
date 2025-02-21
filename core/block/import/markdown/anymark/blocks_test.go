@@ -44,8 +44,10 @@ func TestPreprocessBlocksOneCodeBlock(t *testing.T) {
 			},
 		},
 	}
-	blocks, _ := preprocessBlocks([]*model.Block{bl})
+	blocks, rootIds := preprocessBlocks([]*model.Block{bl})
 	assert.Len(t, blocks, 1)
+	assert.Len(t, rootIds, 1)
+	assert.Equal(t, rootIds[0], bl.Id)
 	assert.Equal(t, blocks[0].Id, bl.Id)
 }
 

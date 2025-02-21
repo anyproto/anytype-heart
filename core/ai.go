@@ -69,3 +69,25 @@ func (mw *Middleware) AIListSummary(ctx context.Context, req *pb.RpcAIListSummar
 	}
 	return r
 }
+
+func (mw *Middleware) AIObjectCreateFromUrl(ctx context.Context, req *pb.RpcAIObjectCreateFromUrlRequest) *pb.RpcAIObjectCreateFromUrlResponse {
+	aiService := mustService[ai.AI](mw)
+
+	objectId, details, err := aiService.CreateObjectFromUrl(ctx, req.Config, req.SpaceId, req.Url)
+
+	code := mapErrorCode(nil,
+		errToCode(ai.ErrRateLimitExceeded, pb.RpcAIObjectCreateFromUrlResponseError_RATE_LIMIT_EXCEEDED),
+		errToCode(ai.ErrEndpointNotReachable, pb.RpcAIObjectCreateFromUrlResponseError_ENDPOINT_NOT_REACHABLE),
+		errToCode(ai.ErrModelNotFound, pb.RpcAIObjectCreateFromUrlResponseError_MODEL_NOT_FOUND),
+		errToCode(ai.ErrAuthRequired, pb.RpcAIObjectCreateFromUrlResponseError_AUTH_REQUIRED))
+
+	r := &pb.RpcAIObjectCreateFromUrlResponse{
+		Error: &pb.RpcAIObjectCreateFromUrlResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		ObjectId: objectId,
+		Details:  details.ToProto(),
+	}
+	return r
+}

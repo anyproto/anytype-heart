@@ -4236,6 +4236,38 @@ message Rpc {
             }
         }
 
+        message ObjectCreateFromUrl {
+            message Request {
+                ProviderConfig config = 1;
+                string spaceId = 2;
+                string url = 3;
+                google.protobuf.Struct details = 4;
+            }
+
+            message Response {
+                Error error = 1;
+                string objectId = 2;
+                google.protobuf.Struct details = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        RATE_LIMIT_EXCEEDED = 100;
+                        ENDPOINT_NOT_REACHABLE = 101;
+                        MODEL_NOT_FOUND = 102;
+                        AUTH_REQUIRED = 103;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message ProviderConfig {
             Provider provider = 1;
             string endpoint = 2;

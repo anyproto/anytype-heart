@@ -88,6 +88,7 @@ service ClientCommands {
     // ObjectCreate just creates the new page, without adding the link to it from some other page
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
     rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
+
     rpc ObjectCreateFromUrl (anytype.Rpc.Object.CreateFromUrl.Request) returns (anytype.Rpc.Object.CreateFromUrl.Response);
 
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
@@ -400,4 +401,6 @@ service ClientCommands {
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);
     rpc AIAutofill (anytype.Rpc.AI.Autofill.Request) returns (anytype.Rpc.AI.Autofill.Response);
     rpc AIListSummary (anytype.Rpc.AI.ListSummary.Request) returns (anytype.Rpc.AI.ListSummary.Response);
+    rpc AIObjectCreateFromUrl (anytype.Rpc.AI.ObjectCreateFromUrl.Request) returns (anytype.Rpc.AI.ObjectCreateFromUrl.Response);
+
 }

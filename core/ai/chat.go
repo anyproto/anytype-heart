@@ -87,23 +87,12 @@ func (ai *AIService) createChatRequest(mode int, promptConfig *PromptConfig) ([]
 			return nil, fmt.Errorf("unknown mode: %d", mode)
 		}
 
-		payload.ResponseFormat = map[string]interface{}{
-			"type": "json_schema",
-			"json_schema": map[string]interface{}{
-				"name":   key + "_response",
-				"strict": true,
-				"schema": map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						key: map[string]interface{}{
-							"type": "string",
-						},
-					},
-					"additionalProperties": false,
-					"required":             []string{key},
-				},
-			},
+		schemaFunc, exists := ai.responseParser.ModeToSchema()[mode]
+		if !exists {
+			return nil, fmt.Errorf("no schema function defined for mode: %d", mode)
 		}
+
+		payload.ResponseFormat = schemaFunc(key)
 	}
 
 	return json.Marshal(payload)
@@ -192,16 +181,4 @@ func (ai *AIService) chat(ctx context.Context, mode int, promptConfig *PromptCon
 
 	log.Info("chat response: ", answerBuilder.String())
 	return answerBuilder.String(), nil
-}
-
-// extractAnswerByMode extracts the relevant content from the JSON response based on the mode.
-func (ai *AIService) extractAnswerByMode(jsonData string, mode int) (string, error) {
-	respStruct := ai.responseParser.NewResponseStruct()
-
-	err := json.Unmarshal([]byte(jsonData), &respStruct)
-	if err != nil {
-		return "", fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
-	}
-
-	return ai.responseParser.ExtractContent(mode, respStruct)
 }

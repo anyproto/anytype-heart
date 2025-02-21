@@ -58,6 +58,10 @@
     - [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request)
     - [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response)
     - [Rpc.AI.ListSummary.Response.Error](#anytype-Rpc-AI-ListSummary-Response-Error)
+    - [Rpc.AI.ObjectCreateFromUrl](#anytype-Rpc-AI-ObjectCreateFromUrl)
+    - [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request)
+    - [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response)
+    - [Rpc.AI.ObjectCreateFromUrl.Response.Error](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error)
     - [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig)
     - [Rpc.AI.WritingTools](#anytype-Rpc-AI-WritingTools)
     - [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request)
@@ -1318,6 +1322,7 @@
     - [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode)
     - [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code)
     - [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code)
+    - [Rpc.AI.ObjectCreateFromUrl.Response.Error.Code](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code)
     - [Rpc.AI.Provider](#anytype-Rpc-AI-Provider)
     - [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language)
     - [Rpc.AI.WritingTools.Request.WritingMode](#anytype-Rpc-AI-WritingTools-Request-WritingMode)
@@ -2336,6 +2341,7 @@
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | AI |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
+| AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
 
  
 
@@ -3122,6 +3128,67 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl"></a>
+
+### Rpc.AI.ObjectCreateFromUrl
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl-Request"></a>
+
+### Rpc.AI.ObjectCreateFromUrl.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| spaceId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl-Response"></a>
+
+### Rpc.AI.ObjectCreateFromUrl.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.ObjectCreateFromUrl.Response.Error](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error"></a>
+
+### Rpc.AI.ObjectCreateFromUrl.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.ObjectCreateFromUrl.Response.Error.Code](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -21396,6 +21463,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-AI-ListSummary-Response-Error-Code"></a>
 
 ### Rpc.AI.ListSummary.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code"></a>
+
+### Rpc.AI.ObjectCreateFromUrl.Response.Error.Code
 
 
 | Name | Number | Description |

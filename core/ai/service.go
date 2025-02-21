@@ -3,7 +3,6 @@ package ai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,17 +16,22 @@ import (
 	"github.com/pemistahl/lingua-go"
 
 	"github.com/anyproto/anytype-heart/core/ai/parsing"
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/linkpreview"
 )
 
 const (
@@ -51,7 +55,7 @@ type AI interface {
 	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error)
 	ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error)
 
-	// internal
+	CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error)
 	WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error)
 	ClassifyWebsiteContent(ctx context.Context, content string) (string, error)
 
@@ -59,10 +63,14 @@ type AI interface {
 }
 
 type AIService struct {
-	mu       sync.Mutex
-	exporter export.Export
-	source   source.Service
+	mu           sync.Mutex
+	exporter     export.Export
+	source       source.Service
+	linkPreview  linkpreview.LinkPreview
+	spaceService space.Service
+	blockService *block.Service
 
+	objectCreator  objectcreator.Service
 	apiConfig      *APIConfig
 	httpClient     HttpClient
 	responseParser parsing.ResponseParser
@@ -110,7 +118,10 @@ func New() AI {
 func (ai *AIService) Init(a *app.App) (err error) {
 	ai.exporter = app.MustComponent[export.Export](a)
 	ai.source = app.MustComponent[source.Service](a)
-
+	ai.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+	ai.objectCreator = app.MustComponent[objectcreator.Service](a)
+	ai.spaceService = app.MustComponent[space.Service](a)
+	ai.blockService = a.MustComponent(block.CName).(*block.Service)
 	return nil
 }
 
@@ -164,14 +175,19 @@ func (ai *AIService) WritingTools(ctx context.Context, params *pb.RpcAIWritingTo
 
 	// extract answer value from json response, except for default mode
 	if params.Mode != 0 {
-		extractedAnswer, err := ai.extractAnswerByMode(answer, int(params.Mode))
+		rawAnswer, err := ai.responseParser.ExtractContent(answer, int(params.Mode))
+		if err != nil {
+			return WritingToolsResult{}, err
+		}
+
+		strResult, err := rawAnswer.String()
 		if err != nil {
 			return WritingToolsResult{}, err
 		}
 
 		// fix lmstudio newline issue for table responses
-		extractedAnswer = strings.ReplaceAll(extractedAnswer, "\\\\n", "\n")
-		return WritingToolsResult{Answer: extractedAnswer}, nil
+		strResult = strings.ReplaceAll(strResult, "\\\\n", "\n")
+		return WritingToolsResult{Answer: strResult}, nil
 	}
 
 	return WritingToolsResult{Answer: answer}, nil
@@ -201,19 +217,95 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 		return AutofillResult{}, err
 	}
 
-	extractedAnswer, err := ai.extractAnswerByMode(answer, int(params.Mode))
+	rawAnswer, err := ai.responseParser.ExtractContent(answer, int(params.Mode))
 	if err != nil {
 		return AutofillResult{}, err
 	}
 
-	return AutofillResult{Choices: []string{extractedAnswer}}, nil
+	strResult, err := rawAnswer.String()
+	if err != nil {
+		return AutofillResult{}, err
+	}
+	return AutofillResult{Choices: []string{strResult}}, nil
+}
+
+func (ai *AIService) fallbackToBookmark(ctx context.Context, spaceId string, url string, details *domain.Details) (id string, resDetails *domain.Details, err error) {
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyBookmark,
+		Details:       details,
+	}
+	return ai.objectCreator.CreateObject(ctx, spaceId, createReq)
+}
+
+func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error) {
+	_, body, isFile, err := ai.linkPreview.Fetch(ctx, url)
+	if err != nil {
+		return "", nil, fmt.Errorf("could not fetch website: %w", err)
+	}
+	if isFile {
+		return ai.fallbackToBookmark(ctx, url, spaceId, domain.NewDetails())
+	}
+	result, err := ai.WebsiteProcess(ctx, provider, body)
+	if err != nil {
+		return ai.fallbackToBookmark(ctx, url, spaceId, domain.NewDetails())
+	}
+
+	if !bundle.HasObjectTypeByKey(domain.TypeKey(result.Type)) {
+		return ai.fallbackToBookmark(ctx, url, spaceId, domain.NewDetails())
+	}
+
+	var idsToInstallIfMissing []string
+
+	idsToInstallIfMissing = append(idsToInstallIfMissing, domain.TypeKey(result.Type).BundledURL())
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: domain.TypeKey(result.Type),
+		Details:       domain.NewDetails(),
+	}
+	for k, v := range result.Relations {
+		if !bundle.HasRelation(domain.RelationKey(k)) {
+			continue
+		}
+		idsToInstallIfMissing = append(idsToInstallIfMissing, domain.RelationKey(k).BundledURL())
+
+		createReq.Details.SetString(domain.RelationKey(k), v)
+	}
+
+	space, err := ai.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
+	_, _, err = ai.objectCreator.InstallBundledObjects(ctx, space, idsToInstallIfMissing, false)
+	if err != nil {
+		return "", nil, fmt.Errorf("install bundled objects: %w", err)
+	}
+	id, details, err = ai.objectCreator.CreateObject(ctx, spaceId, createReq)
+	if err != nil {
+		return "", nil, fmt.Errorf("create object: %w", err)
+	}
+
+	cctx := session.NewContext()
+	_, _, _, _, err = ai.blockService.Paste(cctx, pb.RpcBlockPasteRequest{
+		ContextId: id,
+		Url:       url,
+		TextSlot:  result.MarkdownSummary,
+	}, "")
+	if err != nil {
+		return "", nil, fmt.Errorf("paste block: %w", err)
+	}
+	err = ai.blockService.CreateTypeWidgetIfMissing(ctx, spaceId, domain.TypeKey(result.Type))
+	if err != nil {
+		log.Errorf("create type widget: %v", err)
+	}
+
+	return id, details, nil
+
 }
 
 // WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.
 func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error) {
 	article, err := readability.FromReader(bytes.NewReader(websiteData), nil)
 	content := article.Content
-	if err != nil {
+	if err != nil || content == "" {
 		return nil, fmt.Errorf("could not process website content: %w", err)
 	}
 
@@ -230,6 +322,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 
 	relationPrompt := fmt.Sprintf(prompts.RelationPrompt, content)
 	summaryPrompt := fmt.Sprintf(prompts.SummaryPrompt, content)
+	websiteTypeToMode := map[string]int{"recipe": 1, "company": 2, "event": 3}
 
 	var (
 		relationsResult map[string]string
@@ -250,19 +343,23 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 		}
 		ai.responseParser = parsing.NewWebsiteProcessParser()
 
-		answer, err := ai.chat(ctx, 1, promptConfig)
+		answer, err := ai.chat(ctx, websiteTypeToMode[websiteType], promptConfig)
 		if err != nil {
 			relErr = err
 			return
 		}
-		extractedAnswer, err := ai.extractAnswerByMode(answer, 1)
-
-		var relations map[string]string
-		if err := json.Unmarshal([]byte(extractedAnswer), &relations); err != nil {
+		rawAnswer, err := ai.responseParser.ExtractContent(answer, websiteTypeToMode[websiteType])
+		if err != nil {
 			relErr = err
 			return
 		}
-		relationsResult = relations
+
+		mapResult, err := rawAnswer.Map()
+		if err != nil {
+			relErr = err
+			return
+		}
+		relationsResult = mapResult
 	}()
 
 	go func() {
@@ -331,12 +428,13 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 		return "", err
 	}
 
-	extractedAnswer, err := ai.extractAnswerByMode(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+	rawAnswer, err := ai.responseParser.ExtractContent(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
 	if err != nil {
 		return "", err
 	}
 
-	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(extractedAnswer), "", nil)
+	rawAnswerStr, err := rawAnswer.String()
+	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(rawAnswerStr), "", nil)
 	resultId := uuid.New().String()
 	if len(rootBlockIds) == 0 {
 		return "", fmt.Errorf("no root block ids found")

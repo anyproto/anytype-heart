@@ -223,6 +223,7 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 		}
 		return m
 	}
+
 	bs := mustService[*block.Service](mw)
 
 	id, newDetails, err := bs.CreateObjectFromUrl(cctx, req)

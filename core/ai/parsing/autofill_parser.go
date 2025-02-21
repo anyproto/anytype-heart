@@ -1,6 +1,7 @@
 package parsing
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -8,12 +9,10 @@ import (
 
 // AutofillParser is a ResponseParser for Autofill responses.
 type AutofillParser struct {
-	// modeToField maps modes to the name of the field in AutofillResponse that should be returned.
-	// For example: 1 -> "tag", 2 -> "relation", etc.
-	modeToField map[int]string
+	modeToField  map[int]string
+	modeToSchema map[int]func(key string) map[string]interface{}
 }
 
-// AutofillResponse represents the structure of the response for different autofill modes.
 type AutofillResponse struct {
 	Tag         string `json:"tag,omitempty"`
 	Relation    string `json:"relation,omitempty"`
@@ -22,7 +21,6 @@ type AutofillResponse struct {
 	Description string `json:"description,omitempty"`
 }
 
-// NewAutofillParser returns a new AutofillParser instance.
 func NewAutofillParser() *AutofillParser {
 	return &AutofillParser{
 		modeToField: map[int]string{
@@ -32,44 +30,47 @@ func NewAutofillParser() *AutofillParser {
 			int(pb.RpcAIAutofillRequest_TITLE):       "title",
 			int(pb.RpcAIAutofillRequest_DESCRIPTION): "description",
 		},
+		modeToSchema: map[int]func(key string) map[string]interface{}{
+			int(pb.RpcAIAutofillRequest_TAG):         SingleStringSchema,
+			int(pb.RpcAIAutofillRequest_RELATION):    SingleStringSchema,
+			int(pb.RpcAIAutofillRequest_TYPE):        SingleStringSchema,
+			int(pb.RpcAIAutofillRequest_TITLE):       SingleStringSchema,
+			int(pb.RpcAIAutofillRequest_DESCRIPTION): SingleStringSchema,
+		},
 	}
 }
 
-// NewResponseStruct returns a new AutofillResponse instance.
-func (p *AutofillParser) NewResponseStruct() interface{} {
-	return &AutofillResponse{}
-}
-
-// ModeToField returns the modeToField map.
 func (p *AutofillParser) ModeToField() map[int]string {
 	return p.modeToField
 }
 
-// ExtractContent extracts the relevant field based on mode.
-func (p *AutofillParser) ExtractContent(mode int, response interface{}) (string, error) {
-	afResp, ok := response.(*AutofillResponse)
-	if !ok {
-		return "", fmt.Errorf("invalid response type, expected *AutofillResponse")
+func (p *AutofillParser) ModeToSchema() map[int]func(key string) map[string]interface{} {
+	return p.modeToSchema
+}
+
+func (p *AutofillParser) ExtractContent(jsonData string, mode int) (ExtractionResult, error) {
+	var afResp AutofillResponse
+	if err := json.Unmarshal([]byte(jsonData), &afResp); err != nil {
+		return ExtractionResult{}, fmt.Errorf("error parsing JSON: %w %s", err, jsonData)
 	}
 
 	fieldName, exists := p.modeToField[mode]
 	if !exists {
-		return "", fmt.Errorf("unknown mode: %d", mode)
+		return ExtractionResult{}, fmt.Errorf("unknown mode: %d", mode)
 	}
 
-	// Switch on fieldName to extract
 	switch fieldName {
 	case "tag":
-		return afResp.Tag, CheckEmpty(afResp.Tag, mode)
+		return ExtractionResult{Raw: afResp.Tag}, checkEmpty(afResp.Tag, mode)
 	case "relation":
-		return afResp.Relation, CheckEmpty(afResp.Relation, mode)
+		return ExtractionResult{Raw: afResp.Relation}, checkEmpty(afResp.Relation, mode)
 	case "type":
-		return afResp.Type, CheckEmpty(afResp.Type, mode)
+		return ExtractionResult{Raw: afResp.Type}, checkEmpty(afResp.Type, mode)
 	case "title":
-		return afResp.Title, CheckEmpty(afResp.Title, mode)
+		return ExtractionResult{Raw: afResp.Title}, checkEmpty(afResp.Title, mode)
 	case "description":
-		return afResp.Description, CheckEmpty(afResp.Description, mode)
+		return ExtractionResult{Raw: afResp.Description}, checkEmpty(afResp.Description, mode)
 	default:
-		return "", fmt.Errorf("field %s is not recognized", fieldName)
+		return ExtractionResult{}, fmt.Errorf("field %s is not recognized", fieldName)
 	}
 }

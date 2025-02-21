@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "55b112c49ecef2287e6a8a0b17d70955608139e1805dcb3fb742dc7eb43236be"
+const TypeChecksum = "412e75535ca288e62124dfd7ad9b53424db108696cc07d3cc40e1308080ba75c"
 const (
 	TypePrefix = "_ot"
 )
@@ -43,6 +43,8 @@ const (
 	TypeKeyProject        domain.TypeKey = "project"
 	TypeKeyChat           domain.TypeKey = "chat"
 	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
+	TypeKeyCompany        domain.TypeKey = "company"
+	TypeKeyEvent          domain.TypeKey = "event"
 )
 
 var (
@@ -127,6 +129,18 @@ var (
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "collection",
 		},
+		TypeKeyCompany: {
+
+			Description:   "Entity that engages in business activities",
+			IconColor:     4,
+			IconName:      "business",
+			Layout:        model.ObjectType_basic,
+			Name:          "Company",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIndustry), MustGetRelationLink(RelationKeySize), MustGetRelationLink(RelationKeyLocation), MustGetRelationLink(RelationKeyFoundingYear)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:           TypePrefix + "company",
+		},
 		TypeKeyContact: {
 
 			Description:   "Information to make action of communicating or meeting with Human or Company",
@@ -175,6 +189,18 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyMood)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "diaryEntry",
+		},
+		TypeKeyEvent: {
+
+			Description:   "Entity that engages in business activities",
+			IconColor:     4,
+			IconName:      "calendar-number",
+			Layout:        model.ObjectType_basic,
+			Name:          "Event",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyLocation), MustGetRelationLink(RelationKeyStartDate), MustGetRelationLink(RelationKeyEventType), MustGetRelationLink(RelationKeyDuration)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:           TypePrefix + "event",
 		},
 		TypeKeyFile: {
 
@@ -314,7 +340,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Recipe",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIngredients), MustGetRelationLink(RelationKeyTime)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIngredients), MustGetRelationLink(RelationKeyCookingTime), MustGetRelationLink(RelationKeyServings), MustGetRelationLink(RelationKeyCuisine), MustGetRelationLink(RelationKeyCourseType), MustGetRelationLink(RelationKeyDifficulty)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "recipe",
 		},

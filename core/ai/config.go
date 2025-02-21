@@ -135,7 +135,7 @@ var websiteExtractionPrompts = map[string]struct {
 	},
 	"company": {
 		RelationPrompt: "Extract the following details about the company: name, industry, size, location, and founding year. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The content is: '%s'",
-		SummaryPrompt:  "Generate a concise markdown summary for the company, focusing on just the key facts mentioned. The content is: '%s'",
+		SummaryPrompt:  "Generate a concise markdown summary for the company, do not use code block, focusing on just the key facts mentioned. The content is: '%s'",
 	},
 	"event": {
 		RelationPrompt: "Extract key details about the event: name, date, location, duration, and type. Only return valid JSON with 'relations' key and the relations object underneath. All values MUST be enclosed in double quotes and properly formatted as strings. Do NOT include explanations, extra words, or any additional text. The content is: '%s'",

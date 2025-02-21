@@ -474,6 +474,15 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "duration",
+    "maxCount": 1,
+    "name": "Duration",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "1 emoji(can contains multiple UTF symbols) used as an icon",
     "format": "emoji",
     "hidden": true,
@@ -1506,6 +1515,116 @@
     "key": "defaultTypeId",
     "maxCount": 1,
     "name": "Default type id",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Some event start date",
+    "format": "date",
+    "hidden": false,
+    "key": "startDate",
+    "maxCount": 1,
+    "name": "Start date",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Some event or place location",
+    "format": "longtext",
+    "hidden": false,
+    "key": "location",
+    "maxCount": 1,
+    "name": "Location",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Event type",
+    "format": "longtext",
+    "hidden": false,
+    "key": "eventType",
+    "maxCount": 1,
+    "name": "Event type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Company or organization industry",
+    "format": "longtext",
+    "hidden": false,
+    "key": "industry",
+    "maxCount": 1,
+    "name": "Industry",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Size of something in a text format with a custom measurement, e.g '10-20 people'",
+    "format": "longtext",
+    "hidden": false,
+    "key": "size",
+    "maxCount": 1,
+    "name": "Size",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "The year when the organisation was founded",
+    "format": "number",
+    "hidden": false,
+    "key": "foundingYear",
+    "maxCount": 1,
+    "name": "Founding year",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Total cooking time in text format",
+    "format": "longtext",
+    "hidden": false,
+    "key": "cookingTime",
+    "maxCount": 1,
+    "name": "Cooking Time",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Number of servings the recipe yields",
+    "format": "number",
+    "hidden": false,
+    "key": "servings",
+    "maxCount": 1,
+    "name": "Servings",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Cuisine type associated with the recipe (e.g., Italian, Chinese)",
+    "format": "longtext",
+    "hidden": false,
+    "key": "cuisine",
+    "maxCount": 1,
+    "name": "Cuisine",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Course type (e.g., appetizer, main course, dessert)",
+    "format": "longtext",
+    "hidden": false,
+    "key": "courseType",
+    "maxCount": 1,
+    "name": "Course Type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Difficulty level of the recipe (e.g., easy, medium, hard)",
+    "format": "longtext",
+    "hidden": false,
+    "key": "difficulty",
+    "maxCount": 1,
+    "name": "Difficulty",
     "readonly": false,
     "source": "details"
   }

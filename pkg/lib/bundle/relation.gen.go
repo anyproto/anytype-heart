@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9336b6e523c303fe9600d8b8e3d0911521bd7e3c4eeeb5591bdb45099543c8e7"
+const RelationChecksum = "4298604d55cc4a313f95df0611fcf08c7b3800f01dbadad353ae3539705a5e94"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
@@ -57,6 +57,7 @@ const (
 	RelationKeyAuthor                       domain.RelationKey = "author"
 	RelationKeyArtist                       domain.RelationKey = "artist"
 	RelationKeyDueDate                      domain.RelationKey = "dueDate"
+	RelationKeyDuration                     domain.RelationKey = "duration"
 	RelationKeyIconEmoji                    domain.RelationKey = "iconEmoji"
 	RelationKeyCoverType                    domain.RelationKey = "coverType"
 	RelationKeyCoverY                       domain.RelationKey = "coverY"
@@ -157,6 +158,17 @@ const (
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
+	RelationKeyStartDate                    domain.RelationKey = "startDate"
+	RelationKeyLocation                     domain.RelationKey = "location"
+	RelationKeyEventType                    domain.RelationKey = "eventType"
+	RelationKeyIndustry                     domain.RelationKey = "industry"
+	RelationKeySize                         domain.RelationKey = "size"
+	RelationKeyFoundingYear                 domain.RelationKey = "foundingYear"
+	RelationKeyCookingTime                  domain.RelationKey = "cookingTime"
+	RelationKeyServings                     domain.RelationKey = "servings"
+	RelationKeyCuisine                      domain.RelationKey = "cuisine"
+	RelationKeyCourseType                   domain.RelationKey = "courseType"
+	RelationKeyDifficulty                   domain.RelationKey = "difficulty"
 )
 
 var (
@@ -359,6 +371,32 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyCookingTime: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Total cooking time in text format",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcookingTime",
+			Key:              "cookingTime",
+			MaxCount:         1,
+			Name:             "Cooking Time",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCourseType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Course type (e.g., appetizer, main course, dessert)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcourseType",
+			Key:              "courseType",
+			MaxCount:         1,
+			Name:             "Course Type",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyCoverId: {
 
 			DataSource:       model.Relation_details,
@@ -457,6 +495,19 @@ var (
 			Revision:         2,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyCuisine: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Cuisine type associated with the recipe (e.g., Italian, Chinese)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcuisine",
+			Key:              "cuisine",
+			MaxCount:         1,
+			Name:             "Cuisine",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyDefaultTemplateId: {
 
 			DataSource:       model.Relation_details,
@@ -512,6 +563,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyDifficulty: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Difficulty level of the recipe (e.g., easy, medium, hard)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brdifficulty",
+			Key:              "difficulty",
+			MaxCount:         1,
+			Name:             "Difficulty",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyDone: {
 
 			DataSource:       model.Relation_details,
@@ -539,6 +603,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyDuration: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brduration",
+			Key:              "duration",
+			MaxCount:         1,
+			Name:             "Duration",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyEmail: {
 
 			DataSource:       model.Relation_details,
@@ -548,6 +625,19 @@ var (
 			Key:              "email",
 			MaxCount:         1,
 			Name:             "Email",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyEventType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Event type",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_breventType",
+			Key:              "eventType",
+			MaxCount:         1,
+			Name:             "Event type",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -670,6 +760,19 @@ var (
 			Key:              "focalRatio",
 			MaxCount:         1,
 			Name:             "Focal ratio",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFoundingYear: {
+
+			DataSource:       model.Relation_details,
+			Description:      "The year when the organisation was founded",
+			Format:           model.RelationFormat_number,
+			Id:               "_brfoundingYear",
+			Key:              "foundingYear",
+			MaxCount:         1,
+			Name:             "Founding year",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -865,6 +968,19 @@ var (
 			MaxCount:         1,
 			Name:             "Import Type",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIndustry: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Company or organization industry",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brindustry",
+			Key:              "industry",
+			MaxCount:         1,
+			Name:             "Industry",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1170,6 +1286,19 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         3,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLocation: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Some event or place location",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brlocation",
+			Key:              "location",
+			MaxCount:         1,
+			Name:             "Location",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyMediaArtistName: {
@@ -1600,6 +1729,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyServings: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Number of servings the recipe yields",
+			Format:           model.RelationFormat_number,
+			Id:               "_brservings",
+			Key:              "servings",
+			MaxCount:         1,
+			Name:             "Servings",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySetOf: {
 
 			DataSource:       model.Relation_details,
@@ -1626,6 +1768,19 @@ var (
 			MaxCount:         1,
 			Name:             "Shared spaces limit",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySize: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Size of something in a text format with a custom measurement, e.g '10-20 people'",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brsize",
+			Key:              "size",
+			MaxCount:         1,
+			Name:             "Size",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1915,6 +2070,19 @@ var (
 			Key:              "starred",
 			MaxCount:         1,
 			Name:             "Starred",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyStartDate: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Some event start date",
+			Format:           model.RelationFormat_date,
+			Id:               "_brstartDate",
+			Key:              "startDate",
+			MaxCount:         1,
+			Name:             "Start date",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
