@@ -3,24 +3,25 @@ package clientserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/net/transport"
 	"github.com/anyproto/any-sync/net/transport/quic"
-	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
 const (
 	CName           = "client.space.clientserver"
 	PreferredSchema = transport.Quic
+	portKey         = "drpc/server/port"
 )
 
 var log = logger.NewNamed(CName)
@@ -37,16 +38,20 @@ type ClientServer interface {
 	ServerStarted() bool
 }
 
+type DbProvider interface {
+	GetCommonDb() anystore.DB
+}
+
 type clientServer struct {
 	quic          quic.Quic
-	provider      datastore.Datastore
+	provider      DbProvider
 	port          int
-	storage       *portStorage
+	storage       keyvaluestore.Store[int]
 	serverStarted bool
 }
 
 func (s *clientServer) Init(a *app.App) (err error) {
-	s.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
+	s.provider = app.MustComponent[DbProvider](a)
 	s.quic = a.MustComponent(quic.CName).(quic.Quic)
 	return nil
 }
@@ -69,28 +74,19 @@ func (s *clientServer) Port() int {
 }
 
 func (s *clientServer) startServer(ctx context.Context) (err error) {
-	// todo: start using sqlite db
-	db, err := s.provider.SpaceStorage()
+	s.storage, err = keyvaluestore.NewJson[int](s.provider.GetCommonDb(), "system")
 	if err != nil {
-		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
-			db, err = s.provider.LocalStorage()
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
+		return fmt.Errorf("init keyvalue store: %w", err)
 	}
-	s.storage = &portStorage{db}
-	oldPort, err := s.storage.getPort()
-	if err != nil && err != badger.ErrKeyNotFound {
+	oldPort, err := s.storage.Get(ctx, portKey)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return
 	}
 	s.port, err = s.listenQuic(ctx, oldPort)
 	if err != nil {
 		return
 	}
-	return s.storage.setPort(s.port)
+	return s.storage.Set(ctx, portKey, s.port)
 }
 
 func (s *clientServer) parsePort(addr string) (int, error) {
