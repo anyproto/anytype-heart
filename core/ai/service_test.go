@@ -427,7 +427,7 @@ func TestWebsiteProcess(t *testing.T) {
 				},
 				// Url: "https://www.allrecipes.com/recipe/228872/oven-baked-chicken-teriyaki/",
 				// Url: "https://theorg.com/org/stripe",
-				// Url: "https://www.visitberlin.de/en/event/contemporary-art-humboldt-forum",
+				Url: "https://www.visitberlin.de/en/event/contemporary-art-humboldt-forum",
 			},
 			models: []modelTestConfig{
 				{
@@ -471,7 +471,6 @@ func runWebsiteProcessTests(t *testing.T, service AI, cfg providerTestConfig, mo
 	t.Run("ValidResponse", func(t *testing.T) {
 		params := cfg.websiteProcessBaseParams
 		params.Config.Model = modelCfg.modelName
-		// params.Url = cfg.websiteProcessBaseParams.Url
 
 		htmlBytes, err := fetchWebsite(url)
 		if err != nil {

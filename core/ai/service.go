@@ -262,16 +262,14 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 		return "", err
 	}
 
-	rawAnswerStr, err := rawAnswer.String()
-	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(rawAnswerStr), "", nil)
+	answerStr, err := rawAnswer.String()
+	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(answerStr), "", nil)
 	resultId := uuid.New().String()
 	if len(rootBlockIds) == 0 {
 		return "", fmt.Errorf("no root block ids found")
 	}
 
 	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}})
-	var blockIds = make(map[string]bool)
-
 	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:  blocks,
@@ -281,24 +279,15 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 	})
 
 	st := dc.NewState()
-
-	err = ai.sourceService.RegisterStaticSource(ai.sourceService.NewStaticSource(source.StaticSourceParams{
+	if err = ai.sourceService.RegisterStaticSource(ai.sourceService.NewStaticSource(source.StaticSourceParams{
 		Id: domain.FullID{
 			SpaceID:  params.SpaceId,
 			ObjectID: resultId,
 		},
 		SbType: smartblock.SmartBlockTypeEphemeralVirtualObject,
 		State:  st,
-	}))
-	if err != nil {
+	})); err != nil {
 		return "", err
-	}
-
-	for _, b := range st.Blocks() {
-		if blockIds[b.Id] {
-			return "", fmt.Errorf("duplicate block id: %s", b.Id)
-		}
-		blockIds[b.Id] = true
 	}
 
 	return resultId, nil
@@ -306,6 +295,9 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 
 // CreateObjectFromUrl creates an object from a URL, classifies it, and extracts relations and a summary.
 func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error) {
+	ai.mu.Lock()
+	defer ai.mu.Unlock()
+
 	_, body, isFile, err := ai.linkPreviewService.Fetch(ctx, url)
 	if err != nil {
 		return "", nil, fmt.Errorf("could not fetch website: %w", err)
@@ -372,11 +364,13 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 // WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.
 func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error) {
 	article, err := readability.FromReader(bytes.NewReader(websiteData), nil)
-	content := article.Content
-	if err != nil || content == "" {
+	if err != nil {
 		return nil, fmt.Errorf("could not process website content: %w", err)
 	}
-
+	content := article.Content
+	if content == "" {
+		return nil, fmt.Errorf("website content is empty")
+	}
 	ai.setAPIConfig(provider)
 	websiteType, err := ai.ClassifyWebsiteContent(ctx, content)
 	if err != nil {
