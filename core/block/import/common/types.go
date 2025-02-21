@@ -61,15 +61,13 @@ func (sn *SnapshotModel) ToProto() *pb.ChangeSnapshot {
 }
 
 type StateSnapshot struct {
-	Blocks                []*model.Block
-	Details               *domain.Details
-	FileKeys              *types.Struct
-	ExtraRelations        []*model.Relation
-	ObjectTypes           []string
-	Collections           *types.Struct
-	RemovedCollectionKeys []string
-	// deprecated
-	RelationLinks            []*model.RelationLink
+	Blocks                   []*model.Block
+	Details                  *domain.Details
+	FileKeys                 *types.Struct
+	ExtraRelations           []*model.Relation
+	ObjectTypes              []string
+	Collections              *types.Struct
+	RemovedCollectionKeys    []string
 	Key                      string
 	OriginalCreatedTimestamp int64
 	FileInfo                 *model.FileInfo

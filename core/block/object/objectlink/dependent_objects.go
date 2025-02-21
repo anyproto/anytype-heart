@@ -91,8 +91,7 @@ func DependentObjectIDs(s *state.State, converter keyToIDConverter, relLinkGette
 		}
 
 		if relLink == nil {
-			// TODO: GO-4284 test this logic
-			// let's fallback to object format, so we don't miss dependencies
+			// TODO: GO-4284 Review this logic. Let's fallback to object format, so we don't miss dependencies
 			relLink = &model.RelationLink{Key: key.String(), Format: model.RelationFormat_object}
 		}
 

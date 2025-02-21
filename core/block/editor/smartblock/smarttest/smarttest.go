@@ -213,7 +213,7 @@ func (st *SmartTest) RefreshLocalDetails(ctx session.Context) error {
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error) {
+func (st *SmartTest) RemoveRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error) {
 	return nil
 }
 

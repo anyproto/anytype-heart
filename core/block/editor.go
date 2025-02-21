@@ -475,9 +475,9 @@ func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTyp
 	})
 }
 
-func (s *Service) RemoveExtraRelations(ctx session.Context, objectTypeId string, relationKeys []string) (err error) {
+func (s *Service) RemoveRelations(ctx session.Context, objectTypeId string, relationKeys []string) (err error) {
 	return cache.Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
-		return b.RemoveExtraRelations(ctx, slice.StringsInto[domain.RelationKey](relationKeys))
+		return b.RemoveRelations(ctx, slice.StringsInto[domain.RelationKey](relationKeys))
 	})
 }
 

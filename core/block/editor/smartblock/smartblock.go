@@ -151,7 +151,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	HasRelation(s *state.State, relationKey string) bool
-	RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error)
+	RemoveRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetIsDeleted()
 	IsDeleted() bool
@@ -723,7 +723,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, domain.String(sb.currentParticipantId))
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, domain.Int64(lastModified.Unix()))
 		}
-		fileDetailsKeys := st.FileRelationKeys(sb.objectStore.SpaceIndex(sb.SpaceID()))
+		fileDetailsKeys := st.FileRelationKeys(sb.spaceIndex)
 		var fileDetailsKeysFiltered []domain.RelationKey
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
@@ -899,7 +899,7 @@ func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVer
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []domain.RelationKey) (err error) {
+func (sb *smartBlock) RemoveRelations(ctx session.Context, relationIds []domain.RelationKey) (err error) {
 	st := sb.NewStateCtx(ctx)
 	st.RemoveRelation(relationIds...)
 
@@ -1034,7 +1034,7 @@ func (sb *smartBlock) hasDepIds(act *undo.Action) bool {
 		}
 
 		for k, after := range act.Details.After.Iterate() {
-			rel, err := sb.objectStore.SpaceIndex(sb.SpaceID()).GetRelationLink(k.String())
+			rel, err := sb.spaceIndex.GetRelationLink(k.String())
 			if err != nil || rel == nil {
 				continue
 			}

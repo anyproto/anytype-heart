@@ -1702,12 +1702,12 @@ func (_c *MockAccountObject_RegisterSession_Call) RunAndReturn(run func(session.
 	return _c
 }
 
-// RemoveExtraRelations provides a mock function with given fields: ctx, relationKeys
-func (_m *MockAccountObject) RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) error {
+// RemoveRelations provides a mock function with given fields: ctx, relationKeys
+func (_m *MockAccountObject) RemoveRelations(ctx session.Context, relationKeys []domain.RelationKey) error {
 	ret := _m.Called(ctx, relationKeys)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RemoveExtraRelations")
+		panic("no return value specified for RemoveRelations")
 	}
 
 	var r0 error
@@ -1720,31 +1720,31 @@ func (_m *MockAccountObject) RemoveExtraRelations(ctx session.Context, relationK
 	return r0
 }
 
-// MockAccountObject_RemoveExtraRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveExtraRelations'
-type MockAccountObject_RemoveExtraRelations_Call struct {
+// MockAccountObject_RemoveRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveRelations'
+type MockAccountObject_RemoveRelations_Call struct {
 	*mock.Call
 }
 
-// RemoveExtraRelations is a helper method to define mock.On call
+// RemoveRelations is a helper method to define mock.On call
 //   - ctx session.Context
 //   - relationKeys []domain.RelationKey
-func (_e *MockAccountObject_Expecter) RemoveExtraRelations(ctx interface{}, relationKeys interface{}) *MockAccountObject_RemoveExtraRelations_Call {
-	return &MockAccountObject_RemoveExtraRelations_Call{Call: _e.mock.On("RemoveExtraRelations", ctx, relationKeys)}
+func (_e *MockAccountObject_Expecter) RemoveRelations(ctx interface{}, relationKeys interface{}) *MockAccountObject_RemoveRelations_Call {
+	return &MockAccountObject_RemoveRelations_Call{Call: _e.mock.On("RemoveRelations", ctx, relationKeys)}
 }
 
-func (_c *MockAccountObject_RemoveExtraRelations_Call) Run(run func(ctx session.Context, relationKeys []domain.RelationKey)) *MockAccountObject_RemoveExtraRelations_Call {
+func (_c *MockAccountObject_RemoveRelations_Call) Run(run func(ctx session.Context, relationKeys []domain.RelationKey)) *MockAccountObject_RemoveRelations_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(session.Context), args[1].([]domain.RelationKey))
 	})
 	return _c
 }
 
-func (_c *MockAccountObject_RemoveExtraRelations_Call) Return(err error) *MockAccountObject_RemoveExtraRelations_Call {
+func (_c *MockAccountObject_RemoveRelations_Call) Return(err error) *MockAccountObject_RemoveRelations_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockAccountObject_RemoveExtraRelations_Call) RunAndReturn(run func(session.Context, []domain.RelationKey) error) *MockAccountObject_RemoveExtraRelations_Call {
+func (_c *MockAccountObject_RemoveRelations_Call) RunAndReturn(run func(session.Context, []domain.RelationKey) error) *MockAccountObject_RemoveRelations_Call {
 	_c.Call.Return(run)
 	return _c
 }

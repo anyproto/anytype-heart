@@ -54,6 +54,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		fileKeys = append(fileKeys, *fk)
 	}
 
+	// TODO: GO-4284 Become sure that commented line is not needed anymore
 	// we should not clear nil values, as they start to work like relation links
 	// pbtypes.StructDeleteEmptyFields(snapshot.Data.Details)
 
@@ -239,7 +240,7 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 }
 
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
-	// TODO: GO-4284 review this logic
+	// TODO: GO-4284 review this logic, as we did not check if a detail is local before
 	if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(set.Key)) {
 		return nil
 	}
@@ -252,6 +253,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	if s.details == nil {
 		s.details = det.Copy()
 	}
+	// TODO: GO-4284 Review this logic, as previously we used to delete detail in case it has nil value (nil, not Null)
 	s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
 	return nil
 }
@@ -268,7 +270,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	return nil
 }
 
-// TODO: GO-4284 review this logic !!!
+// TODO: GO-4284 Review this logic, as previously we worked with relationLinks
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	keys := s.AllRelationKeys()
 	for _, r := range add.RelationLinks {
@@ -668,7 +670,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	curDetails := s.Details()
 
 	for k, v := range curDetails.Iterate() {
-		// TODO: GO-4284 Test this logic !
+		// TODO: GO-4284 Review this logic, as we did not check if detail is local before
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, k) {
 			continue
 		}
@@ -683,7 +685,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	}
 
 	for k, _ := range prev.Iterate() {
-		// TODO: GO-4284 Test this logic !
+		// TODO: GO-4284 Review this logic, as we did not check if detail is local before
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, k) {
 			continue
 		}
