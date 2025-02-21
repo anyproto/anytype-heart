@@ -3,16 +3,15 @@ package objectstore
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"testing"
 
-	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
@@ -30,18 +29,26 @@ type virtualDetailsHandler interface {
 	AddVirtualDetails(id string, det *domain.Details)
 }
 
-type detailsFromId struct {
+type stubDetailsFromId struct {
 	details map[string]*domain.Details
 }
 
-func (d *detailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
+func (d *stubDetailsFromId) Name() string {
+	return "stubDetailsFromId"
+}
+
+func (d *stubDetailsFromId) Init(a *app.App) error {
+	return nil
+}
+
+func (d *stubDetailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
 	if det, found := d.details[id.ObjectID]; found {
 		return det, nil
 	}
 	return nil, fmt.Errorf("not found")
 }
 
-func (d *detailsFromId) AddVirtualDetails(id string, det *domain.Details) {
+func (d *stubDetailsFromId) AddVirtualDetails(id string, det *domain.Details) {
 	if d.details == nil {
 		d.details = map[string]*domain.Details{}
 	}
@@ -52,6 +59,14 @@ type stubTechSpaceIdProvider struct{}
 
 func (s *stubTechSpaceIdProvider) TechSpaceId() string {
 	return "test-tech-space"
+}
+
+func (s *stubTechSpaceIdProvider) Name() string {
+	return "stubTechSpaceIdProvider"
+}
+
+func (s *stubTechSpaceIdProvider) Init(a *app.App) error {
+	return nil
 }
 
 type walletStub struct {
@@ -72,7 +87,7 @@ func (w *walletStub) RepoPath() string {
 func (w *walletStub) Name() string { return wallet.CName }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
@@ -80,37 +95,35 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	testApp.Register(newWalletStub(t))
 	err := fullText.Init(testApp)
 	require.NoError(t, err)
+
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+
+	testApp.Register(provider)
+	testApp.Register(fullText)
+	testApp.Register(&stubDetailsFromId{})
+	testApp.Register(&stubTechSpaceIdProvider{})
+
+	err = fullText.Init(testApp)
+	require.NoError(t, err)
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	ds := &dsObjectStore{
-		componentCtx:        ctx,
-		componentCtxCancel:  cancel,
-		fts:                 fullText,
-		sourceService:       &detailsFromId{},
-		arenaPool:           &anyenc.ArenaPool{},
-		objectStorePath:     t.TempDir(),
-		spaceIndexes:        map[string]spaceindex.Store{},
-		techSpaceIdProvider: &stubTechSpaceIdProvider{},
-		subManager:          &spaceindex.SubscriptionManager{},
-	}
+	ds := New()
 
 	t.Cleanup(func() {
 		_ = fullText.Close(context.Background())
 		_ = ds.Close(context.Background())
 	})
 
-	err = ensureDirExists(ds.objectStorePath)
-	require.NoError(t, err)
-
-	err = ds.openDatabase(context.Background(), filepath.Join(ds.objectStorePath, "objects.db"))
+	err = ds.Init(testApp)
 	require.NoError(t, err)
 
 	err = ds.Run(ctx)
 	require.NoError(t, err)
 
 	return &StoreFixture{
-		dsObjectStore: ds,
+		dsObjectStore: ds.(*dsObjectStore),
 		FullText:      fullText,
 	}
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -109,11 +108,10 @@ type dsObjectStore struct {
 	collections    []anystore.Collection
 
 	// Deps
-	anyStoreConfig *anystore.Config
-	fts            ftsearch.FTSearch
-	sourceService  SourceDetailsFromID
-	subManager     *SubscriptionManager
-	fulltextQueue  FulltextQueue
+	fts           ftsearch.FTSearch
+	sourceService SourceDetailsFromID
+	subManager    *SubscriptionManager
+	fulltextQueue FulltextQueue
 
 	componentCtx       context.Context
 	arenaPool          *anyenc.ArenaPool
@@ -127,12 +125,11 @@ type dsObjectStore struct {
 }
 
 type Deps struct {
-	AnyStoreConfig *anystore.Config
-	Fts            ftsearch.FTSearch
-	SourceService  SourceDetailsFromID
-	SubManager     *SubscriptionManager
-	DbPath         string
-	FulltextQueue  FulltextQueue
+	Db            anystore.DB
+	Fts           ftsearch.FTSearch
+	SourceService SourceDetailsFromID
+	SubManager    *SubscriptionManager
+	FulltextQueue FulltextQueue
 }
 
 func New(componentCtx context.Context, spaceId string, deps Deps) Store {
@@ -141,19 +138,16 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		componentCtx:       componentCtx,
 		arenaPool:          &anyenc.ArenaPool{},
 		collatorBufferPool: newCollatorBufferPool(),
-		anyStoreConfig:     deps.AnyStoreConfig,
+		db:                 deps.Db,
 		sourceService:      deps.SourceService,
 		fts:                deps.Fts,
 		subManager:         deps.SubManager,
 		fulltextQueue:      deps.FulltextQueue,
 	}
-
-	var err error
-	err = s.openDatabase(componentCtx, deps.DbPath)
+	err := s.initCollections(componentCtx)
 	if err != nil {
 		return NewInvalidStore(err)
 	}
-
 	return s
 }
 
@@ -168,32 +162,26 @@ func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return s.db.WriteTx(ctx)
 }
 
-func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
-	var err error
-	s.db, s.dbLockRemove, err = anystorehelper.OpenDatabaseWithLockCheck(s.componentCtx, path, s.anyStoreConfig)
-	if err != nil {
-		return err
-	}
-
+func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	objects, err := s.newCollection(ctx, "objects")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open objects collection: %w", err))
+		return fmt.Errorf("open objects collection: %w", err)
 	}
 	links, err := s.newCollection(ctx, "links")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open links collection: %w", err))
+		return fmt.Errorf("open links collection: %w", err)
 	}
 	headsState, err := s.newCollection(ctx, "headsState")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open headsState collection: %w", err))
+		return fmt.Errorf("open headsState collection: %w", err)
 	}
 	activeViews, err := s.newCollection(ctx, "activeViews")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open activeViews collection: %w", err))
+		return fmt.Errorf("open activeViews collection: %w", err)
 	}
 	pendingDetails, err := s.newCollection(ctx, "pendingDetails")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
+		return fmt.Errorf("open pendingDetails collection: %w", err)
 	}
 
 	objectIndexes := []anystore.IndexInfo{
@@ -271,14 +259,6 @@ func (s *dsObjectStore) Close() error {
 	for _, col := range s.collections {
 		err = errors.Join(err, col.Close())
 	}
-
-	s.lock.Lock()
-	err = errors.Join(err, s.db.Checkpoint(context.Background(), true))
-	s.lock.Unlock()
-
-	err = errors.Join(err, s.db.Close())
-	// remove lock file only after successful close
-	err = errors.Join(err, s.dbLockRemove())
 	return err
 }
 

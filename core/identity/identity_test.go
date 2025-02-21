@@ -23,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -53,8 +53,7 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
 	fileAclService := mock_fileacl.NewMockService(t)
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
+
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
 	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{testIdentity}}).AnyTimes().
@@ -66,11 +65,12 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 			Name:  "",
 		},
 		}}, nil)
-	err = dataStoreProvider.Run(ctx)
+
+	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
 	require.NoError(t, err)
 
 	a := new(app.App)
-	a.Register(dataStoreProvider)
+	a.Register(dbProvider)
 	a.Register(objectStore)
 	a.Register(identityRepoClient)
 	a.Register(testutil.PrepareMock(ctx, a, accountService))

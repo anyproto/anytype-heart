@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -121,6 +122,8 @@ func (s *service) Init(a *app.App) error {
 	s.objectArchiver = app.MustComponent[objectArchiver](a)
 	s.accountService = app.MustComponent[accountService](a)
 
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+
 	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()
@@ -130,7 +133,7 @@ func (s *service) Init(a *app.App) error {
 		migrationQueueCtx = context.WithValue(migrationQueueCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(1*time.Minute))
 	}
 
-	migrationQueueStore, err := persistentqueue.NewAnystoreStorage(s.objectStore.GetCommonDb(), "queue/file_migration", makeMigrationItem)
+	migrationQueueStore, err := persistentqueue.NewAnystoreStorage(provider.GetCommonDb(), "queue/file_migration", makeMigrationItem)
 	if err != nil {
 		return fmt.Errorf("init migration queue store: %w", err)
 	}

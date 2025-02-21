@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
@@ -66,7 +66,6 @@ type SyncStatus struct {
 }
 
 type fileSync struct {
-	dbProvider      objectstore.ObjectStore
 	rpcStore        rpcstore2.RpcStore
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
@@ -98,16 +97,15 @@ func New() FileSync {
 
 func (s *fileSync) Init(a *app.App) (err error) {
 	s.loopCtx, s.loopCancel = context.WithCancel(context.Background())
-
-	s.dbProvider = app.MustComponent[objectstore.ObjectStore](a)
 	s.rpcStore = app.MustComponent[rpcstore2.Service](a).NewStore()
 	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
 
-	db := s.dbProvider.GetCommonDb()
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+	db := provider.GetCommonDb()
 
-	s.blocksAvailabilityCache, err = keyvaluestore.NewJson[*blocksAvailabilityResponse](db, "filesync/bytes_to_upload")
+	s.blocksAvailabilityCache, err = keyvaluestore.NewJson[*blocksAvailabilityResponse](provider.GetCommonDb(), "filesync/bytes_to_upload")
 	if err != nil {
 		return fmt.Errorf("init blocks availability cache: %w", err)
 	}

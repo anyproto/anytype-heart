@@ -13,8 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
@@ -106,8 +105,7 @@ func New() CacheService {
 }
 
 type cacheservice struct {
-	dbProvider datastore.Datastore
-	db         keyvaluestore.Store[*StorageStruct]
+	db keyvaluestore.Store[*StorageStruct]
 
 	m sync.Mutex
 }
@@ -117,10 +115,10 @@ func (s *cacheservice) Name() (name string) {
 }
 
 func (s *cacheservice) Init(a *app.App) (err error) {
-	objectStore := app.MustComponent[objectstore.ObjectStore](a)
+	provider := app.MustComponent[anystoreprovider.Provider](a)
 
 	// TODO Use one collections for system things that exists only as the single instance
-	s.db, err = keyvaluestore.NewJson[*StorageStruct](objectStore.GetCommonDb(), "payments_cache")
+	s.db, err = keyvaluestore.NewJson[*StorageStruct](provider.GetCommonDb(), "payments_cache")
 	if err != nil {
 		return err
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -111,11 +112,13 @@ func (s *service) Init(a *app.App) (err error) {
 	objectStore := app.MustComponent[objectstore.ObjectStore](a)
 	spaceService := app.MustComponent[space.Service](a)
 
-	s.identityProfileCacheStore, err = keyvaluestore.New(objectStore.GetCommonDb(), "identity_profile", keyvaluestore.BytesMarshal, keyvaluestore.BytesUnmarshal)
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+
+	s.identityProfileCacheStore, err = keyvaluestore.New(provider.GetCommonDb(), "identity_profile", keyvaluestore.BytesMarshal, keyvaluestore.BytesUnmarshal)
 	if err != nil {
 		return fmt.Errorf("init identity profile cache store: %w", err)
 	}
-	s.identityGlobalNameCacheStore, err = keyvaluestore.New(objectStore.GetCommonDb(), "global_name", keyvaluestore.StringMarshal, keyvaluestore.StringUnmarshal)
+	s.identityGlobalNameCacheStore, err = keyvaluestore.New(provider.GetCommonDb(), "global_name", keyvaluestore.StringMarshal, keyvaluestore.StringUnmarshal)
 	if err != nil {
 		return fmt.Errorf("init global name cache store: %w", err)
 	}

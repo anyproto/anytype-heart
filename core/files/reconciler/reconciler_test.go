@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -62,17 +62,16 @@ func newFixture(t *testing.T) *fixture {
 	fileStorage := mock_filestorage.NewMockFileStorage(t)
 	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
 
-	dataStore, err := datastore.NewInMemory()
-	require.NoError(t, err)
+	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
 
 	ctx := context.Background()
 	a := new(app.App)
 	a.Register(objectStore)
-	a.Register(dataStore)
 	a.Register(testutil.PrepareMock(ctx, a, fileSync))
 	a.Register(testutil.PrepareMock(ctx, a, fileStorage))
 	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(r)
+	a.Register(dbProvider)
 
 	err = r.Init(a)
 	require.NoError(t, err)

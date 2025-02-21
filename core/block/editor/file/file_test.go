@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
@@ -289,9 +290,10 @@ func prepareFileService(t *testing.T, sender *mock_event.MockSender, fileObjectS
 	ctrl := gomock.NewController(t)
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().Name().Return(wallet2.CName)
-	wallet.EXPECT().RepoPath().Return("repo/path")
+	wallet.EXPECT().RepoPath().Return(t.TempDir())
 
 	a := new(app.App)
+	a.Register(anystoreprovider.New())
 	a.Register(dataStoreProvider)
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
@@ -306,6 +308,7 @@ func prepareFileService(t *testing.T, sender *mock_event.MockSender, fileObjectS
 	a.Register(core.NewTempDirService())
 	a.Register(testutil.PrepareMock(ctx, a, mock_cache.NewMockObjectGetterComponent(t)))
 	a.Register(files.New())
+
 	err = a.Start(ctx)
 	assert.Nil(t, err)
 

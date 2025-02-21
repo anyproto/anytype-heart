@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
@@ -44,9 +44,12 @@ func newFixture(t *testing.T) *fixture {
 		cacheservice: New().(*cacheservice),
 	}
 
-	testApp.Register(objectstore.NewStoreFixture(t))
+	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
 
-	err := fx.Init(testApp)
+	testApp.Register(dbProvider)
+
+	err = fx.Init(testApp)
 	require.NoError(t, err)
 
 	// fx.a.Register(fx.ts)

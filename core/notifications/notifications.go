@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -63,8 +63,8 @@ func New(loadTimeout time.Duration) Notifications {
 }
 
 func (n *notificationService) Init(a *app.App) (err error) {
-	objectStore := app.MustComponent[objectstore.ObjectStore](a)
-	n.notificationStore, err = NewNotificationStore(objectStore.GetCommonDb())
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+	n.notificationStore, err = NewNotificationStore(provider.GetCommonDb())
 	if err != nil {
 		return fmt.Errorf("init store: %w", err)
 	}

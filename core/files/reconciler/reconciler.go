@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -75,7 +76,8 @@ func (r *reconciler) Init(a *app.App) error {
 
 	r.fileSync.OnUploaded(r.markAsReconciled)
 
-	db := r.objectStore.GetCommonDb()
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+	db := provider.GetCommonDb()
 
 	var err error
 	r.deletedFiles, err = keyvaluestore.New(db, "file_reconciler/deleted_files", func(_ struct{}) ([]byte, error) {
