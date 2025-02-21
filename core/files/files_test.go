@@ -30,7 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -54,9 +54,6 @@ const (
 )
 
 func newFixture(t *testing.T) *fixture {
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
-
 	blockStorage := filestorage.NewInMemory()
 
 	rpcStore := rpcstore2.NewInMemoryStore(1024)
@@ -70,10 +67,10 @@ func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().Name().Return(wallet2.CName)
-	wallet.EXPECT().RepoPath().Return("repo/path")
+	wallet.EXPECT().RepoPath().Return(t.TempDir())
 	ctx := context.Background()
 	a := new(app.App)
-	a.Register(dataStoreProvider)
+	a.Register(anystoreprovider.New())
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
@@ -83,7 +80,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
-	err = a.Start(ctx)
+	err := a.Start(ctx)
 	require.NoError(t, err)
 
 	s := New()

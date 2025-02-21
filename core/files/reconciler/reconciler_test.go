@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -62,17 +62,16 @@ func newFixture(t *testing.T) *fixture {
 	fileStorage := mock_filestorage.NewMockFileStorage(t)
 	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
 
-	dataStore, err := datastore.NewInMemory()
-	require.NoError(t, err)
+	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
 
 	ctx := context.Background()
 	a := new(app.App)
 	a.Register(objectStore)
-	a.Register(dataStore)
 	a.Register(testutil.PrepareMock(ctx, a, fileSync))
 	a.Register(testutil.PrepareMock(ctx, a, fileStorage))
 	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(r)
+	a.Register(dbProvider)
 
 	err = r.Init(a)
 	require.NoError(t, err)
@@ -116,7 +115,7 @@ func TestReconcileRemoteStorage(t *testing.T) {
 	}
 	for _, fileId := range wantDeletedFiles {
 		fx.fileSync.EXPECT().DeleteFile("", domain.FullFileId{SpaceId: "spaceId", FileId: fileId}).Return(nil)
-		ok, err := fx.deletedFiles.Has(fileId.String())
+		ok, err := fx.deletedFiles.Has(context.Background(), fileId.String())
 		require.NoError(t, err)
 		assert.False(t, ok)
 	}
@@ -129,7 +128,7 @@ func TestReconcileRemoteStorage(t *testing.T) {
 func TestFileObjectHook(t *testing.T) {
 	t.Run("reconcilation not started: do nothing", func(t *testing.T) {
 		fx := newFixture(t)
-		err := fx.deletedFiles.Set(testFileId.String(), struct{}{})
+		err := fx.deletedFiles.Set(context.Background(), testFileId.String(), struct{}{})
 		require.NoError(t, err)
 
 		fullId := domain.FullID{
@@ -179,7 +178,7 @@ func TestFileObjectHook(t *testing.T) {
 		t.Run("file has been deleted: push it to rebinding queue", func(t *testing.T) {
 			fx := newFixture(t)
 			fx.isStarted = true
-			err := fx.deletedFiles.Set(testFileId.String(), struct{}{})
+			err := fx.deletedFiles.Set(context.Background(), testFileId.String(), struct{}{})
 			require.NoError(t, err)
 
 			fullId := domain.FullID{
