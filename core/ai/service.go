@@ -339,11 +339,12 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(extractedAnswer), "", nil)
 	resultId := uuid.New().String()
 	if len(rootBlockIds) == 0 {
-		for _, b := range blocks {
-			rootBlockIds = append(rootBlockIds, b.Id)
-		}
+		return "", fmt.Errorf("no root block ids found")
 	}
+
 	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}})
+	var blockIds = make(map[string]bool)
+
 	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:  blocks,
@@ -365,6 +366,14 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 	if err != nil {
 		return "", err
 	}
+
+	for _, b := range st.Blocks() {
+		if blockIds[b.Id] {
+			return "", fmt.Errorf("duplicate block id: %s", b.Id)
+		}
+		blockIds[b.Id] = true
+	}
+
 	return resultId, nil
 }
 
