@@ -110,7 +110,7 @@ func TestFile(t *testing.T) {
 			fx := newFixture(t)
 			fileSb := smarttest.New("root")
 			fileSb.SetDetails(nil, []domain.Detail{{
-				Key:   bundle.RelationKeyLayout,
+				Key:   bundle.RelationKeyResolvedLayout,
 				Value: domain.Int64(int64(testCase.typeLayout)),
 			}}, false)
 
@@ -160,7 +160,7 @@ func TestDropFiles(t *testing.T) {
 
 		fx := newFixture(t)
 		st := fx.sb.Doc.NewState()
-		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_collection)))
+		st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
@@ -185,7 +185,7 @@ func TestDropFiles(t *testing.T) {
 
 		fx := newFixture(t)
 		st := fx.sb.Doc.NewState()
-		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_collection)))
+		st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
@@ -210,7 +210,7 @@ func TestDropFiles(t *testing.T) {
 
 		fx := newFixture(t)
 		st := fx.sb.Doc.NewState()
-		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_collection)))
+		st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
@@ -245,7 +245,7 @@ func TestDropFiles(t *testing.T) {
 
 		fx := newFixture(t)
 		st := fx.sb.Doc.NewState()
-		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_collection)))
+		st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 		fx.sb.Doc = st
 		fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()

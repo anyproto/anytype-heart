@@ -53,7 +53,7 @@ func (v *anytypeProfile) getDetails() (p *domain.Details) {
 	det.SetBool(bundle.RelationKeyIsReadonly, true)
 	det.SetBool(bundle.RelationKeyIsArchived, false)
 	det.SetBool(bundle.RelationKeyIsHidden, true)
-	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_profile))
+	det.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_profile))
 	return det
 }
 

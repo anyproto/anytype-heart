@@ -1,11 +1,15 @@
 package converter
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/any-sync/app/logger"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -22,7 +26,8 @@ import (
 )
 
 type LayoutConverter interface {
-	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error
+	CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error
 	app.Component
 }
 
@@ -30,6 +35,8 @@ type layoutConverter struct {
 	objectStore objectstore.ObjectStore
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
+
+var log = logger.NewNamed("layout.converter")
 
 func NewLayoutConverter() LayoutConverter {
 	return &layoutConverter{}
@@ -45,9 +52,46 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error {
+	fromLayout := st.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
+	if !c.isConversionAllowed(model.ObjectTypeLayout(fromLayout), layout) { //nolint:gosec
+		return fmt.Errorf("can't change object type recommended layout from '%s' to '%s'",
+			model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(layout)]) //nolint:gosec
+	}
+	return nil
+}
+
+// isConversionAllowed provides more strict check of layout conversion with introduction of primitives.
+// Only conversion between page layouts (page/note/task/profile) and list layouts (set->collection) is allowed
+func (c *layoutConverter) isConversionAllowed(from, to model.ObjectTypeLayout) bool {
+	if from == to {
+		return true
+	}
+	if isPageLayout(from) && isPageLayout(to) {
+		return true
+	}
+	if from == model.ObjectType_set && to == model.ObjectType_collection {
+		return true
+	}
+	return false
+}
+
+func isPageLayout(layout model.ObjectTypeLayout) bool {
+	return slices.Contains([]model.ObjectTypeLayout{
+		model.ObjectType_basic,
+		model.ObjectType_todo,
+		model.ObjectType_note,
+		model.ObjectType_profile,
+	}, layout)
+}
+
+func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error {
 	if fromLayout == toLayout {
 		return nil
+	}
+
+	if !ignoreIntergroupConversion && !c.isConversionAllowed(fromLayout, toLayout) {
+		return fmt.Errorf("layout conversion from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 	}
 
 	if fromLayout == model.ObjectType_chat || fromLayout == model.ObjectType_chatDerived {
@@ -141,6 +185,9 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source)
 	if err != nil {
 		return err
+	}
+	if err = c.insertTypeLevelFieldsToDataview(dvBlock, st); err != nil {
+		log.Error("failed to insert type level fields to dataview block", zap.Error(err))
 	}
 	template.InitTemplate(st, template.WithDataview(dvBlock, false))
 	return nil
@@ -249,6 +296,9 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 	blockContent := template.MakeDataviewContent(true, nil, nil)
+	if err := c.insertTypeLevelFieldsToDataview(blockContent, st); err != nil {
+		log.Error("failed to insert type level fields to dataview block", zap.Error(err))
+	}
 	template.InitTemplate(st, template.WithDataview(blockContent, false))
 	return nil
 }
@@ -347,4 +397,54 @@ func (c *layoutConverter) appendTypesFilter(types []string, filters []database.F
 		})
 	}
 	return filters
+}
+
+func (c *layoutConverter) insertTypeLevelFieldsToDataview(block *model.BlockContentOfDataview, st *state.State) error {
+	typeId := st.LocalDetails().GetString(bundle.RelationKeyType)
+	records, err := c.objectStore.SpaceIndex(st.SpaceID()).QueryByIds([]string{typeId})
+	if err != nil {
+		return fmt.Errorf("failed to get type object from store: %w", err)
+	}
+	if len(records) != 1 {
+		return fmt.Errorf("failed to get type object: expected 1 record")
+	}
+
+	rawViewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
+	defaultTypeId := records[0].Details.GetString(bundle.RelationKeyDefaultTypeId)
+
+	// nolint:gosec
+	viewType := model.BlockContentDataviewViewType(rawViewType)
+	block.Dataview.Views[0].Type = viewType
+	block.Dataview.Views[0].DefaultObjectTypeId = defaultTypeId
+	insertGroupRelationKey(block, viewType)
+
+	return nil
+}
+
+func insertGroupRelationKey(block *model.BlockContentOfDataview, viewType model.BlockContentDataviewViewType) {
+	var formats map[model.RelationFormat]struct{}
+	switch viewType {
+	case model.BlockContentDataviewView_Kanban:
+		formats = map[model.RelationFormat]struct{}{
+			model.RelationFormat_status:   {},
+			model.RelationFormat_tag:      {},
+			model.RelationFormat_checkbox: {},
+		}
+	case model.BlockContentDataviewView_Calendar:
+		formats = map[model.RelationFormat]struct{}{model.RelationFormat_date: {}}
+	default:
+		return
+	}
+
+	for _, relLink := range block.Dataview.RelationLinks {
+		_, found := formats[relLink.Format]
+		if !found {
+			continue
+		}
+		relation, err := bundle.GetRelation(domain.RelationKey(relLink.Key))
+		if errors.Is(err, bundle.ErrNotFound) || (relation != nil && !relation.Hidden) {
+			block.Dataview.Views[0].GroupRelationKey = relLink.Key
+			return
+		}
+	}
 }

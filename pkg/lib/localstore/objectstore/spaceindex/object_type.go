@@ -2,7 +2,10 @@ package spaceindex
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -53,9 +56,13 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *domain.Details, ur
 }
 
 func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *domain.Details) []*model.RelationLink {
-	recommendedRelationIDs := details.GetStringList(bundle.RelationKeyRecommendedRelations)
-	relationLinks := make([]*model.RelationLink, 0, len(recommendedRelationIDs))
-	for _, relationID := range recommendedRelationIDs {
+	recommendedRelationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	featuredRelationIds := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	fileRelationIds := details.GetStringList(bundle.RelationKeyRecommendedFileRelations)
+	hiddenRelationIds := details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)
+	allRelationIds := lo.Uniq(slices.Concat(recommendedRelationIds, featuredRelationIds, fileRelationIds, hiddenRelationIds))
+	relationLinks := make([]*model.RelationLink, 0, len(allRelationIds))
+	for _, relationID := range allRelationIds {
 		relation, err := s.GetRelationById(relationID)
 		if err != nil {
 			log.Errorf("failed to get relation %s: %s", relationID, err)

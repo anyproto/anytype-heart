@@ -191,7 +191,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
-		return &store{source: src}, nil
+		return &store{source: src, sbType: sbt}, nil
 	}
 
 	return src, nil

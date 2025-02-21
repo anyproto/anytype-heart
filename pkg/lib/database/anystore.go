@@ -144,7 +144,7 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	}()
 	val := v.GetStringBytes(s.relationKey)
 	if s.relationKey == bundle.RelationKeyName.String() && len(val) == 0 {
-		layout := model.ObjectTypeLayout(v.GetFloat64(bundle.RelationKeyLayout.String()))
+		layout := model.ObjectTypeLayout(v.GetFloat64(bundle.RelationKeyResolvedLayout.String()))
 		if layout == model.ObjectType_note {
 			val = v.GetStringBytes(bundle.RelationKeySnippet.String())
 		}

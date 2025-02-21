@@ -106,6 +106,7 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyBookmark,
 		Details:       domain.NewDetailsFromProto(req.Details),
+		TemplateId:    req.TemplateId,
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {

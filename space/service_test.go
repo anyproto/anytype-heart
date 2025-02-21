@@ -240,10 +240,10 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 
 		storeFixture := objectstore.NewStoreFixture(t)
 		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{{
-			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyId:            domain.String("spaceViewId"),
-			bundle.RelationKeyTargetSpaceId: domain.String(spaceID),
-			bundle.RelationKeyName:          domain.String("Test"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyId:             domain.String("spaceViewId"),
+			bundle.RelationKeyTargetSpaceId:  domain.String(spaceID),
+			bundle.RelationKeyName:           domain.String("Test"),
 		}})
 
 		s := service{

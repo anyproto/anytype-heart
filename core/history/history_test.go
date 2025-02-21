@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -1096,6 +1097,75 @@ func TestHistory_Versions(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, resp, 3)
+	})
+}
+
+func TestHistory_injectLocalDetails(t *testing.T) {
+	spaceId := "cosmos"
+	t.Run("local details are injected to state", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeySpaceId:           domain.String(spaceId),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_todo)),
+		}})
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.TypeKey) (string, error) {
+			return key.URL(), nil
+		})
+		resolver := mock_idresolver.NewMockResolver(t)
+		h := &history{
+			objectStore: store,
+			resolver:    resolver,
+		}
+		id := domain.FullID{SpaceID: spaceId, ObjectID: "object"}
+		st := state.NewDoc(id.ObjectID, nil).NewState().SetObjectTypeKey(bundle.TypeKeyTask).SetDetails(
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_todo)),
+			}),
+		)
+
+		// when
+		err := h.injectLocalDetails(st, id, space)
+
+		// then
+		assert.NoError(t, err)
+		assert.NotNil(t, st.LocalDetails())
+		assert.Equal(t, bundle.TypeKeyTask.URL(), st.LocalDetails().GetString(bundle.RelationKeyType))
+		assert.Equal(t, spaceId, st.LocalDetails().GetString(bundle.RelationKeySpaceId))
+		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+
+	t.Run("resolved layout should be retrieved from type", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyProject.URL()),
+			bundle.RelationKeySpaceId:           domain.String(spaceId),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_note)),
+		}})
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.TypeKey) (string, error) {
+			return key.URL(), nil
+		})
+		resolver := mock_idresolver.NewMockResolver(t)
+		h := &history{
+			objectStore: store,
+			resolver:    resolver,
+		}
+		id := domain.FullID{SpaceID: spaceId, ObjectID: "object"}
+		st := state.NewDoc(id.ObjectID, nil).NewState().SetObjectTypeKey(bundle.TypeKeyProject)
+
+		// when
+		err := h.injectLocalDetails(st, id, space)
+
+		// then
+		assert.NoError(t, err)
+		assert.NotNil(t, st.LocalDetails())
+		assert.Equal(t, bundle.TypeKeyProject.URL(), st.LocalDetails().GetString(bundle.RelationKeyType))
+		assert.Equal(t, spaceId, st.LocalDetails().GetString(bundle.RelationKeySpaceId))
+		assert.Equal(t, int64(model.ObjectType_note), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
 }
 

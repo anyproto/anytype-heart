@@ -89,7 +89,7 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 				bundle.RelationKeyId:             domain.String("oldId"),
 				bundle.RelationKeyName:           domain.String("name"),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeySpaceId:        domain.String("spaceId"),
 			},
 		})

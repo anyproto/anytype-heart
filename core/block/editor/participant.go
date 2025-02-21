@@ -49,7 +49,6 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, domain.Bool(false))
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_participant))
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
 
 	records, err := p.objectStore.QueryByIds([]string{p.Id()})
@@ -64,6 +63,8 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithTitle,
 		template.WithDescription,
 		template.WithFeaturedRelations,
+		template.WithLayout(model.ObjectType_participant),
+		template.WithResolvedLayout(model.ObjectType_participant),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 	)

@@ -435,7 +435,7 @@ func (s *Service) Redo(
 
 func (s *Service) BookmarkFetch(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return cache.Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, req.ObjectOrigin)
+		return b.Fetch(ctx, req.BlockId, req.Url, req.TemplateId, req.ObjectOrigin)
 	})
 }
 

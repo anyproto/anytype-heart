@@ -6,15 +6,14 @@ package bundle
 
 import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
-const LayoutChecksum = "14f867af62d4e7e5a33400f9eded0f27230467402c61cadd363518ff8f2bfb29"
+const LayoutChecksum = "fa6e186dd587015702413aac5ac0d70cb606d4ae6bc1ba31c5e90ea11bd6473b"
 
 var (
 	Layouts = map[model.ObjectTypeLayout]model.Layout{
 		model.ObjectType_basic: {
 
-			Id:                model.ObjectType_basic,
-			Name:              "Basic",
-			RequiredRelations: []*model.Relation{relations[RelationKeyName]},
+			Id:   model.ObjectType_basic,
+			Name: "Basic",
 		},
 		model.ObjectType_bookmark: {
 
@@ -23,9 +22,8 @@ var (
 		},
 		model.ObjectType_collection: {
 
-			Id:                model.ObjectType_collection,
-			Name:              "Collection",
-			RequiredRelations: []*model.Relation{relations[RelationKeyName]},
+			Id:   model.ObjectType_collection,
+			Name: "Collection",
 		},
 		model.ObjectType_dashboard: {
 
@@ -52,7 +50,7 @@ var (
 
 			Id:                model.ObjectType_objectType,
 			Name:              "Object Type",
-			RequiredRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRecommendedRelations]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyRecommendedRelations]},
 		},
 		model.ObjectType_participant: {
 
@@ -61,9 +59,8 @@ var (
 		},
 		model.ObjectType_profile: {
 
-			Id:                model.ObjectType_profile,
-			Name:              "Profile",
-			RequiredRelations: []*model.Relation{relations[RelationKeyName]},
+			Id:   model.ObjectType_profile,
+			Name: "Profile",
 		},
 		model.ObjectType_relation: {
 
@@ -74,13 +71,13 @@ var (
 
 			Id:                model.ObjectType_relationOption,
 			Name:              "Relation Option",
-			RequiredRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRelationOptionColor]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyRelationOptionColor]},
 		},
 		model.ObjectType_set: {
 
 			Id:                model.ObjectType_set,
 			Name:              "Set",
-			RequiredRelations: []*model.Relation{relations[RelationKeySetOf], relations[RelationKeyName]},
+			RequiredRelations: []*model.Relation{relations[RelationKeySetOf]},
 		},
 		model.ObjectType_space: {
 
@@ -96,13 +93,13 @@ var (
 
 			Id:                model.ObjectType_tag,
 			Name:              "Tag",
-			RequiredRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRelationOptionColor]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyRelationOptionColor]},
 		},
 		model.ObjectType_todo: {
 
 			Id:                model.ObjectType_todo,
 			Name:              "to-do",
-			RequiredRelations: []*model.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyDone]},
 		},
 	}
 )

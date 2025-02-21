@@ -32,10 +32,10 @@ func TestGetSpaceName(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		err := s.SpaceIndex(s.techSpaceId).UpdateObjectDetails(context.Background(), spaceViewId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:            domain.String(spaceViewId),
-			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyTargetSpaceId: domain.String(spaceId),
-			bundle.RelationKeyName:          domain.String(spaceName),
+			bundle.RelationKeyId:             domain.String(spaceViewId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:  domain.String(spaceId),
+			bundle.RelationKeyName:           domain.String(spaceName),
 		}))
 		assert.Nil(t, err)
 
@@ -51,9 +51,9 @@ func TestGetSpaceName(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		err := s.SpaceIndex(s.techSpaceId).UpdateObjectDetails(context.Background(), spaceViewId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:            domain.String(spaceViewId),
-			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyTargetSpaceId: domain.String(spaceId),
+			bundle.RelationKeyId:             domain.String(spaceViewId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:  domain.String(spaceId),
 		}))
 		assert.Nil(t, err)
 

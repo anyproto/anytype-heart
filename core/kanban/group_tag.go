@@ -40,7 +40,7 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 			Value: domain.String(string(t.Key)),
 		},
 		database.FilterEq{
-			Key:   bundle.RelationKeyLayout,
+			Key:   bundle.RelationKeyResolvedLayout,
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: domain.Int64(model.ObjectType_relationOption),
 		},

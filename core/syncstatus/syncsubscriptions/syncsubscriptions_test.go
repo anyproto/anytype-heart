@@ -19,11 +19,11 @@ import (
 func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
 	return objectstore.TestObject{
-		bundle.RelationKeyId:         domain.String(id),
-		bundle.RelationKeySyncStatus: domain.Int64(int64(syncStatus)),
-		bundle.RelationKeyLayout:     domain.Int64(int64(model.ObjectType_basic)),
-		bundle.RelationKeyName:       domain.String("name" + id),
-		bundle.RelationKeySpaceId:    domain.String(spaceId),
+		bundle.RelationKeyId:             domain.String(id),
+		bundle.RelationKeySyncStatus:     domain.Int64(int64(syncStatus)),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		bundle.RelationKeyName:           domain.String("name" + id),
+		bundle.RelationKeySpaceId:        domain.String(spaceId),
 	}
 }
 

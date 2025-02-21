@@ -48,7 +48,7 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	details.SetString(bundle.RelationKeyIconEmoji, emoji)
 	details.SetInt64(bundle.RelationKeyCreatedDate, creationTime)
 	details.SetInt64(bundle.RelationKeyLastModifiedDate, modTime)
-	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(layout))
 	return details
 }
 

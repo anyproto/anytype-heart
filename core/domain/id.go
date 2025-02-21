@@ -10,6 +10,10 @@ type FullID struct {
 	SpaceID  string
 }
 
+func (i FullID) IsEmpty() bool {
+	return i.ObjectID == ""
+}
+
 const ParticipantPrefix = "_participant_"
 
 func NewParticipantId(spaceId, identity string) string {

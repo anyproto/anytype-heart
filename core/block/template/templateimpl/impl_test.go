@@ -1,4 +1,4 @@
-package template
+package templateimpl
 
 import (
 	"context"
@@ -22,10 +22,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -53,7 +56,7 @@ func (t *testPicker) Init(_ *app.App) error { return nil }
 
 func (t *testPicker) Name() string { return "" }
 
-func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
+func newTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 	sb := smarttest.New(templateName)
 	details := []domain.Detail{
 		{
@@ -112,11 +115,11 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	t.Run("empty page name", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest(templateName, "")
+		tmpl := newTemplateTest(templateName, "")
 		s := service{picker: &testPicker{sb: tmpl}}
 
 		// when
-		st, err := s.CreateTemplateStateWithDetails(templateName, nil)
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
 
 		// then
 		assert.NoError(t, err)
@@ -132,14 +135,14 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			t.Run(fmt.Sprintf("custom page name and description - "+
 				"when template is %s and target detail is %s", templateName, addedDetail), func(t *testing.T) {
 				// given
-				tmpl := NewTemplateTest(templateName, "")
+				tmpl := newTemplateTest(templateName, "")
 				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 				details := domain.NewDetails()
 				details.Set(bundle.RelationKeyName, domain.String(addedDetail))
 				details.Set(bundle.RelationKeyDescription, domain.String(addedDetail))
 
 				// when
-				st, err := s.CreateTemplateStateWithDetails(templateName, details)
+				st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName, Details: details})
 
 				// then
 				assert.NoError(t, err)
@@ -158,11 +161,11 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 	} {
 		t.Run("create blank template in case "+testCase[0], func(t *testing.T) {
 			// given
-			tmpl := NewTemplateTest(testCase[1], "")
+			tmpl := newTemplateTest(testCase[1], "")
 			s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 
 			// when
-			st, err := s.CreateTemplateStateWithDetails(testCase[1], nil)
+			st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: testCase[1]})
 
 			// then
 			assert.NoError(t, err)
@@ -174,12 +177,12 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	t.Run("requested smartblock is not a template", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest(templateName, "")
+		tmpl := newTemplateTest(templateName, "")
 		tmpl.(*smarttest.SmartTest).Doc.(*state.State).SetObjectTypeKey(bundle.TypeKeyBook)
 		s := service{picker: &testPicker{}}
 
 		// when
-		_, err := s.CreateTemplateStateWithDetails(templateName, nil)
+		_, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
 
 		// then
 		assert.Error(t, err)
@@ -187,11 +190,11 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	t.Run("template typeKey is removed", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest(templateName, bundle.TypeKeyGoal.String())
+		tmpl := newTemplateTest(templateName, bundle.TypeKeyGoal.String())
 		s := service{picker: &testPicker{sb: tmpl}}
 
 		// when
-		st, err := s.CreateTemplateStateWithDetails(templateName, nil)
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
 
 		// then
 		assert.NoError(t, err)
@@ -209,15 +212,12 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		t.Run("blank template should correspond "+model.ObjectTypeLayout_name[int32(layout)]+" layout", func(t *testing.T) {
 			// given
 			s := service{converter: converter.NewLayoutConverter()}
-			details := domain.NewDetails()
-			details.Set(bundle.RelationKeyLayout, domain.Int64(int64(layout)))
 
 			// when
-			st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, details)
+			st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: BlankTemplateId, Layout: layout})
 
 			// then
 			assert.NoError(t, err)
-			assert.Equal(t, layout, model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyLayout)))
 			assertLayoutBlocks(t, st, layout)
 		})
 	}
@@ -235,7 +235,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		s := service{picker: &testPicker{tmpl}}
 
 		// when
-		st, err := s.CreateTemplateStateWithDetails(templateName, nil)
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
 
 		// then
 		assert.NoError(t, err)
@@ -251,9 +251,7 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 		s := service{converter: converter.NewLayoutConverter()}
 
 		// when
-		st := s.CreateTemplateStateFromSmartBlock(nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_todo)),
-		}))
+		st := s.CreateTemplateStateFromSmartBlock(nil, templateSvc.CreateTemplateRequest{Layout: model.ObjectType_todo})
 
 		// then
 		assert.Equal(t, BlankTemplateId, st.RootId())
@@ -263,16 +261,84 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 
 	t.Run("create state from template smartblock", func(t *testing.T) {
 		// given
-		tmpl := NewTemplateTest("template", bundle.TypeKeyProject.String())
+		tmpl := newTemplateTest("template", bundle.TypeKeyProject.String())
 		s := service{}
 
 		// when
-		st := s.CreateTemplateStateFromSmartBlock(tmpl, nil)
+		st := s.CreateTemplateStateFromSmartBlock(tmpl, templateSvc.CreateTemplateRequest{})
 
 		// then
 		assert.Equal(t, "template", st.Details().GetString(bundle.RelationKeyName))
 		assert.Equal(t, "template", st.Details().GetString(bundle.RelationKeyDescription))
 	})
+}
+
+func TestService_resolveValidTemplateId(t *testing.T) {
+	var (
+		spaceId      = "cosmos"
+		otherSpaceId = "other"
+		templateId1  = "template1"
+		templateId2  = "template2"
+		templateId3  = "template3"
+		now          = time.Now().Unix()
+	)
+
+	store := objectstore.NewStoreFixture(t)
+	store.AddObjects(t, spaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               domain.String(templateId1),
+			bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
+			bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now),
+		},
+		{
+			bundle.RelationKeyId:               domain.String(templateId2),
+			bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
+			bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now - 60),
+		},
+		{
+			bundle.RelationKeyId:               domain.String(templateId3),
+			bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
+			bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(now - 120),
+			bundle.RelationKeyIsDeleted:        domain.Bool(true),
+		},
+	})
+
+	spaceService := mock_space.NewMockService(t)
+	spc := mock_clientspace.NewMockSpace(t)
+	spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(spc, nil)
+	spc.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.TypeKey) (string, error) {
+		return key.URL(), nil
+	})
+
+	s := &service{
+		store:        store,
+		spaceService: spaceService,
+	}
+
+	for _, tc := range []struct {
+		name                string
+		spaceId             string
+		requestedTemplateId string
+		expectedTemplateId  string
+	}{
+		{"requested template is valid", spaceId, templateId2, templateId2},
+		{"requested template is invalid", spaceId, "invalid", templateId1},
+		{"requested template is deleted", spaceId, templateId3, templateId1},
+		{"requested template is empty", spaceId, "", templateId1},
+		{"no valid template exists", otherSpaceId, "templateId", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// when
+			templateId, err := s.resolveValidTemplateId(tc.spaceId, tc.requestedTemplateId, bundle.TypeKeyTask.URL())
+
+			// then
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedTemplateId, templateId)
+		})
+	}
 }
 
 func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLayout) {
@@ -328,9 +394,9 @@ func TestExtractTargetDetails(t *testing.T) {
 		OriginValue, TemplateValue domain.Value
 		OriginLeft                 bool
 	}{
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(0), TemplateValue: domain.Int64(1), OriginLeft: false},
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(5), TemplateValue: domain.Int64(0), OriginLeft: false},
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(3), TemplateValue: domain.Int64(3), OriginLeft: false},
+		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(0), TemplateValue: domain.Int64(1), OriginLeft: false},
+		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(5), TemplateValue: domain.Int64(0), OriginLeft: false},
+		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(3), TemplateValue: domain.Int64(3), OriginLeft: false},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String(""), TemplateValue: domain.String("s1"), OriginLeft: false},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s2"), TemplateValue: domain.String(""), OriginLeft: true},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s0"), TemplateValue: domain.String("s3"), OriginLeft: false},
@@ -380,7 +446,7 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 
 		obj.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyNote})
 
-		sp := mock_space.NewMockSpace(t)
+		sp := mock_clientspace.NewMockSpace(t)
 		sp.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).Times(1).Return(bundle.TypeKeyNote.String(), nil)
 		obj.SetSpace(sp)
 

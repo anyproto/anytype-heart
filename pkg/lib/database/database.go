@@ -144,7 +144,7 @@ func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 			hasArchivedFilter = true
 		}
 
-		if filter.RelationKey == bundle.RelationKeyLayout {
+		if filter.RelationKey == bundle.RelationKeyResolvedLayout {
 			hasTypeFilter = true
 		}
 

@@ -114,7 +114,7 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
 		},
@@ -142,7 +142,7 @@ func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID 
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Value:       domain.Int64(model.ObjectType_relation),
 			},
 		},
