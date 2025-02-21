@@ -57,7 +57,7 @@ func TestStore(t *testing.T) {
 		})
 		t.Run("non-existing item", func(t *testing.T) {
 			_, err := kv.Get(context.Background(), "non-existing")
-			require.Equal(t, ErrNotFound, err)
+			require.Equal(t, anystore.ErrDocNotFound, err)
 		})
 	})
 

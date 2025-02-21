@@ -24,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/conc"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
@@ -430,7 +429,7 @@ func (s *service) getCachedIdentityProfile(identity string) (*identityrepoproto.
 
 func (s *service) getCachedGlobalName(identity string) (string, error) {
 	rawData, err := s.identityGlobalNameCacheStore.Get(context.Background(), identity)
-	if badgerhelper.IsNotFound(err) {
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		return "", nil
 	}
 	if err != nil {

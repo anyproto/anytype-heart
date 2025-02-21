@@ -5,10 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 )
+
+type KeyValue[T any] struct {
+	Key   string
+	Value T
+}
 
 const valueKey = "_v"
 
@@ -19,6 +25,8 @@ type Store[T any] interface {
 	Delete(ctx context.Context, key string) error
 	Has(ctx context.Context, key string) (bool, error)
 	ListAllValues(ctx context.Context) ([]T, error)
+
+	Iterator(ctx context.Context) *Iterator[T]
 
 	// Proxies for any-store transactions
 	ReadTx(ctx context.Context) (anystore.ReadTx, error)
@@ -84,29 +92,22 @@ func (s *store[T]) Get(ctx context.Context, key string) (T, error) {
 	return s.unmarshaller(raw)
 }
 
+func (s *store[T]) Iterator(ctx context.Context) *Iterator[T] {
+	return &Iterator[T]{
+		err:          nil,
+		coll:         s.coll,
+		unmarshaller: s.unmarshaller,
+		ctx:          ctx,
+	}
+}
+
 func (s *store[T]) ListAllValues(ctx context.Context) ([]T, error) {
-	iter, err := s.coll.Find(nil).Iter(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("init iter: %w", err)
-	}
-	defer iter.Close()
-
 	var res []T
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return nil, fmt.Errorf("get document: %w", err)
-		}
-		raw := doc.Value().GetBytes(valueKey)
-
-		val, err := s.unmarshaller(raw)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshal: %w", err)
-		}
-
-		res = append(res, val)
+	it := s.Iterator(ctx)
+	for _, v := range it.All() {
+		res = append(res, v)
 	}
-	return res, nil
+	return res, it.Err()
 }
 
 func (s *store[T]) Has(ctx context.Context, key string) (bool, error) {
@@ -146,6 +147,45 @@ func (s *store[T]) Delete(ctx context.Context, key string) error {
 		return nil
 	}
 	return err
+}
+
+type Iterator[T any] struct {
+	err          error
+	ctx          context.Context
+	coll         anystore.Collection
+	unmarshaller func([]byte) (T, error)
+}
+
+func (it *Iterator[T]) All() iter.Seq2[string, T] {
+	return func(yield func(string, T) bool) {
+		iter, err := it.coll.Find(nil).Iter(it.ctx)
+		if err != nil {
+			it.err = fmt.Errorf("init iter: %w", err)
+			return
+		}
+		defer iter.Close()
+
+		for iter.Next() {
+			doc, err := iter.Doc()
+			if err != nil {
+				it.err = fmt.Errorf("get document: %w", err)
+				return
+			}
+			raw := doc.Value().GetBytes(valueKey)
+
+			val, err := it.unmarshaller(raw)
+			if err != nil {
+				it.err = fmt.Errorf("unmarshal: %w", err)
+				return
+			}
+
+			yield(doc.Value().GetString("id"), val)
+		}
+	}
+}
+
+func (it *Iterator[T]) Err() error {
+	return it.err
 }
 
 func JsonMarshal[T any](val T) ([]byte, error) {
