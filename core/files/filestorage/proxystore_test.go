@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 )
 
 func TestCacheStore_Add(t *testing.T) {
