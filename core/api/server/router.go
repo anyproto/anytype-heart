@@ -37,6 +37,7 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(s.ensureMetadataHeader())
 
 	if debug {
 		router.Use(gin.Logger())
