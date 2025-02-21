@@ -99,19 +99,6 @@ func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscri
 	}
 }
 
-func (s *dsObjectStore) migrateLocalDetails(objectId string, details *domain.Details) bool {
-	existingLocalDetails, err := s.oldStore.GetLocalDetails(objectId)
-	if err != nil || existingLocalDetails == nil {
-		return false
-	}
-	for k, v := range existingLocalDetails.Fields {
-		if ok := details.Has(domain.RelationKey(k)); !ok {
-			details.SetProtoValue(domain.RelationKey(k), v)
-		}
-	}
-	return true
-}
-
 func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
 	added, removed, err := s.updateObjectLinks(ctx, id, links)
 	if err != nil {
@@ -154,8 +141,6 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		}
 	}
 
-	migrated := s.migrateLocalDetails(id, inputDetails)
-
 	newDetails, err := proc(inputDetails)
 	if err != nil {
 		return rollback(fmt.Errorf("run a modifier: %w", err))
@@ -179,12 +164,6 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		return fmt.Errorf("commit txn: %w", err)
 	}
 
-	if migrated {
-		err = s.oldStore.DeleteDetails(id)
-		if err != nil {
-			log.With("error", err, "objectId", id).Warn("failed to delete local details from old store")
-		}
-	}
 	return nil
 }
 

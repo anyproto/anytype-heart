@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 )
 
 var ctx = context.Background()
@@ -87,14 +86,9 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	oldStore := oldstore.New()
-	err = oldStore.Init(testApp)
-	require.NoError(t, err)
-
 	s := New(context.Background(), "test", Deps{
 		DbPath:         filepath.Join(t.TempDir(), "test.db"),
 		Fts:            fullText,
-		OldStore:       oldStore,
 		SourceService:  &detailsFromId{},
 		SubManager:     &SubscriptionManager{},
 		AnyStoreConfig: nil,

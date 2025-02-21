@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -113,7 +112,6 @@ type dsObjectStore struct {
 	fts                 ftsearch.FTSearch
 	subManager          *spaceindex.SubscriptionManager
 	sourceService       spaceindex.SourceDetailsFromID
-	oldStore            oldstore.Service
 	techSpaceIdProvider TechSpaceIdProvider
 
 	sync.Mutex
@@ -170,7 +168,6 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.objectStorePath = filepath.Join(repoPath, "objectstore")
 	s.anyStoreConfig = *cfg.GetAnyStoreConfig()
 	s.setDefaultConfig()
-	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
 
 	err = ensureDirExists(s.objectStorePath)
@@ -334,7 +331,6 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
 			AnyStoreConfig: s.getAnyStoreConfig(),
 			SourceService:  s.sourceService,
-			OldStore:       s.oldStore,
 			Fts:            s.fts,
 			SubManager:     s.subManager,
 			DbPath:         filepath.Join(dir, "objects.db"),

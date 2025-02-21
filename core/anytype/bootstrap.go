@@ -99,7 +99,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/coordinatorclient"
@@ -232,7 +231,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debugstat.New()).
 		// Register(ftsearch.BleveNew()).
 		Register(ftsearch.TantivyNew()).
-		Register(oldstore.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
 		// Services

@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -113,7 +112,6 @@ type dsObjectStore struct {
 	anyStoreConfig *anystore.Config
 	fts            ftsearch.FTSearch
 	sourceService  SourceDetailsFromID
-	oldStore       oldstore.Service
 	subManager     *SubscriptionManager
 	fulltextQueue  FulltextQueue
 
@@ -132,7 +130,6 @@ type Deps struct {
 	AnyStoreConfig *anystore.Config
 	Fts            ftsearch.FTSearch
 	SourceService  SourceDetailsFromID
-	OldStore       oldstore.Service
 	SubManager     *SubscriptionManager
 	DbPath         string
 	FulltextQueue  FulltextQueue
@@ -146,7 +143,6 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		collatorBufferPool: newCollatorBufferPool(),
 		anyStoreConfig:     deps.AnyStoreConfig,
 		sourceService:      deps.SourceService,
-		oldStore:           deps.OldStore,
 		fts:                deps.Fts,
 		subManager:         deps.SubManager,
 		fulltextQueue:      deps.FulltextQueue,

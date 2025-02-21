@@ -13,9 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
@@ -79,18 +77,10 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
 
-	dataStore, err := datastore.NewInMemory()
-	require.NoError(t, err)
-
 	testApp.Register(newWalletStub(t))
-	testApp.Register(dataStore)
-	err = fullText.Init(testApp)
+	err := fullText.Init(testApp)
 	require.NoError(t, err)
 	err = fullText.Run(context.Background())
-	require.NoError(t, err)
-
-	oldStore := oldstore.New()
-	err = oldStore.Init(testApp)
 	require.NoError(t, err)
 
 	ds := &dsObjectStore{
@@ -100,7 +90,6 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		sourceService:       &detailsFromId{},
 		arenaPool:           &anyenc.ArenaPool{},
 		objectStorePath:     t.TempDir(),
-		oldStore:            oldStore,
 		spaceIndexes:        map[string]spaceindex.Store{},
 		techSpaceIdProvider: &stubTechSpaceIdProvider{},
 		subManager:          &spaceindex.SubscriptionManager{},
