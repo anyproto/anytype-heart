@@ -237,7 +237,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
 	)
-	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(sb.Id()))
+	st.SetDetail(bundle.RelationKeySourceObject, domain.String(sb.Id()))
 	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
 	st.SetOriginalCreatedTimestamp(0)
 	st.SetLocalDetails(nil)
@@ -284,7 +284,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		if b.Type() != coresb.SmartBlockTypePage {
 			return fmt.Errorf("can't make template from this object type: %s", model.SmartBlockType_name[int32(b.Type())])
 		}
-		st, err = buildTemplateStateFromObject(b)
+		st, err = s.buildTemplateStateFromObject(b)
 		objectTypeKeys = st.ObjectTypeKeys()
 		return err
 	}); err != nil {
@@ -335,7 +335,7 @@ func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (temp
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled)
 		st.SetLocalDetails(nil)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(id))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(id))
 
 		targetObjectTypeBundledId := st.Details().GetString(bundle.RelationKeyTargetObjectType)
 		targetObjectTypeKey, err := bundle.TypeKeyFromUrl(targetObjectTypeBundledId)
@@ -346,7 +346,7 @@ func (s *service) TemplateCloneInSpace(space clientspace.Space, id string) (temp
 		if err != nil {
 			return fmt.Errorf("get target object type id: %w", err)
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyTargetObjectType, domain.String(targetObjectTypeId))
+		st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String(targetObjectTypeId))
 		return nil
 	}); err != nil {
 		return
@@ -469,7 +469,7 @@ func (s *service) updateTypeKey(spaceId string, st *state.State) (err error) {
 	return nil
 }
 
-func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error) {
+func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	targetObjectTypeId, err := sb.Space().GetTypeIdByKey(context.Background(), st.ObjectTypeKey())
@@ -478,11 +478,19 @@ func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String(targetObjectTypeId))
 	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
-	for _, rel := range sb.Relations(st) {
+
+	allRelationKeys := sb.AllRelationKeys()
+	relations, err := s.store.SpaceIndex(sb.SpaceID()).FetchRelationByKeys(allRelationKeys...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get relation models from store: %w", err)
+	}
+
+	for _, rel := range relations {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(domain.RelationKey(rel.Key))
 		}
 	}
+
 	flags := internalflag.NewFromState(st)
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(st)

@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -609,12 +610,12 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfRelation{
 				Relation: &model.BlockContentRelation{},
 			}}))
-		sb.AddRelationLinks(nil, "testRelKey")
 	}
 	t.Run("correct", func(t *testing.T) {
 		sb := smarttest.New("test")
 		fillSb(sb)
 		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		sb.AddRelationKeys("testRelKey")
 		err := b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "2",
 			Key:     "testRelKey",
@@ -657,8 +658,6 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	sb := smarttest.New("test")
 	s := sb.NewState()
 	template.WithTitle(s)
-	s.AddBundledRelationLinks(bundle.RelationKeyName)
-	s.AddBundledRelationLinks(bundle.RelationKeyDescription)
 	require.NoError(t, sb.Apply(s))
 
 	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
@@ -690,8 +689,7 @@ func TestBasic_ReplaceLink(t *testing.T) {
 
 	sb := smarttest.New("test")
 	s := sb.NewState()
-	s.SetDetail("link", domain.String(oldId))
-	s.AddRelationLinks(&model.RelationLink{Key: "link", Format: model.RelationFormat_object})
+	s.SetDetail(bundle.RelationKeyAssignee, domain.String(oldId))
 	template.WithDescription(s)
 	newBlocks := []simple.Block{
 		simple.New(&model.Block{Content: &model.BlockContentOfLink{
@@ -703,7 +701,7 @@ func TestBasic_ReplaceLink(t *testing.T) {
 			Text: &model.BlockContentText{
 				Text: "123",
 				Marks: &model.BlockContentTextMarks{
-					Marks: []*model.BlockContentTextMark{&model.BlockContentTextMark{Type: model.BlockContentTextMark_Mention, Param: oldId}},
+					Marks: []*model.BlockContentTextMark{{Type: model.BlockContentTextMark_Mention, Param: oldId}},
 				},
 			},
 		}}),
@@ -714,11 +712,13 @@ func TestBasic_ReplaceLink(t *testing.T) {
 	}
 	require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	store := objectstore.NewStoreFixture(t)
+
+	b := NewBasic(sb, store.SpaceIndex("spc"), converter.NewLayoutConverter(), nil)
 	require.NoError(t, b.ReplaceLink(oldId, newId))
 
 	res := sb.NewState()
-	assert.Equal(t, newId, res.Details().GetString("link"))
+	assert.Equal(t, newId, res.Details().GetString(bundle.RelationKeyAssignee))
 	assert.Equal(t, newId, res.Pick(newBlocks[0].Model().Id).Model().GetLink().TargetBlockId)
 	assert.Equal(t, newId, res.Pick(newBlocks[1].Model().Id).Model().GetText().GetMarks().Marks[0].Param)
 }

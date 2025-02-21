@@ -149,15 +149,15 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 	st := s.NewState()
 	if createdDate != 0 {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, domain.Int64(createdDate))
+		st.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(createdDate))
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, domain.String(ownerId))
+	st.SetDetail(bundle.RelationKeyCreator, domain.String(ownerId))
 	return s.Apply(st)
 }
 
 func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isEmpty))
+	st.SetDetail(bundle.RelationKeyIsAclShared, domain.Bool(!isEmpty))
 	s.updateAccessType(st)
 	return s.Apply(st)
 }
@@ -182,7 +182,7 @@ func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	if prev == spaceinfo.AccessTypePersonal {
 		return nil
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(acc))
+	st.SetDetail(bundle.RelationKeySpaceAccessType, domain.Int64(acc))
 	return s.Apply(st)
 }
 
@@ -194,7 +194,7 @@ func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (
 
 func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
+	st.SetDetail(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return s.Apply(st)
 }
 
@@ -204,8 +204,8 @@ func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
 
 func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
+	st.SetDetail(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
+	st.SetDetail(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
 	return s.Apply(st)
 }
 
@@ -288,7 +288,7 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 				continue
 			}
 			changed = true
-			st.SetDetailAndBundledRelation(k, v)
+			st.SetDetail(k, v)
 		}
 	}
 
@@ -342,5 +342,5 @@ func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) er
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(accessType))
+	st.SetDetail(bundle.RelationKeySpaceAccessType, domain.Int64(accessType))
 }

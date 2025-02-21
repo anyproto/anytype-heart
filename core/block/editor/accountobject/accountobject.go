@@ -338,7 +338,7 @@ func (a *accountObject) Close() error {
 
 func (a *accountObject) SetSharedSpacesLimit(limit int) (err error) {
 	st := a.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
+	st.SetDetail(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return a.Apply(st)
 }
 
@@ -350,7 +350,7 @@ func (a *accountObject) SetProfileDetails(details *domain.Details) (err error) {
 	st := a.NewState()
 	// we should set everything in local state, but not everything in the store (this should be filtered in OnPushChange)
 	for key, value := range details.Iterate() {
-		st.SetDetailAndBundledRelation(key, value)
+		st.SetDetail(key, value)
 	}
 	return a.Apply(st)
 }
@@ -358,7 +358,7 @@ func (a *accountObject) SetProfileDetails(details *domain.Details) (err error) {
 func (a *accountObject) MigrateIconImage(image string) (err error) {
 	if image != "" {
 		st := a.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(image))
+		st.SetDetail(bundle.RelationKeyIconImage, domain.String(image))
 		err = a.Apply(st)
 		if err != nil {
 			return fmt.Errorf("set icon image: %w", err)
@@ -390,7 +390,7 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 		if !ok {
 			continue
 		}
-		st.SetDetailAndBundledRelation(domain.RelationKey(key), pbVal)
+		st.SetDetail(domain.RelationKey(key), pbVal)
 	}
 	return
 }

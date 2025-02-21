@@ -80,9 +80,9 @@ var WithNoDuplicateLinks = func() StateTransformer {
 	}
 }
 
-var WithRelations = func(rels []domain.RelationKey) StateTransformer {
+var WithRelations = func(keys []domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		s.AddBundledRelationLinks(rels...)
+		s.AddRelationKeys(keys...)
 	}
 }
 
@@ -103,7 +103,7 @@ var WithObjectTypes = func(otypes []domain.TypeKey) StateTransformer {
 var WithResolvedLayout = func(layout model.ObjectTypeLayout) StateTransformer {
 	return func(s *state.State) {
 		if !s.LocalDetails().Has(bundle.RelationKeyResolvedLayout) {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+			s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 		}
 	}
 }
@@ -111,7 +111,7 @@ var WithResolvedLayout = func(layout model.ObjectTypeLayout) StateTransformer {
 var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
 	return func(s *state.State) {
 		if !s.Details().Has(bundle.RelationKeyLayout) {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(layout))
+			s.SetDetail(bundle.RelationKeyLayout, domain.Int64(layout))
 		}
 	}
 }
@@ -123,7 +123,7 @@ var WithDetailName = func(name string) StateTransformer {
 var WithDetail = func(key domain.RelationKey, value domain.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || !s.Details().Has(key) {
-			s.SetDetailAndBundledRelation(key, value)
+			s.SetDetail(key, value)
 		}
 	}
 }
@@ -131,7 +131,7 @@ var WithDetail = func(key domain.RelationKey, value domain.Value) StateTransform
 var WithForcedDetail = func(key domain.RelationKey, value domain.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || !s.Details().Has(key) || !s.Details().Get(key).Equal(value) {
-			s.SetDetailAndBundledRelation(key, value)
+			s.SetDetail(key, value)
 		}
 	}
 }
@@ -555,9 +555,9 @@ var WithLinkFieldsMigration = func(s *state.State) {
 	return
 }
 
-var bookmarkRelationKeys = []string{
-	bundle.RelationKeySource.String(),
-	bundle.RelationKeyTag.String(),
+var bookmarkRelationKeys = []domain.RelationKey{
+	bundle.RelationKeySource,
+	bundle.RelationKeyTag,
 }
 
 var oldBookmarkRelationBlocks = []string{
@@ -582,9 +582,9 @@ func makeRelationBlock(k string) *model.Block {
 }
 
 var WithBookmarkBlocks = func(s *state.State) {
-	if !s.HasRelation(bundle.RelationKeySource.String()) && s.HasRelation(bundle.RelationKeyUrl.String()) {
+	if !s.HasRelation(bundle.RelationKeySource) && s.HasRelation(bundle.RelationKeyUrl) {
 		url := s.Details().GetString(bundle.RelationKeyUrl)
-		s.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(url))
+		s.SetDetail(bundle.RelationKeySource, domain.String(url))
 	}
 
 	for _, oldRel := range oldBookmarkRelationBlocks {
@@ -604,12 +604,12 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, k := range bookmarkRelationKeys {
 		if !s.HasRelation(k) {
-			s.AddBundledRelationLinks(domain.RelationKey(k))
+			s.AddRelationKeys(k)
 		}
 	}
 
 	for _, rk := range bookmarkRelationKeys {
-		if b := s.Pick(rk); b != nil {
+		if b := s.Pick(rk.String()); b != nil {
 			if ok := s.Unlink(b.Model().Id); !ok {
 				log.Errorf("can't unlink block %s", b.Model().Id)
 				return
@@ -617,14 +617,14 @@ var WithBookmarkBlocks = func(s *state.State) {
 			continue
 		}
 
-		ok := s.Add(simple.New(makeRelationBlock(rk)))
+		ok := s.Add(simple.New(makeRelationBlock(rk.String())))
 		if !ok {
 			log.Errorf("can't add block %s", rk)
 			return
 		}
 	}
 
-	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeys...); err != nil {
+	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, slice.IntoStrings(bookmarkRelationKeys)...); err != nil {
 		log.Errorf("insert relation blocks: %v", err)
 		return
 	}
