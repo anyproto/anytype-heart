@@ -106,6 +106,7 @@ type WebsiteProcessResult struct {
 	Type            string            // "recipe", "company", or "event"
 	Relations       map[string]string // e.g. {"portions": "2", "prep_time": "40 minutes", ...}
 	MarkdownSummary string            // e.g. "## Pasta with tomato sauce and basil.\n A classic Italian dish ..."
+	Image           string            // URL of the main image
 }
 
 func New() AI {
@@ -353,6 +354,10 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 		return "", nil, fmt.Errorf("paste block: %w", err)
 	}
 
+	if result.Image != "" {
+		// TODO: set cover image
+	}
+
 	err = ai.blockService.CreateTypeWidgetIfMissing(ctx, spaceId, domain.TypeKey(result.Type))
 	if err != nil {
 		log.Errorf("create type widget: %v", err)
@@ -371,8 +376,9 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 	if content == "" {
 		return nil, fmt.Errorf("website content is empty")
 	}
+
 	ai.setAPIConfig(provider)
-	websiteType, err := ai.ClassifyWebsiteContent(ctx, content)
+	websiteType, err := ai.ClassifyWebsiteContent(ctx, "Title: "+article.Title+"\nExcerpt: "+article.Excerpt)
 	if err != nil {
 		return nil, fmt.Errorf("could not classify website content: %w", err)
 	}
@@ -457,6 +463,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 		Type:            websiteType,
 		Relations:       relationsResult,
 		MarkdownSummary: summaryResult,
+		Image:           article.Image,
 	}, nil
 }
 
