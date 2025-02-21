@@ -14,6 +14,7 @@ type reindexFlags struct {
 	removeOldFiles          bool
 	deletedObjects          bool
 	eraseLinks              bool
+	removeParticipants      bool
 }
 
 func (f *reindexFlags) any() bool {
@@ -27,6 +28,7 @@ func (f *reindexFlags) any() bool {
 		f.fileKeys ||
 		f.removeOldFiles ||
 		f.deletedObjects ||
+		f.removeParticipants ||
 		f.eraseLinks
 }
 
@@ -41,6 +43,7 @@ func (f *reindexFlags) enableAll() {
 	f.fileKeys = true
 	f.removeOldFiles = true
 	f.deletedObjects = true
+	f.removeParticipants = true
 	f.eraseLinks = true
 }
 

@@ -25,10 +25,15 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 )
 
+type accountService interface {
+	MyParticipantId(string) string
+}
+
 type indexer struct {
-	fileService  files.Service
-	spaceService space.Service
-	objectStore  objectstore.ObjectStore
+	fileService    files.Service
+	spaceService   space.Service
+	objectStore    objectstore.ObjectStore
+	accountService accountService
 
 	query        database.Query
 	indexCtx     context.Context
@@ -42,9 +47,10 @@ type indexer struct {
 
 func (s *service) newIndexer() *indexer {
 	ind := &indexer{
-		fileService:  s.fileService,
-		spaceService: s.spaceService,
-		objectStore:  s.objectStore,
+		fileService:    s.fileService,
+		spaceService:   s.spaceService,
+		objectStore:    s.objectStore,
+		accountService: s.accountService,
 
 		indexQueue: mb.New[indexRequest](0),
 		isQueued:   make(map[domain.FullID]struct{}),
@@ -105,6 +111,7 @@ func (ind *indexer) initQuery() {
 					model.ObjectType_image,
 					model.ObjectType_video,
 					model.ObjectType_audio,
+					model.ObjectType_pdf,
 				}),
 			},
 			{
@@ -127,6 +134,13 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 	}
 	for _, rec := range recs {
 		spaceId := rec.Details.GetString(bundle.RelationKeySpaceId)
+
+		// There is no point to index file if the current user is not an owner of the file
+		myParticipantId := ind.accountService.MyParticipantId(spaceId)
+		if rec.Details.GetString(bundle.RelationKeyCreator) != myParticipantId {
+			continue
+		}
+
 		id := domain.FullID{
 			SpaceID:  spaceId,
 			ObjectID: rec.Details.GetString(bundle.RelationKeyId),

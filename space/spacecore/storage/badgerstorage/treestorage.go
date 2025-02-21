@@ -1,11 +1,13 @@
 package badgerstorage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/dgraph-io/badger/v4"
 )
 
@@ -16,7 +18,7 @@ type treeStorage struct {
 	root *treechangeproto.RawTreeChangeWithId
 }
 
-func newTreeStorage(db *badger.DB, spaceId, treeId string) (ts treestorage.TreeStorage, err error) {
+func newTreeStorage(db *badger.DB, spaceId, treeId string) (ts oldstorage.TreeStorage, err error) {
 	keys := newTreeKeys(spaceId, treeId)
 	err = db.View(func(txn *badger.Txn) error {
 		_, err := txn.Get(keys.RootIdKey())
@@ -48,7 +50,7 @@ func newTreeStorage(db *badger.DB, spaceId, treeId string) (ts treestorage.TreeS
 	return
 }
 
-func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
+func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts oldstorage.TreeStorage, err error) {
 	keys := newTreeKeys(spaceId, payload.RootRawChange.Id)
 	if hasDB(db, keys.RootIdKey()) {
 		err = treestorage.ErrTreeExists
@@ -57,7 +59,7 @@ func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeSt
 	return forceCreateTreeStorage(db, spaceId, payload)
 }
 
-func forceCreateTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
+func forceCreateTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts oldstorage.TreeStorage, err error) {
 	keys := newTreeKeys(spaceId, payload.RootRawChange.Id)
 	err = db.Update(func(txn *badger.Txn) error {
 		err = txn.Set(keys.RawChangeKey(payload.RootRawChange.Id), payload.RootRawChange.GetRawChange())
@@ -108,7 +110,74 @@ func (t *treeStorage) Heads() (heads []string, err error) {
 }
 
 func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
-	return nil, fmt.Errorf("get all change ids should not be called")
+	prefix := t.keys.RawChangesPrefix()
+	err = t.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		opts.Prefix = prefix
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			id := item.Key()
+
+			changeId := string(id[len(prefix)+1:])
+			// Special case
+			if changeId == "heads" {
+				continue
+			}
+			chs = append(chs, changeId)
+			if err != nil {
+				return fmt.Errorf("read value: %w", err)
+			}
+		}
+		return nil
+	})
+	return chs, err
+}
+
+func (t *treeStorage) GetAllChanges() ([]*treechangeproto.RawTreeChangeWithId, error) {
+	var changes []*treechangeproto.RawTreeChangeWithId
+	err := t.IterateChanges(func(id string, rawChange []byte) error {
+		changes = append(changes, &treechangeproto.RawTreeChangeWithId{
+			Id:        id,
+			RawChange: bytes.Clone(rawChange),
+		})
+		return nil
+	})
+	return changes, err
+}
+
+func (t *treeStorage) IterateChanges(proc func(id string, rawChange []byte) error) error {
+	prefix := t.keys.RawChangesPrefix()
+	return t.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		opts.Prefix = prefix
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			id := item.Key()
+
+			changeId := string(id[len(prefix)+1:])
+			// Special case
+			if changeId == "heads" {
+				continue
+			}
+			err := item.Value(func(val []byte) error {
+				return proc(changeId, val)
+			})
+			if err != nil {
+				return fmt.Errorf("read value: %w", err)
+			}
+		}
+		return nil
+	})
 }
 
 func (t *treeStorage) SetHeads(heads []string) (err error) {

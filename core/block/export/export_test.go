@@ -2392,6 +2392,116 @@ func Test_docsForExport(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(expCtx.docs))
 	})
+
+	t.Run("export participant", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeId := "objectTypeId"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
+		assert.Nil(t, err)
+
+		participantId := domain.NewParticipantId(spaceId, "identity")
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      domain.String("id"),
+				bundle.RelationKeyName:    domain.String("name1"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+			},
+			{
+				bundle.RelationKeyId:      domain.String(participantId),
+				bundle.RelationKeyName:    domain.String("test"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+			},
+			{
+				bundle.RelationKeyId:        domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String(spaceId),
+				bundle.RelationKeyType:      domain.String(objectTypeId),
+			},
+		})
+
+		smartBlockTest := smarttest.New("id")
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:             domain.String("id"),
+			bundle.RelationKeyType:           domain.String(objectTypeId),
+			bundle.RelationKeyLastModifiedBy: domain.String(participantId),
+			bundle.RelationKeyCreator:        domain.String(participantId),
+		}))
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyLastModifiedBy.String(),
+			Format: model.RelationFormat_object,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyCreator.String(),
+			Format: model.RelationFormat_object,
+		})
+		smartBlockTest.Doc = doc
+
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+
+		participant := smarttest.New(participantId)
+		participantDoc := participant.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(participantId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		participantDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		participant.Doc = participantDoc
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), participantId).Return(participant, nil)
+
+		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		provider.EXPECT().Type(spaceId, participantId).Return(smartblock.SmartBlockTypeParticipant, nil)
+
+		e := &export{
+			objectStore: storeFixture,
+			picker:      objectGetter,
+			sbtProvider: provider,
+		}
+
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
+			ObjectIds:     []string{"id"},
+			IncludeNested: true,
+			Format:        model.Export_Protobuf,
+		})
+
+		// when
+		err = expCtx.docsForExport()
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 3, len(expCtx.docs))
+		assert.NotNil(t, expCtx.docs[participantId])
+	})
 }
 
 func Test_provideFileName(t *testing.T) {

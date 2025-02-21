@@ -45,7 +45,6 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	p.DisableLayouts()
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 
 	return p.updateObjects(smartblock.ApplyInfo{})

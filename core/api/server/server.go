@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
 	"github.com/anyproto/anytype-heart/core/api/internal/export"
+	"github.com/anyproto/anytype-heart/core/api/internal/list"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
@@ -20,6 +21,7 @@ type Server struct {
 
 	authService   *auth.AuthService
 	exportService *export.ExportService
+	listService   *list.ListService
 	objectService *object.ObjectService
 	spaceService  *space.SpaceService
 	searchService *search.SearchService
@@ -37,6 +39,7 @@ func NewServer(accountService account.Service, mw service.ClientCommandsServer) 
 	}
 
 	s.objectService = object.NewService(mw, s.spaceService)
+	s.listService = list.NewService(mw, s.objectService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
 	s.engine = s.NewRouter(accountService, mw)
 	s.KeyToToken = make(map[string]string)

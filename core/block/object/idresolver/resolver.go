@@ -4,9 +4,8 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
-	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
 const CName = "block.object.resolver"
@@ -21,12 +20,12 @@ func New() Resolver {
 }
 
 type resolver struct {
-	storage storage.ClientStorage
+	objectStore objectstore.ObjectStore
 	sync.Mutex
 }
 
 func (r *resolver) Init(a *app.App) (err error) {
-	r.storage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	r.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	return
 }
 
@@ -35,5 +34,5 @@ func (r *resolver) Name() (name string) {
 }
 
 func (r *resolver) ResolveSpaceID(objectID string) (string, error) {
-	return r.storage.GetSpaceID(objectID)
+	return r.objectStore.GetSpaceId(objectID)
 }

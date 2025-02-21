@@ -76,6 +76,7 @@ type service struct {
 	objectStore     objectstore.ObjectStore
 	spaceIdResolver idresolver.Resolver
 	migrationQueue  *persistentqueue.Queue[*migrationItem]
+	accountService  accountService
 	objectArchiver  objectArchiver
 
 	indexer *indexer
@@ -117,6 +118,8 @@ func (s *service) Init(a *app.App) error {
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.objectArchiver = app.MustComponent[objectArchiver](a)
+	s.accountService = app.MustComponent[accountService](a)
+
 	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()

@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	maxConnections = 10
-	maxTasks       = 100
+	maxConnections    = 10
+	maxSubConnections = 10
+	maxTasks          = 100
 )
 
 type operationNameKeyType string

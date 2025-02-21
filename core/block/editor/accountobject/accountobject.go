@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -84,12 +83,14 @@ type accountObject struct {
 	crdtDb      anystore.DB
 }
 
-func (a *accountObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	return a.bs.SetDetails(ctx, details, showEvent)
+// required relations for spaceview beside the bundle.RequiredInternalRelations
+var accountRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeyProfileOwnerIdentity,
+	bundle.RelationKeySharedSpacesLimit,
 }
 
-func (a *accountObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	return a.bs.SetDetailsAndUpdateLastUsed(ctx, details, showEvent)
+func (a *accountObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
+	return a.bs.SetDetails(ctx, details, showEvent)
 }
 
 func New(
@@ -98,13 +99,12 @@ func New(
 	spaceObjects spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
-	lastUsedUpdater lastused.ObjectUsageUpdater,
 	crdtDb anystore.DB,
 	cfg *config.Config) AccountObject {
 	return &accountObject{
 		crdtDb:     crdtDb,
 		keys:       keys,
-		bs:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService, lastUsedUpdater),
+		bs:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService),
 		SmartBlock: sb,
 		cfg:        cfg,
 		relMapper: newRelationsMapper(map[string]KeyType{
@@ -117,6 +117,8 @@ func New(
 }
 
 func (a *accountObject) Init(ctx *smartblock.InitContext) error {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, accountRequiredRelations...)
+
 	err := a.SmartBlock.Init(ctx)
 	if err != nil {
 		return err

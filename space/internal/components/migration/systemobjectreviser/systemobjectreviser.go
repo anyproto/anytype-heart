@@ -98,13 +98,22 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	}
 	details := buildDiffDetails(bundleObject, localObject)
 
-	recRelsDetail, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
+	recRelsDetail, err := checkListOfSpaceSpecificObjects(ctx, space, bundle.RelationKeyRecommendedRelations, bundleObject, localObject)
 	if err != nil {
 		log.Error("failed to check recommended relations", zap.Error(err))
 	}
 
 	if recRelsDetail != nil {
 		details.Set(recRelsDetail.Key, recRelsDetail.Value)
+	}
+
+	relFormatOTDetail, err := checkListOfSpaceSpecificObjects(ctx, space, bundle.RelationKeyRelationFormatObjectTypes, bundleObject, localObject)
+	if err != nil {
+		log.Error("failed to check relation format object types", zap.Error(err))
+	}
+
+	if relFormatOTDetail != nil {
+		details.Set(relFormatOTDetail.Key, relFormatOTDetail.Value)
 	}
 
 	if details.Len() > 0 {
@@ -126,19 +135,19 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 func getBundleSystemObjectDetails(uk domain.UniqueKey) *domain.Details {
 	switch uk.SmartblockType() {
 	case coresb.SmartBlockTypeObjectType:
-		typeKey := domain.TypeKey(uk.InternalKey())
-		if !lo.Contains(bundle.SystemTypes, typeKey) {
+		if !isSystemType(uk) {
 			// non system object type, no need to revise
 			return nil
 		}
+		typeKey := domain.TypeKey(uk.InternalKey())
 		objectType := bundle.MustGetType(typeKey)
 		return (&relationutils.ObjectType{ObjectType: objectType}).BundledTypeDetails()
 	case coresb.SmartBlockTypeRelation:
-		relationKey := domain.RelationKey(uk.InternalKey())
-		if !lo.Contains(bundle.SystemRelations, relationKey) {
+		if !isSystemRelation(uk) {
 			// non system relation, no need to revise
 			return nil
 		}
+		relationKey := domain.RelationKey(uk.InternalKey())
 		relation := bundle.MustGetRelation(relationKey)
 		return (&relationutils.Relation{Relation: relation}).ToDetails()
 	default:
@@ -156,49 +165,61 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 		bundle.RelationKeyRevision,
 		bundle.RelationKeyRelationReadonlyValue,
 		bundle.RelationKeyRelationMaxCount,
-		bundle.RelationKeyTargetObjectType,
 		bundle.RelationKeyIconEmoji,
 	)
 
 	details := domain.NewDetails()
 	for key, value := range diff.Iterate() {
-		if key == bundle.RelationKeyTargetObjectType {
-			// special case. We don't want to remove the types that was set by user, so only add ones that we have
-			currentList := current.GetStringList(bundle.RelationKeyTargetObjectType)
-			missedInCurrent, _ := lo.Difference(origin.GetStringList(bundle.RelationKeyTargetObjectType), currentList)
-			currentList = append(currentList, missedInCurrent...)
-			value = domain.StringList(currentList)
-		}
 		details.Set(key, value)
 	}
 	return details
 }
 
-func checkRecommendedRelations(ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details) (newValue *domain.Detail, err error) {
-	localIds := current.GetStringList(bundle.RelationKeyRecommendedRelations)
-	bundledIds := origin.GetStringList(bundle.RelationKeyRecommendedRelations)
+func checkListOfSpaceSpecificObjects(
+	ctx context.Context, space dependencies.SpaceWithCtx, relationKey domain.RelationKey, origin, current *domain.Details,
+) (newValue *domain.Detail, err error) {
+	var (
+		bundlePrefix   string
+		sbType         coresb.SmartBlockType
+		isSystemObject func(uk domain.UniqueKey) bool
+	)
+
+	switch relationKey {
+	case bundle.RelationKeyRecommendedRelations:
+		bundlePrefix = addr.BundledRelationURLPrefix
+		sbType = coresb.SmartBlockTypeRelation
+		isSystemObject = isSystemRelation
+	case bundle.RelationKeyRelationFormatObjectTypes:
+		bundlePrefix = addr.BundledObjectTypeURLPrefix
+		sbType = coresb.SmartBlockTypeObjectType
+		isSystemObject = isSystemType
+	default:
+		return nil, fmt.Errorf("unsupportable relation key: %s", relationKey)
+	}
+
+	localIds := current.GetStringList(relationKey)
+	bundledIds := origin.GetStringList(relationKey)
 
 	newIds := make([]string, 0, len(bundledIds))
 	for _, bundledId := range bundledIds {
-		if !strings.HasPrefix(bundledId, addr.BundledRelationURLPrefix) {
-			return nil, fmt.Errorf("invalid recommended bundled relation id: %s. %s prefix is expected",
-				bundledId, addr.BundledRelationURLPrefix)
+		if !strings.HasPrefix(bundledId, bundlePrefix) {
+			return nil, fmt.Errorf("invalid object id: %s. %s prefix is expected", bundledId, bundlePrefix)
 		}
-		key := strings.TrimPrefix(bundledId, addr.BundledRelationURLPrefix)
-		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key)
+		key := strings.TrimPrefix(bundledId, bundlePrefix)
+		uk, err := domain.NewUniqueKey(sbType, key)
 		if err != nil {
 			return nil, err
 		}
 
-		// we should add only system relations to object types, because non-system could be not installed to space yet
-		if !lo.Contains(bundle.SystemRelations, domain.RelationKey(uk.InternalKey())) {
-			log.Debug("recommended relation is not system, so we are not adding it to the type object", zap.String("relation key", key))
+		// we should add only system objects to detail, because non-system objects could be not installed to space yet
+		if isSystemObject(uk) {
+			log.Debug("object is not system, so we are not adding it to the detail", zap.String("key", key))
 			continue
 		}
 
 		id, err := space.DeriveObjectID(ctx, uk)
 		if err != nil {
-			return nil, fmt.Errorf("failed to derive recommended relation with key '%s': %w", key, err)
+			return nil, fmt.Errorf("failed to derive system object with key '%s': %w", key, err)
 		}
 
 		newIds = append(newIds, id)
@@ -210,7 +231,15 @@ func checkRecommendedRelations(ctx context.Context, space dependencies.SpaceWith
 	}
 
 	return &domain.Detail{
-		Key:   bundle.RelationKeyRecommendedRelations,
+		Key:   relationKey,
 		Value: domain.StringList(append(localIds, added...)),
 	}, nil
+}
+
+func isSystemType(uk domain.UniqueKey) bool {
+	return lo.Contains(bundle.SystemTypes, domain.TypeKey(uk.InternalKey()))
+}
+
+func isSystemRelation(uk domain.UniqueKey) bool {
+	return bundle.IsSystemRelation(domain.RelationKey(uk.InternalKey()))
 }

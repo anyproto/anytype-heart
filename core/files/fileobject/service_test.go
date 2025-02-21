@@ -126,6 +126,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 	a.Register(&dummyObjectArchiver{})
+	a.Register(&dummyAccountService{})
 
 	err = a.Start(ctx)
 	require.NoError(t, err)

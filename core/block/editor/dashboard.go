@@ -35,7 +35,7 @@ type Dashboard struct {
 func NewDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store, layoutConverter converter.LayoutConverter) *Dashboard {
 	return &Dashboard{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil, nil),
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil),
 		Collection:    collection.NewCollection(sb, objectStore),
 		objectStore:   objectStore,
 	}
@@ -46,7 +46,6 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	p.DisableLayouts()
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	return p.updateObjects(smartblock.ApplyInfo{})
 

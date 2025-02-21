@@ -19,8 +19,7 @@ type Service interface {
 }
 
 type ExportService struct {
-	mw          service.ClientCommandsServer
-	AccountInfo *model.AccountInfo
+	mw service.ClientCommandsServer
 }
 
 func NewService(mw service.ClientCommandsServer) *ExportService {

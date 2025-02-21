@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused/mock_lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -26,7 +25,6 @@ type fixture struct {
 	spaceService    *mock_space.MockService
 	spc             *mock_clientspace.MockSpace
 	templateService *testTemplateService
-	lastUsedService *mock_lastused.MockObjectUsageUpdater
 	service         Service
 }
 
@@ -35,19 +33,16 @@ func newFixture(t *testing.T) *fixture {
 	spc := mock_clientspace.NewMockSpace(t)
 
 	templateSvc := &testTemplateService{}
-	lastUsedSvc := mock_lastused.NewMockObjectUsageUpdater(t)
 
 	s := &service{
 		spaceService:    spaceService,
 		templateService: templateSvc,
-		lastUsedUpdater: lastUsedSvc,
 	}
 
 	return &fixture{
 		spaceService:    spaceService,
 		spc:             spc,
 		templateService: templateSvc,
-		lastUsedService: lastUsedSvc,
 		service:         s,
 	}
 }
@@ -77,7 +72,6 @@ func TestService_CreateObject(t *testing.T) {
 		f.spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(f.spc, nil)
 		f.spc.EXPECT().CreateTreeObject(mock.Anything, mock.Anything).Return(sb, nil)
 		f.spc.EXPECT().Id().Return(spaceId)
-		f.lastUsedService.EXPECT().UpdateLastUsedDate(spaceId, bundle.TypeKeyTemplate, mock.Anything).Return()
 
 		// when
 		id, _, err := f.service.CreateObject(context.Background(), spaceId, CreateObjectRequest{

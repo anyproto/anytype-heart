@@ -63,6 +63,7 @@ func TestDependenciesSubscription(t *testing.T) {
 			bundle.RelationKeyId:      domain.String(mainObjId),
 			bundle.RelationKeySpaceId: domain.String(testSpaceId),
 			bundle.RelationKeyName:    domain.String("Main object"),
+			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_todo)),
 		})
 
 		fx.Doc.(*state.State).SetDetails(objDetails)
@@ -79,6 +80,7 @@ func TestDependenciesSubscription(t *testing.T) {
 						bundle.RelationKeyId.String():      pbtypes.String(mainObjId),
 						bundle.RelationKeySpaceId.String(): pbtypes.String(testSpaceId),
 						bundle.RelationKeyName.String():    pbtypes.String("Main object"),
+						bundle.RelationKeyLayout.String():  pbtypes.Int64(int64(model.ObjectType_todo)),
 					},
 				},
 			},

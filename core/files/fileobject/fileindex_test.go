@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,13 +24,24 @@ type indexerFixture struct {
 	objectStoreFixture *objectstore.StoreFixture
 }
 
+type dummyAccountService struct{}
+
+func (s dummyAccountService) MyParticipantId(spaceId string) string {
+	return ""
+}
+
+func (s dummyAccountService) Init(_ *app.App) error { return nil }
+
+func (s dummyAccountService) Name() string { return "dummyAccountService" }
+
 func newIndexerFixture(t *testing.T) *indexerFixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	fileService := mock_files.NewMockService(t)
 
 	svc := &service{
-		objectStore: objectStore,
-		fileService: fileService,
+		objectStore:    objectStore,
+		fileService:    fileService,
+		accountService: &dummyAccountService{},
 	}
 	ind := svc.newIndexer()
 

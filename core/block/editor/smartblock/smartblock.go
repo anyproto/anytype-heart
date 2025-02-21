@@ -163,7 +163,7 @@ type SmartBlock interface {
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
-	DisableLayouts()
+	EnableLayouts()
 	EnabledRelationAsDependentObjects()
 	AddHook(f HookCallback, events ...Hook)
 	AddHookOnce(id string, f HookCallback, events ...Hook)
@@ -236,7 +236,7 @@ type smartBlock struct {
 	lastDepDetails       map[string]*domain.Details
 	restrictions         restriction.Restrictions
 	isDeleted            bool
-	disableLayouts       bool
+	enableLayouts        bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -312,7 +312,7 @@ func (sb *smartBlock) Type() smartblock.SmartBlockType {
 }
 
 func (sb *smartBlock) ObjectTypeID() string {
-	return sb.Doc.Details().GetString(bundle.RelationKeyType)
+	return sb.Doc.LocalDetails().GetString(bundle.RelationKeyType)
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
@@ -505,8 +505,33 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 			Details: rec.Details.ToProto(),
 		})
 	}
+
+	// TODO: GO-4222 remove this hack after primitives merge
+	injectLayout(details)
+
 	go sb.metaListener(recordsCh)
 	return
+}
+
+// TODO: GO-4222 remove this hack after primitives merge
+func injectLayout(details []*model.ObjectViewDetailsSet) {
+	rootDetailsProto := details[0].Details
+	rootDetails := domain.NewDetailsFromProto(rootDetailsProto)
+	if rootDetails.Has(bundle.RelationKeyLayout) {
+		// no hack needed if object contains layout detail
+		return
+	}
+	typeId := rootDetails.GetString(bundle.RelationKeyType)
+
+	layout := model.ObjectType_basic // fallback
+	for _, detailsModel := range details {
+		if detailsModel.Id == typeId {
+			// nolint:gosec
+			layout = model.ObjectTypeLayout(domain.NewDetailsFromProto(detailsModel.Details).GetInt64(bundle.RelationKeyRecommendedLayout))
+			break
+		}
+	}
+	rootDetailsProto.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(layout))
 }
 
 func (sb *smartBlock) partitionIdsBySpace(ids []string) map[string][]string {
@@ -616,8 +641,12 @@ func (sb *smartBlock) IsLocked() bool {
 	return activeCount > 0
 }
 
-func (sb *smartBlock) DisableLayouts() {
-	sb.disableLayouts = true
+func (sb *smartBlock) EnableLayouts() {
+	sb.enableLayouts = true
+}
+
+func (sb *smartBlock) IsLayoutsEnabled() bool {
+	return sb.enableLayouts
 }
 
 func (sb *smartBlock) EnabledRelationAsDependentObjects() {
@@ -704,7 +733,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
 
-	msgs, act, err := state.ApplyState(sb.SpaceID(), s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
 		return
 	}
@@ -770,7 +799,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	if !act.IsEmpty() {
 		if len(changes) == 0 && !doSnapshot {
-			log.Errorf("apply 0 changes %s: %v", st.RootId(), anonymize.Events(msgsToEvents(msgs)))
+			log.With("sbType", sb.Type().String()).Errorf("apply 0 changes %s: %v", st.RootId(), anonymize.Events(msgsToEvents(msgs)))
 		}
 		err = pushChange()
 		if err != nil {
@@ -1058,7 +1087,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
-	msgs, act, err := state.ApplyState(sb.SpaceID(), s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
 		return err
 	}
@@ -1093,7 +1122,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
-	msgs, _, err := state.ApplyState(sb.SpaceID(), d.(*state.State), !sb.disableLayouts)
+	msgs, _, err := state.ApplyState(sb.SpaceID(), d.(*state.State), sb.enableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
 		// can't make diff - reopen doc
@@ -1330,16 +1359,38 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 			heads = []string{lastChangeId}
 		}
 	}
+
+	details := sb.CombinedDetails()
+
+	// TODO: GO-4222 remove this hack after primitives merge
+	sb.injectLayout(details)
+
 	return DocInfo{
 		Id:             sb.Id(),
 		Space:          sb.Space(),
 		Links:          links,
 		Heads:          heads,
 		Creator:        creator,
-		Details:        sb.CombinedDetails(),
+		Details:        details,
 		Type:           sb.ObjectTypeKey(),
 		SmartblockType: sb.Type(),
 	}
+}
+
+// TODO: GO-4222 remove this hack after primitives merge
+func (sb *smartBlock) injectLayout(details *domain.Details) {
+	if details.Has(bundle.RelationKeyLayout) {
+		// no hack needed if object contains layout detail
+		return
+	}
+
+	layout := model.ObjectType_basic // fallback
+	records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{sb.ObjectTypeID()})
+	if err == nil && len(records) != 0 {
+		// nolint:gosec
+		layout = model.ObjectTypeLayout(records[0].Details.GetInt64(bundle.RelationKeyRecommendedLayout))
+	}
+	details.SetInt64(bundle.RelationKeyLayout, int64(layout))
 }
 
 func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
@@ -1364,11 +1415,12 @@ func removeInternalFlags(s *state.State) {
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
-	rawRestrictions := make([]float64, len(sb.Restrictions().Object))
-	for i, r := range sb.Restrictions().Object {
-		rawRestrictions[i] = float64(r)
+	currentRestrictions := restriction.NewObjectRestrictionsFromValue(s.LocalDetails().Get(bundle.RelationKeyRestrictions))
+	if currentRestrictions.Equal(sb.Restrictions().Object) {
+		return
 	}
-	s.SetLocalDetail(bundle.RelationKeyRestrictions, domain.Float64List(rawRestrictions))
+
+	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
 
 	// todo: verify this logic with clients
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
