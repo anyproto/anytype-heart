@@ -50,12 +50,11 @@ var (
 )
 
 type AI interface {
-	// client facing
 	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error)
 	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error)
 	ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error)
-
 	CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error)
+
 	WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error)
 	ClassifyWebsiteContent(ctx context.Context, content string) (string, error)
 
@@ -63,17 +62,17 @@ type AI interface {
 }
 
 type AIService struct {
-	mu           sync.Mutex
-	exporter     export.Export
-	source       source.Service
-	linkPreview  linkpreview.LinkPreview
-	spaceService space.Service
-	blockService *block.Service
+	exportService      export.Export
+	sourceService      source.Service
+	linkPreviewService linkpreview.LinkPreview
+	spaceService       space.Service
+	blockService       block.Service
+	objectCreator      objectcreator.Service
 
-	objectCreator  objectcreator.Service
 	apiConfig      *APIConfig
 	httpClient     HttpClient
 	responseParser parsing.ResponseParser
+	mu             sync.Mutex
 }
 
 type APIConfig struct {
@@ -116,12 +115,12 @@ func New() AI {
 }
 
 func (ai *AIService) Init(a *app.App) (err error) {
-	ai.exporter = app.MustComponent[export.Export](a)
-	ai.source = app.MustComponent[source.Service](a)
-	ai.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	ai.objectCreator = app.MustComponent[objectcreator.Service](a)
+	ai.exportService = app.MustComponent[export.Export](a)
+	ai.sourceService = app.MustComponent[source.Service](a)
+	ai.linkPreviewService = app.MustComponent[linkpreview.LinkPreview](a)
 	ai.spaceService = app.MustComponent[space.Service](a)
-	ai.blockService = a.MustComponent(block.CName).(*block.Service)
+	ai.objectCreator = app.MustComponent[objectcreator.Service](a)
+	ai.blockService = app.MustComponent[block.Service](a)
 	return nil
 }
 
@@ -229,22 +228,92 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 	return AutofillResult{Choices: []string{strResult}}, nil
 }
 
-func (ai *AIService) fallbackToBookmark(ctx context.Context, spaceId string, url string, details *domain.Details) (id string, resDetails *domain.Details, err error) {
-	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details:       details,
+// ListSummary answers user questions about a list of items.
+func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error) {
+	ai.mu.Lock()
+	defer ai.mu.Unlock()
+
+	res, err := ai.exportService.ExportInMemory(ctx, params.SpaceId, params.ObjectIds, model.Export_Markdown, true)
+	if err != nil {
+		return "", err
 	}
-	return ai.objectCreator.CreateObject(ctx, spaceId, createReq)
+
+	s := strings.Builder{}
+	for _, r := range res {
+		s.Write(r)
+		s.WriteString("\n==========\n\n")
+	}
+	ai.setAPIConfig(params.Config)
+	promptConfig := &PromptConfig{
+		SystemPrompt: listSummaryPrompts["list"].System,
+		UserPrompt:   fmt.Sprintf(listSummaryPrompts["list"].User, params.Prompt, s.String()),
+		Temperature:  params.Config.Temperature,
+		JSONMode:     true,
+	}
+	ai.responseParser = parsing.NewWritingToolsParser()
+
+	answer, err := ai.chat(ctx, int(pb.RpcAIWritingToolsRequest_SUMMARIZE), promptConfig)
+	if err != nil {
+		return "", err
+	}
+
+	rawAnswer, err := ai.responseParser.ExtractContent(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+	if err != nil {
+		return "", err
+	}
+
+	rawAnswerStr, err := rawAnswer.String()
+	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(rawAnswerStr), "", nil)
+	resultId := uuid.New().String()
+	if len(rootBlockIds) == 0 {
+		return "", fmt.Errorf("no root block ids found")
+	}
+
+	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}})
+	var blockIds = make(map[string]bool)
+
+	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks:  blocks,
+			Details: common.GetCommonDetails(resultId, "AI response", "🧠", model.ObjectType_basic).ToProto(),
+			Key:     bundle.TypeKeyPage.String(),
+		},
+	})
+
+	st := dc.NewState()
+
+	err = ai.sourceService.RegisterStaticSource(ai.sourceService.NewStaticSource(source.StaticSourceParams{
+		Id: domain.FullID{
+			SpaceID:  params.SpaceId,
+			ObjectID: resultId,
+		},
+		SbType: smartblock.SmartBlockTypeEphemeralVirtualObject,
+		State:  st,
+	}))
+	if err != nil {
+		return "", err
+	}
+
+	for _, b := range st.Blocks() {
+		if blockIds[b.Id] {
+			return "", fmt.Errorf("duplicate block id: %s", b.Id)
+		}
+		blockIds[b.Id] = true
+	}
+
+	return resultId, nil
 }
 
+// CreateObjectFromUrl creates an object from a URL, classifies it, and extracts relations and a summary.
 func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error) {
-	_, body, isFile, err := ai.linkPreview.Fetch(ctx, url)
+	_, body, isFile, err := ai.linkPreviewService.Fetch(ctx, url)
 	if err != nil {
 		return "", nil, fmt.Errorf("could not fetch website: %w", err)
 	}
 	if isFile {
 		return ai.fallbackToBookmark(ctx, url, spaceId, domain.NewDetails())
 	}
+
 	result, err := ai.WebsiteProcess(ctx, provider, body)
 	if err != nil {
 		return ai.fallbackToBookmark(ctx, url, spaceId, domain.NewDetails())
@@ -255,7 +324,6 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 	}
 
 	var idsToInstallIfMissing []string
-
 	idsToInstallIfMissing = append(idsToInstallIfMissing, domain.TypeKey(result.Type).BundledURL())
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: domain.TypeKey(result.Type),
@@ -292,13 +360,13 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 	if err != nil {
 		return "", nil, fmt.Errorf("paste block: %w", err)
 	}
+
 	err = ai.blockService.CreateTypeWidgetIfMissing(ctx, spaceId, domain.TypeKey(result.Type))
 	if err != nil {
 		log.Errorf("create type widget: %v", err)
 	}
 
 	return id, details, nil
-
 }
 
 // WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.
@@ -398,83 +466,6 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 	}, nil
 }
 
-// ListSummary answers user questions about a list of items.
-func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error) {
-	ai.mu.Lock()
-	defer ai.mu.Unlock()
-
-	res, err := ai.exporter.ExportInMemory(ctx, params.SpaceId, params.ObjectIds, model.Export_Markdown, true)
-	if err != nil {
-		return "", err
-	}
-
-	s := strings.Builder{}
-	for _, r := range res {
-		s.Write(r)
-		s.WriteString("==========\n")
-		s.WriteString("\n")
-	}
-	ai.setAPIConfig(params.Config)
-	promptConfig := &PromptConfig{
-		SystemPrompt: listSummaryPrompts["list"].System,
-		UserPrompt:   fmt.Sprintf(listSummaryPrompts["list"].User, params.Prompt, s.String()),
-		Temperature:  params.Config.Temperature,
-		JSONMode:     true,
-	}
-	ai.responseParser = parsing.NewWritingToolsParser()
-
-	answer, err := ai.chat(ctx, int(pb.RpcAIWritingToolsRequest_SUMMARIZE), promptConfig)
-	if err != nil {
-		return "", err
-	}
-
-	rawAnswer, err := ai.responseParser.ExtractContent(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
-	if err != nil {
-		return "", err
-	}
-
-	rawAnswerStr, err := rawAnswer.String()
-	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(rawAnswerStr), "", nil)
-	resultId := uuid.New().String()
-	if len(rootBlockIds) == 0 {
-		return "", fmt.Errorf("no root block ids found")
-	}
-
-	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}})
-	var blockIds = make(map[string]bool)
-
-	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
-		Data: &model.SmartBlockSnapshotBase{
-			Blocks:  blocks,
-			Details: common.GetCommonDetails(resultId, "AI response", "🧠", model.ObjectType_basic).ToProto(),
-			Key:     bundle.TypeKeyPage.String(),
-		},
-	})
-
-	st := dc.NewState()
-
-	err = ai.source.RegisterStaticSource(ai.source.NewStaticSource(source.StaticSourceParams{
-		Id: domain.FullID{
-			SpaceID:  params.SpaceId,
-			ObjectID: resultId,
-		},
-		SbType: smartblock.SmartBlockTypeEphemeralVirtualObject,
-		State:  st,
-	}))
-	if err != nil {
-		return "", err
-	}
-
-	for _, b := range st.Blocks() {
-		if blockIds[b.Id] {
-			return "", fmt.Errorf("duplicate block id: %s", b.Id)
-		}
-		blockIds[b.Id] = true
-	}
-
-	return resultId, nil
-}
-
 // ClassifyWebsiteContent classifies content into a single category.
 func (ai *AIService) ClassifyWebsiteContent(ctx context.Context, content string) (string, error) {
 	systemPrompt := classificationPrompts["type"].System
@@ -498,6 +489,14 @@ func (ai *AIService) ClassifyWebsiteContent(ctx context.Context, content string)
 	default:
 		return "", fmt.Errorf("invalid classification: %s", classification)
 	}
+}
+
+func (ai *AIService) fallbackToBookmark(ctx context.Context, spaceId string, url string, details *domain.Details) (id string, resDetails *domain.Details, err error) {
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyBookmark,
+		Details:       details,
+	}
+	return ai.objectCreator.CreateObject(ctx, spaceId, createReq)
 }
 
 func (ai *AIService) setAPIConfig(params *pb.RpcAIProviderConfig) {
