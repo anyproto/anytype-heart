@@ -201,8 +201,12 @@ func (s *service) UpdateObject(objectId string, content *bookmark.ObjectContent)
 		{Key: bundle.RelationKeyName, Value: domain.String(content.BookmarkContent.Title)},
 		{Key: bundle.RelationKeyDescription, Value: domain.String(content.BookmarkContent.Description)},
 		{Key: bundle.RelationKeySource, Value: domain.String(content.BookmarkContent.Url)},
-		{Key: bundle.RelationKeyPicture, Value: domain.String(content.BookmarkContent.ImageHash)},
-		{Key: bundle.RelationKeyIconImage, Value: domain.String(content.BookmarkContent.FaviconHash)},
+	}
+	if content.BookmarkContent.ImageHash != "" {
+		details = append(details, domain.Detail{Key: bundle.RelationKeyPicture, Value: domain.String(content.BookmarkContent.ImageHash)})
+		details = append(details, domain.Detail{Key: bundle.RelationKeyIconImage, Value: domain.String(content.BookmarkContent.ImageHash)})
+	} else {
+		details = append(details, domain.Detail{Key: bundle.RelationKeyIconImage, Value: domain.String(content.BookmarkContent.FaviconHash)})
 	}
 
 	return s.detailsSetter.SetDetails(nil, objectId, details)

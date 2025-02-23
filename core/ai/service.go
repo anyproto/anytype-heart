@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -13,10 +14,13 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/go-shiori/go-readability"
 	"github.com/google/uuid"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/pemistahl/lingua-go"
 
 	"github.com/anyproto/anytype-heart/core/ai/parsing"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -69,11 +73,14 @@ type AIService struct {
 	linkPreview  linkpreview.LinkPreview
 	spaceService space.Service
 	blockService *block.Service
+	bmPolicy     *bluemonday.Policy
 
-	objectCreator  objectcreator.Service
-	apiConfig      *APIConfig
-	httpClient     HttpClient
-	responseParser parsing.ResponseParser
+	objectCreator   objectcreator.Service
+	apiConfig       *APIConfig
+	httpClient      HttpClient
+	responseParser  parsing.ResponseParser
+	componentCtx    context.Context
+	componentCancel context.CancelFunc
 }
 
 type APIConfig struct {
@@ -122,6 +129,9 @@ func (ai *AIService) Init(a *app.App) (err error) {
 	ai.objectCreator = app.MustComponent[objectcreator.Service](a)
 	ai.spaceService = app.MustComponent[space.Service](a)
 	ai.blockService = a.MustComponent(block.CName).(*block.Service)
+	ai.componentCtx, ai.componentCancel = context.WithCancel(context.Background())
+	ai.bmPolicy = HTMLSanitizePolicy()
+
 	return nil
 }
 
@@ -134,6 +144,7 @@ func (ai *AIService) Run(_ context.Context) (err error) {
 }
 
 func (ai *AIService) Close(_ context.Context) (err error) {
+	ai.componentCancel()
 	return nil
 }
 
@@ -229,45 +240,28 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 	return AutofillResult{Choices: []string{strResult}}, nil
 }
 
-func (ai *AIService) fallbackToBookmark(ctx context.Context, spaceId string, url string, details *domain.Details) (id string, resDetails *domain.Details, err error) {
-	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details:       details,
-	}
-	return ai.objectCreator.CreateObject(ctx, spaceId, createReq)
-}
-
-func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error) {
-	_, body, isFile, err := ai.linkPreview.Fetch(ctx, url)
-	if err != nil {
-		return "", nil, fmt.Errorf("could not fetch website: %w", err)
-	}
-	if isFile {
-		return ai.fallbackToBookmark(ctx, url, spaceId, domain.NewDetails())
-	}
+func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId, imageUrl string, body []byte, provider *pb.RpcAIProviderConfig) (id string, details *domain.Details, err error) {
 	result, err := ai.WebsiteProcess(ctx, provider, body)
 	if err != nil {
-		return ai.fallbackToBookmark(ctx, url, spaceId, domain.NewDetails())
+		log.Errorf("website process via llm: %v", err)
+		return id, details, nil
 	}
 
 	if !bundle.HasObjectTypeByKey(domain.TypeKey(result.Type)) {
-		return ai.fallbackToBookmark(ctx, url, spaceId, domain.NewDetails())
+		return id, details, nil
 	}
 
 	var idsToInstallIfMissing []string
 
 	idsToInstallIfMissing = append(idsToInstallIfMissing, domain.TypeKey(result.Type).BundledURL())
-	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: domain.TypeKey(result.Type),
-		Details:       domain.NewDetails(),
-	}
+	details = domain.NewDetails()
 	for k, v := range result.Relations {
 		if !bundle.HasRelation(domain.RelationKey(k)) {
 			continue
 		}
 		idsToInstallIfMissing = append(idsToInstallIfMissing, domain.RelationKey(k).BundledURL())
 
-		createReq.Details.SetString(domain.RelationKey(k), v)
+		details.SetString(domain.RelationKey(k), v)
 	}
 
 	space, err := ai.spaceService.Get(ctx, spaceId)
@@ -278,27 +272,100 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 	if err != nil {
 		return "", nil, fmt.Errorf("install bundled objects: %w", err)
 	}
-	id, details, err = ai.objectCreator.CreateObject(ctx, spaceId, createReq)
+	cctx := session.NewContext()
+	err = space.Do(objectId, func(sb editorsb.SmartBlock) error {
+		st := sb.NewState()
+		st.SetObjectTypeKey(domain.TypeKey(result.Type))
+		var relationBlocks []*model.Block
+
+		pictureHash := st.Details().GetString(bundle.RelationKeyPicture)
+		if pictureHash != "" {
+			st.SetDetail(bundle.RelationKeyCoverId, domain.String(pictureHash))
+			st.SetDetail(bundle.RelationKeyCoverType, domain.Int64(1))
+		}
+		for k, v := range details.Iterate() {
+			st.SetDetail(k, v)
+			if !v.IsEmpty() && k != bundle.RelationKeyName {
+				relationBlocks = append(relationBlocks, &model.Block{
+					Content: &model.BlockContentOfRelation{
+						Relation: &model.BlockContentRelation{
+							Key: k.String(),
+						},
+					},
+				})
+			}
+		}
+
+		err = sb.Apply(st)
+		if err != nil {
+			return err
+		}
+
+		cb := sb.(clipboard.Clipboard)
+		_, _, _, _, err = cb.Paste(cctx, &pb.RpcBlockPasteRequest{
+			ContextId: id,
+			AnySlot:   relationBlocks,
+		}, "")
+		_, _, _, _, err = cb.Paste(cctx, &pb.RpcBlockPasteRequest{
+			ContextId: id,
+			TextSlot:  result.MarkdownSummary,
+		}, "")
+
+		if err != nil {
+			return fmt.Errorf("paste block: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return "", nil, fmt.Errorf("create object: %w", err)
+		return "", nil, fmt.Errorf("apply smart block: %w", err)
 	}
 
-	cctx := session.NewContext()
-	_, _, _, _, err = ai.blockService.Paste(cctx, pb.RpcBlockPasteRequest{
-		ContextId: id,
-		Url:       url,
-		TextSlot:  result.MarkdownSummary,
-	}, "")
-	if err != nil {
-		return "", nil, fmt.Errorf("paste block: %w", err)
-	}
 	err = ai.blockService.CreateTypeWidgetIfMissing(ctx, spaceId, domain.TypeKey(result.Type))
 	if err != nil {
 		log.Errorf("create type widget: %v", err)
 	}
 
 	return id, details, nil
+}
 
+func (ai *AIService) cleanResponse(body []byte) (resp []byte) {
+	defer func() {
+		if e := recover(); e != nil {
+			resp = body
+		}
+	}()
+	return ai.bmPolicy.SanitizeBytes(body)
+}
+func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error) {
+	lp, body, isFile, err := ai.linkPreview.Fetch(ctx, url)
+	if err != nil {
+		return "", nil, fmt.Errorf("could not fetch website: %w", err)
+	}
+
+	lenBefore := len(body)
+	body = ai.cleanResponse(body)
+	log.Warnf("cleaned response: %d -> %d: %s", lenBefore, len(body), body)
+	details = domain.NewDetails()
+	details.SetString(bundle.RelationKeySource, url)
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyBookmark,
+		Details:       details,
+	}
+	id, details, err = ai.objectCreator.CreateObject(ctx, spaceId, createReq)
+	if err != nil {
+		return "", nil, fmt.Errorf("create as bookmark: %w", err)
+	}
+
+	if !isFile {
+		go func(spaceId string, body []byte, provider *pb.RpcAIProviderConfig) {
+			_, _, err = ai.processBookmark(ai.componentCtx, spaceId, id, lp.ImageUrl, body, provider)
+			if err != nil {
+				log.Errorf("ai process bookmark: %v", err)
+			}
+		}(spaceId, body, provider)
+	}
+
+	return id, details, nil
 }
 
 // WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.
@@ -446,7 +513,7 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:  blocks,
-			Details: common.GetCommonDetails(resultId, "AI response", "🧠", model.ObjectType_basic).ToProto(),
+			Details: common.GetCommonDetails(resultId, "AI response", "✨", model.ObjectType_basic).ToProto(),
 			Key:     bundle.TypeKeyPage.String(),
 		},
 	})
@@ -508,4 +575,176 @@ func (ai *AIService) setAPIConfig(params *pb.RpcAIProviderConfig) {
 		AuthRequired: params.Provider == pb.RpcAI_OPENAI,
 		AuthToken:    params.Token,
 	}
+}
+
+func HTMLSanitizePolicy() *bluemonday.Policy {
+
+	p := bluemonday.NewPolicy()
+
+	// /////////////////////
+	// Global attributes //
+	// /////////////////////
+
+	// "class" is not permitted as we are not allowing users to style their own
+	// content
+
+	p.AllowStandardAttributes()
+
+	// //////////////////////////////
+	// Declarations and structure //
+	// //////////////////////////////
+
+	// "xml" "xslt" "DOCTYPE" "html" "head" are not permitted as we are
+	// expecting user generated content to be a fragment of HTML and not a full
+	// document.
+
+	// ////////////////////////
+	// Sectioning root tags //
+	// ////////////////////////
+
+	// "article" and "aside" are permitted and takes no attributes
+	p.AllowElements("article", "aside")
+
+	// "body" is not permitted as we are expecting user generated content to be a fragment
+	// of HTML and not a full document.
+
+	// "details" is permitted, including the "open" attribute which can either
+	// be blank or the value "open".
+	p.AllowAttrs(
+		"open",
+	).Matching(regexp.MustCompile(`(?i)^(|open)$`)).OnElements("details")
+
+	// "fieldset" is not permitted as we are not allowing forms to be created.
+
+	// "figure" is permitted and takes no attributes
+	p.AllowElements("figure")
+
+	// "nav" is not permitted as it is assumed that the site (and not the user)
+	// has defined navigation elements
+
+	// "section" is permitted and takes no attributes
+	p.AllowElements("section")
+
+	// "summary" is permitted and takes no attributes
+	p.AllowElements("summary")
+
+	// ////////////////////////
+	// Headings and footers //
+	// ////////////////////////
+
+	// "footer" is not permitted as we expect user content to be a fragment and
+	// not structural to this extent
+
+	// "h1" through "h6" are permitted and take no attributes
+	p.AllowElements("h1", "h2", "h3", "h4", "h5", "h6")
+
+	// "header" is not permitted as we expect user content to be a fragment and
+	// not structural to this extent
+
+	// "hgroup" is permitted and takes no attributes
+	p.AllowElements("hgroup")
+
+	// ///////////////////////////////////
+	// Content grouping and separating //
+	// ///////////////////////////////////
+
+	// "blockquote" is permitted, including the "cite" attribute which must be
+	// a standard URL.
+	p.AllowAttrs("cite").OnElements("blockquote")
+
+	// "br" "div" "hr" "p" "span" "wbr" are permitted and take no attributes
+	p.AllowElements("br", "div", "hr", "p", "span", "wbr")
+
+	// "link" is not permitted
+
+	// ///////////////////
+	// Phrase elements //
+	// ///////////////////
+
+	// The following are all inline phrasing elements
+	p.AllowElements("abbr", "acronym", "cite", "code", "dfn", "em",
+		"figcaption", "mark", "s", "samp", "strong", "sub", "sup", "var")
+
+	// "q" is permitted and "cite" is a URL and handled by URL policies
+	p.AllowAttrs("cite").OnElements("q")
+
+	// "time" is permitted
+	p.AllowAttrs("datetime").Matching(bluemonday.ISO8601).OnElements("time")
+
+	// //////////////////
+	// Style elements //
+	// //////////////////
+
+	// block and inline elements that impart no semantic meaning but style the
+	// document
+	p.AllowElements("b", "i", "pre", "small", "strike", "tt", "u")
+
+	// "style" is not permitted as we are not yet sanitising CSS and it is an
+	// XSS attack vector
+
+	// ////////////////////
+	// HTML5 Formatting //
+	// ////////////////////
+
+	// "bdi" "bdo" are permitted
+	p.AllowAttrs("dir").Matching(bluemonday.Direction).OnElements("bdi", "bdo")
+
+	// "rp" "rt" "ruby" are permitted
+	p.AllowElements("rp", "rt", "ruby")
+
+	// /////////////////////////
+	// HTML5 Change tracking //
+	// /////////////////////////
+
+	// "del" "ins" are permitted
+	p.AllowAttrs("cite").Matching(bluemonday.Paragraph).OnElements("del", "ins")
+	p.AllowAttrs("datetime").Matching(bluemonday.ISO8601).OnElements("del", "ins")
+
+	// /////////
+	// Lists //
+	// /////////
+
+	p.AllowLists()
+
+	// //////////
+	// Tables //
+	// //////////
+
+	p.AllowTables()
+
+	// /////////
+	// Forms //
+	// /////////
+
+	// By and large, forms are not permitted. However there are some form
+	// elements that can be used to present data, and we do permit those
+	//
+	// "button" "fieldset" "input" "keygen" "label" "output" "select" "datalist"
+	// "textarea" "optgroup" "option" are all not permitted
+
+	// "meter" is permitted
+	p.AllowAttrs(
+		"value",
+		"min",
+		"max",
+		"low",
+		"high",
+		"optimum",
+	).Matching(bluemonday.Number).OnElements("meter")
+
+	// "progress" is permitted
+	p.AllowAttrs("value", "max").Matching(bluemonday.Number).OnElements("progress")
+
+	// ////////////////////
+	// Embedded content //
+	// ////////////////////
+
+	// Vast majority not permitted
+	// "audio" "canvas" "embed" "iframe" "object" "param" "source" "svg" "track"
+	// "video" are all not permitted
+
+	p.AllowImages()
+
+	p.AddSpaceWhenStrippingTag(true)
+	return p
 }

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	maxCacheEntries = 100
+	maxCacheEntries = 10
 )
 
 func NewWithCache() LinkPreview {
@@ -32,14 +32,21 @@ func (c *cache) Name() string {
 	return CName
 }
 
+type LinkPreviewResponse struct {
+	lp     model.LinkPreview
+	body   []byte
+	isFile bool
+}
+
 func (c *cache) Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
 	if res, ok := c.cache.Get(url); ok {
-		return res.(model.LinkPreview), nil, false, nil
+		resCasted := res.(LinkPreviewResponse)
+		return resCasted.lp, resCasted.body, resCasted.isFile, nil
 	}
-	linkPreview, responseBody, _, err = c.lp.Fetch(ctx, url)
+	linkPreview, responseBody, isFile, err = c.lp.Fetch(ctx, url)
 	if err != nil {
 		return
 	}
-	c.cache.Add(url, linkPreview)
+	c.cache.Add(url, LinkPreviewResponse{lp: linkPreview, body: responseBody, isFile: isFile})
 	return
 }
