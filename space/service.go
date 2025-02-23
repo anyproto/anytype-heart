@@ -70,6 +70,7 @@ type Service interface {
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
+	ActiveSpaces() (spaces []clientspace.Space)
 	app.ComponentRunnable
 }
 
@@ -281,6 +282,21 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 		log.Error("persist network id to config", zap.Error(err))
 	}
 	return nil
+}
+func (s *service) ActiveSpaces() (spaces []clientspace.Space) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, ctrl := range s.spaceControllers {
+		if ctrl.GetLocalStatus() == spaceinfo.LocalStatusOk {
+			loaded, err := s.waitLoad(context.Background(), ctrl)
+			if err != nil {
+				continue
+			}
+			spaces = append(spaces, loaded)
+		}
+	}
+	println("[x] total active spaces", len(spaces))
+	return
 }
 
 func (s *service) Create(ctx context.Context) (clientspace.Space, error) {

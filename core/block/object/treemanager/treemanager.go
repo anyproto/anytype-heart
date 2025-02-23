@@ -2,11 +2,15 @@ package treemanager
 
 import (
 	"context"
+	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
+	"github.com/anyproto/any-sync/util/periodicsync"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -23,6 +27,9 @@ var log = logging.Logger("anytype-mw-tree-manager")
 type treeManager struct {
 	eventSender  event.Sender
 	spaceService space.Service
+	loop         periodicsync.PeriodicSync
+	mx           sync.Mutex
+	objCount     int
 
 	onDelete func(id domain.FullID) error
 }
@@ -48,7 +55,7 @@ type onDeleteProvider interface {
 func (m *treeManager) Init(a *app.App) error {
 	m.eventSender = app.MustComponent[event.Sender](a)
 	m.spaceService = app.MustComponent[space.Service](a)
-
+	m.loop = periodicsync.NewPeriodicSyncDuration(time.Second, 2*time.Second, m.update, logger.CtxLogger{Logger: log.Desugar()})
 	onDelete := app.MustComponent[onDeleteProvider](a).OnDelete
 	m.onDelete = func(id domain.FullID) error {
 		return onDelete(id, nil)
@@ -58,10 +65,25 @@ func (m *treeManager) Init(a *app.App) error {
 }
 
 func (m *treeManager) Run(ctx context.Context) error {
+	m.loop.Run()
 	return nil
 }
 
 func (m *treeManager) Close(ctx context.Context) error {
+	m.loop.Close()
+	return nil
+}
+
+func (m *treeManager) update(ctx context.Context) error {
+	activeSpaces := m.spaceService.ActiveSpaces()
+	totalCount := 0
+	for _, sp := range activeSpaces {
+		totalCount += sp.ObjectCount()
+	}
+	m.mx.Lock()
+	defer m.mx.Unlock()
+	m.objCount = totalCount
+	println("[x]: counting objects", totalCount)
 	return nil
 }
 
@@ -78,6 +100,12 @@ func (m *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objec
 
 	sb := v.(smartblock.SmartBlock)
 	return sb.Tree(), nil
+}
+
+func (m *treeManager) GetTreeCount() int {
+	m.mx.Lock()
+	defer m.mx.Unlock()
+	return m.objCount
 }
 
 func (m *treeManager) ValidateAndPutTree(ctx context.Context, spaceId string, payload treestorage.TreeStorageCreatePayload) error {

@@ -54,6 +54,7 @@ type Cache interface {
 	Remove(ctx context.Context, objectID string) error
 	TryRemove(objectId string) (bool, error)
 	CloseBlocks()
+	ObjectCount() int
 
 	Close(ctx context.Context) error
 }
@@ -78,9 +79,9 @@ func New(accountService accountservice.Service, objectFactory ObjectFactory, per
 	c.cache = ocache.New(
 		c.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
-		ocache.WithGCPeriod(time.Minute),
+		ocache.WithGCPeriod(time.Second*15),
 		// TODO: [MR] Get ttl from config
-		ocache.WithTTL(time.Duration(60)*time.Second),
+		ocache.WithTTL(time.Duration(30)*time.Second),
 	)
 	return c
 }
@@ -149,6 +150,10 @@ func (c *objectCache) GetObject(ctx context.Context, id string) (sb smartblock.S
 		return
 	}
 	return v.(smartblock.SmartBlock), nil
+}
+
+func (c *objectCache) ObjectCount() int {
+	return c.cache.Len()
 }
 
 func (c *objectCache) Remove(ctx context.Context, objectID string) error {

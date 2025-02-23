@@ -151,7 +151,9 @@ func anyStoreConfig() *anystore.Config {
 	return &anystore.Config{
 		ReadConnections: 4,
 		SQLiteConnectionOptions: map[string]string{
-			"synchronous": "full",
+			"synchronous": "off",
+			"temp_store":  "1",
+			"cache_size":  "-1024",
 		},
 	}
 }

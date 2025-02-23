@@ -2,6 +2,7 @@ package treesyncer
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sync"
 	"time"
@@ -18,9 +19,64 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
+	"modernc.org/memory"
 )
 
 var log = logger.NewNamed(treemanager.CName)
+
+type DynamicDelayLimiter struct {
+	baseDelay time.Duration
+	stepUp    time.Duration
+	stepDown  time.Duration
+
+	mu           sync.Mutex
+	currentDelay time.Duration
+}
+
+// NewDynamicDelayLimiter initializes the limiter with:
+//   - base: the minimum delay
+//   - up: how much each Acquire() call increases the subsequent delay
+//   - down: how much each Release() call decreases the delay
+func NewDynamicDelayLimiter(base, up, down time.Duration) *DynamicDelayLimiter {
+	return &DynamicDelayLimiter{
+		baseDelay:    base,
+		stepUp:       up,
+		stepDown:     down,
+		currentDelay: base,
+	}
+}
+
+// Acquire blocks for the current delay, then increases the delay for the next caller.
+func (d *DynamicDelayLimiter) Acquire() {
+	d.mu.Lock()
+	delayToWait := d.currentDelay
+	d.currentDelay += d.stepUp
+	d.mu.Unlock()
+
+	// Sleep outside the lock so we don't block other goroutines.
+	time.Sleep(delayToWait)
+}
+
+// Release indicates we're done with the resource and decreases the delay (without going below base).
+func (d *DynamicDelayLimiter) Release() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	newDelay := d.currentDelay - d.stepDown
+	if newDelay < d.baseDelay {
+		newDelay = d.baseDelay
+	}
+	d.currentDelay = newDelay
+}
+
+// CurrentDelay returns the delay for debugging/monitoring purposes.
+func (d *DynamicDelayLimiter) CurrentDelay() time.Duration {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.currentDelay
+}
+
+var limiter = NewDynamicDelayLimiter(0, time.Millisecond*100, time.Millisecond*100)
 
 type executor struct {
 	pool *streampool.ExecPool
@@ -68,6 +124,21 @@ type SyncDetailsUpdater interface {
 	UpdateSpaceDetails(existing, missing []string, spaceId string)
 }
 
+func init() {
+	memory.PrintMsg = func(add int, total int, plus bool) {
+		if plus {
+			println("[x]: 5allocating more", fmt.Sprintf("%dKb", add/1024), fmt.Sprintf("%dKb", total/1024))
+		} else {
+			println("[x]: 4freeing some", fmt.Sprintf("%dKb", add/1024), fmt.Sprintf("%dKb", total/1024))
+		}
+	}
+}
+
+type countManager interface {
+	treemanager.TreeManager
+	GetTreeCount() int
+}
+
 type treeSyncer struct {
 	sync.Mutex
 	mainCtx            context.Context
@@ -78,7 +149,7 @@ type treeSyncer struct {
 	spaceSettingsId    string
 	requestPools       map[string]*executor
 	headPools          map[string]*executor
-	treeManager        treemanager.TreeManager
+	treeManager        countManager
 	isRunning          bool
 	isSyncing          bool
 	nodeConf           nodeconf.NodeConf
@@ -103,7 +174,7 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.isSyncing = true
 	spaceStorage := app.MustComponent[spacestorage.SpaceStorage](a)
 	t.spaceSettingsId = spaceStorage.StateStorage().SettingsId()
-	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
+	t.treeManager = app.MustComponent[countManager](a)
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
 	t.syncDetailsUpdater = app.MustComponent[SyncDetailsUpdater](a)
@@ -194,6 +265,8 @@ func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing
 	for _, id := range missing {
 		idCopy := id
 		err = reqExec.tryAdd(idCopy, func() {
+			limiter.Acquire()
+			defer limiter.Release()
 			t.requestTree(p, idCopy)
 		})
 		if err != nil {
@@ -223,6 +296,7 @@ func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 	defer cancel()
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {
+		println("[x]: failed to get tree", err.Error())
 		log.Warn("can't load missing tree", zap.Error(err))
 		return
 	} else {

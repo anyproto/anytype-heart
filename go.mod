@@ -114,6 +114,7 @@ require (
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
+	modernc.org/memory v1.8.2
 	storj.io/drpc v0.0.34
 	zombiezen.com/go/sqlite v1.4.0
 )
@@ -295,7 +296,6 @@ require (
 	lukechampine.com/blake3 v1.3.0 // indirect
 	modernc.org/libc v1.61.13 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
-	modernc.org/memory v1.8.2 // indirect
 	modernc.org/sqlite v1.34.5 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
@@ -321,3 +321,9 @@ replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.202402
 replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38
 
 replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
+
+replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
+
+replace modernc.org/memory => ../../memory
+
+replace github.com/anyproto/any-sync => ../any-sync
