@@ -54,12 +54,11 @@ var (
 )
 
 type AI interface {
-	// client facing
 	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error)
 	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error)
 	ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error)
-
 	CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error)
+
 	WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error)
 	ClassifyWebsiteContent(ctx context.Context, content string) (string, error)
 
@@ -67,13 +66,13 @@ type AI interface {
 }
 
 type AIService struct {
-	mu           sync.Mutex
-	exporter     export.Export
-	source       source.Service
-	linkPreview  linkpreview.LinkPreview
-	spaceService space.Service
-	blockService *block.Service
-	bmPolicy     *bluemonday.Policy
+	mu                 sync.Mutex
+	exportService      export.Export
+	sourceService      source.Service
+	linkPreviewService linkpreview.LinkPreview
+	spaceService       space.Service
+	blockService       *block.Service
+	bmPolicy           *bluemonday.Policy
 
 	objectCreator   objectcreator.Service
 	apiConfig       *APIConfig
@@ -114,6 +113,7 @@ type WebsiteProcessResult struct {
 	Type            string            // "recipe", "company", or "event"
 	Relations       map[string]string // e.g. {"portions": "2", "prep_time": "40 minutes", ...}
 	MarkdownSummary string            // e.g. "## Pasta with tomato sauce and basil.\n A classic Italian dish ..."
+	Image           string            // URL of the main image
 }
 
 func New() AI {
@@ -123,10 +123,9 @@ func New() AI {
 }
 
 func (ai *AIService) Init(a *app.App) (err error) {
-	ai.exporter = app.MustComponent[export.Export](a)
-	ai.source = app.MustComponent[source.Service](a)
-	ai.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	ai.objectCreator = app.MustComponent[objectcreator.Service](a)
+	ai.exportService = app.MustComponent[export.Export](a)
+	ai.sourceService = app.MustComponent[source.Service](a)
+	ai.linkPreviewService = app.MustComponent[linkpreview.LinkPreview](a)
 	ai.spaceService = app.MustComponent[space.Service](a)
 	ai.blockService = a.MustComponent(block.CName).(*block.Service)
 	ai.componentCtx, ai.componentCancel = context.WithCancel(context.Background())
@@ -240,6 +239,71 @@ func (ai *AIService) Autofill(ctx context.Context, params *pb.RpcAIAutofillReque
 	return AutofillResult{Choices: []string{strResult}}, nil
 }
 
+// ListSummary answers user questions about a list of items.
+func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error) {
+	ai.mu.Lock()
+	defer ai.mu.Unlock()
+
+	res, err := ai.exportService.ExportInMemory(ctx, params.SpaceId, params.ObjectIds, model.Export_Markdown, true)
+	if err != nil {
+		return "", err
+	}
+
+	s := strings.Builder{}
+	for _, r := range res {
+		s.Write(r)
+		s.WriteString("\n==========\n\n")
+	}
+	ai.setAPIConfig(params.Config)
+	promptConfig := &PromptConfig{
+		SystemPrompt: listSummaryPrompts["list"].System,
+		UserPrompt:   fmt.Sprintf(listSummaryPrompts["list"].User, params.Prompt, s.String()),
+		Temperature:  params.Config.Temperature,
+		JSONMode:     true,
+	}
+	ai.responseParser = parsing.NewWritingToolsParser()
+
+	answer, err := ai.chat(ctx, int(pb.RpcAIWritingToolsRequest_SUMMARIZE), promptConfig)
+	if err != nil {
+		return "", err
+	}
+
+	rawAnswer, err := ai.responseParser.ExtractContent(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
+	if err != nil {
+		return "", err
+	}
+
+	answerStr, err := rawAnswer.String()
+	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(answerStr), "", nil)
+	resultId := uuid.New().String()
+	if len(rootBlockIds) == 0 {
+		return "", fmt.Errorf("no root block ids found")
+	}
+
+	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}})
+	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks:  blocks,
+			Details: common.GetCommonDetails(resultId, "AI response", "🧠", model.ObjectType_basic).ToProto(),
+			Key:     bundle.TypeKeyPage.String(),
+		},
+	})
+
+	st := dc.NewState()
+	if err = ai.sourceService.RegisterStaticSource(ai.sourceService.NewStaticSource(source.StaticSourceParams{
+		Id: domain.FullID{
+			SpaceID:  params.SpaceId,
+			ObjectID: resultId,
+		},
+		SbType: smartblock.SmartBlockTypeEphemeralVirtualObject,
+		State:  st,
+	})); err != nil {
+		return "", err
+	}
+
+	return resultId, nil
+}
+
 func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId, imageUrl string, body []byte, provider *pb.RpcAIProviderConfig) (id string, details *domain.Details, err error) {
 	result, err := ai.WebsiteProcess(ctx, provider, body)
 	if err != nil {
@@ -252,7 +316,6 @@ func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId, ima
 	}
 
 	var idsToInstallIfMissing []string
-
 	idsToInstallIfMissing = append(idsToInstallIfMissing, domain.TypeKey(result.Type).BundledURL())
 	details = domain.NewDetails()
 	for k, v := range result.Relations {
@@ -337,14 +400,12 @@ func (ai *AIService) cleanResponse(body []byte) (resp []byte) {
 	return ai.bmPolicy.SanitizeBytes(body)
 }
 func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error) {
-	lp, body, isFile, err := ai.linkPreview.Fetch(ctx, url)
+	lp, body, isFile, err := ai.linkPreviewService.Fetch(ctx, url)
 	if err != nil {
 		return "", nil, fmt.Errorf("could not fetch website: %w", err)
 	}
 
-	lenBefore := len(body)
 	body = ai.cleanResponse(body)
-	log.Warnf("cleaned response: %d -> %d: %s", lenBefore, len(body), body)
 	details = domain.NewDetails()
 	details.SetString(bundle.RelationKeySource, url)
 	createReq := objectcreator.CreateObjectRequest{
@@ -371,13 +432,16 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 // WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.
 func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error) {
 	article, err := readability.FromReader(bytes.NewReader(websiteData), nil)
-	content := article.Content
-	if err != nil || content == "" {
+	if err != nil {
 		return nil, fmt.Errorf("could not process website content: %w", err)
+	}
+	content := article.Content
+	if content == "" {
+		return nil, fmt.Errorf("website content is empty")
 	}
 
 	ai.setAPIConfig(provider)
-	websiteType, err := ai.ClassifyWebsiteContent(ctx, content)
+	websiteType, err := ai.ClassifyWebsiteContent(ctx, "Title: "+article.Title+"\nExcerpt: "+article.Excerpt)
 	if err != nil {
 		return nil, fmt.Errorf("could not classify website content: %w", err)
 	}
@@ -462,84 +526,8 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 		Type:            websiteType,
 		Relations:       relationsResult,
 		MarkdownSummary: summaryResult,
+		Image:           article.Image,
 	}, nil
-}
-
-// ListSummary answers user questions about a list of items.
-func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error) {
-	ai.mu.Lock()
-	defer ai.mu.Unlock()
-
-	res, err := ai.exporter.ExportInMemory(ctx, params.SpaceId, params.ObjectIds, model.Export_Markdown, true)
-	if err != nil {
-		return "", err
-	}
-
-	s := strings.Builder{}
-	for _, r := range res {
-		s.Write(r)
-		s.WriteString("==========\n")
-		s.WriteString("\n")
-	}
-	ai.setAPIConfig(params.Config)
-	promptConfig := &PromptConfig{
-		SystemPrompt: listSummaryPrompts["list"].System,
-		UserPrompt:   fmt.Sprintf(listSummaryPrompts["list"].User, params.Prompt, s.String()),
-		Temperature:  params.Config.Temperature,
-		JSONMode:     true,
-	}
-	ai.responseParser = parsing.NewWritingToolsParser()
-
-	answer, err := ai.chat(ctx, int(pb.RpcAIWritingToolsRequest_SUMMARIZE), promptConfig)
-	if err != nil {
-		return "", err
-	}
-
-	rawAnswer, err := ai.responseParser.ExtractContent(answer, int(pb.RpcAIWritingToolsRequest_SUMMARIZE))
-	if err != nil {
-		return "", err
-	}
-
-	rawAnswerStr, err := rawAnswer.String()
-	blocks, rootBlockIds, err := anymark.MarkdownToBlocks([]byte(rawAnswerStr), "", nil)
-	resultId := uuid.New().String()
-	if len(rootBlockIds) == 0 {
-		return "", fmt.Errorf("no root block ids found")
-	}
-
-	blocks = append(blocks, &model.Block{Id: resultId, ChildrenIds: rootBlockIds, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}})
-	var blockIds = make(map[string]bool)
-
-	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
-		Data: &model.SmartBlockSnapshotBase{
-			Blocks:  blocks,
-			Details: common.GetCommonDetails(resultId, "AI response", "✨", model.ObjectType_basic).ToProto(),
-			Key:     bundle.TypeKeyPage.String(),
-		},
-	})
-
-	st := dc.NewState()
-
-	err = ai.source.RegisterStaticSource(ai.source.NewStaticSource(source.StaticSourceParams{
-		Id: domain.FullID{
-			SpaceID:  params.SpaceId,
-			ObjectID: resultId,
-		},
-		SbType: smartblock.SmartBlockTypeEphemeralVirtualObject,
-		State:  st,
-	}))
-	if err != nil {
-		return "", err
-	}
-
-	for _, b := range st.Blocks() {
-		if blockIds[b.Id] {
-			return "", fmt.Errorf("duplicate block id: %s", b.Id)
-		}
-		blockIds[b.Id] = true
-	}
-
-	return resultId, nil
 }
 
 // ClassifyWebsiteContent classifies content into a single category.

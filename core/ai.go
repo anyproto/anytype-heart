@@ -74,7 +74,6 @@ func (mw *Middleware) AIObjectCreateFromUrl(ctx context.Context, req *pb.RpcAIOb
 	aiService := mustService[ai.AI](mw)
 
 	objectId, details, err := aiService.CreateObjectFromUrl(ctx, req.Config, req.SpaceId, req.Url)
-
 	code := mapErrorCode(nil,
 		errToCode(ai.ErrRateLimitExceeded, pb.RpcAIObjectCreateFromUrlResponseError_RATE_LIMIT_EXCEEDED),
 		errToCode(ai.ErrEndpointNotReachable, pb.RpcAIObjectCreateFromUrlResponseError_ENDPOINT_NOT_REACHABLE),
