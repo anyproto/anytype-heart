@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   perftests-grafana:
-    runs-on: ${{ github.event.inputs.run-on-runner }}
+    runs-on: ${{ github.event.inputs.run-on-runner || 'arm64' }}
     steps:
       - name: Install Go
         if: runner.name != 'mac-mini-org-heart'
