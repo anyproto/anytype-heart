@@ -107,14 +107,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pprofs
-          path: |
-            *.pprof
+          path: *.pprof
 
-      - name: end run perf tests
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          rm -rf *.pprof
-          echo "End running perf tests"
-          gh run cancel ${{ github.run_id }}
-          gh run watch ${{ github.run_id }}
+      - name: Clean perf tests results
+        run: rm -rf *.pprof
