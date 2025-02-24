@@ -284,7 +284,7 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 	dc := state.NewDocFromSnapshot(resultId, &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:  blocks,
-			Details: common.GetCommonDetails(resultId, "AI response", "🧠", model.ObjectType_basic).ToProto(),
+			Details: common.GetCommonDetails(resultId, "AI response", "✨", model.ObjectType_basic).ToProto(),
 			Key:     bundle.TypeKeyPage.String(),
 		},
 	})
@@ -371,6 +371,13 @@ func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId stri
 			Content: &model.BlockContentOfDiv{
 				Div: &model.BlockContentDiv{
 					Style: model.BlockContentDiv_Dots,
+				},
+			},
+		})
+		paddingBlocks = append(paddingBlocks, &model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "",
 				},
 			},
 		})
