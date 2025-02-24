@@ -10,7 +10,7 @@ on:
       perf-test:
         description: 'Run perf test times'
         required: true
-        default: '0'
+        default: '1'
   schedule:
     - cron: '0 0 * * *' # every day at midnight
       filters:
