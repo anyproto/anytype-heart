@@ -5,13 +5,14 @@
     "types": [
       "Page"
     ],
-    "emoji": "🍲",
+    "iconColor": 4,
+    "iconName": "pizza",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag",
-      "time",
-      "ingredients"
+      "ingredients",
+      "time"
     ],
     "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food"
   },
@@ -21,13 +22,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "📝",
+    "iconColor": 2,
+    "iconName": "create",
     "hidden": false,
     "layout": "note",
     "relations": [
       "tag"
     ],
-    "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory"
+    "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory",
+    "revision": 1
   },
   {
     "id": "contact",
@@ -35,14 +38,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "📇",
+    "iconColor": 8,
+    "iconName": "id-card",
     "hidden": false,
     "layout": "profile",
     "relations": [
       "tag",
-      "phone",
+      "company",
       "email",
-      "company"
+      "phone"
     ],
     "description": "Information to make action of communicating or meeting with Human or Company"
   },
@@ -52,15 +56,17 @@
     "types": [
       "Page"
     ],
-    "emoji": "🔖",
+    "iconColor": 4,
+    "iconName": "bookmark",
     "hidden": false,
     "layout": "bookmark",
     "relations": [
       "tag",
-      "source",
-      "picture"
+      "picture",
+      "source"
     ],
-    "description": "URL that is stored as Object and may be categorised and linked with objects"
+    "description": "URL that is stored as Object and may be categorised and linked with objects",
+    "revision": 1
   },
   {
     "id": "date",
@@ -68,7 +74,8 @@
     "types": [
       "Date"
     ],
-    "emoji": "📅",
+    "iconColor": 9,
+    "iconName": "calendar",
     "hidden": true,
     "layout": "date",
     "relations": [
@@ -82,20 +89,22 @@
     "types": [
       "Page"
     ],
-    "emoji": "✅",
+    "iconColor": 10,
+    "iconName": "checkbox",
     "hidden": false,
     "layout": "todo",
     "relations": [
       "tag",
       "assignee",
-      "dueDate",
-      "status",
       "done",
+      "dueDate",
+      "linkedProjects",
       "priority",
-      "tasks",
-      "linkedProjects"
+      "status",
+      "tasks"
     ],
-    "description": "A piece of work to be done or undertaken"
+    "description": "A piece of work to be done or undertaken",
+    "revision": 1
   },
   {
     "id": "relation",
@@ -104,7 +113,8 @@
       "SubObject",
       "BundledRelation"
     ],
-    "emoji": "🔗",
+    "iconColor": 7,
+    "iconName": "share-social",
     "hidden": true,
     "layout": "relation",
     "relations": [
@@ -113,7 +123,8 @@
       "relationDefaultValue",
       "relationFormatObjectTypes"
     ],
-    "description": "Meaningful connection between objects"
+    "description": "Meaningful connection between objects",
+    "revision": 1
   },
   {
     "id": "book",
@@ -121,14 +132,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "📘",
+    "iconColor": 3,
+    "iconName": "book",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag",
       "author",
-      "status",
       "starred",
+      "status",
       "url"
     ],
     "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover"
@@ -139,25 +151,26 @@
     "types": [
       "File"
     ],
-    "emoji": "📽",
+    "iconColor": 6,
+    "iconName": "videocam",
     "hidden": false,
     "layout": "file",
     "relations": [
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
-      "fileMimeType",
-      "camera",
       "heightInPixels",
       "widthInPixels",
+      "fileMimeType",
+      "camera",
       "cameraIso",
       "aperture",
-      "exposure",
-      "addedDate",
-      "fileExt",
-      "origin"
+      "exposure"
     ],
     "description": "The recording of moving visual images",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 3
   },
   {
     "id": "dashboard",
@@ -178,7 +191,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "🍿",
+    "iconColor": 5,
+    "iconName": "film",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -195,14 +209,16 @@
       "SubObject",
       "BundledObjectType"
     ],
-    "emoji": "🥚",
+    "iconColor": 9,
+    "iconName": "extension-puzzle",
     "hidden": false,
     "layout": "objectType",
     "relations": [
       "recommendedRelations",
       "recommendedLayout"
     ],
-    "description": "Object that contains a definition of some object type"
+    "description": "Object that contains a definition of some object type",
+    "revision": 1
   },
   {
     "id": "relationOption",
@@ -210,7 +226,6 @@
     "types": [
       "SubObject"
     ],
-    "emoji": "🥚",
     "hidden": true,
     "layout": "relationOption",
     "relations": [],
@@ -222,14 +237,16 @@
     "types": [
       "Workspace"
     ],
-    "emoji": "🌎",
+    "iconColor": 10,
+    "iconName": "folder",
     "hidden": true,
     "layout": "space",
     "relations": [
       "tag"
     ],
     "description": "Workspace",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "spaceView",
@@ -237,7 +254,8 @@
     "types": [
       "SpaceView"
     ],
-    "emoji": "🌎",
+    "iconColor": 10,
+    "iconName": "folder",
     "hidden": true,
     "layout": "spaceView",
     "relations": [
@@ -252,7 +270,8 @@
     "types": [
       "Participant"
     ],
-    "emoji": "\uD83E\uDDD1",
+    "iconColor": 3,
+    "iconName": "person",
     "hidden": false,
     "layout": "participant",
     "relations": [
@@ -260,7 +279,7 @@
     ],
     "description": "Anytype identity as a space participant",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "template",
@@ -268,7 +287,8 @@
     "types": [
       "Template"
     ],
-    "emoji": "\uD83E\uDDE9",
+    "iconColor": 8,
+    "iconName": "copy",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -276,7 +296,7 @@
       "templateIsBundled"
     ],
     "description": "Sample object that has already some details in place and used to create objects from",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "set",
@@ -284,14 +304,16 @@
     "types": [
       "Page"
     ],
-    "emoji": "🔎",
+    "iconColor": 6,
+    "iconName": "search",
     "hidden": false,
     "layout": "set",
     "relations": [
       "tag",
       "setOf"
     ],
-    "description": "Query all objects in your space based on types and relations"
+    "description": "Query all objects in your space based on types and relations",
+    "revision": 1
   },
   {
     "id": "collection",
@@ -299,13 +321,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "🗂️",
+    "iconColor": 7,
+    "iconName": "layers",
     "hidden": false,
     "layout": "collection",
     "relations": [
       "tag"
     ],
-    "description": "Collect objects in one place, use different views to organize them"
+    "description": "Collect objects in one place, use different views to organize them",
+    "revision": 1
   },
   {
     "id": "diaryEntry",
@@ -313,7 +337,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "✨",
+    "iconColor": 2,
+    "iconName":"reader",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -328,13 +353,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "📄",
+    "iconColor": 8,
+    "iconName": "document",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag"
     ],
-    "description": "Blank canvas with Title"
+    "description": "Blank canvas with Title",
+    "revision": 1
   },
   {
     "id": "image",
@@ -342,26 +369,27 @@
     "types": [
       "File"
     ],
-    "emoji": "🏞",
+    "iconColor": 10,
+    "iconName": "image",
     "hidden": false,
     "layout": "image",
     "relations": [
-      "fileMimeType",
-      "widthInPixels",
-      "camera",
-      "heightInPixels",
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
+      "heightInPixels",
+      "widthInPixels",
+      "fileMimeType",
+      "camera",
       "cameraIso",
       "aperture",
       "exposure",
-      "addedDate",
-      "focalRatio",
-      "fileExt",
-      "origin"
+      "focalRatio"
     ],
     "description": "A representation of the external form of a person or thing in art",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 3
   },
   {
     "id": "profile",
@@ -370,13 +398,15 @@
       "Page",
       "ProfilePage"
     ],
-    "emoji": "🧍",
+    "iconColor": 3,
+    "iconName": "man",
     "hidden": false,
     "layout": "profile",
     "relations": [
       "tag"
     ],
-    "description": "Homo sapiens"
+    "description": "Homo sapiens",
+    "revision": 1
   },
   {
     "id": "audio",
@@ -384,25 +414,26 @@
     "types": [
       "File"
     ],
-    "emoji": "🎵",
+    "iconColor": 5,
+    "iconName": "musical-notes",
     "hidden": false,
     "layout": "file",
     "relations": [
-      "artist",
-      "audioAlbum",
-      "audioAlbumTrackNumber",
-      "audioGenre",
-      "audioLyrics",
-      "releasedYear",
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
       "fileMimeType",
-      "addedDate",
-      "fileExt",
-      "origin"
+      "artist",
+      "audioAlbum",
+      "audioGenre",
+      "releasedYear",
+      "audioAlbumTrackNumber",
+      "audioLyrics"
     ],
     "description": "Sound when recorded, with ability to reproduce",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 3
   },
   {
     "id": "goal",
@@ -410,14 +441,15 @@
     "types": [
       "Page"
     ],
-    "emoji": "🎯",
+    "iconColor": 4,
+    "iconName": "flag",
     "hidden": false,
     "layout": "todo",
     "relations": [
       "tag",
+      "dueDate",
       "progress",
       "status",
-      "dueDate",
       "tasks"
     ],
     "description": "The object of a person's ambition or effort; an aim or desired result"
@@ -428,19 +460,20 @@
     "types": [
       "File"
     ],
-    "emoji": "📎",
+    "iconColor": 7,
+    "iconName": "attach",
     "hidden": false,
     "layout": "file",
     "relations": [
-      "fileMimeType",
-      "sizeInBytes",
       "addedDate",
+      "origin",
       "fileExt",
-      "origin"
+      "sizeInBytes",
+      "fileMimeType"
     ],
     "description": "Computer resource for recording data in a computer storage device",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 3
   },
   {
     "id": "project",
@@ -448,7 +481,8 @@
     "types": [
       "Page"
     ],
-    "emoji": "🔨",
+    "iconColor": 3,
+    "iconName": "hammer",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -463,14 +497,15 @@
     "types": [
       "ChatObject"
     ],
-    "emoji": "💬",
+    "iconColor": 7,
+    "iconName": "chatbubble",
     "hidden": true,
     "layout": "chat",
     "relations": [
-        "tag",
-        "description"
+        "tag"
     ],
-    "description": "A chat [deprecated]"
+    "description": "A chat [deprecated]",
+    "revision": 1
   },
   {
     "id": "chatDerived",
@@ -478,14 +513,14 @@
     "types": [
       "ChatDerivedObject"
     ],
-    "emoji": "",
+    "iconColor": 7,
+    "iconName": "chatbubble",
     "hidden": true,
     "layout": "chatDerived",
     "relations": [
-      "tag",
-      "description"
+      "tag"
     ],
     "description": "A chat derived object",
-    "revision": 1
+    "revision": 2
   }
 ]

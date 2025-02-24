@@ -48,6 +48,7 @@ func (r *Relation) ToDetails() *domain.Details {
 		bundle.RelationKeyId:                        domain.String(r.Id),
 		bundle.RelationKeyIsHidden:                  domain.Bool(r.GetHidden()),
 		bundle.RelationKeyIsReadonly:                domain.Bool(r.GetReadOnlyRelation()),
+		bundle.RelationKeyResolvedLayout:            domain.Int64(int64(model.ObjectType_relation)),
 		bundle.RelationKeyLayout:                    domain.Int64(int64(model.ObjectType_relation)),
 		bundle.RelationKeyName:                      domain.String(r.GetName()),
 		bundle.RelationKeyRelationDefaultValue:      domain.ValueFromProto(r.GetDefaultValue()),
