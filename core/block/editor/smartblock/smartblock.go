@@ -36,7 +36,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -96,7 +95,6 @@ var log = logging.Logger("anytype-mw-smartblock")
 func New(
 	space Space,
 	currentParticipantId string,
-	fileStore filestore.FileStore,
 	restrictionService restriction.Service,
 	spaceIndex spaceindex.Store,
 	objectStore objectstore.ObjectStore,
@@ -112,7 +110,6 @@ func New(
 		Locker:               &sync.Mutex{},
 		sessions:             map[string]session.Context{},
 
-		fileStore:          fileStore,
 		restrictionService: restrictionService,
 		spaceIndex:         spaceIndex,
 		indexer:            indexer,
@@ -249,7 +246,6 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileStore          filestore.FileStore
 	restrictionService restriction.Service
 	spaceIndex         spaceindex.Store
 	objectStore        objectstore.ObjectStore
@@ -1287,7 +1283,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 			EncryptionKeys: k.Keys,
 		}
 	}
-	if err := sb.fileStore.AddFileKeys(fileKeys...); err != nil {
+	if err := sb.objectStore.AddFileKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }
@@ -1507,7 +1503,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
-		err := sb.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := sb.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         info.FileId,
 			EncryptionKeys: info.EncryptionKeys,
 		})

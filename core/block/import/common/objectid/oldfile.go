@@ -16,14 +16,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
 // oldFile represents file in pre Files-as-Objects format
 type oldFile struct {
 	blockService      *block.Service
-	fileStore         filestore.FileStore
 	fileObjectService fileobject.Service
+	objectStore       objectstore.ObjectStore
 }
 
 func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *common.Snapshot, _ time.Time, _ bool, origin objectorigin.ObjectOrigin) (string, treestorage.TreeStorageCreatePayload, error) {
@@ -47,7 +47,7 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		}
 	}
 
-	err := f.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+	err := f.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: filesKeys,
 	})
