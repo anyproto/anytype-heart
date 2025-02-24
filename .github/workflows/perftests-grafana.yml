@@ -1,18 +1,22 @@
-name: Build
+name: Perf tests grafana
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   workflow_dispatch:
     inputs:
-      alpha_version:
-        description: 'Alpha version'
-        default: ''
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
         default: 'arm64'
+      perf-test:
+        description: 'Run perf test times'
+        required: true
+        default: '0'
+  schedule:
+    - cron: '0 0 * * *' # every day at midnight
+      filters:
+        branches:
+          include:
+            - 'main'
 
 
 permissions:
@@ -22,16 +26,9 @@ permissions:
 
 
 jobs:
-  build:
-    runs-on: ${{ github.event_name == 'push' && 'arm64' || (github.event.inputs.run-on-runner || 'arm64') }}
+  perftests-grafana:
+    runs-on: ${{ github.event.inputs.run-on-runner }}
     steps:
-      - name: validate agent
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "arm64" ]]; then
-            echo "Invalid runner"
-            exit 1
-          fi
-
       - name: Install Go
         if: runner.name != 'mac-mini-org-heart'
         uses: actions/setup-go@v4
@@ -60,12 +57,7 @@ jobs:
         run: |
           GIT_SUMMARY=$(git describe --tags --always)
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION=${{ github.event.inputs.alpha_version }}
-            if [ -z "$VERSION" ]; then
-              VERSION=$(git rev-parse --short HEAD)
-            fi
-          fi
+          VERSION=$(git rev-parse --short HEAD)
           if [ -z "$VERSION" ]; then
             VERSION=${GITHUB_REF##*/}
           fi
@@ -96,49 +88,33 @@ jobs:
           make cross-compile-library
           ls -lha .
 
-      - name: Make JS protos
-        if: github.event_name == 'push'
+      - name: run perf tests
+        env:
+          ANYTYPE_REPORT_MEMORY: 'true'
+          TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
+          PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
+          PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
         run: |
-          make protos-js
-          make ci-js-protos
+          echo "Running perf tests"
+          RUN_COUNT=${{ github.event.inputs.perf-test }}
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            RUN_COUNT=10
+          fi
+          cd cmd/perftester/
+          CGO_ENABLED="1" go run main.go $RUN_COUNT
 
-      - name: Pack servers
-        if: github.event_name == 'push'
-        run: make pack-server
-
-      - name: Make swift protos
-        run: make swift-protos
-
-      - name: Compile ios lib
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: ${{ github.actor }}
-          MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
-          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
-          PUBLISH_GRADLE: 1
-        run: make compile-ios-lib
-
-      - name: Make java protos
-        run: make ci-java-protos
-
-      - name: Compile android lib
-        run: make compile-android-lib
-
-      - name: Publish android lib to maven
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: ${{ github.actor }}
-          MAVEN_ARTIFACT_ID: 'anytype-heart-android'
-          MAVEN_ARTIFACT_NAME: 'lib.aar'
-        run: |
-          gradle publish
-
-      - name: Release
-        if: github.event_name == 'push'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: softprops/action-gh-release@v1
+      - name: Archive perf tests results
+        uses: actions/upload-artifact@v4
         with:
-          prerelease: ${{ contains(github.ref, '-rc') }}
-          fail_on_unmatched_files: true
-          files: '.release/*'
+          name: pprofs
+          path: |
+            *.pprof
+
+      - name: end run perf tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -rf *.pprof
+          echo "End running perf tests"
+          gh run cancel ${{ github.run_id }}
+          gh run watch ${{ github.run_id }}
