@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -62,7 +61,7 @@ func listAllTypesAndRelations(store dependencies.QueryableStore) (map[string]*do
 	records, err := store.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.Int64List([]model.ObjectTypeLayout{model.ObjectType_objectType, model.ObjectType_relation}),
 			},
@@ -98,16 +97,16 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	}
 	details := buildDiffDetails(bundleObject, localObject)
 
-	recRelsDetail, err := checkListOfSpaceSpecificObjects(ctx, space, bundle.RelationKeyRecommendedRelations, bundleObject, localObject)
+	recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
 	if err != nil {
 		log.Error("failed to check recommended relations", zap.Error(err))
 	}
 
-	if recRelsDetail != nil {
+	for _, recRelsDetail := range recRelsDetails {
 		details.Set(recRelsDetail.Key, recRelsDetail.Value)
 	}
 
-	relFormatOTDetail, err := checkListOfSpaceSpecificObjects(ctx, space, bundle.RelationKeyRelationFormatObjectTypes, bundleObject, localObject)
+	relFormatOTDetail, err := checkRelationFormatObjectTypes(ctx, space, bundleObject, localObject)
 	if err != nil {
 		log.Error("failed to check relation format object types", zap.Error(err))
 	}
@@ -166,6 +165,8 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 		bundle.RelationKeyRelationReadonlyValue,
 		bundle.RelationKeyRelationMaxCount,
 		bundle.RelationKeyIconEmoji,
+		bundle.RelationKeyIconOption,
+		bundle.RelationKeyIconName,
 	)
 
 	details := domain.NewDetails()
@@ -175,45 +176,25 @@ func buildDiffDetails(origin, current *domain.Details) *domain.Details {
 	return details
 }
 
-func checkListOfSpaceSpecificObjects(
-	ctx context.Context, space dependencies.SpaceWithCtx, relationKey domain.RelationKey, origin, current *domain.Details,
+func checkRelationFormatObjectTypes(
+	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details,
 ) (newValue *domain.Detail, err error) {
-	var (
-		bundlePrefix   string
-		sbType         coresb.SmartBlockType
-		isSystemObject func(uk domain.UniqueKey) bool
-	)
-
-	switch relationKey {
-	case bundle.RelationKeyRecommendedRelations:
-		bundlePrefix = addr.BundledRelationURLPrefix
-		sbType = coresb.SmartBlockTypeRelation
-		isSystemObject = isSystemRelation
-	case bundle.RelationKeyRelationFormatObjectTypes:
-		bundlePrefix = addr.BundledObjectTypeURLPrefix
-		sbType = coresb.SmartBlockTypeObjectType
-		isSystemObject = isSystemType
-	default:
-		return nil, fmt.Errorf("unsupportable relation key: %s", relationKey)
-	}
-
-	localIds := current.GetStringList(relationKey)
-	bundledIds := origin.GetStringList(relationKey)
+	localIds := current.GetStringList(bundle.RelationKeyRelationFormatObjectTypes)
+	bundledIds := origin.GetStringList(bundle.RelationKeyRelationFormatObjectTypes)
 
 	newIds := make([]string, 0, len(bundledIds))
 	for _, bundledId := range bundledIds {
-		if !strings.HasPrefix(bundledId, bundlePrefix) {
-			return nil, fmt.Errorf("invalid object id: %s. %s prefix is expected", bundledId, bundlePrefix)
+		if !strings.HasPrefix(bundledId, addr.BundledObjectTypeURLPrefix) {
+			return nil, fmt.Errorf("invalid object id: %s. %s prefix is expected", bundledId, addr.BundledObjectTypeURLPrefix)
 		}
-		key := strings.TrimPrefix(bundledId, bundlePrefix)
-		uk, err := domain.NewUniqueKey(sbType, key)
+		key := strings.TrimPrefix(bundledId, addr.BundledObjectTypeURLPrefix)
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, key)
 		if err != nil {
 			return nil, err
 		}
 
 		// we should add only system objects to detail, because non-system objects could be not installed to space yet
-		if isSystemObject(uk) {
-			log.Debug("object is not system, so we are not adding it to the detail", zap.String("key", key))
+		if isSystemType(uk) {
 			continue
 		}
 
@@ -231,9 +212,48 @@ func checkListOfSpaceSpecificObjects(
 	}
 
 	return &domain.Detail{
-		Key:   relationKey,
+		Key:   bundle.RelationKeyRelationFormatObjectTypes,
 		Value: domain.StringList(append(localIds, added...)),
 	}, nil
+}
+
+func checkRecommendedRelations(
+	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details,
+) (newValues []*domain.Detail, err error) {
+	details := origin.CopyOnlyKeys(
+		bundle.RelationKeyRecommendedRelations,
+		bundle.RelationKeyRecommendedLayout,
+		bundle.RelationKeyUniqueKey,
+	)
+
+	_, filled, err := relationutils.FillRecommendedRelations(ctx, space, details)
+	if filled {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, key := range []domain.RelationKey{
+		bundle.RelationKeyRecommendedRelations,
+		bundle.RelationKeyRecommendedFeaturedRelations,
+		bundle.RelationKeyRecommendedFileRelations,
+		bundle.RelationKeyRecommendedHiddenRelations,
+	} {
+		localIds := current.GetStringList(key)
+		newIds := details.GetStringList(key)
+
+		removed, added := slice.DifferenceRemovedAdded(localIds, newIds)
+		if len(added) != 0 || len(removed) != 0 {
+			newValues = append(newValues, &domain.Detail{
+				Key:   key,
+				Value: domain.StringList(newIds),
+			})
+		}
+	}
+
+	return newValues, nil
 }
 
 func isSystemType(uk domain.UniqueKey) bool {

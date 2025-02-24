@@ -87,7 +87,7 @@ func (r *ImportCollection) getRootCollectionSnapshot(
 	if detailsStruct == nil {
 		detailsStruct = domain.NewDetails()
 	}
-	detailsStruct.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
+	detailsStruct.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_collection))
 	return &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
@@ -129,7 +129,7 @@ func (r *ImportCollection) getCreateCollectionRequest(collectionName string, ico
 		bundle.RelationKeySourceFilePath: domain.String(collectionName),
 		bundle.RelationKeyName:           domain.String(collectionName),
 		bundle.RelationKeyIsFavorite:     domain.Bool(shouldBeFavorite),
-		bundle.RelationKeyLayout:         domain.Int64(model.ObjectType_collection),
+		bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_collection),
 		bundle.RelationKeyIconImage:      domain.String(icon),
 	})
 }
