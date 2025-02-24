@@ -65,6 +65,9 @@ func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceServic
 // ListObjects retrieves a paginated list of objects in a specific space.
 func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []Object, total int, hasMore bool, err error) {
 	typeId, err := util.ResolveUniqueKeyToTypeId(s.mw, spaceId, "ot-template")
+	if err != nil {
+		return nil, 0, false, err
+	}
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
