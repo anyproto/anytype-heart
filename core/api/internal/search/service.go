@@ -262,7 +262,7 @@ func (s *SearchService) prepareObjectTypeFilters(spaceId string, objectTypes []s
 		nestedFilters = append(nestedFilters, &model.BlockContentDataviewFilter{
 			Operator:    model.BlockContentDataviewFilter_No,
 			RelationKey: bundle.RelationKeyType.String(),
-			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String(typeId),
 		})
 	}
