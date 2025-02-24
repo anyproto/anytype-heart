@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/go-shiori/go-readability"
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/pemistahl/lingua-go"
@@ -57,7 +58,7 @@ type AI interface {
 	WritingTools(ctx context.Context, params *pb.RpcAIWritingToolsRequest) (WritingToolsResult, error)
 	Autofill(ctx context.Context, params *pb.RpcAIAutofillRequest) (AutofillResult, error)
 	ListSummary(ctx context.Context, params *pb.RpcAIListSummaryRequest) (string, error)
-	CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error)
+	CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, details *types.Struct, spaceId string, url string) (id string, resultDetails *domain.Details, err error)
 
 	WebsiteProcess(ctx context.Context, provider *pb.RpcAIProviderConfig, websiteData []byte) (*WebsiteProcessResult, error)
 	ClassifyWebsiteContent(ctx context.Context, content string) (string, error)
@@ -426,20 +427,20 @@ func (ai *AIService) cleanResponse(body []byte) (resp []byte) {
 	}()
 	return ai.bmPolicy.SanitizeBytes(body)
 }
-func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error) {
+func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, details *types.Struct, spaceId string, url string) (id string, resultDetails *domain.Details, err error) {
 	_, body, isFile, err := ai.linkPreviewService.Fetch(ctx, url)
 	if err != nil {
 		return "", nil, fmt.Errorf("could not fetch website: %w", err)
 	}
 
 	body = ai.cleanResponse(body)
-	details = domain.NewDetails()
-	details.SetString(bundle.RelationKeySource, url)
+	resultDetails = domain.NewDetailsFromProto(details)
+	resultDetails.SetString(bundle.RelationKeySource, url)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details:       details,
+		Details:       resultDetails,
 	}
-	id, details, err = ai.objectCreator.CreateObject(ctx, spaceId, createReq)
+	id, resultDetails, err = ai.objectCreator.CreateObject(ctx, spaceId, createReq)
 	if err != nil {
 		return "", nil, fmt.Errorf("create as bookmark: %w", err)
 	}
@@ -453,7 +454,7 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 		}(spaceId, body, provider)
 	}
 
-	return id, details, nil
+	return id, resultDetails, nil
 }
 
 // WebsiteProcess fetches a URL, classifies it, and extracts relations and a summary. Should be called internally only.

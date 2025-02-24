@@ -73,7 +73,7 @@ func (mw *Middleware) AIListSummary(ctx context.Context, req *pb.RpcAIListSummar
 func (mw *Middleware) AIObjectCreateFromUrl(ctx context.Context, req *pb.RpcAIObjectCreateFromUrlRequest) *pb.RpcAIObjectCreateFromUrlResponse {
 	aiService := mustService[ai.AI](mw)
 
-	objectId, details, err := aiService.CreateObjectFromUrl(ctx, req.Config, req.SpaceId, req.Url)
+	objectId, details, err := aiService.CreateObjectFromUrl(ctx, req.Config, req.Details, req.SpaceId, req.Url)
 	code := mapErrorCode(nil,
 		errToCode(ai.ErrRateLimitExceeded, pb.RpcAIObjectCreateFromUrlResponseError_RATE_LIMIT_EXCEEDED),
 		errToCode(ai.ErrEndpointNotReachable, pb.RpcAIObjectCreateFromUrlResponseError_ENDPOINT_NOT_REACHABLE),
