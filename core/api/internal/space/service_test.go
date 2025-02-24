@@ -53,7 +53,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyLayout.String(),
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},

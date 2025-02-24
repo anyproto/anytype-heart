@@ -71,7 +71,7 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: pbtypes.IntList([]int{
 					int(model.ObjectType_basic),
@@ -150,7 +150,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		Icon:    icon,
 		Type:    s.getTypeFromDetails(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
 		Snippet: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:  model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyLayout.String()].GetNumberValue())],
+		Layout:  model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
 		SpaceId: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		RootId:  resp.ObjectView.RootId,
 		Blocks:  s.getBlocks(resp),
@@ -284,7 +284,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 			},
@@ -487,7 +487,7 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		bundle.RelationKeyIconEmoji.String():         true,
 		bundle.RelationKeyIconImage.String():         true,
 		bundle.RelationKeyType.String():              true,
-		bundle.RelationKeyLayout.String():            true,
+		bundle.RelationKeyResolvedLayout.String():    true,
 		bundle.RelationKeyIsFavorite.String():        true,
 		bundle.RelationKeyIsArchived.String():        true,
 		bundle.RelationKeyIsDeleted.String():         true,

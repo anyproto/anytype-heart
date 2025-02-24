@@ -92,7 +92,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					RelationKey: bundle.RelationKeyLayout.String(),
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_In,
 					Value: pbtypes.IntList([]int{
 						int(model.ObjectType_basic),
@@ -130,12 +130,12 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():        pbtypes.String(mockedObjectId),
-						bundle.RelationKeyName.String():      pbtypes.String(mockedObjectName),
-						bundle.RelationKeySnippet.String():   pbtypes.String(mockedObjectSnippet),
-						bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedObjectIcon),
-						bundle.RelationKeyType.String():      pbtypes.String(mockedTypeId),
-						bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_basic)),
+						bundle.RelationKeyId.String():             pbtypes.String(mockedObjectId),
+						bundle.RelationKeyName.String():           pbtypes.String(mockedObjectName),
+						bundle.RelationKeySnippet.String():        pbtypes.String(mockedObjectSnippet),
+						bundle.RelationKeyIconEmoji.String():      pbtypes.String(mockedObjectIcon),
+						bundle.RelationKeyType.String():           pbtypes.String(mockedTypeId),
+						bundle.RelationKeyResolvedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
 					},
 				},
 			},
@@ -319,7 +319,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					RelationKey: bundle.RelationKeyLayout.String(),
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_In,
 					Value: pbtypes.IntList([]int{
 						int(model.ObjectType_basic),
@@ -540,12 +540,12 @@ func TestObjectService_CreateObject(t *testing.T) {
 						Id: mockedNewObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								bundle.RelationKeyId.String():        pbtypes.String(mockedNewObjectId),
-								bundle.RelationKeyName.String():      pbtypes.String(mockedObjectName),
-								bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_basic)),
-								bundle.RelationKeyType.String():      pbtypes.String(mockedTypeId),
-								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedObjectIcon),
-								bundle.RelationKeySpaceId.String():   pbtypes.String(mockedSpaceId),
+								bundle.RelationKeyId.String():             pbtypes.String(mockedNewObjectId),
+								bundle.RelationKeyName.String():           pbtypes.String(mockedObjectName),
+								bundle.RelationKeyResolvedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
+								bundle.RelationKeyType.String():           pbtypes.String(mockedTypeId),
+								bundle.RelationKeyIconEmoji.String():      pbtypes.String(mockedObjectIcon),
+								bundle.RelationKeySpaceId.String():        pbtypes.String(mockedSpaceId),
 							},
 						},
 					},

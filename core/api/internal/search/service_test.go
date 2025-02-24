@@ -78,7 +78,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyLayout.String(),
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
@@ -151,7 +151,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 					NestedFilters: []*model.BlockContentDataviewFilter{
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyLayout.String(),
+							RelationKey: bundle.RelationKeyResolvedLayout.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
 							Value: pbtypes.IntList([]int{
 								int(model.ObjectType_basic),
@@ -265,7 +265,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
 								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
-								bundle.RelationKeyLayout.String():           pbtypes.Int64(int64(model.ObjectType_basic)),
+								bundle.RelationKeyResolvedLayout.String():   pbtypes.Int64(int64(model.ObjectType_basic)),
 								bundle.RelationKeyIconEmoji.String():        pbtypes.String("🌐"),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
 								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String(mockedParticipantId),
@@ -505,7 +505,7 @@ func TestSearchService_Search(t *testing.T) {
 					NestedFilters: []*model.BlockContentDataviewFilter{
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyLayout.String(),
+							RelationKey: bundle.RelationKeyResolvedLayout.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
 							Value: pbtypes.IntList([]int{
 								int(model.ObjectType_basic),
@@ -585,7 +585,7 @@ func TestSearchService_Search(t *testing.T) {
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
 								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
-								bundle.RelationKeyLayout.String():           pbtypes.Int64(int64(model.ObjectType_basic)),
+								bundle.RelationKeyResolvedLayout.String():   pbtypes.Int64(int64(model.ObjectType_basic)),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
 								bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
 								bundle.RelationKeyType.String():             pbtypes.String(mockedType),

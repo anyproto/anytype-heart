@@ -52,7 +52,7 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 			},
@@ -166,7 +166,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},

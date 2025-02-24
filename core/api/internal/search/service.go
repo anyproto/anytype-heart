@@ -174,7 +174,7 @@ func (s *SearchService) prepareBaseFilters() []*model.BlockContentDataviewFilter
 	return []*model.BlockContentDataviewFilter{
 		{
 			Operator:    model.BlockContentDataviewFilter_No,
-			RelationKey: bundle.RelationKeyLayout.String(),
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value: pbtypes.IntList([]int{
 				int(model.ObjectType_basic),
