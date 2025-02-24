@@ -50,6 +50,10 @@ func OpenDatabaseWithLockCheck(ctx context.Context, path string, config *anystor
 				return nil, lockCloseNoop, err
 			}
 			store, err = anystore.Open(ctx, path, config)
+			if err != nil {
+				l.Errorf("failed to open anystore again, %s", err)
+				return nil, lockCloseNoop, err
+			}
 		} else {
 			l.Errorf("failed to open anystore, non-recoverable error")
 			// some other error

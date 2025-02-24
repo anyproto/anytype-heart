@@ -43,10 +43,6 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	defer func() {
 		_ = os.RemoveAll(exportDirPath)
 	}()
-	err = os.Mkdir(dbPath, 0755)
-	if err != nil {
-		return
-	}
 	anyStore, err := anystore.Open(ctx, dbPath, nil)
 	if err != nil {
 		return
