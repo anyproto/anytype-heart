@@ -432,6 +432,7 @@ func (s *service) createBlankTemplateState(typeId domain.FullID, layout model.Ob
 		template.WithAddedFeaturedRelation(bundle.RelationKeyTag),
 		template.WithDetail(bundle.RelationKeyTag, domain.StringList(nil)),
 		template.WithTitle,
+		template.WithForcedDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout)),
 	)
 	if slices.Contains([]model.ObjectTypeLayout{model.ObjectType_set, model.ObjectType_collection}, layout) && !typeId.IsEmpty() {
 		template.InitTemplate(st,
