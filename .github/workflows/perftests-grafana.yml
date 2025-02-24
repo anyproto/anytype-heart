@@ -107,7 +107,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pprofs
-          path: *.pprof
+          path: |
+            *.pprof
 
       - name: Clean perf tests results
         run: rm -rf *.pprof
