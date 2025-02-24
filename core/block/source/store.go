@@ -51,6 +51,7 @@ type store struct {
 	store        *storestate.StoreState
 	onUpdateHook func()
 	onPushChange PushChangeHook
+	sbType       smartblock.SmartBlockType
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
