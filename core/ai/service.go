@@ -71,10 +71,10 @@ type AIService struct {
 	sourceService      source.Service
 	linkPreviewService linkpreview.LinkPreview
 	spaceService       space.Service
+	objectCreator      objectcreator.Service
 	blockService       *block.Service
 	bmPolicy           *bluemonday.Policy
 
-	objectCreator   objectcreator.Service
 	apiConfig       *APIConfig
 	httpClient      HttpClient
 	responseParser  parsing.ResponseParser
@@ -113,7 +113,6 @@ type WebsiteProcessResult struct {
 	Type            string            // "recipe", "company", or "event"
 	Relations       map[string]string // e.g. {"portions": "2", "prep_time": "40 minutes", ...}
 	MarkdownSummary string            // e.g. "## Pasta with tomato sauce and basil.\n A classic Italian dish ..."
-	Image           string            // URL of the main image
 }
 
 func New() AI {
@@ -127,9 +126,10 @@ func (ai *AIService) Init(a *app.App) (err error) {
 	ai.sourceService = app.MustComponent[source.Service](a)
 	ai.linkPreviewService = app.MustComponent[linkpreview.LinkPreview](a)
 	ai.spaceService = app.MustComponent[space.Service](a)
+	ai.objectCreator = app.MustComponent[objectcreator.Service](a)
 	ai.blockService = a.MustComponent(block.CName).(*block.Service)
-	ai.componentCtx, ai.componentCancel = context.WithCancel(context.Background())
 	ai.bmPolicy = HTMLSanitizePolicy()
+	ai.componentCtx, ai.componentCancel = context.WithCancel(context.Background())
 
 	return nil
 }
@@ -526,7 +526,6 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 		Type:            websiteType,
 		Relations:       relationsResult,
 		MarkdownSummary: summaryResult,
-		Image:           article.Image,
 	}, nil
 }
 
