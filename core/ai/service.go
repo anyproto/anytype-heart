@@ -340,6 +340,9 @@ func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId stri
 	err = space.Do(objectId, func(sb editorsb.SmartBlock) error {
 		st := sb.NewState()
 		st.SetObjectTypeKey(domain.TypeKey(result.Type))
+		// temp fix
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		st.Details().Delete(bundle.RelationKeyLayout)
 		var relationBlocks []*model.Block
 
 		pictureHash := st.Details().GetString(bundle.RelationKeyPicture)
