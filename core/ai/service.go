@@ -304,7 +304,7 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 	return resultId, nil
 }
 
-func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId, imageUrl string, body []byte, provider *pb.RpcAIProviderConfig) (id string, details *domain.Details, err error) {
+func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId string, body []byte, provider *pb.RpcAIProviderConfig) (id string, details *domain.Details, err error) {
 	result, err := ai.WebsiteProcess(ctx, provider, body)
 	if err != nil {
 		log.Errorf("website process via llm: %v", err)
@@ -359,6 +359,22 @@ func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId, ima
 			}
 		}
 
+		var paddingBlocks []*model.Block
+		paddingBlocks = append(paddingBlocks, &model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "",
+				},
+			},
+		})
+		paddingBlocks = append(paddingBlocks, &model.Block{
+			Content: &model.BlockContentOfDiv{
+				Div: &model.BlockContentDiv{
+					Style: model.BlockContentDiv_Dots,
+				},
+			},
+		})
+
 		err = sb.Apply(st)
 		if err != nil {
 			return err
@@ -368,6 +384,10 @@ func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId, ima
 		_, _, _, _, err = cb.Paste(cctx, &pb.RpcBlockPasteRequest{
 			ContextId: id,
 			AnySlot:   relationBlocks,
+		}, "")
+		_, _, _, _, err = cb.Paste(cctx, &pb.RpcBlockPasteRequest{
+			ContextId: id,
+			AnySlot:   paddingBlocks,
 		}, "")
 		_, _, _, _, err = cb.Paste(cctx, &pb.RpcBlockPasteRequest{
 			ContextId: id,
@@ -400,7 +420,7 @@ func (ai *AIService) cleanResponse(body []byte) (resp []byte) {
 	return ai.bmPolicy.SanitizeBytes(body)
 }
 func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAIProviderConfig, spaceId string, url string) (id string, details *domain.Details, err error) {
-	lp, body, isFile, err := ai.linkPreviewService.Fetch(ctx, url)
+	_, body, isFile, err := ai.linkPreviewService.Fetch(ctx, url)
 	if err != nil {
 		return "", nil, fmt.Errorf("could not fetch website: %w", err)
 	}
@@ -419,7 +439,7 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 
 	if !isFile {
 		go func(spaceId string, body []byte, provider *pb.RpcAIProviderConfig) {
-			_, _, err = ai.processBookmark(ai.componentCtx, spaceId, id, lp.ImageUrl, body, provider)
+			_, _, err = ai.processBookmark(ai.componentCtx, spaceId, id, body, provider)
 			if err != nil {
 				log.Errorf("ai process bookmark: %v", err)
 			}
@@ -441,7 +461,7 @@ func (ai *AIService) WebsiteProcess(ctx context.Context, provider *pb.RpcAIProvi
 	}
 
 	ai.setAPIConfig(provider)
-	websiteType, err := ai.ClassifyWebsiteContent(ctx, "Title: "+article.Title+"\nExcerpt: "+article.Excerpt)
+	websiteType, err := ai.ClassifyWebsiteContent(ctx, article.TextContent)
 	if err != nil {
 		return nil, fmt.Errorf("could not classify website content: %w", err)
 	}
