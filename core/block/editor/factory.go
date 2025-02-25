@@ -120,7 +120,6 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	if err != nil {
 		return
 	}
-
 	var ot objecttree.ObjectTree
 	if p, ok := sc.(source.ObjectTreeProvider); ok {
 		ot = p.Tree()

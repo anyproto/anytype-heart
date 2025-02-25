@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
@@ -265,6 +266,7 @@ func (l *listStorage) AddAll(ctx context.Context, records []list.StorageRecord) 
 		Id:    l.id,
 		Heads: []string{lastId},
 	}
+	ctx = WithTx(ctx, tx)
 	if upErr := l.headStorage.UpdateEntryTx(ctx, update); upErr != nil {
 		err = upErr
 		return err
@@ -296,7 +298,8 @@ func createListTable(db *sql.DB, tableName string) error {
 }
 
 func buildAclTableName(spaceId string) string {
-	return spaceId + "_" + "acl"
+	id := strings.Split(spaceId, ".")[0]
+	return id + "_" + "acl"
 }
 
 func (l *listStorage) initStatements() error {
@@ -312,21 +315,6 @@ func (l *listStorage) initStatements() error {
 	) VALUES (?, ?, ?, ?, ?, ?);
 	`, l.table)
 	if l.stmt.insertRecord, err = l.writeDb.Prepare(l.createStatement(insertSQL)); err != nil {
-		return err
-	}
-
-	// Insert ignoring duplicates
-	insertIgnoreSQL := fmt.Sprintf(`
-	INSERT OR IGNORE INTO %s (
-		id,
-		raw_record,
-		order_id,
-		change_size,
-		prev_id,
-		added
-	) VALUES (?, ?, ?, ?, ?, ?);
-	`, l.table)
-	if l.stmt.insertRecordIgnore, err = l.writeDb.Prepare(l.createStatement(insertIgnoreSQL)); err != nil {
 		return err
 	}
 

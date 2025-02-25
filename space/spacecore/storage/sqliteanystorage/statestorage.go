@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/mattn/go-sqlite3"
 
@@ -227,8 +228,6 @@ func createStateTable(db *sql.DB, tableName string) error {
 }
 
 func buildStateTableName(spaceId string) string {
-	if spaceId == "" {
-		return "default_state"
-	}
-	return spaceId + "_state"
+	id := strings.Split(spaceId, ".")[0]
+	return id + "_state"
 }

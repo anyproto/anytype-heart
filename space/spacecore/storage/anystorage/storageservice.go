@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -166,7 +167,7 @@ func (s *storageService) Init(a *app.App) (err error) {
 			return err
 		}
 	}
-	s.dbPath = s.rootPath
+	s.dbPath = filepath.Join(s.rootPath, "spaceStore.db")
 	if s.checkpointAfterWrite == 0 {
 		s.checkpointAfterWrite = time.Second
 	}

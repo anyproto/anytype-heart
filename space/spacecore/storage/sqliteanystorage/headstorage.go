@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 )
 
@@ -61,10 +62,11 @@ func (h *headStorage) createStatement(statement string) string {
 }
 
 func NewHeadStorage(readDb *sql.DB, writeDb *sql.DB, spaceId string) (headstorage.HeadStorage, error) {
+	id := strings.Split(spaceId, ".")[0]
 	h := &headStorage{
 		readDb:  readDb,
 		writeDb: writeDb,
-		table:   spaceId + "_heads",
+		table:   id + "_heads",
 		spaceId: spaceId,
 	}
 	createTable := h.createStatement(`
@@ -193,7 +195,7 @@ func (h *headStorage) GetEntry(ctx context.Context, id string) (HeadsEntry, erro
 	err := row.Scan(&id, &headsStr, &commonSnapshot, &deletedStatus, &isDerived)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return HeadsEntry{}, fmt.Errorf("GetEntry: no such entry: %s", id)
+			return HeadsEntry{}, fmt.Errorf("GetEntry: no such entry: %s %w", id, anystore.ErrDocNotFound)
 		}
 		return HeadsEntry{}, err
 	}
@@ -320,6 +322,9 @@ func (h *headStorage) AddObserver(observer headstorage.Observer) {
 }
 
 func parseHeadsCommaSeparated(s string) []string {
+	if s == "" {
+		return nil
+	}
 	parts := strings.Split(s, ",")
 	return parts
 }

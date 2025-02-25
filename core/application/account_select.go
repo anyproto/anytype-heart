@@ -41,13 +41,13 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	if req.Id == "" {
 		return nil, ErrEmptyAccountID
 	}
-	curMigration := s.migrationManager.getOrCreateMigration(req.RootPath, req.Id)
-	if !curMigration.successful() {
-		return nil, ErrAccountStoreIsNotMigrated
-	}
-	if s.migrationManager.isRunning() {
-		return nil, ErrMigrationRunning
-	}
+	// curMigration := s.migrationManager.getOrCreateMigration(req.RootPath, req.Id)
+	// if !curMigration.successful() {
+	// 	return nil, ErrAccountStoreIsNotMigrated
+	// }
+	// if s.migrationManager.isRunning() {
+	// 	return nil, ErrMigrationRunning
+	// }
 
 	if runtime.GOOS != "android" && runtime.GOOS != "ios" {
 		s.traceRecorder.start()

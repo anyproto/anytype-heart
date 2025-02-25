@@ -69,7 +69,7 @@ func CreateTreeStorage(
 		writeDb:     writeDb,
 		headStorage: headStorage,
 		root:        root,
-		table:       headStorage.SpaceId() + "_changes",
+		table:       strings.Split(headStorage.SpaceId(), ".")[0] + "_changes",
 	}
 	if err := st.initStatements(); err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func NewTreeStorage(
 		id:          id,
 		readDb:      readDb,
 		writeDb:     writeDb,
-		table:       headStorage.SpaceId() + "_changes",
+		table:       strings.Split(headStorage.SpaceId(), ".")[0] + "_changes",
 		headStorage: headStorage,
 	}
 	if err := st.initStatements(); err != nil {
@@ -413,10 +413,11 @@ func createChangesTable(db *sql.DB, spaceId string) error {
 		tree_id TEXT,
 		added REAL
 	);
-	CREATE INDEX IF NOT EXISTS idx_changes_tree_id ON changes(tree_id);
-	CREATE INDEX IF NOT EXISTS idx_changes_order_id ON changes(order_id);
+	CREATE INDEX IF NOT EXISTS idx_%s_changes_tree_id ON %s(tree_id);
+	CREATE INDEX IF NOT EXISTS idx_%s_changes_order_id ON %s(order_id);
 `
-	statement := fmt.Sprintf(sqlCreate, spaceId)
+	tableName := strings.Split(spaceId, ".")[0] + "_changes"
+	statement := fmt.Sprintf(sqlCreate, tableName, tableName, tableName, tableName, tableName)
 	_, err := db.Exec(statement)
 	return err
 }
@@ -514,6 +515,9 @@ func (t *treeStorage) initStatements() error {
 }
 
 func splitComma(s string) []string {
+	if s == "" {
+		return nil
+	}
 	parts := strings.Split(s, ",")
 	return parts
 }

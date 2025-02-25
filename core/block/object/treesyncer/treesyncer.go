@@ -2,7 +2,6 @@ package treesyncer
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"sync"
 	"time"
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
-	"modernc.org/memory"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -76,7 +74,7 @@ func (d *DynamicDelayLimiter) CurrentDelay() time.Duration {
 	return d.currentDelay
 }
 
-var limiter = NewDynamicDelayLimiter(0, time.Millisecond*100, time.Millisecond*100)
+var limiter = NewDynamicDelayLimiter(0, time.Millisecond*10, time.Millisecond*10)
 
 type executor struct {
 	pool *streampool.ExecPool
@@ -122,16 +120,6 @@ type SyncedTreeRemover interface {
 type SyncDetailsUpdater interface {
 	app.Component
 	UpdateSpaceDetails(existing, missing []string, spaceId string)
-}
-
-func init() {
-	memory.PrintMsg = func(add int, total int, plus bool) {
-		if plus {
-			println("[x]: 5allocating more", fmt.Sprintf("%dKb", add/1024), fmt.Sprintf("%dKb", total/1024))
-		} else {
-			println("[x]: 4freeing some", fmt.Sprintf("%dKb", add/1024), fmt.Sprintf("%dKb", total/1024))
-		}
-	}
 }
 
 type countManager interface {

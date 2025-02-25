@@ -3,6 +3,7 @@ package anystorage
 import (
 	"context"
 	"errors"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
@@ -32,6 +33,8 @@ const (
 type clientStorage struct {
 	spacestorage.SpaceStorage
 	clientColl anystore.Collection
+	mx         sync.Mutex
+	isCreated  bool
 }
 
 func (r *clientStorage) AllDeletedTreeIds(ctx context.Context) (ids []string, err error) {
@@ -75,13 +78,21 @@ func (r *clientStorage) TreeRoot(ctx context.Context, id string) (root *treechan
 }
 
 func (r *clientStorage) MarkSpaceCreated(ctx context.Context) error {
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	r.isCreated = true
 	return nil
 }
 
 func (r *clientStorage) IsSpaceCreated(ctx context.Context) (isCreated bool, err error) {
-	return
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	return r.isCreated, nil
 }
 
 func (r *clientStorage) UnmarkSpaceCreated(ctx context.Context) error {
+	r.mx.Lock()
+	defer r.mx.Unlock()
+	r.isCreated = false
 	return nil
 }
