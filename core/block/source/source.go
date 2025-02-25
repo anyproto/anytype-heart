@@ -331,7 +331,6 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// we need to have required internal relations for all objects, including system
 	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
-		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
 	}
 

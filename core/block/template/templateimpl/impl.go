@@ -44,9 +44,11 @@ var (
 	log = logging.Logger("template")
 
 	templateIsPreferableRelationKeys = []domain.RelationKey{
-		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyResolvedLayout,
-		bundle.RelationKeyIconEmoji, bundle.RelationKeyCoverId,
-		bundle.RelationKeySourceObject, bundle.RelationKeySetOf,
+		bundle.RelationKeyLayout,
+		bundle.RelationKeyIconEmoji,
+		bundle.RelationKeyCoverId,
+		bundle.RelationKeySourceObject,
+		bundle.RelationKeySetOf,
 	}
 )
 
@@ -181,7 +183,7 @@ func extractTargetDetails(originDetails *domain.Details, templateDetails *domain
 		templateVal := templateDetails.Get(key)
 		if templateVal.Ok() {
 			inTemplateEmpty := templateVal.IsEmpty()
-			if key == bundle.RelationKeyResolvedLayout {
+			if key == bundle.RelationKeyLayout {
 				// layout = 0 is actually basic layout, so it counts
 				inTemplateEmpty = false
 			}
@@ -236,6 +238,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		bundle.RelationKeyTemplateIsBundled,
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
+		bundle.RelationKeyFeaturedRelations,
 	)
 	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(sb.Id()))
 	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
@@ -427,9 +430,7 @@ func (s *service) SetDefaultTemplateInType(ctx context.Context, typeId, template
 func (s *service) createBlankTemplateState(typeId domain.FullID, layout model.ObjectTypeLayout) (st *state.State) {
 	st = state.NewDoc(BlankTemplateId, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
-		template.WithDefaultFeaturedRelations,
-		template.WithFeaturedRelations,
-		template.WithAddedFeaturedRelation(bundle.RelationKeyTag),
+		template.WithFeaturedRelationsBlock,
 		template.WithDetail(bundle.RelationKeyTag, domain.StringList(nil)),
 		template.WithTitle,
 	)
