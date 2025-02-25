@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"errors"
+	"os"
+	"strings"
 
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -10,6 +12,8 @@ import (
 )
 
 func (mw *Middleware) InitialSetParameters(cctx context.Context, req *pb.RpcInitialSetParametersRequest) *pb.RpcInitialSetParametersResponse {
+	os.Clearenv()
+	println("### initial env" + strings.Join(os.Environ(), "; "))
 	response := func(code pb.RpcInitialSetParametersResponseErrorCode, err error) *pb.RpcInitialSetParametersResponse {
 		m := &pb.RpcInitialSetParametersResponse{Error: &pb.RpcInitialSetParametersResponseError{Code: code}}
 		if err != nil {
