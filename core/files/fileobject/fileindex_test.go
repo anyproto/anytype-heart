@@ -28,8 +28,9 @@ func newIndexerFixture(t *testing.T) *indexerFixture {
 	fileService := mock_files.NewMockService(t)
 
 	svc := &service{
-		objectStore: objectStore,
-		fileService: fileService,
+		objectStore:    objectStore,
+		fileService:    fileService,
+		accountService: &dummyAccountService{},
 	}
 	ind := svc.newIndexer()
 
