@@ -304,7 +304,7 @@ func (p *Page) featuredRelationsMigration(s *state.State) {
 		return
 	}
 
-	var featuredRelationIds []string
+	featuredRelationIds := make([]string, len(relationutils.DefaultFeaturedRelationKeys))
 	for _, key := range relationutils.DefaultFeaturedRelationKeys {
 		id, err := p.Space().DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
 		if err != nil {
