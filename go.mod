@@ -293,7 +293,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
-	modernc.org/libc v1.61.9 // indirect
+	modernc.org/libc v1.61.14 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.8.2 // indirect
 	modernc.org/sqlite v1.34.5 // indirect
@@ -324,4 +324,4 @@ replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
 
 replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
 
-replace modernc.org/libc => gitlab.com/fat-fellow/libc v1.61.14-0.20250217122555-532f460adbbc
+replace modernc.org/libc => gitlab.com/fat-fellow/libc v1.61.14-0.20250225155920-bd929fdf53b8
