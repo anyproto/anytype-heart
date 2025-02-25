@@ -83,13 +83,13 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 	techSpace := c.getter.TechSpace()
 	res, err := c.client.StatusCheck(ctx, techSpace.Id())
 	if errors.Is(err, coordinatorproto.ErrSpaceNotExists) {
-		state, sErr := techSpace.Storage().StateStorage().GetState(ctx)
+		header, sErr := techSpace.Storage().SpaceHeader()
 		if sErr != nil {
 			return sErr
 		}
 		payload := coordinatorclient.SpaceSignPayload{
-			SpaceId:     techSpace.Id(),
-			SpaceHeader: state.SpaceHeader,
+			SpaceId:     header.Id,
+			SpaceHeader: header.RawHeader,
 			OldAccount:  c.wallet.GetOldAccountKey(),
 			Identity:    c.wallet.GetAccountPrivkey(),
 		}

@@ -358,7 +358,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return err
 	}
 
-	if spaceChatExists, err := spc.Storage().HasTree(ctx, chatId); err != nil {
+	if spaceChatExists, err := spc.Storage().HasTree(chatId); err != nil {
 		return err
 	} else if !spaceChatExists {
 		_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)

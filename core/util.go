@@ -24,16 +24,10 @@ func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {
 type errToCodeTuple[T ~int32] struct {
 	err  error
 	code T
-
-	checkErrorType any
 }
 
 func errToCode[T ~int32](err error, code T) errToCodeTuple[T] {
-	return errToCodeTuple[T]{err: err, code: code}
-}
-
-func errTypeToCode[T ~int32](errTypeProto any, code T) errToCodeTuple[T] {
-	return errToCodeTuple[T]{code: code, checkErrorType: errTypeProto}
+	return errToCodeTuple[T]{err, code}
 }
 
 func mapErrorCode[T ~int32](err error, mappings ...errToCodeTuple[T]) T {
@@ -41,15 +35,8 @@ func mapErrorCode[T ~int32](err error, mappings ...errToCodeTuple[T]) T {
 		return 0
 	}
 	for _, m := range mappings {
-		if m.err != nil {
-			if errors.Is(err, m.err) {
-				return m.code
-			}
-		}
-		if m.checkErrorType != nil {
-			if errors.As(err, m.checkErrorType) {
-				return m.code
-			}
+		if errors.Is(err, m.err) {
+			return m.code
 		}
 	}
 	// Unknown error

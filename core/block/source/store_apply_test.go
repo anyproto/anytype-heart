@@ -2,10 +2,12 @@ package source
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
@@ -17,7 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"golang.org/x/sys/unix"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
@@ -97,6 +98,90 @@ func TestStoreApply_RealTree(t *testing.T) {
 	})
 }
 
+func TestStoreApply_Apply(t *testing.T) {
+	t.Run("new tree", func(t *testing.T) {
+		fx := newMockTreeStoreFx(t)
+		tx := fx.RequireTx(t)
+		changes := []*objecttree.Change{
+			testChange("1", false),
+			testChange("2", false),
+			testChange("3", false),
+		}
+		fx.ApplyChanges(t, tx, changes...)
+		require.NoError(t, tx.Commit())
+	})
+	t.Run("insert middle", func(t *testing.T) {
+		fx := newMockTreeStoreFx(t)
+		tx := fx.RequireTx(t)
+		changes := []*objecttree.Change{
+			testChange("1", false),
+			testChange("2", false),
+			testChange("3", false),
+		}
+		fx.ApplyChanges(t, tx, changes...)
+		require.NoError(t, tx.Commit())
+
+		tx = fx.RequireTx(t)
+		changes = []*objecttree.Change{
+			testChange("1", false),
+			testChange("1.1", true),
+			testChange("1.2", true),
+			testChange("1.3", true),
+			testChange("2", false),
+			testChange("2.2", true),
+			testChange("3", false),
+		}
+		fx.ExpectTreeFrom("1.1", changes[1:]...)
+		fx.ExpectTreeFrom("2.2", changes[6:]...)
+		fx.ApplyChanges(t, tx, changes...)
+		require.NoError(t, tx.Commit())
+	})
+	t.Run("append", func(t *testing.T) {
+		fx := newMockTreeStoreFx(t)
+		tx := fx.RequireTx(t)
+		changes := []*objecttree.Change{
+			testChange("1", false),
+			testChange("2", false),
+			testChange("3", false),
+		}
+		fx.ApplyChanges(t, tx, changes...)
+		require.NoError(t, tx.Commit())
+
+		tx = fx.RequireTx(t)
+		changes = []*objecttree.Change{
+			testChange("1", false),
+			testChange("2", false),
+			testChange("3", false),
+			testChange("4", true),
+			testChange("5", true),
+			testChange("6", true),
+		}
+		fx.ApplyChanges(t, tx, changes...)
+		require.NoError(t, tx.Commit())
+	})
+}
+
+func TestStoreApply_Apply10000(t *testing.T) {
+	fx := newMockTreeStoreFx(t)
+	tx := fx.RequireTx(t)
+	changes := make([]*objecttree.Change, 100000)
+	for i := range changes {
+		changes[i] = testChange(fmt.Sprint(i), false)
+	}
+	st := time.Now()
+	applier := &storeApply{
+		tx: tx,
+		ot: fx.mockTree,
+	}
+	fx.ExpectTree(changes...)
+	require.NoError(t, applier.Apply())
+	t.Logf("apply dur: %v;", time.Since(st))
+	st = time.Now()
+	require.NoError(t, tx.Commit())
+	t.Logf("commit dur: %v;", time.Since(st))
+
+}
+
 type storeFx struct {
 	state         *storestate.StoreState
 	mockTree      *mock_objecttree.MockObjectTree
@@ -158,6 +243,37 @@ func (fx *storeFx) ApplyChanges(t *testing.T, tx *storestate.StoreStateTx, chang
 	fx.AssertOrder(t, tx, changes...)
 }
 
+func newMockTreeStoreFx(t testing.TB) *storeFx {
+	tmpDir, err := os.MkdirTemp("", "source_store_*")
+	require.NoError(t, err)
+
+	db, err := anystore.Open(ctx, filepath.Join(tmpDir, "test.db"), nil)
+	require.NoError(t, err)
+
+	ctrl := gomock.NewController(t)
+	t.Cleanup(func() {
+		if db != nil {
+			_ = db.Close()
+		}
+		ctrl.Finish()
+		if tmpDir != "" {
+			_ = os.RemoveAll(tmpDir)
+		}
+	})
+
+	state, err := storestate.New(ctx, "source_test", db, storestate.DefaultHandler{Name: "default"})
+	require.NoError(t, err)
+
+	tree := mock_objecttree.NewMockObjectTree(ctrl)
+	tree.EXPECT().Id().Return("root").AnyTimes()
+
+	return &storeFx{
+		state:    state,
+		mockTree: tree,
+		db:       db,
+	}
+}
+
 func newRealTreeStoreFx(t testing.TB) *storeFx {
 	tmpDir, err := os.MkdirTemp("", "source_store_*")
 	require.NoError(t, err)
@@ -179,16 +295,14 @@ func newRealTreeStoreFx(t testing.TB) *storeFx {
 	state, err := storestate.New(ctx, "source_test", db, storestate.DefaultHandler{Name: "default"})
 	require.NoError(t, err)
 	aclList, _ := prepareAclList(t)
-	objTree, err := buildTree(t, aclList)
+	objTree, err := buildTree(aclList)
 	require.NoError(t, err)
 	fx := &storeFx{
-		state:    state,
-		realTree: objTree,
-		aclList:  aclList,
-		changeCreator: objecttree.NewMockChangeCreator(func() anystore.DB {
-			return createStore(ctx, t)
-		}),
-		db: db,
+		state:         state,
+		realTree:      objTree,
+		aclList:       aclList,
+		changeCreator: objecttree.NewMockChangeCreator(),
+		db:            db,
 	}
 	tx := fx.RequireTx(t)
 	defer tx.Rollback()
@@ -207,7 +321,6 @@ func testChange(id string, isNew bool) *objecttree.Change {
 
 	return &objecttree.Change{
 		Id:       id,
-		OrderId:  id,
 		IsNew:    isNew,
 		Model:    &pb.StoreChange{},
 		Identity: pub,
@@ -217,40 +330,19 @@ func testChange(id string, isNew bool) *objecttree.Change {
 func prepareAclList(t testing.TB) (list.AclList, *accountdata.AccountKeys) {
 	randKeys, err := accountdata.NewRandom()
 	require.NoError(t, err)
-	aclList, err := list.NewInMemoryDerivedAcl("spaceId", randKeys)
+	aclList, err := list.NewTestDerivedAcl("spaceId", randKeys)
 	require.NoError(t, err, "building acl list should be without error")
 
 	return aclList, randKeys
 }
 
-func buildTree(t testing.TB, aclList list.AclList) (objecttree.ObjectTree, error) {
-	changeCreator := objecttree.NewMockChangeCreator(func() anystore.DB {
-		return createStore(ctx, t)
-	})
-	treeStorage := changeCreator.CreateNewTreeStorage(t.(*testing.T), "0", aclList.Head().Id, false)
+func buildTree(aclList list.AclList) (objecttree.ObjectTree, error) {
+	changeCreator := objecttree.NewMockChangeCreator()
+	treeStorage := changeCreator.CreateNewTreeStorage("0", aclList.Head().Id, false)
 	tree, err := objecttree.BuildTestableTree(treeStorage, aclList)
 	if err != nil {
 		return nil, err
 	}
 	tree.SetFlusher(objecttree.MarkNewChangeFlusher())
 	return tree, nil
-}
-
-func createStore(ctx context.Context, t testing.TB) anystore.DB {
-	return createNamedStore(ctx, t, "changes.db")
-}
-
-func createNamedStore(ctx context.Context, t testing.TB, name string) anystore.DB {
-	path := filepath.Join(t.TempDir(), name)
-	db, err := anystore.Open(ctx, path, nil)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := db.Close()
-		require.NoError(t, err)
-		unix.Rmdir(path)
-	})
-	return objecttree.TestStore{
-		DB:   db,
-		Path: path,
-	}
 }
