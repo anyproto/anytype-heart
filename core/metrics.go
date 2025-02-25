@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -12,7 +13,15 @@ import (
 )
 
 func (mw *Middleware) InitialSetParameters(cctx context.Context, req *pb.RpcInitialSetParametersRequest) *pb.RpcInitialSetParametersResponse {
-	os.Clearenv()
+	for _, s := range os.Environ() {
+		if !utf8.ValidString(s) {
+			println("### utf8 invalid:" + s)
+			split := strings.Split(s, "=")
+			if len(split) > 0 {
+				os.Unsetenv(split[0])
+			}
+		}
+	}
 	println("### initial env" + strings.Join(os.Environ(), "; "))
 	response := func(code pb.RpcInitialSetParametersResponseErrorCode, err error) *pb.RpcInitialSetParametersResponse {
 		m := &pb.RpcInitialSetParametersResponse{Error: &pb.RpcInitialSetParametersResponseError{Code: code}}
