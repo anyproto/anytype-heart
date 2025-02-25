@@ -19,7 +19,7 @@ type ObjectIDDeriver interface {
 }
 
 var (
-	defaultFeaturedRelationKeys = []domain.RelationKey{
+	DefaultFeaturedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyType,
 		bundle.RelationKeyTag,
 		bundle.RelationKeyBacklinks,
@@ -99,7 +99,7 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	// exclude default recommended featured relations and default hidden relations
 	keys = lo.Uniq(append(keys, defaultRecommendedRelationKeys...))
 	keys = slices.DeleteFunc(keys, func(key domain.RelationKey) bool {
-		return slices.Contains(append(defaultHiddenRelationKeys, defaultFeaturedRelationKeys...), key)
+		return slices.Contains(append(defaultHiddenRelationKeys, DefaultFeaturedRelationKeys...), key)
 	})
 
 	relationIds, err := prepareRelationIds(ctx, deriver, keys)
@@ -108,7 +108,7 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedRelations, relationIds)
 
-	featuredRelationIds, err := prepareRelationIds(ctx, deriver, defaultFeaturedRelationKeys)
+	featuredRelationIds, err := prepareRelationIds(ctx, deriver, DefaultFeaturedRelationKeys)
 	if err != nil {
 		return nil, false, fmt.Errorf("prepare recommended featured relation ids: %w", err)
 	}
@@ -120,7 +120,7 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, hiddenRelationIds)
 
-	return slices.Concat(keys, fileRecommendedRelationKeys, defaultHiddenRelationKeys, defaultFeaturedRelationKeys), false, nil
+	return slices.Concat(keys, fileRecommendedRelationKeys, defaultHiddenRelationKeys, DefaultFeaturedRelationKeys), false, nil
 }
 
 func getRelationKeysFromDetails(details *domain.Details) ([]domain.RelationKey, error) {

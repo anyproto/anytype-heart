@@ -20,7 +20,7 @@ func (d *mockDeriver) DeriveObjectID(ctx context.Context, key domain.UniqueKey) 
 }
 
 func TestFillRecommendedRelations(t *testing.T) {
-	defaultRecFeatRelIds := buildRelationIds(defaultFeaturedRelationKeys)
+	defaultRecFeatRelIds := buildRelationIds(DefaultFeaturedRelationKeys)
 	defaultRecRelIds := buildRelationIds(defaultRecommendedRelationKeys)
 	defaultRecHiddenRelIds := buildRelationIds(defaultHiddenRelationKeys)
 
