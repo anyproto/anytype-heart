@@ -21,6 +21,7 @@ var (
 
 func (s *State) Normalize(withLayouts bool) (err error) {
 	s.removeDuplicates()
+	s.normalizeDetails()
 	return s.normalize(withLayouts)
 }
 
@@ -36,8 +37,6 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	for _, b := range s.blocks {
 		s.normalizeChildren(b)
 	}
-
-	s.normalizeDetails()
 
 	if err = s.doCustomBlockNormalizations(); err != nil {
 		return err
