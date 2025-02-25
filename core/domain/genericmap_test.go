@@ -96,6 +96,21 @@ func TestGenericMap_IterateSorted(t *testing.T) {
 	assert.Equal(t, wantValues, gotValues)
 }
 
+func TestGenericMap_IterateKeys(t *testing.T) {
+	m := NewGenericMap[string]()
+	m.Set("key1", String("value1"))
+	m.Set("key2", String("value2"))
+	m.Set("key3", String("value3"))
+
+	var collected []string
+	for k := range m.IterateKeys() {
+		collected = append(collected, k)
+	}
+
+	want := []string{"key1", "key2", "key3"}
+	assert.Equal(t, want, collected)
+}
+
 func TestGenericMap_Copy(t *testing.T) {
 	m1 := NewGenericMap[string]()
 	m1.Set("key1", String("value1"))

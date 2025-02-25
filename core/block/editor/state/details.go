@@ -32,11 +32,17 @@ func (s *State) CombinedDetails() *domain.Details {
 }
 
 func (s *State) AllRelationKeys() []domain.RelationKey {
-	return append(s.Details().Keys(), s.LocalDetails().Keys()...)
+	return slices.Concat(
+		slices.Collect[domain.RelationKey](s.Details().IterateKeys()),
+		slices.Collect[domain.RelationKey](s.LocalDetails().IterateKeys()),
+	)
 }
 
 func (s *State) HasRelation(key domain.RelationKey) bool {
-	return slices.Contains(s.AllRelationKeys(), key)
+	if slice.ContainsBySeq(s.Details().IterateKeys(), key) {
+		return true
+	}
+	return slice.ContainsBySeq(s.LocalDetails().IterateKeys(), key)
 }
 
 func (s *State) FileRelationKeys(relLinkGetter relationLinkGetter) []domain.RelationKey {
