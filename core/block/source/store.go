@@ -91,11 +91,9 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 	switch s.sbType {
 	case smartblock.SmartBlockTypeChatDerivedObject:
 		st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
 	case smartblock.SmartBlockTypeAccountObject:
 		st.SetObjectTypeKey(bundle.TypeKeyProfile)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_profile)))
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_profile)))
 	default:
 		return nil, fmt.Errorf("unsupported smartblock type: %v", s.sbType)
