@@ -241,9 +241,9 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	if fileStatus, ok := st.Details().TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
 		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, domain.Int64(status))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, domain.Int64(syncError))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, domain.Int64(time.Now().Unix()))
+	st.SetDetail(bundle.RelationKeySyncStatus, domain.Int64(status))
+	st.SetDetail(bundle.RelationKeySyncError, domain.Int64(syncError))
+	st.SetDetail(bundle.RelationKeySyncDate, domain.Int64(time.Now().Unix()))
 
 	return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
@@ -39,9 +40,9 @@ func TestSmartBlock_Init(t *testing.T) {
 
 	require.NotNil(t, initCtx)
 	require.NotNil(t, initCtx.State)
-	links := initCtx.State.GetRelationLinks()
+	keys := initCtx.State.AllRelationKeys()
 	for _, key := range bundle.RequiredInternalRelations {
-		assert.Truef(t, links.Has(key.String()), "missing relation %s", key)
+		assert.Truef(t, slices.Contains(keys, key), "missing relation %s", key)
 	}
 	// then
 	assert.Equal(t, id, fx.RootId())

@@ -92,21 +92,21 @@ func (s *SpaceLocalInfo) SetReadLimit(limit uint32) *SpaceLocalInfo {
 }
 
 func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
-	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceId))
+	st.SetDetail(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceId))
 	if s.localStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceLocalStatus, domain.Int64(*s.localStatus))
+		st.SetDetail(bundle.RelationKeySpaceLocalStatus, domain.Int64(*s.localStatus))
 	}
 	if s.remoteStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceRemoteStatus, domain.Int64(*s.remoteStatus))
+		st.SetDetail(bundle.RelationKeySpaceRemoteStatus, domain.Int64(*s.remoteStatus))
 	}
 	if s.shareableStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceShareableStatus, domain.Int64(*s.shareableStatus))
+		st.SetDetail(bundle.RelationKeySpaceShareableStatus, domain.Int64(*s.shareableStatus))
 	}
 	if s.writeLimit != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyWritersLimit, domain.Int64(*s.writeLimit))
+		st.SetDetail(bundle.RelationKeyWritersLimit, domain.Int64(*s.writeLimit))
 	}
 	if s.readLimit != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyReadersLimit, domain.Int64(*s.readLimit))
+		st.SetDetail(bundle.RelationKeyReadersLimit, domain.Int64(*s.readLimit))
 	}
 	return s
 }

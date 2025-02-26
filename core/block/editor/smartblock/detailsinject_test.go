@@ -73,7 +73,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		require.NoError(t, err)
 
 		st := state.NewDoc("", nil).NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, domain.StringList(backLinks))
+		st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList(backLinks))
 
 		// when
 		fx.updateBackLinks(st)
@@ -218,9 +218,7 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, creator, s.LocalDetails().GetString(bundle.RelationKeyCreator))
-		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreator.String()))
 		assert.Equal(t, creationDate, s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
-		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreatedDate.String()))
 	})
 
 	t.Run("failure on retrieving creation info from source", func(t *testing.T) {
@@ -274,7 +272,6 @@ func TestInjectDerivedDetails(t *testing.T) {
 			"dataview": simple.New(&model.Block{Id: "dataview", Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{TargetObjectId: "some_set"}}}),
 			"link":     simple.New(&model.Block{Id: "link", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "some_obj"}}}),
 		}).NewState()
-		st.AddRelationLinks(&model.RelationLink{Key: bundle.RelationKeyAssignee.String(), Format: model.RelationFormat_object})
 		st.SetDetail(bundle.RelationKeyAssignee, domain.StringList([]string{"Kirill"}))
 
 		// when

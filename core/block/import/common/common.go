@@ -261,16 +261,13 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 }
 
 func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
-	rels := st.GetRelationLinks()
 	for k, v := range st.Details().Iterate() {
-		relLink := rels.Get(string(k))
-		if relLink == nil {
-			continue
-		}
-		if !isLinkToObject(relLink) {
-			continue
-		}
-		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {
+		// TODO: GO-4284 We can return object format check, if we somehow propagate objectStore here
+		// TODO: Anyway store will be useless in case of custom relations, as they are not imported to space yet
+		// if !isLinkToObject(relLink) {
+		// 	continue
+		// }
+		if k == bundle.RelationKeyFeaturedRelations {
 			// special cases
 			// featured relations have incorrect IDs
 			continue
@@ -296,7 +293,12 @@ func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domai
 		}
 		return
 	}
-	objectsIDs := v.StringList()
+
+	objectsIDs, ok := v.TryStringList()
+	if !ok {
+		// we can fail getting string list, because we did not check relation format
+		return
+	}
 	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew)
 	st.SetDetail(k, domain.StringList(objectsIDs))
 }

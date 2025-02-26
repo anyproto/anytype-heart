@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -75,7 +76,9 @@ func TestObjectCreator_Create(t *testing.T) {
 			participantId: testParticipant,
 		})
 
-		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), getter)
+		store := objectstore.NewStoreFixture(t)
+
+		service := New(detailsService, nil, store, nil, mockService, objectcreator.NewCreator(), getter)
 
 		// when
 		create, id, err := service.Create(dataObject, sn)
@@ -97,9 +100,6 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			"oldKey": domain.String("test"),
 		}))
-		doc.AddRelationLinks(&model.RelationLink{
-			Key: "oldKey",
-		})
 		// when
 		oc.updateKeys(doc, oldToNew)
 
@@ -142,9 +142,6 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			"key": domain.String("test"),
 		}))
-		doc.AddRelationLinks(&model.RelationLink{
-			Key: "key",
-		})
 		// when
 		oc.updateKeys(doc, oldToNew)
 
