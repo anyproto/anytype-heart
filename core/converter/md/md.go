@@ -69,7 +69,7 @@ func (h *MD) Convert(st *state.State, sbType model.SmartBlockType, filename stri
 }
 
 func (h *MD) convertToCSV(st *state.State, sbType model.SmartBlockType) []byte {
-	c := csv.NewCsv(h.fn)
+	c := csv.NewCsv(h.fn, h.store.SpaceIndex(st.SpaceID()))
 	c.SetKnownDocs(h.knownDocs)
 	return c.Convert(st, sbType, "")
 }
@@ -93,13 +93,12 @@ func (h *MD) writeRecordToCsvFile(st *state.State, filename string) error {
 	if err != nil {
 		return err
 	}
-	file, err := h.objectTypeFiles.GetFileOrCreate(details.GetString(bundle.RelationKeyName))
+	file, err := h.objectTypeFiles.GetFileOrCreate(details.GetString(bundle.RelationKeyName), h.store.SpaceIndex(st.SpaceID()))
 	if err != nil {
 		return err
 	}
 
-	file.WriteRecord(st, filename)
-	return nil
+	return file.WriteRecord(st, filename)
 }
 
 func (h *MD) getObjectTypeDetails(st *state.State) (*domain.Details, error) {

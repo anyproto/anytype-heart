@@ -358,23 +358,23 @@ func (e *exportContext) renameZipArchive(wr writer, succeed int) (string, int, e
 	return zipName, succeed, nil
 }
 
-func isAnyblockExport(format model.ExportFormat) bool {
-	return format == model.Export_Protobuf || format == model.Export_JSON
+func shouldExportRelationsAndType(format model.ExportFormat) bool {
+	return format == model.Export_Protobuf || format == model.Export_JSON || format == model.Export_Markdown
 }
 
 func (e *exportContext) docsForExport() (err error) {
-	isProtobuf := isAnyblockExport(e.format)
+	shouldExportRelationsAndType := shouldExportRelationsAndType(e.format)
 	if len(e.reqIds) == 0 {
-		return e.getExistedObjects(isProtobuf)
+		return e.getExistedObjects(shouldExportRelationsAndType)
 	}
 
 	if len(e.reqIds) > 0 {
-		return e.getObjectsByIDs(isProtobuf)
+		return e.getObjectsByIDs(shouldExportRelationsAndType)
 	}
 	return
 }
 
-func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
+func (e *exportContext) getObjectsByIDs(shouldExportRelationsAndType bool) error {
 	res, err := e.queryAndFilterObjectsByRelation(e.spaceId, e.reqIds, bundle.RelationKeyId)
 	if err != nil {
 		return err
@@ -383,10 +383,10 @@ func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
 		id := object.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: object.Details}
 	}
-	if isProtobuf {
-		return e.processProtobuf()
+	if shouldExportRelationsAndType {
+		return e.processAllObjects()
 	}
-	return e.processNotProtobuf()
+	return e.processDocuments()
 }
 
 func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds []string, relationKey domain.RelationKey) ([]database.Record, error) {
@@ -423,7 +423,7 @@ func (e *exportContext) queryObjectsByRelation(spaceId string, reqIds []string, 
 	})
 }
 
-func (e *exportContext) processNotProtobuf() error {
+func (e *exportContext) processDocuments() error {
 	ids := listObjectIds(e.docs)
 	if e.includeFiles {
 		fileObjectsIds, err := e.processFiles(ids)
@@ -440,7 +440,7 @@ func (e *exportContext) processNotProtobuf() error {
 	return nil
 }
 
-func (e *exportContext) processProtobuf() error {
+func (e *exportContext) processAllObjects() error {
 	if !e.includeNested {
 		err := e.addDependentObjectsFromDataview()
 		if err != nil {
@@ -859,7 +859,7 @@ func (e *exportContext) addNestedObjects(ids []string) error {
 	exportCtxChild.includeNested = false
 	exportCtxChild.docs = nestedDocs
 	exportCtxChild.isLinkProcess = true
-	err := exportCtxChild.processProtobuf()
+	err := exportCtxChild.processAllObjects()
 	if err != nil {
 		return err
 	}
@@ -945,7 +945,7 @@ func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 	return fileObjectsIds, nil
 }
 
-func (e *exportContext) getExistedObjects(isProtobuf bool) error {
+func (e *exportContext) getExistedObjects(shouldExportRelationsAndType bool) error {
 	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
 	res, err := spaceIndex.List(false)
 	if err != nil {
@@ -969,7 +969,7 @@ func (e *exportContext) getExistedObjects(isProtobuf bool) error {
 			log.With("objectId", info.Id).Errorf("failed to get smartblock type: %v", err)
 			continue
 		}
-		if !objectValid(sbType, info, e.includeArchive, isProtobuf) {
+		if !objectValid(sbType, info, e.includeArchive, shouldExportRelationsAndType) {
 			continue
 		}
 		e.docs[info.Id] = &Doc{Details: info.Details}

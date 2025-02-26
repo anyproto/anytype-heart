@@ -77,8 +77,8 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		)
-		c := NewMDConverter(s, nil)
-		res := c.Convert(nil, model.SmartBlockType_Page, "")
+		c := NewMDConverter(nil, nil)
+		res := c.Convert(s, model.SmartBlockType_Page, "")
 		exp := "# Header 1   \n## Header 2   \n --- \n### Header 3   \nUsual text   \n#### Header 4   \n"
 		assert.Equal(t, exp, string(res))
 	})
@@ -127,7 +127,7 @@ func TestMD_Convert(t *testing.T) {
 			},
 		})
 		c := NewMDConverter(nil, nil)
-		res := c.Convert(nil, model.SmartBlockType_Page, "")
+		res := c.Convert(s, model.SmartBlockType_Page, "")
 		exp := "***[some](http://golang.org)*** [t](http://golang.org) [e](http://golang.org)xt **wi~~th m~~**~~ar~~ks @mention   \n"
 		assert.Equal(t, exp, string(res))
 	})
@@ -144,7 +144,7 @@ func TestMD_Convert(t *testing.T) {
 			},
 		})
 		c := NewMDConverter(nil, nil)
-		res := c.Convert(nil, model.SmartBlockType_Page, "")
+		res := c.Convert(s, model.SmartBlockType_Page, "")
 		exp := "Test 😝   \n"
 		assert.Equal(t, exp, string(res))
 	})
@@ -166,7 +166,7 @@ func TestMD_Convert(t *testing.T) {
 			},
 		})
 		c := NewMDConverter(nil, nil)
-		res := c.Convert(nil, model.SmartBlockType_Page, "")
+		res := c.Convert(s, model.SmartBlockType_Page, "")
 		exp := "Test ⛰️   \n"
 		assert.Equal(t, exp, string(res))
 	})
