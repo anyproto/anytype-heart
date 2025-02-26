@@ -45,6 +45,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/reflection"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -408,14 +409,15 @@ func (sb *smartBlock) IsDeleted() bool {
 }
 
 func (sb *smartBlock) sendEvent(e *pb.Event) {
-	var count int
 	for _, s := range sb.sessions {
-		count += len(e.Messages)
 		sb.eventSender.SendToSession(s.ID(), e)
+		for _, msg := range e.Messages {
+			metrics.Service.SendSampled(&metrics.MsgEvent{
+				MessageName: reflection.GetMessageContent(msg.Value),
+				Count:       1,
+			})
+		}
 	}
-	metrics.Service.SendSampled(&metrics.MsgEvent{
-		Count: count,
-	})
 }
 
 func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {

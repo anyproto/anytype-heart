@@ -46,3 +46,15 @@ func GetChangeContent(val pb.IsChangeContentValue) (name string) {
 	}
 	return
 }
+
+func GetMessageContent(val pb.IsEventMessageValue) (name string) {
+	t := reflect.TypeOf(val)
+	if t != nil && t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t != nil {
+		name = t.Name()
+		name, _ = strings.CutPrefix(name, "EventMessageValueOf")
+	}
+	return
+}
