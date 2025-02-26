@@ -1,4 +1,4 @@
-PACK_SERVER_OS_ARCHS = windows-amd64 darwin-amd64 darwin-arm64 linux-amd64
+PACK_SERVER_OS_ARCHS = windows-amd64 darwin-amd64 darwin-arm64 linux-amd64 linux-arm64
 prepare-pack-server:
 	mkdir -p .release/
 
