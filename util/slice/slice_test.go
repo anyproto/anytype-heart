@@ -59,6 +59,13 @@ func Test_Remove(t *testing.T) {
 	assert.Equal(t, []string{"1", "2", "3"}, ids)
 }
 
+func Test_RemoveN(t *testing.T) {
+	var ids = []string{"1", "2", "3", "4", "1", "2", "0", "7"}
+	assert.Equal(t, []string{"2", "3", "4", "2", "0", "7"}, RemoveN(ids, "1"))
+	assert.Equal(t, []string{"3", "4", "0", "7"}, RemoveN(ids, "1", "2"))
+	assert.Equal(t, []string{"3", "0", "7"}, RemoveN(ids, "2", "4", "1"))
+}
+
 func TestHasPrefix(t *testing.T) {
 	assert.True(t, HasPrefix([]string{"1", "2"}, []string{"1", "2"}))
 	assert.True(t, HasPrefix([]string{"1", "2"}, []string{"1"}))
