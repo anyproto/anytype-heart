@@ -1015,7 +1015,7 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(nil, 0, "")), 0); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(0), bytes.NewReader(mw.Convert(nil, 0, "")), 0); err != nil {
 		return 0, err
 	}
 	err = nil
@@ -1038,12 +1038,14 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, c
 			st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
 		}
 		var filename string
+		layout, _ := st.Layout()
+		ext := conv.Ext(layout)
 		if e.format == model.Export_Markdown {
-			filename = makeMarkdownName(st, wr, docId, conv.Ext(), e.spaceId)
+			filename = makeMarkdownName(st, wr, docId, ext, e.spaceId)
 		} else if docId == b.Space().DerivedIDs().Home {
-			filename = "index" + conv.Ext()
+			filename = "index" + ext
 		} else {
-			filename = makeFileName(docId, e.spaceId, conv.Ext(), st, b.Type())
+			filename = makeFileName(docId, e.spaceId, ext, st, b.Type())
 		}
 		result := conv.Convert(st, b.Type().ToProto(), filename)
 		if len(result) == 0 {
@@ -1168,14 +1170,14 @@ func provideFileDirectory(blockType smartblock.SmartBlockType) string {
 	}
 }
 
-func objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
+func objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, includeArchived bool, shouldExportRelationsAndType bool) bool {
 	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && (!validTypeForNonProtobuf(sbType) || !validLayoutForNonProtobuf(info.Details)) {
+	if !shouldExportRelationsAndType && !validTypeForNonProtobuf(sbType) {
 		return false
 	}
-	if isProtobuf && !validType(sbType) {
+	if shouldExportRelationsAndType && !validType(sbType) {
 		return false
 	}
 	if strings.HasPrefix(info.Id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(info.Id, addr.BundledRelationURLPrefix) {
@@ -1249,11 +1251,6 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeRelationOption ||
 		sbType == smartblock.SmartBlockTypeFileObject ||
 		sbType == smartblock.SmartBlockTypeParticipant
-}
-
-func validLayoutForNonProtobuf(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_collection) &&
-		details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_set)
 }
 
 func cleanupFile(wr writer) {

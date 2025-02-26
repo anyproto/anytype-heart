@@ -15,7 +15,7 @@ func ExtractHeaders(spaceIndex spaceindex.Store, keys []string) ([]string, error
 	records, err := spaceIndex.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyUniqueKey,
+				RelationKey: bundle.RelationKeyRelationKey,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.StringList(keys),
 			},
@@ -34,8 +34,6 @@ func ExtractHeaders(spaceIndex spaceindex.Store, keys []string) ([]string, error
 	for i, key := range keys {
 		if name, exists := recordMap[key]; exists {
 			headersNames[i] = name
-		} else {
-			headersNames[i] = key
 		}
 	}
 

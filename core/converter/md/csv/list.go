@@ -5,8 +5,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/converter/common"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -18,16 +17,16 @@ type FileNamer interface {
 }
 
 type Csv struct {
-	knownDocs  map[string]*domain.Details
-	fn         FileNamer
-	spaceIndex spaceindex.Store
+	knownDocs map[string]*domain.Details
+	fn        FileNamer
+	store     objectstore.ObjectStore
 }
 
-func NewCsv(fn FileNamer, spaceIndex spaceindex.Store) *Csv {
-	return &Csv{fn: fn, spaceIndex: spaceIndex}
+func NewCsv(fn FileNamer, store objectstore.ObjectStore) *Csv {
+	return &Csv{fn: fn, store: store}
 }
 
-func (c *Csv) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
+func (c *Csv) Convert(st *state.State) []byte {
 	block := findDataviewBlock(st)
 	if block == nil {
 		return nil
@@ -36,17 +35,16 @@ func (c *Csv) Convert(st *state.State, sbType model.SmartBlockType, filename str
 	if len(dataview.Views) == 0 {
 		return nil
 	}
-	headers, headersName, err := c.extractHeaders(dataview)
+	headers, headersName, err := c.extractHeaders(dataview, st.SpaceID())
 	if err != nil {
 		log.Errorf("failed extracting headers for csv export: %v", err)
 		return nil
 	}
 	csvRows := [][]string{headersName}
-
 	objects := st.GetStoreSlice(template.CollectionStoreKey)
 	for _, object := range objects {
 		if objectDetail, ok := c.knownDocs[object]; ok {
-			csvRows = append(csvRows, c.getCSVRow(objectDetail, headers, filename))
+			csvRows = append(csvRows, c.getCSVRow(objectDetail, headers))
 		}
 	}
 	result, err := common.WriteCSV(csvRows)
@@ -57,27 +55,23 @@ func (c *Csv) Convert(st *state.State, sbType model.SmartBlockType, filename str
 	return result.Bytes()
 }
 
-func (c *Csv) getCSVRow(details *domain.Details, headers []string, filename string) []string {
+func (c *Csv) getCSVRow(details *domain.Details, headers []string) []string {
 	values := make([]string, len(headers))
 	for i, header := range headers {
-		if header == bundle.RelationKeySourceFilePath.URL() {
-			values[i] = filename
-			continue
-		}
 		relationKey := domain.RelationKey(header)
 		values[i] = common.GetValueAsString(details, nil, relationKey)
 	}
 	return values
 }
 
-func (c *Csv) extractHeaders(dataview *model.BlockContentDataview) ([]string, []string, error) {
-	headersKeys := []string{bundle.RelationKeySourceFilePath.String()}
+func (c *Csv) extractHeaders(dataview *model.BlockContentDataview, spaceId string) ([]string, []string, error) {
+	var headersKeys []string
 	for _, relation := range dataview.Views[0].Relations {
 		if relation.IsVisible {
 			headersKeys = append(headersKeys, relation.Key)
 		}
 	}
-	headersName, err := common.ExtractHeaders(c.spaceIndex, headersKeys)
+	headersName, err := common.ExtractHeaders(c.store.SpaceIndex(spaceId), headersKeys)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,16 +89,4 @@ func findDataviewBlock(st *state.State) *model.Block {
 
 func (c *Csv) SetKnownDocs(docs map[string]*domain.Details) {
 	c.knownDocs = docs
-}
-
-func (c *Csv) FileHashes() []string {
-	return nil
-}
-
-func (c *Csv) ImageHashes() []string {
-	return nil
-}
-
-func (c *Csv) Ext() string {
-	return ".csv"
 }

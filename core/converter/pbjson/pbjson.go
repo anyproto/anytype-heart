@@ -45,7 +45,7 @@ func (p *pbj) Convert(st *state.State, sbType model.SmartBlockType, filename str
 	return []byte(result)
 }
 
-func (p *pbj) Ext() string {
+func (p *pbj) Ext(model.ObjectTypeLayout) string {
 	return ".pb.json"
 }
 

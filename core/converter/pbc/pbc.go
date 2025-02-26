@@ -54,7 +54,7 @@ func (p *pbc) Convert(st *state.State, sbType model.SmartBlockType, filename str
 	return result
 }
 
-func (p *pbc) Ext() string {
+func (p *pbc) Ext(model.ObjectTypeLayout) string {
 	if p.isJSON {
 		return ".pb.json"
 	}

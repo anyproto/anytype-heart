@@ -14,7 +14,7 @@ type Converter interface {
 	SetKnownDocs(docs map[string]*domain.Details)
 	FileHashes() []string
 	ImageHashes() []string
-	Ext() string
+	Ext(layout model.ObjectTypeLayout) string
 }
 
 type FileWriter interface {

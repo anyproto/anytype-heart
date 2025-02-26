@@ -142,6 +142,6 @@ func (g *graphjson) Convert(st *state.State, sbType model.SmartBlockType, filena
 	return b
 }
 
-func (g *graphjson) Ext() string {
+func (g *graphjson) Ext(model.ObjectTypeLayout) string {
 	return ".json"
 }

@@ -1,4 +1,4 @@
-package objecttypecsv
+package csv
 
 import (
 	"io"
@@ -53,9 +53,11 @@ func (c ObjectTypeFiles) Flush(wr writer) error {
 }
 
 type objectType struct {
-	fileName   string
-	csvRows    [][]string
-	spaceIndex spaceindex.Store
+	fileName    string
+	csvRows     [][]string
+	headers     []string
+	headersName []string
+	spaceIndex  spaceindex.Store
 }
 
 func newObjectType(fileName string, spaceIndex spaceindex.Store) *objectType {
@@ -65,45 +67,41 @@ func newObjectType(fileName string, spaceIndex spaceindex.Store) *objectType {
 func (o *objectType) WriteRecord(state *state.State, filename string) error {
 	details := state.Details()
 	localDetails := state.LocalDetails()
-	var (
-		headers, headersName []string
-		err                  error
-	)
+	var err error
 	if len(o.csvRows) == 0 {
-		headers, headersName, err = o.collectHeaders(details, localDetails)
+		o.headers, o.headersName, err = o.collectHeaders(details, localDetails)
 		if err != nil {
 			return err
 		}
-		o.csvRows = append(o.csvRows, headersName)
+		o.csvRows = append(o.csvRows, o.headersName)
 	}
-	o.fillCSVRows(headers, filename, details, localDetails)
+	o.fillCSVRows(o.headers, filename, details, localDetails)
 	return nil
 }
 
 func (o *objectType) fillCSVRows(headers []string, filename string, details, localDetails *domain.Details) {
 	values := make([]string, 0, len(o.csvRows[0]))
 	for _, header := range headers {
-		if header == bundle.RelationKeySourceFilePath.URL() {
+		if header == bundle.RelationKeySourceFilePath.String() {
 			values = append(values, filename)
 			continue
 		}
 		relationKey := domain.RelationKey(header)
 		values = append(values, common.GetValueAsString(details, localDetails, relationKey))
 	}
-
 	o.csvRows = append(o.csvRows, values)
 }
 
 func (o *objectType) collectHeaders(details, localDetails *domain.Details) ([]string, []string, error) {
 	headersKeys := make([]string, 0, details.Len()+localDetails.Len()+1)
-	headersKeys = append(headersKeys, bundle.RelationKeySourceFilePath.URL())
+	headersKeys = append(headersKeys, bundle.RelationKeySourceFilePath.String())
 
 	for key, _ := range details.Iterate() {
-		headersKeys = append(headersKeys, key.URL())
+		headersKeys = append(headersKeys, key.String())
 	}
 
 	for key, _ := range localDetails.Iterate() {
-		headersKeys = append(headersKeys, key.URL())
+		headersKeys = append(headersKeys, key.String())
 	}
 
 	headersName, err := common.ExtractHeaders(o.spaceIndex, headersKeys)

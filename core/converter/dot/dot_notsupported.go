@@ -50,6 +50,6 @@ func (d *dot) Convert(st *state.State, sbType model.SmartBlockType, filename str
 	return nil
 }
 
-func (d *dot) Ext() string {
+func (d *dot) Ext(layout model.ObjectTypeLayout) string {
 	return ""
 }

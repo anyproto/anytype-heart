@@ -15,8 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/core/converter/csv"
-	"github.com/anyproto/anytype-heart/core/converter/md/objecttypecsv"
+	"github.com/anyproto/anytype-heart/core/converter/md/csv"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -33,7 +32,7 @@ type FileNamer interface {
 }
 
 func NewMDConverter(fn FileNamer, store objectstore.ObjectStore) converter.Converter {
-	return &MD{fn: fn, objectTypeFiles: objecttypecsv.ObjectTypeFiles{}, store: store}
+	return &MD{fn: fn, objectTypeFiles: csv.ObjectTypeFiles{}, store: store, listCsv: csv.NewCsv(fn, store)}
 }
 
 type MD struct {
@@ -47,35 +46,33 @@ type MD struct {
 	mw *marksWriter
 	fn FileNamer
 
-	objectTypeFiles objecttypecsv.ObjectTypeFiles
+	objectTypeFiles csv.ObjectTypeFiles
 	store           objectstore.ObjectStore
+	listCsv         *csv.Csv
 }
 
 func (h *MD) Convert(st *state.State, sbType model.SmartBlockType, filename string) (result []byte) {
-	layout := model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyResolvedLayout))
+	if st == nil {
+		return nil
+	}
+	h.s = st
+	layout, _ := h.s.Layout()
 
 	switch {
 	case layout == model.ObjectType_collection || layout == model.ObjectType_set:
-		result = h.convertToCSV(st, sbType)
+		result = h.listCsv.Convert(h.s)
 	case h.isDocumentLayout(layout):
-		result = h.convertToMarkdown(st)
+		result = h.convertToMarkdown()
 	}
 
-	if err := h.writeRecordToCsvFile(st, filename); err != nil {
+	if err := h.writeRecordToCsvFile(filename); err != nil {
 		log.Errorf("failed to write CSV with object type: %v", err)
 	}
 
 	return result
 }
 
-func (h *MD) convertToCSV(st *state.State, sbType model.SmartBlockType) []byte {
-	c := csv.NewCsv(h.fn, h.store.SpaceIndex(st.SpaceID()))
-	c.SetKnownDocs(h.knownDocs)
-	return c.Convert(st, sbType, "")
-}
-
-func (h *MD) convertToMarkdown(st *state.State) []byte {
-	h.s = st
+func (h *MD) convertToMarkdown() []byte {
 	root := h.s.Pick(h.s.RootId())
 
 	if root == nil || len(root.Model().ChildrenIds) == 0 {
@@ -88,17 +85,17 @@ func (h *MD) convertToMarkdown(st *state.State) []byte {
 	return buf.Bytes()
 }
 
-func (h *MD) writeRecordToCsvFile(st *state.State, filename string) error {
-	details, err := h.getObjectTypeDetails(st)
+func (h *MD) writeRecordToCsvFile(filename string) error {
+	details, err := h.getObjectTypeDetails(h.s)
 	if err != nil {
 		return err
 	}
-	file, err := h.objectTypeFiles.GetFileOrCreate(details.GetString(bundle.RelationKeyName), h.store.SpaceIndex(st.SpaceID()))
+	file, err := h.objectTypeFiles.GetFileOrCreate(details.GetString(bundle.RelationKeyName), h.store.SpaceIndex(h.s.SpaceID()))
 	if err != nil {
 		return err
 	}
 
-	return file.WriteRecord(st, filename)
+	return file.WriteRecord(h.s, filename)
 }
 
 func (h *MD) getObjectTypeDetails(st *state.State) (*domain.Details, error) {
@@ -138,7 +135,10 @@ func (h *MD) Export() (result string) {
 	return buf.String()
 }
 
-func (h *MD) Ext() string {
+func (h *MD) Ext(layout model.ObjectTypeLayout) string {
+	if layout == model.ObjectType_collection || layout == model.ObjectType_set {
+		return ".csv"
+	}
 	return ".md"
 }
 
@@ -461,6 +461,7 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 
 func (h *MD) SetKnownDocs(docs map[string]*domain.Details) {
 	h.knownDocs = docs
+	h.listCsv.SetKnownDocs(docs)
 }
 
 func (h *MD) Flush(wr converter.FileWriter) error {
@@ -494,7 +495,7 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 		title = docId
 	}
 
-	filename = h.fn.Get("", docId, title, h.Ext())
+	filename = h.fn.Get("", docId, title, h.Ext(model.ObjectTypeLayout(layout)))
 	return
 }
 

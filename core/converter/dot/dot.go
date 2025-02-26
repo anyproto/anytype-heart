@@ -187,7 +187,7 @@ func (d *dot) Convert(st *state.State, sbType model.SmartBlockType, filename str
 	return b
 }
 
-func (d *dot) Ext() string {
+func (d *dot) Ext(model.ObjectTypeLayout) string {
 	if d.exportFormat == graphviz.SVG {
 		return ".svg"
 	}
