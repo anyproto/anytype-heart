@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -31,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/reflection"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -376,6 +378,20 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
+	for _, change := range params.Changes {
+		name := reflection.GetChangeContent(change.Value)
+		if name == "" {
+			log.Errorf("can't detect change content for %s", change.Value)
+		} else {
+			ev := &metrics.ChangeEvent{
+				ChangeName: name,
+				SbType:     s.smartblockType.String(),
+				Count:      1,
+			}
+			metrics.Service.SendSampled(ev)
+		}
+	}
+
 	if params.Time.IsZero() {
 		params.Time = time.Now()
 	}

@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
+	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/require"
 )
 
-func testList(t *testing.T, store oldstorage.ListStorage, root *consensusproto.RawRecordWithId, head string) {
+func testList(t *testing.T, store liststorage.ListStorage, root *consensusproto.RawRecordWithId, head string) {
 	require.Equal(t, store.Id(), root.Id)
 
 	aclRoot, err := store.Root()
@@ -35,7 +35,7 @@ func TestListStorage(t *testing.T) {
 		return nil
 	})
 
-	var listStore oldstorage.ListStorage
+	var listStore liststorage.ListStorage
 	fx.db.View(func(txn *badger.Txn) (err error) {
 		listStore, err = newListStorage(spaceId, fx.db, txn)
 		require.NoError(t, err)

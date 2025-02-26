@@ -238,6 +238,10 @@ func (s *syncAclStub) HandleRequest(ctx context.Context, senderId string, reques
 	return
 }
 
+func (s *syncAclStub) SetHeadUpdater(updater headupdater.HeadUpdater) {
+	return
+}
+
 func (s *syncAclStub) SetAclUpdater(updater headupdater.AclUpdater) {
 	s.updater = updater
 	return

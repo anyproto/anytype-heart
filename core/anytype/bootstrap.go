@@ -108,12 +108,9 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
-	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
@@ -157,14 +154,8 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	totalSpent := time.Since(startTime)
 	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
 	stat := a.StartStat()
-	event := &metrics.AppStart{
-		TotalMs:   stat.SpentMsTotal,
-		PerCompMs: stat.SpentMsPerComp,
-		Extra:     map[string]interface{}{},
-	}
 
 	if v, ok := ctx.Value(metrics.CtxKeyRPC).(string); ok {
-		event.Request = v
 		l = l.With(zap.String("rpc", v))
 	}
 
@@ -181,19 +172,10 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 			for _, field := range c.GetLogFields() {
 				field.Key = comp.Name() + "_" + field.Key
 				l = l.With(field)
-				if field.String != "" {
-					event.Extra[field.Key] = field.String
-				} else {
-					event.Extra[field.Key] = field.Integer
-				}
-
 			}
 		}
 	})
 
-	if metrics.Enabled {
-		metrics.Service.Send(event)
-	}
 	if totalSpent > WarningAfter {
 		l.Warn("app started")
 	} else {
@@ -207,18 +189,6 @@ func appVersion(a *app.App, clientWithVersion string) string {
 	middleVersion := MiddlewareVersion()
 	anySyncVersion := a.AnySyncVersion()
 	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
-}
-
-func BootstrapMigration(a *app.App, components ...app.Component) {
-	for _, c := range components {
-		a.Register(c)
-	}
-	a.Register(migratorfinisher.New()).
-		Register(clientds.New()).
-		Register(oldstorage.New()).
-		Register(storage.New()).
-		Register(process.New()).
-		Register(migrator.New())
 }
 
 func Bootstrap(a *app.App, components ...app.Component) {
