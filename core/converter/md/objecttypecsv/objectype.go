@@ -1,8 +1,6 @@
 package objecttypecsv
 
 import (
-	"bytes"
-	"encoding/csv"
 	"io"
 	"path/filepath"
 	"time"
@@ -13,9 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/common"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -110,29 +106,9 @@ func (o *objectType) collectHeaders(details, localDetails *domain.Details) ([]st
 		headersKeys = append(headersKeys, key.URL())
 	}
 
-	records, err := o.spaceIndex.Query(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyUniqueKey,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.StringList(headersKeys),
-			},
-		},
-	})
+	headersName, err := common.ExtractHeaders(o.spaceIndex, headersKeys)
 	if err != nil {
 		return nil, nil, err
-	}
-	recordMap := make(map[string]string, len(records))
-	for _, record := range records {
-		recordMap[record.Details.GetString(bundle.RelationKeyRelationKey)] = record.Details.GetString(bundle.RelationKeyName)
-	}
-	headersName := make([]string, 0, len(headersKeys))
-	for _, key := range headersKeys {
-		if name, exists := recordMap[key]; exists {
-			headersName = append(headersName, name)
-		} else {
-			headersName = append(headersName, key)
-		}
 	}
 	return headersKeys, headersName, nil
 }
@@ -141,10 +117,7 @@ func (o *objectType) Flush(fn writer) error {
 	if len(o.csvRows) == 0 {
 		return nil
 	}
-	buffer := bytes.NewBuffer(nil)
-	csvWriter := csv.NewWriter(buffer)
-	defer csvWriter.Flush()
-	err := csvWriter.WriteAll(o.csvRows)
+	buffer, err := common.WriteCSV(o.csvRows)
 	if err != nil {
 		return err
 	}

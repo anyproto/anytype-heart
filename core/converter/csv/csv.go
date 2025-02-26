@@ -1,15 +1,11 @@
 package csv
 
 import (
-	"bytes"
-	"encoding/csv"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/converter/common"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -53,7 +49,12 @@ func (c *Csv) Convert(st *state.State, sbType model.SmartBlockType, filename str
 			csvRows = append(csvRows, c.getCSVRow(objectDetail, headers, filename))
 		}
 	}
-	return writeCSV(csvRows)
+	result, err := common.WriteCSV(csvRows)
+	if err != nil {
+		log.Errorf("failed writing csv: %v", err)
+		return nil
+	}
+	return result.Bytes()
 }
 
 func (c *Csv) getCSVRow(details *domain.Details, headers []string, filename string) []string {
@@ -76,29 +77,9 @@ func (c *Csv) extractHeaders(dataview *model.BlockContentDataview) ([]string, []
 			headersKeys = append(headersKeys, relation.Key)
 		}
 	}
-	records, err := c.spaceIndex.Query(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyRelationKey,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.StringList(headersKeys),
-			},
-		},
-	})
+	headersName, err := common.ExtractHeaders(c.spaceIndex, headersKeys)
 	if err != nil {
 		return nil, nil, err
-	}
-	recordMap := make(map[string]string, len(records))
-	for _, record := range records {
-		recordMap[record.Details.GetString(bundle.RelationKeyRelationKey)] = record.Details.GetString(bundle.RelationKeyName)
-	}
-	headersName := make([]string, 0, len(headersKeys))
-	for _, key := range headersKeys {
-		if name, exists := recordMap[key]; exists {
-			headersName = append(headersName, name)
-		} else {
-			headersName = append(headersName, key)
-		}
 	}
 	return headersKeys, headersName, nil
 }
@@ -110,19 +91,6 @@ func findDataviewBlock(st *state.State) *model.Block {
 		}
 	}
 	return nil
-}
-
-func writeCSV(csvRows [][]string) []byte {
-	buffer := bytes.NewBuffer(nil)
-	csvWriter := csv.NewWriter(buffer)
-
-	if err := csvWriter.WriteAll(csvRows); err != nil {
-		log.Errorf("failed to write CSV rows: %s", err.Error())
-		return nil
-	}
-
-	csvWriter.Flush()
-	return buffer.Bytes()
 }
 
 func (c *Csv) SetKnownDocs(docs map[string]*domain.Details) {
