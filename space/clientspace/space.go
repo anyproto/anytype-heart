@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
@@ -28,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 )
 
 type Space interface {
@@ -40,7 +40,7 @@ type Space interface {
 	DebugAllHeads() []headsync.TreeHeads
 	DeleteTree(ctx context.Context, id string) (err error)
 	StoredIds() []string
-	Storage() anystorage.ClientSpaceStorage
+	Storage() spacestorage.SpaceStorage
 
 	DerivedIDs() threads.DerivedSmartblockIds
 
@@ -124,16 +124,12 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 	if err != nil {
 		return nil, fmt.Errorf("derive object ids: %w", err)
 	}
-	isSpaceCreated, err := sp.Storage().IsSpaceCreated(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("is space created: %w", err)
-	}
-	if isSpaceCreated {
+	if deps.StorageService.IsSpaceCreated(deps.CommonSpace.Id()) {
 		err = sp.ObjectProvider.CreateMandatoryObjects(ctx, sp)
 		if err != nil {
 			return nil, fmt.Errorf("create mandatory objects: %w", err)
 		}
-		err = sp.Storage().UnmarkSpaceCreated(ctx)
+		err = deps.StorageService.UnmarkSpaceCreated(deps.CommonSpace.Id())
 		if err != nil {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
@@ -211,8 +207,8 @@ func (s *space) StoredIds() []string {
 	return s.common.StoredIds()
 }
 
-func (s *space) Storage() anystorage.ClientSpaceStorage {
-	return s.common.Storage().(anystorage.ClientSpaceStorage)
+func (s *space) Storage() spacestorage.SpaceStorage {
+	return s.common.Storage()
 }
 
 func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
@@ -309,7 +305,10 @@ func (s *space) TryLoadBundledObjects(ctx context.Context) (missingSourceIds []s
 	if err != nil {
 		return nil, err
 	}
-	storedIds := s.StoredIds()
+	storedIds, err := s.Storage().StoredIds()
+	if err != nil {
+		return nil, err
+	}
 
 	missingIds := bundledObjectIds.Filter(func(bo domain.BundledObjectId) bool {
 		return !slices.Contains(storedIds, bo.DerivedObjectId)
@@ -319,7 +318,11 @@ func (s *space) TryLoadBundledObjects(ctx context.Context) (missingSourceIds []s
 	s.LoadObjectsIgnoreErrs(ctx, missingIds.DerivedObjectIds())
 	// todo: make LoadObjectsIgnoreErrs return list of loaded ids
 
-	storedIds = s.StoredIds()
+	storedIds, err = s.Storage().StoredIds()
+	if err != nil {
+		return nil, err
+	}
+
 	missingIds = bundledObjectIds.Filter(func(bo domain.BundledObjectId) bool {
 		return !slices.Contains(storedIds, bo.DerivedObjectId)
 	})
@@ -345,10 +348,7 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 		return err
 	}
 
-	extractedProfileExists, err := s.Storage().HasTree(ctx, extractedProfileId)
-	if err != nil {
-		return err
-	}
+	extractedProfileExists, _ := s.Storage().HasTree(extractedProfileId)
 	if extractedProfileExists {
 		return nil
 	}

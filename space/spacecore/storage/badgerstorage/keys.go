@@ -60,10 +60,6 @@ func (t treeKeys) RawChangeKey(id string) []byte {
 	return treestorage.JoinStringsToBytes("space", t.spaceId, "t", t.id, id)
 }
 
-func (t treeKeys) RawChangesPrefix() []byte {
-	return treestorage.JoinStringsToBytes("space", t.spaceId, "t", t.id)
-}
-
 func (t treeKeys) RawChangePrefix() []byte {
 	return t.rawChangePrefix
 }

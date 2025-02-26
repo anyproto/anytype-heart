@@ -276,39 +276,6 @@ func (_c *MockStore_Id_Call) RunAndReturn(run func() string) *MockStore_Id_Call 
 	return _c
 }
 
-// MarkSeenHeads provides a mock function with given fields: heads
-func (_m *MockStore) MarkSeenHeads(heads []string) {
-	_m.Called(heads)
-}
-
-// MockStore_MarkSeenHeads_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkSeenHeads'
-type MockStore_MarkSeenHeads_Call struct {
-	*mock.Call
-}
-
-// MarkSeenHeads is a helper method to define mock.On call
-//   - heads []string
-func (_e *MockStore_Expecter) MarkSeenHeads(heads interface{}) *MockStore_MarkSeenHeads_Call {
-	return &MockStore_MarkSeenHeads_Call{Call: _e.mock.On("MarkSeenHeads", heads)}
-}
-
-func (_c *MockStore_MarkSeenHeads_Call) Run(run func(heads []string)) *MockStore_MarkSeenHeads_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string))
-	})
-	return _c
-}
-
-func (_c *MockStore_MarkSeenHeads_Call) Return() *MockStore_MarkSeenHeads_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockStore_MarkSeenHeads_Call) RunAndReturn(run func([]string)) *MockStore_MarkSeenHeads_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // PushChange provides a mock function with given fields: params
 func (_m *MockStore) PushChange(params source.PushChangeParams) (string, error) {
 	ret := _m.Called(params)

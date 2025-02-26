@@ -7,7 +7,6 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -25,7 +24,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 16
+	ForceObjectsReindexCounter int32 = 17
 
 	// ForceFilesReindexCounter reindex file objects
 	ForceFilesReindexCounter int32 = 12 //
@@ -52,7 +51,7 @@ const (
 )
 
 type allDeletedIdsProvider interface {
-	AllDeletedTreeIds(ctx context.Context) (ids []string, err error)
+	AllDeletedTreeIds() (ids []string, err error)
 }
 
 func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
@@ -248,7 +247,11 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 
 func (i *indexer) reindexDeletedObjects(space clientspace.Space) error {
 	store := i.store.SpaceIndex(space.Id())
-	allIds, err := space.Storage().AllDeletedTreeIds(i.runCtx)
+	storage, ok := space.Storage().(allDeletedIdsProvider)
+	if !ok {
+		return fmt.Errorf("space storage doesn't implement allDeletedIdsProvider")
+	}
+	allIds, err := storage.AllDeletedTreeIds()
 	if err != nil {
 		return fmt.Errorf("get deleted tree ids: %w", err)
 	}
@@ -266,10 +269,11 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 		return nil
 	}
 	store := i.store.SpaceIndex(spaceId)
+	// TODO: It seems we should also filter objects by Layout, because file objects should be re-indexed to receive resolvedLayout
 	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List([]model.ObjectTypeLayout{
 					model.ObjectType_file,
@@ -436,34 +440,35 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 
 func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
 	store := i.store.SpaceIndex(space.Id())
-	var entries []headstorage.HeadsEntry
-	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
-		// skipping Acl
-		if entry.CommonSnapshot != "" {
-			entries = append(entries, entry)
-		}
-		return true, nil
-	})
-	if err != nil {
-		return
-	}
+	tids := space.StoredIds()
 	var idsToReindex []string
-	for _, entry := range entries {
-		id := entry.Id
+	for _, tid := range tids {
 		logErr := func(err error) {
-			log.With("tree", entry.Id).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
+			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}
-		lastHash, err := store.GetLastIndexedHeadsHash(ctx, id)
+
+		lastHash, err := store.GetLastIndexedHeadsHash(ctx, tid)
 		if err != nil {
 			logErr(err)
 			continue
 		}
-		hh := headsHash(entry.Heads)
+		info, err := space.Storage().TreeStorage(tid)
+		if err != nil {
+			logErr(err)
+			continue
+		}
+		heads, err := info.Heads()
+		if err != nil {
+			logErr(err)
+			continue
+		}
+
+		hh := headsHash(heads)
 		if lastHash != hh {
 			if lastHash != "" {
-				log.With("tree", id).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(entry.Heads))
+				log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
 			}
-			idsToReindex = append(idsToReindex, id)
+			idsToReindex = append(idsToReindex, tid)
 		}
 	}
 

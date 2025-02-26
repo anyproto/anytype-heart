@@ -59,7 +59,8 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 		return nil
 	}
 
-	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout))
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	switch layout {
 	case model.ObjectType_relationOption:
 		relationKey = details.GetString(bundle.RelationKeyRelationKey)
@@ -79,7 +80,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyType.String(),
-			bundle.RelationKeyLayout.String(),
+			bundle.RelationKeyResolvedLayout.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 		})
 		metaInj := model.SearchMeta{

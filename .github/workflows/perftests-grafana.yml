@@ -10,7 +10,7 @@ on:
       perf-test:
         description: 'Run perf test times'
         required: true
-        default: '0'
+        default: '1'
   schedule:
     - cron: '0 0 * * *' # every day at midnight
       filters:
@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   perftests-grafana:
-    runs-on: ${{ github.event.inputs.run-on-runner }}
+    runs-on: ${{ github.event.inputs.run-on-runner || 'arm64' }}
     steps:
       - name: Install Go
         if: runner.name != 'mac-mini-org-heart'
@@ -110,11 +110,5 @@ jobs:
           path: |
             *.pprof
 
-      - name: end run perf tests
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          rm -rf *.pprof
-          echo "End running perf tests"
-          gh run cancel ${{ github.run_id }}
-          gh run watch ${{ github.run_id }}
+      - name: Clean perf tests results
+        run: rm -rf *.pprof
