@@ -63,9 +63,9 @@ func NewMultiConverter(
 	}
 }
 
-func (g *graphjson) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
+func (g *graphjson) SetKnownDocs(docs map[string]*domain.Details) {
 	g.knownDocs = docs
-	return g
+	return
 }
 
 func (g *graphjson) FileHashes() []string {
@@ -118,7 +118,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (g *graphjson) Convert(sbType model.SmartBlockType) []byte {
+func (g *graphjson) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
 	d := &Graph{
 		Nodes: make([]*Node, 0, len(g.nodes)),
 		Edges: make([]*Edge, 0, len(g.linksByNode)),

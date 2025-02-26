@@ -31,9 +31,7 @@ const (
 type dot struct {
 }
 
-func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
-	return d
-}
+func (d *dot) SetKnownDocs(docs map[string]*domain.Details) {}
 
 func (d *dot) FileHashes() []string {
 	return nil
@@ -47,7 +45,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(sbType model.SmartBlockType) []byte {
+func (d *dot) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
 	panic("not supported on windows")
 	return nil
 }

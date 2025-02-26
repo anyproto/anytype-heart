@@ -13,16 +13,15 @@ import (
 
 var log = logging.Logger("json-converter")
 
-func NewConverter(s state.Doc) converter.Converter {
-	return &pbj{s: s}
+func NewConverter() converter.Converter {
+	return &pbj{}
 }
 
 type pbj struct {
 	s state.Doc
 }
 
-func (p *pbj) Convert(sbType model.SmartBlockType) []byte {
-	st := p.s.NewState()
+func (p *pbj) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:        st.BlocksToSave(),
@@ -50,9 +49,7 @@ func (p *pbj) Ext() string {
 	return ".pb.json"
 }
 
-func (p *pbj) SetKnownDocs(map[string]*domain.Details) converter.Converter {
-	return p
-}
+func (p *pbj) SetKnownDocs(map[string]*domain.Details) {}
 
 func (p *pbj) FileHashes() []string {
 	return nil

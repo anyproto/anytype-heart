@@ -80,9 +80,9 @@ func NewMultiConverter(
 	}
 }
 
-func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
+func (d *dot) SetKnownDocs(docs map[string]*domain.Details) {
 	d.knownDocs = docs
-	return d
+	return
 }
 
 func (d *dot) FileHashes() []string {
@@ -151,7 +151,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(sbType model.SmartBlockType) []byte {
+func (d *dot) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
 	var err error
 	for id, links := range d.linksByNode {
 		source, exists := d.nodes[id]

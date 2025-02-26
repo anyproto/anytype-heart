@@ -275,29 +275,31 @@ func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue pro
 	} else if e.format == model.Export_GRAPH_JSON {
 		succeed = e.exportGraphJson(ctx, succeed, wr, queue)
 	} else {
-		tasks := make([]process.Task, 0, len(e.docs))
 		var succeedAsync int64
-		tasks = e.exportDocs(ctx, wr, &succeedAsync, tasks)
+		conv := e.getConverterByFormat(wr)
+		tasks := e.exportDocs(ctx, wr, &succeedAsync, conv)
 		err := queue.Wait(tasks...)
 		if err != nil {
 			cleanupFile(wr)
 			return 0, nil
+		}
+		if flusher, ok := conv.(converter.Flusher); ok {
+			err = flusher.Flush(wr)
+			if err != nil {
+				return 0, err
+			}
 		}
 		succeed += int(succeedAsync)
 	}
 	return succeed, nil
 }
 
-func (e *exportContext) exportDocs(ctx context.Context,
-	wr writer,
-	succeed *int64,
-	tasks []process.Task,
-) []process.Task {
-	docsDetails := e.docs.transformToDetailsMap()
+func (e *exportContext) exportDocs(ctx context.Context, wr writer, succeed *int64, conv converter.Converter) []process.Task {
+	tasks := make([]process.Task, 0, len(e.docs))
 	for docId := range e.docs {
 		did := docId
 		task := func() {
-			if werr := e.writeDoc(ctx, wr, did, docsDetails); werr != nil {
+			if werr := e.writeDoc(ctx, wr, did, conv); werr != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
 				atomic.AddInt64(succeed, 1)
@@ -306,6 +308,20 @@ func (e *exportContext) exportDocs(ctx context.Context,
 		tasks = append(tasks, task)
 	}
 	return tasks
+}
+
+func (e *exportContext) getConverterByFormat(wr writer) converter.Converter {
+	var conv converter.Converter
+	switch e.format {
+	case model.Export_Markdown:
+		conv = md.NewMDConverter(wr.Namer(), e.objectStore)
+	case model.Export_Protobuf:
+		conv = pbc.NewConverter(e.isJson)
+	case model.Export_JSON:
+		conv = pbjson.NewConverter()
+	}
+	conv.SetKnownDocs(e.docs.transformToDetailsMap())
+	return conv
 }
 
 func (e *exportContext) exportGraphJson(ctx context.Context, succeed int, wr writer, queue process.Queue) int {
@@ -999,14 +1015,14 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0)), 0); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(nil, 0, "")), 0); err != nil {
 		return 0, err
 	}
 	err = nil
 	return
 }
 
-func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, details map[string]*domain.Details) (err error) {
+func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, conv converter.Converter) (err error) {
 	return cache.Do(e.picker, docId, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
@@ -1020,23 +1036,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 				return fmt.Errorf("save file: %w", err)
 			}
 			st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
-			// Don't save file objects in markdown
-			if e.format == model.Export_Markdown {
-				return nil
-			}
 		}
-
-		var conv converter.Converter
-		switch e.format {
-		case model.Export_Markdown:
-			conv = md.NewMDConverter(st, wr.Namer())
-		case model.Export_Protobuf:
-			conv = pbc.NewConverter(st, e.isJson)
-		case model.Export_JSON:
-			conv = pbjson.NewConverter(st)
-		}
-		conv.SetKnownDocs(details)
-		result := conv.Convert(b.Type().ToProto())
 		var filename string
 		if e.format == model.Export_Markdown {
 			filename = makeMarkdownName(st, wr, docId, conv.Ext(), e.spaceId)
@@ -1044,6 +1044,10 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 			filename = "index" + conv.Ext()
 		} else {
 			filename = makeFileName(docId, e.spaceId, conv.Ext(), st, b.Type())
+		}
+		result := conv.Convert(st, b.Type().ToProto(), filename)
+		if len(result) == 0 {
+			return nil
 		}
 		lastModifiedDate := st.LocalDetails().GetInt64(bundle.RelationKeyLastModifiedDate)
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
@@ -1239,7 +1243,12 @@ func validType(sbType smartblock.SmartBlockType) bool {
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 	return sbType == smartblock.SmartBlockTypeProfilePage ||
 		sbType == smartblock.SmartBlockTypePage ||
-		sbType == smartblock.SmartBlockTypeFileObject
+		sbType == smartblock.SmartBlockTypeTemplate ||
+		sbType == smartblock.SmartBlockTypeObjectType ||
+		sbType == smartblock.SmartBlockTypeRelation ||
+		sbType == smartblock.SmartBlockTypeRelationOption ||
+		sbType == smartblock.SmartBlockTypeFileObject ||
+		sbType == smartblock.SmartBlockTypeParticipant
 }
 
 func validLayoutForNonProtobuf(details *domain.Details) bool {

@@ -15,8 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/converter/csv"
+	"github.com/anyproto/anytype-heart/core/converter/md/objecttypecsv"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -28,8 +32,8 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(s *state.State, fn FileNamer) converter.Converter {
-	return &MD{s: s, fn: fn}
+func NewMDConverter(fn FileNamer, store objectstore.ObjectStore) converter.Converter {
+	return &MD{fn: fn, objectTypeFiles: objecttypecsv.ObjectTypeFiles{}, store: store}
 }
 
 type MD struct {
@@ -42,21 +46,90 @@ type MD struct {
 
 	mw *marksWriter
 	fn FileNamer
+
+	objectTypeFiles objecttypecsv.ObjectTypeFiles
+	store           objectstore.ObjectStore
 }
 
-func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
-	if h.s.Pick(h.s.RootId()) == nil {
-		return
+func (h *MD) Convert(st *state.State, sbType model.SmartBlockType, filename string) (result []byte) {
+	layout := model.ObjectTypeLayout(st.Details().GetInt64(bundle.RelationKeyResolvedLayout))
+
+	switch {
+	case layout == model.ObjectType_collection || layout == model.ObjectType_set:
+		result = h.convertToCSV(st, sbType)
+	case h.isDocumentLayout(layout):
+		result = h.convertToMarkdown(st)
 	}
-	if len(h.s.Pick(h.s.RootId()).Model().ChildrenIds) == 0 {
-		return
+
+	if err := h.writeRecordToCsvFile(st, filename); err != nil {
+		log.Errorf("failed to write CSV with object type: %v", err)
 	}
-	buf := bytes.NewBuffer(nil)
-	in := new(renderState)
-	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
-	result = buf.Bytes()
-	buf.Reset()
-	return
+
+	return result
+}
+
+func (h *MD) convertToCSV(st *state.State, sbType model.SmartBlockType) []byte {
+	c := csv.NewCsv(h.fn)
+	c.SetKnownDocs(h.knownDocs)
+	return c.Convert(st, sbType, "")
+}
+
+func (h *MD) convertToMarkdown(st *state.State) []byte {
+	h.s = st
+	root := h.s.Pick(h.s.RootId())
+
+	if root == nil || len(root.Model().ChildrenIds) == 0 {
+		return nil
+	}
+
+	buf := new(bytes.Buffer)
+	h.renderChildren(buf, new(renderState), root.Model())
+
+	return buf.Bytes()
+}
+
+func (h *MD) writeRecordToCsvFile(st *state.State, filename string) error {
+	details, err := h.getObjectTypeDetails(st)
+	if err != nil {
+		return err
+	}
+	file, err := h.objectTypeFiles.GetFileOrCreate(details.GetString(bundle.RelationKeyName))
+	if err != nil {
+		return err
+	}
+
+	file.WriteRecord(st, filename)
+	return nil
+}
+
+func (h *MD) getObjectTypeDetails(st *state.State) (*domain.Details, error) {
+	spaceIndex := h.store.SpaceIndex(st.SpaceID())
+	records, err := spaceIndex.Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(st.ObjectTypeKey().URL()),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, fmt.Errorf("object type not found")
+	}
+	return records[0].Details, nil
+}
+
+func (h *MD) isDocumentLayout(layout model.ObjectTypeLayout) bool {
+	switch layout {
+	case model.ObjectType_basic, model.ObjectType_todo, model.ObjectType_bookmark,
+		model.ObjectType_note, model.ObjectType_profile:
+		return true
+	default:
+		return false
+	}
 }
 
 func (h *MD) Export() (result string) {
@@ -387,9 +460,12 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 	return h.mw.Init(text)
 }
 
-func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
+func (h *MD) SetKnownDocs(docs map[string]*domain.Details) {
 	h.knownDocs = docs
-	return h
+}
+
+func (h *MD) Flush(wr converter.FileWriter) error {
+	return h.objectTypeFiles.Flush(wr)
 }
 
 func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
