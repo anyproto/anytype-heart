@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -407,9 +408,14 @@ func (sb *smartBlock) IsDeleted() bool {
 }
 
 func (sb *smartBlock) sendEvent(e *pb.Event) {
+	var count int
 	for _, s := range sb.sessions {
+		count += len(e.Messages)
 		sb.eventSender.SendToSession(s.ID(), e)
 	}
+	metrics.Service.SendSampled(&metrics.MsgEvent{
+		Count: count,
+	})
 }
 
 func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {

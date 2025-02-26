@@ -11,6 +11,7 @@ import (
 const (
 	CtxKeyEntrypoint = "entrypoint"
 	CtxKeyRPC        = "rpc"
+	msgEvent         = "msg_event"
 )
 
 type ReindexType int
@@ -153,6 +154,31 @@ func (c *ChangeEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent 
 	event, properties := setupProperties(arena, "ChangeEvent")
 	properties.Set("changeName", arena.NewString(c.ChangeName))
 	properties.Set("sbType", arena.NewString(c.SbType))
+	properties.Set("count", arena.NewNumberInt(c.Count))
+	return event
+}
+
+type MsgEvent struct {
+	baseInfo
+	Count int
+}
+
+func (c *MsgEvent) Key() string {
+	return msgEvent
+}
+
+func (c *MsgEvent) Aggregate(other SamplableEvent) SamplableEvent {
+	o := other.(*MsgEvent)
+	c.Count += o.Count
+	return c
+}
+
+func (c *MsgEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
+}
+
+func (c *MsgEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
+	event, properties := setupProperties(arena, "MsgEvent")
 	properties.Set("count", arena.NewNumberInt(c.Count))
 	return event
 }
