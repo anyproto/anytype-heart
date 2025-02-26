@@ -19,7 +19,7 @@ type ObjectIDDeriver interface {
 }
 
 var (
-	DefaultFeaturedRelationKeys = []domain.RelationKey{
+	defaultFeaturedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyType,
 		bundle.RelationKeyTag,
 		bundle.RelationKeyBacklinks,
@@ -64,6 +64,10 @@ var (
 	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
 )
 
+func DefaultFeaturedRelationKeys() []domain.RelationKey {
+	return defaultFeaturedRelationKeys
+}
+
 // FillRecommendedRelations fills recommendedRelations, recommendedFeaturedRelations, recommendedFileRelations
 // and recommendedHiddenRelations based on object's details.
 // If these relations are already filled with correct ids, isAlreadyFilled = true is returned
@@ -99,7 +103,7 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	// exclude default recommended featured relations and default hidden relations
 	keys = lo.Uniq(append(keys, defaultRecommendedRelationKeys...))
 	keys = slices.DeleteFunc(keys, func(key domain.RelationKey) bool {
-		return slices.Contains(append(defaultHiddenRelationKeys, DefaultFeaturedRelationKeys...), key)
+		return slices.Contains(append(defaultHiddenRelationKeys, defaultFeaturedRelationKeys...), key)
 	})
 
 	relationIds, err := prepareRelationIds(ctx, deriver, keys)
@@ -108,7 +112,7 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedRelations, relationIds)
 
-	featuredRelationIds, err := prepareRelationIds(ctx, deriver, DefaultFeaturedRelationKeys)
+	featuredRelationIds, err := prepareRelationIds(ctx, deriver, defaultFeaturedRelationKeys)
 	if err != nil {
 		return nil, false, fmt.Errorf("prepare recommended featured relation ids: %w", err)
 	}
@@ -120,7 +124,7 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, hiddenRelationIds)
 
-	return slices.Concat(keys, fileRecommendedRelationKeys, defaultHiddenRelationKeys, DefaultFeaturedRelationKeys), false, nil
+	return slices.Concat(keys, fileRecommendedRelationKeys, defaultHiddenRelationKeys, defaultFeaturedRelationKeys), false, nil
 }
 
 func getRelationKeysFromDetails(details *domain.Details) ([]domain.RelationKey, error) {

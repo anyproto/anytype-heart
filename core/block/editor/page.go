@@ -308,8 +308,9 @@ func (p *Page) featuredRelationsMigration(s *state.State) {
 		return
 	}
 
-	featuredRelationIds := make([]string, len(relationutils.DefaultFeaturedRelationKeys))
-	for _, key := range relationutils.DefaultFeaturedRelationKeys {
+	featuredRelationKeys := relationutils.DefaultFeaturedRelationKeys()
+	featuredRelationIds := make([]string, 0, len(featuredRelationKeys))
+	for _, key := range featuredRelationKeys {
 		id, err := p.Space().DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
 		if err != nil {
 			log.Errorf("failed to derive object id: %v", err)
