@@ -24,7 +24,7 @@ func TestMigration_Run(t *testing.T) {
 			{
 				bundle.RelationKeySpaceId:        domain.String("space1"),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyIsHidden:       domain.Bool(true), // bundle = false
 				bundle.RelationKeyRevision:       domain.Int64(1),   // bundle = 3
@@ -38,8 +38,10 @@ func TestMigration_Run(t *testing.T) {
 
 		spc := mock_space.NewMockSpace(t)
 		spc.EXPECT().Id().Return("space1").Maybe()
-
 		spc.EXPECT().DoCtx(ctx, "id1", mock.Anything).Return(nil).Times(1)
+		spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 
 		// when
 		migrated, toMigrate, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), spc)
@@ -165,6 +167,9 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 
 		// when
 		toRevise, err := reviseObject(ctx, log, space, rel)
@@ -176,13 +181,16 @@ func TestReviseSystemObject(t *testing.T) {
 
 	t.Run("system relation is updated if no revision is set", func(t *testing.T) {
 		// given
-		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{ // done revision = 1
-			bundle.RelationKeySourceObject: domain.String("_brdone"),
-			bundle.RelationKeyUniqueKey:    domain.String("rel-done"),
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{ // relationMaxCount revision = 1
+			bundle.RelationKeySourceObject: domain.String("_brrelationMaxCount"),
+			bundle.RelationKeyUniqueKey:    domain.String("rel-relationMaxCount"),
 		})
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 
 		// when
 		toRevise, err := reviseObject(ctx, log, space, rel)
@@ -252,6 +260,9 @@ func TestReviseSystemObject(t *testing.T) {
 		space := mock_space.NewMockSpace(t)
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
 		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
 
 		// when
 		toRevise, err := reviseObject(ctx, log, space, rel)
@@ -304,5 +315,28 @@ func TestReviseSystemObject(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.False(t, toRevise)
+	})
+
+	t.Run("relationFormatObjectTypes list is updated", func(t *testing.T) {
+		// given
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRevision:                  domain.Int64(bundle.MustGetRelation(bundle.RelationKeyCreator).Revision - 1),
+			bundle.RelationKeySourceObject:              domain.String("_brcreator"),
+			bundle.RelationKeyUniqueKey:                 domain.String("rel-creator"),
+			bundle.RelationKeyRelationFormatObjectTypes: domain.StringList([]string{}),
+		})
+		space := mock_space.NewMockSpace(t)
+		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
+		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return addr.RelationKeyToIdPrefix + key.InternalKey(), nil
+		}).Maybe()
+
+		// when
+		toRevise, err := reviseObject(ctx, log, space, rel)
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, toRevise)
 	})
 }

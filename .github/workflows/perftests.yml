@@ -1,4 +1,7 @@
 #https://linear.app/anytype/issue/GO-3985/make-performance-report-on-the-stand
+name: Perf tests
+
+
 on:
   workflow_dispatch:
     inputs:
@@ -21,12 +24,12 @@ on:
           include:
             - 'main'
 
+
 permissions:
   actions: 'write'
   contents: 'write'
 
 
-name: Perf tests
 jobs:
   perftests-macos:
     timeout-minutes: 60

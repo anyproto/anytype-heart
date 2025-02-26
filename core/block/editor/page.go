@@ -32,8 +32,35 @@ var pageRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyFeaturedRelations,
 	bundle.RelationKeyLinks,
 	bundle.RelationKeyBacklinks,
+	bundle.RelationKeyMentions,
 	bundle.RelationKeyLayoutAlign,
 }
+
+var typeAndRelationRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeyUniqueKey,
+	bundle.RelationKeyIsReadonly,
+	bundle.RelationKeySourceObject,
+	bundle.RelationKeyLastUsedDate,
+	bundle.RelationKeyRevision,
+	bundle.RelationKeyIsHidden,
+}
+
+var typeRequiredRelations = append(typeAndRelationRequiredRelations,
+	bundle.RelationKeyRecommendedRelations,
+	bundle.RelationKeyRecommendedFeaturedRelations,
+	bundle.RelationKeyRecommendedHiddenRelations,
+	bundle.RelationKeyRecommendedFileRelations,
+	bundle.RelationKeyRecommendedLayout,
+	bundle.RelationKeySmartblockTypes,
+	bundle.RelationKeyIconOption,
+	bundle.RelationKeyIconName,
+)
+
+var relationRequiredRelations = append(typeAndRelationRequiredRelations,
+	bundle.RelationKeyRelationFormat,
+	bundle.RelationKeyRelationFormatObjectTypes,
+	bundle.RelationKeyRelationKey,
+)
 
 type Page struct {
 	smartblock.SmartBlock
@@ -85,7 +112,7 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
-	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, pageRequiredRelations...)
+	appendRequiredInternalRelations(ctx)
 	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypeKeys()) == 0) && ctx.IsNewObject {
 		ctx.ObjectTypeKeys = []domain.TypeKey{bundle.TypeKeyPage}
 	}
@@ -111,6 +138,19 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
+func appendRequiredInternalRelations(ctx *smartblock.InitContext) {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, pageRequiredRelations...)
+	if len(ctx.ObjectTypeKeys) != 1 {
+		return
+	}
+	switch ctx.ObjectTypeKeys[0] {
+	case bundle.TypeKeyObjectType:
+		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, typeRequiredRelations...)
+	case bundle.TypeKeyRelation:
+		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, relationRequiredRelations...)
+	}
+}
+
 func (p *Page) isRelationDeleted(ctx *smartblock.InitContext) bool {
 	return p.Type() == coresb.SmartBlockTypeRelation &&
 		ctx.State.Details().GetBool(bundle.RelationKeyIsUninstalled)
@@ -125,7 +165,7 @@ func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
 				Value:       domain.String(relationKey),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
@@ -173,8 +213,8 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 
 			templates := []template.StateTransformer{
 				template.WithEmpty,
-				template.WithObjectTypesAndLayout(ctx.State.ObjectTypeKeys(), layout),
-				template.WithLayout(layout),
+				template.WithObjectTypes(ctx.State.ObjectTypeKeys()),
+				template.WithResolvedLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,
 				template.WithLinkFieldsMigration,
@@ -205,27 +245,33 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				templates = append(templates,
 					template.WithTitle,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+					template.WithLayout(layout),
 				)
 			case model.ObjectType_objectType:
 				templates = append(templates,
 					template.WithTitle,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+					template.WithLayout(layout),
 				)
 			case model.ObjectType_chat:
 				templates = append(templates,
 					template.WithTitle,
 					template.WithBlockChat,
+					template.WithLayout(layout),
 				)
 			case model.ObjectType_chatDerived:
 				templates = append(templates,
 					template.WithTitle,
 					template.WithBlockChat,
+					template.WithLayout(layout),
 				)
 				// TODO case for relationOption?
 			case model.ObjectType_tag:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithNoDescription)
+					template.WithNoDescription,
+					template.WithLayout(layout),
+				)
 			default:
 				templates = append(templates,
 					template.WithTitle,

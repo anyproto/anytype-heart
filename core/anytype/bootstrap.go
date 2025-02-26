@@ -56,7 +56,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	templateservice "github.com/anyproto/anytype-heart/core/block/template"
+	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
@@ -154,14 +154,8 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	totalSpent := time.Since(startTime)
 	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
 	stat := a.StartStat()
-	event := &metrics.AppStart{
-		TotalMs:   stat.SpentMsTotal,
-		PerCompMs: stat.SpentMsPerComp,
-		Extra:     map[string]interface{}{},
-	}
 
 	if v, ok := ctx.Value(metrics.CtxKeyRPC).(string); ok {
-		event.Request = v
 		l = l.With(zap.String("rpc", v))
 	}
 
@@ -178,19 +172,10 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 			for _, field := range c.GetLogFields() {
 				field.Key = comp.Name() + "_" + field.Key
 				l = l.With(field)
-				if field.String != "" {
-					event.Extra[field.Key] = field.String
-				} else {
-					event.Extra[field.Key] = field.Integer
-				}
-
 			}
 		}
 	})
 
-	if metrics.Enabled {
-		metrics.Service.Send(event)
-	}
 	if totalSpent > WarningAfter {
 		l.Warn("app started")
 	} else {
@@ -310,7 +295,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(account.New()).
 		Register(profiler.New()).
 		Register(identity.New(30*time.Second, 10*time.Second)).
-		Register(templateservice.New()).
+		Register(templateimpl.New()).
 		Register(notifications.New(time.Second * 10)).
 		Register(paymentserviceclient.New()).
 		Register(nameservice.New()).

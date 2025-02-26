@@ -36,6 +36,8 @@ service ClientCommands {
     // Account
     // ***
     rpc AccountRecover (anytype.Rpc.Account.Recover.Request) returns (anytype.Rpc.Account.Recover.Response);
+    rpc AccountMigrate (anytype.Rpc.Account.Migrate.Request) returns (anytype.Rpc.Account.Migrate.Response);
+    rpc AccountMigrateCancel (anytype.Rpc.Account.MigrateCancel.Request) returns (anytype.Rpc.Account.MigrateCancel.Response);
     rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);
     rpc AccountDelete (anytype.Rpc.Account.Delete.Request) returns (anytype.Rpc.Account.Delete.Response);
     rpc AccountRevertDeletion (anytype.Rpc.Account.RevertDeletion.Request) returns (anytype.Rpc.Account.RevertDeletion.Response);
@@ -160,6 +162,9 @@ service ClientCommands {
     rpc ObjectCreateObjectType (anytype.Rpc.Object.CreateObjectType.Request) returns (anytype.Rpc.Object.CreateObjectType.Response);
     rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);
     rpc ObjectTypeRelationRemove (anytype.Rpc.ObjectType.Relation.Remove.Request) returns (anytype.Rpc.ObjectType.Relation.Remove.Response);
+    rpc ObjectTypeRecommendedRelationsSet (anytype.Rpc.ObjectType.Recommended.RelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.RelationsSet.Response);
+    rpc ObjectTypeRecommendedFeaturedRelationsSet (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response);
+    rpc ObjectTypeListConflictingRelations (anytype.Rpc.ObjectType.ListConflictingRelations.Request) returns (anytype.Rpc.ObjectType.ListConflictingRelations.Response);
 
     rpc HistoryShowVersion (anytype.Rpc.History.ShowVersion.Request) returns (anytype.Rpc.History.ShowVersion.Response);
     rpc HistoryGetVersions (anytype.Rpc.History.GetVersions.Request) returns (anytype.Rpc.History.GetVersions.Response);

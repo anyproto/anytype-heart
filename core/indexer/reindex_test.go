@@ -153,31 +153,31 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 
 	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:      domain.String("_part1"),
-			bundle.RelationKeyLayout:  domain.Int64(model.ObjectType_participant),
-			bundle.RelationKeySpaceId: domain.String(spaceId1),
+			bundle.RelationKeyId:             domain.String("_part1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId:        domain.String(spaceId1),
 		},
 		{
-			bundle.RelationKeyId:      domain.String("rand1"),
-			bundle.RelationKeyLayout:  domain.Int64(model.SmartBlockType_Page),
-			bundle.RelationKeySpaceId: domain.String(spaceId1),
+			bundle.RelationKeyId:             domain.String("rand1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.SmartBlockType_Page),
+			bundle.RelationKeySpaceId:        domain.String(spaceId1),
 		},
 	})
 	fx.objectStore.AddObjects(t, spaceId2, []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:      domain.String("_part2"),
-			bundle.RelationKeyLayout:  domain.Int64(model.ObjectType_participant),
-			bundle.RelationKeySpaceId: domain.String(spaceId2),
+			bundle.RelationKeyId:             domain.String("_part2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId:        domain.String(spaceId2),
 		},
 		{
-			bundle.RelationKeyId:      domain.String("_part21"),
-			bundle.RelationKeyLayout:  domain.Int64(model.ObjectType_participant),
-			bundle.RelationKeySpaceId: domain.String(spaceId2),
+			bundle.RelationKeyId:             domain.String("_part21"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId:        domain.String(spaceId2),
 		},
 		{
-			bundle.RelationKeyId:      domain.String("rand2"),
-			bundle.RelationKeyLayout:  domain.Int64(model.SmartBlockType_Page),
-			bundle.RelationKeySpaceId: domain.String(spaceId1),
+			bundle.RelationKeyId:             domain.String("rand2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.SmartBlockType_Page),
+			bundle.RelationKeySpaceId:        domain.String(spaceId1),
 		},
 	})
 

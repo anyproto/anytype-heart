@@ -24,7 +24,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 16
+	ForceObjectsReindexCounter int32 = 17
 
 	// ForceFilesReindexCounter reindex file objects
 	ForceFilesReindexCounter int32 = 12 //
@@ -269,10 +269,11 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 		return nil
 	}
 	store := i.store.SpaceIndex(spaceId)
+	// TODO: It seems we should also filter objects by Layout, because file objects should be re-indexed to receive resolvedLayout
 	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List([]model.ObjectTypeLayout{
 					model.ObjectType_file,
@@ -560,15 +561,6 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 		log.Error(msg)
 	} else {
 		log.Info(msg)
-	}
-
-	if metrics.Enabled {
-		metrics.Service.Send(&metrics.ReindexEvent{
-			ReindexType: reindexType,
-			Total:       totalIds,
-			Succeed:     succeedIds,
-			SpentMs:     int(spent.Milliseconds()),
-		})
 	}
 }
 

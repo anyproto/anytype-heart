@@ -48,6 +48,27 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 		},
 	}
 }
+func (mw *Middleware) AccountMigrate(_ context.Context, _ *pb.RpcAccountMigrateRequest) *pb.RpcAccountMigrateResponse {
+	// this is for clients API compatibility, because there is no migration in this branch
+	// todo: remove this
+	return &pb.RpcAccountMigrateResponse{
+		Error: &pb.RpcAccountMigrateResponseError{
+			Code:        0,
+			Description: "",
+		},
+	}
+}
+
+func (mw *Middleware) AccountMigrateCancel(_ context.Context, _ *pb.RpcAccountMigrateCancelRequest) *pb.RpcAccountMigrateCancelResponse {
+	// this is for clients API compatibility, because there is no migration in this branch
+	// todo: remove this
+	return &pb.RpcAccountMigrateCancelResponse{
+		Error: &pb.RpcAccountMigrateCancelResponseError{
+			Code:        0,
+			Description: "",
+		},
+	}
+}
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	account, err := mw.applicationService.AccountSelect(cctx, req)
