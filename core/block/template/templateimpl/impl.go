@@ -180,13 +180,14 @@ func extractTargetDetails(originDetails *domain.Details, templateDetails *domain
 		return targetDetails
 	}
 	for key, originalVal := range originDetails.Iterate() {
+		if key == bundle.RelationKeyLayout {
+			// layout detail should be removed, as resolvedLayout should be derived from template state
+			targetDetails.Delete(key)
+			continue
+		}
 		templateVal := templateDetails.Get(key)
 		if templateVal.Ok() {
 			inTemplateEmpty := templateVal.IsEmpty()
-			if key == bundle.RelationKeyLayout {
-				// layout = 0 is actually basic layout, so it counts
-				inTemplateEmpty = false
-			}
 			inOriginEmpty := originalVal.IsEmpty()
 			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, key)
 			if !inTemplateEmpty && (inOriginEmpty || templateValueShouldBePreferred) {
