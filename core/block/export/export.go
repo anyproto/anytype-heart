@@ -314,19 +314,17 @@ func (e *exportContext) getConverterByFormat(wr writer) converter.Converter {
 	var conv converter.Converter
 	switch e.format {
 	case model.Export_Markdown:
-		conv = md.NewMDConverter(wr.Namer(), e.objectStore)
+		conv = md.NewMDConverter(wr.Namer(), e.objectStore, e.docs.transformToDetailsMap())
 	case model.Export_Protobuf:
 		conv = pbc.NewConverter(e.isJson)
 	case model.Export_JSON:
 		conv = pbjson.NewConverter()
 	}
-	conv.SetKnownDocs(e.docs.transformToDetailsMap())
 	return conv
 }
 
 func (e *exportContext) exportGraphJson(ctx context.Context, succeed int, wr writer, queue process.Queue) int {
-	mc := graphjson.NewMultiConverter(e.sbtProvider)
-	mc.SetKnownDocs(e.docs.transformToDetailsMap())
+	mc := graphjson.NewMultiConverter(e.sbtProvider, e.docs.transformToDetailsMap())
 	var werr error
 	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, queue); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
@@ -339,8 +337,7 @@ func (e *exportContext) exportDotAndSVG(ctx context.Context, succeed int, wr wri
 	if e.format == model.Export_SVG {
 		format = dot.ExportFormatSVG
 	}
-	mc := dot.NewMultiConverter(format, e.sbtProvider)
-	mc.SetKnownDocs(e.docs.transformToDetailsMap())
+	mc := dot.NewMultiConverter(format, e.sbtProvider, e.docs.transformToDetailsMap())
 	var werr error
 	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, queue); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
@@ -1245,12 +1242,12 @@ func validType(sbType smartblock.SmartBlockType) bool {
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 	return sbType == smartblock.SmartBlockTypeProfilePage ||
 		sbType == smartblock.SmartBlockTypePage ||
-		sbType == smartblock.SmartBlockTypeTemplate ||
-		sbType == smartblock.SmartBlockTypeObjectType ||
-		sbType == smartblock.SmartBlockTypeRelation ||
-		sbType == smartblock.SmartBlockTypeRelationOption ||
-		sbType == smartblock.SmartBlockTypeFileObject ||
-		sbType == smartblock.SmartBlockTypeParticipant
+		sbType == smartblock.SmartBlockTypeFileObject
+}
+
+func validLayoutForNonProtobuf(details *domain.Details) bool {
+	return details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_collection) &&
+		details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_set)
 }
 
 func cleanupFile(wr writer) {

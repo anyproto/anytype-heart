@@ -3,7 +3,7 @@ package csv
 import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/converter/common"
+	"github.com/anyproto/anytype-heart/core/converter/md/csv/common"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -12,21 +12,16 @@ import (
 
 var log = logging.Logger("csv-export")
 
-type FileNamer interface {
-	Get(path, hash, title, ext string) (name string)
-}
-
-type Csv struct {
+type Converter struct {
 	knownDocs map[string]*domain.Details
-	fn        FileNamer
 	store     objectstore.ObjectStore
 }
 
-func NewCsv(fn FileNamer, store objectstore.ObjectStore) *Csv {
-	return &Csv{fn: fn, store: store}
+func NewConverter(store objectstore.ObjectStore, knownDocs map[string]*domain.Details) *Converter {
+	return &Converter{store: store, knownDocs: knownDocs}
 }
 
-func (c *Csv) Convert(st *state.State) []byte {
+func (c *Converter) Convert(st *state.State) []byte {
 	block := findDataviewBlock(st)
 	if block == nil {
 		return nil
@@ -55,7 +50,7 @@ func (c *Csv) Convert(st *state.State) []byte {
 	return result.Bytes()
 }
 
-func (c *Csv) getCSVRow(details *domain.Details, headers []string) []string {
+func (c *Converter) getCSVRow(details *domain.Details, headers []string) []string {
 	values := make([]string, len(headers))
 	for i, header := range headers {
 		relationKey := domain.RelationKey(header)
@@ -64,7 +59,7 @@ func (c *Csv) getCSVRow(details *domain.Details, headers []string) []string {
 	return values
 }
 
-func (c *Csv) extractHeaders(dataview *model.BlockContentDataview, spaceId string) ([]string, []string, error) {
+func (c *Converter) extractHeaders(dataview *model.BlockContentDataview, spaceId string) ([]string, []string, error) {
 	var headersKeys []string
 	for _, relation := range dataview.Views[0].Relations {
 		if relation.IsVisible {
@@ -85,8 +80,4 @@ func findDataviewBlock(st *state.State) *model.Block {
 		}
 	}
 	return nil
-}
-
-func (c *Csv) SetKnownDocs(docs map[string]*domain.Details) {
-	c.knownDocs = docs
 }

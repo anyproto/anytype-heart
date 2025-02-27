@@ -30,10 +30,10 @@ func ExtractHeaders(spaceIndex spaceindex.Store, keys []string) ([]string, error
 		recordMap[record.Details.GetString(bundle.RelationKeyRelationKey)] = record.Details.GetString(bundle.RelationKeyName)
 	}
 
-	headersNames := make([]string, len(keys))
-	for i, key := range keys {
+	headersNames := make([]string, 0, len(keys))
+	for _, key := range keys {
 		if name, exists := recordMap[key]; exists {
-			headersNames[i] = name
+			headersNames = append(headersNames, name)
 		}
 	}
 

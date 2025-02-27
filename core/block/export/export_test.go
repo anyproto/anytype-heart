@@ -834,9 +834,10 @@ func Test_docsForExport(t *testing.T) {
 
 		objectGetter := mock_cache.NewMockObjectGetterComponent(t)
 		smartBlockTest := smarttest.New("id")
+		objectTypeId := "objectTypeId"
 		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyId:   domain.String("id"),
-			bundle.RelationKeyType: domain.String("objectTypeId"),
+			bundle.RelationKeyType: domain.String(objectTypeId),
 		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
@@ -853,7 +854,7 @@ func Test_docsForExport(t *testing.T) {
 		linkObject := smarttest.New("id1")
 		linkObjectDoc := linkObject.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyId:   domain.String("id1"),
-			bundle.RelationKeyType: domain.String("objectTypeId"),
+			bundle.RelationKeyType: domain.String(objectTypeId),
 		}))
 		linkObjectDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
@@ -864,8 +865,24 @@ func Test_docsForExport(t *testing.T) {
 		})
 		linkObject.Doc = linkObjectDoc
 
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+		objectType.SetType(smartblock.SmartBlockTypeObjectType)
+
 		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
 		objectGetter.EXPECT().GetObject(context.Background(), "id1").Return(linkObject, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 
 		e := &export{
 			objectStore: storeFixture,
@@ -901,11 +918,13 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeySpaceId:   domain.String(spaceId),
 			},
 		})
+
+		objectTypeId := "objectTypeId"
 		objectGetter := mock_cache.NewMockObjectGetterComponent(t)
 		smartBlockTest := smarttest.New("id")
 		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyId:   domain.String("id"),
-			bundle.RelationKeyType: domain.String("objectTypeId"),
+			bundle.RelationKeyType: domain.String(objectTypeId),
 		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
@@ -919,7 +938,23 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.AddBlock(simple.New(&model.Block{Id: "id", ChildrenIds: []string{"linkBlock"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 		smartBlockTest.AddBlock(simple.New(&model.Block{Id: "linkBlock", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "id1"}}}))
 
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+		objectType.SetType(smartblock.SmartBlockTypeObjectType)
+
 		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 
 		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 		provider.EXPECT().Type(spaceId, "id1").Return(smartblock.SmartBlockTypePage, nil)
@@ -1807,8 +1842,23 @@ func Test_docsForExport(t *testing.T) {
 		})
 		smartBlockTest.Doc = doc
 
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+
 		objectGetter := mock_cache.NewMockObjectGetter(t)
 		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 
 		e := &export{
 			objectStore: storeFixture,
@@ -1828,7 +1878,7 @@ func Test_docsForExport(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 1, len(expCtx.docs))
+		assert.Equal(t, 2, len(expCtx.docs))
 	})
 
 	t.Run("get derived objects - relation, object type with recommended relations, template with link", func(t *testing.T) {

@@ -5,13 +5,11 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type Converter interface {
 	Convert(st *state.State, sbType model.SmartBlockType, filename string) (result []byte)
-	SetKnownDocs(docs map[string]*domain.Details)
 	FileHashes() []string
 	ImageHashes() []string
 	Ext(layout model.ObjectTypeLayout) string

@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/converter/common"
+	"github.com/anyproto/anytype-heart/core/converter/md/csv/common"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"

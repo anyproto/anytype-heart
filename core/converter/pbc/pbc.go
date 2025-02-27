@@ -61,8 +61,6 @@ func (p *pbc) Ext(model.ObjectTypeLayout) string {
 	return ".pb"
 }
 
-func (p *pbc) SetKnownDocs(map[string]*domain.Details) {}
-
 func (p *pbc) FileHashes() []string {
 	return nil
 }

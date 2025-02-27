@@ -55,10 +55,7 @@ type dot struct {
 	sbtProvider  typeprovider.SmartBlockTypeProvider
 }
 
-func NewMultiConverter(
-	format graphviz.Format,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) converter.MultiConverter {
+func NewMultiConverter(format graphviz.Format, sbtProvider typeprovider.SmartBlockTypeProvider, knownDocs map[string]*domain.Details) converter.MultiConverter {
 	ctx := context.Background()
 	g, err := graphviz.New(ctx)
 	if err != nil {
@@ -77,12 +74,8 @@ func NewMultiConverter(
 		linksByNode:  map[string][]linkInfo{},
 		nodes:        map[string]*cgraph.Node{},
 		sbtProvider:  sbtProvider,
+		knownDocs:    knownDocs,
 	}
-}
-
-func (d *dot) SetKnownDocs(docs map[string]*domain.Details) {
-	d.knownDocs = docs
-	return
 }
 
 func (d *dot) FileHashes() []string {

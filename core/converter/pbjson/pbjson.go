@@ -17,9 +17,7 @@ func NewConverter() converter.Converter {
 	return &pbj{}
 }
 
-type pbj struct {
-	s state.Doc
-}
+type pbj struct{}
 
 func (p *pbj) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
 	snapshot := &pb.ChangeSnapshot{
@@ -29,7 +27,7 @@ func (p *pbj) Convert(st *state.State, sbType model.SmartBlockType, filename str
 			ObjectTypes:   domain.MarshalTypeKeys(st.ObjectTypeKeys()),
 			Collections:   st.Store(),
 			RelationLinks: st.PickRelationLinks(),
-			Key:           p.s.UniqueKeyInternal(),
+			Key:           st.UniqueKeyInternal(),
 			FileInfo:      st.GetFileInfo().ToModel(),
 		},
 	}
@@ -48,8 +46,6 @@ func (p *pbj) Convert(st *state.State, sbType model.SmartBlockType, filename str
 func (p *pbj) Ext(model.ObjectTypeLayout) string {
 	return ".pb.json"
 }
-
-func (p *pbj) SetKnownDocs(map[string]*domain.Details) {}
 
 func (p *pbj) FileHashes() []string {
 	return nil

@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
-func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
+func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider, knownDocs map[string]*domain.Details) converter.MultiConverter {
 	return &dot{}
 }
 
@@ -30,8 +30,6 @@ const (
 
 type dot struct {
 }
-
-func (d *dot) SetKnownDocs(docs map[string]*domain.Details) {}
 
 func (d *dot) FileHashes() []string {
 	return nil

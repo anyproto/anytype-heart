@@ -31,8 +31,8 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(fn FileNamer, store objectstore.ObjectStore) converter.Converter {
-	return &MD{fn: fn, objectTypeFiles: csv.ObjectTypeFiles{}, store: store, listCsv: csv.NewCsv(fn, store)}
+func NewMDConverter(fn FileNamer, store objectstore.ObjectStore, knownDocs map[string]*domain.Details) converter.Converter {
+	return &MD{fn: fn, objectTypeFiles: csv.ObjectTypeFiles{}, store: store, listCsv: csv.NewConverter(store, knownDocs), knownDocs: knownDocs}
 }
 
 type MD struct {
@@ -48,7 +48,7 @@ type MD struct {
 
 	objectTypeFiles csv.ObjectTypeFiles
 	store           objectstore.ObjectStore
-	listCsv         *csv.Csv
+	listCsv         *csv.Converter
 }
 
 func (h *MD) Convert(st *state.State, sbType model.SmartBlockType, filename string) (result []byte) {
@@ -59,17 +59,21 @@ func (h *MD) Convert(st *state.State, sbType model.SmartBlockType, filename stri
 	layout, _ := h.s.Layout()
 
 	switch {
-	case layout == model.ObjectType_collection || layout == model.ObjectType_set:
-		result = h.listCsv.Convert(h.s)
+	case h.isListLayout(layout):
+		result = h.convertToCsv()
 	case h.isDocumentLayout(layout):
 		result = h.convertToMarkdown()
 	}
 
-	if err := h.writeRecordToCsvFile(filename); err != nil {
+	if err := h.writeRecordToObjectTypeCsvFile(filename); err != nil {
 		log.Errorf("failed to write CSV with object type: %v", err)
 	}
 
 	return result
+}
+
+func (h *MD) convertToCsv() []byte {
+	return h.listCsv.Convert(h.s)
 }
 
 func (h *MD) convertToMarkdown() []byte {
@@ -85,7 +89,7 @@ func (h *MD) convertToMarkdown() []byte {
 	return buf.Bytes()
 }
 
-func (h *MD) writeRecordToCsvFile(filename string) error {
+func (h *MD) writeRecordToObjectTypeCsvFile(filename string) error {
 	details, err := h.getObjectTypeDetails(h.s)
 	if err != nil {
 		return err
@@ -128,6 +132,10 @@ func (h *MD) isDocumentLayout(layout model.ObjectTypeLayout) bool {
 	}
 }
 
+func (h *MD) isListLayout(layout model.ObjectTypeLayout) bool {
+	return layout == model.ObjectType_collection || layout == model.ObjectType_set
+}
+
 func (h *MD) Export() (result string) {
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
@@ -136,7 +144,7 @@ func (h *MD) Export() (result string) {
 }
 
 func (h *MD) Ext(layout model.ObjectTypeLayout) string {
-	if layout == model.ObjectType_collection || layout == model.ObjectType_set {
+	if h.isListLayout(layout) {
 		return ".csv"
 	}
 	return ".md"
@@ -457,11 +465,6 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 		}
 	}
 	return h.mw.Init(text)
-}
-
-func (h *MD) SetKnownDocs(docs map[string]*domain.Details) {
-	h.knownDocs = docs
-	h.listCsv.SetKnownDocs(docs)
 }
 
 func (h *MD) Flush(wr converter.FileWriter) error {
