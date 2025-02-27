@@ -83,6 +83,12 @@ type accountObject struct {
 	crdtDb      anystore.DB
 }
 
+// required relations for spaceview beside the bundle.RequiredInternalRelations
+var accountRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeyProfileOwnerIdentity,
+	bundle.RelationKeySharedSpacesLimit,
+}
+
 func (a *accountObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	return a.bs.SetDetails(ctx, details, showEvent)
 }
@@ -111,6 +117,8 @@ func New(
 }
 
 func (a *accountObject) Init(ctx *smartblock.InitContext) error {
+	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, accountRequiredRelations...)
+
 	err := a.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -200,7 +208,7 @@ func (a *accountObject) initState(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeyProfile}),
-		template.WithForcedDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_profile)),
+		template.WithLayout(model.ObjectType_profile),
 		template.WithDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter)),
 	)
 	blockId := "identity"

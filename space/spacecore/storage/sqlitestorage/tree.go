@@ -1,19 +1,15 @@
 package sqlitestorage
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 )
 
-func newTreeStorage(ss *spaceStorage, treeId string) (oldstorage.TreeStorage, error) {
+func newTreeStorage(ss *spaceStorage, treeId string) (treestorage.TreeStorage, error) {
 	ts := &treeStorage{
 		treeId:       treeId,
 		spaceStorage: ss,
@@ -27,7 +23,7 @@ func newTreeStorage(ss *spaceStorage, treeId string) (oldstorage.TreeStorage, er
 	return ts, nil
 }
 
-func createTreeStorage(ss *spaceStorage, payload treestorage.TreeStorageCreatePayload) (ts oldstorage.TreeStorage, err error) {
+func createTreeStorage(ss *spaceStorage, payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
 	ts = &treeStorage{
 		treeId:       payload.RootRawChange.Id,
 		spaceStorage: ss,
@@ -103,54 +99,7 @@ func (t *treeStorage) Heads() ([]string, error) {
 }
 
 func (t *treeStorage) GetAllChangeIds() (chs []string, err error) {
-	rows, err := t.service.stmt.listChanges.Query(t.treeId)
-	if err != nil {
-		return nil, replaceNoRowsErr(err, nil)
-	}
-	for rows.Next() {
-		var id string
-		err = rows.Scan(&id)
-		if err != nil {
-			return nil, errors.Join(rows.Close(), err)
-		}
-		chs = append(chs, id)
-	}
-	return chs, rows.Close()
-}
-
-func (t *treeStorage) GetAllChanges() ([]*treechangeproto.RawTreeChangeWithId, error) {
-	var changes []*treechangeproto.RawTreeChangeWithId
-	err := t.IterateChanges(func(id string, rawChange []byte) error {
-		changes = append(changes, &treechangeproto.RawTreeChangeWithId{
-			Id:        id,
-			RawChange: bytes.Clone(rawChange),
-		})
-		return nil
-	})
-	return changes, err
-}
-
-func (t *treeStorage) IterateChanges(proc func(id string, rawChange []byte) error) error {
-	rows, err := t.service.stmt.iterateChanges.Query(t.treeId)
-	if err != nil {
-		return replaceNoRowsErr(err, nil)
-	}
-
-	buf := make([]byte, 0, 1024)
-	for rows.Next() {
-		var id string
-		err = rows.Scan(&id, &buf)
-		if err != nil {
-			return errors.Join(rows.Close(), err)
-		}
-
-		err = proc(id, buf)
-		if err != nil {
-			return errors.Join(rows.Close(), err)
-		}
-		buf = buf[:0]
-	}
-	return rows.Close()
+	return nil, fmt.Errorf("get all change ids should not be called")
 }
 
 func (t *treeStorage) SetHeads(heads []string) error {
@@ -205,14 +154,8 @@ func (t *treeStorage) AddRawChangesSetHeads(changes []*treechangeproto.RawTreeCh
 	return nil
 }
 
-var totalCalls atomic.Int32
-
 func (t *treeStorage) GetRawChange(ctx context.Context, id string) (*treechangeproto.RawTreeChangeWithId, error) {
 	ch, err := t.spaceStorage.TreeRoot(id)
-	// totalCalls.Store(totalCalls.Load() + 1)
-	// if totalCalls.Load()%10 == 0 {
-	// 	fmt.Println("totalCalls", totalCalls.Load())
-	// }
 	if err != nil {
 		return nil, replaceNoRowsErr(err, treestorage.ErrUnknownChange)
 	}

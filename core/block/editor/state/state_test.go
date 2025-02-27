@@ -2943,6 +2943,23 @@ func TestState_FileRelationKeys(t *testing.T) {
 		// then
 		assert.Len(t, keys, 0)
 	})
+	t.Run("unsplash cover", func(t *testing.T) {
+		// given
+		s := &State{
+			relationLinks: pbtypes.RelationLinks{
+				{Key: bundle.RelationKeyCoverId.String()},
+			},
+			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyCoverType: domain.Int64(5),
+			}),
+		}
+
+		// when
+		keys := s.FileRelationKeys()
+
+		// then
+		assert.Len(t, keys, 1)
+	})
 }
 
 func TestState_AddRelationLinks(t *testing.T) {
@@ -2986,10 +3003,10 @@ func TestFilter(t *testing.T) {
 			"2":    base.NewBase(&model.Block{Id: "2"}),
 		}).(*State)
 		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyCoverType: domain.Int64(1),
-			bundle.RelationKeyName:      domain.String("name"),
-			bundle.RelationKeyAssignee:  domain.String("assignee"),
-			bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_todo),
+			bundle.RelationKeyCoverType:      domain.Int64(1),
+			bundle.RelationKeyName:           domain.String("name"),
+			bundle.RelationKeyAssignee:       domain.String("assignee"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
 		st.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyCoverType.String(),
@@ -3004,7 +3021,7 @@ func TestFilter(t *testing.T) {
 				Format: model.RelationFormat_object,
 			},
 			&model.RelationLink{
-				Key:    bundle.RelationKeyLayout.String(),
+				Key:    bundle.RelationKeyResolvedLayout.String(),
 				Format: model.RelationFormat_number,
 			},
 		)
@@ -3023,10 +3040,10 @@ func TestFilter(t *testing.T) {
 			"2":    base.NewBase(&model.Block{Id: "2"}),
 		}).(*State)
 		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyCoverType: domain.Int64(1),
-			bundle.RelationKeyName:      domain.String("name"),
-			bundle.RelationKeyAssignee:  domain.String("assignee"),
-			bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_todo),
+			bundle.RelationKeyCoverType:      domain.Int64(1),
+			bundle.RelationKeyName:           domain.String("name"),
+			bundle.RelationKeyAssignee:       domain.String("assignee"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
 		st.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyCoverType.String(),
@@ -3041,7 +3058,7 @@ func TestFilter(t *testing.T) {
 				Format: model.RelationFormat_object,
 			},
 			&model.RelationLink{
-				Key:    bundle.RelationKeyLayout.String(),
+				Key:    bundle.RelationKeyResolvedLayout.String(),
 				Format: model.RelationFormat_number,
 			},
 		)
@@ -3064,10 +3081,10 @@ func TestFilter(t *testing.T) {
 			"2":    base.NewBase(&model.Block{Id: "2"}),
 		}).(*State)
 		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyCoverType: domain.Int64(1),
-			bundle.RelationKeyName:      domain.String("name"),
-			bundle.RelationKeyAssignee:  domain.String("assignee"),
-			bundle.RelationKeyLayout:    domain.Int64(model.ObjectType_todo),
+			bundle.RelationKeyCoverType:      domain.Int64(1),
+			bundle.RelationKeyName:           domain.String("name"),
+			bundle.RelationKeyAssignee:       domain.String("assignee"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
 		st.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyCoverType.String(),
@@ -3082,7 +3099,7 @@ func TestFilter(t *testing.T) {
 				Format: model.RelationFormat_object,
 			},
 			&model.RelationLink{
-				Key:    bundle.RelationKeyLayout.String(),
+				Key:    bundle.RelationKeyResolvedLayout.String(),
 				Format: model.RelationFormat_number,
 			},
 		)

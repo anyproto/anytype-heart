@@ -46,7 +46,6 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	p.DisableLayouts()
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	return p.updateObjects(smartblock.ApplyInfo{})
 
@@ -57,7 +56,8 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 		Version: 2,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
-				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
+				template.WithObjectTypes([]domain.TypeKey{bundle.TypeKeyDashboard}),
+				template.WithLayout(model.ObjectType_dashboard),
 				template.WithEmpty,
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),

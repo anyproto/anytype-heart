@@ -90,16 +90,12 @@ var WithRequiredRelations = func(s *state.State) {
 	WithRelations(bundle.RequiredInternalRelations)(s)
 }
 
-var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.ObjectTypeLayout) StateTransformer {
+var WithObjectTypes = func(otypes []domain.TypeKey) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypeKeys()) == 0 {
 			s.SetObjectTypeKeys(otypes)
 		} else {
 			otypes = s.ObjectTypeKeys()
-		}
-
-		if !s.Details().Has(bundle.RelationKeyLayout) {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(layout))
 		}
 	}
 }
@@ -232,7 +228,7 @@ var WithDefaultFeaturedRelations = func(s *state.State) {
 			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyBacklinks.String()}
 		case model.ObjectType_collection:
 			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyBacklinks.String()}
-		case model.ObjectType_file, model.ObjectType_image, model.ObjectType_audio, model.ObjectType_video:
+		case model.ObjectType_file, model.ObjectType_image, model.ObjectType_audio, model.ObjectType_video, model.ObjectType_pdf:
 			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyTag.String(), bundle.RelationKeyBacklinks.String()}
 			// Tag is not added to details of object explicitly as it is not system relation
 			s.SetDetail(bundle.RelationKeyTag, domain.StringList([]string{}))

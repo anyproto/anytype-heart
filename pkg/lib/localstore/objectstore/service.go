@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -53,7 +52,6 @@ type ObjectStore interface {
 	GetCrdtDb(spaceId string) anystore.DB
 
 	SpaceNameGetter
-	spaceresolverstore.Store
 	CrossSpace
 }
 
@@ -88,11 +86,9 @@ type TechSpaceIdProvider interface {
 }
 
 type dsObjectStore struct {
-	spaceresolverstore.Store
-
-	objectStorePath string
-	techSpaceId     string
-	anyStoreConfig  anystore.Config
+	repoPath       string
+	techSpaceId    string
+	anyStoreConfig anystore.Config
 
 	anyStore           anystore.DB
 	anyStoreLockRemove func() error
@@ -149,9 +145,6 @@ func New() ObjectStore {
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.sourceService = app.MustComponent[spaceindex.SourceDetailsFromID](a)
-
-	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
-
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
 		log.Warnf("init objectstore without fulltext")
@@ -159,10 +152,8 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
 	s.arenaPool = &anyenc.ArenaPool{}
-
-	cfg := app.MustComponent[configProvider](a)
-	s.objectStorePath = filepath.Join(repoPath, "objectstore")
-	s.anyStoreConfig = *cfg.GetAnyStoreConfig()
+	s.repoPath = app.MustComponent[wallet.Wallet](a).RepoPath()
+	s.anyStoreConfig = *app.MustComponent[configProvider](a).GetAnyStoreConfig()
 	s.setDefaultConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
@@ -177,23 +168,12 @@ func (s *dsObjectStore) Name() (name string) {
 func (s *dsObjectStore) Run(ctx context.Context) error {
 	s.techSpaceId = s.techSpaceIdProvider.TechSpaceId()
 
-	err := ensureDirExists(s.objectStorePath)
+	dbDir := s.storeRootDir()
+	err := ensureDirExists(dbDir)
 	if err != nil {
 		return err
 	}
-	err = s.openDatabase(ctx, filepath.Join(s.objectStorePath, "objects.db"))
-	if err != nil {
-		return fmt.Errorf("open db: %w", err)
-	}
-
-	store, err := spaceresolverstore.New(s.componentCtx, s.anyStore)
-	if err != nil {
-		return fmt.Errorf("new space resolver store: %w", err)
-	}
-
-	s.Store = store
-
-	return err
+	return s.openDatabase(ctx, filepath.Join(dbDir, "objects.db"))
 }
 
 func (s *dsObjectStore) setDefaultConfig() {
@@ -202,6 +182,10 @@ func (s *dsObjectStore) setDefaultConfig() {
 	}
 	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
+}
+
+func (s *dsObjectStore) storeRootDir() string {
+	return filepath.Join(s.repoPath, "objectstore")
 }
 
 func ensureDirExists(dir string) error {
@@ -254,7 +238,7 @@ func (s *dsObjectStore) preloadExistingObjectStores() error {
 	var err error
 	s.spaceStoreDirsCheck.Do(func() {
 		var entries []os.DirEntry
-		entries, err = os.ReadDir(s.objectStorePath)
+		entries, err = os.ReadDir(s.storeRootDir())
 		s.Lock()
 		defer s.Unlock()
 		for _, entry := range entries {
@@ -316,7 +300,7 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 	store, ok := s.spaceIndexes[spaceId]
 	if !ok {
-		dir := filepath.Join(s.objectStorePath, spaceId)
+		dir := filepath.Join(s.storeRootDir(), spaceId)
 		err := ensureDirExists(dir)
 		if err != nil {
 			return spaceindex.NewInvalidStore(err)
@@ -350,7 +334,7 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
 
 	db, ok := s.crdtDbs[spaceId]
 	if !ok {
-		dir := filepath.Join(s.objectStorePath, spaceId)
+		dir := filepath.Join(s.storeRootDir(), spaceId)
 		err := ensureDirExists(dir)
 		if err != nil {
 			return nil

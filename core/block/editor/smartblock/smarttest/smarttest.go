@@ -245,8 +245,12 @@ func (st *SmartTest) SetObjectTypes(objectTypes []domain.TypeKey) {
 	st.Doc.(*state.State).SetObjectTypeKeys(objectTypes)
 }
 
-func (st *SmartTest) DisableLayouts() {
+func (st *SmartTest) EnableLayouts() {
 	return
+}
+
+func (st *SmartTest) IsLayoutsEnabled() bool {
+	return false
 }
 
 func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {

@@ -9,19 +9,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/goccy/go-graphviz"
-	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/debug/exporter"
+	"github.com/anyproto/anytype-heart/core/debug/treearchive"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -45,20 +42,22 @@ func main() {
 		return
 	}
 	fmt.Println("opening file...")
-	var (
-		st  = time.Now()
-		ctx = context.Background()
-	)
-	res, err := exporter.ImportStorage(ctx, *file)
+	st := time.Now()
+	archive, err := treearchive.Open(*file)
 	if err != nil {
-		log.Fatal("can't import the tree:", err)
+		log.Fatal("can't open debug file:", err)
 	}
-	objectTree, err := res.CreateReadableTree(*fromRoot, "")
-	if err != nil {
-		log.Fatal("can't create readable tree:", err)
-	}
+	defer archive.Close()
 	fmt.Printf("open archive done in %.1fs\n", time.Since(st).Seconds())
-	importer := exporter.NewTreeImporter(objectTree)
+
+	importer := treearchive.NewTreeImporter(archive.ListStorage(), archive.TreeStorage())
+	st = time.Now()
+	err = importer.Import(*fromRoot, "")
+	if err != nil {
+		log.Fatal("can't import the tree", err)
+	}
+	fmt.Printf("import tree done in %.1fs\n", time.Since(st).Seconds())
+
 	if *makeJson {
 		treeJson, err := importer.Json()
 		if err != nil {
@@ -84,11 +83,10 @@ func main() {
 		}
 		fmt.Println("Change:")
 		fmt.Println(pbtypes.Sprint(ch.Model))
-		objectTree, err = res.CreateReadableTree(*fromRoot, ch.Id)
+		err = importer.Import(*fromRoot, ch.Id)
 		if err != nil {
-			log.Fatal("can't create readable tree:", err)
+			log.Fatal("can't import the tree before", ch.Id, err)
 		}
-		importer = exporter.NewTreeImporter(objectTree)
 	}
 	ot := importer.ObjectTree()
 	di, err := ot.Debug(state.ChangeParser{})
@@ -128,16 +126,12 @@ func main() {
 
 	if *objectStore {
 		fmt.Println("fetch object store info..")
-		f, err := os.Open(filepath.Join(res.FolderPath, "localstore.json"))
+		ls, err := archive.LocalStore()
 		if err != nil {
-			log.Fatal("can't open objectStore info:", err)
+			fmt.Println("can't open objectStore info:", err)
+		} else {
+			fmt.Println(pbtypes.Sprint(ls))
 		}
-		defer f.Close()
-		info := &model.ObjectInfo{}
-		if err = jsonpb.Unmarshal(f, info); err != nil {
-			log.Fatal("can't unmarshal objectStore info:", err)
-		}
-		fmt.Println(pbtypes.Sprint(info))
 	}
 
 	if *makeTree {

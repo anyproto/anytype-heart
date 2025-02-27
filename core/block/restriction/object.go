@@ -3,14 +3,12 @@ package restriction
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -25,7 +23,7 @@ var (
 		model.Restrictions_Duplicate,
 		model.Restrictions_Publish,
 	}
-	objRestrictEditPublishAndDuplicate = ObjectRestrictions{
+	objRestrictEditAndDuplicate = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
@@ -33,19 +31,32 @@ var (
 		model.Restrictions_Duplicate,
 		model.Restrictions_Publish,
 	}
-	objRestrictEditAndPublish = ObjectRestrictions{
+	objRestrictEdit = ObjectRestrictions{
+		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
+		model.Restrictions_Publish,
+	}
+	objRestrictEditAndTemplate = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 		model.Restrictions_Publish,
 	}
-	sysTypesRestrictions = ObjectRestrictions{
+	sysTypesRestrictionsEdit = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
 		model.Restrictions_Details,
+		model.Restrictions_Delete,
+		model.Restrictions_Publish,
+	}
+	sysTypesRestrictions = ObjectRestrictions{
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
+		model.Restrictions_Template,
 		model.Restrictions_Delete,
 		model.Restrictions_Publish,
 	}
@@ -64,11 +75,11 @@ var (
 		model.ObjectType_basic:      {},
 		model.ObjectType_profile:    {},
 		model.ObjectType_todo:       {},
-		model.ObjectType_set:        objRestrictEditAndPublish,
-		model.ObjectType_collection: objRestrictEditAndPublish,
-		model.ObjectType_objectType: objRestrictEditAndPublish,
-		model.ObjectType_relation:   objRestrictEditAndPublish,
-		model.ObjectType_file:       objRestrictEditPublishAndDuplicate,
+		model.ObjectType_set:        objRestrictEdit,
+		model.ObjectType_collection: objRestrictEdit,
+		model.ObjectType_objectType: objRestrictEditAndTemplate,
+		model.ObjectType_relation:   objRestrictEditAndTemplate,
+		model.ObjectType_file:       objRestrictEditAndDuplicate,
 		model.ObjectType_dashboard: {
 			model.Restrictions_Details,
 			model.Restrictions_Relations,
@@ -85,14 +96,14 @@ var (
 		},
 
 		model.ObjectType_bookmark:       {},
-		model.ObjectType_relationOption: objRestrictEditAndPublish,
+		model.ObjectType_relationOption: objRestrictEditAndTemplate,
 		model.ObjectType_relationOptionsList: {
 			model.Restrictions_Template,
 		},
 		model.ObjectType_participant: objRestrictAll,
-		model.ObjectType_chat:        objRestrictEditPublishAndDuplicate,
-		model.ObjectType_chatDerived: objRestrictEditPublishAndDuplicate,
-		model.ObjectType_tag:         objRestrictEditAndPublish,
+		model.ObjectType_chat:        objRestrictEditAndDuplicate,
+		model.ObjectType_chatDerived: objRestrictEditAndDuplicate,
+		model.ObjectType_tag:         objRestrictEditAndTemplate,
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
@@ -124,12 +135,12 @@ var (
 			model.Restrictions_Duplicate,
 			model.Restrictions_Publish,
 		},
-		smartblock.SmartBlockTypeFileObject:        objRestrictEditPublishAndDuplicate,
+		smartblock.SmartBlockTypeFileObject:        objRestrictEditAndDuplicate,
 		smartblock.SmartBlockTypeArchive:           objRestrictAll,
 		smartblock.SmartBlockTypeBundledRelation:   objRestrictAll,
-		smartblock.SmartBlockTypeSubObject:         objRestrictEditAndPublish,
-		smartblock.SmartBlockTypeObjectType:        objRestrictEditAndPublish,
-		smartblock.SmartBlockTypeRelation:          objRestrictEditAndPublish,
+		smartblock.SmartBlockTypeSubObject:         objRestrictEditAndTemplate,
+		smartblock.SmartBlockTypeObjectType:        objRestrictEditAndTemplate,
+		smartblock.SmartBlockTypeRelation:          objRestrictEditAndTemplate,
 		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
 		smartblock.SmartBlockTypeBundledTemplate:   objRestrictAll,
 		smartblock.SmartBlockTypeTemplate: {
@@ -153,10 +164,17 @@ var (
 			model.Restrictions_Template,
 		},
 		smartblock.SmartBlockTypeParticipant:       objRestrictAll,
-		smartblock.SmartBlockTypeChatObject:        objRestrictEditPublishAndDuplicate,
-		smartblock.SmartBlockTypeChatDerivedObject: objRestrictEditPublishAndDuplicate,
+		smartblock.SmartBlockTypeChatObject:        objRestrictEditAndDuplicate,
+		smartblock.SmartBlockTypeChatDerivedObject: objRestrictEditAndDuplicate,
 	}
 )
+
+var editableSystemTypes = []domain.TypeKey{
+	bundle.TypeKeyPage, bundle.TypeKeyTask, bundle.TypeKeyNote, // pages
+	bundle.TypeKeySet, bundle.TypeKeyCollection, // lists
+	bundle.TypeKeyFile, bundle.TypeKeyAudio, bundle.TypeKeyVideo, bundle.TypeKeyImage, // files
+	bundle.TypeKeyBookmark,
+}
 
 func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
 	restrictions := objectRestrictionsBySBType[sbType]
@@ -168,6 +186,16 @@ func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
 }
 
 type ObjectRestrictions []model.RestrictionsObjectRestriction
+
+func NewObjectRestrictionsFromValue(v domain.Value) ObjectRestrictions {
+	raw := v.Int64List()
+	restrictions := make(ObjectRestrictions, len(raw))
+	for i, restriction := range raw {
+		// nolint:gosec
+		restrictions[i] = model.RestrictionsObjectRestriction(restriction)
+	}
+	return restrictions
+}
 
 func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (err error) {
 	for _, r := range cr {
@@ -198,12 +226,12 @@ func (or ObjectRestrictions) Copy() ObjectRestrictions {
 	return obj
 }
 
-func (or ObjectRestrictions) ToPB() *types.Value {
-	var ints = make([]int, len(or))
+func (or ObjectRestrictions) ToValue() domain.Value {
+	var ints = make([]int64, len(or))
 	for i, v := range or {
-		ints[i] = int(v)
+		ints[i] = int64(v)
 	}
-	return pbtypes.IntList(ints...)
+	return domain.Int64List(ints)
 }
 
 func getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
@@ -231,7 +259,11 @@ func getRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
 		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
-			r = sysTypesRestrictions
+			if lo.Contains(editableSystemTypes, domain.TypeKey(key)) {
+				r = sysTypesRestrictions
+			} else {
+				r = sysTypesRestrictionsEdit
+			}
 		}
 		if t, _ := bundle.GetType(domain.TypeKey(key)); t != nil && t.RestrictObjectCreation {
 			r = append(r, model.Restrictions_CreateObjectOfThisType)

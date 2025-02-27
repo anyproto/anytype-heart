@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -82,7 +81,6 @@ func (t *textImpl) UpdateTextBlocks(ctx session.Context, ids []string, showEvent
 }
 
 func (t *textImpl) Split(ctx session.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
-	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
@@ -155,21 +153,13 @@ func (t *textImpl) Split(ctx session.Context, req pb.RpcBlockSplitRequest) (newI
 			return
 		}
 	}
-	algorithmMs := time.Now().Sub(startTime).Milliseconds()
 	if err = t.Apply(s); err != nil {
 		return
 	}
-	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
-	metrics.Service.Send(&metrics.BlockSplit{
-		ObjectId:    t.Id(),
-		AlgorithmMs: algorithmMs,
-		ApplyMs:     applyMs,
-	})
 	return
 }
 
 func (t *textImpl) Merge(ctx session.Context, firstId, secondId string) (err error) {
-	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 
 	// Don't merge blocks inside header block
@@ -196,16 +186,9 @@ func (t *textImpl) Merge(ctx session.Context, firstId, secondId string) (err err
 	}
 	s.Unlink(second.Model().Id)
 	first.Model().ChildrenIds = append(first.Model().ChildrenIds, second.Model().ChildrenIds...)
-	algorithmMs := time.Now().Sub(startTime).Milliseconds()
 	if err = t.Apply(s); err != nil {
 		return
 	}
-	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
-	metrics.Service.Send(&metrics.BlockMerge{
-		ObjectId:    t.Id(),
-		AlgorithmMs: algorithmMs,
-		ApplyMs:     applyMs,
-	})
 	return
 }
 

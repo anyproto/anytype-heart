@@ -198,7 +198,7 @@ func (pt *Task) prepareDetails() (*domain.Details, []*model.RelationLink) {
 	lastEditedTime := common.ConvertStringToTime(pt.p.LastEditedTime)
 	details.SetInt64(bundle.RelationKeyLastModifiedDate, lastEditedTime)
 	details.SetInt64(bundle.RelationKeyCreatedDate, createdTime)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_basic))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_basic))
 	return details, relationLinks
 }
 
