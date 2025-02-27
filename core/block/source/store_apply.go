@@ -20,7 +20,9 @@ type storeApply struct {
 }
 
 func (a *storeApply) Apply() error {
-	return a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
+	var lastErr error
+
+	err := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		// not a new change - remember and continue
 		if !a.allIsNew && !change.IsNew {
 			return true
@@ -28,21 +30,22 @@ func (a *storeApply) Apply() error {
 
 		var prevOrderId string
 		if a.needFetchPrevOrderId {
-			var err error
-			prevOrderId, err = a.tx.GetPrevOrderId(change.OrderId)
-			if err != nil {
-				log.With("error", err).Error("get prev order")
+			prevOrderId, lastErr = a.tx.GetPrevOrderId(change.OrderId)
+			if lastErr != nil {
+				log.With("error", lastErr).Error("get prev order")
 				return false
 			}
 		}
 
-		err := a.applyChange(prevOrderId, change)
-		if err != nil {
+		lastErr = a.applyChange(prevOrderId, change)
+		if lastErr != nil {
 			return false
 		}
 
 		return true
 	})
+
+	return errors.Join(err, lastErr)
 }
 
 func (a *storeApply) applyChange(prevOrderId string, change *objecttree.Change) (err error) {
