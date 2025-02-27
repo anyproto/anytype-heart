@@ -61,7 +61,7 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 	}
 
 	rootPath := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).RootPath()
-	lang := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetLang()
+	lang := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).Lang()
 	accountId := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
 	conf := s.app.MustComponent(config.CName).(*config.Config)
 
