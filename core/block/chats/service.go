@@ -26,7 +26,7 @@ import (
 
 const CName = "core.block.chats"
 
-var log = logging.Logger("core.block.chats").Desugar()
+var log = logging.Logger(CName).Desugar()
 
 type Service interface {
 	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error)
@@ -140,7 +140,7 @@ func (s *service) monitorChats() {
 			return
 		}
 		if err != nil {
-
+			log.Error("wait message", zap.Error(err))
 			return
 		}
 		matcher.Match(msg)
