@@ -157,13 +157,20 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		case smartblock.SmartBlockTypeBundledRelation:
 			return NewBundledRelation(id), nil
 		case smartblock.SmartBlockTypeParticipant:
+			spaceId, _, err := domain.ParseParticipantId(id)
+			if err != nil {
+				return nil, err
+			}
+			if spaceId != space.Id() {
+				return nil, fmt.Errorf("invalid space id for participant object")
+			}
 			participantState := state.NewDoc(id, nil).(*state.State)
 			// Set object type here in order to derive value of Type relation in smartblock.Init
 			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
 			params := StaticSourceParams{
 				Id: domain.FullID{
 					ObjectID: id,
-					SpaceID:  space.Id(),
+					SpaceID:  spaceId,
 				},
 				State:     participantState,
 				SbType:    smartblock.SmartBlockTypeParticipant,

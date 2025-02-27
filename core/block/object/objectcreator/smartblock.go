@@ -2,7 +2,6 @@ package objectcreator
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -12,11 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
@@ -61,7 +57,6 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
-	startTime := time.Now()
 	// priority:
 	// 1. details
 	// 2. createState
@@ -74,11 +69,6 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 
 	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(spc.Id()))
 
-	ev := &metrics.CreateObjectEvent{
-		SetDetailsMs: time.Since(startTime).Milliseconds(),
-	}
-
-	ctx = context.WithValue(ctx, eventCreate, ev)
 	initFunc := func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		return &smartblock.InitContext{
@@ -100,31 +90,7 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	sb.Unlock()
 	id = sb.Id()
 
-	s.updateLastUsedDate(spc.Id(), sbType, newDetails, objectTypeKeys[0])
-
-	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
-	ev.SmartblockType = int(sbType)
-	ev.ObjectId = id
-	metrics.Service.Send(ev)
 	return id, newDetails, nil
-}
-
-func (s *service) updateLastUsedDate(spaceId string, sbType coresb.SmartBlockType, details *domain.Details, typeKey domain.TypeKey) {
-	if details.GetInt64(bundle.RelationKeyLastUsedDate) != 0 {
-		return
-	}
-	uk := details.GetString(bundle.RelationKeyUniqueKey)
-	ts := time.Now().Unix()
-	switch sbType {
-	case coresb.SmartBlockTypeObjectType:
-		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.TypeKey(strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)), ts)
-	case coresb.SmartBlockTypeRelation:
-		s.lastUsedUpdater.UpdateLastUsedDate(spaceId, domain.RelationKey(strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)), ts)
-	default:
-		if details.GetInt64(bundle.RelationKeyOrigin) == int64(model.ObjectOrigin_none) {
-			s.lastUsedUpdater.UpdateLastUsedDate(spaceId, typeKey, ts)
-		}
-	}
 }
 
 func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlockType {

@@ -24,7 +24,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 16
+	ForceObjectsReindexCounter int32 = 17
 
 	// ForceFilesReindexCounter reindex file objects
 	ForceFilesReindexCounter int32 = 12 //
@@ -46,6 +46,8 @@ const (
 	ForceMarketplaceReindex int32 = 1
 
 	ForceReindexDeletedObjectsCounter int32 = 1
+
+	ForceReindexParticipantsCounter int32 = 1
 )
 
 type allDeletedIdsProvider interface {
@@ -72,6 +74,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			BundledObjects:        ForceBundledObjectsReindexCounter,
 			AreOldFilesRemoved:    true,
 			ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
+			ReindexParticipants:   ForceReindexParticipantsCounter,
 		}
 	}
 
@@ -105,6 +108,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.ReindexDeletedObjects != ForceReindexDeletedObjectsCounter {
 		flags.deletedObjects = true
+	}
+	if checksums.ReindexParticipants != ForceReindexParticipantsCounter {
+		flags.removeParticipants = true
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
 		flags.eraseLinks = true
@@ -201,6 +207,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
+	if flags.removeParticipants {
+		err = i.RemoveAclIndexes(space.Id())
+		if err != nil {
+			log.Error("reindex deleted objects", zap.Error(err))
+		}
+	}
+
 	go i.addSyncDetails(space)
 
 	return i.saveLatestChecksums(space.Id())
@@ -256,16 +269,18 @@ func (i *indexer) removeOldFiles(spaceId string, flags reindexFlags) error {
 		return nil
 	}
 	store := i.store.SpaceIndex(spaceId)
+	// TODO: It seems we should also filter objects by Layout, because file objects should be re-indexed to receive resolvedLayout
 	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List([]model.ObjectTypeLayout{
 					model.ObjectType_file,
 					model.ObjectType_image,
 					model.ObjectType_video,
 					model.ObjectType_audio,
+					model.ObjectType_pdf,
 				}),
 			},
 			{
@@ -498,6 +513,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		AreDeletedObjectsReindexed:       true,
 		LinksErase:                       ForceLinksReindexCounter,
 		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
+		ReindexParticipants:              ForceReindexParticipantsCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
@@ -545,15 +561,6 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 		log.Error(msg)
 	} else {
 		log.Info(msg)
-	}
-
-	if metrics.Enabled {
-		metrics.Service.Send(&metrics.ReindexEvent{
-			ReindexType: reindexType,
-			Total:       totalIds,
-			Succeed:     succeedIds,
-			SpentMs:     int(spent.Milliseconds()),
-		})
 	}
 }
 

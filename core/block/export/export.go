@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -162,6 +163,7 @@ type exportContext struct {
 	path             string
 	linkStateFilters *state.Filters
 	isLinkProcess    bool
+	includeBackLinks bool
 	relations        map[string]struct{}
 	setOfList        map[string]struct{}
 	objectTypes      map[string]struct{}
@@ -182,7 +184,7 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		reqIds:           req.ObjectIds,
 		zip:              req.Zip,
 		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
-		relations:        make(map[string]struct{}),
+		includeBackLinks: req.IncludeBacklinks,
 		setOfList:        make(map[string]struct{}),
 		objectTypes:      make(map[string]struct{}),
 
@@ -204,6 +206,7 @@ func (e *exportContext) copy() *exportContext {
 		export:           e.export,
 		isLinkProcess:    e.isLinkProcess,
 		linkStateFilters: e.linkStateFilters,
+		includeBackLinks: e.includeBackLinks,
 		relations:        e.relations,
 		setOfList:        e.setOfList,
 		objectTypes:      e.objectTypes,
@@ -611,8 +614,8 @@ func getObjectRelations(state *state.State) []string {
 }
 
 func isObjectWithDataview(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_collection) ||
-		details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_set)
+	return details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_collection) ||
+		details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_set)
 }
 
 func getDataviewRelations(state *state.State) ([]string, error) {
@@ -765,7 +768,7 @@ func (e *exportContext) getRelationOptions(relationKey string) ([]database.Recor
 	relationOptionsDetails, err := e.objectStore.SpaceIndex(e.spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
@@ -819,7 +822,12 @@ func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []d
 			if bundle.IsInternalType(key) {
 				continue
 			}
-			recommendedRelations = append(recommendedRelations, objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+			recommendedRelations = lo.Uniq(slices.Concat(recommendedRelations,
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedFileRelations),
+			))
 		}
 	}
 	return recommendedRelations, nil
@@ -882,6 +890,8 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 			Details:                  true,
 			Collection:               true,
 			NoHiddenBundledRelations: true,
+			NoBackLinks:              !e.includeBackLinks,
+			CreatorModifierWorkspace: true,
 		})
 		return nil
 	})
@@ -1259,8 +1269,8 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 }
 
 func validLayoutForNonProtobuf(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyLayout) != int64(model.ObjectType_collection) &&
-		details.GetInt64(bundle.RelationKeyLayout) != int64(model.ObjectType_set)
+	return details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_collection) &&
+		details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_set)
 }
 
 func cleanupFile(wr writer) {

@@ -118,7 +118,7 @@ const docTemplate = `{
             }
         },
         "/search": {
-            "get": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -131,46 +131,35 @@ const docTemplate = `{
                 "summary": "Search objects across all spaces",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Search query",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "description": "Types to filter objects by",
-                        "name": "types",
-                        "in": "query"
-                    },
-                    {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "description": "Search parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/search.SearchRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "List of objects",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/definitions/object.Object"
-                                }
-                            }
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Object"
                         }
                     },
                     "401": {
@@ -203,11 +192,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -249,12 +240,12 @@ const docTemplate = `{
                 "summary": "Create space",
                 "parameters": [
                     {
-                        "description": "Space Name",
+                        "description": "Space to create",
                         "name": "name",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/space.CreateSpaceRequest"
                         }
                     }
                 ],
@@ -308,11 +299,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -364,11 +357,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -598,6 +593,10 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "enum": [
+                            "markdown",
+                            "protobuf"
+                        ],
                         "type": "string",
                         "description": "Export format",
                         "name": "format",
@@ -633,6 +632,73 @@ const docTemplate = `{
                 }
             }
         },
+        "/spaces/{space_id}/search": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "search"
+                ],
+                "summary": "Search objects within a space",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "The number of items to skip before starting to collect the result set",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 1000,
+                        "type": "integer",
+                        "default": 100,
+                        "description": "The number of items to return",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "description": "Search parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/search.SearchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of objects",
+                        "schema": {
+                            "$ref": "#/definitions/pagination.PaginatedResponse-object_Object"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/spaces/{space_id}/types": {
             "get": {
                 "consumes": [
@@ -642,7 +708,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "objects"
+                    "types"
                 ],
                 "summary": "List types",
                 "parameters": [
@@ -655,11 +721,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -689,6 +757,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/spaces/{space_id}/types/{type_id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "types"
+                ],
+                "summary": "Get type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type ID",
+                        "name": "type_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The requested type",
+                        "schema": {
+                            "$ref": "#/definitions/object.TypeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "schema": {
+                            "$ref": "#/definitions/util.NotFoundError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
+        },
         "/spaces/{space_id}/types/{type_id}/templates": {
             "get": {
                 "consumes": [
@@ -698,7 +822,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "objects"
+                    "types"
                 ],
                 "summary": "List templates",
                 "parameters": [
@@ -718,11 +842,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "default": 0,
                         "description": "The number of items to skip before starting to collect the result set",
                         "name": "offset",
                         "in": "query"
                     },
                     {
+                        "maximum": 1000,
                         "type": "integer",
                         "default": 100,
                         "description": "The number of items to return",
@@ -751,6 +877,69 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/spaces/{space_id}/types/{type_id}/templates/{template_id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "types"
+                ],
+                "summary": "Get template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Space ID",
+                        "name": "space_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type ID",
+                        "name": "type_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The requested template",
+                        "schema": {
+                            "$ref": "#/definitions/object.TemplateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.UnauthorizedError"
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "schema": {
+                            "$ref": "#/definitions/util.NotFoundError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ServerError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -768,11 +957,11 @@ const docTemplate = `{
             "properties": {
                 "app_key": {
                     "type": "string",
-                    "example": ""
+                    "example": "zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6="
                 },
                 "session_token": {
                     "type": "string",
-                    "example": ""
+                    "example": "eyJhbGciOeJIRzI1NiIsInR5cCI6IkpXVCJ1.eyJzZWVkIjaiY0dmVndlUnAifQ.Y1EZecYnwmvMkrXKOa2XJnAbaRt34urBabe06tmDQII"
                 }
             }
         },
@@ -780,7 +969,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "path": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "/path/to/export"
                 }
             }
         },
@@ -789,28 +979,44 @@ const docTemplate = `{
             "properties": {
                 "align": {
                     "type": "string",
+                    "enum": [
+                        "AlignLeft",
+                        "AlignCenter",
+                        "AlignRight",
+                        "AlignJustify"
+                    ],
                     "example": "AlignLeft"
                 },
                 "background_color": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "red"
                 },
                 "children_ids": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "['6797ce8ecda913cde14b02dc']"
+                    ]
                 },
                 "file": {
                     "$ref": "#/definitions/object.File"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "64394517de52ad5acb89c66c"
                 },
                 "text": {
                     "$ref": "#/definitions/object.Text"
                 },
                 "vertical_align": {
                     "type": "string",
+                    "enum": [
+                        "VerticalAlignTop",
+                        "VerticalAlignMiddle",
+                        "VerticalAlignBottom"
+                    ],
                     "example": "VerticalAlignTop"
                 }
             }
@@ -819,25 +1025,32 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "body": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Body"
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Description"
                 },
                 "icon": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "📄"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Object Name"
                 },
                 "object_type_unique_key": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "ot-page"
                 },
                 "source": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "https://source.com"
                 },
                 "template_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"
                 }
             }
         },
@@ -849,7 +1062,16 @@ const docTemplate = `{
                     "additionalProperties": true
                 },
                 "id": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "last_modified_date",
+                        "last_modified_by",
+                        "created_date",
+                        "created_by",
+                        "last_opened_date",
+                        "tags"
+                    ],
+                    "example": "last_modified_date"
                 }
             }
         },
@@ -916,12 +1138,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Object Name"
                 },
-                "object_type": {
-                    "type": "string",
-                    "example": "Page"
-                },
                 "root_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"
+                },
+                "snippet": {
+                    "type": "string",
+                    "example": "The beginning of the object body..."
                 },
                 "space_id": {
                     "type": "string",
@@ -929,7 +1152,7 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string",
-                    "example": "object"
+                    "example": "Page"
                 }
             }
         },
@@ -962,23 +1185,52 @@ const docTemplate = `{
                 }
             }
         },
+        "object.TemplateResponse": {
+            "type": "object",
+            "properties": {
+                "template": {
+                    "$ref": "#/definitions/object.Template"
+                }
+            }
+        },
         "object.Text": {
             "type": "object",
             "properties": {
                 "checked": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "color": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "red"
                 },
                 "icon": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "📄"
                 },
                 "style": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "Paragraph",
+                        "Header1",
+                        "Header2",
+                        "Header3",
+                        "Header4",
+                        "Quote",
+                        "Code",
+                        "Title",
+                        "Checkbox",
+                        "Marked",
+                        "Numbered",
+                        "Toggle",
+                        "Description",
+                        "Callout"
+                    ],
+                    "example": "Paragraph"
                 },
                 "text": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Some text"
                 }
             }
         },
@@ -1008,6 +1260,14 @@ const docTemplate = `{
                 "unique_key": {
                     "type": "string",
                     "example": "ot-page"
+                }
+            }
+        },
+        "object.TypeResponse": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "$ref": "#/definitions/object.Type"
                 }
             }
         },
@@ -1106,6 +1366,54 @@ const docTemplate = `{
                 }
             }
         },
+        "search.SearchRequest": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string"
+                },
+                "sort": {
+                    "$ref": "#/definitions/search.SortOptions"
+                },
+                "types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "search.SortOptions": {
+            "type": "object",
+            "properties": {
+                "direction": {
+                    "type": "string",
+                    "default": "desc",
+                    "enum": [
+                        "asc",
+                        "desc"
+                    ]
+                },
+                "timestamp": {
+                    "type": "string",
+                    "default": "last_modified_date",
+                    "enum": [
+                        "created_date",
+                        "last_modified_date",
+                        "last_opened_date"
+                    ]
+                }
+            }
+        },
+        "space.CreateSpaceRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "New Space"
+                }
+            }
+        },
         "space.CreateSpaceResponse": {
             "type": "object",
             "properties": {
@@ -1139,6 +1447,12 @@ const docTemplate = `{
                 },
                 "role": {
                     "type": "string",
+                    "enum": [
+                        "Reader",
+                        "Writer",
+                        "Owner",
+                        "NoPermission"
+                    ],
                     "example": "Owner"
                 },
                 "type": {
@@ -1176,7 +1490,7 @@ const docTemplate = `{
                 },
                 "icon": {
                     "type": "string",
-                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100"
+                    "example": "http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"
                 },
                 "id": {
                     "type": "string",

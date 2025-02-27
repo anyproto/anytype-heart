@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
@@ -47,12 +48,14 @@ import (
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
-	spaceId  = "spaceId"
-	objectId = "objectId"
-	id       = "identity"
+	spaceId    = "spaceId"
+	objectId   = "objectId"
+	id         = "identity"
+	objectName = "test"
 )
 
 type mockPublishClient struct {
@@ -453,41 +456,6 @@ func TestPublish(t *testing.T) {
 	})
 }
 
-func TestService_PublishList(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		// given
-		publishClientService := &mockPublishClient{
-			t: t,
-			expectedResult: []*publishapi.Publish{
-				{
-					SpaceId:  spaceId,
-					ObjectId: objectId,
-					Uri:      "test",
-					Version:  "{\"heads\":[\"heads\"],\"joinSpace\":true}",
-				},
-			},
-		}
-		svc := &service{
-			publishClientService: publishClientService,
-		}
-
-		// when
-		publishes, err := svc.PublishList(context.Background(), spaceId)
-
-		// then
-		expectedModel := &pb.RpcPublishingPublishState{
-			SpaceId:   spaceId,
-			ObjectId:  objectId,
-			Uri:       "test",
-			Version:   "{\"heads\":[\"heads\"],\"joinSpace\":true}",
-			JoinSpace: true,
-		}
-		assert.NoError(t, err)
-		assert.Len(t, publishes, 1)
-		assert.Equal(t, expectedModel, publishes[0])
-	})
-}
-
 func TestService_GetStatus(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
@@ -516,6 +484,176 @@ func TestService_GetStatus(t *testing.T) {
 			Uri:       "test",
 			Version:   "{\"heads\":[\"heads\"],\"joinSpace\":false}",
 			JoinSpace: false,
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, expectedModel, publish)
+	})
+}
+
+func TestService_PublishingList(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		// given
+		publishClientService := &mockPublishClient{
+			t: t,
+			expectedResult: []*publishapi.Publish{
+				{
+					SpaceId:  spaceId,
+					ObjectId: objectId,
+					Uri:      objectName,
+					Version:  "{\"heads\":[\"heads\"],\"joinSpace\":true}",
+				},
+			},
+		}
+		svc := &service{
+			objectStore:          objectstore.NewStoreFixture(t),
+			publishClientService: publishClientService,
+		}
+
+		// when
+		publishes, err := svc.PublishList(context.Background(), spaceId)
+
+		// then
+		expectedModel := &pb.RpcPublishingPublishState{
+			SpaceId:   spaceId,
+			ObjectId:  objectId,
+			Uri:       objectName,
+			Version:   "{\"heads\":[\"heads\"],\"joinSpace\":true}",
+			JoinSpace: true,
+		}
+		assert.NoError(t, err)
+		assert.Len(t, publishes, 1)
+		assert.Equal(t, expectedModel, publishes[0])
+	})
+
+	space1Id := "spaceId1"
+	object1Id := "objectId1"
+	name1 := "test1"
+	t.Run("extract from all spaces", func(t *testing.T) {
+		// given
+		publishClientService := &mockPublishClient{
+			t: t,
+			expectedResult: []*publishapi.Publish{
+				{
+					SpaceId:  spaceId,
+					ObjectId: objectId,
+					Uri:      objectName,
+					Version:  "{\"heads\":[\"heads\"],\"joinSpace\":false}",
+				},
+				{
+					SpaceId:  space1Id,
+					ObjectId: object1Id,
+					Uri:      name1,
+					Version:  "{\"heads\":[\"heads1\"],\"joinSpace\":false}",
+				},
+			},
+		}
+		storeFixture := objectstore.NewStoreFixture(t)
+
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(objectId),
+				bundle.RelationKeyName: domain.String(objectName),
+			},
+		})
+		storeFixture.AddObjects(t, space1Id, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(object1Id),
+				bundle.RelationKeyName: domain.String(name1),
+			},
+		})
+
+		svc := &service{
+			publishClientService: publishClientService,
+			objectStore:          storeFixture,
+		}
+
+		// when
+		publish, err := svc.PublishList(context.Background(), "")
+
+		// then
+		expectedModel := []*pb.RpcPublishingPublishState{
+			{
+				SpaceId:   spaceId,
+				ObjectId:  objectId,
+				Uri:       objectName,
+				Version:   "{\"heads\":[\"heads\"],\"joinSpace\":false}",
+				JoinSpace: false,
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					bundle.RelationKeyId.String():   pbtypes.String(objectId),
+					bundle.RelationKeyName.String(): pbtypes.String(objectName),
+				}},
+			},
+			{
+				SpaceId:   space1Id,
+				ObjectId:  object1Id,
+				Uri:       name1,
+				Version:   "{\"heads\":[\"heads1\"],\"joinSpace\":false}",
+				JoinSpace: false,
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					bundle.RelationKeyId.String():   pbtypes.String(object1Id),
+					bundle.RelationKeyName.String(): pbtypes.String(name1),
+				}},
+			},
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, expectedModel, publish)
+	})
+	t.Run("details empty", func(t *testing.T) {
+		// given
+		publishClientService := &mockPublishClient{
+			t: t,
+			expectedResult: []*publishapi.Publish{
+				{
+					SpaceId:  spaceId,
+					ObjectId: objectId,
+					Uri:      objectName,
+					Version:  "{\"heads\":[\"heads\"],\"joinSpace\":false}",
+				},
+				{
+					SpaceId:  space1Id,
+					ObjectId: object1Id,
+					Uri:      name1,
+					Version:  "{\"heads\":[\"heads1\"],\"joinSpace\":false}",
+				},
+			},
+		}
+		storeFixture := objectstore.NewStoreFixture(t)
+
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(objectId),
+				bundle.RelationKeyName: domain.String(objectName),
+			},
+		})
+
+		svc := &service{
+			publishClientService: publishClientService,
+			objectStore:          storeFixture,
+		}
+
+		// when
+		publish, err := svc.PublishList(context.Background(), "")
+
+		// then
+		expectedModel := []*pb.RpcPublishingPublishState{
+			{
+				SpaceId:   spaceId,
+				ObjectId:  objectId,
+				Uri:       objectName,
+				Version:   "{\"heads\":[\"heads\"],\"joinSpace\":false}",
+				JoinSpace: false,
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					bundle.RelationKeyId.String():   pbtypes.String(objectId),
+					bundle.RelationKeyName.String(): pbtypes.String(objectName),
+				}},
+			},
+			{
+				SpaceId:   space1Id,
+				ObjectId:  object1Id,
+				Uri:       name1,
+				Version:   "{\"heads\":[\"heads1\"],\"joinSpace\":false}",
+				JoinSpace: false,
+			},
 		}
 		assert.NoError(t, err)
 		assert.Equal(t, expectedModel, publish)
@@ -677,7 +815,7 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
 
 	file := smarttest.New(fileId)
-	fileDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+	fileDoc := file.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:     domain.String(fileId),
 		bundle.RelationKeyType:   domain.String(objectTypeId),
 		bundle.RelationKeyFileId: domain.String(fileId),

@@ -90,5 +90,13 @@
   "mentions",
   "chatId",
   "hasChat",
-  "timestamp"
+  "timestamp",
+  "iconName",
+  "recommendedFeaturedRelations",
+  "recommendedHiddenRelations",
+  "recommendedFileRelations",
+  "layoutWidth",
+  "defaultViewType",
+  "defaultTypeId",
+  "resolvedLayout"
 ]

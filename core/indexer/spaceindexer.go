@@ -12,7 +12,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
@@ -120,7 +119,6 @@ func (i *spaceIndexer) Index(info smartblock.DocInfo, options ...smartblock.Inde
 
 func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
-	startTime := time.Now()
 	opts := &smartblock.IndexOptions{}
 	for _, o := range options {
 		o(opts)
@@ -142,7 +140,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		}
 	}
 
-	indexDetails, indexLinks := info.SmartblockType.Indexable()
+	_, indexDetails, indexLinks := info.SmartblockType.Indexable()
 	if !indexDetails && !indexLinks {
 		return nil
 	}
@@ -163,7 +161,6 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 
 	details := info.Details
 
-	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
 		if err = i.spaceIndex.UpdateObjectLinks(ctx, info.Id, info.Links); err != nil {
@@ -172,7 +169,6 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		}
 	}
 
-	indexLinksTime := time.Now()
 	if indexDetails {
 		if err := i.spaceIndex.UpdateObjectDetails(ctx, info.Id, details); err != nil {
 			hasError = true
@@ -192,27 +188,20 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 
 		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			// Use component's context because ctx from parameter contains transaction
-			if err := i.objectStore.AddToIndexQueue(i.runCtx, info.Id); err != nil {
-				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
+			fulltext, _, _ := info.SmartblockType.Indexable()
+			if fulltext {
+				if err := i.objectStore.AddToIndexQueue(i.runCtx, info.Id); err != nil {
+					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
+				}
 			}
 		}
 	} else {
 		_ = i.spaceIndex.DeleteDetails(ctx, []string{info.Id})
 	}
-	indexDetailsTime := time.Now()
-	detailsCount := details.Len()
 
 	if !hasError {
 		saveIndexedHash()
 	}
-
-	metrics.Service.Send(&metrics.IndexEvent{
-		ObjectId:                info.Id,
-		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
-		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
-		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
-		DetailsCount:            detailsCount,
-	})
 
 	return nil
 }

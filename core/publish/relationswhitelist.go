@@ -25,11 +25,14 @@ var documentRelationsWhiteList = append(slices.Clone(allObjectsRelationsWhiteLis
 	bundle.RelationKeyIconEmoji.String(),
 	bundle.RelationKeyCoverType.String(),
 	bundle.RelationKeyCoverId.String(),
+	bundle.RelationKeyCoverX.String(),
+	bundle.RelationKeyCoverY.String(),
+	bundle.RelationKeyCoverScale.String(),
 )
 
 var todoRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyDone.String())
 
-var bookmarkRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyPicture.String())
+var bookmarkRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyPicture.String(), bundle.RelationKeySource.String())
 
 var derivedObjectsWhiteList = append(slices.Clone(allObjectsRelationsWhiteList), bundle.RelationKeyUniqueKey.String())
 
@@ -37,7 +40,19 @@ var relationsWhiteList = append(slices.Clone(derivedObjectsWhiteList), bundle.Re
 
 var relationOptionWhiteList = append(slices.Clone(derivedObjectsWhiteList), bundle.RelationKeyRelationOptionColor.String())
 
-var fileRelationsWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyFileId.String(), bundle.RelationKeyFileExt.String())
+var fileRelationsWhiteList = append(
+	slices.Clone(documentRelationsWhiteList),
+	bundle.RelationKeyFileId.String(),
+	bundle.RelationKeyFileExt.String(),
+	bundle.RelationKeyFileMimeType.String(),
+	bundle.RelationKeySizeInBytes.String(),
+	bundle.RelationKeySource.String(),
+)
+
+var imageRelationsWhiteList = append(slices.Clone(fileRelationsWhiteList),
+	bundle.RelationKeyMediaArtistName.String(),
+	bundle.RelationKeyMediaArtistURL.String(),
+)
 
 var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_basic:      documentRelationsWhiteList,
@@ -48,8 +63,9 @@ var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_objectType: derivedObjectsWhiteList,
 	model.ObjectType_relation:   relationsWhiteList,
 	model.ObjectType_file:       fileRelationsWhiteList,
+	model.ObjectType_pdf:        fileRelationsWhiteList,
 	model.ObjectType_dashboard:  allObjectsRelationsWhiteList,
-	model.ObjectType_image:      fileRelationsWhiteList,
+	model.ObjectType_image:      imageRelationsWhiteList,
 	model.ObjectType_note:       documentRelationsWhiteList,
 	model.ObjectType_space:      allObjectsRelationsWhiteList,
 
