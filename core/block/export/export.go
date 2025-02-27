@@ -187,6 +187,7 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		includeBackLinks: req.IncludeBacklinks,
 		setOfList:        make(map[string]struct{}),
 		objectTypes:      make(map[string]struct{}),
+		relations:        make(map[string]struct{}),
 
 		export: e,
 	}
