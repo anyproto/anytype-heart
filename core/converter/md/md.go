@@ -498,6 +498,7 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 		title = docId
 	}
 
+	//nolint:gosec
 	filename = h.fn.Get("", docId, title, h.Ext(model.ObjectTypeLayout(layout)))
 	return
 }
