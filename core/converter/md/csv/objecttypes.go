@@ -96,11 +96,11 @@ func (o *objectType) collectHeaders(details, localDetails *domain.Details) ([]st
 	headersKeys := make([]string, 0, details.Len()+localDetails.Len()+1)
 	headersKeys = append(headersKeys, bundle.RelationKeySourceFilePath.String())
 
-	for key, _ := range details.Iterate() {
+	for key := range details.Iterate() {
 		headersKeys = append(headersKeys, key.String())
 	}
 
-	for key, _ := range localDetails.Iterate() {
+	for key := range localDetails.Iterate() {
 		headersKeys = append(headersKeys, key.String())
 	}
 
