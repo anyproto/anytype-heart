@@ -91,12 +91,6 @@ type DocumentMatch struct {
 	Fields    map[string]any
 }
 
-var specialChars = map[rune]struct{}{
-	'+': {}, '^': {}, '`': {}, ':': {}, '{': {},
-	'}': {}, '"': {}, '[': {}, ']': {}, '(': {},
-	')': {}, '~': {}, '!': {}, '\\': {}, '*': {},
-}
-
 type ftSearchTantivy struct {
 	rootPath   string
 	ftsPath    string
@@ -106,6 +100,7 @@ type ftSearchTantivy struct {
 	parserPool *fastjson.ParserPool
 	mu         sync.Mutex
 	blevePath  string
+	lang       string
 }
 
 func TantivyNew() FTSearch {
@@ -144,6 +139,7 @@ func (f *ftSearchTantivy) DeleteObject(objectId string) error {
 
 func (f *ftSearchTantivy) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
+	f.lang = validateLanguage(app.MustComponent[wallet.Wallet](a).Lang())
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.blevePath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
@@ -252,7 +248,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	f.cleanupBleve()
 	f.cleanUpOldIndexes()
 
-	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, tantivy.English)
+	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, f.lang)
 	if err != nil {
 		return err
 	}
@@ -567,4 +563,15 @@ func prepareQuery(query string) string {
 	query = strings.ToLower(query)
 	query = strings.TrimSpace(query)
 	return query
+}
+
+func validateLanguage(lang string) string {
+	switch lang {
+	case tantivy.Arabic, tantivy.Danish, tantivy.Dutch, tantivy.English, tantivy.Finnish, tantivy.French, tantivy.German,
+		tantivy.Greek, tantivy.Hungarian, tantivy.Italian, tantivy.Norwegian, tantivy.Portuguese, tantivy.Romanian,
+		tantivy.Russian, tantivy.Spanish, tantivy.Swedish, tantivy.Tamil, tantivy.Turkish:
+		return lang
+	default:
+		return tantivy.English
+	}
 }

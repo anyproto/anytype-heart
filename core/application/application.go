@@ -26,11 +26,12 @@ type Service struct {
 	sessionSigningKey []byte
 
 	rootPath          string
+	lang              string
 	clientWithVersion string
 	eventSender       event.Sender
 	sessions          session.Service
-	traceRecorder     *traceRecorder
 
+	traceRecorder                       *traceRecorder
 	appAccountStartInProcessCancel      context.CancelFunc
 	appAccountStartInProcessCancelMutex sync.Mutex
 }
