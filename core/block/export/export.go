@@ -658,7 +658,6 @@ func (e *exportContext) fillNotProcessedTypes(processedObjects map[string]struct
 	}
 	notProceedTypes[object] = nil
 	processedObjects[object] = struct{}{}
-	return
 }
 
 func (e *exportContext) getTemplatesRelationsAndTypes(processedObjects map[string]struct{}) error {
