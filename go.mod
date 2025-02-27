@@ -54,8 +54,8 @@ require (
 	github.com/ipfs/boxo v0.28.0
 	github.com/ipfs/go-block-format v0.2.0
 	github.com/ipfs/go-cid v0.5.0
-	github.com/ipfs/go-datastore v0.7.0
-	github.com/ipfs/go-ds-flatfs v0.5.1
+	github.com/ipfs/go-datastore v0.8.0
+	github.com/ipfs/go-ds-flatfs v0.5.2-0.20250227125509-a1310bca4792
 	github.com/ipfs/go-ipld-format v0.6.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/joho/godotenv v1.5.1
@@ -81,7 +81,7 @@ require (
 	github.com/otiai10/copy v1.14.1
 	github.com/otiai10/opengraph/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.21.0
+	github.com/prometheus/client_golang v1.20.5
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.49.1
@@ -209,7 +209,6 @@ require (
 	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
 	github.com/ipld/go-ipld-prime v0.21.0 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
-	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -250,7 +249,6 @@ require (
 	github.com/pseudomuto/protokit v0.2.1 // indirect
 	github.com/quic-go/quic-go v0.50.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/rs/cors v1.11.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
@@ -276,6 +274,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zeebo/errs v1.4.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
