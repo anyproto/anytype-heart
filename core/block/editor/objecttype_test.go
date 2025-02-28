@@ -5,8 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/any-sync/app/ocache"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -109,13 +111,28 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		})
 
 		obj1 := smarttest.New("obj1")
+		require.NoError(t, obj1.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayout, Value: domain.Int64(int64(model.ObjectType_basic)),
+		}}, false))
 		obj2 := smarttest.New("obj2")
+		require.NoError(t, obj2.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayout, Value: domain.Int64(int64(model.ObjectType_todo)),
+		}}, false))
 		obj4 := smarttest.New("obj4")
 		tmpl := smarttest.New("tmpl")
+		require.NoError(t, tmpl.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayout, Value: domain.Int64(int64(model.ObjectType_basic)),
+		}}, false))
 
 		fx.space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func() error) error {
-			assert.Equal(t, "obj5", id)
-			return f()
+			switch id {
+			case "obj4":
+				return ocache.ErrExists
+			case "obj5":
+				return f()
+			default:
+				panic("DoLockedIfNotExists: invalid object id")
+			}
 		})
 
 		fx.space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func(smartblock.SmartBlock) error) error {
@@ -129,7 +146,7 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 			case "tmpl":
 				assert.NoError(t, f(tmpl))
 			default:
-				return ocache.ErrExists
+				panic("Do: invalid object id")
 			}
 			return nil
 		})
@@ -143,55 +160,16 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
+
+		assert.False(t, obj1.Details().Has(bundle.RelationKeyLayout))
+		assert.False(t, obj2.Details().Has(bundle.RelationKeyLayout))
+		assert.False(t, tmpl.Details().Has(bundle.RelationKeyLayout))
+
+		assert.True(t, obj4.Results.IsStateAppendCalled)
+		details, err := fx.objectStore.GetDetails("obj5")
+		require.NoError(t, err)
+		assert.Equal(t, int64(model.ObjectType_todo), details.GetInt64(bundle.RelationKeyResolvedLayout))
 	})
-
-	// t.Run("change resolvedLayout, do not delete layout", func(t *testing.T) {
-	// 	// given
-	// 	fx := newFixture(t, typeId)
-	// 	fx.sb.SetType(coresb.SmartBlockTypeObjectType)
-
-	// 	fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
-	// 		{
-	// 			bundle.RelationKeyId:     domain.String("obj1"),
-	// 			bundle.RelationKeyType:   domain.String(typeId),
-	// 			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_basic)),
-	// 		},
-	// 		{
-	// 			bundle.RelationKeyId:             domain.String("obj2"),
-	// 			bundle.RelationKeyType:           domain.String(typeId),
-	// 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
-	// 			bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_todo)),
-	// 		},
-	// 		{
-	// 			bundle.RelationKeyId:     domain.String("obj3"),
-	// 			bundle.RelationKeyType:   domain.String(typeId),
-	// 			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_profile)),
-	// 		},
-	// 		{
-	// 			bundle.RelationKeyId:             domain.String("obj4"),
-	// 			bundle.RelationKeyType:           domain.String(typeId),
-	// 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
-	// 		},
-	// 	})
-
-	// 	fx.space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func() error) error {
-	// 		assert.Equal(t, "obj4", id)
-	// 		return f()
-	// 	})
-
-	// 	counter := 0
-	// 	fx.space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func(smartblock.SmartBlock) error) error {
-	// 		counter++
-	// 		return nil
-	// 	})
-
-	// 	// when
-	// 	err := fx.syncLayoutForObjectsAndTemplates(makeApplyInfo(int64(model.ObjectType_todo)))
-
-	// 	// then
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, 3, counter)
-	// })
 }
 
 func makeApplyInfo(typeId string, oldLS, newLS layoutState) smartblock.ApplyInfo {

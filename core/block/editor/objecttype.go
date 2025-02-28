@@ -210,15 +210,13 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 		deriver   = relationIdDeriver{space: ot.Space()}
 	)
 
-	fmt.Println(records)
-
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
 		if id == "" {
 			continue
 		}
 
-		relationsToRemove, isFeaturedRelationsChanged, newFeaturedRelations := collectRelationsChanges(record.Details, newLayout, oldLayout, deriver)
+		relationsToRemove, layoutFound, isFeaturedRelationsChanged, newFeaturedRelations := collectRelationsChanges(record.Details, newLayout, oldLayout, deriver)
 		if len(relationsToRemove) > 0 || isFeaturedRelationsChanged {
 			// we should modify not local relations from object, that's why we apply changes even if object is not in cache
 			err = ot.Space().Do(id, func(b smartblock.SmartBlock) error {
@@ -235,8 +233,8 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 			continue
 		}
 
-		if !newLayout.isLayoutSet || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
-			// recommendedLayout was not changed or relevant layout is already set, skipping
+		if layoutFound || !newLayout.isLayoutSet || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
+			// layout detail remains in object or recommendedLayout was not changed or relevant layout is already set, skipping
 			continue
 		}
 
@@ -369,12 +367,15 @@ func (ot *ObjectType) queryObjectsAndTemplates() ([]database.Record, error) {
 
 func collectRelationsChanges(
 	details *domain.Details, newLayout, oldLayout layoutState, deriver relationIdDeriver,
-) (toRemove []domain.RelationKey, isFeaturedRelationsChanged bool, newFeaturedRelations []string) {
+) (toRemove []domain.RelationKey, isLayoutFound, isFeaturedRelationsChanged bool, newFeaturedRelations []string) {
 	toRemove = make([]domain.RelationKey, 0, 2)
 	if newLayout.isLayoutSet {
 		layout, found := details.TryInt64(bundle.RelationKeyLayout)
-		if found && (layout == newLayout.layout || oldLayout.isLayoutSet && layout == oldLayout.layout) {
-			toRemove = append(toRemove, bundle.RelationKeyLayout)
+		if found {
+			isLayoutFound = true
+			if layout == newLayout.layout || oldLayout.isLayoutSet && layout == oldLayout.layout {
+				toRemove = append(toRemove, bundle.RelationKeyLayout)
+			}
 		}
 	}
 
