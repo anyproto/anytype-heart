@@ -96,7 +96,6 @@ type ftSearchTantivy struct {
 	ftsPath    string
 	builderId  string
 	index      *tantivy.TantivyContext
-	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
 	mu         sync.Mutex
 	blevePath  string
@@ -241,7 +240,6 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	if err != nil {
 		return err
 	}
-	f.schema = schema
 	f.index = index
 	f.parserPool = &fastjson.ParserPool{}
 
@@ -303,31 +301,19 @@ func (f *ftSearchTantivy) Index(doc SearchDoc) error {
 
 func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	document := tantivy.NewDocument()
-	err := document.AddField(fieldId, doc.Id, f.index)
+	err := document.AddFields(doc.Id, f.index, fieldId, fieldIdRaw)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldIdRaw, doc.Id, f.index)
+	err = document.AddField(doc.SpaceId, f.index, fieldSpace)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldSpace, doc.SpaceId, f.index)
+	err = document.AddFields(doc.Title, f.index, fieldTitle, fieldTitleZh)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldTitle, doc.Title, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldTitleZh, doc.Title, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldText, doc.Text, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldTextZh, doc.Text, f.index)
+	err = document.AddFields(doc.Text, f.index, fieldText, fieldTextZh)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +392,7 @@ func (f *ftSearchTantivy) performSearch(spaceId, query string, buildQueryFunc fu
 
 	return tantivy.GetSearchResults(
 		result,
-		f.schema,
+		f.index,
 		func(json string) (*DocumentMatch, error) {
 			return parseSearchResult(json, p)
 		},
@@ -545,11 +531,9 @@ func (f *ftSearchTantivy) DocCount() (uint64, error) {
 }
 
 func (f *ftSearchTantivy) Close(ctx context.Context) error {
-	f.schema = nil
 	if f.index != nil {
 		f.index.Free()
 		f.index = nil
-		f.schema = nil
 	}
 	return nil
 }
