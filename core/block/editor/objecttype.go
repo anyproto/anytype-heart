@@ -104,7 +104,6 @@ func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migrat
 				template.WithEmpty,
 				template.WithObjectTypes(ctx.State.ObjectTypeKeys()),
 				template.WithTitle,
-				template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 				template.WithLayout(model.ObjectType_objectType),
 			}
 
