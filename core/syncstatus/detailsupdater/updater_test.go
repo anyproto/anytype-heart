@@ -90,7 +90,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Run(func(ctx context.Context, objectId string, apply func(smartblock.SmartBlock) error) {
 			sb := smarttest.New(objectId)
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_basic)))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 			st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
 			err := apply(sb)
 			require.NoError(t, err)
@@ -119,9 +119,9 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 
 		fx.subscriptionService.StoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String("id1"),
-				bundle.RelationKeySpaceId: domain.String("space1"),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeySpaceId:        domain.String("space1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			},
 		})
 
@@ -159,7 +159,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 				sb := smarttest.New(objectId)
 				st := sb.Doc.(*state.State)
 				st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
-				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_file)))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_file)))
 				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Limited)))
 				err := apply(sb)
 				require.NoError(t, err)
@@ -189,7 +189,7 @@ func TestSyncStatusUpdater_UpdateDetails(t *testing.T) {
 				sb := smarttest.New(objectId)
 				st := sb.Doc.(*state.State)
 				st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
-				st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_file)))
+				st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_file)))
 				st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
 				err := apply(sb)
 				require.NoError(t, err)
@@ -219,16 +219,16 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 
 	fx.subscriptionService.StoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 		{
-			bundle.RelationKeyId:         domain.String("id1"),
-			bundle.RelationKeySpaceId:    domain.String("space1"),
-			bundle.RelationKeyLayout:     domain.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeySyncStatus: domain.Int64(int64(domain.ObjectSyncStatusSyncing)),
+			bundle.RelationKeyId:             domain.String("id1"),
+			bundle.RelationKeySpaceId:        domain.String("space1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeySyncStatus:     domain.Int64(int64(domain.ObjectSyncStatusSyncing)),
 		},
 		{
-			bundle.RelationKeyId:         domain.String("id4"),
-			bundle.RelationKeySpaceId:    domain.String("space1"),
-			bundle.RelationKeyLayout:     domain.Int64(int64(model.ObjectType_basic)),
-			bundle.RelationKeySyncStatus: domain.Int64(int64(domain.ObjectSyncStatusSyncing)),
+			bundle.RelationKeyId:             domain.String("id4"),
+			bundle.RelationKeySpaceId:        domain.String("space1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeySyncStatus:     domain.Int64(int64(domain.ObjectSyncStatusSyncing)),
 		},
 	})
 
@@ -241,7 +241,7 @@ func TestSyncStatusUpdater_UpdateSpaceDetails(t *testing.T) {
 			sb := smarttest.New(objectId)
 			st := sb.Doc.(*state.State)
 			st.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String("spaceId"))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_basic)))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 			err := apply(sb)
 			require.NoError(t, err)
 
@@ -320,7 +320,7 @@ func TestSyncStatusUpdater_isLayoutSuitableForSyncRelations(t *testing.T) {
 
 		// when
 		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyLayout: domain.Float64(float64(model.ObjectType_participant)),
+			bundle.RelationKeyResolvedLayout: domain.Float64(float64(model.ObjectType_participant)),
 		})
 		isSuitable := fx.isLayoutSuitableForSyncRelations(details)
 
@@ -334,7 +334,7 @@ func TestSyncStatusUpdater_isLayoutSuitableForSyncRelations(t *testing.T) {
 
 		// when
 		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyLayout: domain.Float64(float64(model.ObjectType_basic)),
+			bundle.RelationKeyResolvedLayout: domain.Float64(float64(model.ObjectType_basic)),
 		})
 		isSuitable := fx.isLayoutSuitableForSyncRelations(details)
 

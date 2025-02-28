@@ -315,7 +315,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 
 func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *common.Snapshot) {
 	for key, value := range objects.Snapshot.Data.Details.Iterate() {
-		if key == bundle.RelationKeySourceFilePath || key == bundle.RelationKeyLayout {
+		if key == bundle.RelationKeySourceFilePath || key == bundle.RelationKeyResolvedLayout {
 			continue
 		}
 		assert.Contains(t, want, value.String())
@@ -866,6 +866,6 @@ func TestCSV_GetSnapshots(t *testing.T) {
 }
 func getRelationsNumber(keys []domain.RelationKey) int {
 	return lo.CountBy(keys, func(item domain.RelationKey) bool {
-		return item != bundle.RelationKeySourceFilePath && item != bundle.RelationKeyLayout
+		return item != bundle.RelationKeySourceFilePath && item != bundle.RelationKeyResolvedLayout
 	})
 }

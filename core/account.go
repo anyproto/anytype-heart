@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -49,32 +48,24 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 		},
 	}
 }
-
-func (mw *Middleware) AccountMigrate(cctx context.Context, req *pb.RpcAccountMigrateRequest) *pb.RpcAccountMigrateResponse {
-	err := mw.applicationService.AccountMigrate(cctx, req)
-	code := mapErrorCode(err,
-		errToCode(application.ErrBadInput, pb.RpcAccountMigrateResponseError_BAD_INPUT),
-		errToCode(application.ErrAccountNotFound, pb.RpcAccountMigrateResponseError_ACCOUNT_NOT_FOUND),
-		errToCode(context.Canceled, pb.RpcAccountMigrateResponseError_CANCELED),
-		errTypeToCode(&migrator.NotEnoughFreeSpaceError{}, pb.RpcAccountMigrateResponseError_NOT_ENOUGH_FREE_SPACE),
-	)
+func (mw *Middleware) AccountMigrate(_ context.Context, _ *pb.RpcAccountMigrateRequest) *pb.RpcAccountMigrateResponse {
+	// this is for clients API compatibility, because there is no migration in this branch
+	// todo: remove this
 	return &pb.RpcAccountMigrateResponse{
 		Error: &pb.RpcAccountMigrateResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
+			Code:        0,
+			Description: "",
 		},
 	}
 }
 
-func (mw *Middleware) AccountMigrateCancel(cctx context.Context, req *pb.RpcAccountMigrateCancelRequest) *pb.RpcAccountMigrateCancelResponse {
-	err := mw.applicationService.AccountMigrateCancel(cctx, req)
-	code := mapErrorCode(err,
-		errToCode(application.ErrBadInput, pb.RpcAccountMigrateCancelResponseError_BAD_INPUT),
-	)
+func (mw *Middleware) AccountMigrateCancel(_ context.Context, _ *pb.RpcAccountMigrateCancelRequest) *pb.RpcAccountMigrateCancelResponse {
+	// this is for clients API compatibility, because there is no migration in this branch
+	// todo: remove this
 	return &pb.RpcAccountMigrateCancelResponse{
 		Error: &pb.RpcAccountMigrateCancelResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
+			Code:        0,
+			Description: "",
 		},
 	}
 }
@@ -94,7 +85,6 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 		errToCode(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
-		errToCode(application.ErrAccountStoreIsNotMigrated, pb.RpcAccountSelectResponseError_ACCOUNT_STORE_NOT_MIGRATED),
 	)
 	return &pb.RpcAccountSelectResponse{
 		Config:  nil,

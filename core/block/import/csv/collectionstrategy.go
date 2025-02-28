@@ -249,7 +249,7 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation, 
 		})
 	}
 	details.SetString(bundle.RelationKeySourceFilePath, buildSourcePath(path, objectOrderIndex, transpose))
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_basic))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_basic))
 	return details, relationLinks
 }
 
@@ -271,7 +271,7 @@ func provideObjectSnapshot(st *state.State, details *domain.Details) *common.Sna
 
 func (c *CollectionStrategy) getCollectionSnapshot(details *domain.Details, st *state.State, p string, relations []*model.Relation) *common.Snapshot {
 	details = st.CombinedDetails().Merge(details)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_collection))
 
 	for _, relation := range relations {
 		err := common.AddRelationsToDataView(st, &model.RelationLink{
