@@ -28,7 +28,8 @@ permissions:
 
 jobs:
   build:
-    runs-on: 'macos-14'
+    #runs-on: 'macos-14'
+    runs-on: 'mac-mini-org-heart'
     steps:
       - name: Install Go
         if: runner.name != 'mac-mini-org-heart'

@@ -53,6 +53,11 @@ jobs:
         if: runner.name != 'mac-mini-org-heart'
         run: make install-brew-and-node-deps
 
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1.6.0
+        with:
+          xcode-version: '16.2'
+
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
