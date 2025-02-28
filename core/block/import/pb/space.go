@@ -65,7 +65,7 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
-	return item.Snapshot.SbType == smartblock.SmartBlockTypeSubObject || item.Snapshot.SbType == smartblock.SmartBlockTypeTemplate ||
+	return item.Snapshot.SbType == smartblock.SmartBlockTypeSubObject ||
 		item.Snapshot.SbType == smartblock.SmartBlockTypeRelation || item.Snapshot.SbType == smartblock.SmartBlockTypeObjectType ||
 		item.Snapshot.SbType == smartblock.SmartBlockTypeRelationOption
 }

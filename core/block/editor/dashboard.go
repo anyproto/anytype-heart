@@ -58,7 +58,6 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 			template.InitTemplate(st,
 				template.WithObjectTypes([]domain.TypeKey{bundle.TypeKeyDashboard}),
 				template.WithLayout(model.ObjectType_dashboard),
-				template.WithResolvedLayout(model.ObjectType_dashboard),
 				template.WithEmpty,
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),

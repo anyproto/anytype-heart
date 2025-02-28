@@ -124,20 +124,25 @@ func TestReviseSystemObject(t *testing.T) {
 		assert.False(t, toRevise)
 	})
 
-	t.Run("non system object type is not updated", func(t *testing.T) {
+	t.Run("non system bundled object type is updated", func(t *testing.T) {
 		// given
 		objectType := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeySourceObject: domain.String("_otcontact"),
 			bundle.RelationKeyUniqueKey:    domain.String("ot-contact"),
 		})
-		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
+		space := mock_space.NewMockSpace(t)
+		space.EXPECT().DoCtx(mock.Anything, mock.Anything, mock.Anything).Times(1).Return(nil)
+		space.EXPECT().Id().Times(1).Return("")
+		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return addr.ObjectTypeKeyToIdPrefix + key.InternalKey(), nil
+		}).Maybe()
 
 		// when
 		toRevise, err := reviseObject(ctx, log, space, objectType)
 
 		// then
 		assert.NoError(t, err)
-		assert.False(t, toRevise)
+		assert.True(t, toRevise)
 	})
 
 	t.Run("system object type with same revision is not updated", func(t *testing.T) {

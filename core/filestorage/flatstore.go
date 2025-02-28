@@ -233,7 +233,8 @@ func (c *flatStoreGarbageCollector) CollectGarbage(ctx context.Context) error {
 	}
 
 	c.flatStore.sendLocalBytesUsageEvent(ctx)
-	return results.Close()
+	results.Close()
+	return nil
 }
 
 func newFlatStoreGarbageCollector(flatStore *flatStore) LocalStoreGarbageCollector {

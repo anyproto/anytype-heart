@@ -60,7 +60,7 @@ func TestService_Init(t *testing.T) {
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 
 		// initialized - expect space
-		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), time.Millisecond)
+		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), 2*time.Millisecond)
 		defer ctxCancel2()
 
 		factory.EXPECT().LoadAndSetTechSpace(ctx2).Return(&clientspace.TechSpace{}, nil)

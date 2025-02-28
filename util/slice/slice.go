@@ -124,6 +124,32 @@ func RemoveIndex[T any](s []T, idx int) []T {
 	return s[:n]
 }
 
+// RemoveN is an analog of Remove function, but removing a range of values
+func RemoveN[T comparable](s []T, vs ...T) []T {
+	var (
+		n     int
+		found bool
+		sc    = slices.Clone(s)
+	)
+	if len(vs) == 0 {
+		return sc
+	}
+	for _, x := range s {
+		found = false
+		for _, v := range vs {
+			if x == v {
+				found = true
+				break
+			}
+		}
+		if !found {
+			sc[n] = x
+			n++
+		}
+	}
+	return sc[:n]
+}
+
 func Filter[T any](vals []T, cond func(T) bool) []T {
 	var result = make([]T, 0, len(vals))
 	for i := range vals {

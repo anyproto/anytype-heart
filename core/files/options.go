@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 
-	"github.com/h2non/filetype"
+	"github.com/gabriel-vasile/mimetype"
 )
 
 type AddOption func(*AddOptions)
@@ -70,13 +69,8 @@ func (s *service) normalizeOptions(opts *AddOptions) error {
 			return fmt.Errorf("failed to seek underlying reader: %w", err)
 		}
 
-		t, err := filetype.Match(data)
-		if err != nil {
-			log.Warnf("filetype failed to match: %s", err)
-			opts.Media = http.DetectContentType(data)
-		} else {
-			opts.Media = t.MIME.Value
-		}
+		mime := mimetype.Detect(data)
+		opts.Media = mime.String()
 	}
 
 	return nil

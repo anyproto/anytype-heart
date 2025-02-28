@@ -7,6 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -20,6 +21,7 @@ var (
 
 func (s *State) Normalize(withLayouts bool) (err error) {
 	s.removeDuplicates()
+	s.normalizeDetails()
 	return s.normalize(withLayouts)
 }
 
@@ -391,4 +393,33 @@ func CleanupLayouts(s *State) (removedCount int) {
 	}
 	cleanup(s.RootId())
 	return
+}
+
+func (s *State) normalizeDetails() {
+	if s.ObjectTypeKey() == bundle.TypeKeyObjectType {
+		s.normalizeRecommendedRelations()
+	}
+}
+
+// normalizeRecommendedRelations normalizes recommended relations of Type on state build level, because
+// these lists mustn't contain similar values, but could be updated by multiple clients independently
+func (s *State) normalizeRecommendedRelations() {
+	details := s.details
+	if details == nil && s.parent != nil {
+		details = s.parent.details
+	}
+	if details == nil {
+		return
+	}
+
+	recRelations := details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	recFeatRelations := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	recHiddenRelations := details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)
+
+	recHiddenRelations = slice.RemoveN(recHiddenRelations, recFeatRelations...)
+	recHiddenRelations = slice.RemoveN(recHiddenRelations, recRelations...)
+	recRelations = slice.RemoveN(recRelations, recFeatRelations...)
+
+	details.SetStringList(bundle.RelationKeyRecommendedRelations, recRelations)
+	details.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, recHiddenRelations)
 }

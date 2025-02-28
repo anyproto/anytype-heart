@@ -218,3 +218,16 @@ func TestInsertGroupRelationKey(t *testing.T) {
 		})
 	}
 }
+
+func TestLayout_isConversionAllowed(t *testing.T) {
+	lc := layoutConverter{}
+	assert.True(t, lc.isConversionAllowed(model.ObjectType_basic, model.ObjectType_todo))
+	assert.True(t, lc.isConversionAllowed(model.ObjectType_profile, model.ObjectType_note))
+	assert.True(t, lc.isConversionAllowed(model.ObjectType_basic, model.ObjectType_bookmark))
+	assert.True(t, lc.isConversionAllowed(model.ObjectType_bookmark, model.ObjectType_note))
+	assert.True(t, lc.isConversionAllowed(model.ObjectType_set, model.ObjectType_collection))
+	assert.False(t, lc.isConversionAllowed(model.ObjectType_collection, model.ObjectType_set))
+	assert.False(t, lc.isConversionAllowed(model.ObjectType_set, model.ObjectType_basic))
+	assert.False(t, lc.isConversionAllowed(model.ObjectType_todo, model.ObjectType_collection))
+	assert.False(t, lc.isConversionAllowed(model.ObjectType_basic, model.ObjectType_relation))
+}

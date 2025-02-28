@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -628,7 +627,6 @@ func (sb *smartBlock) EnabledRelationAsDependentObjects() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
-	startTime := time.Now()
 	if sb.IsDeleted() {
 		return domain.ErrObjectIsDeleted
 	}
@@ -700,8 +698,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		removeInternalFlags(s)
 	}
 
-	beforeApplyStateTime := time.Now()
-
 	migrationVersionUpdated := true
 	if parent := s.ParentState(); parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
@@ -720,7 +716,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	sb.updateRestrictions()
 	sb.setRestrictionsDetail(s)
 
-	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
 	changes := st.GetChanges()
@@ -805,7 +800,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
-	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
@@ -821,22 +815,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
-	afterReportChangeTime := time.Now()
 	if hooks {
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
-	afterApplyHookTime := time.Now()
-
-	metrics.Service.Send(&metrics.StateApply{
-		BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
-		StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
-		PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
-		ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
-		ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
-		ObjectId:       sb.Id(),
-	})
 
 	return
 }

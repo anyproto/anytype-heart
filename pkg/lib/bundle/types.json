@@ -14,7 +14,8 @@
       "ingredients",
       "time"
     ],
-    "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food"
+    "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
+    "revision": 1
   },
   {
     "id": "note",
@@ -48,7 +49,8 @@
       "email",
       "phone"
     ],
-    "description": "Information to make action of communicating or meeting with Human or Company"
+    "description": "Information to make action of communicating or meeting with Human or Company",
+    "revision": 1
   },
   {
     "id": "bookmark",
@@ -143,7 +145,8 @@
       "status",
       "url"
     ],
-    "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover"
+    "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover",
+    "revision": 1
   },
   {
     "id": "video",
@@ -200,7 +203,8 @@
       "genre",
       "status"
     ],
-    "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images"
+    "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images",
+    "revision": 1
   },
   {
     "id": "objectType",
@@ -345,7 +349,8 @@
       "tag",
       "mood"
     ],
-    "description": "Record of events and experiences"
+    "description": "Record of events and experiences",
+    "revision": 1
   },
   {
     "id": "page",
@@ -452,7 +457,8 @@
       "status",
       "tasks"
     ],
-    "description": "The object of a person's ambition or effort; an aim or desired result"
+    "description": "The object of a person's ambition or effort; an aim or desired result",
+    "revision": 1
   },
   {
     "id": "file",
@@ -489,7 +495,8 @@
       "tag",
       "tasks"
     ],
-    "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim"
+    "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
+    "revision": 1
   },
   {
     "id": "chat",

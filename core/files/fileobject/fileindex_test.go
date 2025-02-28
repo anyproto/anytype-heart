@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,16 +22,6 @@ type indexerFixture struct {
 	fileService        *mock_files.MockService
 	objectStoreFixture *objectstore.StoreFixture
 }
-
-type dummyAccountService struct{}
-
-func (s dummyAccountService) MyParticipantId(spaceId string) string {
-	return ""
-}
-
-func (s dummyAccountService) Init(_ *app.App) error { return nil }
-
-func (s dummyAccountService) Name() string { return "dummyAccountService" }
 
 func newIndexerFixture(t *testing.T) *indexerFixture {
 	objectStore := objectstore.NewStoreFixture(t)

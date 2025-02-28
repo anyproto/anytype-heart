@@ -29,7 +29,7 @@ func TestFile_Details(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, bundle.TypeKeyImage, typeKey)
-		assert.Equal(t, int64(model.ObjectType_image), details.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, int64(model.ObjectType_image), details.GetInt64(bundle.RelationKeyLayout))
 		assert.Equal(t, "svg", details.GetString(bundle.RelationKeyFileExt))
 		assert.Equal(t, "image", details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, "id", details.GetString(bundle.RelationKeyFileId))
@@ -49,7 +49,7 @@ func TestFile_Details(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, bundle.TypeKeyFile, typeKey)
-		assert.Equal(t, int64(model.ObjectType_file), details.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, int64(model.ObjectType_file), details.GetInt64(bundle.RelationKeyLayout))
 		assert.Equal(t, "txt", details.GetString(bundle.RelationKeyFileExt))
 		assert.Equal(t, "file", details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, "id", details.GetString(bundle.RelationKeyFileId))
@@ -70,7 +70,7 @@ func TestFile_Details(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, bundle.TypeKeyAudio, typeKey)
-		assert.Equal(t, int64(model.ObjectType_audio), details.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, int64(model.ObjectType_audio), details.GetInt64(bundle.RelationKeyLayout))
 		assert.Equal(t, "mp3", details.GetString(bundle.RelationKeyFileExt))
 		assert.Equal(t, "file", details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, "id", details.GetString(bundle.RelationKeyFileId))
@@ -91,7 +91,7 @@ func TestFile_Details(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, bundle.TypeKeyVideo, typeKey)
-		assert.Equal(t, int64(model.ObjectType_video), details.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, int64(model.ObjectType_video), details.GetInt64(bundle.RelationKeyLayout))
 		assert.Equal(t, "mp4", details.GetString(bundle.RelationKeyFileExt))
 		assert.Equal(t, "file", details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, "id", details.GetString(bundle.RelationKeyFileId))
@@ -112,7 +112,7 @@ func TestFile_Details(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, bundle.TypeKeyFile, typeKey)
-		assert.Equal(t, int64(model.ObjectType_pdf), details.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, int64(model.ObjectType_pdf), details.GetInt64(bundle.RelationKeyLayout))
 		assert.Equal(t, "pdf", details.GetString(bundle.RelationKeyFileExt))
 		assert.Equal(t, "file", details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, "id", details.GetString(bundle.RelationKeyFileId))

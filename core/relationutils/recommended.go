@@ -64,6 +64,10 @@ var (
 	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
 )
 
+func DefaultFeaturedRelationKeys() []domain.RelationKey {
+	return defaultFeaturedRelationKeys
+}
+
 // FillRecommendedRelations fills recommendedRelations, recommendedFeaturedRelations, recommendedFileRelations
 // and recommendedHiddenRelations based on object's details.
 // If these relations are already filled with correct ids, isAlreadyFilled = true is returned

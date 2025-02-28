@@ -1109,7 +1109,7 @@ func addDescription(st *smarttest.SmartTest, description string) {
 func addRelations(st *smarttest.SmartTest) {
 	newState := st.Doc.NewState()
 	template.InitTemplate(newState, template.RequireHeader)
-	template.InitTemplate(newState, template.WithFeaturedRelations)
+	template.InitTemplate(newState, template.WithFeaturedRelationsBlock)
 	template.InitTemplate(newState, template.WithForcedDescription)
 	state.ApplyState("", newState, false)
 }

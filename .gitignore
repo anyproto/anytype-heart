@@ -20,3 +20,4 @@ build
 /core/anytype/config/nodes/custom.yml
 /.direnv/
 /.envrc
+*.swp

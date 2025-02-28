@@ -230,14 +230,6 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 				Warnf("grpc unary request took too long")
 			cache.addMethod(methodName)
 		}
-
-		Service.Send(
-			&LongMethodEvent{
-				methodName: methodName,
-				middleTime: time.Since(start).Milliseconds(),
-				stack:      debug.ParseGoroutinesDump(lastTrace.String(), "core.(*Middleware)."+methodName),
-			},
-		)
 	}
 	return resp, err
 }

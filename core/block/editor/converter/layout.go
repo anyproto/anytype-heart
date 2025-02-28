@@ -82,6 +82,7 @@ func isPageLayout(layout model.ObjectTypeLayout) bool {
 		model.ObjectType_todo,
 		model.ObjectType_note,
 		model.ObjectType_profile,
+		model.ObjectType_bookmark,
 	}, layout)
 }
 

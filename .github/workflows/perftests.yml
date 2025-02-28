@@ -8,7 +8,7 @@ on:
       run-on-runner-mac:
         description: 'Specify the runner to use on MacOS'
         required: true
-        default: 'ARM64'
+        default: 'mac-mini-org-heart'
       run-on-runner-win:
         description: 'Specify the runner to use on Windows'
         required: true
@@ -33,7 +33,7 @@ permissions:
 jobs:
   perftests-macos:
     timeout-minutes: 60
-    runs-on: 'ARM64'
+    runs-on: 'mac-mini-org-heart'
     steps:
       - name: Setup GO
         run: |

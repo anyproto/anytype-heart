@@ -303,7 +303,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
-	t.Run("resolved layout is already injected", func(t *testing.T) {
+	t.Run("failed to get type object id -> fallback to already sey resolvedLayout", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
@@ -316,7 +316,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_set), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
-	t.Run("failed to get type object id -> fallback to basic", func(t *testing.T) {
+	t.Run("failed to get type object id and resolvedLayout is not set -> fallback to basic", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
@@ -334,6 +334,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 
 		st := state.NewDoc("id", nil).NewState()
 		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_basic))
 
 		fx.lastDepDetails = map[string]*domain.Details{
 			bundle.TypeKeyTask.URL(): domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
@@ -353,6 +354,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 
 		st := state.NewDoc("id", nil).NewState()
 		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyProfile.URL()))
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_basic))
 
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:                domain.String(bundle.TypeKeyProfile.URL()),
@@ -378,26 +380,29 @@ func TestInjectResolvedLayout(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
-	t.Run("layout is resolved from object store, because layout relation is deleted", func(t *testing.T) {
+	t.Run("layout for template is resolved from target type", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
 		st := state.NewDoc("id", nil).NewState()
-		st.SetDetail(bundle.RelationKeyCoverId, domain.String("red"))
-		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyProfile.URL()))
-		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_todo))
-		st.ParentState().SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_todo))
+		st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String(bundle.TypeKeyTask.URL()))
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTemplate.URL()))
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
+		st.SetObjectTypeKey(bundle.TypeKeyTemplate)
 
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-			bundle.RelationKeyId:                domain.String(bundle.TypeKeyProfile.URL()),
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTemplate.URL()),
 			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_profile),
+		}, {
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
 		}})
 
 		// when
 		fx.injectResolvedLayout(st)
 
 		// then
-		assert.Equal(t, int64(model.ObjectType_profile), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
 }
 

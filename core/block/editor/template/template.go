@@ -100,20 +100,8 @@ var WithObjectTypes = func(otypes []domain.TypeKey) StateTransformer {
 	}
 }
 
-var WithResolvedLayout = func(layout model.ObjectTypeLayout) StateTransformer {
-	return func(s *state.State) {
-		if !s.LocalDetails().Has(bundle.RelationKeyResolvedLayout) {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
-		}
-	}
-}
-
 var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
-	return func(s *state.State) {
-		if !s.Details().Has(bundle.RelationKeyLayout) {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(layout))
-		}
-	}
+	return WithDetail(bundle.RelationKeyLayout, domain.Int64(layout))
 }
 
 var WithDetailName = func(name string) StateTransformer {
@@ -228,38 +216,6 @@ var WithTitle = StateTransformer(func(s *state.State) {
 	}
 })
 
-// WithDefaultFeaturedRelations **MUST** be called before WithDescription
-var WithDefaultFeaturedRelations = func(s *state.State) {
-	if !s.Details().Has(bundle.RelationKeyFeaturedRelations) {
-		var fr = []string{bundle.RelationKeyType.String()}
-		layout, _ := s.Layout()
-		switch layout {
-		case model.ObjectType_basic, model.ObjectType_note:
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyBacklinks.String()}
-		case model.ObjectType_set:
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyBacklinks.String()}
-		case model.ObjectType_collection:
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyBacklinks.String()}
-		case model.ObjectType_file, model.ObjectType_image, model.ObjectType_audio, model.ObjectType_video, model.ObjectType_pdf:
-			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyTag.String(), bundle.RelationKeyBacklinks.String()}
-			// Tag is not added to details of object explicitly as it is not system relation
-			s.SetDetail(bundle.RelationKeyTag, domain.StringList([]string{}))
-		}
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
-	}
-}
-
-var WithAddedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
-	return func(s *state.State) {
-		featRels := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-		if slice.FindPos(featRels, key.String()) > -1 {
-			return
-		} else {
-			s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(append(featRels, key.String())))
-		}
-	}
-}
-
 var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		var featRels = s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
@@ -269,18 +225,6 @@ var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer 
 		}
 	}
 }
-
-var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.State) {
-	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-
-	if slice.FindPos(fr, bundle.RelationKeyCreator.String()) != -1 {
-		frc := make([]string, len(fr))
-		copy(frc, fr)
-
-		frc = slice.RemoveMut(frc, bundle.RelationKeyCreator.String())
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
-	}
-})
 
 var WithForcedDescription = func(s *state.State) {
 	RequireHeader(s)
@@ -331,7 +275,10 @@ var WithForcedDescription = func(s *state.State) {
 var WithDescription = func(s *state.State) {
 	RequireHeader(s)
 
-	WithAddedFeaturedRelation(bundle.RelationKeyDescription)(s)
+	featRels := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
+	if slice.FindPos(featRels, bundle.RelationKeyDescription.String()) == -1 {
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(append(featRels, bundle.RelationKeyDescription.String())))
+	}
 	if !s.Exists(DescriptionBlockId) {
 		WithForcedDescription(s)
 	}
@@ -392,7 +339,7 @@ var WithNameToFirstBlock = StateTransformer(func(s *state.State) {
 	}
 })
 
-var WithFeaturedRelations = StateTransformer(func(s *state.State) {
+var WithFeaturedRelationsBlock = StateTransformer(func(s *state.State) {
 	RequireHeader(s)
 
 	var align model.BlockAlign

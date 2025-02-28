@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func GetError(obj any) (code int64, description string, err error) {
@@ -30,5 +32,17 @@ func GetError(obj any) (code int64, description string, err error) {
 		}
 	}
 	err = errors.New("can't extract the error field")
+	return
+}
+
+func GetChangeContent(val pb.IsChangeContentValue) (name string) {
+	t := reflect.TypeOf(val)
+	if t != nil && t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t != nil {
+		name = t.Name()
+		name, _ = strings.CutPrefix(name, "ChangeContentValueOf")
+	}
 	return
 }

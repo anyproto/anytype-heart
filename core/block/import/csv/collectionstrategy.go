@@ -177,7 +177,6 @@ func getRelationDetails(name, key string, format float64) *domain.Details {
 	details.SetFloat64(bundle.RelationKeyRelationFormat, format)
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyRelationKey, key)
-	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_relation))
 	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
