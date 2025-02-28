@@ -29541,6 +29541,7 @@ Contains basic information about a user account
 | timeZone | [string](#string) |  | time zone from config |
 | analyticsId | [string](#string) |  |  |
 | networkId | [string](#string) |  | network id to which anytype is connected |
+| ethereumAddress | [string](#string) |  | we have Any PK AND Ethereum PK derived from one seed phrase |
 
 
 
