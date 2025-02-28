@@ -814,7 +814,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.CheckSubscriptions()
 	}
 	if hooks {
-		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), ParentState: parent, Events: msgs, Changes: changes}); e != nil {
+		if e := sb.execHooks(HookAfterApply, ApplyInfo{
+			State:       sb.Doc.(*state.State),
+			ParentState: parent,
+			Events:      msgs,
+			Changes:     changes,
+		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
@@ -954,7 +959,12 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
-	sb.execHooks(HookAfterApply, ApplyInfo{State: s, ParentState: s.ParentState(), Events: msgs, Changes: changes})
+	sb.execHooks(HookAfterApply, ApplyInfo{
+		State:       s,
+		ParentState: s.ParentState(),
+		Events:      msgs,
+		Changes:     changes,
+	})
 
 	return nil
 }
