@@ -342,7 +342,6 @@ func (ai *AIService) processBookmark(ctx context.Context, spaceId, objectId stri
 		st.SetObjectTypeKey(domain.TypeKey(result.Type))
 		// temp fix
 		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
-		st.Details().Delete(bundle.RelationKeyLayout)
 		var relationBlocks []*model.Block
 
 		pictureHash := st.Details().GetString(bundle.RelationKeyPicture)
@@ -439,6 +438,7 @@ func (ai *AIService) CreateObjectFromUrl(ctx context.Context, provider *pb.RpcAI
 	body = ai.cleanResponse(body)
 	resultDetails = domain.NewDetailsFromProto(details)
 	resultDetails.SetString(bundle.RelationKeySource, url)
+	resultDetails.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_basic))
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyBookmark,
 		Details:       resultDetails,
