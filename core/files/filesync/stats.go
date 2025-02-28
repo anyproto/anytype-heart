@@ -7,11 +7,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
+	anystore "github.com/anyproto/any-store"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 )
 
 type NodeUsage struct {
@@ -101,7 +102,7 @@ func (s *fileSync) precacheNodeUsage() {
 	_, ok, err := s.getCachedNodeUsage()
 	// Init cache with default limits
 	if !ok || err != nil {
-		err = s.store.setNodeUsage(NodeUsage{
+		err = s.nodeUsageCache.Set(context.Background(), "node_usage", NodeUsage{
 			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
 		if err != nil {
@@ -135,8 +136,8 @@ func (s *fileSync) UpdateNodeUsage(ctx context.Context) error {
 }
 
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
-	usage, err := s.store.getNodeUsage()
-	if errors.Is(err, badger.ErrKeyNotFound) {
+	usage, err := s.nodeUsageCache.Get(context.Background(), anystoreprovider.SystemKeys.NodeUsage())
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		return NodeUsage{}, false, nil
 	}
 	if err != nil {
@@ -177,7 +178,7 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 		BytesLeft:         left,
 		Spaces:            spaces,
 	}
-	err = s.store.setNodeUsage(usage)
+	err = s.nodeUsageCache.Set(context.Background(), anystoreprovider.SystemKeys.NodeUsage(), usage)
 	if err != nil {
 		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -16,9 +15,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 )
 
 var ctx = context.Background()
@@ -74,31 +72,24 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
 
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
 
-	dataStore, err := datastore.NewInMemory()
-	require.NoError(t, err)
-
-	testApp.Register(dataStore)
 	testApp.Register(walletService)
 	err = fullText.Init(testApp)
 	require.NoError(t, err)
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	oldStore := oldstore.New()
-	err = oldStore.Init(testApp)
-	require.NoError(t, err)
-
 	s := New(context.Background(), "test", Deps{
-		DbPath:         filepath.Join(t.TempDir(), "test.db"),
-		Fts:            fullText,
-		OldStore:       oldStore,
-		SourceService:  &detailsFromId{},
-		SubManager:     &SubscriptionManager{},
-		AnyStoreConfig: nil,
-		FulltextQueue:  &dummyFulltextQueue{},
+		Db:            provider.GetCommonDb(),
+		Fts:           fullText,
+		SourceService: &detailsFromId{},
+		SubManager:    &SubscriptionManager{},
+		FulltextQueue: &dummyFulltextQueue{},
 	})
 	return &StoreFixture{
 		dsObjectStore: s.(*dsObjectStore),

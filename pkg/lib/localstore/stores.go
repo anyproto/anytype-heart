@@ -124,28 +124,6 @@ func RemoveIndexWithTxn(index Index, txn *badger.Txn, val interface{}, valPrimar
 	return nil
 }
 
-func AddIndexesWithTxn(store Indexable, txn *badger.Txn, newVal interface{}, newValPrimary string) error {
-	for _, index := range store.Indexes() {
-		err := AddIndexWithTxn(index, txn, newVal, newValPrimary)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func RemoveIndexesWithTxn(store Indexable, txn *badger.Txn, val interface{}, valPrimary string) error {
-	for _, index := range store.Indexes() {
-		err := RemoveIndexWithTxn(index, txn, val, valPrimary)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func GetKeyByIndex(index Index, txn *badger.Txn, val interface{}) (string, error) {
 	keys, err := GetKeysByIndex(index, txn, val, 1)
 	if err != nil {

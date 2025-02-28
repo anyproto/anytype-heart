@@ -4,65 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
-	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileproto"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/files/filestorage"
-	mock_rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore/mock_rpcstore"
-	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 func TestCancelDeletion(t *testing.T) {
-	sender := mock_event.NewMockSender(t)
-	sender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
-
-	rpcStore := mock_rpcstore2.NewMockRpcStore(t)
-	rpcStoreService := mock_rpcstore2.NewMockService(t)
-	rpcStoreService.EXPECT().NewStore().Return(rpcStore)
-	rpcStore.EXPECT().AccountInfo(mock.Anything).Return(&fileproto.AccountInfoResponse{}, nil).Maybe()
-
-	localFileStorage := filestorage.NewInMemory()
-
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
-
-	fileService := fileservice.New()
-	ctrl := gomock.NewController(t)
-	wallet := mock_wallet.NewMockWallet(t)
-	wallet.EXPECT().Name().Return(wallet2.CName)
-
-	a := new(app.App)
-	a.Register(dataStoreProvider)
-	a.Register(localFileStorage)
-	a.Register(fileService)
-	a.Register(testutil.PrepareMock(ctx, a, rpcStoreService))
-	a.Register(testutil.PrepareMock(ctx, a, sender))
-	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
-	a.Register(testutil.PrepareMock(ctx, a, wallet))
-	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
-
-	s := New().(*fileSync)
-	err = s.Init(a)
-
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
-	require.NoError(t, err)
-	s.store, err = newFileSyncStore(db)
-	require.NoError(t, err)
-
+	s := newFixtureNotStarted(t, 100000000)
+	err := s.Init(s.a)
 	require.NoError(t, err)
 
 	testObjectId1 := "objectId1"
@@ -86,8 +36,6 @@ func TestCancelDeletion(t *testing.T) {
 		FileId:   testFileId2.FileId,
 	})
 	require.NoError(t, err)
-
-	rpcStore.EXPECT().DeleteFiles(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	s.deletionQueue.Run()
 	s.retryDeletionQueue.Run()
