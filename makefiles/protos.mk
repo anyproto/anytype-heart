@@ -50,7 +50,7 @@ protos-swift:
 	@echo 'Clear protobuf files'
 	@rm -rf ./dist/ios/protobuf/*
 	@echo 'Generating swift protobuf files'
-	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_opt=minimum_swift_version=5.9 --swift_out=./dist/ios/protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 		@echo 'Generated swift protobuf files at ./dist/ios/pb'
 
 protos-swift-local: protos-swift
