@@ -69,9 +69,10 @@ const (
 type Hook int
 
 type ApplyInfo struct {
-	State   *state.State
-	Events  []simple.EventMessage
-	Changes []*pb.ChangeContent
+	State       *state.State
+	ParentState *state.State
+	Events      []simple.EventMessage
+	Changes     []*pb.ChangeContent
 }
 
 type HookCallback func(info ApplyInfo) (err error)
@@ -699,16 +700,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	migrationVersionUpdated := true
-	if parent := s.ParentState(); parent != nil {
+	parent := s.ParentState()
+	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
 
 	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
-		return
-	}
-
-	if err = sb.changeResolvedLayoutForObjects(msgs, true); err != nil {
 		return
 	}
 
@@ -816,7 +814,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.CheckSubscriptions()
 	}
 	if hooks {
-		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
+		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), ParentState: parent, Events: msgs, Changes: changes}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
@@ -945,10 +943,6 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	}
 	log.Infof("changes: stateAppend: %d events", len(msgs))
 
-	if err = sb.changeResolvedLayoutForObjects(msgs, true); err != nil {
-		return err
-	}
-
 	if len(msgs) > 0 {
 		sb.sendEvent(&pb.Event{
 			Messages:  msgsToEvents(msgs),
@@ -960,7 +954,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
-	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes})
+	sb.execHooks(HookAfterApply, ApplyInfo{State: s, ParentState: s.ParentState(), Events: msgs, Changes: changes})
 
 	return nil
 }

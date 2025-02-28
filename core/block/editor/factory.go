@@ -176,11 +176,13 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeDate,
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
-		coresb.SmartBlockTypeObjectType,
+		// coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeChatObject:
 		return f.newPage(space.Id(), sb), nil
+	case coresb.SmartBlockTypeObjectType:
+		return f.newObjectType(space.Id(), sb), nil
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, store), nil
 	case coresb.SmartBlockTypeHome:

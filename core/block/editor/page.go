@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"slices"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -17,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -36,7 +33,6 @@ var pageRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyLinks,
 	bundle.RelationKeyBacklinks,
 	bundle.RelationKeyMentions,
-	bundle.RelationKeyLayoutAlign,
 }
 
 var typeAndRelationRequiredRelations = []domain.RelationKey{
@@ -47,17 +43,6 @@ var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyRevision,
 	bundle.RelationKeyIsHidden,
 }
-
-var typeRequiredRelations = append(typeAndRelationRequiredRelations,
-	bundle.RelationKeyRecommendedRelations,
-	bundle.RelationKeyRecommendedFeaturedRelations,
-	bundle.RelationKeyRecommendedHiddenRelations,
-	bundle.RelationKeyRecommendedFileRelations,
-	bundle.RelationKeyRecommendedLayout,
-	bundle.RelationKeySmartblockTypes,
-	bundle.RelationKeyIconOption,
-	bundle.RelationKeyIconName,
-)
 
 var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationFormat,
@@ -249,12 +234,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 					template.WithLayout(layout),
 				)
-			case model.ObjectType_objectType:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-					template.WithLayout(layout),
-				)
 			case model.ObjectType_chat:
 				templates = append(templates,
 					template.WithTitle,
@@ -291,48 +270,5 @@ func (p *Page) StateMigrations() migration.Migrations {
 			Version: 2,
 			Proc:    func(s *state.State) {},
 		},
-		{
-			Version: 3,
-			Proc:    p.featuredRelationsMigration,
-		},
 	})
-}
-
-func (p *Page) featuredRelationsMigration(s *state.State) {
-	if p.Type() != coresb.SmartBlockTypeObjectType {
-		return
-	}
-
-	if s.HasRelation(bundle.RelationKeyRecommendedFeaturedRelations.String()) {
-		return
-	}
-
-	featuredRelationKeys := relationutils.DefaultFeaturedRelationKeys()
-	featuredRelationIds := make([]string, 0, len(featuredRelationKeys))
-	for _, key := range featuredRelationKeys {
-		id, err := p.Space().DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
-		if err != nil {
-			log.Errorf("failed to derive object id: %v", err)
-			continue
-		}
-		featuredRelationIds = append(featuredRelationIds, id)
-	}
-
-	if len(featuredRelationIds) == 0 {
-		return
-	}
-
-	s.SetDetail(bundle.RelationKeyRecommendedFeaturedRelations, domain.StringList(featuredRelationIds))
-
-	recommendedRelations := s.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
-	oldLen := len(recommendedRelations)
-	recommendedRelations = slices.DeleteFunc(recommendedRelations, func(s string) bool {
-		return slices.Contains(featuredRelationIds, s)
-	})
-
-	if oldLen == len(recommendedRelations) {
-		return
-	}
-
-	s.SetDetail(bundle.RelationKeyRecommendedRelations, domain.StringList(recommendedRelations))
 }
