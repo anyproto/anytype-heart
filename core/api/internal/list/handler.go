@@ -113,7 +113,7 @@ func RemoveObjectFromListHandler(s *ListService) gin.HandlerFunc {
 		listId := c.Param("list_id")
 		objectId := c.Param("object_id")
 
-		err := s.RemoveObjectFromList(c, spaceId, listId, objectId)
+		err := s.RemoveObjectsFromList(c, spaceId, listId, []string{objectId})
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedRemoveObjectsFromList, http.StatusInternalServerError),
 		)

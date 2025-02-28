@@ -48,6 +48,9 @@ func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest,
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts := s.prepareSorts(request.Sort)
+	if len(sorts) == 0 {
+		return nil, 0, false, errors.New("no sort criteria provided")
+	}
 	dateToSortAfter := sorts[0].RelationKey
 
 	allResponses := make([]*pb.RpcObjectSearchResponse, 0, len(spaces))
@@ -120,6 +123,9 @@ func (s *SearchService) Search(ctx context.Context, spaceId string, request Sear
 	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
 
 	sorts := s.prepareSorts(request.Sort)
+	if len(sorts) == 0 {
+		return nil, 0, false, errors.New("no sort criteria provided")
+	}
 	dateToSortAfter := sorts[0].RelationKey
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
