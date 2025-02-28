@@ -47,7 +47,10 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 				return err
 			}
 			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to create type widget: %w", err)
+			}
+			return nil
 		})
 		if err != nil {
 			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)

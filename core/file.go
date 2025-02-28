@@ -157,7 +157,10 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 		}
 		err := mw.doBlockService(func(bs *block.Service) (err error) {
 			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to create type widget for %s: %w", typeKey.String(), err)
+			}
+			return nil
 		})
 		if err != nil {
 			return response(objectId, nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
