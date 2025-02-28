@@ -959,12 +959,14 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
-	sb.execHooks(HookAfterApply, ApplyInfo{
+	if err = sb.execHooks(HookAfterApply, ApplyInfo{
 		State:       s,
 		ParentState: s.ParentState(),
 		Events:      msgs,
 		Changes:     changes,
-	})
+	}); err != nil {
+		log.Errorf("failed to execute smartblock hooks after apply on StateAppend: %v", err)
+	}
 
 	return nil
 }
