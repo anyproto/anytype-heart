@@ -1,10 +1,9 @@
 package util
 
 import (
+	"context"
 	"encoding/json"
 	"log"
-
-	"golang.org/x/net/context"
 )
 
 type AnalyticsBroadcastEvent struct {
