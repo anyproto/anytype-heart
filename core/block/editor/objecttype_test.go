@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -169,6 +170,182 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		details, err := fx.objectStore.GetDetails("obj5")
 		require.NoError(t, err)
 		assert.Equal(t, int64(model.ObjectType_todo), details.GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+
+	t.Run("layoutAlign is updated", func(t *testing.T) {
+		// given
+		fx := newFixture(t, typeId)
+		fx.sb.SetType(coresb.SmartBlockTypeObjectType)
+
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:          domain.String("obj1"),
+				bundle.RelationKeyType:        domain.String(typeId),
+				bundle.RelationKeyLayoutAlign: domain.Int64(int64(model.Block_AlignLeft)),
+				// layoutAlign detail should be deleted from obj1, because its value equals old type layoutAlign value
+			},
+			{
+				bundle.RelationKeyId:          domain.String("obj2"),
+				bundle.RelationKeyType:        domain.String(typeId),
+				bundle.RelationKeyLayoutAlign: domain.Int64(int64(model.Block_AlignRight)),
+				// layoutAlign detail should be deleted from obj2, because its value equals new type layoutAlign value
+			},
+			{
+				bundle.RelationKeyId:          domain.String("obj3"),
+				bundle.RelationKeyType:        domain.String(typeId),
+				bundle.RelationKeyLayoutAlign: domain.Int64(int64(model.Block_AlignCenter)),
+				// obj3 should not be modified, because layoutAlign does not correspond to old and new type layoutAlign values
+			},
+			{
+				bundle.RelationKeyId:   domain.String("obj4"),
+				bundle.RelationKeyType: domain.String(typeId),
+				// obj4 does not have layoutAlign detail set, so it has nothing to delete
+			},
+			{
+				bundle.RelationKeyId:               domain.String("tmpl"),
+				bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
+				bundle.RelationKeyLayoutAlign:      domain.Int64(int64(model.Block_AlignRight)),
+				bundle.RelationKeyTargetObjectType: domain.String(typeId),
+				// layoutAlign detail should be deleted from template, because its value equals new type layoutAlign value
+			},
+		})
+
+		obj1 := smarttest.New("obj1")
+		require.NoError(t, obj1.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayoutAlign, Value: domain.Int64(int64(model.ObjectType_basic)),
+		}}, false))
+		obj2 := smarttest.New("obj2")
+		require.NoError(t, obj2.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayoutAlign, Value: domain.Int64(int64(model.ObjectType_todo)),
+		}}, false))
+		tmpl := smarttest.New("tmpl")
+		require.NoError(t, tmpl.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayoutAlign, Value: domain.Int64(int64(model.ObjectType_basic)),
+		}}, false))
+
+		fx.space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func(smartblock.SmartBlock) error) error {
+			switch id {
+			case "obj1":
+				assert.NoError(t, f(obj1))
+			case "obj2":
+				assert.NoError(t, f(obj2))
+			case "tmpl":
+				assert.NoError(t, f(tmpl))
+			default:
+				panic("Do: invalid object id")
+			}
+			return nil
+		})
+
+		// when
+		err := fx.syncLayoutForObjectsAndTemplates(makeApplyInfo(typeId,
+			// recommendedLayout is changed: basic -> todo
+			layoutState{isLayoutAlignSet: true, layoutAlign: int64(model.Block_AlignLeft)},
+			layoutState{isLayoutAlignSet: true, layoutAlign: int64(model.Block_AlignRight)},
+		))
+
+		// then
+		assert.NoError(t, err)
+
+		assert.False(t, obj1.Details().Has(bundle.RelationKeyLayoutAlign))
+		assert.False(t, obj2.Details().Has(bundle.RelationKeyLayoutAlign))
+		assert.False(t, tmpl.Details().Has(bundle.RelationKeyLayoutAlign))
+	})
+
+	t.Run("recommendedFeaturedRelations is updated", func(t *testing.T) {
+		// given
+		fx := newFixture(t, typeId)
+		fx.sb.SetType(coresb.SmartBlockTypeObjectType)
+
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String("obj1"),
+				bundle.RelationKeyType: domain.String(typeId),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{
+					bundle.RelationKeyType.String(), bundle.RelationKeyTag.String(),
+				}),
+				// featuredRelations detail should be cleared in obj1, because its value corresponds to old recommendedFeaturedRelations value
+			},
+			{
+				bundle.RelationKeyId:   domain.String("obj2"),
+				bundle.RelationKeyType: domain.String(typeId),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{
+					bundle.RelationKeyType.String(), bundle.RelationKeyTag.String(), bundle.RelationKeyCreator.String(),
+				}),
+				// featuredRelations detail should be cleared in obj1, because its value corresponds to new recommendedFeaturedRelations value
+			},
+			{
+				bundle.RelationKeyId:   domain.String("obj3"),
+				bundle.RelationKeyType: domain.String(typeId),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{
+					bundle.RelationKeyType.String(), bundle.RelationKeyTag.String(), bundle.RelationKeyBacklinks.String(),
+				}),
+				// obj3 should not be modified, because featuredRelations does not correspond to old and new recommendedFeaturedRelations values
+			},
+			{
+				bundle.RelationKeyId:   domain.String("obj4"),
+				bundle.RelationKeyType: domain.String(typeId),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{
+					bundle.RelationKeyDescription.String(),
+				}),
+				// featuredRelations of obj4 contains only description, so obj4 has nothing to delete
+			},
+			{
+				bundle.RelationKeyId:                domain.String("tmpl"),
+				bundle.RelationKeyType:              domain.String(bundle.TypeKeyTemplate.URL()),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{}),
+				bundle.RelationKeyTargetObjectType:  domain.String(typeId),
+				// featuredRelations of template is empty, so it has nothing to delete
+			},
+		})
+
+		obj1 := smarttest.New("obj1")
+		require.NoError(t, obj1.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyFeaturedRelations, Value: domain.StringList([]string{
+				bundle.RelationKeyType.String(), bundle.RelationKeyTag.String(),
+			}),
+		}}, false))
+		obj2 := smarttest.New("obj2")
+		require.NoError(t, obj2.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyFeaturedRelations, Value: domain.StringList([]string{
+				bundle.RelationKeyType.String(), bundle.RelationKeyTag.String(), bundle.RelationKeyCreator.String(),
+			}),
+		}}, false))
+
+		fx.space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func(smartblock.SmartBlock) error) error {
+			switch id {
+			case "obj1":
+				assert.NoError(t, f(obj1))
+			case "obj2":
+				assert.NoError(t, f(obj2))
+			default:
+				panic("Do: invalid object id")
+			}
+			return nil
+		})
+
+		fx.space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
+
+		// when
+		err := fx.syncLayoutForObjectsAndTemplates(makeApplyInfo(typeId,
+			// recommendedLayout is changed: basic -> todo
+			layoutState{isFeaturedRelationsSet: true, featuredRelations: []string{
+				bundle.RelationKeyType.URL(), bundle.RelationKeyTag.URL(),
+			}},
+			layoutState{isFeaturedRelationsSet: true, featuredRelations: []string{
+				bundle.RelationKeyType.URL(), bundle.RelationKeyTag.URL(), bundle.RelationKeyCreator.URL(),
+			}},
+		))
+
+		// then
+		assert.NoError(t, err)
+
+		require.True(t, obj1.Details().Has(bundle.RelationKeyFeaturedRelations))
+		assert.Empty(t, obj1.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+		require.True(t, obj2.Details().Has(bundle.RelationKeyFeaturedRelations))
+		assert.Empty(t, obj2.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
 	})
 }
 

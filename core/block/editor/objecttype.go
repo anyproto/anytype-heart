@@ -10,9 +10,12 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
+	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -42,6 +45,9 @@ var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 type ObjectType struct {
 	smartblock.SmartBlock
 	basic.AllOperations
+	basic.IHistory
+	stext.Text
+	clipboard.Clipboard
 	source.ChangeReceiver
 	dataview.Dataview
 
@@ -50,11 +56,26 @@ type ObjectType struct {
 
 func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) *ObjectType {
 	store := f.objectStore.SpaceIndex(spaceId)
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &ObjectType{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
-		Dataview:       dataview.NewDataview(sb, store),
+		IHistory:       basic.NewHistory(sb),
+		Text: stext.NewText(
+			sb,
+			store,
+			f.eventSender,
+		),
+		Clipboard: clipboard.NewClipboard(
+			sb,
+			fileComponent,
+			f.tempDirProvider,
+			store,
+			f.fileService,
+			f.fileObjectService,
+		),
+		Dataview: dataview.NewDataview(sb, store),
 
 		objectStore: store,
 	}
