@@ -55,7 +55,7 @@ require (
 	github.com/ipfs/go-block-format v0.2.0
 	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-datastore v0.8.0
-	github.com/ipfs/go-ds-flatfs v0.5.2-0.20250227125509-a1310bca4792
+	github.com/ipfs/go-ds-flatfs v0.5.2
 	github.com/ipfs/go-ipld-format v0.6.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/joho/godotenv v1.5.1
