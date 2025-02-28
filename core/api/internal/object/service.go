@@ -28,6 +28,7 @@ var (
 	ErrInputMissingSource        = errors.New("source is missing for bookmark")
 	ErrFailedSetRelationFeatured = errors.New("failed to set relation featured")
 	ErrFailedFetchBookmark       = errors.New("failed to fetch bookmark")
+	ErrFailedCreateBlock         = errors.New("failed to create block")
 	ErrFailedPasteBody           = errors.New("failed to paste body")
 
 	// types
@@ -262,7 +263,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 
 		if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
 			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId) // nolint:errcheck
-			return object, ErrFailedCreateObject
+			return object, ErrFailedCreateBlock
 		}
 
 		blockPasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
