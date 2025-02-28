@@ -69,6 +69,10 @@ func (s *Service) SetWidgetBlockViewId(ctx session.Context, req *pb.RpcBlockWidg
 }
 
 func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string, key domain.TypeKey) error {
+	if spaceId == s.spaceService.TechSpaceId() {
+		return nil
+	}
+
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
