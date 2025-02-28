@@ -1,3 +1,4 @@
+name: "Unit test"
 on:
   push:
     branches:
