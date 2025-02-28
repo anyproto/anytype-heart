@@ -18,6 +18,8 @@ func Truncate(str string, maxLen int, ending string) string {
 	}
 
 	maxLen -= UTF16RuneCountString(ending)
+	x := utf16.Encode([]rune(str))
+	println(x)
 
 	var (
 		utf16Len      int
