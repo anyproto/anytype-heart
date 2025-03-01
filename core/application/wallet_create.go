@@ -17,6 +17,7 @@ func (s *Service) WalletCreate(req *pb.RpcWalletCreateRequest) (string, error) {
 	defer s.lock.Unlock()
 
 	s.rootPath = req.RootPath
+	s.lang = req.Lang
 
 	err := os.MkdirAll(s.rootPath, 0700)
 	if err != nil {

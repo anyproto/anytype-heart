@@ -74,15 +74,29 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	}
 	metrics.Service.SetWorkingDir(req.RootPath, req.Id)
 
-	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.JsonApiListenAddr, req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
+	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.JsonApiListenAddr,
+		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.Lang)
 }
 
-func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, jsonApiListenAddr string, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
+func (s *Service) start(
+	ctx context.Context,
+	id string,
+	rootPath string,
+	disableLocalNetworkSync bool,
+	jsonApiListenAddr string,
+	preferYamux bool,
+	networkMode pb.RpcAccountNetworkMode,
+	networkConfigFilePath string,
+	lang string,
+) (*model.Account, error) {
 	ctx, task := trace2.NewTask(ctx, "application.start")
 	defer task.End()
 
 	if rootPath != "" {
 		s.rootPath = rootPath
+	}
+	if lang != "" {
+		s.lang = lang
 	}
 	if s.mnemonic == "" {
 		return nil, ErrNoMnemonicProvided
@@ -121,7 +135,7 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res),
+		anytype.BootstrapWallet(s.rootPath, res, s.lang),
 		s.eventSender,
 	}
 

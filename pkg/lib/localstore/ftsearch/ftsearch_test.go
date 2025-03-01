@@ -273,21 +273,6 @@ func assertChineseFound(t *testing.T, tmpDir string) {
 	_ = ft.Close(nil)
 }
 
-func assertThaiSubstrFound(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "test",
-		Title: "ตัวอย่าง",
-		Text:  "พรระเจ้า \n kumamon",
-	}))
-
-	validateSearch(t, ft, "", "ระเ", 1)
-	validateSearch(t, ft, "", "ระเ ma", 1)
-
-	_ = ft.Close(nil)
-}
-
 func assertProperIds(t *testing.T, tmpDir string) {
 	fixture := newFixture(tmpDir, t)
 	ft := fixture.ft
