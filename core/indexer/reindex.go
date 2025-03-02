@@ -562,15 +562,6 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 	} else {
 		log.Info(msg)
 	}
-
-	if metrics.Enabled {
-		metrics.Service.Send(&metrics.ReindexEvent{
-			ReindexType: reindexType,
-			Total:       totalIds,
-			Succeed:     succeedIds,
-			SpentMs:     int(spent.Milliseconds()),
-		})
-	}
 }
 
 func (i *indexer) RemoveIndexes(spaceId string) error {

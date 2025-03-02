@@ -236,6 +236,12 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	}
 
 	typeObjectId := s.LocalDetails().GetString(bundle.RelationKeyType)
+
+	if s.ObjectTypeKey() == bundle.TypeKeyTemplate {
+		// resolvedLayout for templates should be derived from target type
+		typeObjectId = s.Details().GetString(bundle.RelationKeyTargetObjectType)
+	}
+
 	if typeObjectId == "" {
 		if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
 			return
@@ -245,9 +251,7 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 		return
 	}
 
-	if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
-		return
-	}
+	currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
 
 	typeDetails, found := sb.lastDepDetails[typeObjectId]
 	if found {
@@ -256,6 +260,9 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 		records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
 		if err != nil || len(records) != 1 {
 			log.Errorf("failed to query object %s: %v", typeObjectId, err)
+			if currentValue.Ok() {
+				return
+			}
 			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 			return
 		}
@@ -263,6 +270,9 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	}
 
 	if !rawValue.Ok() {
+		if currentValue.Ok() {
+			return
+		}
 		log.Errorf("failed to get recommended layout from details of type. Fallback to basic layout")
 		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return

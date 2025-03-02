@@ -89,7 +89,6 @@ func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, er
 	s := state.NewDoc(d.id, nil).(*state.State)
 	template.InitTemplate(s,
 		template.WithTitle,
-		template.WithDefaultFeaturedRelations,
 		template.WithAllBlocksEditsRestricted,
 	)
 	s.SetDetails(details)

@@ -17,7 +17,7 @@ require (
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
 	github.com/anyproto/tantivy-go v0.3.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
-	github.com/avast/retry-go/v4 v4.6.0
+	github.com/avast/retry-go/v4 v4.6.1
 	github.com/chai2010/webp v1.1.2-0.20240612091223-aa1b379218b7
 	github.com/cheggaaa/mb/v3 v3.0.2
 	github.com/dave/jennifer v1.7.1
@@ -29,6 +29,7 @@ require (
 	github.com/dsoprea/go-exif/v3 v3.0.1
 	github.com/dsoprea/go-jpeg-image-structure/v2 v2.0.0-20221012074422-4f3f7e934102
 	github.com/ethereum/go-ethereum v1.13.15
+	github.com/gabriel-vasile/mimetype v1.4.8
 	github.com/gin-gonic/gin v1.10.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-chi/chi/v5 v5.2.1
@@ -45,7 +46,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
-	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/yamux v0.1.2
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
@@ -54,14 +54,14 @@ require (
 	github.com/ipfs/boxo v0.27.4
 	github.com/ipfs/go-block-format v0.2.0
 	github.com/ipfs/go-cid v0.5.0
-	github.com/ipfs/go-datastore v0.6.0
-	github.com/ipfs/go-ds-flatfs v0.5.1
+	github.com/ipfs/go-datastore v0.8.0
+	github.com/ipfs/go-ds-flatfs v0.5.2
 	github.com/ipfs/go-ipld-format v0.6.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/joho/godotenv v1.5.1
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.18.0
 	github.com/kovidgoyal/imaging v1.6.4
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -108,7 +108,7 @@ require (
 	golang.org/x/image v0.24.0
 	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
 	golang.org/x/net v0.35.0
-	golang.org/x/oauth2 v0.26.0
+	golang.org/x/oauth2 v0.27.0
 	golang.org/x/text v0.22.0
 	google.golang.org/grpc v1.70.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
@@ -162,7 +162,6 @@ require (
 	github.com/flopp/go-findfont v0.1.0 // indirect
 	github.com/fogleman/gg v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.6 // indirect
 	github.com/gammazero/deque v1.0.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
@@ -211,7 +210,6 @@ require (
 	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
 	github.com/ipld/go-ipld-prime v0.21.0 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
-	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

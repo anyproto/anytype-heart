@@ -30,7 +30,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
+    runs-on: ${{ github.event.inputs.run-on-runner }}
     steps:
       - name: Install Go
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}

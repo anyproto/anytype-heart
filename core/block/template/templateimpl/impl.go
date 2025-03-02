@@ -44,9 +44,11 @@ var (
 	log = logging.Logger("template")
 
 	templateIsPreferableRelationKeys = []domain.RelationKey{
-		bundle.RelationKeyFeaturedRelations, bundle.RelationKeyResolvedLayout,
-		bundle.RelationKeyIconEmoji, bundle.RelationKeyCoverId,
-		bundle.RelationKeySourceObject, bundle.RelationKeySetOf,
+		bundle.RelationKeyLayout,
+		bundle.RelationKeyIconEmoji,
+		bundle.RelationKeyCoverId,
+		bundle.RelationKeySourceObject,
+		bundle.RelationKeySetOf,
 	}
 )
 
@@ -178,13 +180,14 @@ func extractTargetDetails(originDetails *domain.Details, templateDetails *domain
 		return targetDetails
 	}
 	for key, originalVal := range originDetails.Iterate() {
+		if key == bundle.RelationKeyLayout {
+			// layout detail should be removed, as resolvedLayout should be derived from template state
+			targetDetails.Delete(key)
+			continue
+		}
 		templateVal := templateDetails.Get(key)
 		if templateVal.Ok() {
 			inTemplateEmpty := templateVal.IsEmpty()
-			if key == bundle.RelationKeyResolvedLayout {
-				// layout = 0 is actually basic layout, so it counts
-				inTemplateEmpty = false
-			}
 			inOriginEmpty := originalVal.IsEmpty()
 			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, key)
 			if !inTemplateEmpty && (inOriginEmpty || templateValueShouldBePreferred) {
@@ -236,6 +239,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		bundle.RelationKeyTemplateIsBundled,
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
+		bundle.RelationKeyFeaturedRelations,
 	)
 	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(sb.Id()))
 	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
@@ -427,9 +431,7 @@ func (s *service) SetDefaultTemplateInType(ctx context.Context, typeId, template
 func (s *service) createBlankTemplateState(typeId domain.FullID, layout model.ObjectTypeLayout) (st *state.State) {
 	st = state.NewDoc(BlankTemplateId, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
-		template.WithDefaultFeaturedRelations,
-		template.WithFeaturedRelations,
-		template.WithAddedFeaturedRelation(bundle.RelationKeyTag),
+		template.WithFeaturedRelationsBlock,
 		template.WithDetail(bundle.RelationKeyTag, domain.StringList(nil)),
 		template.WithTitle,
 		template.WithForcedDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout)),

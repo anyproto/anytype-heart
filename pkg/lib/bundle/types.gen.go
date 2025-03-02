@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "412e75535ca288e62124dfd7ad9b53424db108696cc07d3cc40e1308080ba75c"
+const TypeChecksum = "6ee38b2f2411ceac16ec6f6b0d71be9d57a4436a377d0ced293eec68ec02221c"
 const (
 	TypePrefix = "_ot"
 )
@@ -72,6 +72,7 @@ var (
 			Name:          "Book",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAuthor), MustGetRelationLink(RelationKeyStarred), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyUrl)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "book",
 		},
@@ -150,6 +151,7 @@ var (
 			Name:          "Contact",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyCompany), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyPhone)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "contact",
 		},
@@ -187,6 +189,7 @@ var (
 			Name:          "Diary Entry",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyMood)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "diaryEntry",
 		},
@@ -225,6 +228,7 @@ var (
 			Name:          "Goal",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
 		},
@@ -251,6 +255,7 @@ var (
 			Name:          "Movie",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyGenre), MustGetRelationLink(RelationKeyStatus)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "movie",
 		},
@@ -329,6 +334,7 @@ var (
 			Name:          "Project",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "project",
 		},
@@ -341,6 +347,7 @@ var (
 			Name:          "Recipe",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIngredients), MustGetRelationLink(RelationKeyCookingTime), MustGetRelationLink(RelationKeyServings), MustGetRelationLink(RelationKeyCuisine), MustGetRelationLink(RelationKeyCourseType), MustGetRelationLink(RelationKeyDifficulty)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "recipe",
 		},
