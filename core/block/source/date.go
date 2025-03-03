@@ -61,17 +61,18 @@ func (d *date) getDetails() (*domain.Details, error) {
 	restrictions := restriction.GetRestrictionsBySBType(smartblock.SmartBlockTypeDate)
 
 	return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyName:         domain.String(dateObject.Name()),
-		bundle.RelationKeyId:           domain.String(d.id),
-		bundle.RelationKeyType:         domain.String(d.typeId),
-		bundle.RelationKeyIsReadonly:   domain.Bool(true),
-		bundle.RelationKeyIsArchived:   domain.Bool(false),
-		bundle.RelationKeyIsHidden:     domain.Bool(false),
-		bundle.RelationKeyLayout:       domain.Float64(float64(model.ObjectType_date)),
-		bundle.RelationKeyIconEmoji:    domain.String("📅"),
-		bundle.RelationKeySpaceId:      domain.String(d.SpaceID()),
-		bundle.RelationKeyTimestamp:    domain.Int64(dateObject.Time().Unix()),
-		bundle.RelationKeyRestrictions: domain.Int64List(restrictions),
+		bundle.RelationKeyName:           domain.String(dateObject.Name()),
+		bundle.RelationKeyId:             domain.String(d.id),
+		bundle.RelationKeyType:           domain.String(d.typeId),
+		bundle.RelationKeyIsReadonly:     domain.Bool(true),
+		bundle.RelationKeyIsArchived:     domain.Bool(false),
+		bundle.RelationKeyIsHidden:       domain.Bool(false),
+		bundle.RelationKeyResolvedLayout: domain.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyLayout:         domain.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyIconEmoji:      domain.String("📅"),
+		bundle.RelationKeySpaceId:        domain.String(d.SpaceID()),
+		bundle.RelationKeyTimestamp:      domain.Int64(dateObject.Time().Unix()),
+		bundle.RelationKeyRestrictions:   domain.Int64List(restrictions),
 	}), nil
 }
 
@@ -88,7 +89,6 @@ func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, er
 	s := state.NewDoc(d.id, nil).(*state.State)
 	template.InitTemplate(s,
 		template.WithTitle,
-		template.WithDefaultFeaturedRelations,
 		template.WithAllBlocksEditsRestricted,
 	)
 	s.SetDetails(details)

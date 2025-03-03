@@ -208,7 +208,7 @@ func (a *accountObject) initState(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeyProfile}),
-		template.WithForcedDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_profile)),
+		template.WithLayout(model.ObjectType_profile),
 		template.WithDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter)),
 	)
 	blockId := "identity"

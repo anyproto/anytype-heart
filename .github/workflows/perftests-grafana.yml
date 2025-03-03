@@ -1,0 +1,106 @@
+name: Perf tests grafana
+
+on:
+  workflow_dispatch:
+    inputs:
+      run-on-runner:
+        description: 'Specify the runner to use'
+        required: true
+        default: 'arm64'
+  schedule:
+    - cron: '0 0 * * *' # every day at midnight
+      filters:
+        branches:
+          include:
+            - 'main'
+
+
+permissions:
+  actions: 'write'
+  packages: 'write'
+  contents: 'write'
+
+
+jobs:
+  perftests-grafana:
+    runs-on: ${{ github.event.inputs.run-on-runner || 'arm64' }}
+    steps:
+      - name: Install Go
+        if: runner.name != 'mac-mini-org-heart'
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.23.2
+          check-latest: true
+
+      - name: Setup GO
+        run: |
+          go version
+          echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
+          echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
+          echo $(go env GOPATH)/bin >> $GITHUB_PATH
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install brew and node deps
+        if: runner.name != 'mac-mini-org-heart'
+        run: make install-brew-and-node-deps
+
+      - name: Set env vars
+        env:
+          UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
+          INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
+        run: |
+          GIT_SUMMARY=$(git describe --tags --always)
+          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+          VERSION=$(git rev-parse --short HEAD)
+          if [ -z "$VERSION" ]; then
+            VERSION=${GITHUB_REF##*/}
+          fi
+          echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo BUILD_TAG_NETWORK=envproduction >> $GITHUB_ENV
+          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
+          echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
+          echo $(pwd)/deps >> $GITHUB_PATH
+          echo "${GOBIN}" >> $GITHUB_PATH
+          git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Go mod download
+        run: |
+          go mod download
+
+      - name: install protoc
+        run: |
+          make setup-protoc
+
+      - name: setup go
+        run: |
+          make setup-go
+          make setup-gomobile
+          which gomobile
+
+      - name: Cross-compile library mac/win/linux
+        run: |
+          make cross-compile-library
+          ls -lha .
+
+      - name: run perf tests
+        env:
+          ANYTYPE_REPORT_MEMORY: 'true'
+          TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
+          PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
+          PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
+        run: |
+          echo "Running perf tests"
+          cd cmd/perftester/
+          CGO_ENABLED="1" go run main.go 10
+
+      - name: Archive perf tests results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pprofs
+          path: |
+            *.pprof
+
+      - name: Clean perf tests results
+        run: rm -rf *.pprof

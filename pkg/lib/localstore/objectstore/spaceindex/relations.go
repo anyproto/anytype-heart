@@ -120,7 +120,7 @@ func (s *dsObjectStore) GetRelationById(id string) (*model.Relation, error) {
 func (s *dsObjectStore) ListAllRelations() (relations relationutils.Relations, err error) {
 	filters := []database.FilterRequest{
 		{
-			RelationKey: bundle.RelationKeyLayout,
+			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(model.ObjectType_relation),
 		},
@@ -148,7 +148,7 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 				Value:       domain.String(key),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_relation)),
 			},
@@ -182,7 +182,7 @@ func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.Re
 				Value:       domain.String(key.String()),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_relation)),
 			},
@@ -212,7 +212,7 @@ func (s *dsObjectStore) ListRelationOptions(relationKey domain.RelationKey) (opt
 		},
 		{
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyLayout,
+			RelationKey: bundle.RelationKeyResolvedLayout,
 			Value:       domain.Int64(model.ObjectType_relationOption),
 		},
 	}
