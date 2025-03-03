@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 
 	"github.com/anyproto/any-sync/app/ocache"
@@ -137,7 +136,7 @@ func (ot *ObjectType) featuredRelationsMigration(s *state.State) {
 	featuredRelationKeys := relationutils.DefaultFeaturedRelationKeys()
 	featuredRelationIds := make([]string, 0, len(featuredRelationKeys))
 	for _, key := range featuredRelationKeys {
-		id, err := ot.Space().DeriveObjectID(context.TODO(), domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
+		id, err := ot.Space().DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
 		if err != nil {
 			log.Errorf("failed to derive object id: %v", err)
 			continue
@@ -194,7 +193,7 @@ func (d *relationIdDeriver) deriveId(key domain.RelationKey) (string, error) {
 		}
 	}
 
-	id, err := d.space.DeriveObjectID(context.TODO(), domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
+	id, err := d.space.DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
 	if err != nil {
 		return "", fmt.Errorf("failed to derive relation id: %w", err)
 	}
@@ -435,9 +434,9 @@ func isFeaturedRelationsCorrespondToType(fr []string, newLayout, oldLayout layou
 		featuredRelationIds = append(featuredRelationIds, id)
 	}
 
-	if newLayout.isFeaturedRelationsSet && reflect.DeepEqual(featuredRelationIds, newLayout.featuredRelations) {
+	if newLayout.isFeaturedRelationsSet && slices.Equal(featuredRelationIds, newLayout.featuredRelations) {
 		return true
 	}
 
-	return oldLayout.isFeaturedRelationsSet && reflect.DeepEqual(featuredRelationIds, oldLayout.featuredRelations)
+	return oldLayout.isFeaturedRelationsSet && slices.Equal(featuredRelationIds, oldLayout.featuredRelations)
 }
