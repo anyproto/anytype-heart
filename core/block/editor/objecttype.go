@@ -50,7 +50,7 @@ type ObjectType struct {
 	source.ChangeReceiver
 	dataview.Dataview
 
-	objectStore spaceindex.Store
+	spaceIndex spaceindex.Store
 }
 
 func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) *ObjectType {
@@ -76,7 +76,7 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 		),
 		Dataview: dataview.NewDataview(sb, store),
 
-		objectStore: store,
+		spaceIndex: store,
 	}
 }
 
@@ -258,7 +258,7 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 		}
 
 		err = ot.Space().DoLockedIfNotExists(id, func() error {
-			return ot.objectStore.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
+			return ot.spaceIndex.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
 				if details == nil {
 					return nil, false, nil
 				}
@@ -359,7 +359,7 @@ func getLayoutStateFromParent(ps *state.State) layoutState {
 }
 
 func (ot *ObjectType) queryObjectsAndTemplates() ([]database.Record, error) {
-	records, err := ot.objectStore.Query(database.Query{Filters: []database.FilterRequest{
+	records, err := ot.spaceIndex.Query(database.Query{Filters: []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyType,
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -370,7 +370,7 @@ func (ot *ObjectType) queryObjectsAndTemplates() ([]database.Record, error) {
 		return nil, fmt.Errorf("failed to get objects of single type: %w", err)
 	}
 
-	templates, err := ot.objectStore.Query(database.Query{Filters: []database.FilterRequest{
+	templates, err := ot.spaceIndex.Query(database.Query{Filters: []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyTargetObjectType,
 			Condition:   model.BlockContentDataviewFilter_Equal,

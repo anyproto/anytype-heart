@@ -39,8 +39,8 @@ func newFixture(t *testing.T, id string) *fixture {
 	spc := smartblock.NewMockSpace(t)
 	sb.SetSpace(spc)
 	page := &ObjectType{
-		SmartBlock:  sb,
-		objectStore: store.SpaceIndex(spaceId),
+		SmartBlock: sb,
+		spaceIndex: store.SpaceIndex(spaceId),
 	}
 
 	return &fixture{
@@ -167,7 +167,7 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		assert.False(t, tmpl.Details().Has(bundle.RelationKeyLayout))
 
 		assert.True(t, obj4.Results.IsStateAppendCalled)
-		details, err := fx.objectStore.GetDetails("obj5")
+		details, err := fx.spaceIndex.GetDetails("obj5")
 		require.NoError(t, err)
 		assert.Equal(t, int64(model.ObjectType_todo), details.GetInt64(bundle.RelationKeyResolvedLayout))
 	})
