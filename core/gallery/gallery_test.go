@@ -3,19 +3,14 @@ package gallery
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
-	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-const port = ":7070"
 
 //go:embed testdata/schema.json
 var schemaJSON []byte
@@ -41,16 +36,13 @@ func TestIsInWhitelist(t *testing.T) {
 }
 
 func TestDownloadManifestAndValidateSchema(t *testing.T) {
-	schema := schemaResponse{Schema: "http://localhost" + port + "/schema.json"}
-	lis, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1%s", port))
-	require.NoError(t, err)
-	server := startHttpServer(lis)
-	defer server.Shutdown(nil)
-	time.Sleep(100 * time.Millisecond)
+	server := startHttpServer()
+	defer server.Close()
+	schema := schemaResponse{Schema: server.URL + "/schema.json"}
 
 	t.Run("download knowledge base manifest", func(t *testing.T) {
 		// given
-		url := "http://localhost" + port + "/manifest.json"
+		url := server.URL + "/manifest.json"
 
 		// when
 		info, err := DownloadManifest(url, false)
@@ -123,7 +115,7 @@ func TestDownloadManifestAndValidateSchema(t *testing.T) {
 	})
 }
 
-func startHttpServer(lis net.Listener) *http.Server {
+func startHttpServer() *httptest.Server {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/manifest.json", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -135,9 +127,7 @@ func startHttpServer(lis net.Listener) *http.Server {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(schemaJSON)
 	})
-	server := &http.Server{Addr: port, Handler: handler}
-	go server.Serve(lis)
-	return server
+	return httptest.NewServer(handler)
 }
 
 func buildInfo() *model.ManifestInfo {
