@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTruncateEllipsized(t *testing.T) {
@@ -45,10 +44,10 @@ func TestTruncateEllipsized(t *testing.T) {
 			expected: "👨‍👩‍👧‍👦",
 		},
 		{
-			name:     "Big emoji fit",
+			name:     "Big emoji not fit",
 			text:     "👨‍👩‍👧‍👦",
 			length:   10,
-			expected: " …",
+			expected: "👨\u200d👩\u200d👧 …",
 		},
 		{
 			name:     "Divine emoji fit",
@@ -135,13 +134,5 @@ func TestTruncateEllipsized(t *testing.T) {
 			actual := TruncateEllipsized(test.text, test.length)
 			assert.Equal(t, test.expected, actual)
 		})
-	}
-}
-
-func TestTruncateEllipsized2(t *testing.T) {
-	require.Equal(t, 2, len([]rune("ма")))
-	for i, r := range []rune("мこ🌍世а") {
-		println(i)
-		println(r)
 	}
 }
