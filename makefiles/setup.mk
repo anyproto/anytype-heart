@@ -42,8 +42,3 @@ setup-protoc-jsweb:
 	@rm -rf deps/grpc-web
 
 setup-protoc: setup-protoc-go setup-protoc-jsweb
-
-#@git clone --depth 1 http://github.com/abseil/abseil-cpp.git deps/abseil && \
-#    cd deps/abseil && \
-#    git checkout <коммит-хэш> && \
-#    cd ../..
