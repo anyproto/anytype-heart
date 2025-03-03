@@ -1480,12 +1480,12 @@
     "source": "details"
   },
   {
-    "description": "Automatically generated widget keys. Used to avoid creating widget if was removed by user",
+    "description": "Automatically generated widget. Used to avoid creating widget if was removed by user",
     "format": "object",
     "hidden": true,
-    "key": "autoWidgetKeys",
+    "key": "autoWidgetTargets",
     "maxCount": 0,
-    "name": "Auto Widget Keys",
+    "name": "Auto Widget targets",
     "readonly": false,
     "source": "details"
   }
