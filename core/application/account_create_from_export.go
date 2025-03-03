@@ -87,7 +87,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 		return RecoverFromLegacyResponse{}, ErrAccountMismatch
 	}
 	s.rootPath = req.RootPath
-	s.FulltextPrimaryLanguage = req.FulltextPrimaryLanguage
+	s.fulltextPrimaryLanguage = req.FulltextPrimaryLanguage
 	err = os.MkdirAll(s.rootPath, 0700)
 	if err != nil {
 		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
@@ -135,7 +135,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 func (s *Service) startApp(cfg *config.Config, derivationResult crypto.DerivationResult) error {
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, derivationResult, s.FulltextPrimaryLanguage),
+		anytype.BootstrapWallet(s.rootPath, derivationResult, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 

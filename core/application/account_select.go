@@ -104,7 +104,7 @@ func (s *Service) start(
 		s.rootPath = rootPath
 	}
 	if lang != "" {
-		s.FulltextPrimaryLanguage = lang
+		s.fulltextPrimaryLanguage = lang
 	}
 	if s.mnemonic == "" {
 		return nil, ErrNoMnemonicProvided
@@ -143,7 +143,7 @@ func (s *Service) start(
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res, s.FulltextPrimaryLanguage),
+		anytype.BootstrapWallet(s.rootPath, res, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 
