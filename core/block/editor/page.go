@@ -217,10 +217,8 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			templates := []template.StateTransformer{
 				template.WithEmpty,
 				template.WithObjectTypes(ctx.State.ObjectTypeKeys()),
-				template.WithDefaultFeaturedRelations,
-				template.WithFeaturedRelations,
+				template.WithFeaturedRelationsBlock,
 				template.WithLinkFieldsMigration,
-				template.WithCreatorRemovedFromFeaturedRelations,
 			}
 
 			switch layout {
@@ -239,20 +237,16 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				templates = append(templates,
 					template.WithTitle,
 					template.WithDescription,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-					template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 					template.WithBookmarkBlocks,
 				)
 			case model.ObjectType_relation:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 					template.WithLayout(layout),
 				)
 			case model.ObjectType_objectType:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 					template.WithLayout(layout),
 				)
 			case model.ObjectType_chat:

@@ -7,10 +7,6 @@ on:
         description: 'Specify the runner to use'
         required: true
         default: 'arm64'
-      perf-test:
-        description: 'Run perf test times'
-        required: true
-        default: '1'
   schedule:
     - cron: '0 0 * * *' # every day at midnight
       filters:
@@ -96,12 +92,8 @@ jobs:
           PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
         run: |
           echo "Running perf tests"
-          RUN_COUNT=${{ github.event.inputs.perf-test }}
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            RUN_COUNT=10
-          fi
           cd cmd/perftester/
-          CGO_ENABLED="1" go run main.go $RUN_COUNT
+          CGO_ENABLED="1" go run main.go 10
 
       - name: Archive perf tests results
         uses: actions/upload-artifact@v4
