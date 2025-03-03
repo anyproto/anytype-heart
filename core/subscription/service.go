@@ -33,7 +33,7 @@ const CName = "subscription"
 
 var log = logging.Logger("anytype-mw-subscription")
 
-var batchTime = 50 * time.Millisecond
+var batchTime = 250 * time.Millisecond
 
 func New() Service {
 	return &service{}
