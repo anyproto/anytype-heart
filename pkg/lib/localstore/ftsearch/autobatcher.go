@@ -41,7 +41,7 @@ func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContin
 	defer f.parserPool.Put(parser)
 	searchResult, err := tantivy.GetSearchResults(
 		result,
-		f.schema,
+		f.index,
 		func(json string) (*DocumentMatch, error) {
 			value, err := parser.Parse(json)
 			if err != nil {
@@ -114,37 +114,22 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 		return fmt.Errorf("failed to create document")
 	}
 
-	err = doc.AddField(fieldId, searchDoc.Id, f.index)
+	err = doc.AddFields(searchDoc.Id, f.index, fieldId, fieldIdRaw)
 	if err != nil {
 		return err
 	}
 
-	err = doc.AddField(fieldIdRaw, searchDoc.Id, f.index)
+	err = doc.AddField(searchDoc.SpaceId, f.index, fieldSpace)
 	if err != nil {
 		return err
 	}
 
-	err = doc.AddField(fieldSpace, searchDoc.SpaceId, f.index)
+	err = doc.AddFields(searchDoc.Title, f.index, fieldTitle, fieldTitleZh)
 	if err != nil {
 		return err
 	}
 
-	err = doc.AddField(fieldTitle, searchDoc.Title, f.index)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddField(fieldTitleZh, searchDoc.Title, f.index)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddField(fieldText, searchDoc.Text, f.index)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddField(fieldTextZh, searchDoc.Text, f.index)
+	err = doc.AddFields(searchDoc.Text, f.index, fieldText, fieldTextZh)
 	if err != nil {
 		return err
 	}

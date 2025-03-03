@@ -29,6 +29,7 @@ type EthAddress = common.Address
 type wallet struct {
 	rootPath      string
 	repoPath      string // other components will init their files/dirs inside
+	lang          string
 	deviceKeyPath string
 
 	accountKey    crypto.PrivKey
@@ -117,6 +118,10 @@ func (r *wallet) RepoPath() string {
 	return r.repoPath
 }
 
+func (r *wallet) FtsPrimaryLang() string {
+	return r.lang
+}
+
 func (r *wallet) RootPath() string {
 	return r.rootPath
 }
@@ -129,12 +134,13 @@ func (r *wallet) Account() *accountdata.AccountKeys {
 	return r.accountData
 }
 
-func NewWithAccountRepo(rootPath string, derivationResult crypto.DerivationResult) Wallet {
+func NewWithAccountRepo(rootPath string, derivationResult crypto.DerivationResult, lang string) Wallet {
 	accountId := derivationResult.Identity.GetPublic().Account()
 	repoPath := filepath.Join(rootPath, accountId)
 	return &wallet{
 		rootPath:      rootPath,
 		repoPath:      repoPath,
+		lang:          lang,
 		masterKey:     derivationResult.MasterKey,
 		oldAccountKey: derivationResult.OldAccountKey,
 		accountKey:    derivationResult.Identity,
@@ -160,6 +166,7 @@ func NewWithRepoPathAndKeys(repoPath string, accountKeypair, deviceKeypair crypt
 type Wallet interface {
 	RootPath() string
 	RepoPath() string
+	FtsPrimaryLang() string
 	GetAccountPrivkey() crypto.PrivKey
 	GetDevicePrivkey() crypto.PrivKey
 	GetOldAccountKey() crypto.PrivKey

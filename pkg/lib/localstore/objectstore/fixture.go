@@ -66,6 +66,10 @@ func newWalletStub(t testing.TB) wallet.Wallet {
 	}
 }
 
+func (w *walletStub) FtsPrimaryLang() string {
+	return ""
+}
+
 func (w *walletStub) RepoPath() string {
 	return w.tempDir
 }

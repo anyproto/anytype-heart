@@ -3510,6 +3510,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  |  |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -3732,6 +3733,7 @@ Middleware-to-front-end response to an account recover request, that can contain
 | path | [string](#string) |  |  |
 | rootPath | [string](#string) |  |  |
 | icon | [int64](#int64) |  |  |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -3849,6 +3851,7 @@ User can select an account from those, that came with an AccountAdd events
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -20297,6 +20300,7 @@ Front-end-to-middleware request to create a new wallet
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootPath | [string](#string) |  | Path to a wallet directory |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -20415,6 +20419,7 @@ Front end to middleware request-to-recover-a wallet with this mnemonic and a roo
 | ----- | ---- | ----- | ----------- |
 | rootPath | [string](#string) |  | Path to a wallet directory |
 | mnemonic | [string](#string) |  | Mnemonic of a wallet to recover |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 

@@ -15,7 +15,7 @@ require (
 	github.com/anyproto/go-slip10 v1.0.0
 	github.com/anyproto/lexid v0.0.4
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
-	github.com/anyproto/tantivy-go v0.3.1
+	github.com/anyproto/tantivy-go v1.0.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/chai2010/webp v1.1.2-0.20240612091223-aa1b379218b7
@@ -105,7 +105,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
 	golang.org/x/image v0.24.0
-	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
+	golang.org/x/mobile v0.0.0-20250218173827-cd096645fcd3
 	golang.org/x/net v0.35.0
 	golang.org/x/oauth2 v0.26.0
 	golang.org/x/sys v0.30.0
