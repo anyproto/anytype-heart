@@ -15,7 +15,7 @@ require (
 	github.com/anyproto/go-slip10 v1.0.0
 	github.com/anyproto/lexid v0.0.4
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
-	github.com/anyproto/tantivy-go v0.3.1
+	github.com/anyproto/tantivy-go v1.0.0
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/chai2010/webp v1.1.2-0.20240612091223-aa1b379218b7
@@ -105,7 +105,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c
 	golang.org/x/image v0.24.0
-	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f
+	golang.org/x/mobile v0.0.0-20250218173827-cd096645fcd3
 	golang.org/x/net v0.35.0
 	golang.org/x/oauth2 v0.27.0
 	golang.org/x/text v0.22.0
@@ -285,7 +285,7 @@ require (
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
-	golang.org/x/tools v0.29.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241202173237-19429a94021a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241202173237-19429a94021a // indirect
 	google.golang.org/protobuf v1.36.4 // indirect
