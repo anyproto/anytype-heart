@@ -12,7 +12,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'mac-mini-org-heart'
+        default: 'macos-14'
 
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: validate agent
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "mac-mini-org-heart" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "macos-14" ]]; then
             echo "Invalid runner"
             exit 1
           fi
