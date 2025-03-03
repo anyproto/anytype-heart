@@ -99,7 +99,7 @@ type ftSearchTantivy struct {
 	parserPool *fastjson.ParserPool
 	mu         sync.Mutex
 	blevePath  string
-	lang       string
+	lang       tantivy.Language
 }
 
 func TantivyNew() FTSearch {
@@ -549,12 +549,15 @@ func prepareQuery(query string) string {
 	return query
 }
 
-func validateLanguage(lang string) string {
-	switch lang {
-	case tantivy.Arabic, tantivy.Danish, tantivy.Dutch, tantivy.English, tantivy.Finnish, tantivy.French, tantivy.German,
-		tantivy.Greek, tantivy.Hungarian, tantivy.Italian, tantivy.Norwegian, tantivy.Portuguese, tantivy.Romanian,
-		tantivy.Russian, tantivy.Spanish, tantivy.Swedish, tantivy.Tamil, tantivy.Turkish:
-		return lang
+func validateLanguage(lang string) tantivy.Language {
+	tantivyLang := tantivy.Language(lang)
+	switch tantivyLang {
+	case tantivy.Arabic, tantivy.Armenian, tantivy.Basque, tantivy.Catalan, tantivy.Danish, tantivy.Dutch, tantivy.English,
+		tantivy.Estonian, tantivy.Finnish, tantivy.French, tantivy.German, tantivy.Greek, tantivy.Hindi, tantivy.Hungarian,
+		tantivy.Indonesian, tantivy.Irish, tantivy.Italian, tantivy.Lithuanian, tantivy.Nepali, tantivy.Norwegian,
+		tantivy.Portuguese, tantivy.Romanian, tantivy.Russian, tantivy.Serbian, tantivy.Spanish, tantivy.Swedish,
+		tantivy.Tamil, tantivy.Turkish, tantivy.Yiddish:
+		return tantivyLang
 	default:
 		return tantivy.English
 	}
