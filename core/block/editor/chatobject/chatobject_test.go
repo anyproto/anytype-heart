@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -58,7 +59,9 @@ func newFixture(t *testing.T) *fixture {
 
 	sb := smarttest.New("chatId1")
 
-	object := New(sb, accountService, eventSender, db)
+	spaceIndex := spaceindex.NewStoreFixture(t)
+
+	object := New(sb, accountService, eventSender, db, spaceIndex)
 
 	fx := &fixture{
 		storeObject:        object.(*storeObject),
