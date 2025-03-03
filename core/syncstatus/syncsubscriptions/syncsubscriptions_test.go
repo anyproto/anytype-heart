@@ -44,7 +44,7 @@ func TestSyncSubscriptions(t *testing.T) {
 	subs.(*syncSubscriptions).service = testSubs
 	err := subs.Run(context.Background())
 	require.NoError(t, err)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	spaceSub, err := subs.GetSubscription("spaceId")
 	require.NoError(t, err)
 	syncCnt := spaceSub.SyncingObjectsCount([]string{"1", "2"})
@@ -59,7 +59,7 @@ func TestSyncSubscriptions(t *testing.T) {
 		objects[i][bundle.RelationKeySyncStatus] = domain.Int64(int64(domain.ObjectSyncStatusSynced))
 		testSubs.AddObjects(t, "spaceId", []objectstore.TestObject{objects[i]})
 	}
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	syncCnt = spaceSub.SyncingObjectsCount([]string{"1", "2"})
 	require.Equal(t, 2, syncCnt)
 	err = subs.Close(context.Background())
