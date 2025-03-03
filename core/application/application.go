@@ -25,11 +25,11 @@ type Service struct {
 	// memoized private key derived from mnemonic, used for signing session tokens
 	sessionSigningKey []byte
 
-	rootPath          string
-	lang              string
-	clientWithVersion string
-	eventSender       event.Sender
-	sessions          session.Service
+	rootPath                string
+	FulltextPrimaryLanguage string
+	clientWithVersion       string
+	eventSender             event.Sender
+	sessions                session.Service
 
 	traceRecorder                       *traceRecorder
 	appAccountStartInProcessCancel      context.CancelFunc

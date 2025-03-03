@@ -118,7 +118,7 @@ func (r *wallet) RepoPath() string {
 	return r.repoPath
 }
 
-func (r *wallet) Lang() string {
+func (r *wallet) FtsPrimaryLang() string {
 	return r.lang
 }
 
@@ -166,7 +166,7 @@ func NewWithRepoPathAndKeys(repoPath string, accountKeypair, deviceKeypair crypt
 type Wallet interface {
 	RootPath() string
 	RepoPath() string
-	Lang() string
+	FtsPrimaryLang() string
 	GetAccountPrivkey() crypto.PrivKey
 	GetDevicePrivkey() crypto.PrivKey
 	GetOldAccountKey() crypto.PrivKey

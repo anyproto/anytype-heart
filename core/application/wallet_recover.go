@@ -32,6 +32,6 @@ func (s *Service) WalletRecover(req *pb.RpcWalletRecoverRequest) error {
 		return err
 	}
 	s.rootPath = req.RootPath
-	s.lang = req.Lang
+	s.FulltextPrimaryLanguage = req.FulltextPrimaryLanguage
 	return nil
 }

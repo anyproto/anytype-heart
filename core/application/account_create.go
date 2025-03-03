@@ -62,7 +62,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, derivationResult, s.lang),
+		anytype.BootstrapWallet(s.rootPath, derivationResult, s.FulltextPrimaryLanguage),
 		s.eventSender,
 	}
 

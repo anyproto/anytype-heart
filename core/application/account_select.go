@@ -75,7 +75,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	metrics.Service.SetWorkingDir(req.RootPath, req.Id)
 
 	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.JsonApiListenAddr,
-		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.Lang)
+		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.FulltextPrimaryLanguage)
 }
 
 func (s *Service) start(
@@ -96,7 +96,7 @@ func (s *Service) start(
 		s.rootPath = rootPath
 	}
 	if lang != "" {
-		s.lang = lang
+		s.FulltextPrimaryLanguage = lang
 	}
 	if s.mnemonic == "" {
 		return nil, ErrNoMnemonicProvided
@@ -135,7 +135,7 @@ func (s *Service) start(
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res, s.lang),
+		anytype.BootstrapWallet(s.rootPath, res, s.FulltextPrimaryLanguage),
 		s.eventSender,
 	}
 

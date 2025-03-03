@@ -138,7 +138,7 @@ func (f *ftSearchTantivy) DeleteObject(objectId string) error {
 
 func (f *ftSearchTantivy) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
-	f.lang = validateLanguage(app.MustComponent[wallet.Wallet](a).Lang())
+	f.lang = validateLanguage(app.MustComponent[wallet.Wallet](a).FtsPrimaryLang())
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.blevePath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
