@@ -236,14 +236,14 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 			continue
 		}
 
-		relationsToRemove, layoutFound, isFeaturedRelationsChanged, newFeaturedRelations := collectRelationsChanges(record.Details, newLayout, oldLayout, deriver)
-		if len(relationsToRemove) > 0 || isFeaturedRelationsChanged {
+		changes := collectRelationsChanges(record.Details, newLayout, oldLayout, deriver)
+		if len(changes.relationsToRemove) > 0 || changes.isFeaturedRelationsChanged {
 			// we should modify not local relations from object, that's why we apply changes even if object is not in cache
 			err = ot.Space().Do(id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
-				st.RemoveDetail(relationsToRemove...)
-				if isFeaturedRelationsChanged {
-					st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(newFeaturedRelations))
+				st.RemoveDetail(changes.relationsToRemove...)
+				if changes.isFeaturedRelationsChanged {
+					st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(changes.newFeaturedRelations))
 				}
 				return b.Apply(st)
 			})
@@ -253,7 +253,7 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 			continue
 		}
 
-		if layoutFound || !newLayout.isLayoutSet || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
+		if changes.isLayoutFound || !newLayout.isLayoutSet || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
 			// layout detail remains in object or recommendedLayout was not changed or relevant layout is already set, skipping
 			continue
 		}
@@ -385,16 +385,21 @@ func (ot *ObjectType) queryObjectsAndTemplates() ([]database.Record, error) {
 	return append(records, templates...), nil
 }
 
-func collectRelationsChanges(
-	details *domain.Details, newLayout, oldLayout layoutState, deriver relationIdDeriver,
-) (toRemove []domain.RelationKey, isLayoutFound, isFeaturedRelationsChanged bool, newFeaturedRelations []string) {
-	toRemove = make([]domain.RelationKey, 0, 2)
+type layoutRelationsChanges struct {
+	relationsToRemove          []domain.RelationKey
+	isLayoutFound              bool
+	isFeaturedRelationsChanged bool
+	newFeaturedRelations       []string
+}
+
+func collectRelationsChanges(details *domain.Details, newLayout, oldLayout layoutState, deriver relationIdDeriver) (changes layoutRelationsChanges) {
+	changes.relationsToRemove = make([]domain.RelationKey, 0, 2)
 	if newLayout.isLayoutSet {
 		layout, found := details.TryInt64(bundle.RelationKeyLayout)
 		if found {
-			isLayoutFound = true
+			changes.isLayoutFound = true
 			if layout == newLayout.layout || oldLayout.isLayoutSet && layout == oldLayout.layout {
-				toRemove = append(toRemove, bundle.RelationKeyLayout)
+				changes.relationsToRemove = append(changes.relationsToRemove, bundle.RelationKeyLayout)
 			}
 		}
 	}
@@ -402,21 +407,21 @@ func collectRelationsChanges(
 	if newLayout.isLayoutAlignSet {
 		layoutAlign, found := details.TryInt64(bundle.RelationKeyLayoutAlign)
 		if found && (layoutAlign == newLayout.layoutAlign || oldLayout.isLayoutAlignSet && layoutAlign == oldLayout.layoutAlign) {
-			toRemove = append(toRemove, bundle.RelationKeyLayoutAlign)
+			changes.relationsToRemove = append(changes.relationsToRemove, bundle.RelationKeyLayoutAlign)
 		}
 	}
 
 	if newLayout.isFeaturedRelationsSet {
 		featuredRelations, found := details.TryStringList(bundle.RelationKeyFeaturedRelations)
 		if found && isFeaturedRelationsCorrespondToType(featuredRelations, newLayout, oldLayout, deriver) {
-			isFeaturedRelationsChanged = true
-			newFeaturedRelations = []string{}
+			changes.isFeaturedRelationsChanged = true
+			changes.newFeaturedRelations = []string{}
 			if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
-				newFeaturedRelations = append(newFeaturedRelations, bundle.RelationKeyDescription.String())
+				changes.newFeaturedRelations = append(changes.newFeaturedRelations, bundle.RelationKeyDescription.String())
 			}
 		}
 	}
-	return
+	return changes
 }
 
 func isFeaturedRelationsCorrespondToType(fr []string, newLayout, oldLayout layoutState, deriver relationIdDeriver) bool {
