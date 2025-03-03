@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -106,7 +107,10 @@ func (m *migration) setFinished(err error, notify bool) {
 
 func (m *migration) cancelMigration() {
 	m.cancel()
-	_ = m.wait()
+	err := m.wait()
+	if err != nil {
+		log.Warn("failed to wait for migration to finish", zap.Error(err))
+	}
 }
 
 func (m *migration) wait() error {

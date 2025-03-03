@@ -11181,6 +11181,153 @@ func (_c *MockClientCommandsServer_ObjectToSet_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// ObjectTypeListConflictingRelations provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) ObjectTypeListConflictingRelations(_a0 context.Context, _a1 *pb.RpcObjectTypeListConflictingRelationsRequest) *pb.RpcObjectTypeListConflictingRelationsResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectTypeListConflictingRelations")
+	}
+
+	var r0 *pb.RpcObjectTypeListConflictingRelationsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectTypeListConflictingRelationsRequest) *pb.RpcObjectTypeListConflictingRelationsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectTypeListConflictingRelationsResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_ObjectTypeListConflictingRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeListConflictingRelations'
+type MockClientCommandsServer_ObjectTypeListConflictingRelations_Call struct {
+	*mock.Call
+}
+
+// ObjectTypeListConflictingRelations is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectTypeListConflictingRelationsRequest
+func (_e *MockClientCommandsServer_Expecter) ObjectTypeListConflictingRelations(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_ObjectTypeListConflictingRelations_Call {
+	return &MockClientCommandsServer_ObjectTypeListConflictingRelations_Call{Call: _e.mock.On("ObjectTypeListConflictingRelations", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeListConflictingRelations_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectTypeListConflictingRelationsRequest)) *MockClientCommandsServer_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectTypeListConflictingRelationsRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeListConflictingRelations_Call) Return(_a0 *pb.RpcObjectTypeListConflictingRelationsResponse) *MockClientCommandsServer_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeListConflictingRelations_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectTypeListConflictingRelationsRequest) *pb.RpcObjectTypeListConflictingRelationsResponse) *MockClientCommandsServer_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ObjectTypeRecommendedFeaturedRelationsSet provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) ObjectTypeRecommendedFeaturedRelationsSet(_a0 context.Context, _a1 *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest) *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectTypeRecommendedFeaturedRelationsSet")
+	}
+
+	var r0 *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest) *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeRecommendedFeaturedRelationsSet'
+type MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call struct {
+	*mock.Call
+}
+
+// ObjectTypeRecommendedFeaturedRelationsSet is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest
+func (_e *MockClientCommandsServer_Expecter) ObjectTypeRecommendedFeaturedRelationsSet(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call {
+	return &MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call{Call: _e.mock.On("ObjectTypeRecommendedFeaturedRelationsSet", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest)) *MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call) Return(_a0 *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse) *MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest) *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse) *MockClientCommandsServer_ObjectTypeRecommendedFeaturedRelationsSet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ObjectTypeRecommendedRelationsSet provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) ObjectTypeRecommendedRelationsSet(_a0 context.Context, _a1 *pb.RpcObjectTypeRecommendedRelationsSetRequest) *pb.RpcObjectTypeRecommendedRelationsSetResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectTypeRecommendedRelationsSet")
+	}
+
+	var r0 *pb.RpcObjectTypeRecommendedRelationsSetResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectTypeRecommendedRelationsSetRequest) *pb.RpcObjectTypeRecommendedRelationsSetResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectTypeRecommendedRelationsSetResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeRecommendedRelationsSet'
+type MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call struct {
+	*mock.Call
+}
+
+// ObjectTypeRecommendedRelationsSet is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectTypeRecommendedRelationsSetRequest
+func (_e *MockClientCommandsServer_Expecter) ObjectTypeRecommendedRelationsSet(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call {
+	return &MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call{Call: _e.mock.On("ObjectTypeRecommendedRelationsSet", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectTypeRecommendedRelationsSetRequest)) *MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectTypeRecommendedRelationsSetRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call) Return(_a0 *pb.RpcObjectTypeRecommendedRelationsSetResponse) *MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectTypeRecommendedRelationsSetRequest) *pb.RpcObjectTypeRecommendedRelationsSetResponse) *MockClientCommandsServer_ObjectTypeRecommendedRelationsSet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectTypeRelationAdd provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) ObjectTypeRelationAdd(_a0 context.Context, _a1 *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
 	ret := _m.Called(_a0, _a1)

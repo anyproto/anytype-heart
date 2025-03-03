@@ -7,32 +7,36 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"golang.org/x/exp/maps"
 )
 
+// nolint: unused
 var log = logger.NewNamed(spacestorage.CName)
 
-func New(rootPath string) *storageService {
+func New(rootPath string, anyStoreConfig *anystore.Config) *storageService {
 	return &storageService{
 		rootPath: rootPath,
+		config:   anyStoreConfig,
 	}
 }
 
 type storageService struct {
 	rootPath string
-	cache    ocache.OCache
+	config   *anystore.Config
+	sync.Mutex
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {
 	var files []string
 	fileInfo, err := os.ReadDir(s.rootPath)
 	if err != nil {
-		return files, fmt.Errorf("can't read datadir '%v': %v", s.rootPath, err)
+		return files, fmt.Errorf("can't read datadir '%v': %w", s.rootPath, err)
 	}
 	for _, file := range fileInfo {
 		if !strings.HasPrefix(file.Name(), ".") {
@@ -47,7 +51,6 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 }
 
 func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB, err error) {
-	// TODO: [storage] set anystore config from config
 	dbPath := path.Join(s.rootPath, id, "store.db")
 	if _, err := os.Stat(dbPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -55,7 +58,7 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 		}
 		return nil, err
 	}
-	return anystore.Open(ctx, dbPath, anyStoreConfig)
+	return anystore.Open(ctx, dbPath, s.anyStoreConfig())
 }
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
@@ -65,7 +68,7 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 		return nil, err
 	}
 	dbPath := path.Join(dirPath, "store.db")
-	return anystore.Open(ctx, dbPath, anyStoreConfig)
+	return anystore.Open(ctx, dbPath, s.anyStoreConfig())
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
@@ -95,7 +98,7 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 	if err != nil {
 		return nil, err
 	}
-	return newClientStorage(ctx, st)
+	return NewClientStorage(ctx, st)
 }
 
 func (s *storageService) SpaceExists(id string) bool {
@@ -118,7 +121,7 @@ func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacest
 	if err != nil {
 		return nil, err
 	}
-	return newClientStorage(ctx, st)
+	return NewClientStorage(ctx, st)
 }
 
 func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string) error {
@@ -126,9 +129,16 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 	return os.RemoveAll(dbPath)
 }
 
-var anyStoreConfig *anystore.Config = &anystore.Config{
-	ReadConnections: 4,
-	SQLiteConnectionOptions: map[string]string{
-		"synchronous": "off",
-	},
+func (s *storageService) anyStoreConfig() *anystore.Config {
+	s.Lock()
+	defer s.Unlock()
+	opts := maps.Clone(s.config.SQLiteConnectionOptions)
+	if opts == nil {
+		opts = make(map[string]string)
+	}
+	opts["synchronous"] = "off"
+	return &anystore.Config{
+		ReadConnections:         4,
+		SQLiteConnectionOptions: opts,
+	}
 }

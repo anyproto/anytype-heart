@@ -194,7 +194,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		if len(split) == 1 {
 			return fmt.Errorf("failed to split repo path: %s", repoPath)
 		}
-		c.SqliteTempPath = filepath.Join(split[0], "cache")
+		c.SqliteTempPath = filepath.Join(split[0], "files")
 		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
 		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
 	}
@@ -476,11 +476,21 @@ func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
 }
 
 func (c *Config) GetPublishServer() publishclient.Config {
+	publishPeerId := "12D3KooWEQPgbxGPvkny8kikS3zqfziM7JsQBnJHXHL9ByCcATs7"
+	publishAddr := "anytype-publish-server-yamux-fb3a0765ead8fc08.elb.eu-central-2.amazonaws.com:443"
+
+	if peerId := os.Getenv("ANYTYPE_PUBLISH_PEERID"); peerId != "" {
+		if addr := os.Getenv("ANYTYPE_PUBLISH_ADDRESS"); addr != "" {
+			publishPeerId = peerId
+			publishAddr = addr
+		}
+	}
+
 	return publishclient.Config{
 		Addrs: []publishclient.PublishServerAddr{
 			{
-				PeerId: "12D3KooWEQPgbxGPvkny8kikS3zqfziM7JsQBnJHXHL9ByCcATs7",
-				Addrs:  []string{"yamux://anytype-publish-server-yamux-fb3a0765ead8fc08.elb.eu-central-2.amazonaws.com:443"},
+				PeerId: publishPeerId,
+				Addrs:  []string{"yamux://" + publishAddr},
 			},
 		},
 	}

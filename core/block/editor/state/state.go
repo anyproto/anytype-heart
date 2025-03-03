@@ -1127,7 +1127,7 @@ func (s *State) FileRelationKeys() []domain.RelationKey {
 		}
 		if rel.Key == bundle.RelationKeyCoverId.String() {
 			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
-			if (coverType == 1 || coverType == 4) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
+			if (coverType == 1 || coverType == 4 || coverType == 5) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
 				keys = append(keys, domain.RelationKey(rel.Key))
 			}
 		}
@@ -1744,9 +1744,10 @@ func (s *State) GetChangedStoreKeys(prefixPath ...string) (paths [][]string) {
 }
 
 func (s *State) Layout() (model.ObjectTypeLayout, bool) {
-	if det := s.Details(); det != nil {
-		if det.Has(bundle.RelationKeyLayout) {
-			return model.ObjectTypeLayout(det.GetInt64(bundle.RelationKeyLayout)), true
+	if det := s.LocalDetails(); det != nil {
+		if det.Has(bundle.RelationKeyResolvedLayout) {
+			//nolint:gosec
+			return model.ObjectTypeLayout(det.GetInt64(bundle.RelationKeyResolvedLayout)), true
 		}
 	}
 	return 0, false

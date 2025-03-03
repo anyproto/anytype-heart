@@ -235,7 +235,7 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 		return nil
 	}
 	st := sb.NewState()
-	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
+	if !u.isLayoutSuitableForSyncRelations(sb.LocalDetails()) {
 		return nil
 	}
 	if fileStatus, ok := st.Details().TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
@@ -269,7 +269,8 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {
-	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout))
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	_, ok := suitableLayouts[layout]
 	return ok
 }

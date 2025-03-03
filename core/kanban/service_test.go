@@ -49,11 +49,11 @@ func Test_GrouperTags(t *testing.T) {
 	store := objectStore.SpaceIndex(spaceId)
 
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), "rel-tag", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		"id":             domain.String("rel-tag"),
-		"relationKey":    domain.String("tag"),
-		"relationFormat": domain.Int64(int64(model.RelationFormat_tag)),
-		"type":           domain.String(bundle.TypeKeyRelation.URL()),
-		"layout":         domain.Int64(int64(model.ObjectType_relation)),
+		bundle.RelationKeyId:             domain.String("rel-tag"),
+		bundle.RelationKeyRelationKey:    domain.String("tag"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+		bundle.RelationKeyType:           domain.String(bundle.TypeKeyRelation.URL()),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 	})))
 
 	idTag1 := bson.NewObjectId().Hex()
@@ -61,23 +61,23 @@ func Test_GrouperTags(t *testing.T) {
 	idTag3 := bson.NewObjectId().Hex()
 
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag1, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		"id":          domain.String(idTag1),
-		"relationKey": domain.String("tag"),
-		"type":        domain.String(bundle.TypeKeyRelationOption.URL()),
-		"layout":      domain.Int64(int64(model.ObjectType_relationOption)),
+		bundle.RelationKeyId:             domain.String(idTag1),
+		bundle.RelationKeyRelationKey:    domain.String("tag"),
+		bundle.RelationKeyType:           domain.String(bundle.TypeKeyRelationOption.URL()),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 	})))
 
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag2, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		"id":          domain.String(idTag2),
-		"relationKey": domain.String("tag"),
-		"type":        domain.String(bundle.TypeKeyRelationOption.URL()),
-		"layout":      domain.Int64(int64(model.ObjectType_relationOption)),
+		bundle.RelationKeyId:             domain.String(idTag2),
+		bundle.RelationKeyRelationKey:    domain.String("tag"),
+		bundle.RelationKeyType:           domain.String(bundle.TypeKeyRelationOption.URL()),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 	})))
 	require.NoError(t, store.UpdateObjectDetails(context.Background(), idTag3, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		"id":          domain.String(idTag3),
-		"relationKey": domain.String("tag"),
-		"type":        domain.String(bundle.TypeKeyRelationOption.URL()),
-		"layout":      domain.Int64(int64(model.ObjectType_relationOption)),
+		bundle.RelationKeyId:             domain.String(idTag3),
+		bundle.RelationKeyRelationKey:    domain.String("tag"),
+		bundle.RelationKeyType:           domain.String(bundle.TypeKeyRelationOption.URL()),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 	})))
 
 	id1 := bson.NewObjectId().Hex()

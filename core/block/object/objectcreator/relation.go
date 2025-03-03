@@ -53,12 +53,46 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	if details.GetInt64(bundle.RelationKeyRelationFormat) == int64(model.RelationFormat_status) {
 		object.SetInt64(bundle.RelationKeyRelationMaxCount, 1)
 	}
-	// objectTypes := object.GetStringListOrDefault(bundle.RelationKeyRelationFormatObjectTypes, nil)
-	// todo: check the objectTypes
+
+	if err = fillRelationFormatObjectTypes(ctx, space, object); err != nil {
+		return "", nil, fmt.Errorf("failed to fill relation format object types: %w", err)
+	}
+	// todo: check the existence of objectTypes in space. InstallBundledObjects should be called same as for recommendedRelations on type creation
+
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
 	setOriginalCreatedTimestamp(createState, details)
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelation}, createState)
+}
+
+func fillRelationFormatObjectTypes(ctx context.Context, spc clientspace.Space, details *domain.Details) error {
+	objectTypes := details.GetStringList(bundle.RelationKeyRelationFormatObjectTypes)
+
+	for i, objectType := range objectTypes {
+		// replace object type url with id
+		typeKey, err := bundle.TypeKeyFromUrl(objectType)
+		if err != nil {
+			if i == 0 {
+				// relationFormatObjectTypes detail already contains list of types' ids
+				return nil
+			}
+			// should never happen
+			return err
+		}
+		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, typeKey.String())
+		if err != nil {
+			// should never happen
+			return err
+		}
+		id, err := spc.DeriveObjectID(ctx, uniqueKey)
+		if err != nil {
+			// should never happen
+			return err
+		}
+		objectTypes[i] = id
+	}
+	details.SetStringList(bundle.RelationKeyRelationFormatObjectTypes, objectTypes)
+	return nil
 }
