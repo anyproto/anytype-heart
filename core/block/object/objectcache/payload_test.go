@@ -20,7 +20,7 @@ func Test_Payloads(t *testing.T) {
 	changePayload := []byte("some")
 	keys, err := accountdata.NewRandom()
 	require.NoError(t, err)
-	aclList, err := list.NewTestDerivedAcl("spaceId", keys)
+	aclList, err := list.NewInMemoryDerivedAcl("spaceId", keys)
 	require.NoError(t, err)
 	timestamp := time.Now().Add(time.Hour).Unix()
 

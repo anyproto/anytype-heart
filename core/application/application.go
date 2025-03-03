@@ -25,22 +25,26 @@ type Service struct {
 	// memoized private key derived from mnemonic, used for signing session tokens
 	sessionSigningKey []byte
 
-	rootPath                string
+	rootPath          string
 	FulltextPrimaryLanguage string
-	clientWithVersion       string
-	eventSender             event.Sender
-	sessions                session.Service
+	clientWithVersion string
+	eventSender       event.Sender
+	sessions          session.Service
+	traceRecorder     *traceRecorder
+	migrationManager  *migrationManager
 
-	traceRecorder                       *traceRecorder
 	appAccountStartInProcessCancel      context.CancelFunc
 	appAccountStartInProcessCancelMutex sync.Mutex
 }
 
 func New() *Service {
-	return &Service{
+	s := &Service{
 		sessions:      session.New(),
 		traceRecorder: &traceRecorder{},
 	}
+	m := newMigrationManager(s)
+	s.migrationManager = m
+	return s
 }
 
 func (s *Service) GetApp() *app.App {
