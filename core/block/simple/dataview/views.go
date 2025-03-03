@@ -162,7 +162,7 @@ func (l *Dataview) RemoveViewRelations(viewID string, relationKeys []string) err
 	if err != nil {
 		return err
 	}
-	l.syncViewRelationWithRelationLinks(view)
+	// l.syncViewRelationWithRelationLinks(view)
 
 	view.Relations = slice.Filter(view.Relations, func(f *model.BlockContentDataviewRelation) bool {
 		return slice.FindPos(relationKeys, f.Key) == -1
@@ -175,7 +175,7 @@ func (l *Dataview) ReplaceViewRelation(viewID string, relationKey string, relati
 	if err != nil {
 		return err
 	}
-	l.syncViewRelationWithRelationLinks(view)
+	// l.syncViewRelationWithRelationLinks(view)
 
 	idx := slice.Find(view.Relations, func(f *model.BlockContentDataviewRelation) bool {
 		return f.Key == relationKey
@@ -195,7 +195,7 @@ func (l *Dataview) ReorderViewRelations(viewID string, relationKeys []string) er
 	if err != nil {
 		return err
 	}
-	l.syncViewRelationWithRelationLinks(view)
+	// l.syncViewRelationWithRelationLinks(view)
 
 	relationsMap := make(map[string]*model.BlockContentDataviewRelation)
 	for _, r := range view.Relations {
