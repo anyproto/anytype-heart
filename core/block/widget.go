@@ -84,12 +84,11 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 		return err
 	}
 
-	autoWidgetKey := "type_" + key.String()
 	widgetDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(widgetObjectId)
 	if err == nil {
-		keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetKeys).StringList()
+		keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 		for _, k := range keys {
-			if k == autoWidgetKey {
+			if k == typeId {
 				return nil
 			}
 		}
@@ -97,9 +96,9 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 
 	widgetBlockId := key.String()
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		keys := st.Details().Get(bundle.RelationKeyAutoWidgetKeys).StringList()
-		keys = append(keys, autoWidgetKey)
-		st.SetDetail(bundle.RelationKeyAutoWidgetKeys, domain.StringList(keys))
+		targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+		targets = append(targets, typeId)
+		st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
 		var typeBlockAlreadyExists bool
 
 		err = st.Iterate(func(b simple.Block) (isContinue bool) {
