@@ -41,7 +41,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	if req.Id == "" {
 		return nil, ErrEmptyAccountID
 	}
-	curMigration := s.migrationManager.getOrCreateMigration(req.RootPath, req.Id)
+	curMigration := s.migrationManager.getOrCreateMigration(req.RootPath, req.Id, req.FulltextPrimaryLanguage)
 	if !curMigration.successful() {
 		return nil, ErrAccountStoreIsNotMigrated
 	}
