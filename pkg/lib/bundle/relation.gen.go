@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "84a2e6346373a8bfe1b41fcd19392a7b9fa73ecb452452aa0a4353464487ed3b"
+const RelationChecksum = "2409862d2452c5f709e990be4c47d59f414b7d8be9e4302f0f1a1afe193647e9"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -154,6 +154,7 @@ const (
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
+	RelationKeyAutoWidgetKeys               domain.RelationKey = "autoWidgetKeys"
 )
 
 var (
@@ -275,6 +276,19 @@ var (
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAutoWidgetKeys: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Automatically generated widget keys. Used to avoid creating widget if was removed by user",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brautoWidgetKeys",
+			Key:              "autoWidgetKeys",
+			Name:             "Auto Widget Keys",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBacklinks: {

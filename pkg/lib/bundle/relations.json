@@ -1478,5 +1478,15 @@
     "name": "Default type id",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Automatically generated widget keys. Used to avoid creating widget if was removed by user",
+    "format": "object",
+    "hidden": true,
+    "key": "autoWidgetKeys",
+    "maxCount": 0,
+    "name": "Auto Widget Keys",
+    "readonly": false,
+    "source": "details"
   }
 ]
