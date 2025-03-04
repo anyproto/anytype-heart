@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -546,8 +545,7 @@ func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
 		log.With("error", err).Error("detect MIME")
 		return model.BlockContentFile_File
 	}
-	mediaType, _ := path.Split(mime.String())
-	return file.DetectTypeByMIME(u.name, mediaType)
+	return file.DetectTypeByMIME(u.name, mime.String())
 }
 
 type FileComponent interface {
