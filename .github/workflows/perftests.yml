@@ -31,7 +31,11 @@ permissions:
 
 
 jobs:
+  wait_for_self_hosted_mac_mini:
+    uses: ./.github/workflows/reusable_wait_for_self_hosted_mac_mini.yml
+
   perftests-macos:
+    needs: wait_for_self_hosted_mac_mini
     timeout-minutes: 60
     runs-on: 'mac-mini-org-heart'
     steps:

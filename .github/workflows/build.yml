@@ -22,7 +22,11 @@ permissions:
 
 
 jobs:
+  wait_for_perftest:
+    uses: ./.github/workflows/reusable_wait_for_perftest.yml
+
   build:
+    needs: wait_for_perftest
     runs-on: ${{ github.event_name == 'push' && 'mac-mini-org-heart' || (github.event.inputs.run-on-runner || 'mac-mini-org-heart') }}
     steps:
       - name: validate agent

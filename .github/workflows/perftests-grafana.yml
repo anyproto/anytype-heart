@@ -26,7 +26,11 @@ permissions:
 
 
 jobs:
+  wait_for_self_hosted_mac_mini:
+    uses: ./.github/workflows/reusable_wait_for_self_hosted_mac_mini.yml
+
   perftests-grafana:
+    needs: wait_for_self_hosted_mac_mini
     runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
     steps:
       - name: Install Go
