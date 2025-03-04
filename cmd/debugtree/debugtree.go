@@ -53,6 +53,7 @@ func main() {
 	if err != nil {
 		log.Fatal("can't import the tree:", err)
 	}
+	defer res.Store.Close()
 	objectTree, err := res.CreateReadableTree(*fromRoot, "")
 	if err != nil {
 		log.Fatal("can't create readable tree:", err)
