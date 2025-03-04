@@ -71,6 +71,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName).Maybe()
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
+	walletService.EXPECT().FtsPrimaryLang().Return("")
 
 	provider, err := anystoreprovider.NewInPath(t.TempDir())
 	require.NoError(t, err)

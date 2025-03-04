@@ -111,11 +111,13 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 			return f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, applyInfo.State.Details())
 		}, smartblock.HookOnStateRebuild)
 
+	}
+
+	if !ctx.IsNewObject {
 		fileId := domain.FullFileId{
 			FileId:  domain.FileId(ctx.State.Details().GetString(bundle.RelationKeyFileId)),
 			SpaceId: f.SpaceID(),
 		}
-
 		// Migrate file to the new file index. The old file index was in the separate database. Now all file info is stored
 		// in the object store directly
 		if len(ctx.State.Details().GetStringList(bundle.RelationKeyFileVariantIds)) == 0 {
@@ -129,6 +131,7 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 			}
 		}
 	}
+
 	return nil
 }
 

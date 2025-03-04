@@ -127,7 +127,8 @@ func (sf *sfile) SetFileTargetObjectId(ctx session.Context, blockId, targetObjec
 		return err
 	}
 	var blockContentFileType model.BlockContentFileType
-	switch model.ObjectTypeLayout(sb.Details().GetInt64(bundle.RelationKeyLayout)) {
+	//nolint:gosec
+	switch model.ObjectTypeLayout(sb.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)) {
 	case model.ObjectType_image:
 		blockContentFileType = model.BlockContentFile_Image
 	case model.ObjectType_audio:

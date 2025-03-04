@@ -119,11 +119,12 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
+	// TODO: It seems we should also filter objects by Layout, because participants should be re-indexed to receive resolvedLayout
 	store := i.store.SpaceIndex(spaceId)
 	ids, _, err := store.QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_participant),
 			},

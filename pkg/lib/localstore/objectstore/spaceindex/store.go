@@ -195,7 +195,7 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 		},
 		{
 			Name:   "layout",
-			Fields: []string{bundle.RelationKeyLayout.String()},
+			Fields: []string{bundle.RelationKeyResolvedLayout.String()},
 		},
 		{
 			Name:   "type",
