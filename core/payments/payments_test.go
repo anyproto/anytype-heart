@@ -99,7 +99,7 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.wallet.EXPECT().Account().Return(&ak).Maybe()
 	fx.wallet.EXPECT().GetAccountPrivkey().Return(decodedSignKey).Maybe()
-	fx.wallet.EXPECT().RepoPath().Return("repo/path")
+	fx.wallet.EXPECT().RepoPath().Return(t.TempDir())
 
 	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
 

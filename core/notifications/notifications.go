@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -63,12 +63,11 @@ func New(loadTimeout time.Duration) Notifications {
 }
 
 func (n *notificationService) Init(a *app.App) (err error) {
-	datastoreService := app.MustComponent[datastore.Datastore](a)
-	db, err := datastoreService.LocalStorage()
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+	n.notificationStore, err = NewNotificationStore(provider.GetCommonDb())
 	if err != nil {
-		return fmt.Errorf("failed to initialize notification store %w", err)
+		return fmt.Errorf("init store: %w", err)
 	}
-	n.notificationStore = NewNotificationStore(db)
 	n.eventSender = app.MustComponent[event.Sender](a)
 	n.spaceService = app.MustComponent[space.Service](a)
 	n.picker = app.MustComponent[cache.ObjectGetter](a)
