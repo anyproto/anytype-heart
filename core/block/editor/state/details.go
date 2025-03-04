@@ -1,6 +1,7 @@
 package state
 
 import (
+	"iter"
 	"slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -32,22 +33,16 @@ func (s *State) CombinedDetails() *domain.Details {
 }
 
 func (s *State) AllRelationKeys() []domain.RelationKey {
-	return slices.Concat(
-		slices.Collect[domain.RelationKey](s.Details().IterateKeys()),
-		slices.Collect[domain.RelationKey](s.LocalDetails().IterateKeys()),
-	)
+	return slices.Collect[domain.RelationKey](s.iterateKeys())
 }
 
 func (s *State) HasRelation(key domain.RelationKey) bool {
-	if slice.ContainsBySeq(s.Details().IterateKeys(), key) {
-		return true
-	}
-	return slice.ContainsBySeq(s.LocalDetails().IterateKeys(), key)
+	return slice.ContainsBySeq(s.iterateKeys(), key)
 }
 
 func (s *State) FileRelationKeys(relLinkGetter relationLinkGetter) []domain.RelationKey {
 	var keys []domain.RelationKey
-	for _, key := range s.AllRelationKeys() {
+	for key := range s.iterateKeys() {
 		// coverId can contain both hash or predefined cover id
 		if key == bundle.RelationKeyCoverId {
 			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
@@ -67,6 +62,21 @@ func (s *State) FileRelationKeys(relLinkGetter relationLinkGetter) []domain.Rela
 		}
 	}
 	return keys
+}
+
+func (s *State) iterateKeys() iter.Seq[domain.RelationKey] {
+	return func(yield func(domain.RelationKey) bool) {
+		for _, seq := range []iter.Seq[domain.RelationKey]{
+			s.details.IterateKeys(),
+			s.localDetails.IterateKeys(),
+		} {
+			for key := range seq {
+				if !yield(key) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // details setters
@@ -151,9 +161,8 @@ func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 
 // AddRelationKeys adds details with null value, if no detail corresponding to key was presented
 func (s *State) AddRelationKeys(keys ...domain.RelationKey) {
-	allKeys := s.AllRelationKeys()
 	for _, key := range keys {
-		if slices.Contains(allKeys, key) {
+		if s.HasRelation(key) {
 			continue
 		}
 		s.SetDetail(key, domain.Null())

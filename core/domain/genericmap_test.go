@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -106,6 +107,7 @@ func TestGenericMap_IterateKeys(t *testing.T) {
 	for k := range m.IterateKeys() {
 		collected = append(collected, k)
 	}
+	slices.Sort(collected)
 
 	want := []string{"key1", "key2", "key3"}
 	assert.Equal(t, want, collected)

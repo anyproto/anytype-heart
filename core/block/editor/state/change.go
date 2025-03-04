@@ -272,9 +272,8 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 
 // TODO: GO-4284 Review this logic, as previously we worked with relationLinks
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
-	keys := s.AllRelationKeys()
 	for _, r := range add.RelationLinks {
-		if slices.Contains(keys, domain.RelationKey(r.Key)) {
+		if s.HasRelation(domain.RelationKey(r.Key)) {
 			continue
 		}
 		if err := s.changeBlockDetailsSet(&pb.ChangeDetailsSet{

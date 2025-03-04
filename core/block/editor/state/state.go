@@ -1011,7 +1011,7 @@ func (s *State) ModifyLinkedObjectsInDetails(relLinkGetter relationLinkGetter, m
 	if details == nil {
 		return
 	}
-	for _, key := range s.AllRelationKeys() {
+	for key := range s.iterateKeys() {
 		relLink, err := relLinkGetter.GetRelationLink(key.String())
 		if err != nil {
 			continue
