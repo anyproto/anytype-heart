@@ -177,8 +177,6 @@ type psFixture struct {
 func newPSFixture(t *testing.T) *psFixture {
 	var err error
 	fx := &psFixture{}
-	fx.tmpDir, err = os.MkdirTemp("", "proxyStore_*")
-	require.NoError(t, err)
 
 	fx.flatfsDir = t.TempDir()
 	sender := mock_event.NewMockSender(t)
