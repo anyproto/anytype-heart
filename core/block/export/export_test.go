@@ -821,10 +821,10 @@ func Test_docsForExport(t *testing.T) {
 		relationKey := domain.RelationKey("key")
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:            domain.String("id"),
-				domain.RelationKey(relationKey): domain.String("value"),
-				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       domain.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id"),
+				relationKey:               domain.String("value"),
+				bundle.RelationKeyType:    domain.String("objectType"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 		})
 		err := storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
@@ -876,10 +876,10 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:            domain.String("id"),
-				domain.RelationKey(relationKey): domain.String("value"),
-				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       domain.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id"),
+				relationKey:               domain.String("value"),
+				bundle.RelationKeyType:    domain.String("objectType"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:          domain.String(relationKey),
@@ -939,10 +939,10 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:            domain.String("id"),
-				domain.RelationKey(relationKey): domain.String("value"),
-				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       domain.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id"),
+				relationKey:               domain.String("value"),
+				bundle.RelationKeyType:    domain.String("objectType"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:             domain.String(relationKey),
@@ -1004,10 +1004,10 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:            domain.String("id"),
-				domain.RelationKey(relationKey): domain.String(optionId),
-				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       domain.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id"),
+				relationKey:               domain.String(optionId),
+				bundle.RelationKeyType:    domain.String("objectType"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:             domain.String(relationKey),
@@ -1658,6 +1658,88 @@ func Test_docsForExport(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, 5, len(expCtx.docs))
+	})
+	t.Run("export template", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeKey := "customObjectType"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeKey)
+		assert.Nil(t, err)
+
+		templateType := "templateType"
+		templateObjectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, templateType)
+		assert.Nil(t, err)
+
+		objectId := "objectId"
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               domain.String(objectId),
+				bundle.RelationKeyName:             domain.String("template"),
+				bundle.RelationKeySpaceId:          domain.String(spaceId),
+				bundle.RelationKeyTargetObjectType: domain.String(objectTypeKey),
+				bundle.RelationKeyType:             domain.String(templateType),
+			},
+			{
+				bundle.RelationKeyId:        domain.String(objectTypeKey),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String(spaceId),
+				bundle.RelationKeyType:      domain.String(objectTypeKey),
+			},
+			{
+				bundle.RelationKeyId:        domain.String(templateType),
+				bundle.RelationKeyUniqueKey: domain.String(templateObjectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String(spaceId),
+				bundle.RelationKeyType:      domain.String(objectTypeKey),
+			},
+		})
+
+		smartBlockTest := smarttest.New(objectId)
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:               domain.String(objectId),
+			bundle.RelationKeyType:             domain.String(templateType),
+			bundle.RelationKeyTargetObjectType: domain.String(objectTypeKey),
+		}))
+		smartBlockTest.Doc = doc
+
+		objectType := smarttest.New(objectTypeKey)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeKey),
+			bundle.RelationKeyType: domain.String(objectTypeKey),
+		}))
+		objectType.Doc = objectTypeDoc
+
+		templateTypeObject := smarttest.New(templateType)
+		templateTypeObjectDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(templateType),
+			bundle.RelationKeyType: domain.String(templateType),
+		}))
+		templateTypeObject.Doc = templateTypeObjectDoc
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeKey).Return(objectType, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), templateType).Return(templateTypeObject, nil)
+
+		e := &export{
+			objectStore: storeFixture,
+			picker:      objectGetter,
+		}
+
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
+			ObjectIds:     []string{objectId},
+			IncludeNested: false,
+			Format:        model.Export_Protobuf,
+		})
+
+		// when
+		err = expCtx.docsForExport()
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 3, len(expCtx.docs))
 	})
 	t.Run("add default object type and template from dataview", func(t *testing.T) {
 		// given

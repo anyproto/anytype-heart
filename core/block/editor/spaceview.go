@@ -116,7 +116,6 @@ func (s *SpaceView) initTemplate(st *state.State) {
 	template.InitTemplate(st,
 		template.WithObjectTypes([]domain.TypeKey{bundle.TypeKeySpaceView}),
 		template.WithLayout(model.ObjectType_spaceView),
-		template.WithResolvedLayout(model.ObjectType_spaceView),
 	)
 }
 
@@ -259,6 +258,7 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeySpaceDashboardId,
 	bundle.RelationKeyCreatedDate,
 	bundle.RelationKeyChatId,
+	bundle.RelationKeyDescription,
 }
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {

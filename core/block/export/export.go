@@ -165,6 +165,9 @@ type exportContext struct {
 	linkStateFilters *state.Filters
 	isLinkProcess    bool
 	includeBackLinks bool
+	relations        map[string]struct{}
+	setOfList        map[string]struct{}
+	objectTypes      map[string]struct{}
 
 	*export
 }
@@ -183,7 +186,11 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		zip:              req.Zip,
 		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
 		includeBackLinks: req.IncludeBacklinks,
-		export:           e,
+		setOfList:        make(map[string]struct{}),
+		objectTypes:      make(map[string]struct{}),
+		relations:        make(map[string]struct{}),
+
+		export: e,
 	}
 	return ec
 }
@@ -202,6 +209,9 @@ func (e *exportContext) copy() *exportContext {
 		isLinkProcess:    e.isLinkProcess,
 		linkStateFilters: e.linkStateFilters,
 		includeBackLinks: e.includeBackLinks,
+		relations:        e.relations,
+		setOfList:        e.setOfList,
+		objectTypes:      e.objectTypes,
 	}
 }
 
@@ -526,70 +536,75 @@ func (e *exportContext) processFiles(ids []string) ([]string, error) {
 
 func (e *exportContext) addDerivedObjects() error {
 	processedObjects := make(map[string]struct{}, 0)
-	allRelations, allTypes, allSetOfList, err := e.getRelationsAndTypes(e.docs, processedObjects)
+	err := e.getRelationsAndTypes(e.docs, processedObjects)
 	if err != nil {
 		return err
 	}
-	templateRelations, templateTypes, templateSetOfList, err := e.getTemplatesRelationsAndTypes(lo.Union(allTypes, allSetOfList), processedObjects)
+
+	err = e.getTemplatesRelationsAndTypes(processedObjects)
 	if err != nil {
 		return err
 	}
-	allRelations = lo.Union(allRelations, templateRelations)
-	allTypes = lo.Union(allTypes, templateTypes)
-	allSetOfList = lo.Union(allSetOfList, templateSetOfList)
-	err = e.addRelationsAndTypes(allTypes, allRelations, allSetOfList)
+	err = e.addRelationsAndTypes()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*Doc, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
-	allRelations, allTypes, allSetOfList, err := e.collectDerivedObjects(notProcessedObjects)
+func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*Doc, processedObjects map[string]struct{}) error {
+	err := e.collectDerivedObjects(notProcessedObjects)
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
 	// get derived objects only from types,
 	// because relations currently have only system relations and object type
-	if len(allTypes) > 0 || len(allSetOfList) > 0 {
-		relations, objectTypes, setOfList, err := e.getDerivedObjectsForTypes(lo.Union(allTypes, allSetOfList), processedObjects)
+	if len(e.objectTypes) > 0 || len(e.setOfList) > 0 {
+		err = e.getDerivedObjectsForTypes(processedObjects)
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
-		allRelations = lo.Union(allRelations, relations)
-		allTypes = lo.Union(allTypes, objectTypes)
-		allSetOfList = lo.Union(allSetOfList, setOfList)
 	}
-	return allRelations, allTypes, allSetOfList, nil
+	return nil
 }
 
-func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) ([]string, []string, []string, error) {
-	var relations, objectsTypes, setOf []string
+func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) error {
 	for id := range objects {
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState().Copy().Filter(e.getStateFilters(id))
-			relations = lo.Union(relations, getObjectRelations(state))
+			objectRelations := getObjectRelations(state)
+			fillObjectsMap(e.relations, objectRelations)
 			details := state.CombinedDetails()
 			if isObjectWithDataview(details) {
 				dataviewRelations, err := getDataviewRelations(state)
 				if err != nil {
 					return err
 				}
-				relations = lo.Union(relations, dataviewRelations)
+				fillObjectsMap(e.relations, dataviewRelations)
 			}
+			var objectTypes []string
 			if details.Has(bundle.RelationKeyType) {
-				objectTypeId := details.GetString(bundle.RelationKeyType)
-				objectsTypes = lo.Union(objectsTypes, []string{objectTypeId})
+				objectTypes = append(objectTypes, details.GetString(bundle.RelationKeyType))
 			}
+			if details.Has(bundle.RelationKeyTargetObjectType) {
+				objectTypes = append(objectTypes, details.GetString(bundle.RelationKeyTargetObjectType))
+			}
+			fillObjectsMap(e.objectTypes, objectTypes)
 			setOfList := details.GetStringList(bundle.RelationKeySetOf)
-			setOf = lo.Union(setOf, setOfList)
+			fillObjectsMap(e.setOfList, setOfList)
 			return nil
 		})
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 	}
-	return relations, objectsTypes, setOf, nil
+	return nil
+}
+
+func fillObjectsMap(dst map[string]struct{}, objectsToAdd []string) {
+	for _, objectId := range objectsToAdd {
+		dst[objectId] = struct{}{}
+	}
 }
 
 func getObjectRelations(state *state.State) []string {
@@ -616,33 +631,40 @@ func getDataviewRelations(state *state.State) ([]string, error) {
 	return relations, err
 }
 
-func (e *exportContext) getDerivedObjectsForTypes(allTypes []string, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
+func (e *exportContext) getDerivedObjectsForTypes(processedObjects map[string]struct{}) error {
 	notProceedTypes := make(map[string]*Doc)
-	var relations, objectTypes []string
-	for _, object := range allTypes {
-		if _, ok := processedObjects[object]; ok {
-			continue
-		}
-		notProceedTypes[object] = nil
-		processedObjects[object] = struct{}{}
+	for object := range e.objectTypes {
+		e.fillNotProcessedTypes(processedObjects, object, notProceedTypes)
+	}
+	for object := range e.setOfList {
+		e.fillNotProcessedTypes(processedObjects, object, notProceedTypes)
 	}
 	if len(notProceedTypes) == 0 {
-		return relations, objectTypes, nil, nil
+		return nil
 	}
-	relations, objectTypes, setOfList, err := e.getRelationsAndTypes(notProceedTypes, processedObjects)
+	err := e.getRelationsAndTypes(notProceedTypes, processedObjects)
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
-	return relations, objectTypes, setOfList, nil
+	return nil
 }
 
-func (e *exportContext) getTemplatesRelationsAndTypes(allTypes []string, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
+func (e *exportContext) fillNotProcessedTypes(processedObjects map[string]struct{}, object string, notProceedTypes map[string]*Doc) {
+	if _, ok := processedObjects[object]; ok {
+		return
+	}
+	notProceedTypes[object] = nil
+	processedObjects[object] = struct{}{}
+}
+
+func (e *exportContext) getTemplatesRelationsAndTypes(processedObjects map[string]struct{}) error {
+	allTypes := lo.MapToSlice(e.objectTypes, func(key string, value struct{}) string { return key })
 	templates, err := e.queryAndFilterObjectsByRelation(e.spaceId, allTypes, bundle.RelationKeyTargetObjectType)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil
 	}
 	if len(templates) == 0 {
-		return nil, nil, nil, nil
+		return nil
 	}
 	templatesToProcess := make(map[string]*Doc, len(templates))
 	for _, template := range templates {
@@ -653,14 +675,18 @@ func (e *exportContext) getTemplatesRelationsAndTypes(allTypes []string, process
 			templatesToProcess[id] = templateDoc
 		}
 	}
-	templateRelations, templateType, templateSetOfList, err := e.getRelationsAndTypes(templatesToProcess, processedObjects)
+	err = e.getRelationsAndTypes(templatesToProcess, processedObjects)
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
-	return templateRelations, templateType, templateSetOfList, nil
+	return nil
 }
 
-func (e *exportContext) addRelationsAndTypes(types, relations, setOfList []string) error {
+func (e *exportContext) addRelationsAndTypes() error {
+	types := lo.MapToSlice(e.objectTypes, func(key string, value struct{}) string { return key })
+	setOfList := lo.MapToSlice(e.setOfList, func(key string, value struct{}) string { return key })
+	relations := lo.MapToSlice(e.relations, func(key string, value struct{}) string { return key })
+
 	err := e.addRelations(relations)
 	if err != nil {
 		return err

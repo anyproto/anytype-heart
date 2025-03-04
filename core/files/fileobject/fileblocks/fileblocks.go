@@ -16,8 +16,7 @@ func InitEmptyFileState(st *state.State) {
 	template.InitTemplate(st,
 		template.WithEmpty,
 		template.WithTitle,
-		template.WithDefaultFeaturedRelations,
-		template.WithFeaturedRelations,
+		template.WithFeaturedRelationsBlock,
 		template.WithAllBlocksEditsRestricted,
 	)
 }

@@ -67,8 +67,8 @@ func (s *State) FileRelationKeys(relLinkGetter relationLinkGetter) []domain.Rela
 func (s *State) iterateKeys() iter.Seq[domain.RelationKey] {
 	return func(yield func(domain.RelationKey) bool) {
 		for _, seq := range []iter.Seq[domain.RelationKey]{
-			s.details.IterateKeys(),
-			s.localDetails.IterateKeys(),
+			s.Details().IterateKeys(),
+			s.LocalDetails().IterateKeys(),
 		} {
 			for key := range seq {
 				if !yield(key) {

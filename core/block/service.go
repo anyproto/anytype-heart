@@ -35,7 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -183,27 +182,22 @@ func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb s
 
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
-	startTime := time.Now()
 	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			ob.EnabledRelationAsDependentObjects()
 		}
-		afterSmartBlockTime := time.Now()
 
 		ob.RegisterSession(sctx)
 
-		afterDataviewTime := time.Now()
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
-		afterApplyTime := time.Now()
 		if obj, err = ob.Show(); err != nil {
 			return fmt.Errorf("show: %w", err)
 		}
-		afterShowTime := time.Now()
 
 		if err != nil && !errors.Is(err, treestorage.ErrUnknownTreeId) {
 			log.Errorf("failed to watch status for object %s: %s", id, err)
@@ -213,16 +207,6 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 			v.InjectVirtualBlocks(id.ObjectID, obj)
 		}
 
-		afterHashesTime := time.Now()
-		metrics.Service.Send(&metrics.OpenBlockEvent{
-			ObjectId:       id.ObjectID,
-			GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
-			DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
-			ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
-			ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
-			FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
-			SmartblockType: int(ob.Type()),
-		})
 		return nil
 	})
 	if err != nil {

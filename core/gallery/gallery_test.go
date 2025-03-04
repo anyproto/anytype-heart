@@ -4,14 +4,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-const port = ":7070"
 
 //go:embed testdata/schema.json
 var schemaJSON []byte
@@ -37,13 +36,13 @@ func TestIsInWhitelist(t *testing.T) {
 }
 
 func TestDownloadManifestAndValidateSchema(t *testing.T) {
-	schema := schemaResponse{Schema: "http://localhost" + port + "/schema.json"}
 	server := startHttpServer()
-	defer server.Shutdown(nil)
+	defer server.Close()
+	schema := schemaResponse{Schema: server.URL + "/schema.json"}
 
 	t.Run("download knowledge base manifest", func(t *testing.T) {
 		// given
-		url := "http://localhost" + port + "/manifest.json"
+		url := server.URL + "/manifest.json"
 
 		// when
 		info, err := DownloadManifest(url, false)
@@ -116,7 +115,7 @@ func TestDownloadManifestAndValidateSchema(t *testing.T) {
 	})
 }
 
-func startHttpServer() *http.Server {
+func startHttpServer() *httptest.Server {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/manifest.json", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -128,9 +127,7 @@ func startHttpServer() *http.Server {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(schemaJSON)
 	})
-	server := &http.Server{Addr: port, Handler: handler}
-	go server.ListenAndServe()
-	return server
+	return httptest.NewServer(handler)
 }
 
 func buildInfo() *model.ManifestInfo {

@@ -33,7 +33,6 @@ var pageRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyLinks,
 	bundle.RelationKeyBacklinks,
 	bundle.RelationKeyMentions,
-	bundle.RelationKeyLayoutAlign,
 }
 
 var typeAndRelationRequiredRelations = []domain.RelationKey{
@@ -44,17 +43,6 @@ var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyRevision,
 	bundle.RelationKeyIsHidden,
 }
-
-var typeRequiredRelations = append(typeAndRelationRequiredRelations,
-	bundle.RelationKeyRecommendedRelations,
-	bundle.RelationKeyRecommendedFeaturedRelations,
-	bundle.RelationKeyRecommendedHiddenRelations,
-	bundle.RelationKeyRecommendedFileRelations,
-	bundle.RelationKeyRecommendedLayout,
-	bundle.RelationKeySmartblockTypes,
-	bundle.RelationKeyIconOption,
-	bundle.RelationKeyIconName,
-)
 
 var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationFormat,
@@ -214,11 +202,8 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			templates := []template.StateTransformer{
 				template.WithEmpty,
 				template.WithObjectTypes(ctx.State.ObjectTypeKeys()),
-				template.WithResolvedLayout(layout),
-				template.WithDefaultFeaturedRelations,
-				template.WithFeaturedRelations,
+				template.WithFeaturedRelationsBlock,
 				template.WithLinkFieldsMigration,
-				template.WithCreatorRemovedFromFeaturedRelations,
 			}
 
 			switch layout {
@@ -237,20 +222,11 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				templates = append(templates,
 					template.WithTitle,
 					template.WithDescription,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-					template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 					template.WithBookmarkBlocks,
 				)
 			case model.ObjectType_relation:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-					template.WithLayout(layout),
-				)
-			case model.ObjectType_objectType:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 					template.WithLayout(layout),
 				)
 			case model.ObjectType_chat:
@@ -287,7 +263,7 @@ func (p *Page) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{
 		{
 			Version: 2,
-			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
+			Proc:    func(s *state.State) {},
 		},
 	})
 }

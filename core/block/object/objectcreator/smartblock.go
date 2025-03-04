@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -58,7 +57,6 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
-	startTime := time.Now()
 	// priority:
 	// 1. details
 	// 2. createState
@@ -71,11 +69,6 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 
 	createState.SetDetail(bundle.RelationKeySpaceId, domain.String(spc.Id()))
 
-	ev := &metrics.CreateObjectEvent{
-		SetDetailsMs: time.Since(startTime).Milliseconds(),
-	}
-
-	ctx = context.WithValue(ctx, eventCreate, ev)
 	initFunc := func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		return &smartblock.InitContext{
@@ -97,10 +90,6 @@ func (s *service) CreateSmartBlockFromStateInSpaceWithOptions(
 	sb.Unlock()
 	id = sb.Id()
 
-	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
-	ev.SmartblockType = int(sbType)
-	ev.ObjectId = id
-	metrics.Service.Send(ev)
 	return id, newDetails, nil
 }
 

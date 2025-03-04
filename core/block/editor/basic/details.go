@@ -253,8 +253,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}
 	if detail.Key == bundle.RelationKeyResolvedLayout {
-		// special case when client sets the layout detail directly instead of using SetLayoutInState command
-		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.Int64()), false)
+		return fmt.Errorf("can't change object layout directly: %w", domain.ErrValidationFailed)
 	}
 	if detail.Key == bundle.RelationKeyRecommendedLayout {
 		// nolint:gosec
@@ -349,7 +348,7 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 			return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
 		}
 	}
-	s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(toLayout))
+
 	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout, ignoreRestriction); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}

@@ -170,7 +170,6 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			// then
 			assert.NoError(t, err)
 			assert.Equal(t, BlankTemplateId, st.RootId())
-			assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag.String())
 			assert.True(t, st.Details().Has(bundle.RelationKeyTag))
 		})
 	}
@@ -255,7 +254,6 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 
 		// then
 		assert.Equal(t, BlankTemplateId, st.RootId())
-		assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyTag.String())
 		assert.True(t, st.Details().Has(bundle.RelationKeyTag))
 	})
 
@@ -394,15 +392,12 @@ func TestExtractTargetDetails(t *testing.T) {
 		OriginValue, TemplateValue domain.Value
 		OriginLeft                 bool
 	}{
-		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(0), TemplateValue: domain.Int64(1), OriginLeft: false},
-		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(5), TemplateValue: domain.Int64(0), OriginLeft: false},
-		{Key: bundle.RelationKeyResolvedLayout, OriginValue: domain.Int64(3), TemplateValue: domain.Int64(3), OriginLeft: false},
+		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(0), TemplateValue: domain.Int64(1), OriginLeft: false},
+		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(5), TemplateValue: domain.Int64(0), OriginLeft: false},
+		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(3), TemplateValue: domain.Int64(3), OriginLeft: false},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String(""), TemplateValue: domain.String("s1"), OriginLeft: false},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s2"), TemplateValue: domain.String(""), OriginLeft: true},
 		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s0"), TemplateValue: domain.String("s3"), OriginLeft: false},
-		{Key: bundle.RelationKeyFeaturedRelations, OriginValue: domain.StringList([]string{"tag"}), TemplateValue: domain.StringList([]string{}), OriginLeft: true},
-		{Key: bundle.RelationKeyFeaturedRelations, OriginValue: domain.StringList([]string{}), TemplateValue: domain.StringList([]string{"tag", "type"}), OriginLeft: false},
-		{Key: bundle.RelationKeyFeaturedRelations, OriginValue: domain.StringList([]string{"type"}), TemplateValue: domain.StringList([]string{"tag"}), OriginLeft: false},
 		{Key: bundle.RelationKeyName, OriginValue: domain.String("orig"), TemplateValue: domain.String(""), OriginLeft: true},
 		{Key: bundle.RelationKeyName, OriginValue: domain.String(""), TemplateValue: domain.String("tmpl"), OriginLeft: false},
 		{Key: bundle.RelationKeyName, OriginValue: domain.String("orig"), TemplateValue: domain.String("tmpl"), OriginLeft: true},
