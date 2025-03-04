@@ -76,7 +76,7 @@ func TestExport_Export(t *testing.T) {
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeId),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 				bundle.RelationKeySpaceId:              domain.String(spaceId),
 			},
@@ -947,10 +947,10 @@ func Test_docsForExport(t *testing.T) {
 		relationKey := domain.RelationKey("key")
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:            domain.String("id"),
-				domain.RelationKey(relationKey): domain.String("value"),
-				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       domain.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id"),
+				relationKey:               domain.String("value"),
+				bundle.RelationKeyType:    domain.String("objectType"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 		})
 		err := storeFixture.SpaceIndex(spaceId).UpdateObjectLinks(context.Background(), "id", []string{"id1"})
@@ -1016,10 +1016,10 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:            domain.String("id"),
-				domain.RelationKey(relationKey): domain.String("value"),
-				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       domain.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id"),
+				relationKey:               domain.String("value"),
+				bundle.RelationKeyType:    domain.String("objectType"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:          domain.String(relationKey),
@@ -1093,10 +1093,10 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:            domain.String("id"),
-				domain.RelationKey(relationKey): domain.String("value"),
-				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       domain.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id"),
+				relationKey:               domain.String("value"),
+				bundle.RelationKeyType:    domain.String("objectType"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:             domain.String(relationKey),
@@ -1172,25 +1172,25 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:            domain.String("id"),
-				domain.RelationKey(relationKey): domain.String(optionId),
-				bundle.RelationKeyType:          domain.String("objectType"),
-				bundle.RelationKeySpaceId:       domain.String(spaceId),
+				bundle.RelationKeyId:      domain.String("id"),
+				relationKey:               domain.String(optionId),
+				bundle.RelationKeyType:    domain.String("objectType"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:             domain.String(relationKey),
 				bundle.RelationKeyRelationKey:    domain.String(relationKey),
 				bundle.RelationKeyUniqueKey:      domain.String(uniqueKey.Marshal()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
-				bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeySpaceId:        domain.String(spaceId),
 			},
 			{
-				bundle.RelationKeyId:          domain.String(optionId),
-				bundle.RelationKeyRelationKey: domain.String(relationKey),
-				bundle.RelationKeyUniqueKey:   domain.String(optionUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
+				bundle.RelationKeyId:             domain.String(optionId),
+				bundle.RelationKeyRelationKey:    domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(optionUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
 			},
 		})
 
@@ -1278,26 +1278,26 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
-				bundle.RelationKeyId:          domain.String(relationKey),
-				bundle.RelationKeyRelationKey: domain.String(relationKey),
-				bundle.RelationKeyUniqueKey:   domain.String(uniqueKey.Marshal()),
-				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
+				bundle.RelationKeyId:             domain.String(relationKey),
+				bundle.RelationKeyRelationKey:    domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(uniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeKey),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{recommendedRelationKey}),
 				bundle.RelationKeySpaceId:              domain.String(spaceId),
 				bundle.RelationKeyType:                 domain.String(objectTypeKey),
 			},
 			{
-				bundle.RelationKeyId:          domain.String(recommendedRelationKey),
-				bundle.RelationKeyRelationKey: domain.String(recommendedRelationKey),
-				bundle.RelationKeyUniqueKey:   domain.String(recommendedRelationUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
+				bundle.RelationKeyId:             domain.String(recommendedRelationKey),
+				bundle.RelationKeyRelationKey:    domain.String(recommendedRelationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(recommendedRelationUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
 			},
 			{
 				bundle.RelationKeyId:               domain.String(templateId),
@@ -1432,7 +1432,7 @@ func Test_docsForExport(t *testing.T) {
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeId),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 				bundle.RelationKeySpaceId:              domain.String(spaceId),
 			},
@@ -1511,11 +1511,11 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyType:    domain.String(objectTypeId),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
 			},
 		})
 
@@ -1583,42 +1583,42 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String("id"),
-				bundle.RelationKeyName:    domain.String("name1"),
-				bundle.RelationKeySpaceId: domain.String(spaceId),
-				bundle.RelationKeyType:    domain.String(objectTypeId),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_set)),
+				bundle.RelationKeyId:             domain.String("id"),
+				bundle.RelationKeyName:           domain.String("name1"),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_set)),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
 			},
 			{
-				bundle.RelationKeyId:          domain.String(bundle.RelationKeyTag.String()),
-				bundle.RelationKeyName:        domain.String(bundle.RelationKeyTag.String()),
-				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyTag.String()),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
-				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyUniqueKey:   domain.String(bundle.RelationKeyTag.URL()),
+				bundle.RelationKeyId:             domain.String(bundle.RelationKeyTag.String()),
+				bundle.RelationKeyName:           domain.String(bundle.RelationKeyTag.String()),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyTag.String()),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyUniqueKey:      domain.String(bundle.RelationKeyTag.URL()),
 			},
 			{
-				bundle.RelationKeyId:          domain.String(relationKey),
-				bundle.RelationKeyName:        domain.String(relationKey),
-				bundle.RelationKeyRelationKey: domain.String(relationKey),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
-				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeyUniqueKey:   domain.String(relationKeyUniqueKey.Marshal()),
+				bundle.RelationKeyId:             domain.String(relationKey),
+				bundle.RelationKeyName:           domain.String(relationKey),
+				bundle.RelationKeyRelationKey:    domain.String(relationKey),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyUniqueKey:      domain.String(relationKeyUniqueKey.Marshal()),
 			},
 		})
 
 		smartBlockTest := smarttest.New("id")
 		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:     domain.String("id"),
-			bundle.RelationKeyType:   domain.String(objectTypeId),
-			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_set)),
+			bundle.RelationKeyId:             domain.String("id"),
+			bundle.RelationKeyType:           domain.String(objectTypeId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_set)),
 		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
@@ -1627,7 +1627,7 @@ func Test_docsForExport(t *testing.T) {
 			Key:    bundle.RelationKeyType.String(),
 			Format: model.RelationFormat_longtext,
 		}, &model.RelationLink{
-			Key:    bundle.RelationKeyLayout.String(),
+			Key:    bundle.RelationKeyResolvedLayout.String(),
 			Format: model.RelationFormat_number,
 		})
 		doc.Set(simple.New(&model.Block{
@@ -1701,26 +1701,26 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String("id"),
-				bundle.RelationKeyName:    domain.String("name1"),
-				bundle.RelationKeySpaceId: domain.String(spaceId),
-				bundle.RelationKeyType:    domain.String(objectTypeId),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_set)),
+				bundle.RelationKeyId:             domain.String("id"),
+				bundle.RelationKeyName:           domain.String("name1"),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_set)),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
 			},
 		})
 
 		smartBlockTest := smarttest.New("id")
 		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:     domain.String("id"),
-			bundle.RelationKeyType:   domain.String(objectTypeId),
-			bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_set)),
+			bundle.RelationKeyId:             domain.String("id"),
+			bundle.RelationKeyType:           domain.String(objectTypeId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_set)),
 		}))
 		doc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
@@ -1729,7 +1729,7 @@ func Test_docsForExport(t *testing.T) {
 			Key:    bundle.RelationKeyType.String(),
 			Format: model.RelationFormat_longtext,
 		}, &model.RelationLink{
-			Key:    bundle.RelationKeyLayout.String(),
+			Key:    bundle.RelationKeyResolvedLayout.String(),
 			Format: model.RelationFormat_number,
 		})
 		smartBlockTest.Doc = doc
@@ -1781,18 +1781,18 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String("id"),
-				bundle.RelationKeyName:    domain.String("name1"),
-				bundle.RelationKeySpaceId: domain.String(spaceId),
-				bundle.RelationKeyType:    domain.String(objectTypeId),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_set)),
+				bundle.RelationKeyId:             domain.String("id"),
+				bundle.RelationKeyName:           domain.String("name1"),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_set)),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
 			},
 		})
 
@@ -1858,34 +1858,34 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 			{
-				bundle.RelationKeyId:          domain.String(relationKey),
-				bundle.RelationKeyRelationKey: domain.String(relationKey),
-				bundle.RelationKeyUniqueKey:   domain.String(uniqueKey.Marshal()),
-				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
-				bundle.RelationKeyType:        domain.String(relationObjectTypeKey),
+				bundle.RelationKeyId:             domain.String(relationKey),
+				bundle.RelationKeyRelationKey:    domain.String(relationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(uniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(relationObjectTypeKey),
 			},
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeKey),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{recommendedRelationKey}),
 				bundle.RelationKeySpaceId:              domain.String(spaceId),
 				bundle.RelationKeyType:                 domain.String(objectTypeKey),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(relationObjectTypeKey),
-				bundle.RelationKeyUniqueKey: domain.String(relationObjectTypeUK.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeKey),
+				bundle.RelationKeyId:             domain.String(relationObjectTypeKey),
+				bundle.RelationKeyUniqueKey:      domain.String(relationObjectTypeUK.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeKey),
 			},
 			{
-				bundle.RelationKeyId:          domain.String(recommendedRelationKey),
-				bundle.RelationKeyRelationKey: domain.String(recommendedRelationKey),
-				bundle.RelationKeyUniqueKey:   domain.String(recommendedRelationUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relation)),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
+				bundle.RelationKeyId:             domain.String(recommendedRelationKey),
+				bundle.RelationKeyRelationKey:    domain.String(recommendedRelationKey),
+				bundle.RelationKeyUniqueKey:      domain.String(recommendedRelationUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
 			},
 		})
 
@@ -1967,6 +1967,106 @@ func Test_docsForExport(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, 5, len(expCtx.docs))
 	})
+	t.Run("export template", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeKey := "customObjectType"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeKey)
+		assert.Nil(t, err)
+
+		templateType := "templateType"
+		templateObjectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, templateType)
+		assert.Nil(t, err)
+
+		objectId := "objectId"
+		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               domain.String(objectId),
+				bundle.RelationKeyName:             domain.String("template"),
+				bundle.RelationKeySpaceId:          domain.String(spaceId),
+				bundle.RelationKeyTargetObjectType: domain.String(objectTypeKey),
+				bundle.RelationKeyType:             domain.String(templateType),
+			},
+			{
+				bundle.RelationKeyId:        domain.String(objectTypeKey),
+				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String(spaceId),
+				bundle.RelationKeyType:      domain.String(objectTypeKey),
+			},
+			{
+				bundle.RelationKeyId:        domain.String(templateType),
+				bundle.RelationKeyUniqueKey: domain.String(templateObjectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:   domain.String(spaceId),
+				bundle.RelationKeyType:      domain.String(objectTypeKey),
+			},
+		})
+
+		smartBlockTest := smarttest.New(objectId)
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:               domain.String(objectId),
+			bundle.RelationKeyType:             domain.String(templateType),
+			bundle.RelationKeyTargetObjectType: domain.String(objectTypeKey),
+		}))
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		smartBlockTest.Doc = doc
+
+		objectType := smarttest.New(objectTypeKey)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeKey),
+			bundle.RelationKeyType: domain.String(objectTypeKey),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+
+		templateTypeObject := smarttest.New(templateType)
+		templateTypeObjectDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(templateType),
+			bundle.RelationKeyType: domain.String(templateType),
+		}))
+		templateTypeObjectDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		templateTypeObject.Doc = templateTypeObjectDoc
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+		objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeKey).Return(objectType, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), templateType).Return(templateTypeObject, nil)
+
+		e := &export{
+			objectStore: storeFixture,
+			picker:      objectGetter,
+		}
+
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
+			ObjectIds:     []string{objectId},
+			IncludeNested: false,
+			Format:        model.Export_Protobuf,
+		})
+
+		// when
+		err = expCtx.docsForExport()
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, 3, len(expCtx.docs))
+	})
 	t.Run("add default object type and template from dataview", func(t *testing.T) {
 		// given
 		id := "id"
@@ -1977,7 +2077,7 @@ func Test_docsForExport(t *testing.T) {
 		assert.Nil(t, err)
 
 		defaultObjectTypeId := "defaultObjectTypeId"
-		defaultObjectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
+		defaultObjectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, defaultObjectTypeId)
 		assert.Nil(t, err)
 
 		defaultTemplateId := "defaultTemplateId"
@@ -1985,35 +2085,35 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String(id),
-				bundle.RelationKeyName:    domain.String("name"),
-				bundle.RelationKeySpaceId: domain.String(spaceId),
-				bundle.RelationKeyType:    domain.String(objectTypeId),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_collection)),
+				bundle.RelationKeyId:             domain.String(id),
+				bundle.RelationKeyName:           domain.String("name"),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(bundle.TypeKeyObjectType),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(defaultObjectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(defaultObjectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(defaultObjectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(defaultObjectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(bundle.TypeKeyObjectType),
 			},
 			{
 				bundle.RelationKeyId:      domain.String(defaultTemplateId),
 				bundle.RelationKeySpaceId: domain.String(spaceId),
-				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeyType:    domain.String(bundle.TypeKeyTemplate),
 			},
 			{
 				bundle.RelationKeyId:               domain.String(defaultObjectTypeTemplateId),
 				bundle.RelationKeySpaceId:          domain.String(spaceId),
-				bundle.RelationKeyType:             domain.String(objectTypeId),
+				bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate),
 				bundle.RelationKeyTargetObjectType: domain.String(defaultObjectTypeId),
 			},
 		})
@@ -2151,25 +2251,25 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String(id),
-				bundle.RelationKeyName:    domain.String("name"),
-				bundle.RelationKeySpaceId: domain.String(spaceId),
-				bundle.RelationKeyType:    domain.String(objectTypeId),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_set)),
+				bundle.RelationKeyId:             domain.String(id),
+				bundle.RelationKeyName:           domain.String("name"),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_set)),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(defaultObjectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(defaultObjectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(defaultObjectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(defaultObjectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
 			},
 			{
 				bundle.RelationKeyId:      domain.String(defaultTemplateId),

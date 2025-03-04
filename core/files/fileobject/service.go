@@ -225,10 +225,12 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 
 	for _, record := range records {
 		fullId := extractFullFileIdFromDetails(record.Details)
-		id := record.Details.GetString(bundle.RelationKeyId)
-		err := s.addToSyncQueue(id, fullId, false, false)
-		if err != nil {
-			log.Errorf("add to sync queue: %v", err)
+		if record.Details.GetString(bundle.RelationKeyCreator) == s.accountService.MyParticipantId(fullId.SpaceId) {
+			id := record.Details.GetString(bundle.RelationKeyId)
+			err := s.addToSyncQueue(id, fullId, false, false)
+			if err != nil {
+				log.Errorf("add to sync queue: %v", err)
+			}
 		}
 	}
 

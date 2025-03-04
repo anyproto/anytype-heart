@@ -11,12 +11,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/h2non/filetype"
+	"github.com/gabriel-vasile/mimetype"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -543,12 +544,13 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 }
 
 func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
-	b, err := buf.Peek(8192)
-	if err != nil && err != io.EOF {
+	mime, err := mimetype.DetectReader(buf)
+	if err != nil {
+		log.With("error", err).Error("detect MIME")
 		return model.BlockContentFile_File
 	}
-	tp, _ := filetype.Match(b)
-	return file.DetectTypeByMIME(u.name, tp.MIME.Value)
+	mediaType, _ := path.Split(mime.String())
+	return file.DetectTypeByMIME(u.name, mediaType)
 }
 
 type FileComponent interface {

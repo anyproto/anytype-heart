@@ -7,7 +7,6 @@ import (
 	"io"
 	"testing"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -28,16 +27,6 @@ type indexerFixture struct {
 	fileService        *mock_files.MockService
 	objectStoreFixture *objectstore.StoreFixture
 }
-
-type dummyAccountService struct{}
-
-func (s dummyAccountService) MyParticipantId(spaceId string) string {
-	return ""
-}
-
-func (s dummyAccountService) Init(_ *app.App) error { return nil }
-
-func (s dummyAccountService) Name() string { return "dummyAccountService" }
 
 func newIndexerFixture(t *testing.T) *indexerFixture {
 	objectStore := objectstore.NewStoreFixture(t)
@@ -162,7 +151,7 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 				bundle.RelationKeyFileId:             domain.String(testFileId.String()),
 				bundle.RelationKeySpaceId:            domain.String("space1"),
 				bundle.RelationKeyFileIndexingStatus: domain.Int64(int64(model.FileIndexingStatus_NotIndexed)),
-				bundle.RelationKeyLayout:             domain.Int64(int64(model.ObjectType_file)),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_file)),
 			},
 		})
 		fx.objectStoreFixture.AddObjects(t, "space2", []objectstore.TestObject{
@@ -171,7 +160,7 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 				bundle.RelationKeyFileId:             domain.String(testFileId.String()),
 				bundle.RelationKeySpaceId:            domain.String("space2"),
 				bundle.RelationKeyFileIndexingStatus: domain.Int64(int64(model.FileIndexingStatus_Indexed)),
-				bundle.RelationKeyLayout:             domain.Int64(int64(model.ObjectType_image)),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_image)),
 			},
 		})
 		fx.objectStoreFixture.AddObjects(t, "space3", []objectstore.TestObject{
@@ -180,22 +169,22 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 				bundle.RelationKeyFileId:             domain.String(testFileId.String()),
 				bundle.RelationKeySpaceId:            domain.String("space3"),
 				bundle.RelationKeyFileIndexingStatus: domain.Int64(int64(model.FileIndexingStatus_NotFound)),
-				bundle.RelationKeyLayout:             domain.Int64(int64(model.ObjectType_video)),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_video)),
 			},
 		})
 		fx.objectStoreFixture.AddObjects(t, "space4", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String("id4"),
-				bundle.RelationKeyFileId:  domain.String(testFileId.String()),
-				bundle.RelationKeySpaceId: domain.String("space4"),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_audio)),
+				bundle.RelationKeyId:             domain.String("id4"),
+				bundle.RelationKeyFileId:         domain.String(testFileId.String()),
+				bundle.RelationKeySpaceId:        domain.String("space4"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_audio)),
 			},
 		})
 		fx.objectStoreFixture.AddObjects(t, "space5", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String("id5"),
-				bundle.RelationKeySpaceId: domain.String("space5"),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:             domain.String("id5"),
+				bundle.RelationKeySpaceId:        domain.String("space5"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			},
 		})
 
@@ -222,7 +211,7 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 				bundle.RelationKeyId:                 domain.String("id1"),
 				bundle.RelationKeyFileId:             domain.String(testFileId.String()),
 				bundle.RelationKeySpaceId:            domain.String("space1"),
-				bundle.RelationKeyLayout:             domain.Int64(int64(model.ObjectType_audio)),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_audio)),
 				bundle.RelationKeyFileIndexingStatus: domain.Int64(int64(model.FileIndexingStatus_NotIndexed)),
 			},
 		})

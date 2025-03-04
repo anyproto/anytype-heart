@@ -1744,9 +1744,10 @@ func (s *State) GetChangedStoreKeys(prefixPath ...string) (paths [][]string) {
 }
 
 func (s *State) Layout() (model.ObjectTypeLayout, bool) {
-	if det := s.Details(); det != nil {
-		if det.Has(bundle.RelationKeyLayout) {
-			return model.ObjectTypeLayout(det.GetInt64(bundle.RelationKeyLayout)), true
+	if det := s.LocalDetails(); det != nil {
+		if det.Has(bundle.RelationKeyResolvedLayout) {
+			//nolint:gosec
+			return model.ObjectTypeLayout(det.GetInt64(bundle.RelationKeyResolvedLayout)), true
 		}
 	}
 	return 0, false

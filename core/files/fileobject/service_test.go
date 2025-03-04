@@ -54,6 +54,16 @@ type fixture struct {
 	*service
 }
 
+type dummyAccountService struct{}
+
+func (s *dummyAccountService) MyParticipantId(spaceId string) string {
+	return ""
+}
+
+func (s *dummyAccountService) Init(_ *app.App) error { return nil }
+
+func (s *dummyAccountService) Name() string { return "dummyAccountService" }
+
 type dummyConfig struct{}
 
 func (c *dummyConfig) IsLocalOnlyMode() bool {
@@ -108,6 +118,7 @@ func newFixture(t *testing.T) *fixture {
 
 	a := new(app.App)
 	a.Register(&dummyConfig{})
+	a.Register(&dummyAccountService{})
 	a.Register(dataStoreProvider)
 	a.Register(objectStore)
 	a.Register(commonFileService)
@@ -125,7 +136,6 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 	a.Register(&dummyObjectArchiver{})
-	a.Register(&dummyAccountService{})
 
 	err = a.Start(ctx)
 	require.NoError(t, err)
