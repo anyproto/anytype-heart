@@ -1,0 +1,26 @@
+name: Reusable Workflow wait for self-hosted mac mini is free
+
+on:
+  workflow_call:
+
+jobs:
+  wait_for_self_hosted_mac_mini:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for self-hosted runners to be free
+        run: |
+          while true; do
+            if .github/scripts/is_runner_busy.sh $GITHUB_REPOSITORY mac-mini-org-heart; then
+              echo "self-hosted runner 'mac-mini-org-heart' is free"
+              break
+            else
+              echo "self-hosted runner 'mac-mini-org-heart' is busy. waiting 10 seconds..."
+              sleep 10
+              continue
+            fi
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
