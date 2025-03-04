@@ -72,8 +72,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 		e.log.Printf("can't fetch localstore info: %v", err)
 	} else {
 		if len(data) > 0 {
-			// TODO: [storage] fix details, take from main
-			// data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Struct)
+			data[0].Details = transform(data[0].Details, e.anonymized, anonymize.Details)
 			data[0].Snippet = transform(data[0].Snippet, e.anonymized, anonymize.Text)
 			for i, r := range data[0].Relations {
 				data[0].Relations[i] = transform(r, e.anonymized, anonymize.Relation)
