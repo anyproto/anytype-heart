@@ -176,6 +176,14 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 
 		return nil
 	case model.RelationFormat_file, model.RelationFormat_object:
+		// TODO Tell clients to use []string, but now use this hack
+		if key == bundle.RelationKeyIconImage {
+			_, ok := v.TryString()
+			if ok {
+				return nil
+			}
+		}
+
 		vals, ok := v.TryWrapToStringList()
 		if !ok {
 			return fmt.Errorf("incorrect type: %v instead of string list", v)
