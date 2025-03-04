@@ -150,6 +150,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		AnalyticsId:            analyticsId,
 		NetworkId:              s.getNetworkId(),
 		TechSpaceId:            s.spaceService.TechSpaceId(),
+		EthereumAddress:        s.wallet.GetAccountEthAddress().Hex(),
 	}, nil
 }
 
