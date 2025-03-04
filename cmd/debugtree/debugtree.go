@@ -132,11 +132,11 @@ func main() {
 		if err != nil {
 			log.Fatal("can't open objectStore info:", err)
 		}
-		defer f.Close()
 		info := &model.ObjectInfo{}
 		if err = jsonpb.Unmarshal(f, info); err != nil {
 			log.Fatal("can't unmarshal objectStore info:", err)
 		}
+		defer f.Close()
 		fmt.Println(pbtypes.Sprint(info))
 	}
 

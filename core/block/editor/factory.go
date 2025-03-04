@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -74,7 +73,6 @@ type ObjectFactory struct {
 	fileReconciler      reconciler.Reconciler
 	objectDeleter       ObjectDeleter
 	deviceService       deviceService
-	lastUsedUpdater     lastused.ObjectUsageUpdater
 	spaceIdResolver     idresolver.Resolver
 }
 
@@ -107,7 +105,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
 	f.deviceService = app.MustComponent[deviceService](a)
-	f.lastUsedUpdater = app.MustComponent[lastused.ObjectUsageUpdater](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	return nil
 }
@@ -179,11 +176,12 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeDate,
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
-		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeChatObject:
 		return f.newPage(space.Id(), sb), nil
+	case coresb.SmartBlockTypeObjectType:
+		return f.newObjectType(space.Id(), sb), nil
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, store), nil
 	case coresb.SmartBlockTypeHome:
@@ -215,7 +213,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeChatDerivedObject:
 		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id())), nil
 	case coresb.SmartBlockTypeAccountObject:
-		return accountobject.New(sb, f.accountService.Keys(), store, f.layoutConverter, f.fileObjectService, f.lastUsedUpdater, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
+		return accountobject.New(sb, f.accountService.Keys(), store, f.layoutConverter, f.fileObjectService, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

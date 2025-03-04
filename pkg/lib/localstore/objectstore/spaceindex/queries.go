@@ -59,7 +59,8 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 		return nil
 	}
 
-	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout))
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	switch layout {
 	case model.ObjectType_relationOption:
 		relationKey = details.GetString(bundle.RelationKeyRelationKey)
@@ -79,7 +80,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyType.String(),
-			bundle.RelationKeyLayout.String(),
+			bundle.RelationKeyResolvedLayout.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 		})
 		metaInj := model.SearchMeta{
@@ -174,7 +175,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	for _, res := range results {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
-			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+			if _, indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 				details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
 					ObjectID: res.Path.ObjectId,
 					SpaceID:  s.SpaceId(),
@@ -428,13 +429,13 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 	for _, id := range ids {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
-			if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+			if _, indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 				details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
 					ObjectID: id,
 					SpaceID:  s.SpaceId(),
 				})
 				if err != nil {
-					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
+					log.With("id", id).Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", err.Error())
 					continue
 				}
 				details.SetString(bundle.RelationKeyId, id)
@@ -444,12 +445,12 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 		}
 		doc, err := s.objects.FindId(s.componentCtx, id)
 		if err != nil {
-			log.Infof("QueryByIds failed to find id: %s", id)
+			log.With("id", id).Infof("QueryByIds failed to find id: %s", err.Error())
 			continue
 		}
 		details, err := domain.NewDetailsFromAnyEnc(doc.Value())
 		if err != nil {
-			log.Errorf("QueryByIds failed to extract details: %s", id)
+			log.With("id", id).Errorf("QueryByIds failed to extract details: %s", err.Error())
 			continue
 		}
 		records = append(records, database.Record{Details: details})

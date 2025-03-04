@@ -4,9 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
+	"github.com/anyproto/any-sync/commonspace/headsync/headstorage/mock_headstorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -22,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage/mock_anystorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 )
 
@@ -54,7 +58,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		virtualSpace := getMockSpace(indexerFx)
 
 		storage := mock_storage.NewMockClientStorage(t)
-		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 		indexerFx.storageService = storage
 
 		// when
@@ -92,7 +95,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		require.NoError(t, err)
 
 		storage := mock_storage.NewMockClientStorage(t)
-		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 		fx.storageService = storage
 
 		// when
@@ -128,7 +130,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		require.NoError(t, err)
 
 		storage := mock_storage.NewMockClientStorage(t)
-		storage.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 		fx.storageService = storage
 
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
@@ -142,6 +143,86 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, det.Len() == 0)
 	})
+}
+
+func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
+	const (
+		spaceId1 = "space1"
+		spaceId2 = "space2"
+	)
+	fx := NewIndexerFixture(t)
+
+	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("_part1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId:        domain.String(spaceId1),
+		},
+		{
+			bundle.RelationKeyId:             domain.String("rand1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.SmartBlockType_Page),
+			bundle.RelationKeySpaceId:        domain.String(spaceId1),
+		},
+	})
+	fx.objectStore.AddObjects(t, spaceId2, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("_part2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId:        domain.String(spaceId2),
+		},
+		{
+			bundle.RelationKeyId:             domain.String("_part21"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+			bundle.RelationKeySpaceId:        domain.String(spaceId2),
+		},
+		{
+			bundle.RelationKeyId:             domain.String("rand2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.SmartBlockType_Page),
+			bundle.RelationKeySpaceId:        domain.String(spaceId1),
+		},
+	})
+
+	checksums := fx.getLatestChecksums(false)
+	checksums.ReindexParticipants = checksums.ReindexParticipants - 1
+
+	err := fx.objectStore.SaveChecksums(spaceId1, &checksums)
+	require.NoError(t, err)
+	err = fx.objectStore.SaveChecksums(spaceId2, &checksums)
+	require.NoError(t, err)
+
+	ctrl := gomock.NewController(t)
+	headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+	storage := mock_anystorage.NewMockClientSpaceStorage(t)
+	storage.EXPECT().HeadStorage().Return(headStorage)
+	headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().
+		DoAndReturn(func(ctx context.Context, opts headstorage.IterOpts, entryIter headstorage.EntryIterator) error {
+			return nil
+		})
+
+	for _, space := range []string{spaceId1, spaceId2} {
+		t.Run("reindex - participants deleted - when flag doesn't match", func(t *testing.T) {
+			// given
+			store := fx.store.SpaceIndex(space)
+
+			spc := mock_space.NewMockSpace(t)
+			spc.EXPECT().Id().Return(space)
+			spc.EXPECT().Storage().Return(storage)
+			fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
+
+			// when
+			err = fx.ReindexSpace(spc)
+			assert.NoError(t, err)
+
+			// then
+			ids, err := store.ListIds()
+			assert.NoError(t, err)
+			assert.Len(t, ids, 1)
+
+			storeChecksums, err := fx.store.GetChecksums(space)
+			assert.Equal(t, ForceReindexParticipantsCounter, storeChecksums.ReindexParticipants)
+		})
+	}
+
 }
 
 func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
@@ -204,12 +285,21 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 	require.NoError(t, err)
 	err = fx.objectStore.SaveChecksums(spaceId2, &checksums)
 	require.NoError(t, err)
+	ctrl := gomock.NewController(t)
+	headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+	storage := mock_anystorage.NewMockClientSpaceStorage(t)
+	storage.EXPECT().HeadStorage().Return(headStorage)
+	headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().
+		DoAndReturn(func(ctx context.Context, opts headstorage.IterOpts, entryIter headstorage.EntryIterator) error {
+			return nil
+		})
 
 	t.Run("links from archive and home are deleted", func(t *testing.T) {
 		// given
 		favs := []string{"fav1", "fav2"}
 		trash := []string{"trash1", "trash2"}
 		store := fx.store.SpaceIndex("space1")
+
 		err = store.UpdateObjectLinks(ctx, "home", favs)
 		require.NoError(t, err)
 		err = store.UpdateObjectLinks(ctx, "bin", trash)
@@ -223,7 +313,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
-		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
+		space1.EXPECT().Storage().Return(storage)
 
 		// when
 		err = fx.ReindexSpace(space1)
@@ -264,8 +354,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId2)
-		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
-
+		space1.EXPECT().Storage().Return(storage)
 		// when
 		err = fx.ReindexSpace(space1)
 		assert.NoError(t, err)

@@ -16,9 +16,10 @@ import (
 var (
 	Service          = NewService()
 	clientMetricsLog = logging.Logger("service-metrics")
-	sendInterval     = 10.0 * time.Second
+	sendInterval     = 30.0 * time.Second
 	maxTimeout       = 30 * time.Second
 	bufferSize       = 500
+	eventsLimit      = 1000 // throttle
 )
 
 // First constants must repeat syncstatus.SyncStatus constants for
@@ -200,7 +201,7 @@ func (s *service) Run() {
 
 	for _, c := range s.clients {
 		c.ctx, c.cancel = context.WithCancel(context.Background())
-		c.setBatcher(mb.New[anymetry.Event](0))
+		c.setBatcher(mb.New[anymetry.Event](eventsLimit))
 		go c.startAggregating()
 		go c.startSendingBatchMessages(s)
 	}

@@ -245,8 +245,12 @@ func (st *SmartTest) SetObjectTypes(objectTypes []domain.TypeKey) {
 	st.Doc.(*state.State).SetObjectTypeKeys(objectTypes)
 }
 
-func (st *SmartTest) DisableLayouts() {
+func (st *SmartTest) EnableLayouts() {
 	return
+}
+
+func (st *SmartTest) IsLayoutsEnabled() bool {
+	return false
 }
 
 func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
@@ -262,13 +266,6 @@ func (st *SmartTest) SetDetails(ctx session.Context, details []domain.Detail, sh
 	return
 }
 
-func (st *SmartTest) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	for _, detail := range details {
-		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, string(detail.Key))
-	}
-	return st.SetDetails(ctx, details, showEvent)
-}
-
 func (st *SmartTest) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
 	details := st.Doc.(*state.State).CombinedDetails()
 	if details == nil {
@@ -279,31 +276,6 @@ func (st *SmartTest) UpdateDetails(ctx session.Context, update func(current *dom
 		return err
 	}
 	st.Doc.(*state.State).SetDetails(newDetails)
-	return nil
-}
-
-func (st *SmartTest) UpdateDetailsAndLastUsed(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
-	details := st.Doc.(*state.State).CombinedDetails()
-	if details == nil {
-		details = domain.NewDetails()
-	}
-	oldDetails := details.Copy()
-
-	newDetails, err := update(details)
-	if err != nil {
-		return err
-	}
-
-	diff, _ := domain.StructDiff(oldDetails, newDetails)
-	if diff == nil {
-		return nil
-	}
-
-	st.Doc.(*state.State).SetDetails(newDetails)
-
-	for k, _ := range diff.Iterate() {
-		st.Results.LastUsedUpdates = append(st.Results.LastUsedUpdates, string(k))
-	}
 	return nil
 }
 
@@ -395,7 +367,8 @@ func (st *SmartTest) StateRebuild(d state.Doc) (err error) {
 }
 
 func (st *SmartTest) StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
-	panic("not implemented")
+	st.Results.IsStateAppendCalled = true
+	return nil
 }
 
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
@@ -451,8 +424,7 @@ func (st *SmartTest) Update(ctx session.Context, apply func(b simple.Block) erro
 }
 
 type Results struct {
-	Events  [][]simple.EventMessage
-	Applies [][]*model.Block
-
-	LastUsedUpdates []string
+	Events              [][]simple.EventMessage
+	Applies             [][]*model.Block
+	IsStateAppendCalled bool
 }

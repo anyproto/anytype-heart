@@ -3,28 +3,17 @@ package core
 import (
 	"context"
 
-	"go.uber.org/zap"
-
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-// rpc PublishingCreate (anytype.Rpc.Publishing.Create.Request) returns (anytype.Rpc.Publishing.Create.Response)
-// rpc PublishingRemove (anytype.Rpc.Publishing.Remove.Request) returns (anytype.Rpc.Publishing.Remove.Response)
-// rpc PublishingList (anytype.Rpc.Publishing.List.Request) returns (anytype.Rpc.Publishing.List.Response)
-// rpc PublishingResolveUri (anytype.Rpc.Publishing.ResolveUri.Request) returns (anytype.Rpc.Publishing.ResolveUri.Response)
-// rpc PublishingGetStatus (anytype.Rpc.Publishing.GetStatus.Request) returns (anytype.Rpc.Publishing.GetStatus.Response)
-
 func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishingCreateRequest) *pb.RpcPublishingCreateResponse {
-	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))
 	publishService := mustService[publish.Service](mw)
-
 	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId, req.Uri, req.JoinSpace)
-	log.Error("PublishingCreate called", zap.String("objectId", req.ObjectId))
 	code := mapErrorCode(err,
 		errToCode(nil, pb.RpcPublishingCreateResponseError_NULL),
-		errToCode(err, pb.RpcPublishingCreateResponseError_UNKNOWN_ERROR),
-		errToCode(publish.ErrLimitExceeded, pb.RpcPublishingCreateResponseError_LIMIT_EXCEEDED))
+		errToCode(publish.ErrLimitExceeded, pb.RpcPublishingCreateResponseError_LIMIT_EXCEEDED),
+		errToCode(err, pb.RpcPublishingCreateResponseError_UNKNOWN_ERROR))
 
 	r := &pb.RpcPublishingCreateResponse{
 		Error: &pb.RpcPublishingCreateResponseError{

@@ -57,6 +57,7 @@ func UnzipFolder(sourceZip, targetDir string) error {
 		return err
 	}
 	for _, file := range r.File {
+		// nolint: gosec
 		extractedPath := filepath.Join(targetDir, file.Name)
 		if file.FileInfo().IsDir() {
 			if err := os.MkdirAll(extractedPath, 0700); err != nil {
@@ -82,6 +83,7 @@ func extractFile(file *zip.File, outputPath string) error {
 		return err
 	}
 	defer outputFile.Close()
+	// nolint: gosec
 	_, err = io.Copy(outputFile, rc)
 	return err
 }

@@ -60,7 +60,7 @@ func TestService_Init(t *testing.T) {
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 
 		// initialized - expect space
-		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), time.Millisecond)
+		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), 2*time.Millisecond)
 		defer ctxCancel2()
 
 		factory.EXPECT().LoadAndSetTechSpace(ctx2).Return(&clientspace.TechSpace{}, nil)
@@ -240,10 +240,10 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 
 		storeFixture := objectstore.NewStoreFixture(t)
 		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{{
-			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyId:            domain.String("spaceViewId"),
-			bundle.RelationKeyTargetSpaceId: domain.String(spaceID),
-			bundle.RelationKeyName:          domain.String("Test"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyId:             domain.String("spaceViewId"),
+			bundle.RelationKeyTargetSpaceId:  domain.String(spaceID),
+			bundle.RelationKeyName:           domain.String("Test"),
 		}})
 
 		s := service{

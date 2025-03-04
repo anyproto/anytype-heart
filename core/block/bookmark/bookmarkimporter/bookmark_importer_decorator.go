@@ -37,7 +37,7 @@ func (bd *BookmarkImporterDecorator) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (bd *BookmarkImporterDecorator) CreateBookmarkObject(ctx context.Context, spaceID string, details *domain.Details, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *domain.Details, err error) {
+func (bd *BookmarkImporterDecorator) CreateBookmarkObject(ctx context.Context, spaceID, templateId string, details *domain.Details, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *domain.Details, err error) {
 	url := details.GetString(bundle.RelationKeySource)
 	if objectId, newDetails, err = bd.Importer.ImportWeb(nil, &importer.ImportRequest{
 		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
@@ -49,7 +49,7 @@ func (bd *BookmarkImporterDecorator) CreateBookmarkObject(ctx context.Context, s
 			"function", "BookmarkFetch",
 			"message", "failed to import bookmark",
 		).Error(err)
-		return bd.Service.CreateBookmarkObject(ctx, spaceID, details, getContent)
+		return bd.Service.CreateBookmarkObject(ctx, spaceID, templateId, details, getContent)
 	}
 	err = bd.Service.UpdateObject(objectId, getContent())
 	if err != nil {

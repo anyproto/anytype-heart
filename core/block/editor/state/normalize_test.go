@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -546,4 +547,27 @@ func countStringsLength(value *types.Value) (n int) {
 		}
 	}
 	return n
+}
+
+func TestNormalizeRecommendedRelations(t *testing.T) {
+	// given
+	s := NewDoc("root", nil).NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{"s1", "sh", "sf", "sfh"}), // s stands for sidebar
+		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"f1", "f2", "sfh", "fh", "sf"}),
+		bundle.RelationKeyRecommendedHiddenRelations:   domain.StringList([]string{"sfh", "sh", "fh", "h1", "h2", "h3"}),
+	}))
+	child := s.NewState()
+
+	// when
+	s.normalizeRecommendedRelations()
+	child.normalizeRecommendedRelations()
+
+	// then
+	assert.Equal(t, []string{"s1", "sh"}, s.Details().GetStringList(bundle.RelationKeyRecommendedRelations))
+	assert.Equal(t, []string{"f1", "f2", "sfh", "fh", "sf"}, s.Details().GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+	assert.Equal(t, []string{"h1", "h2", "h3"}, s.Details().GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
+
+	assert.Equal(t, []string{"s1", "sh"}, child.Details().GetStringList(bundle.RelationKeyRecommendedRelations))
+	assert.Equal(t, []string{"f1", "f2", "sfh", "fh", "sf"}, child.Details().GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+	assert.Equal(t, []string{"h1", "h2", "h3"}, child.Details().GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
 }

@@ -306,7 +306,7 @@ func getTableSizes(mw *core.Middleware) (tables map[string]uint64) {
 	tables = make(map[string]uint64)
 	cfg := mw.GetApp().MustComponent(config.CName).(*config.Config)
 
-	db, err := sql.Open("sqlite3", cfg.GetSqliteStorePath())
+	db, err := sql.Open("sqlite3", cfg.GetNewSpaceStorePath())
 	if err != nil {
 		fmt.Println("Error opening database:", err)
 		return

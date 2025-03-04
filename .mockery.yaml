@@ -38,9 +38,11 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
-  github.com/anyproto/anytype-heart/core/block/editor/lastused:
-    interfaces:
-      ObjectUsageUpdater:
+      Space:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
@@ -95,6 +97,9 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore/storage:
     interfaces:
       ClientStorage:
+  github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage:
+    interfaces:
+      ClientSpaceStorage:
   github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
@@ -235,3 +240,6 @@ packages:
   github.com/anyproto/anytype-heart/pb/service:
     interfaces:
       ClientCommandsServer:
+  github.com/anyproto/anytype-heart/core/block/template:
+    interfaces:
+      Service:

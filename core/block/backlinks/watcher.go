@@ -8,7 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -56,10 +56,12 @@ type watcher struct {
 	resolver     idresolver.Resolver
 	spaceService space.Service
 
-	infoBatch            *mb.MB
+	infoBatch            *mb.MB[spaceindex.LinksUpdateInfo]
 	lock                 sync.Mutex
 	accumulatedBacklinks map[string]*backLinksUpdate
 	aggregationInterval  time.Duration
+	cancelCtx            context.CancelFunc
+	ctx                  context.Context
 }
 
 func New() UpdateWatcher {
@@ -75,22 +77,26 @@ func (w *watcher) Init(a *app.App) error {
 	w.store = app.MustComponent[objectstore.ObjectStore](a)
 	w.resolver = app.MustComponent[idresolver.Resolver](a)
 	w.spaceService = app.MustComponent[space.Service](a)
-	w.infoBatch = mb.New(0)
+	w.infoBatch = mb.New[spaceindex.LinksUpdateInfo](0)
 	w.accumulatedBacklinks = make(map[string]*backLinksUpdate)
 	w.aggregationInterval = defaultAggregationInterval
 	return nil
 }
 
 func (w *watcher) Close(context.Context) error {
+	if w.cancelCtx != nil {
+		w.cancelCtx()
+	}
 	if err := w.infoBatch.Close(); err != nil {
 		log.Errorf("failed to close message batch: %v", err)
 	}
 	return nil
 }
 
-func (w *watcher) Run(context.Context) error {
+func (w *watcher) Run(ctx context.Context) error {
+	w.ctx, w.cancelCtx = context.WithCancel(context.Background())
 	w.updater.SubscribeLinksUpdate(func(info spaceindex.LinksUpdateInfo) {
-		if err := w.infoBatch.Add(info); err != nil {
+		if err := w.infoBatch.Add(w.ctx, info); err != nil {
 			log.With("objectId", info.LinksFromId).Errorf("failed to add backlinks update info to message batch: %v", err)
 		}
 	})
@@ -165,17 +171,16 @@ func (w *watcher) backlinksUpdateHandler() {
 	}()
 
 	for {
-		msgs := w.infoBatch.Wait()
+		msgs, err := w.infoBatch.Wait(w.ctx)
+		if err != nil {
+			return
+		}
 		if len(msgs) == 0 {
 			return
 		}
 
 		w.lock.Lock()
-		for _, msg := range msgs {
-			info, ok := msg.(spaceindex.LinksUpdateInfo)
-			if !ok {
-				continue
-			}
+		for _, info := range msgs {
 			info = cleanSelfLinks(info)
 			applyUpdates(w.accumulatedBacklinks, info)
 		}
@@ -210,7 +215,7 @@ func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksU
 		log.With("objectId", id).Errorf("failed to resolve space id for object: %v", err)
 		return
 	}
-	spc, err := w.spaceService.Get(context.Background(), spaceId)
+	spc, err := w.spaceService.Get(w.ctx, spaceId)
 	if err != nil {
 		log.With("objectId", id, "spaceId", spaceId).Errorf("failed to get space: %v", err)
 		return

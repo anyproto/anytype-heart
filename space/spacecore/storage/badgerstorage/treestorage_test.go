@@ -14,6 +14,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type oldTreeStorage interface {
+	oldstorage.ChangesIterator
+	oldstorage.TreeStorage
+}
+
 func treeTestPayload() treestorage.TreeStorageCreatePayload {
 	rootRawChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("some"), Id: "someRootId"}
 	otherChange := &treechangeproto.RawTreeChangeWithId{RawChange: []byte("some other"), Id: "otherId"}
@@ -129,8 +134,9 @@ func TestTreeStorage_Methods(t *testing.T) {
 
 	fx.open(t)
 	defer fx.stop(t)
-	store, err := newTreeStorage(fx.db, spaceId, payload.RootRawChange.Id)
+	treeStore, err := newTreeStorage(fx.db, spaceId, payload.RootRawChange.Id)
 	require.NoError(t, err)
+	store := treeStore.(oldTreeStorage)
 	testTreePayload(t, store, payload)
 
 	t.Run("update heads", func(t *testing.T) {

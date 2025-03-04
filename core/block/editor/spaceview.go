@@ -40,6 +40,9 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceShareableStatus,
 	bundle.RelationKeySpaceAccessType,
 	bundle.RelationKeyLatestAclHeadId,
+	bundle.RelationKeyChatId,
+	bundle.RelationKeyReadersLimit,
+	bundle.RelationKeyWritersLimit,
 }
 
 type spaceService interface {
@@ -78,7 +81,6 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	s.log = s.log.With("spaceId", spaceId)
 
-	s.DisableLayouts()
 	info := spaceinfo.NewSpacePersistentInfoFromState(ctx.State)
 	newInfo := spaceinfo.NewSpacePersistentInfo(spaceId)
 	newInfo.SetAccountStatus(info.GetAccountStatus()).
@@ -112,7 +114,8 @@ func (s *SpaceView) StateMigrations() migration.Migrations {
 
 func (s *SpaceView) initTemplate(st *state.State) {
 	template.InitTemplate(st,
-		template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
+		template.WithObjectTypes([]domain.TypeKey{bundle.TypeKeySpaceView}),
+		template.WithLayout(model.ObjectType_spaceView),
 	)
 }
 
@@ -255,6 +258,7 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeySpaceDashboardId,
 	bundle.RelationKeyCreatedDate,
 	bundle.RelationKeyChatId,
+	bundle.RelationKeyDescription,
 }
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {

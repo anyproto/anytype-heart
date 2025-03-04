@@ -244,10 +244,6 @@
     - [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response)
     - [Rpc.BlockBookmark.Fetch.Response.Error](#anytype-Rpc-BlockBookmark-Fetch-Response-Error)
     - [Rpc.BlockDataview](#anytype-Rpc-BlockDataview)
-    - [Rpc.BlockDataview.CreateBookmark](#anytype-Rpc-BlockDataview-CreateBookmark)
-    - [Rpc.BlockDataview.CreateBookmark.Request](#anytype-Rpc-BlockDataview-CreateBookmark-Request)
-    - [Rpc.BlockDataview.CreateBookmark.Response](#anytype-Rpc-BlockDataview-CreateBookmark-Response)
-    - [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error)
     - [Rpc.BlockDataview.CreateFromExistingObject](#anytype-Rpc-BlockDataview-CreateFromExistingObject)
     - [Rpc.BlockDataview.CreateFromExistingObject.Request](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Request)
     - [Rpc.BlockDataview.CreateFromExistingObject.Response](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response)
@@ -927,9 +923,11 @@
     - [Rpc.Object.ListDuplicate.Response](#anytype-Rpc-Object-ListDuplicate-Response)
     - [Rpc.Object.ListDuplicate.Response.Error](#anytype-Rpc-Object-ListDuplicate-Response-Error)
     - [Rpc.Object.ListExport](#anytype-Rpc-Object-ListExport)
+    - [Rpc.Object.ListExport.RelationsWhiteList](#anytype-Rpc-Object-ListExport-RelationsWhiteList)
     - [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request)
     - [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response)
     - [Rpc.Object.ListExport.Response.Error](#anytype-Rpc-Object-ListExport-Response-Error)
+    - [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters)
     - [Rpc.Object.ListModifyDetailValues](#anytype-Rpc-Object-ListModifyDetailValues)
     - [Rpc.Object.ListModifyDetailValues.Request](#anytype-Rpc-Object-ListModifyDetailValues-Request)
     - [Rpc.Object.ListModifyDetailValues.Request.Operation](#anytype-Rpc-Object-ListModifyDetailValues-Request-Operation)
@@ -1079,6 +1077,19 @@
     - [Rpc.ObjectRelation.RemoveFeatured.Response](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error)
     - [Rpc.ObjectType](#anytype-Rpc-ObjectType)
+    - [Rpc.ObjectType.ListConflictingRelations](#anytype-Rpc-ObjectType-ListConflictingRelations)
+    - [Rpc.ObjectType.ListConflictingRelations.Request](#anytype-Rpc-ObjectType-ListConflictingRelations-Request)
+    - [Rpc.ObjectType.ListConflictingRelations.Response](#anytype-Rpc-ObjectType-ListConflictingRelations-Response)
+    - [Rpc.ObjectType.ListConflictingRelations.Response.Error](#anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error)
+    - [Rpc.ObjectType.Recommended](#anytype-Rpc-ObjectType-Recommended)
+    - [Rpc.ObjectType.Recommended.FeaturedRelationsSet](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet)
+    - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request)
+    - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response)
+    - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error)
+    - [Rpc.ObjectType.Recommended.RelationsSet](#anytype-Rpc-ObjectType-Recommended-RelationsSet)
+    - [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request)
+    - [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response)
+    - [Rpc.ObjectType.Recommended.RelationsSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error)
     - [Rpc.ObjectType.Relation](#anytype-Rpc-ObjectType-Relation)
     - [Rpc.ObjectType.Relation.Add](#anytype-Rpc-ObjectType-Relation-Add)
     - [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request)
@@ -1339,7 +1350,6 @@
     - [Rpc.Block.Upload.Response.Error.Code](#anytype-Rpc-Block-Upload-Response-Error-Code)
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-CreateAndFetch-Response-Error-Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-Fetch-Response-Error-Code)
-    - [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code)
     - [Rpc.BlockDataview.CreateFromExistingObject.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Filter.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Filter-Remove-Response-Error-Code)
@@ -1544,6 +1554,9 @@
     - [Rpc.ObjectRelation.Delete.Response.Error.Code](#anytype-Rpc-ObjectRelation-Delete-Response-Error-Code)
     - [Rpc.ObjectRelation.ListAvailable.Response.Error.Code](#anytype-Rpc-ObjectRelation-ListAvailable-Response-Error-Code)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
+    - [Rpc.ObjectType.ListConflictingRelations.Response.Error.Code](#anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error-Code)
+    - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code)
+    - [Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
@@ -2137,6 +2150,9 @@
 | ObjectCreateObjectType | [Rpc.Object.CreateObjectType.Request](#anytype-Rpc-Object-CreateObjectType-Request) | [Rpc.Object.CreateObjectType.Response](#anytype-Rpc-Object-CreateObjectType-Response) | ObjectType commands *** |
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
+| ObjectTypeRecommendedRelationsSet | [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request) | [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response) |  |
+| ObjectTypeRecommendedFeaturedRelationsSet | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request) | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response) |  |
+| ObjectTypeListConflictingRelations | [Rpc.ObjectType.ListConflictingRelations.Request](#anytype-Rpc-ObjectType-ListConflictingRelations-Request) | [Rpc.ObjectType.ListConflictingRelations.Response](#anytype-Rpc-ObjectType-ListConflictingRelations-Response) |  |
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
@@ -3505,6 +3521,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  |  |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -3727,6 +3744,7 @@ Middleware-to-front-end response to an account recover request, that can contain
 | path | [string](#string) |  |  |
 | rootPath | [string](#string) |  |  |
 | icon | [int64](#int64) |  |  |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -3844,6 +3862,7 @@ User can select an account from those, that came with an AccountAdd events
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -5695,6 +5714,7 @@ Makes blocks copy by given ids and paste it to shown place
 | targetId | [string](#string) |  |  |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | url | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -5755,6 +5775,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -5797,66 +5818,6 @@ Makes blocks copy by given ids and paste it to shown place
 
 ### Rpc.BlockDataview
 
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark"></a>
-
-### Rpc.BlockDataview.CreateBookmark
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Request"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| url | [string](#string) |  |  |
-| spaceId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockDataview.CreateBookmark.Response.Error](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error) |  |  |
-| id | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockDataview.CreateBookmark.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -14425,6 +14386,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | spaceId | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -14488,6 +14450,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | addPageContent | [bool](#bool) |  |  |
 | withChat | [bool](#bool) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -15734,6 +15697,22 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype-Rpc-Object-ListExport-RelationsWhiteList"></a>
+
+### Rpc.Object.ListExport.RelationsWhiteList
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| layout | [model.ObjectType.Layout](#anytype-model-ObjectType-Layout) |  |  |
+| allowedRelations | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ListExport-Request"></a>
 
 ### Rpc.Object.ListExport.Request
@@ -15752,6 +15731,8 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | isJson | [bool](#bool) |  | for protobuf export |
 | includeArchived | [bool](#bool) |  | for migration |
 | noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
+| linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
+| includeBacklinks | [bool](#bool) |  |  |
 
 
 
@@ -15786,6 +15767,22 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.ListExport.Response.Error.Code](#anytype-Rpc-Object-ListExport-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ListExport-StateFilters"></a>
+
+### Rpc.Object.ListExport.StateFilters
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationsWhiteList | [Rpc.Object.ListExport.RelationsWhiteList](#anytype-Rpc-Object-ListExport-RelationsWhiteList) | repeated |  |
+| removeBlocks | [bool](#bool) |  |  |
 
 
 
@@ -17984,6 +17981,188 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-ObjectType-ListConflictingRelations"></a>
+
+### Rpc.ObjectType.ListConflictingRelations
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-ListConflictingRelations-Request"></a>
+
+### Rpc.ObjectType.ListConflictingRelations.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| typeObjectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-ListConflictingRelations-Response"></a>
+
+### Rpc.ObjectType.ListConflictingRelations.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.ListConflictingRelations.Response.Error](#anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error) |  |  |
+| relationIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error"></a>
+
+### Rpc.ObjectType.ListConflictingRelations.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.ListConflictingRelations.Response.Error.Code](#anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended"></a>
+
+### Rpc.ObjectType.Recommended
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet"></a>
+
+### Rpc.ObjectType.Recommended.FeaturedRelationsSet
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request"></a>
+
+### Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| typeObjectId | [string](#string) |  |  |
+| relationObjectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response"></a>
+
+### Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error"></a>
+
+### Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-RelationsSet"></a>
+
+### Rpc.ObjectType.Recommended.RelationsSet
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-RelationsSet-Request"></a>
+
+### Rpc.ObjectType.Recommended.RelationsSet.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| typeObjectId | [string](#string) |  |  |
+| relationObjectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-RelationsSet-Response"></a>
+
+### Rpc.ObjectType.Recommended.RelationsSet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Recommended.RelationsSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error"></a>
+
+### Rpc.ObjectType.Recommended.RelationsSet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-ObjectType-Relation"></a>
 
 ### Rpc.ObjectType.Relation
@@ -18478,6 +18657,7 @@ Available undo/redo operations
 | timestamp | [int64](#int64) |  |  |
 | size | [int64](#int64) |  |  |
 | joinSpace | [bool](#bool) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
@@ -20194,6 +20374,7 @@ Front-end-to-middleware request to create a new wallet
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootPath | [string](#string) |  | Path to a wallet directory |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -20312,6 +20493,7 @@ Front end to middleware request-to-recover-a wallet with this mnemonic and a roo
 | ----- | ---- | ----- | ----------- |
 | rootPath | [string](#string) |  | Path to a wallet directory |
 | mnemonic | [string](#string) |  | Mnemonic of a wallet to recover |
+| fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 
 
 
@@ -21668,19 +21850,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype-Rpc-BlockDataview-CreateBookmark-Response-Error-Code"></a>
-
-### Rpc.BlockDataview.CreateBookmark.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
 
 
 
@@ -24440,6 +24609,48 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error-Code"></a>
+
+### Rpc.ObjectType.ListConflictingRelations.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| READONLY_OBJECT_TYPE | 3 |  |
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code"></a>
+
+### Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| READONLY_OBJECT_TYPE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code"></a>
+
+### Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| READONLY_OBJECT_TYPE | 3 | ... |
 
 
 
@@ -28839,6 +29050,7 @@ Precondition: user A and user B opened the same block
 | linksErase | [int32](#int32) |  |  |
 | marketplaceForceReindexCounter | [int32](#int32) |  |  |
 | reindexDeletedObjects | [int32](#int32) |  |  |
+| reindexParticipants | [int32](#int32) |  |  |
 
 
 
@@ -30275,6 +30487,8 @@ Used to decode block meta only, without the content itself
 | key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 | revision | [int64](#int64) |  | revision of system objectType. Used to check if we should change type content or not |
 | restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
+| iconColor | [int64](#int64) |  | color of object type icon |
+| iconName | [string](#string) |  | name of object type icon |
 
 
 

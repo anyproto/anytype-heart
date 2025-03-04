@@ -345,7 +345,10 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 		return err
 	}
 
-	extractedProfileExists, _ := s.Storage().HasTree(ctx, extractedProfileId)
+	extractedProfileExists, err := s.Storage().HasTree(ctx, extractedProfileId)
+	if err != nil {
+		return err
+	}
 	if extractedProfileExists {
 		return nil
 	}

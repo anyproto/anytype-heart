@@ -198,6 +198,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if details == nil {
 				details = domain.NewDetails()
 			}
+			// todo: make the checks consistent here and in setSyncDetails
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
 			}
@@ -223,10 +224,18 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
+		if sb.LocalDetails().Has(bundle.RelationKeySyncStatus) {
+			// do cleanup because of previous sync relations indexation problem
+			st := sb.NewState()
+			st.LocalDetails().Delete(bundle.RelationKeySyncDate)
+			st.LocalDetails().Delete(bundle.RelationKeySyncStatus)
+			st.LocalDetails().Delete(bundle.RelationKeySyncError)
+			return sb.Apply(st, smartblock.KeepInternalFlags)
+		}
 		return nil
 	}
 	st := sb.NewState()
-	if !u.isLayoutSuitableForSyncRelations(sb.Details()) {
+	if !u.isLayoutSuitableForSyncRelations(sb.LocalDetails()) {
 		return nil
 	}
 	if fileStatus, ok := st.Details().TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
@@ -260,7 +269,8 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {
-	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout))
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	_, ok := suitableLayouts[layout]
 	return ok
 }
