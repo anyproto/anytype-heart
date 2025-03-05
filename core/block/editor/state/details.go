@@ -138,7 +138,6 @@ func (s *State) SetDetail(key domain.RelationKey, value domain.Value) {
 		s.details = domain.NewDetails()
 	}
 	s.details.Set(key, value)
-	return
 }
 
 func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
@@ -156,7 +155,6 @@ func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 		s.localDetails = domain.NewDetails()
 	}
 	s.localDetails.Set(key, value)
-	return
 }
 
 // AddRelationKeys adds details with null value, if no detail corresponding to key was presented
@@ -187,7 +185,6 @@ func (s *State) RemoveRelation(keys ...domain.RelationKey) {
 	if foundInFeatured {
 		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(featuredList))
 	}
-	return
 }
 
 func (s *State) RemoveDetail(keys ...domain.RelationKey) (ok bool) {

@@ -87,7 +87,7 @@ func DependentObjectIDs(s *state.State, converter keyToIDConverter, relLinkGette
 
 		var relLink *model.RelationLink
 		if relLinkGetter != nil {
-			relLink, _ = relLinkGetter.GetRelationLink(key.String())
+			relLink, _ = relLinkGetter.GetRelationLink(key.String()) // nolint:errcheck
 		}
 
 		if relLink == nil {
