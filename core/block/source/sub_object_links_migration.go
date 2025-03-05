@@ -75,7 +75,7 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 		// TODO: GO-5222 check this logic
 		// here we use objectstore to get relationLink, but it may be not yet available
 		// In case it is missing, lets try to migrate any string/stringlist: it should ignore invalid strings
-		if relationLink == nil || m.canRelationContainObjectValues(relationLink.Format) {
+		if relationLink == nil || m.canRelationContainObjectValues(relationLink.Format) { // nolint:nestif
 			rawValue := s.Details().Get(key)
 
 			if oldId := rawValue.String(); oldId != "" {
