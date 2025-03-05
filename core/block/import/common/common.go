@@ -262,8 +262,7 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 	for k, v := range st.Details().Iterate() {
-		// TODO: GO-4284 We can return object format check, if we somehow propagate objectStore here
-		// TODO: Anyway store will be useless in case of custom relations, as they are not imported to space yet
+		// TODO: GO-5214 Fetch relation format from bundled info and snapshots
 		// if !isLinkToObject(relLink) {
 		// 	continue
 		// }
