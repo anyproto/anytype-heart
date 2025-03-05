@@ -45,7 +45,6 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
-
 	objectStore := objectstore.NewStoreFixture(t)
 	clientStorage := mock_storage.NewMockClientStorage(t)
 

@@ -143,9 +143,6 @@ func (m mockSyncAcl) HandleRequest(ctx context.Context, senderId string, request
 	return nil, nil
 }
 
-func (m mockSyncAcl) SetHeadUpdater(updater headupdater.HeadUpdater) {
-}
-
 func (m mockSyncAcl) SetAclUpdater(updater headupdater.AclUpdater) {
 }
 
@@ -326,7 +323,7 @@ func TestService_ViewInvite(t *testing.T) {
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
 		fx.mockAccountService.EXPECT().Keys().Return(keys)
-		aclList, err := list.NewTestDerivedAcl("spaceId", keys)
+		aclList, err := list.NewInMemoryDerivedAcl("spaceId", keys)
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
@@ -357,7 +354,7 @@ func TestService_ViewInvite(t *testing.T) {
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
 		fx.mockAccountService.EXPECT().Keys().Return(keys)
-		aclList, err := list.NewTestDerivedAcl("spaceId", keys)
+		aclList, err := list.NewInMemoryDerivedAcl("spaceId", keys)
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)

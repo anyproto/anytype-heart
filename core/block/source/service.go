@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
@@ -100,7 +99,7 @@ type BuildOptions struct {
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
 		Listener: b.Listener,
-		TreeBuilder: func(treeStorage treestorage.TreeStorage, aclList list.AclList) (objecttree.ObjectTree, error) {
+		TreeBuilder: func(treeStorage objecttree.Storage, aclList list.AclList) (objecttree.ObjectTree, error) {
 			ot, err := objecttree.BuildKeyFilterableObjectTree(treeStorage, aclList)
 			if err != nil {
 				return nil, err
@@ -123,7 +122,7 @@ func (s *service) NewSource(ctx context.Context, space Space, id string, buildOp
 	if err != nil {
 		return nil, err
 	}
-	err = s.storageService.BindSpaceID(src.SpaceID(), src.Id())
+	err = s.objectStore.BindSpaceId(src.SpaceID(), src.Id())
 	if err != nil {
 		return nil, fmt.Errorf("store space id for object: %w", err)
 	}
@@ -246,7 +245,7 @@ func (s *service) RegisterStaticSource(src Source) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[src.Id()] = src
-	err := s.storageService.BindSpaceID(src.SpaceID(), src.Id())
+	err := s.objectStore.BindSpaceId(src.SpaceID(), src.Id())
 	if err != nil {
 		return fmt.Errorf("store space id for object: %w", err)
 	}

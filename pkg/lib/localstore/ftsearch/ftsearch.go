@@ -91,21 +91,15 @@ type DocumentMatch struct {
 	Fields    map[string]any
 }
 
-var specialChars = map[rune]struct{}{
-	'+': {}, '^': {}, '`': {}, ':': {}, '{': {},
-	'}': {}, '"': {}, '[': {}, ']': {}, '(': {},
-	')': {}, '~': {}, '!': {}, '\\': {}, '*': {},
-}
-
 type ftSearchTantivy struct {
 	rootPath   string
 	ftsPath    string
 	builderId  string
 	index      *tantivy.TantivyContext
-	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
 	mu         sync.Mutex
 	blevePath  string
+	lang       tantivy.Language
 }
 
 func TantivyNew() FTSearch {
@@ -144,6 +138,7 @@ func (f *ftSearchTantivy) DeleteObject(objectId string) error {
 
 func (f *ftSearchTantivy) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
+	f.lang = validateLanguage(app.MustComponent[wallet.Wallet](a).FtsPrimaryLang())
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.blevePath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
@@ -245,14 +240,13 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	if err != nil {
 		return err
 	}
-	f.schema = schema
 	f.index = index
 	f.parserPool = &fastjson.ParserPool{}
 
 	f.cleanupBleve()
 	f.cleanUpOldIndexes()
 
-	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, tantivy.English)
+	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, f.lang)
 	if err != nil {
 		return err
 	}
@@ -307,31 +301,19 @@ func (f *ftSearchTantivy) Index(doc SearchDoc) error {
 
 func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	document := tantivy.NewDocument()
-	err := document.AddField(fieldId, doc.Id, f.index)
+	err := document.AddFields(doc.Id, f.index, fieldId, fieldIdRaw)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldIdRaw, doc.Id, f.index)
+	err = document.AddField(doc.SpaceId, f.index, fieldSpace)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldSpace, doc.SpaceId, f.index)
+	err = document.AddFields(doc.Title, f.index, fieldTitle, fieldTitleZh)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldTitle, doc.Title, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldTitleZh, doc.Title, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldText, doc.Text, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldTextZh, doc.Text, f.index)
+	err = document.AddFields(doc.Text, f.index, fieldText, fieldTextZh)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +392,7 @@ func (f *ftSearchTantivy) performSearch(spaceId, query string, buildQueryFunc fu
 
 	return tantivy.GetSearchResults(
 		result,
-		f.schema,
+		f.index,
 		func(json string) (*DocumentMatch, error) {
 			return parseSearchResult(json, p)
 		},
@@ -549,11 +531,9 @@ func (f *ftSearchTantivy) DocCount() (uint64, error) {
 }
 
 func (f *ftSearchTantivy) Close(ctx context.Context) error {
-	f.schema = nil
 	if f.index != nil {
 		f.index.Free()
 		f.index = nil
-		f.schema = nil
 	}
 	return nil
 }
@@ -567,4 +547,18 @@ func prepareQuery(query string) string {
 	query = strings.ToLower(query)
 	query = strings.TrimSpace(query)
 	return query
+}
+
+func validateLanguage(lang string) tantivy.Language {
+	tantivyLang := tantivy.Language(lang)
+	switch tantivyLang {
+	case tantivy.Arabic, tantivy.Armenian, tantivy.Basque, tantivy.Catalan, tantivy.Danish, tantivy.Dutch, tantivy.English,
+		tantivy.Estonian, tantivy.Finnish, tantivy.French, tantivy.German, tantivy.Greek, tantivy.Hindi, tantivy.Hungarian,
+		tantivy.Indonesian, tantivy.Irish, tantivy.Italian, tantivy.Lithuanian, tantivy.Nepali, tantivy.Norwegian,
+		tantivy.Portuguese, tantivy.Romanian, tantivy.Russian, tantivy.Serbian, tantivy.Spanish, tantivy.Swedish,
+		tantivy.Tamil, tantivy.Turkish, tantivy.Yiddish:
+		return tantivyLang
+	default:
+		return tantivy.English
+	}
 }

@@ -7,10 +7,10 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -34,12 +34,12 @@ type spaceStorage struct {
 
 	isDeleted bool
 
-	aclStorage liststorage.ListStorage
+	aclStorage oldstorage.ListStorage
 
 	header *spacesyncproto.RawSpaceHeaderWithId
 }
 
-func newSpaceStorage(s *storageService, spaceId string) (spacestorage.SpaceStorage, error) {
+func newSpaceStorage(s *storageService, spaceId string) (oldstorage.SpaceStorage, error) {
 	ss := &spaceStorage{
 		spaceId: spaceId,
 		service: s,
@@ -64,7 +64,7 @@ func newSpaceStorage(s *storageService, spaceId string) (spacestorage.SpaceStora
 	return ss, nil
 }
 
-func createSpaceStorage(s *storageService, payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
+func createSpaceStorage(s *storageService, payload spacestorage.SpaceStorageCreatePayload) (oldstorage.SpaceStorage, error) {
 	tx, err := s.writeDb.Begin()
 	if err != nil {
 		return nil, err
@@ -194,7 +194,7 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 }
 
 func (s *spaceStorage) AllDeletedTreeIds() (ids []string, err error) {
-	rows, err := s.service.stmt.allTreeDelStatus.Query(s.spaceId, spacestorage.TreeDeletedStatusDeleted)
+	rows, err := s.service.stmt.allTreeDelStatus.Query(s.spaceId, oldstorage.TreeDeletedStatusDeleted)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -218,7 +218,7 @@ func (s *spaceStorage) SpaceSettingsId() string {
 	return s.spaceSettingsId
 }
 
-func (s *spaceStorage) AclStorage() (liststorage.ListStorage, error) {
+func (s *spaceStorage) AclStorage() (oldstorage.ListStorage, error) {
 	return s.aclStorage, nil
 }
 
@@ -258,7 +258,7 @@ func (s *spaceStorage) TreeRoot(id string) (*treechangeproto.RawTreeChangeWithId
 	}, nil
 }
 
-func (s *spaceStorage) TreeStorage(id string) (treestorage.TreeStorage, error) {
+func (s *spaceStorage) TreeStorage(id string) (oldstorage.TreeStorage, error) {
 	return newTreeStorage(s, id)
 }
 
@@ -271,7 +271,7 @@ func (s *spaceStorage) HasTree(id string) (bool, error) {
 	return res > 0, nil
 }
 
-func (s *spaceStorage) CreateTreeStorage(payload treestorage.TreeStorageCreatePayload) (treestorage.TreeStorage, error) {
+func (s *spaceStorage) CreateTreeStorage(payload treestorage.TreeStorageCreatePayload) (oldstorage.TreeStorage, error) {
 	return createTreeStorage(s, payload)
 }
 
