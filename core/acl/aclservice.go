@@ -304,6 +304,13 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) error {
 		}
 		return convertedOrSpaceErr(err)
 	}
+	identity := a.accountService.Keys().SignKey.GetPublic()
+	if !removeSpace.GetAclIdentity().Equals(identity) {
+		// this is a streamable space
+		// we exist there under ephemeral guest identity and should not remove it
+		return nil
+	}
+
 	cl := removeSpace.CommonSpace().AclClient()
 	err = cl.RequestSelfRemove(ctx)
 	if err != nil {
