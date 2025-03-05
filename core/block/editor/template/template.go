@@ -100,14 +100,6 @@ var WithObjectTypes = func(otypes []domain.TypeKey) StateTransformer {
 	}
 }
 
-var WithResolvedLayout = func(layout model.ObjectTypeLayout) StateTransformer {
-	return func(s *state.State) {
-		if !s.LocalDetails().Has(bundle.RelationKeyResolvedLayout) {
-			s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
-		}
-	}
-}
-
 var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
 	return WithDetail(bundle.RelationKeyLayout, domain.Int64(layout))
 }

@@ -70,10 +70,12 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 		relationLink, err := m.objectStore.GetRelationLink(key.String())
 		if err != nil {
 			log.Warnf("migration: failed to get relation link by key %s: %s", key, err)
-			continue
 		}
 
-		if m.canRelationContainObjectValues(relationLink.Format) {
+		// TODO: GO-5222 check this logic
+		// here we use objectstore to get relationLink, but it may be not yet available
+		// In case it is missing, lets try to migrate any string/stringlist: it should ignore invalid strings
+		if relationLink == nil || m.canRelationContainObjectValues(relationLink.Format) {
 			rawValue := s.Details().Get(key)
 
 			if oldId := rawValue.String(); oldId != "" {
@@ -204,7 +206,7 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockCo
 		log.Warnf("migration: failed to get relation by key %s: %s", filter.RelationKey, err)
 	}
 
-	// TODO: check this logic
+	// TODO: GO-5222 check this logic
 	// here we use objectstore to get relation, but it may be not yet available
 	// In case it is missing, lets try to migrate any string/stringlist: it should ignore invalid strings
 	if relation == nil || m.canRelationContainObjectValues(relation.Format) {
