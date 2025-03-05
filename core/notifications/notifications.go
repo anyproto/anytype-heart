@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
@@ -24,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 var log = logging.Logger("notifications")
@@ -134,7 +134,7 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 		n.mu.Lock()
 		defer n.mu.Unlock()
 		storeNotification, err := n.notificationStore.GetNotificationById(notification.Id)
-		if err != nil && !badgerhelper.IsNotFound(err) {
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 			return err
 		}
 		if storeNotification != nil {

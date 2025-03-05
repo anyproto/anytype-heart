@@ -116,7 +116,10 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	ds := New()
 
 	t.Cleanup(func() {
-		_ = fullText.Close(context.Background())
+		err = fullText.Close(context.Background())
+		if err != nil {
+			t.Fatal("FOTAL:", err)
+		}
 		_ = ds.Close(context.Background())
 	})
 

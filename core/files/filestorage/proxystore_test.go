@@ -3,7 +3,6 @@ package filestorage
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -196,8 +195,7 @@ func newPSFixture(t *testing.T) *psFixture {
 }
 
 func (fx *psFixture) Finish(t *testing.T) {
-	_ = os.RemoveAll(fx.tmpDir)
-	fx.proxyCancel()
+	fx.proxyStore.Close()
 }
 
 func newTestBocks(ids ...string) (bs []blocks.Block) {
