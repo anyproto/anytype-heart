@@ -98,7 +98,7 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	details := buildDiffDetails(bundleObject, localObject, isSystem)
 
 	if isSystem {
-		recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
+		recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject, uk)
 		if err != nil {
 			log.Error("failed to check recommended relations", zap.Error(err))
 		}
@@ -225,7 +225,7 @@ func checkRelationFormatObjectTypes(
 }
 
 func checkRecommendedRelations(
-	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details,
+	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details, uk domain.UniqueKey,
 ) (newValues []*domain.Detail, err error) {
 	details := origin.CopyOnlyKeys(
 		bundle.RelationKeyRecommendedRelations,
@@ -233,7 +233,7 @@ func checkRecommendedRelations(
 		bundle.RelationKeyUniqueKey,
 	)
 
-	_, filled, err := relationutils.FillRecommendedRelations(ctx, space, details)
+	_, filled, err := relationutils.FillRecommendedRelations(ctx, space, details, domain.TypeKey(uk.InternalKey()))
 	if filled {
 		return nil, nil
 	}
