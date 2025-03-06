@@ -44,7 +44,7 @@ func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId strin
 				list = append(list, relId)
 			}
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
+		st.SetDetail(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
 		return b.Apply(st)
 	})
 }
@@ -63,7 +63,7 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 			}
 			list = slice.RemoveMut(list, relId)
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
+		st.SetDetail(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
 		return b.Apply(st)
 	})
 }
@@ -88,7 +88,7 @@ func (s *service) objectTypeSetRelations(
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		st.SetDetailAndBundledRelation(relationToSet, domain.StringList(relationList))
+		st.SetDetail(relationToSet, domain.StringList(relationList))
 		return b.Apply(st)
 	})
 }
@@ -120,8 +120,8 @@ func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId strin
 		},
 	}}, func(details *domain.Details) {
 		for _, key := range details.Keys() {
-			if !slices.Contains(allRelationKeys, string(key)) {
-				allRelationKeys = append(allRelationKeys, string(key))
+			if !slices.Contains(allRelationKeys, key.String()) {
+				allRelationKeys = append(allRelationKeys, key.String())
 			}
 		}
 	})
@@ -199,7 +199,7 @@ func (s *service) ListRelationsWithValue(spaceId string, value domain.Value) ([]
 	list := make([]*pb.RpcRelationListWithValueResponseResponseItem, len(keys))
 	for i, key := range keys {
 		list[i] = &pb.RpcRelationListWithValueResponseResponseItem{
-			RelationKey: string(key),
+			RelationKey: key.String(),
 			Counter:     countersByKeys[key],
 		}
 	}

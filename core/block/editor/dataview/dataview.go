@@ -136,7 +136,7 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
 		}
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, domain.StringList(source))
+	s.SetDetail(bundle.RelationKeySetOf, domain.StringList(source))
 
 	flags := internalflag.NewFromState(s)
 	// set with source is no longer empty
