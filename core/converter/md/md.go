@@ -15,8 +15,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/converter/md/csv"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -28,8 +31,8 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(s *state.State, fn FileNamer) converter.Converter {
-	return &MD{s: s, fn: fn}
+func NewMDConverter(fn FileNamer, store objectstore.ObjectStore, knownDocs map[string]*domain.Details) converter.Converter {
+	return &MD{fn: fn, objectTypeFiles: csv.ObjectTypeFiles{}, store: store, listCsv: csv.NewConverter(store, knownDocs), knownDocs: knownDocs}
 }
 
 type MD struct {
@@ -42,21 +45,95 @@ type MD struct {
 
 	mw *marksWriter
 	fn FileNamer
+
+	objectTypeFiles csv.ObjectTypeFiles
+	store           objectstore.ObjectStore
+	listCsv         *csv.Converter
 }
 
-func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
-	if h.s.Pick(h.s.RootId()) == nil {
-		return
+func (h *MD) Convert(st *state.State, sbType model.SmartBlockType, filename string) (result []byte) {
+	if st == nil {
+		return nil
 	}
-	if len(h.s.Pick(h.s.RootId()).Model().ChildrenIds) == 0 {
-		return
+	h.s = st
+	layout, _ := h.s.Layout()
+
+	switch {
+	case h.isListLayout(layout):
+		result = h.convertToCsv()
+	case h.isDocumentLayout(layout):
+		result = h.convertToMarkdown()
 	}
-	buf := bytes.NewBuffer(nil)
-	in := new(renderState)
-	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
-	result = buf.Bytes()
-	buf.Reset()
-	return
+
+	if err := h.writeRecordToObjectTypeCsvFile(filename); err != nil {
+		log.Errorf("failed to write CSV with object type: %v", err)
+	}
+
+	return result
+}
+
+func (h *MD) convertToCsv() []byte {
+	return h.listCsv.Convert(h.s)
+}
+
+func (h *MD) convertToMarkdown() []byte {
+	root := h.s.Pick(h.s.RootId())
+
+	if root == nil || len(root.Model().ChildrenIds) == 0 {
+		return nil
+	}
+
+	buf := new(bytes.Buffer)
+	h.renderChildren(buf, new(renderState), root.Model())
+
+	return buf.Bytes()
+}
+
+func (h *MD) writeRecordToObjectTypeCsvFile(filename string) error {
+	details, err := h.getObjectTypeDetails(h.s)
+	if err != nil {
+		return err
+	}
+	file, err := h.objectTypeFiles.GetFileOrCreate(details.GetString(bundle.RelationKeyName), h.store.SpaceIndex(h.s.SpaceID()))
+	if err != nil {
+		return err
+	}
+
+	return file.WriteRecord(h.s, filename)
+}
+
+func (h *MD) getObjectTypeDetails(st *state.State) (*domain.Details, error) {
+	spaceIndex := h.store.SpaceIndex(st.SpaceID())
+	records, err := spaceIndex.Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(st.ObjectTypeKey().URL()),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, fmt.Errorf("object type not found")
+	}
+	return records[0].Details, nil
+}
+
+func (h *MD) isDocumentLayout(layout model.ObjectTypeLayout) bool {
+	switch layout {
+	case model.ObjectType_basic, model.ObjectType_todo, model.ObjectType_bookmark,
+		model.ObjectType_note, model.ObjectType_profile:
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *MD) isListLayout(layout model.ObjectTypeLayout) bool {
+	return layout == model.ObjectType_collection || layout == model.ObjectType_set
 }
 
 func (h *MD) Export() (result string) {
@@ -66,7 +143,10 @@ func (h *MD) Export() (result string) {
 	return buf.String()
 }
 
-func (h *MD) Ext() string {
+func (h *MD) Ext(layout model.ObjectTypeLayout) string {
+	if h.isListLayout(layout) {
+		return ".csv"
+	}
 	return ".md"
 }
 
@@ -387,9 +467,8 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 	return h.mw.Init(text)
 }
 
-func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
-	h.knownDocs = docs
-	return h
+func (h *MD) Flush(wr converter.FileWriter) error {
+	return h.objectTypeFiles.Flush(wr)
 }
 
 func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
@@ -419,7 +498,8 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 		title = docId
 	}
 
-	filename = h.fn.Get("", docId, title, h.Ext())
+	//nolint:gosec
+	filename = h.fn.Get("", docId, title, h.Ext(model.ObjectTypeLayout(layout)))
 	return
 }
 
