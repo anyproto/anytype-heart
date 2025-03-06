@@ -5,16 +5,19 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	fileobject2 "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
-	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -32,21 +35,25 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 	return &File{
 		SmartBlock:        sb,
 		ChangeReceiver:    sb.(source.ChangeReceiver),
+		FileObject:        fileobject2.NewFileObject(sb, f.fileService),
 		AllOperations:     basicComponent,
 		Text:              stext.NewText(sb, store, f.eventSender),
 		fileObjectService: f.fileObjectService,
 		reconciler:        f.fileReconciler,
 		accountService:    f.accountService,
+		fileService:       f.fileService,
 	}
 }
 
 type File struct {
 	smartblock.SmartBlock
+	fileobject2.FileObject
 	source.ChangeReceiver
 	basic.AllOperations
 	stext.Text
 	fileObjectService fileobject.Service
 	reconciler        reconciler.Reconciler
+	fileService       files.Service
 	accountService    accountService
 }
 
@@ -88,18 +95,43 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		return err
 	}
 
-	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}), smartblock.HookBeforeApply)
+	fullId := domain.FullID{SpaceID: f.SpaceID(), ObjectID: f.Id()}
+
+	f.SmartBlock.AddHook(f.reconciler.FileObjectHook(fullId), smartblock.HookBeforeApply)
 
 	creator := ctx.State.LocalDetails().GetString(bundle.RelationKeyCreator)
 	myParticipantId := f.accountService.MyParticipantId(f.SpaceID())
 
 	if !ctx.IsNewObject && creator == myParticipantId {
-		fullId := domain.FullID{ObjectID: f.Id(), SpaceID: f.SpaceID()}
 		err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
 		if err != nil {
 			log.Errorf("failed to ensure file added to sync queue: %v", err)
 		}
+		f.AddHook(func(applyInfo smartblock.ApplyInfo) error {
+			return f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, applyInfo.State.Details())
+		}, smartblock.HookOnStateRebuild)
+
 	}
+
+	if !ctx.IsNewObject {
+		fileId := domain.FullFileId{
+			FileId:  domain.FileId(ctx.State.Details().GetString(bundle.RelationKeyFileId)),
+			SpaceId: f.SpaceID(),
+		}
+		// Migrate file to the new file index. The old file index was in the separate database. Now all file info is stored
+		// in the object store directly
+		if len(ctx.State.Details().GetStringList(bundle.RelationKeyFileVariantIds)) == 0 {
+			infos, err := f.fileService.GetFileVariants(ctx.Ctx, fileId, ctx.State.GetFileInfo().EncryptionKeys)
+			if err != nil {
+				return fmt.Errorf("get infos for indexing: %w", err)
+			}
+			err = filemodels.InjectVariantsToDetails(infos, ctx.State)
+			if err != nil {
+				return fmt.Errorf("inject variants: %w", err)
+			}
+		}
+	}
+
 	return nil
 }
 

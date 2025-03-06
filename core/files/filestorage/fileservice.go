@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )

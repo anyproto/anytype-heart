@@ -16,7 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/wallet"

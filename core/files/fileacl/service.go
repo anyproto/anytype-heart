@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -25,7 +25,7 @@ type Service interface {
 type service struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
-	fileStore         filestore.FileStore
+	objectStore       objectstore.ObjectStore
 }
 
 func New() Service {
@@ -35,7 +35,7 @@ func New() Service {
 func (s *service) Init(a *app.App) error {
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -49,11 +49,11 @@ func (s *service) GetInfoForFileSharing(fileObjectId string) (cid string, encryp
 		return "", nil, fmt.Errorf("get file id from object: %w", err)
 	}
 	cid = fileId.FileId.String()
-	keys, err := s.fileService.FileGetKeys(fileId.FileId)
+	keys, err := s.objectStore.GetFileKeys(fileId.FileId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get file keys: %w", err)
 	}
-	for path, key := range keys.EncryptionKeys {
+	for path, key := range keys {
 		encryptionKeys = append(encryptionKeys, &model.FileEncryptionKey{
 			Path: path,
 			Key:  key,
@@ -76,7 +76,7 @@ func (s *service) StoreFileKeys(fileId domain.FileId, fileKeys []*model.FileEncr
 	for _, key := range fileKeys {
 		keys.EncryptionKeys[key.Path] = key.Key
 	}
-	err := s.fileStore.AddFileKeys(keys)
+	err := s.objectStore.AddFileKeys(keys)
 	if err != nil {
 		return fmt.Errorf("store file encryption keys: %w", err)
 	}
