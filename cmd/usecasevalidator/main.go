@@ -47,17 +47,21 @@ type (
 	}
 
 	useCaseInfo struct {
-		objects   map[string]objectInfo
-		relations map[string]domain.RelationKey
-		types     map[string]domain.TypeKey
-		templates map[string]string
-		options   map[string]domain.RelationKey
-		files     []string
+		objects     map[string]objectInfo
+		relations   map[string]domain.RelationKey
+		types       map[string]domain.TypeKey
+		templates   map[string]string
+		options     map[string]domain.RelationKey
+		fileObjects []string
+
+		// big data
+		files     map[string][]byte
+		snapshots map[string]*pb.SnapshotWithType
+		profile   []byte
 
 		customTypesAndRelations map[string]customInfo
 
-		useCase          string
-		profileFileFound bool
+		useCase string
 	}
 
 	cliFlags struct {
@@ -68,11 +72,13 @@ type (
 	}
 )
 
+func (i customInfo) GetFormat() model.RelationFormat {
+	return i.relationFormat
+}
+
 func (f cliFlags) isUpdateNeeded() bool {
 	return f.analytics || f.creator || f.removeRelations || f.exclude || f.rules != ""
 }
-
-const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
@@ -111,7 +117,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if !info.profileFileFound {
+	if info.profile == nil {
 		fmt.Println("profile file does not present in archive")
 	}
 
@@ -129,7 +135,7 @@ func run() error {
 		defer writer.Close()
 	}
 
-	err = processFiles(r.File, writer, info, flags, updateNeeded)
+	err = processFiles(info, writer, flags)
 
 	if flags.list {
 		listObjects(info)
@@ -199,17 +205,13 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 		types:                   make(map[string]domain.TypeKey, len(files)-1),
 		templates:               make(map[string]string),
 		options:                 make(map[string]domain.RelationKey),
-		files:                   make([]string, 0),
+		files:                   make(map[string][]byte),
+		snapshots:               make(map[string]*pb.SnapshotWithType, len(files)),
+		fileObjects:             make([]string, 0),
 		customTypesAndRelations: make(map[string]customInfo),
-		profileFileFound:        false,
 	}
 	for _, f := range files {
-		if f.Name == constant.ProfileFile {
-			info.profileFileFound = true
-			continue
-		}
-
-		if (strings.HasPrefix(f.Name, export.Files) && !strings.HasPrefix(f.Name, export.FilesObjects)) || f.FileInfo().IsDir() {
+		if f.FileInfo().IsDir() {
 			continue
 		}
 
@@ -218,7 +220,17 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			return nil, err
 		}
 
-		snapshot, _, err := extractSnapshotAndType(data, f.Name)
+		if isPlainFile(f.Name) {
+			info.files[f.Name] = data
+			continue
+		}
+
+		if f.Name == constant.ProfileFile {
+			info.profile = data
+			continue
+		}
+
+		snapshot, err := extractSnapshotAndType(data, f.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract snapshot from file %s: %w", f.Name, err)
 		}
@@ -231,6 +243,8 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			Name:   name,
 			SbType: smartblock.SmartBlockType(snapshot.SbType),
 		}
+
+		info.snapshots[f.Name] = snapshot
 
 		switch snapshot.SbType {
 		case model.SmartBlockType_STRelation:
@@ -268,7 +282,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 		case model.SmartBlockType_STRelationOption:
 			info.options[id] = domain.RelationKey(pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
 		case model.SmartBlockType_FileObject:
-			info.files = append(info.files, id)
+			info.fileObjects = append(info.fileObjects, id)
 		}
 	}
 	return
@@ -287,46 +301,47 @@ func readData(f *zip.File) ([]byte, error) {
 	return data, nil
 }
 
-func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *cliFlags, writeNewFile bool) error {
-	var incorrectFileFound bool
-	for _, f := range files {
-		if f.Name == anytypeProfileFilename {
-			fmt.Println(anytypeProfileFilename, "is excluded")
-			continue
-		}
-		data, err := readData(f)
+func processFiles(info *useCaseInfo, zw *zip.Writer, flags *cliFlags) error {
+	var (
+		incorrectFileFound bool
+		writeNewFile       = flags.isUpdateNeeded()
+	)
+
+	if info.profile != nil {
+		data, err := processProfile(info, flags.spaceDashboardId)
 		if err != nil {
 			return err
 		}
-
-		var newData []byte
-		if f.FileInfo().IsDir() {
-			newData = data
-		} else {
-			newData, err = processRawData(data, f.Name, info, flags)
-			if err != nil {
-				if !(flags.exclude && errors.Is(err, errValidationFailed)) {
-					// just do not include object that failed validation
-					incorrectFileFound = true
-				}
-				continue
+		if writeNewFile {
+			if err = saveDataToZip(zw, constant.ProfileFile, data); err != nil {
+				return err
 			}
+		}
+	}
+
+	if writeNewFile {
+		for name, data := range info.files {
+			if err := saveDataToZip(zw, name, data); err != nil {
+				return err
+			}
+		}
+	}
+
+	for name, sn := range info.snapshots {
+		newData, err := processSnapshot(sn, info, flags)
+		if err != nil {
+			if !(flags.exclude && errors.Is(err, errValidationFailed)) {
+				// just do not include object that failed validation
+				incorrectFileFound = true
+			}
+			continue
 		}
 
 		if newData == nil || !writeNewFile {
 			continue
 		}
-		newFileName := f.Name
-		if strings.HasSuffix(newFileName, ".pb.json") {
-			// output of usecase validator is always an archive with protobufs
-			newFileName = strings.TrimSuffix(newFileName, ".json")
-		}
-		nf, err := zw.Create(newFileName)
-		if err != nil {
-			return fmt.Errorf("failed to create new file %s: %w", newFileName, err)
-		}
-		if _, err = io.Copy(nf, bytes.NewReader(newData)); err != nil {
-			return fmt.Errorf("failed to copy snapshot to new file %s: %w", newFileName, err)
+		if err = saveDataToZip(zw, name, newData); err != nil {
+			return err
 		}
 	}
 
@@ -336,38 +351,40 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo, flags *c
 	return nil
 }
 
-func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags) ([]byte, error) {
-	if name == constant.ProfileFile {
-		return processProfile(data, info, flags.spaceDashboardId)
+func saveDataToZip(zw *zip.Writer, fileName string, data []byte) error {
+	if strings.HasSuffix(fileName, ".pb.json") {
+		// output of usecase validator is always an archive with protobufs
+		fileName = strings.TrimSuffix(fileName, ".json")
 	}
-
-	if strings.HasPrefix(name, "files") {
-		return data, nil
-	}
-
-	snapshot, isOldAccount, err := extractSnapshotAndType(data, name)
+	nf, err := zw.Create(fileName)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to create new file %s: %w", fileName, err)
 	}
+	if _, err = io.Copy(nf, bytes.NewReader(data)); err != nil {
+		return fmt.Errorf("failed to copy snapshot to new file %s: %w", fileName, err)
+	}
+	return nil
+}
 
+func processSnapshot(s *pb.SnapshotWithType, info *useCaseInfo, flags *cliFlags) ([]byte, error) {
 	if flags.analytics {
-		insertAnalyticsData(snapshot.Snapshot, info)
+		insertAnalyticsData(s.Snapshot, info)
 	}
 
 	if flags.removeRelations {
-		removeAccountRelatedDetails(snapshot.Snapshot)
+		removeAccountRelatedDetails(s.Snapshot)
 	}
 
 	if flags.creator {
-		insertCreatorInfo(snapshot.Snapshot)
+		insertCreatorInfo(s.Snapshot)
 	}
 
 	if flags.rules != "" {
-		processRules(snapshot.Snapshot)
+		processRules(s.Snapshot)
 	}
 
 	if flags.validate {
-		if err = validate(snapshot, info); err != nil {
+		if err := validate(s, info); err != nil {
 			if errors.Is(err, errSkipObject) {
 				// some validators register errors mentioning that object can be excluded
 				return nil, nil
@@ -378,51 +395,49 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 	}
 
 	if flags.collectCustomUsageInfo {
-		collectCustomObjectsUsageInfo(snapshot, info)
+		collectCustomObjectsUsageInfo(s, info)
 	}
 
-	if isOldAccount {
-		return snapshot.Snapshot.Marshal()
+	if s.SbType == model.SmartBlockType_AccountOld {
+		return s.Snapshot.Marshal()
 	}
 
-	return snapshot.Marshal()
+	return s.Marshal()
 }
 
-func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, isOldAccount bool, err error) {
+func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, err error) {
 	s = &pb.SnapshotWithType{}
 	if strings.HasSuffix(name, ".json") {
 		if err = jsonpb.UnmarshalString(string(data), s); err != nil {
-			return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
+			return nil, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 		}
 		if s.SbType == model.SmartBlockType_AccountOld {
 			cs := &pb.ChangeSnapshot{}
-			isOldAccount = true
 			if err = jsonpb.UnmarshalString(string(data), cs); err != nil {
-				return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
+				return nil, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 			}
 			s = &pb.SnapshotWithType{
 				Snapshot: cs,
-				SbType:   model.SmartBlockType_Page,
+				SbType:   model.SmartBlockType_AccountOld,
 			}
 		}
 		return
 	}
 
 	if err = s.Unmarshal(data); err != nil {
-		return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
+		return nil, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 	}
 	if s.SbType == model.SmartBlockType_AccountOld {
 		cs := &pb.ChangeSnapshot{}
-		isOldAccount = true
 		if err = cs.Unmarshal(data); err != nil {
-			return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
+			return nil, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 		}
 		s = &pb.SnapshotWithType{
 			Snapshot: cs,
-			SbType:   model.SmartBlockType_Page,
+			SbType:   model.SmartBlockType_AccountOld,
 		}
 	}
-	return s, isOldAccount, nil
+	return s, nil
 }
 
 func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
@@ -478,7 +493,8 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeyAddedDate.String(),
 			bundle.RelationKeySyncDate.String(),
 			bundle.RelationKeySyncError.String(),
-			bundle.RelationKeySyncStatus.String():
+			bundle.RelationKeySyncStatus.String(),
+			bundle.RelationKeyChatId.String():
 
 			delete(s.Data.Details.Fields, key)
 		}
@@ -490,9 +506,9 @@ func insertCreatorInfo(s *pb.ChangeSnapshot) {
 	s.Data.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(addr.AnytypeProfileId)
 }
 
-func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]byte, error) {
+func processProfile(info *useCaseInfo, spaceDashboardId string) ([]byte, error) {
 	profile := &pb.Profile{}
-	if err := profile.Unmarshal(data); err != nil {
+	if err := profile.Unmarshal(info.profile); err != nil {
 		e := fmt.Errorf("cannot unmarshal profile: %w", err)
 		fmt.Println(e)
 		return nil, e
@@ -564,8 +580,12 @@ func listObjects(info *useCaseInfo) {
 
 	fmt.Println("\n- File Objects:")
 	fmt.Println("Id:  " + strings.Repeat(" ", 31) + "Name")
-	for _, id := range info.files {
+	for _, id := range info.fileObjects {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%32s\n", id[len(id)-4:], obj.Name)
 	}
+}
+
+func isPlainFile(name string) bool {
+	return strings.HasPrefix(name, export.Files) && !strings.HasPrefix(name, export.FilesObjects)
 }
