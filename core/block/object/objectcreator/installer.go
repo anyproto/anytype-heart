@@ -268,7 +268,7 @@ func (s *service) prepareDetailsForInstallingObject(
 
 	switch uk.SmartblockType() {
 	case coresb.SmartBlockTypeBundledObjectType, coresb.SmartBlockTypeObjectType:
-		relationKeys, isAlreadyFilled, err := relationutils.FillRecommendedRelations(ctx, spc, details)
+		relationKeys, isAlreadyFilled, err := relationutils.FillRecommendedRelations(ctx, spc, details, domain.TypeKey(uk.InternalKey()))
 		if err != nil {
 			return nil, fmt.Errorf("fill recommended relations: %w", err)
 		}

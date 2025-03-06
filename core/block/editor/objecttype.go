@@ -133,7 +133,12 @@ func (ot *ObjectType) featuredRelationsMigration(s *state.State) {
 		return
 	}
 
-	featuredRelationKeys := relationutils.DefaultFeaturedRelationKeys()
+	var typeKey domain.TypeKey
+	if uk, err := domain.UnmarshalUniqueKey(s.Details().GetString(bundle.RelationKeyUniqueKey)); err == nil {
+		typeKey = domain.TypeKey(uk.InternalKey())
+	}
+
+	featuredRelationKeys := relationutils.DefaultFeaturedRelationKeys(typeKey)
 	featuredRelationIds := make([]string, 0, len(featuredRelationKeys))
 	for _, key := range featuredRelationKeys {
 		id, err := ot.Space().DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
