@@ -8,7 +8,7 @@ on:
       run-on-runner-mac:
         description: 'Specify the runner to use on MacOS'
         required: true
-        default: 'ARM64'
+        default: 'mac-mini-org-heart'
       run-on-runner-win:
         description: 'Specify the runner to use on Windows'
         required: true
@@ -31,9 +31,13 @@ permissions:
 
 
 jobs:
+  wait_for_self_hosted_mac_mini:
+    uses: ./.github/workflows/reusable_wait_for_self_hosted_mac_mini.yml
+
   perftests-macos:
+    needs: wait_for_self_hosted_mac_mini
     timeout-minutes: 60
-    runs-on: 'ARM64'
+    runs-on: 'mac-mini-org-heart'
     steps:
       - name: Setup GO
         run: |

@@ -56,7 +56,6 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 	if err != nil {
 		return nil, err
 	}
-
 	schemaResp := schemaResponse{}
 	err = json.Unmarshal(raw, &schemaResp)
 	if err != nil {
@@ -119,7 +118,7 @@ func getRawJson(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	req.Close = true
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
