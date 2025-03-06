@@ -136,8 +136,8 @@ func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
 	)
 }
 
-func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) wallet.Wallet {
-	return wallet.NewWithAccountRepo(rootPath, derivationResult)
+func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult, lang string) wallet.Wallet {
+	return wallet.NewWithAccountRepo(rootPath, derivationResult, lang)
 }
 
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {

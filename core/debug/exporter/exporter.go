@@ -65,7 +65,7 @@ func ExportTree(ctx context.Context, params ExportParams) error {
 		converter     = params.Converter
 		changes       []*treechangeproto.RawTreeChangeWithId
 	)
-	err = writeTree.IterateRoot(
+	err = params.Readable.IterateRoot(
 		func(change *objecttree.Change, decrypted []byte) (any, error) {
 			return converter.Unmarshall(change.DataType, decrypted)
 		},

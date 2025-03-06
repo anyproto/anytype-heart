@@ -19,6 +19,7 @@ type ImportResult struct {
 	List       list.AclList
 	Storage    objecttree.Storage
 	FolderPath string
+	Store      anystore.DB
 }
 
 func (i ImportResult) CreateReadableTree(fullTree bool, beforeId string) (objecttree.ReadableObjectTree, error) {
@@ -48,11 +49,10 @@ func ImportStorage(ctx context.Context, path string) (res ImportResult, err erro
 	if err = ziputil.UnzipFolder(path, targetDir); err != nil {
 		return
 	}
-	anyStore, err := anystore.Open(ctx, targetDir, nil)
+	anyStore, err := anystore.Open(ctx, filepath.Join(targetDir, "db"), nil)
 	if err != nil {
 		return
 	}
-	defer anyStore.Close()
 	var (
 		aclId  string
 		treeId string
@@ -92,5 +92,6 @@ func ImportStorage(ctx context.Context, path string) (res ImportResult, err erro
 		List:       acl,
 		Storage:    treeStorage,
 		FolderPath: targetDir,
+		Store:      anyStore,
 	}, nil
 }

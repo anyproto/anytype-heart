@@ -25,7 +25,7 @@ func (s *Service) AccountMigrate(ctx context.Context, req *pb.RpcAccountMigrateR
 	if s.rootPath == "" {
 		s.rootPath = req.RootPath
 	}
-	return s.migrationManager.getOrCreateMigration(req.RootPath, req.Id).wait()
+	return s.migrationManager.getOrCreateMigration(req.RootPath, req.Id, req.FulltextPrimaryLanguage).wait()
 }
 
 func (s *Service) AccountMigrateCancel(ctx context.Context, req *pb.RpcAccountMigrateCancelRequest) error {
@@ -37,7 +37,7 @@ func (s *Service) AccountMigrateCancel(ctx context.Context, req *pb.RpcAccountMi
 	return nil
 }
 
-func (s *Service) migrate(ctx context.Context, id string) error {
+func (s *Service) migrate(ctx context.Context, id, lang string) error {
 	res, err := core.WalletAccountAt(s.mnemonic, 0)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (s *Service) migrate(ctx context.Context, id string) error {
 	cfg.DisableNetworkIdCheck = true
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res),
+		anytype.BootstrapWallet(s.rootPath, res, lang),
 		s.eventSender,
 	}
 	a := &app.App{}
@@ -75,21 +75,23 @@ type migration struct {
 	err        error
 	id         string
 	done       chan struct{}
+	lang       string
 }
 
-func newMigration(m *migrationManager, id string) *migration {
+func newMigration(m *migrationManager, id, lang string) *migration {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &migration{
 		ctx:     ctx,
 		cancel:  cancel,
 		done:    make(chan struct{}),
 		id:      id,
+		lang:    lang,
 		manager: m,
 	}
 }
 
-func newSuccessfulMigration(manager *migrationManager, id string) *migration {
-	m := newMigration(manager, id)
+func newSuccessfulMigration(manager *migrationManager, id, lang string) *migration {
+	m := newMigration(manager, id, lang)
 	m.setFinished(nil, false)
 	return m
 }
@@ -127,7 +129,7 @@ func (m *migration) wait() error {
 		return m.err
 	}
 	m.mx.Unlock()
-	err := m.manager.service.migrate(m.ctx, m.id)
+	err := m.manager.service.migrate(m.ctx, m.id, m.lang)
 	if err != nil {
 		m.setFinished(err, true)
 		return err
@@ -184,7 +186,7 @@ func (m *migrationManager) isRunning() bool {
 	return m.runningMigration != ""
 }
 
-func (m *migrationManager) getOrCreateMigration(rootPath, id string) *migration {
+func (m *migrationManager) getOrCreateMigration(rootPath, id, lang string) *migration {
 	m.Lock()
 	defer m.Unlock()
 	if m.migrations == nil {
@@ -194,14 +196,14 @@ func (m *migrationManager) getOrCreateMigration(rootPath, id string) *migration 
 		sqlitePath := filepath.Join(rootPath, id, config.SpaceStoreSqlitePath)
 		baderPath := filepath.Join(rootPath, id, config.SpaceStoreBadgerPath)
 		if anyPathExists([]string{sqlitePath, baderPath}) {
-			m.migrations[id] = newMigration(m, id)
+			m.migrations[id] = newMigration(m, id, lang)
 		} else {
-			m.migrations[id] = newSuccessfulMigration(m, id)
+			m.migrations[id] = newSuccessfulMigration(m, id, lang)
 		}
 	}
 	if m.migrations[id].finished() && !m.migrations[id].successful() {
 		// resetting migration
-		m.migrations[id] = newMigration(m, id)
+		m.migrations[id] = newMigration(m, id, lang)
 	}
 	return m.migrations[id]
 }
