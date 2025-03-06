@@ -1690,7 +1690,7 @@ func Test_docsForExport(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 3, len(expCtx.docs))
+		assert.Equal(t, 4, len(expCtx.docs))
 	})
 	t.Run("objects without file", func(t *testing.T) {
 		// given
