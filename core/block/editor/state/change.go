@@ -54,9 +54,8 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		fileKeys = append(fileKeys, *fk)
 	}
 
-	// TODO: GO-4284 Become sure that commented line is not needed anymore
-	// we should not clear nil values, as they start to work like relation links
-	// pbtypes.StructDeleteEmptyFields(snapshot.Data.Details)
+	// we should clear nil values, as they lead to crash of some clients
+	pbtypes.StructDeleteNilFields(snapshot.Data.Details)
 
 	removedCollectionKeysMap := make(map[string]struct{}, len(snapshot.Data.RemovedCollectionKeys))
 	for _, t := range snapshot.Data.RemovedCollectionKeys {

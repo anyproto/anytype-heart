@@ -107,7 +107,7 @@ func unmarshalDetails(rawValue []byte) (*model.ObjectDetails, error) {
 	if result.Details.Fields == nil {
 		result.Details.Fields = map[string]*types.Value{}
 	} else {
-		pbtypes.StructDeleteEmptyFields(result.Details)
+		pbtypes.StructDeleteNilFields(result.Details)
 	}
 	return result, nil
 }
