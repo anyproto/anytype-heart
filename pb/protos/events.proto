@@ -124,6 +124,7 @@ message Event {
         message Add {
             string id = 1;
             string orderId = 2;
+            string afterOrderId = 6;
             model.ChatMessage message = 3;
             repeated string subIds = 4;
             repeated google.protobuf.Struct dependencies = 5;

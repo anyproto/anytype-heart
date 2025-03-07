@@ -16,31 +16,39 @@ type storeApply struct {
 	ot       objecttree.ObjectTree
 	allIsNew bool
 
-	prevOrder  string
-	prevChange *objecttree.Change
-
-	nextCachedOrder string
-	nextCacheChange map[string]struct{}
+	needFetchPrevOrderId bool
 }
 
-func (a *storeApply) Apply() (err error) {
-	iterErr := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
+func (a *storeApply) Apply() error {
+	var lastErr error
+
+	err := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		// not a new change - remember and continue
 		if !a.allIsNew && !change.IsNew {
 			return true
 		}
-		if err = a.applyChange(change); err != nil {
+
+		var prevOrderId string
+		if a.needFetchPrevOrderId {
+			prevOrderId, lastErr = a.tx.GetPrevOrderId(change.OrderId)
+			if lastErr != nil {
+				log.With("error", lastErr).Error("get prev order")
+				return false
+			}
+		}
+
+		lastErr = a.applyChange(prevOrderId, change)
+		if lastErr != nil {
 			return false
 		}
+
 		return true
 	})
-	if err == nil && iterErr != nil {
-		return iterErr
-	}
-	return
+
+	return errors.Join(err, lastErr)
 }
 
-func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
+func (a *storeApply) applyChange(prevOrderId string, change *objecttree.Change) (err error) {
 	storeChange, ok := change.Model.(*pb.StoreChange)
 	if !ok {
 		// if it is root
@@ -50,11 +58,12 @@ func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
 		return fmt.Errorf("unexpected change content type: %T", change.Model)
 	}
 	set := storestate.ChangeSet{
-		Id:        change.Id,
-		Order:     change.OrderId,
-		Changes:   storeChange.ChangeSet,
-		Creator:   change.Identity.Account(),
-		Timestamp: change.Timestamp,
+		Id:          change.Id,
+		PrevOrderId: prevOrderId,
+		Order:       change.OrderId,
+		Changes:     storeChange.ChangeSet,
+		Creator:     change.Identity.Account(),
+		Timestamp:   change.Timestamp,
 	}
 	err = a.tx.ApplyChangeSet(set)
 	// Skip invalid changes

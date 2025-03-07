@@ -323,8 +323,15 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 	if err != nil {
 		return nil, 0, fmt.Errorf("get collection: %w", err)
 	}
+
+	txn, err := s.store.NewTx(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("init read transaction: %w", err)
+	}
+	defer txn.Commit()
+
 	query := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
-	messages, err := s.queryMessages(ctx, query)
+	messages, err := s.queryMessages(txn.Context(), query)
 	if err != nil {
 		return nil, 0, fmt.Errorf("query messages: %w", err)
 	}
@@ -335,8 +342,17 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 
 	s.subscription.subscribe(subId)
 	if asyncInit {
+		var previousOrderId string
+		if len(messages) > 0 {
+			previousOrderId, err = txn.GetPrevOrderId(messages[0].OrderId)
+			if err != nil {
+				return nil, 0, fmt.Errorf("get previous order id: %w", err)
+			}
+		}
+
 		for _, message := range messages {
-			s.subscription.add(message)
+			s.subscription.add(previousOrderId, message)
+			previousOrderId = message.OrderId
 		}
 		s.subscription.flush()
 		return nil, 0, nil

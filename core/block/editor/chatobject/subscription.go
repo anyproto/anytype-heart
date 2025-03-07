@@ -102,15 +102,16 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 	return details, nil
 }
 
-func (s *subscription) add(message *model.ChatMessage) {
+func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
 	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatAdd{
-		Id:      message.Id,
-		Message: message,
-		OrderId: message.OrderId,
-		SubIds:  slices.Clone(s.ids),
+		Id:           message.Id,
+		Message:      message,
+		OrderId:      message.OrderId,
+		AfterOrderId: prevOrderId,
+		SubIds:       slices.Clone(s.ids),
 	}
 
 	if s.withDeps() {
