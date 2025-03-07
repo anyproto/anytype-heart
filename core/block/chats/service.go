@@ -161,10 +161,11 @@ func (s *service) onChatAdded(chatObjectId string) error {
 func (s *service) Close(ctx context.Context) error {
 	var err error
 	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	if s.chatObjectsSubQueue != nil {
 		err = s.chatObjectsSubQueue.Close()
 	}
-	defer s.lock.Unlock()
 
 	s.componentCtxCancel()
 
