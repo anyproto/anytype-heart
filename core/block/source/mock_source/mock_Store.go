@@ -575,6 +575,39 @@ func (_c *MockStore_ReadStoreDoc_Call) RunAndReturn(run func(context.Context, *s
 	return _c
 }
 
+// SetDiffManagerOnRemoveHook provides a mock function with given fields: f
+func (_m *MockStore) SetDiffManagerOnRemoveHook(f func([]string)) {
+	_m.Called(f)
+}
+
+// MockStore_SetDiffManagerOnRemoveHook_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDiffManagerOnRemoveHook'
+type MockStore_SetDiffManagerOnRemoveHook_Call struct {
+	*mock.Call
+}
+
+// SetDiffManagerOnRemoveHook is a helper method to define mock.On call
+//   - f func([]string)
+func (_e *MockStore_Expecter) SetDiffManagerOnRemoveHook(f interface{}) *MockStore_SetDiffManagerOnRemoveHook_Call {
+	return &MockStore_SetDiffManagerOnRemoveHook_Call{Call: _e.mock.On("SetDiffManagerOnRemoveHook", f)}
+}
+
+func (_c *MockStore_SetDiffManagerOnRemoveHook_Call) Run(run func(f func([]string))) *MockStore_SetDiffManagerOnRemoveHook_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func([]string)))
+	})
+	return _c
+}
+
+func (_c *MockStore_SetDiffManagerOnRemoveHook_Call) Return() *MockStore_SetDiffManagerOnRemoveHook_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockStore_SetDiffManagerOnRemoveHook_Call) RunAndReturn(run func(func([]string))) *MockStore_SetDiffManagerOnRemoveHook_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetPushChangeHook provides a mock function with given fields: onPushChange
 func (_m *MockStore) SetPushChangeHook(onPushChange source.PushChangeHook) {
 	_m.Called(onPushChange)

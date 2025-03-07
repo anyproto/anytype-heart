@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 
+	anystore "github.com/anyproto/any-store"
+
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/pb"
@@ -66,14 +68,15 @@ func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDel
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 
-	messages, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
+	resp, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
 		AfterOrderId:  req.AfterOrderId,
 		BeforeOrderId: req.BeforeOrderId,
 		Limit:         int(req.Limit),
 	})
 	code := mapErrorCode[pb.RpcChatGetMessagesResponseErrorCode](err)
 	return &pb.RpcChatGetMessagesResponse{
-		Messages: messages,
+		Messages:  resp.Messages,
+		ChatState: resp.ChatState,
 		Error: &pb.RpcChatGetMessagesResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
@@ -98,11 +101,12 @@ func (mw *Middleware) ChatGetMessagesByIds(cctx context.Context, req *pb.RpcChat
 func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 
-	messages, numBefore, err := chatService.SubscribeLastMessages(cctx, req.ChatObjectId, int(req.Limit))
+	messages, numBefore, chatState, err := chatService.SubscribeLastMessages(cctx, req.ChatObjectId, int(req.Limit))
 	code := mapErrorCode[pb.RpcChatSubscribeLastMessagesResponseErrorCode](err)
 	return &pb.RpcChatSubscribeLastMessagesResponse{
 		Messages:          messages,
 		NumMessagesBefore: int32(numBefore),
+		ChatState:         chatState,
 		Error: &pb.RpcChatSubscribeLastMessagesResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
@@ -117,6 +121,20 @@ func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsub
 	code := mapErrorCode[pb.RpcChatUnsubscribeResponseErrorCode](err)
 	return &pb.RpcChatUnsubscribeResponse{
 		Error: &pb.RpcChatUnsubscribeResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChatReadRequest) *pb.RpcChatReadResponse {
+	chatService := mustService[chats.Service](mw)
+	err := chatService.ReadMessages(cctx, request.ChatObjectId, request.AfterOrderId, request.BeforeOrderId, request.LastDbTimestamp)
+	code := mapErrorCode(err,
+		errToCode(anystore.ErrDocNotFound, pb.RpcChatReadResponseError_MESSAGES_NOT_FOUND),
+	)
+	return &pb.RpcChatReadResponse{
+		Error: &pb.RpcChatReadResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

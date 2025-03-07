@@ -7907,7 +7907,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 repeated model.ChatMessage messages = 2;
-
+                model.ChatState chatState = 3;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -7956,7 +7956,7 @@ message Rpc {
                 Error error = 1;
                 repeated model.ChatMessage messages = 2;  // List of messages
                 int32 numMessagesBefore = 3;  // Number of messages before the returned messages
-
+                model.ChatState chatState = 4;  // Chat state
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -7986,6 +7986,38 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Read {
+            enum ReadType {
+                messages = 0;
+                replies = 1;
+            }
+            message Request {
+                ReadType type = 1;
+                string chatObjectId = 2; // id of the chat object
+                string afterOrderId = 3; // read from this orderId; if empty - read from the beginning of the chat
+                string beforeOrderId = 4; // read til this orderId
+                int64 lastDbTimestamp = 5; // dbTimestamp from the last processed ChatState event(or GetMessages). Used to prevent race conditions
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        MESSAGES_NOT_FOUND = 100; // chat is empty or invalid beforeOrderId/lastDbState
                         // ...
                     }
                 }
