@@ -1,7 +1,7 @@
 package pbc
 
 import (
-	"github.com/gogo/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
@@ -50,7 +50,7 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		}
 		return []byte(result)
 	}
-	result, err := mo.Marshal()
+	result, err := mo.MarshalVT()
 	if err != nil {
 		log.Errorf("failed to marshal object: %s", err)
 	}

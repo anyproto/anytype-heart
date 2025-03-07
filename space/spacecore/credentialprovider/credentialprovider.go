@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/credentialprovider"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
@@ -42,5 +41,6 @@ func (c *credentialProvider) GetCredential(ctx context.Context, spaceHeader *spa
 	if err != nil {
 		return nil, err
 	}
-	return proto.Marshal(receipt)
+	res, _ := receipt.MarshalVT()
+	return res, nil
 }

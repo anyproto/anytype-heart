@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"

@@ -24,7 +24,7 @@ func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey) (da
 		keyStr = key.InternalKey()
 	}
 	payload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType(sbType), Key: keyStr}
-	return payload.Marshal()
+	return payload.MarshalVT()
 }
 
 func derivePayload(spaceId string, changePayload []byte) objecttree.ObjectTreeDerivePayload {

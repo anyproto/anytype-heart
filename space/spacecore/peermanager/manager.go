@@ -82,7 +82,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 		SpaceIds: []string{n.spaceId},
 		Action:   spacesyncproto.SpaceSubscriptionAction_Subscribe,
 	}
-	payload, err := keepAliveMsg.Marshal()
+	payload, err := keepAliveMsg.MarshalVT()
 	if err != nil {
 		return
 	}

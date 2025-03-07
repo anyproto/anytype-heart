@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -240,7 +240,7 @@ func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[stri
 
 				text += file.Title
 				marks = append(marks, &model.BlockContentTextMark{
-					Range: &model.Range{int32(len(text) - len(file.Title)), int32(len(text))},
+					Range: &model.Range{From: int32(len(text) - len(file.Title)), To: int32(len(text))},
 					Type:  model.BlockContentTextMark_Mention,
 					Param: file.PageID,
 				})

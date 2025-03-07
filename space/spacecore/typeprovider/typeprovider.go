@@ -13,9 +13,9 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -253,13 +253,13 @@ func GetTypeAndKeyFromRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (sbt sm
 
 func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treechangeproto.RootChange, err error) {
 	raw := &treechangeproto.RawTreeChange{}
-	err = proto.Unmarshal(rawRoot.GetRawChange(), raw)
+	err = raw.UnmarshalVT(rawRoot.GetRawChange())
 	if err != nil {
 		return
 	}
 
 	root = &treechangeproto.RootChange{}
-	err = proto.Unmarshal(raw.Payload, root)
+	// err = proto.Unmarshal(raw.Payload, root)
 	if err != nil {
 		return
 	}

@@ -3,7 +3,6 @@ package profilemigration
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/jsonpb"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"

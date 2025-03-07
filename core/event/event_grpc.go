@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/status"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"

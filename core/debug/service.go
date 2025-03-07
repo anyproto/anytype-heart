@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/go-chi/chi/v5"
-	"github.com/gogo/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"

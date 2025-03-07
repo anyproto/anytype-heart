@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/anyproto/lexid"
-	"github.com/gogo/protobuf/proto"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"

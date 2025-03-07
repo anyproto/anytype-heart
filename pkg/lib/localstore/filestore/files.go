@@ -7,9 +7,9 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	dsCtx "github.com/ipfs/go-datastore"
 	"github.com/samber/lo"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"

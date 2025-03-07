@@ -1,6 +1,6 @@
 syntax = "proto3";
 package anytype;
-option go_package = "service";
+option go_package = "pb/protos/service";
 
 import "pb/protos/commands.proto";
 import "pb/protos/events.proto";

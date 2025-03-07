@@ -11,9 +11,9 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"

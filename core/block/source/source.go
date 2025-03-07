@@ -15,10 +15,10 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -58,8 +58,8 @@ func MarshalChange(change *pb.Change) (result []byte, dataType string, err error
 		bytesPool.Put(data)
 	}()
 
-	data = slices.Grow(data, change.Size())
-	n, err := change.MarshalTo(data)
+	data = slices.Grow(data, change.SizeVT())
+	n, err := change.MarshalToVT(data)
 	if err != nil {
 		return
 	}

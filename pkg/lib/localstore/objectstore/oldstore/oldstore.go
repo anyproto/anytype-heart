@@ -5,9 +5,9 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
+	"google.golang.org/protobuf/proto"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
