@@ -15659,6 +15659,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | noProgress | [bool](#bool) |  | for integrations like raycast and web publishing |
 | linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
 | includeBacklinks | [bool](#bool) |  |  |
+| includeSpace | [bool](#bool) |  |  |
 
 
 
@@ -18414,6 +18415,7 @@ Available undo/redo operations
 | objectId | [string](#string) |  |  |
 | uri | [string](#string) |  |  |
 | joinSpace | [bool](#bool) |  |  |
+| includeSpaceName | [bool](#bool) |  |  |
 
 
 

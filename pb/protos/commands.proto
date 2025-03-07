@@ -1463,6 +1463,7 @@ message Rpc {
                 string objectId = 2;
                 string uri = 3;
                 bool joinSpace = 4;
+                bool includeSpaceName = 5;
             }
             message Response {
                 Error error = 1;
@@ -2841,6 +2842,7 @@ message Rpc {
                 bool noProgress = 11;
                 StateFilters linksStateFilters = 12;
                 bool includeBacklinks = 13;
+                bool includeSpace = 14;
             }
             message StateFilters {
                 repeated RelationsWhiteList relationsWhiteList = 1;

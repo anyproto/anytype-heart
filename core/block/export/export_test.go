@@ -880,7 +880,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err := expCtx.docsForExport()
+		err := expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -935,7 +935,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err := expCtx.docsForExport()
+		err := expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1001,7 +1001,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1077,7 +1077,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1154,7 +1154,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1241,7 +1241,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1410,7 +1410,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1484,7 +1484,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1564,7 +1564,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1686,7 +1686,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1766,7 +1766,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1824,7 +1824,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1962,7 +1962,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, 5, len(expCtx.docs))
@@ -2061,7 +2061,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -2227,7 +2227,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -2393,7 +2393,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -2486,7 +2486,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -2595,7 +2595,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)

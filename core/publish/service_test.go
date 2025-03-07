@@ -168,7 +168,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, false)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, false, false)
 
 		// then
 		assert.NoError(t, err)
@@ -222,7 +222,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -269,7 +269,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -327,7 +327,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -372,7 +372,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true, false)
 
 		// then
 		assert.Error(t, err)
@@ -414,7 +414,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true, false)
 
 		// then
 		assert.Error(t, err)
@@ -450,7 +450,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true, false)
 
 		// then
 		assert.Error(t, err)
