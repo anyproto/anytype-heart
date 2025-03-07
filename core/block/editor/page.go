@@ -36,6 +36,7 @@ var pageRequiredRelations = []domain.RelationKey{
 }
 
 const objectTypeAllViewId = "all"
+
 var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyUniqueKey,
 	bundle.RelationKeyIsReadonly,
@@ -271,10 +272,6 @@ func (p *Page) StateMigrations() migration.Migrations {
 		{
 			Version: 2,
 			Proc:    func(s *state.State) {},
-		},
-		{
-			Version: 3,
-			Proc:    p.featuredRelationsMigration,
 		},
 	}
 
