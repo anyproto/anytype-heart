@@ -78,7 +78,7 @@ type PublishingUberSnapshot struct {
 
 type Service interface {
 	app.ComponentRunnable
-	Publish(ctx context.Context, spaceId, pageObjId, uri string, joinSpace, includeSpaceName bool) (res PublishResult, err error)
+	Publish(ctx context.Context, spaceId, pageObjId, uri string, joinSpace bool) (res PublishResult, err error)
 	Unpublish(ctx context.Context, spaceId, pageObjId string) error
 	PublishList(ctx context.Context, id string) ([]*pb.RpcPublishingPublishState, error)
 	ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishingPublishState, error)
@@ -124,7 +124,7 @@ func uniqName() string {
 	return time.Now().Format("Anytype.WebPublish.20060102.150405.99")
 }
 
-func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, includeSpaceName bool) (dirEntries []fs.DirEntry, exportPath string, err error) {
+func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
 	tempDir := os.TempDir()
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:          spaceId,
@@ -154,8 +154,8 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, inclu
 	return
 }
 
-func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace, includeSpaceName bool) (err error) {
-	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId, includeSpaceName)
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (err error) {
+	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
 	if err != nil {
 		return err
 	}
@@ -406,13 +406,11 @@ func (s *service) getPublishLimit(globalName string) (int64, error) {
 	return defaultLimit, nil
 }
 
-func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace, includeSpaceName bool) (res PublishResult, err error) {
-	log.Info("Publish called", zap.String("pageId", pageId))
-
+func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
 	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
 	globalName := details.GetString(bundle.RelationKeyGlobalName)
 
-	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace, includeSpaceName)
+	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
