@@ -39,7 +39,7 @@ type StoreObject interface {
 	anystoredebug.AnystoreDebug
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
-	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error)
+	GetMessages(ctx context.Context, req GetMessagesRequest) (*GetMessagesResponse, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
@@ -334,10 +334,15 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 	return messages, txn.Commit()
 }
 
-func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error) {
+type GetMessagesResponse struct {
+	Messages  []*model.ChatMessage
+	ChatState *model.ChatState
+}
+
+func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (*GetMessagesResponse, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get collection: %w", err)
+		return nil, fmt.Errorf("get collection: %w", err)
 	}
 	var qry anystore.Query
 	if req.AfterOrderId != "" {
@@ -352,13 +357,16 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 	// todo here is possible race if new messages are added between the flush and the query
 	msgs, err := s.queryMessages(ctx, qry)
 	if err != nil {
-		return nil, nil, fmt.Errorf("query messages: %w", err)
+		return nil, fmt.Errorf("query messages: %w", err)
 	}
 	sort.Slice(msgs, func(i, j int) bool {
 		return msgs[i].OrderId < msgs[j].OrderId
 	})
 
-	return msgs, chatState, nil
+	return &GetMessagesResponse{
+		Messages:  msgs,
+		ChatState: chatState,
+	}, nil
 }
 
 func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*model.ChatMessage, error) {

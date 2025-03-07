@@ -18,7 +18,7 @@ type Service interface {
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
-	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error)
+	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int) ([]*model.ChatMessage, int, *model.ChatState, error)
 	ReadMessages(ctx context.Context, chatObjectId string, afterOrderId, beforeOrderId string, lastDbState int64) error
@@ -75,21 +75,17 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 	})
 }
 
-func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) ([]*model.ChatMessage, *model.ChatState, error) {
-	var (
-		msgs      []*model.ChatMessage
-		chatState *model.ChatState
-		err       error
-	)
-
-	err = cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		msgs, chatState, err = sb.GetMessages(ctx, req)
+func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error) {
+	var resp *chatobject.GetMessagesResponse
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+		var err error
+		resp, err = sb.GetMessages(ctx, req)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
-	return msgs, chatState, err
+	return resp, err
 }
 
 func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error) {

@@ -75,6 +75,7 @@ func newFixture(t *testing.T) *fixture {
 	source := mock_source.NewMockStore(t)
 	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
+	source.EXPECT().SetDiffManagerOnRemoveHook(mock.Anything).Return().Maybe()
 	fx.source = source
 
 	err = object.Init(&smartblock.InitContext{
@@ -99,17 +100,17 @@ func TestAddMessage(t *testing.T) {
 	assert.NotEmpty(t, messageId)
 	assert.NotEmpty(t, sessionCtx.GetMessages())
 
-	messages, err := fx.GetMessages(ctx, GetMessagesRequest{})
+	messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
 	require.NoError(t, err)
 
-	require.Len(t, messages, 1)
+	require.Len(t, messagesResp.Messages, 1)
 
 	want := givenMessage()
 	want.Id = messageId
 	want.Creator = testCreator
 	want.Read = true
 
-	got := messages[0]
+	got := messagesResp.Messages[0]
 	assertMessagesEqual(t, want, got)
 }
 
@@ -125,29 +126,29 @@ func TestGetMessages(t *testing.T) {
 		assert.NotEmpty(t, messageId)
 	}
 
-	messages, err := fx.GetMessages(ctx, GetMessagesRequest{Limit: 5})
+	messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{Limit: 5})
 	require.NoError(t, err)
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
-	for i, msg := range messages {
+	for i, msg := range messagesResp.Messages {
 		assert.Equal(t, wantTexts[i], msg.Message.Text)
 	}
 
 	t.Run("with requested BeforeOrderId", func(t *testing.T) {
-		lastOrderId := messages[0].OrderId // text 6
+		lastOrderId := messagesResp.Messages[0].OrderId // text 6
 		gotMessages, err := fx.GetMessages(ctx, GetMessagesRequest{BeforeOrderId: lastOrderId, Limit: 5})
 		require.NoError(t, err)
 		wantTexts = []string{"text 1", "text 2", "text 3", "text 4", "text 5"}
-		for i, msg := range gotMessages {
+		for i, msg := range gotMessages.Messages {
 			assert.Equal(t, wantTexts[i], msg.Message.Text)
 		}
 	})
 
 	t.Run("with requested AfterOrderId", func(t *testing.T) {
-		lastOrderId := messages[0].OrderId // text 6
+		lastOrderId := messagesResp.Messages[0].OrderId // text 6
 		gotMessages, err := fx.GetMessages(ctx, GetMessagesRequest{AfterOrderId: lastOrderId, Limit: 2})
 		require.NoError(t, err)
 		wantTexts = []string{"text 7", "text 8"}
-		for i, msg := range gotMessages {
+		for i, msg := range gotMessages.Messages {
 			assert.Equal(t, wantTexts[i], msg.Message.Text)
 		}
 	})
@@ -194,15 +195,15 @@ func TestEditMessage(t *testing.T) {
 		err = fx.EditMessage(ctx, messageId, editedMessage)
 		require.NoError(t, err)
 
-		messages, err := fx.GetMessages(ctx, GetMessagesRequest{})
+		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
 		require.NoError(t, err)
-		require.Len(t, messages, 1)
+		require.Len(t, messagesResp.Messages, 1)
 
 		want := editedMessage
 		want.Id = messageId
 		want.Creator = testCreator
 
-		got := messages[0]
+		got := messagesResp.Messages[0]
 		assert.True(t, got.ModifiedAt > 0)
 		got.ModifiedAt = 0
 		assertMessagesEqual(t, want, got)
@@ -229,15 +230,15 @@ func TestEditMessage(t *testing.T) {
 		require.Error(t, err)
 
 		// Check that nothing is changed
-		messages, err := fx.GetMessages(ctx, GetMessagesRequest{})
+		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
 		require.NoError(t, err)
-		require.Len(t, messages, 1)
+		require.Len(t, messagesResp.Messages, 1)
 
 		want := inputMessage
 		want.Id = messageId
 		want.Creator = testCreator
 
-		got := messages[0]
+		got := messagesResp.Messages[0]
 		assertMessagesEqual(t, want, got)
 	})
 
@@ -285,11 +286,11 @@ func TestToggleReaction(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	messages, err := fx.GetMessages(ctx, GetMessagesRequest{})
+	messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
 	require.NoError(t, err)
-	require.Len(t, messages, 1)
+	require.Len(t, messagesResp.Messages, 1)
 
-	got := messages[0].Reactions
+	got := messagesResp.Messages[0].Reactions
 
 	want := &model.ChatMessageReactions{
 		Reactions: map[string]*model.ChatMessageReactionsIdentityList{
@@ -334,6 +335,7 @@ func givenMessage() *model.ChatMessage {
 		Id:               "",
 		OrderId:          "",
 		Creator:          "",
+		Read:             true,
 		ReplyToMessageId: "replyToMessageId1",
 		Message: &model.ChatMessageMessageContent{
 			Text:  "text!",
@@ -386,5 +388,9 @@ func assertMessagesEqual(t *testing.T, want, got *model.ChatMessage) {
 	// Cleanup timestamp
 	assert.NotZero(t, got.CreatedAt)
 	got.CreatedAt = 0
+
+	assert.NotZero(t, got.AddedAt)
+	got.AddedAt = 0
+
 	assert.Equal(t, want, got)
 }
