@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.8
-	github.com/anyproto/any-sync v0.6.1
+	github.com/anyproto/any-sync v0.6.4-0.20250307210334-d8622a5f4547
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
@@ -321,6 +321,4 @@ replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/
 
 replace zombiezen.com/go/sqlite => github.com/anyproto/go-sqlite v0.0.0-20250226111550-9b81a8e3cff4
 
-replace github.com/planetscale/vtprotobuf => /Users/mikhailyudin/GolandProjects/vtprotobuf
-
-replace github.com/anyproto/any-sync => /Users/mikhailyudin/GolandProjects/any-sync2
+replace github.com/planetscale/vtprotobuf => github.com/anyproto/vtprotobuf v0.0.0-20250307205922-17ab3c6fb0c2

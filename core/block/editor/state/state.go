@@ -10,7 +10,7 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/ipfs/go-cid"
-	"google.golang.org/protobuf/proto"
+	"github.com/planetscale/vtprotobuf/types/known/structpb"
 	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -1571,7 +1571,7 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 	pathJoined := strings.Join(path, collectionKeysRemovedSeparator)
 	if value != nil {
 		oldval := store.Fields[path[len(path)-1]]
-		changed = proto.Equal(oldval, value)
+		changed = !(*structpb.Value)(oldval).EqualVT((*structpb.Value)(value))
 		store.Fields[path[len(path)-1]] = value
 		s.setStoreChangeId(pathJoined, s.changeId)
 		// in case we have previously removed this uniqueKeyInternal
@@ -1736,7 +1736,7 @@ func (s *State) GetChangedStoreKeys(prefixPath ...string) (paths [][]string) {
 				if !pbtypes.StructEqualKeys(st, parentVal.GetStructValue()) {
 					paths = append(paths, path)
 				}
-			} else if !proto.Equal(v, pbtypes.Get(s.parent.store, path...)) {
+			} else if !(*structpb.Value)(v).EqualVT((*structpb.Value)(pbtypes.Get(s.parent.store, path...))) {
 				paths = append(paths, path)
 			}
 		}

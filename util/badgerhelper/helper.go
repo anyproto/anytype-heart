@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-sync/protobuf"
 	"github.com/dgraph-io/badger/v4"
 	"google.golang.org/protobuf/proto"
 )
@@ -53,6 +54,8 @@ func marshalValue(value any) ([]byte, error) {
 		switch v := value.(type) {
 		case int:
 			return binary.LittleEndian.AppendUint64(nil, uint64(v)), nil
+		case protobuf.ProtoBuf:
+			return v.MarshalVT()
 		case proto.Message:
 			return proto.Marshal(v)
 		case string:

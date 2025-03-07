@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/golang/snappy"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -277,7 +276,7 @@ func UnmarshalStoreChange(treeChange *objecttree.Change, data []byte) (result an
 			}
 		}
 	}
-	if err = proto.Unmarshal(data, change); err == nil {
+	if err = change.UnmarshalVT(data); err == nil {
 		result = change
 	}
 	return

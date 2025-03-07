@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -36,7 +35,7 @@ func decodeFile(path string) (string, error) {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
 	var snapshot pb.ChangeSnapshot
-	err = proto.Unmarshal(b, &snapshot)
+	err = snapshot.UnmarshalVT(b)
 	if err != nil {
 		return "", fmt.Errorf("failed to unmarshal pb: %w", err)
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/samber/lo"
 	"github.com/zeebo/blake3"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -537,7 +536,7 @@ func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId
 	}
 
 	payload := &model.ObjectChangePayload{}
-	err = proto.Unmarshal(ht.ChangeInfo().ChangePayload, payload)
+	err = payload.UnmarshalVT(ht.ChangeInfo().ChangePayload)
 	if err != nil {
 		return
 	}

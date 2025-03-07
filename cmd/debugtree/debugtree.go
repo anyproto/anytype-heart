@@ -18,7 +18,6 @@ import (
 
 	"github.com/goccy/go-graphviz"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/debug/exporter"
@@ -112,7 +111,7 @@ func main() {
 		fmt.Println(s.StringDebug())
 
 		payload := &model.ObjectChangePayload{}
-		err = proto.Unmarshal(ot.ChangeInfo().ChangePayload, payload)
+		err = payload.UnmarshalVT(ot.ChangeInfo().ChangePayload)
 		if err != nil {
 			return
 		}

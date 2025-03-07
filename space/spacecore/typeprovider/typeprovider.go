@@ -15,7 +15,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -259,7 +258,7 @@ func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treecha
 	}
 
 	root = &treechangeproto.RootChange{}
-	// err = proto.Unmarshal(raw.Payload, root)
+	err = root.UnmarshalVT(raw.Payload)
 	if err != nil {
 		return
 	}
@@ -268,6 +267,6 @@ func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treecha
 
 func objectType(changePayload []byte) (payload *model.ObjectChangePayload, err error) {
 	payload = &model.ObjectChangePayload{}
-	err = proto.Unmarshal(changePayload, payload)
+	err = payload.UnmarshalVT(changePayload)
 	return
 }

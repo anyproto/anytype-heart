@@ -3,7 +3,7 @@ package base
 import (
 	"fmt"
 
-	"google.golang.org/protobuf/proto"
+	"github.com/planetscale/vtprotobuf/types/known/structpb"
 	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -127,5 +127,5 @@ func fieldsEq(f1, f2 *types.Struct) bool {
 	if f2 == nil {
 		f2 = &types.Struct{}
 	}
-	return proto.Equal(f1, f2)
+	return (*structpb.Struct)(f1).EqualVT((*structpb.Struct)(f2))
 }

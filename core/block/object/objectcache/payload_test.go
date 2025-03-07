@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 )
@@ -29,7 +28,7 @@ func Test_Payloads(t *testing.T) {
 		ch, err := builder.Unmarshall(root, true)
 		require.NoError(t, err)
 		rootModel := &treechangeproto.TreeChangeInfo{}
-		err = proto.Unmarshal(ch.Data, rootModel)
+		err = rootModel.UnmarshalVT(ch.Data)
 		require.NoError(t, err)
 
 		require.Equal(t, rootModel.ChangePayload, changePayload)

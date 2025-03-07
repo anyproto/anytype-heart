@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -254,7 +253,7 @@ func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Conte
 	if err != nil {
 		return fmt.Errorf("prepare own identity profile: %w", err)
 	}
-	data, err := proto.Marshal(identityProfile)
+	data, err := identityProfile.MarshalVT()
 	if err != nil {
 		return fmt.Errorf("marshal identity profile: %w", err)
 	}

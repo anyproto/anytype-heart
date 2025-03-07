@@ -18,7 +18,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
@@ -293,7 +292,7 @@ func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEnt
 	}
 
 	snapshot := pb.SnapshotWithType{}
-	if err := proto.Unmarshal(snapshotData, &snapshot); err != nil {
+	if err := snapshot.UnmarshalVT(snapshotData); err != nil {
 		return err
 	}
 

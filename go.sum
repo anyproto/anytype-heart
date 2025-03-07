@@ -84,6 +84,8 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.1.8 h1:/bxUVq6sBTwYkmPL2g1xUAWNb3axF+zPhP2dvdEBH68=
 github.com/anyproto/any-store v0.1.8/go.mod h1:GpnVhcGm5aUQtOwCnKeTt4jsWgVXZ773WbQVLFdeCFo=
+github.com/anyproto/any-sync v0.6.4-0.20250307210334-d8622a5f4547 h1:3YaP2NikohJtEd+ivFreFCN9g3D0cuTSruYCQ+AfBj4=
+github.com/anyproto/any-sync v0.6.4-0.20250307210334-d8622a5f4547/go.mod h1:3GtMf5WwaI9Wby+iE8bLKVuAzMXAD44t6EWEKrzXIhM=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a/go.mod h1:4fkueCZcGniSMXkrwESO8zzERrh/L7WHimRNWecfGM0=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
@@ -112,6 +114,8 @@ github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/anyproto/tantivy-go v1.0.1 h1:Uc9WqwGEDsVUEwRgSg4nmhoW20GjMUBKRz5FYw4r+ns=
 github.com/anyproto/tantivy-go v1.0.1/go.mod h1:LtipOpRjGtcYMGcop6gQN7rVl1Pc6BlIs9BTMqeWMsk=
+github.com/anyproto/vtprotobuf v0.0.0-20250307205922-17ab3c6fb0c2 h1:yym8xnHrakDrQJFo/adbY7jpOS29E0gMYyF0G44e9R8=
+github.com/anyproto/vtprotobuf v0.0.0-20250307205922-17ab3c6fb0c2/go.mod h1:YZchVNeIE5OJWcpvF7Ae7zWuHgoOE1Irv5PYP8LuIyE=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d h1:5bj7nX/AS8sxGpTIrapE7PC4oPlhkHMwMqXlJbUHBlg=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
