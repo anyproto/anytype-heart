@@ -9,6 +9,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -39,11 +40,11 @@ func decodeFile(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to unmarshal pb: %w", err)
 	}
-	marsh := &jsonpb.Marshaler{Indent: " "}
-	s, err := marsh.MarshalToString(&snapshot)
+	marsh := &protojson.MarshalOptions{Indent: " "}
+	s, err := marsh.Marshal(&snapshot)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal to json: %w", err)
 	}
 
-	return s, nil
+	return string(s), nil
 }

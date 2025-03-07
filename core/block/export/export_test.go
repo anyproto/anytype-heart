@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -528,12 +529,10 @@ func TestExport_Export(t *testing.T) {
 		objectPath := filepath.Join(objectsDirectory, link+".pb.json")
 		assert.True(t, fileNames[objectPath])
 
-		file, err := os.Open(objectPath)
-		if err != nil {
-			return
-		}
+		file, err := os.ReadFile(objectPath)
+		assert.Nil(t, err)
 		var sn *pb.SnapshotWithType
-		err = jsonpb.Unmarshal(file, sn)
+		err = protojson.Unmarshal(file, sn)
 		assert.Nil(t, err)
 		assert.Len(t, sn.GetSnapshot().GetData().GetBlocks(), 1)
 		assert.Equal(t, link, sn.GetSnapshot().GetData().GetBlocks()[0].GetId())

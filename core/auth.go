@@ -35,13 +35,10 @@ var limitedScopeMethods = map[string]struct{}{
 }
 
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	// Получаем дескриптор сообщения
 	d := req.(protoreflect.ProtoMessage).ProtoReflect().Descriptor()
 
-	// Получаем опции
 	opts := d.Options().(protoreflect.ProtoMessage)
 
-	// Получаем extension
 	noAuth := proto.GetExtension(opts, pb.E_NoAuth).(bool)
 	if noAuth {
 		resp, err = handler(ctx, req)

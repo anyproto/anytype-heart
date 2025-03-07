@@ -16,6 +16,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
+	"google.golang.org/protobuf/encoding/protojson"
 	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
@@ -381,22 +382,22 @@ func processRawData(data []byte, name string, info *useCaseInfo, flags *cliFlags
 	}
 
 	if isOldAccount {
-		return snapshot.Snapshot.Marshal()
+		return snapshot.Snapshot.MarshalVT()
 	}
 
-	return snapshot.Marshal()
+	return snapshot.MarshalVT()
 }
 
 func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, isOldAccount bool, err error) {
 	s = &pb.SnapshotWithType{}
 	if strings.HasSuffix(name, ".json") {
-		if err = jsonpb.UnmarshalString(string(data), s); err != nil {
+		if err = protojson.Unmarshal(data, s); err != nil {
 			return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 		}
 		if s.SbType == model.SmartBlockType_AccountOld {
 			cs := &pb.ChangeSnapshot{}
 			isOldAccount = true
-			if err = jsonpb.UnmarshalString(string(data), cs); err != nil {
+			if err = protojson.Unmarshal(data, cs); err != nil {
 				return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 			}
 			s = &pb.SnapshotWithType{
@@ -407,13 +408,13 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, i
 		return
 	}
 
-	if err = s.Unmarshal(data); err != nil {
+	if err = s.UnmarshalVT(data); err != nil {
 		return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 	}
 	if s.SbType == model.SmartBlockType_AccountOld {
 		cs := &pb.ChangeSnapshot{}
 		isOldAccount = true
-		if err = cs.Unmarshal(data); err != nil {
+		if err = cs.UnmarshalVT(data); err != nil {
 			return nil, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 		}
 		s = &pb.SnapshotWithType{
@@ -491,7 +492,7 @@ func insertCreatorInfo(s *pb.ChangeSnapshot) {
 
 func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]byte, error) {
 	profile := &pb.Profile{}
-	if err := profile.Unmarshal(data); err != nil {
+	if err := profile.UnmarshalVT(data); err != nil {
 		e := fmt.Errorf("cannot unmarshal profile: %w", err)
 		fmt.Println(e)
 		return nil, e
@@ -501,7 +502,7 @@ func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]
 
 	if spaceDashboardId != "" {
 		profile.SpaceDashboardId = spaceDashboardId
-		return profile.Marshal()
+		return profile.MarshalVT()
 	}
 
 	fmt.Println("spaceDashboardId = " + profile.SpaceDashboardId)
@@ -510,7 +511,7 @@ func processProfile(data []byte, info *useCaseInfo, spaceDashboardId string) ([]
 		fmt.Println(err)
 		return nil, err
 	}
-	return profile.Marshal()
+	return profile.MarshalVT()
 }
 
 func listObjects(info *useCaseInfo) {

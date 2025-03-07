@@ -21,13 +21,6 @@ type blockView struct {
 }
 
 func marshalProtoMessage(pbMessage proto.Message) (*json.RawMessage, error) {
-	// marshaller := &jsonpb.Marshaler{}
-	// raw, err := marshaller.MarshalToString(pbMessage)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("marshal content: %w", err)
-	// }
-	// rawMessage := json.RawMessage(raw)
-	// return &rawMessage, nil
 	return nil, nil
 }
 

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-graphviz"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -133,7 +134,7 @@ func main() {
 			log.Fatal("can't open objectStore info:", err)
 		}
 		info := &model.ObjectInfo{}
-		if err = jsonpb.Unmarshal(f, info); err != nil {
+		if err = protojson.Unmarshal(f, info); err != nil {
 			log.Fatal("can't unmarshal objectStore info:", err)
 		}
 		defer f.Close()

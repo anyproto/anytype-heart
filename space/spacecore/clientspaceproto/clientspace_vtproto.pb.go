@@ -7,7 +7,6 @@ package clientspaceproto
 import (
 	fmt "fmt"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
-	proto "google.golang.org/protobuf/proto"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
 )
@@ -19,87 +18,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-func (this *SpaceExchangeRequest) EqualVT(that *SpaceExchangeRequest) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if len(this.SpaceIds) != len(that.SpaceIds) {
-		return false
-	}
-	for i, vx := range this.SpaceIds {
-		vy := that.SpaceIds[i]
-		if vx != vy {
-			return false
-		}
-	}
-	if !this.LocalServer.EqualVT(that.LocalServer) {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *SpaceExchangeRequest) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*SpaceExchangeRequest)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *SpaceExchangeResponse) EqualVT(that *SpaceExchangeResponse) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if len(this.SpaceIds) != len(that.SpaceIds) {
-		return false
-	}
-	for i, vx := range this.SpaceIds {
-		vy := that.SpaceIds[i]
-		if vx != vy {
-			return false
-		}
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *SpaceExchangeResponse) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*SpaceExchangeResponse)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *LocalServer) EqualVT(that *LocalServer) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if len(this.Ips) != len(that.Ips) {
-		return false
-	}
-	for i, vx := range this.Ips {
-		vy := that.Ips[i]
-		if vx != vy {
-			return false
-		}
-	}
-	if this.Port != that.Port {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *LocalServer) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*LocalServer)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
 func (m *SpaceExchangeRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
