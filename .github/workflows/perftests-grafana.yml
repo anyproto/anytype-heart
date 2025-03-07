@@ -77,15 +77,9 @@ jobs:
         run: |
           go mod download
 
-      - name: install protoc
-        run: |
-          make setup-protoc
-
       - name: setup go
         run: |
           make setup-go
-          make setup-gomobile
-          which gomobile
 
       - name: Cross-compile library mac/win/linux
         run: |
