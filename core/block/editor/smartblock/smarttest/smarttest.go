@@ -367,7 +367,8 @@ func (st *SmartTest) StateRebuild(d state.Doc) (err error) {
 }
 
 func (st *SmartTest) StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error {
-	panic("not implemented")
+	st.Results.IsStateAppendCalled = true
+	return nil
 }
 
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
@@ -423,6 +424,7 @@ func (st *SmartTest) Update(ctx session.Context, apply func(b simple.Block) erro
 }
 
 type Results struct {
-	Events  [][]simple.EventMessage
-	Applies [][]*model.Block
+	Events              [][]simple.EventMessage
+	Applies             [][]*model.Block
+	IsStateAppendCalled bool
 }

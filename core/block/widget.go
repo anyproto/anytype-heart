@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -78,8 +79,22 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	if err != nil {
 		return err
 	}
+
+	widgetDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(widgetObjectId)
+	if err == nil {
+		keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+		for _, k := range keys {
+			if k == typeId {
+				return nil
+			}
+		}
+	}
+
 	widgetBlockId := key.String()
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
+		targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+		targets = append(targets, typeId)
+		st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
 		var typeBlockAlreadyExists bool
 
 		err = st.Iterate(func(b simple.Block) (isContinue bool) {
@@ -99,7 +114,6 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 			return err
 		}
 		if typeBlockAlreadyExists {
-			log.Debug("type widget block is already presented")
 			return nil
 		}
 

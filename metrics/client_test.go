@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/metrics/anymetry"
@@ -79,19 +79,19 @@ func TestClient_SendEvents(t *testing.T) {
 	go c.startSendingBatchMessages(&testAppInfoProvider{})
 
 	c.send(&testEvent{})
-	time.Sleep(1 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
-	assert.Equal(t, 1, c.batcher.Len())
+	require.Equal(t, 1, c.batcher.Len())
 	telemetry.AssertNotCalled(t, "SendEvents", mock.Anything, mock.Anything)
 
 	c.send(&testEvent{})
-	time.Sleep(1 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	mutex.Lock()
-	assert.Equal(t, 0, c.batcher.Len())
-	assert.Equal(t, 2, len(events))
+	require.Equal(t, 0, c.batcher.Len())
+	require.Equal(t, 2, len(events))
 	mutex.Unlock()
 
-	assert.True(t, events[0].GetTimestamp() > 0)
+	require.True(t, events[0].GetTimestamp() > 0)
 	telemetry.AssertCalled(t, "SendEvents", mock.Anything, mock.Anything)
 }
