@@ -283,7 +283,7 @@ func (s *service) syncViewRelationsAndRelationLinks(objectId, viewId string, dv 
 		return
 	}
 
-	relationLinksKeys := map[string]struct{}{}
+	relationLinksKeys := make(map[string]struct{}, len(dv.ListRelationLinks()))
 	for _, relLink := range dv.ListRelationLinks() {
 		relationLinksKeys[relLink.Key] = struct{}{}
 	}
@@ -300,7 +300,7 @@ func (s *service) syncViewRelationsAndRelationLinks(objectId, viewId string, dv 
 		return spaceIndex.GetRelationLink(key)
 	}
 
-	currentViewKeys := map[string]struct{}{}
+	currentViewKeys := make(map[string]struct{}, len(view.Relations))
 	newViewRelations := view.Relations[:0]
 	for _, rel := range view.Relations {
 		newViewRelations = append(newViewRelations, rel)
