@@ -1463,7 +1463,6 @@ message Rpc {
                 string objectId = 2;
                 string uri = 3;
                 bool joinSpace = 4;
-                bool includeSpaceName = 5;
             }
             message Response {
                 Error error = 1;

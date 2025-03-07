@@ -54,7 +54,7 @@ var imageRelationsWhiteList = append(slices.Clone(fileRelationsWhiteList),
 	bundle.RelationKeyMediaArtistURL.String(),
 )
 
-var dashboardWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyIconImage.String())
+var spacedWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyIconImage.String())
 
 var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_basic:      documentRelationsWhiteList,
@@ -66,10 +66,10 @@ var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_relation:   relationsWhiteList,
 	model.ObjectType_file:       fileRelationsWhiteList,
 	model.ObjectType_pdf:        fileRelationsWhiteList,
-	model.ObjectType_dashboard:  dashboardWhiteList,
+	model.ObjectType_dashboard:  allObjectsRelationsWhiteList,
 	model.ObjectType_image:      imageRelationsWhiteList,
 	model.ObjectType_note:       documentRelationsWhiteList,
-	model.ObjectType_space:      allObjectsRelationsWhiteList,
+	model.ObjectType_space:      spacedWhiteList,
 
 	model.ObjectType_bookmark:            bookmarkRelationsWhiteList,
 	model.ObjectType_relationOption:      relationOptionWhiteList,
