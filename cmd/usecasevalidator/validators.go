@@ -352,8 +352,7 @@ func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, linkBlockIds []st
 		return slices.Contains(widgetBlockIds, id)
 	})
 
-	blocksToDelete := append(widgetBlockIds, linkBlockIds...)
-
+	blocksToDelete := slices.Concat(widgetBlockIds, linkBlockIds)
 	s.Snapshot.Data.Blocks = slices.DeleteFunc(s.Snapshot.Data.Blocks, func(b *model.Block) bool {
 		return slices.Contains(blocksToDelete, b.Id)
 	})
