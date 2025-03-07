@@ -64,7 +64,7 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 	return s, aggregatedResp, nil
 }
 
-func (s *crossSpaceSubscription) run() {
+func (s *crossSpaceSubscription) run(internalQueue *mb.MB[*pb.EventMessage]) {
 	for {
 		msgs, err := s.queue.Wait(s.ctx)
 		if errors.Is(err, context.Canceled) {
@@ -75,11 +75,19 @@ func (s *crossSpaceSubscription) run() {
 		}
 		for _, msg := range msgs {
 			s.patchEvent(msg)
+			if internalQueue != nil {
+				err = internalQueue.Add(s.ctx, msg)
+				if err != nil {
+					log.Error("add to internal queue", zap.Error(err), zap.String("subId", s.subId))
+				}
+			}
 		}
 
-		s.eventSender.Broadcast(&pb.Event{
-			Messages: msgs,
-		})
+		if internalQueue == nil {
+			s.eventSender.Broadcast(&pb.Event{
+				Messages: msgs,
+			})
+		}
 	}
 }
 

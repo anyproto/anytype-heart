@@ -62,6 +62,7 @@ func TestService_Search(t *testing.T) {
 	}
 
 	t.Run("dependencies", func(t *testing.T) {
+
 		fx := newFixture(t)
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
@@ -83,7 +84,7 @@ func TestService_Search(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait enough time to flush pending updates to subscriptions handler
-		time.Sleep(batchTime + 3*time.Millisecond)
+		time.Sleep(batchTime + 4*time.Millisecond)
 
 		spaceSub.onChange([]*entry{
 			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
