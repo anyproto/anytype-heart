@@ -3,7 +3,6 @@ package device
 import (
 	"github.com/dgraph-io/badger/v4"
 	ds "github.com/ipfs/go-datastore"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -96,5 +95,5 @@ func (n *deviceStore) UpdateDeviceName(id, name string) error {
 
 func unmarshalDeviceInfo(raw []byte) (*model.DeviceInfo, error) {
 	v := &model.DeviceInfo{}
-	return v, proto.Unmarshal(raw, v)
+	return v, v.UnmarshalVT(raw)
 }

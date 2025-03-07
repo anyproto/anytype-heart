@@ -3,7 +3,7 @@ package pbtypes
 import (
 	"sort"
 
-	"google.golang.org/protobuf/proto"
+	"github.com/planetscale/vtprotobuf/types/known/structpb"
 	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -29,7 +29,7 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 		}
 		if v2, exists := m2[key]; !exists {
 			return false
-		} else if proto.Equal(v1, v2) {
+		} else if (*structpb.Value)(v1).EqualVT((*structpb.Value)(v2)) {
 			return false
 		}
 	}
@@ -176,8 +176,7 @@ func DataviewFilterEqual(filter1, filter2 *model.BlockContentDataviewFilter) boo
 	if filter1.RelationProperty != filter2.RelationProperty {
 		return false
 	}
-	return proto.Equal(filter1.Value, filter2.Value)
-	return true
+	return (*structpb.Value)(filter1.Value).EqualVT((*structpb.Value)(filter2.Value))
 }
 
 func DataviewViewEqual(view1, view2 *model.BlockContentDataviewView) bool {

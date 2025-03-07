@@ -28,8 +28,6 @@ type Middleware struct {
 }
 
 func (mw *Middleware) mustEmbedUnimplementedClientCommandsServer() {
-	// TODO implement me
-	panic("implement me")
 }
 
 func New() *Middleware {

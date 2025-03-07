@@ -542,6 +542,55 @@ func (SpaceAccessType) EnumDescriptor() ([]byte, []int) {
 	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{6}
 }
 
+type SpaceUxType int32
+
+const (
+	SpaceUxType_Chat   SpaceUxType = 0 // chat-first UX
+	SpaceUxType_Data   SpaceUxType = 1 // objects-first UX
+	SpaceUxType_Stream SpaceUxType = 2 // stream UX (chat with limited amount of owners)
+)
+
+// Enum value maps for SpaceUxType.
+var (
+	SpaceUxType_name = map[int32]string{
+		0: "Chat",
+		1: "Data",
+		2: "Stream",
+	}
+	SpaceUxType_value = map[string]int32{
+		"Chat":   0,
+		"Data":   1,
+		"Stream": 2,
+	}
+)
+
+func (x SpaceUxType) Enum() *SpaceUxType {
+	p := new(SpaceUxType)
+	*p = x
+	return p
+}
+
+func (x SpaceUxType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SpaceUxType) Descriptor() protoreflect.EnumDescriptor {
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[7].Descriptor()
+}
+
+func (SpaceUxType) Type() protoreflect.EnumType {
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[7]
+}
+
+func (x SpaceUxType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SpaceUxType.Descriptor instead.
+func (SpaceUxType) EnumDescriptor() ([]byte, []int) {
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{7}
+}
+
 type ImageKind int32
 
 const (
@@ -578,11 +627,11 @@ func (x ImageKind) String() string {
 }
 
 func (ImageKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[7].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[8].Descriptor()
 }
 
 func (ImageKind) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[7]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[8]
 }
 
 func (x ImageKind) Number() protoreflect.EnumNumber {
@@ -591,7 +640,7 @@ func (x ImageKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ImageKind.Descriptor instead.
 func (ImageKind) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{7}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{8}
 }
 
 type FileIndexingStatus int32
@@ -627,11 +676,11 @@ func (x FileIndexingStatus) String() string {
 }
 
 func (FileIndexingStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[8].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[9].Descriptor()
 }
 
 func (FileIndexingStatus) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[8]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[9]
 }
 
 func (x FileIndexingStatus) Number() protoreflect.EnumNumber {
@@ -640,7 +689,7 @@ func (x FileIndexingStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FileIndexingStatus.Descriptor instead.
 func (FileIndexingStatus) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{8}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{9}
 }
 
 type SpaceShareableStatus int32
@@ -676,11 +725,11 @@ func (x SpaceShareableStatus) String() string {
 }
 
 func (SpaceShareableStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[9].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[10].Descriptor()
 }
 
 func (SpaceShareableStatus) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[9]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[10]
 }
 
 func (x SpaceShareableStatus) Number() protoreflect.EnumNumber {
@@ -689,7 +738,7 @@ func (x SpaceShareableStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpaceShareableStatus.Descriptor instead.
 func (SpaceShareableStatus) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{9}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{10}
 }
 
 type NameserviceNameType int32
@@ -720,11 +769,11 @@ func (x NameserviceNameType) String() string {
 }
 
 func (NameserviceNameType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[10].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[11].Descriptor()
 }
 
 func (NameserviceNameType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[10]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[11]
 }
 
 func (x NameserviceNameType) Number() protoreflect.EnumNumber {
@@ -733,7 +782,7 @@ func (x NameserviceNameType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use NameserviceNameType.Descriptor instead.
 func (NameserviceNameType) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{10}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{11}
 }
 
 type DeviceNetworkType int32
@@ -769,11 +818,11 @@ func (x DeviceNetworkType) String() string {
 }
 
 func (DeviceNetworkType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[11].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[12].Descriptor()
 }
 
 func (DeviceNetworkType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[11]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[12]
 }
 
 func (x DeviceNetworkType) Number() protoreflect.EnumNumber {
@@ -782,7 +831,7 @@ func (x DeviceNetworkType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DeviceNetworkType.Descriptor instead.
 func (DeviceNetworkType) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{11}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{12}
 }
 
 type BlockPosition int32
@@ -840,11 +889,11 @@ func (x BlockPosition) String() string {
 }
 
 func (BlockPosition) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[12].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[13].Descriptor()
 }
 
 func (BlockPosition) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[12]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[13]
 }
 
 func (x BlockPosition) Number() protoreflect.EnumNumber {
@@ -892,11 +941,11 @@ func (x BlockAlign) String() string {
 }
 
 func (BlockAlign) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[13].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[14].Descriptor()
 }
 
 func (BlockAlign) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[13]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[14]
 }
 
 func (x BlockAlign) Number() protoreflect.EnumNumber {
@@ -941,11 +990,11 @@ func (x BlockVerticalAlign) String() string {
 }
 
 func (BlockVerticalAlign) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[14].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[15].Descriptor()
 }
 
 func (BlockVerticalAlign) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[14]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[15]
 }
 
 func (x BlockVerticalAlign) Number() protoreflect.EnumNumber {
@@ -999,11 +1048,11 @@ func (x BlockContentLayoutStyle) String() string {
 }
 
 func (BlockContentLayoutStyle) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[15].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[16].Descriptor()
 }
 
 func (BlockContentLayoutStyle) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[15]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[16]
 }
 
 func (x BlockContentLayoutStyle) Number() protoreflect.EnumNumber {
@@ -1048,11 +1097,11 @@ func (x BlockContentLinkIconSize) String() string {
 }
 
 func (BlockContentLinkIconSize) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[16].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[17].Descriptor()
 }
 
 func (BlockContentLinkIconSize) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[16]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[17]
 }
 
 func (x BlockContentLinkIconSize) Number() protoreflect.EnumNumber {
@@ -1100,11 +1149,11 @@ func (x BlockContentLinkStyle) String() string {
 }
 
 func (BlockContentLinkStyle) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[17].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[18].Descriptor()
 }
 
 func (BlockContentLinkStyle) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[17]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[18]
 }
 
 func (x BlockContentLinkStyle) Number() protoreflect.EnumNumber {
@@ -1149,11 +1198,11 @@ func (x BlockContentLinkDescription) String() string {
 }
 
 func (BlockContentLinkDescription) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[18].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[19].Descriptor()
 }
 
 func (BlockContentLinkDescription) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[18]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[19]
 }
 
 func (x BlockContentLinkDescription) Number() protoreflect.EnumNumber {
@@ -1198,11 +1247,11 @@ func (x BlockContentLinkCardStyle) String() string {
 }
 
 func (BlockContentLinkCardStyle) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[19].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[20].Descriptor()
 }
 
 func (BlockContentLinkCardStyle) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[19]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[20]
 }
 
 func (x BlockContentLinkCardStyle) Number() protoreflect.EnumNumber {
@@ -1244,11 +1293,11 @@ func (x BlockContentDivStyle) String() string {
 }
 
 func (BlockContentDivStyle) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[20].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[21].Descriptor()
 }
 
 func (BlockContentDivStyle) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[20]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[21]
 }
 
 func (x BlockContentDivStyle) Number() protoreflect.EnumNumber {
@@ -1296,11 +1345,11 @@ func (x BlockContentBookmarkState) String() string {
 }
 
 func (BlockContentBookmarkState) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[21].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[22].Descriptor()
 }
 
 func (BlockContentBookmarkState) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[21]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[22]
 }
 
 func (x BlockContentBookmarkState) Number() protoreflect.EnumNumber {
@@ -1378,11 +1427,11 @@ func (x BlockContentTextStyle) String() string {
 }
 
 func (BlockContentTextStyle) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[22].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[23].Descriptor()
 }
 
 func (BlockContentTextStyle) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[22]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[23]
 }
 
 func (x BlockContentTextStyle) Number() protoreflect.EnumNumber {
@@ -1451,11 +1500,11 @@ func (x BlockContentTextMarkType) String() string {
 }
 
 func (BlockContentTextMarkType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[23].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[24].Descriptor()
 }
 
 func (BlockContentTextMarkType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[23]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[24]
 }
 
 func (x BlockContentTextMarkType) Number() protoreflect.EnumNumber {
@@ -1509,11 +1558,11 @@ func (x BlockContentFileType) String() string {
 }
 
 func (BlockContentFileType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[24].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[25].Descriptor()
 }
 
 func (BlockContentFileType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[24]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[25]
 }
 
 func (x BlockContentFileType) Number() protoreflect.EnumNumber {
@@ -1558,11 +1607,11 @@ func (x BlockContentFileStyle) String() string {
 }
 
 func (BlockContentFileStyle) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[25].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[26].Descriptor()
 }
 
 func (BlockContentFileStyle) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[25]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[26]
 }
 
 func (x BlockContentFileStyle) Number() protoreflect.EnumNumber {
@@ -1610,11 +1659,11 @@ func (x BlockContentFileState) String() string {
 }
 
 func (BlockContentFileState) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[26].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[27].Descriptor()
 }
 
 func (BlockContentFileState) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[26]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[27]
 }
 
 func (x BlockContentFileState) Number() protoreflect.EnumNumber {
@@ -1668,11 +1717,11 @@ func (x BlockContentDataviewViewType) String() string {
 }
 
 func (BlockContentDataviewViewType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[27].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[28].Descriptor()
 }
 
 func (BlockContentDataviewViewType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[27]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[28]
 }
 
 func (x BlockContentDataviewViewType) Number() protoreflect.EnumNumber {
@@ -1717,11 +1766,11 @@ func (x BlockContentDataviewViewSize) String() string {
 }
 
 func (BlockContentDataviewViewSize) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[28].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[29].Descriptor()
 }
 
 func (BlockContentDataviewViewSize) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[28]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[29]
 }
 
 func (x BlockContentDataviewViewSize) Number() protoreflect.EnumNumber {
@@ -1772,11 +1821,11 @@ func (x BlockContentDataviewRelationDateFormat) String() string {
 }
 
 func (BlockContentDataviewRelationDateFormat) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[29].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[30].Descriptor()
 }
 
 func (BlockContentDataviewRelationDateFormat) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[29]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[30]
 }
 
 func (x BlockContentDataviewRelationDateFormat) Number() protoreflect.EnumNumber {
@@ -1818,11 +1867,11 @@ func (x BlockContentDataviewRelationTimeFormat) String() string {
 }
 
 func (BlockContentDataviewRelationTimeFormat) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[30].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[31].Descriptor()
 }
 
 func (BlockContentDataviewRelationTimeFormat) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[30]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[31]
 }
 
 func (x BlockContentDataviewRelationTimeFormat) Number() protoreflect.EnumNumber {
@@ -1900,11 +1949,11 @@ func (x BlockContentDataviewRelationFormulaType) String() string {
 }
 
 func (BlockContentDataviewRelationFormulaType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[31].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[32].Descriptor()
 }
 
 func (BlockContentDataviewRelationFormulaType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[31]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[32]
 }
 
 func (x BlockContentDataviewRelationFormulaType) Number() protoreflect.EnumNumber {
@@ -1949,11 +1998,11 @@ func (x BlockContentDataviewSortType) String() string {
 }
 
 func (BlockContentDataviewSortType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[32].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[33].Descriptor()
 }
 
 func (BlockContentDataviewSortType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[32]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[33]
 }
 
 func (x BlockContentDataviewSortType) Number() protoreflect.EnumNumber {
@@ -1998,11 +2047,11 @@ func (x BlockContentDataviewSortEmptyType) String() string {
 }
 
 func (BlockContentDataviewSortEmptyType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[33].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[34].Descriptor()
 }
 
 func (BlockContentDataviewSortEmptyType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[33]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[34]
 }
 
 func (x BlockContentDataviewSortEmptyType) Number() protoreflect.EnumNumber {
@@ -2047,11 +2096,11 @@ func (x BlockContentDataviewFilterOperator) String() string {
 }
 
 func (BlockContentDataviewFilterOperator) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[34].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[35].Descriptor()
 }
 
 func (BlockContentDataviewFilterOperator) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[34]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[35]
 }
 
 func (x BlockContentDataviewFilterOperator) Number() protoreflect.EnumNumber {
@@ -2141,11 +2190,11 @@ func (x BlockContentDataviewFilterCondition) String() string {
 }
 
 func (BlockContentDataviewFilterCondition) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[35].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[36].Descriptor()
 }
 
 func (BlockContentDataviewFilterCondition) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[35]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[36]
 }
 
 func (x BlockContentDataviewFilterCondition) Number() protoreflect.EnumNumber {
@@ -2217,11 +2266,11 @@ func (x BlockContentDataviewFilterQuickOption) String() string {
 }
 
 func (BlockContentDataviewFilterQuickOption) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[36].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[37].Descriptor()
 }
 
 func (BlockContentDataviewFilterQuickOption) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[36]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[37]
 }
 
 func (x BlockContentDataviewFilterQuickOption) Number() protoreflect.EnumNumber {
@@ -2326,11 +2375,11 @@ func (x BlockContentLatexProcessor) String() string {
 }
 
 func (BlockContentLatexProcessor) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[37].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[38].Descriptor()
 }
 
 func (BlockContentLatexProcessor) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[37]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[38]
 }
 
 func (x BlockContentLatexProcessor) Number() protoreflect.EnumNumber {
@@ -2381,11 +2430,11 @@ func (x BlockContentWidgetLayout) String() string {
 }
 
 func (BlockContentWidgetLayout) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[38].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[39].Descriptor()
 }
 
 func (BlockContentWidgetLayout) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[38]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[39]
 }
 
 func (x BlockContentWidgetLayout) Number() protoreflect.EnumNumber {
@@ -2433,11 +2482,11 @@ func (x AccountStatusType) String() string {
 }
 
 func (AccountStatusType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[39].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[40].Descriptor()
 }
 
 func (AccountStatusType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[39]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[40]
 }
 
 func (x AccountStatusType) Number() protoreflect.EnumNumber {
@@ -2482,11 +2531,11 @@ func (x AccountAuthLocalApiScope) String() string {
 }
 
 func (AccountAuthLocalApiScope) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[40].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[41].Descriptor()
 }
 
 func (AccountAuthLocalApiScope) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[40]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[41]
 }
 
 func (x AccountAuthLocalApiScope) Number() protoreflect.EnumNumber {
@@ -2534,11 +2583,11 @@ func (x LinkPreviewType) String() string {
 }
 
 func (LinkPreviewType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[41].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[42].Descriptor()
 }
 
 func (LinkPreviewType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[41]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[42]
 }
 
 func (x LinkPreviewType) Number() protoreflect.EnumNumber {
@@ -2617,11 +2666,11 @@ func (x RestrictionsObjectRestriction) String() string {
 }
 
 func (RestrictionsObjectRestriction) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[42].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[43].Descriptor()
 }
 
 func (RestrictionsObjectRestriction) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[42]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[43]
 }
 
 func (x RestrictionsObjectRestriction) Number() protoreflect.EnumNumber {
@@ -2669,11 +2718,11 @@ func (x RestrictionsDataviewRestriction) String() string {
 }
 
 func (RestrictionsDataviewRestriction) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[43].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[44].Descriptor()
 }
 
 func (RestrictionsDataviewRestriction) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[43]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[44]
 }
 
 func (x RestrictionsDataviewRestriction) Number() protoreflect.EnumNumber {
@@ -2781,11 +2830,11 @@ func (x ObjectTypeLayout) String() string {
 }
 
 func (ObjectTypeLayout) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[44].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[45].Descriptor()
 }
 
 func (ObjectTypeLayout) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[44]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[45]
 }
 
 func (x ObjectTypeLayout) Number() protoreflect.EnumNumber {
@@ -2836,11 +2885,11 @@ func (x RelationScope) String() string {
 }
 
 func (RelationScope) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[45].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[46].Descriptor()
 }
 
 func (RelationScope) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[45]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[46]
 }
 
 func (x RelationScope) Number() protoreflect.EnumNumber {
@@ -2888,11 +2937,11 @@ func (x RelationDataSource) String() string {
 }
 
 func (RelationDataSource) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[46].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[47].Descriptor()
 }
 
 func (RelationDataSource) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[46]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[47]
 }
 
 func (x RelationDataSource) Number() protoreflect.EnumNumber {
@@ -2942,11 +2991,11 @@ func (x InternalFlagValue) String() string {
 }
 
 func (InternalFlagValue) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[47].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[48].Descriptor()
 }
 
 func (InternalFlagValue) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[47]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[48]
 }
 
 func (x InternalFlagValue) Number() protoreflect.EnumNumber {
@@ -2994,11 +3043,11 @@ func (x NotificationStatus) String() string {
 }
 
 func (NotificationStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[48].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[49].Descriptor()
 }
 
 func (NotificationStatus) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[48]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[49]
 }
 
 func (x NotificationStatus) Number() protoreflect.EnumNumber {
@@ -3037,11 +3086,11 @@ func (x NotificationActionType) String() string {
 }
 
 func (NotificationActionType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[49].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[50].Descriptor()
 }
 
 func (NotificationActionType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[49]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[50]
 }
 
 func (x NotificationActionType) Number() protoreflect.EnumNumber {
@@ -3086,11 +3135,11 @@ func (x NotificationExportCode) String() string {
 }
 
 func (NotificationExportCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[50].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[51].Descriptor()
 }
 
 func (NotificationExportCode) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[50]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[51]
 }
 
 func (x NotificationExportCode) Number() protoreflect.EnumNumber {
@@ -3144,11 +3193,11 @@ func (x ExportFormat) String() string {
 }
 
 func (ExportFormat) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[51].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[52].Descriptor()
 }
 
 func (ExportFormat) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[51]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[52]
 }
 
 func (x ExportFormat) Number() protoreflect.EnumNumber {
@@ -3205,11 +3254,11 @@ func (x ImportType) String() string {
 }
 
 func (ImportType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[52].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[53].Descriptor()
 }
 
 func (ImportType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[52]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[53]
 }
 
 func (x ImportType) Number() protoreflect.EnumNumber {
@@ -3290,11 +3339,11 @@ func (x ImportErrorCode) String() string {
 }
 
 func (ImportErrorCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[53].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[54].Descriptor()
 }
 
 func (ImportErrorCode) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[53]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[54]
 }
 
 func (x ImportErrorCode) Number() protoreflect.EnumNumber {
@@ -3352,11 +3401,11 @@ func (x MembershipStatus) String() string {
 }
 
 func (MembershipStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[54].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[55].Descriptor()
 }
 
 func (MembershipStatus) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[54]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[55]
 }
 
 func (x MembershipStatus) Number() protoreflect.EnumNumber {
@@ -3407,11 +3456,11 @@ func (x MembershipPaymentMethod) String() string {
 }
 
 func (MembershipPaymentMethod) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[55].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[56].Descriptor()
 }
 
 func (MembershipPaymentMethod) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[55]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[56]
 }
 
 func (x MembershipPaymentMethod) Number() protoreflect.EnumNumber {
@@ -3461,11 +3510,11 @@ func (x MembershipEmailVerificationStatus) String() string {
 }
 
 func (MembershipEmailVerificationStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[56].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[57].Descriptor()
 }
 
 func (MembershipEmailVerificationStatus) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[56]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[57]
 }
 
 func (x MembershipEmailVerificationStatus) Number() protoreflect.EnumNumber {
@@ -3519,11 +3568,11 @@ func (x MembershipTierDataPeriodType) String() string {
 }
 
 func (MembershipTierDataPeriodType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[57].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[58].Descriptor()
 }
 
 func (MembershipTierDataPeriodType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[57]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[58]
 }
 
 func (x MembershipTierDataPeriodType) Number() protoreflect.EnumNumber {
@@ -3568,11 +3617,11 @@ func (x ChatMessageAttachmentAttachmentType) String() string {
 }
 
 func (ChatMessageAttachmentAttachmentType) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[58].Descriptor()
+	return file_pkg_lib_pb_model_protos_models_proto_enumTypes[59].Descriptor()
 }
 
 func (ChatMessageAttachmentAttachmentType) Type() protoreflect.EnumType {
-	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[58]
+	return &file_pkg_lib_pb_model_protos_models_proto_enumTypes[59]
 }
 
 func (x ChatMessageAttachmentAttachmentType) Number() protoreflect.EnumNumber {
@@ -3581,7 +3630,7 @@ func (x ChatMessageAttachmentAttachmentType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ChatMessageAttachmentAttachmentType.Descriptor instead.
 func (ChatMessageAttachmentAttachmentType) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{34, 1, 0}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{35, 1, 0}
 }
 
 type SmartBlockSnapshotBase struct {
@@ -6628,6 +6677,66 @@ func (x *DeviceInfo) GetIsConnected() bool {
 	return false
 }
 
+type ChatState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Messages      *ChatStateUnreadState  `protobuf:"bytes,1,opt,name=messages,proto3" json:"messages,omitempty"`        // unread messages
+	Mentions      *ChatStateUnreadState  `protobuf:"bytes,2,opt,name=mentions,proto3" json:"mentions,omitempty"`        // unread mentions
+	DbTimestamp   int64                  `protobuf:"varint,3,opt,name=dbTimestamp,proto3" json:"dbTimestamp,omitempty"` // reflects the state of the chat db at the moment of sending response/event that includes this state
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChatState) Reset() {
+	*x = ChatState{}
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatState) ProtoMessage() {}
+
+func (x *ChatState) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatState.ProtoReflect.Descriptor instead.
+func (*ChatState) Descriptor() ([]byte, []int) {
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ChatState) GetMessages() *ChatStateUnreadState {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+func (x *ChatState) GetMentions() *ChatStateUnreadState {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
+}
+
+func (x *ChatState) GetDbTimestamp() int64 {
+	if x != nil {
+		return x.DbTimestamp
+	}
+	return 0
+}
+
 type ChatMessage struct {
 	state            protoimpl.MessageState     `protogen:"open.v1"`
 	Id               string                     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`           // Unique message identifier
@@ -6635,17 +6744,19 @@ type ChatMessage struct {
 	Creator          string                     `protobuf:"bytes,3,opt,name=creator,proto3" json:"creator,omitempty"` // Identifier for the message creator
 	CreatedAt        int64                      `protobuf:"varint,4,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	ModifiedAt       int64                      `protobuf:"varint,9,opt,name=modifiedAt,proto3" json:"modifiedAt,omitempty"`
+	AddedAt          int64                      `protobuf:"varint,11,opt,name=addedAt,proto3" json:"addedAt,omitempty"`                 // Message received and added to db at
 	ReplyToMessageId string                     `protobuf:"bytes,5,opt,name=replyToMessageId,proto3" json:"replyToMessageId,omitempty"` // Identifier for the message being replied to
 	Message          *ChatMessageMessageContent `protobuf:"bytes,6,opt,name=message,proto3" json:"message,omitempty"`                   // Message content
 	Attachments      []*ChatMessageAttachment   `protobuf:"bytes,7,rep,name=attachments,proto3" json:"attachments,omitempty"`           // Attachments slice
 	Reactions        *ChatMessageReactions      `protobuf:"bytes,8,opt,name=reactions,proto3" json:"reactions,omitempty"`               // Reactions to the message
+	Read             bool                       `protobuf:"varint,10,opt,name=read,proto3" json:"read,omitempty"`                       // Message read status
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ChatMessage) Reset() {
 	*x = ChatMessage{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[34]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6657,7 +6768,7 @@ func (x *ChatMessage) String() string {
 func (*ChatMessage) ProtoMessage() {}
 
 func (x *ChatMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[34]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6670,7 +6781,7 @@ func (x *ChatMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessage.ProtoReflect.Descriptor instead.
 func (*ChatMessage) Descriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{34}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ChatMessage) GetId() string {
@@ -6708,6 +6819,13 @@ func (x *ChatMessage) GetModifiedAt() int64 {
 	return 0
 }
 
+func (x *ChatMessage) GetAddedAt() int64 {
+	if x != nil {
+		return x.AddedAt
+	}
+	return 0
+}
+
 func (x *ChatMessage) GetReplyToMessageId() string {
 	if x != nil {
 		return x.ReplyToMessageId
@@ -6736,6 +6854,13 @@ func (x *ChatMessage) GetReactions() *ChatMessageReactions {
 	return nil
 }
 
+func (x *ChatMessage) GetRead() bool {
+	if x != nil {
+		return x.Read
+	}
+	return false
+}
+
 type SearchResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ObjectId      string                 `protobuf:"bytes,1,opt,name=objectId,proto3" json:"objectId,omitempty"`
@@ -6747,7 +6872,7 @@ type SearchResult struct {
 
 func (x *SearchResult) Reset() {
 	*x = SearchResult{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[35]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6759,7 +6884,7 @@ func (x *SearchResult) String() string {
 func (*SearchResult) ProtoMessage() {}
 
 func (x *SearchResult) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[35]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6809,7 +6934,7 @@ type SearchMeta struct {
 
 func (x *SearchMeta) Reset() {
 	*x = SearchMeta{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[36]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6821,7 +6946,7 @@ func (x *SearchMeta) String() string {
 func (*SearchMeta) ProtoMessage() {}
 
 func (x *SearchMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[36]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6885,7 +7010,7 @@ type BlockRestrictions struct {
 
 func (x *BlockRestrictions) Reset() {
 	*x = BlockRestrictions{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[37]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6897,7 +7022,7 @@ func (x *BlockRestrictions) String() string {
 func (*BlockRestrictions) ProtoMessage() {}
 
 func (x *BlockRestrictions) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[37]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6956,7 +7081,7 @@ type BlockContent struct {
 
 func (x *BlockContent) Reset() {
 	*x = BlockContent{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[38]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6968,7 +7093,7 @@ func (x *BlockContent) String() string {
 func (*BlockContent) ProtoMessage() {}
 
 func (x *BlockContent) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[38]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6995,7 +7120,7 @@ type BlockContentLayout struct {
 
 func (x *BlockContentLayout) Reset() {
 	*x = BlockContentLayout{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[39]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7007,7 +7132,7 @@ func (x *BlockContentLayout) String() string {
 func (*BlockContentLayout) ProtoMessage() {}
 
 func (x *BlockContentLayout) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[39]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7046,7 +7171,7 @@ type BlockContentLink struct {
 
 func (x *BlockContentLink) Reset() {
 	*x = BlockContentLink{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[40]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7058,7 +7183,7 @@ func (x *BlockContentLink) String() string {
 func (*BlockContentLink) ProtoMessage() {}
 
 func (x *BlockContentLink) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[40]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7133,7 +7258,7 @@ type BlockContentDiv struct {
 
 func (x *BlockContentDiv) Reset() {
 	*x = BlockContentDiv{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[41]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7145,7 +7270,7 @@ func (x *BlockContentDiv) String() string {
 func (*BlockContentDiv) ProtoMessage() {}
 
 func (x *BlockContentDiv) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[41]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7189,7 +7314,7 @@ type BlockContentBookmark struct {
 
 func (x *BlockContentBookmark) Reset() {
 	*x = BlockContentBookmark{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[42]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7201,7 +7326,7 @@ func (x *BlockContentBookmark) String() string {
 func (*BlockContentBookmark) ProtoMessage() {}
 
 func (x *BlockContentBookmark) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[42]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7282,7 +7407,7 @@ type BlockContentIcon struct {
 
 func (x *BlockContentIcon) Reset() {
 	*x = BlockContentIcon{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[43]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7294,7 +7419,7 @@ func (x *BlockContentIcon) String() string {
 func (*BlockContentIcon) ProtoMessage() {}
 
 func (x *BlockContentIcon) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[43]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7325,7 +7450,7 @@ type BlockContentFeaturedRelations struct {
 
 func (x *BlockContentFeaturedRelations) Reset() {
 	*x = BlockContentFeaturedRelations{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[44]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7337,7 +7462,7 @@ func (x *BlockContentFeaturedRelations) String() string {
 func (*BlockContentFeaturedRelations) ProtoMessage() {}
 
 func (x *BlockContentFeaturedRelations) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[44]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7368,7 +7493,7 @@ type BlockContentText struct {
 
 func (x *BlockContentText) Reset() {
 	*x = BlockContentText{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[45]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7380,7 +7505,7 @@ func (x *BlockContentText) String() string {
 func (*BlockContentText) ProtoMessage() {}
 
 func (x *BlockContentText) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[45]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7462,7 +7587,7 @@ type BlockContentFile struct {
 
 func (x *BlockContentFile) Reset() {
 	*x = BlockContentFile{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[46]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7474,7 +7599,7 @@ func (x *BlockContentFile) String() string {
 func (*BlockContentFile) ProtoMessage() {}
 
 func (x *BlockContentFile) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[46]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7561,7 +7686,7 @@ type BlockContentSmartblock struct {
 
 func (x *BlockContentSmartblock) Reset() {
 	*x = BlockContentSmartblock{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[47]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7573,7 +7698,7 @@ func (x *BlockContentSmartblock) String() string {
 func (*BlockContentSmartblock) ProtoMessage() {}
 
 func (x *BlockContentSmartblock) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[47]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7591,7 +7716,7 @@ func (*BlockContentSmartblock) Descriptor() ([]byte, []int) {
 
 type BlockContentDataview struct {
 	state      protoimpl.MessageState      `protogen:"open.v1"`
-	Source     []string                    `protobuf:"bytes,1,rep,name=source,proto3" json:"source,omitempty"`
+	Source     []string                    `protobuf:"bytes,1,rep,name=source,proto3" json:"source,omitempty"` // can be set for detached(without TargetObjectId) inline sets
 	Views      []*BlockContentDataviewView `protobuf:"bytes,2,rep,name=views,proto3" json:"views,omitempty"`
 	ActiveView string                      `protobuf:"bytes,3,opt,name=activeView,proto3" json:"activeView,omitempty"` // do not generate changes for this field
 	// deprecated
@@ -7599,7 +7724,7 @@ type BlockContentDataview struct {
 	GroupOrders    []*BlockContentDataviewGroupOrder  `protobuf:"bytes,12,rep,name=groupOrders,proto3" json:"groupOrders,omitempty"`
 	ObjectOrders   []*BlockContentDataviewObjectOrder `protobuf:"bytes,13,rep,name=objectOrders,proto3" json:"objectOrders,omitempty"`
 	RelationLinks  []*RelationLink                    `protobuf:"bytes,5,rep,name=relationLinks,proto3" json:"relationLinks,omitempty"`
-	TargetObjectId string                             `protobuf:"bytes,6,opt,name=TargetObjectId,proto3" json:"TargetObjectId,omitempty"`
+	TargetObjectId string                             `protobuf:"bytes,6,opt,name=TargetObjectId,proto3" json:"TargetObjectId,omitempty"` // empty for original set/collection objects and for detached inline sets
 	IsCollection   bool                               `protobuf:"varint,14,opt,name=isCollection,proto3" json:"isCollection,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -7607,7 +7732,7 @@ type BlockContentDataview struct {
 
 func (x *BlockContentDataview) Reset() {
 	*x = BlockContentDataview{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[48]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7619,7 +7744,7 @@ func (x *BlockContentDataview) String() string {
 func (*BlockContentDataview) ProtoMessage() {}
 
 func (x *BlockContentDataview) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[48]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7707,7 +7832,7 @@ type BlockContentRelation struct {
 
 func (x *BlockContentRelation) Reset() {
 	*x = BlockContentRelation{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[49]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7719,7 +7844,7 @@ func (x *BlockContentRelation) String() string {
 func (*BlockContentRelation) ProtoMessage() {}
 
 func (x *BlockContentRelation) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[49]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7752,7 +7877,7 @@ type BlockContentLatex struct {
 
 func (x *BlockContentLatex) Reset() {
 	*x = BlockContentLatex{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[50]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7764,7 +7889,7 @@ func (x *BlockContentLatex) String() string {
 func (*BlockContentLatex) ProtoMessage() {}
 
 func (x *BlockContentLatex) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[50]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7802,7 +7927,7 @@ type BlockContentTableOfContents struct {
 
 func (x *BlockContentTableOfContents) Reset() {
 	*x = BlockContentTableOfContents{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[51]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7814,7 +7939,7 @@ func (x *BlockContentTableOfContents) String() string {
 func (*BlockContentTableOfContents) ProtoMessage() {}
 
 func (x *BlockContentTableOfContents) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[51]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7838,7 +7963,7 @@ type BlockContentTable struct {
 
 func (x *BlockContentTable) Reset() {
 	*x = BlockContentTable{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[52]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7850,7 +7975,7 @@ func (x *BlockContentTable) String() string {
 func (*BlockContentTable) ProtoMessage() {}
 
 func (x *BlockContentTable) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[52]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7874,7 +7999,7 @@ type BlockContentTableColumn struct {
 
 func (x *BlockContentTableColumn) Reset() {
 	*x = BlockContentTableColumn{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[53]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7886,7 +8011,7 @@ func (x *BlockContentTableColumn) String() string {
 func (*BlockContentTableColumn) ProtoMessage() {}
 
 func (x *BlockContentTableColumn) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[53]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7911,7 +8036,7 @@ type BlockContentTableRow struct {
 
 func (x *BlockContentTableRow) Reset() {
 	*x = BlockContentTableRow{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[54]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7923,7 +8048,7 @@ func (x *BlockContentTableRow) String() string {
 func (*BlockContentTableRow) ProtoMessage() {}
 
 func (x *BlockContentTableRow) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[54]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7957,7 +8082,7 @@ type BlockContentWidget struct {
 
 func (x *BlockContentWidget) Reset() {
 	*x = BlockContentWidget{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[55]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7969,7 +8094,7 @@ func (x *BlockContentWidget) String() string {
 func (*BlockContentWidget) ProtoMessage() {}
 
 func (x *BlockContentWidget) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[55]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8014,7 +8139,7 @@ type BlockContentChat struct {
 
 func (x *BlockContentChat) Reset() {
 	*x = BlockContentChat{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[56]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8026,7 +8151,7 @@ func (x *BlockContentChat) String() string {
 func (*BlockContentChat) ProtoMessage() {}
 
 func (x *BlockContentChat) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[56]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8051,7 +8176,7 @@ type BlockContentTextMarks struct {
 
 func (x *BlockContentTextMarks) Reset() {
 	*x = BlockContentTextMarks{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[57]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8063,7 +8188,7 @@ func (x *BlockContentTextMarks) String() string {
 func (*BlockContentTextMarks) ProtoMessage() {}
 
 func (x *BlockContentTextMarks) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[57]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8097,7 +8222,7 @@ type BlockContentTextMark struct {
 
 func (x *BlockContentTextMark) Reset() {
 	*x = BlockContentTextMark{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[58]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8109,7 +8234,7 @@ func (x *BlockContentTextMark) String() string {
 func (*BlockContentTextMark) ProtoMessage() {}
 
 func (x *BlockContentTextMark) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[58]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8169,7 +8294,7 @@ type BlockContentDataviewView struct {
 
 func (x *BlockContentDataviewView) Reset() {
 	*x = BlockContentDataviewView{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[59]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8181,7 +8306,7 @@ func (x *BlockContentDataviewView) String() string {
 func (*BlockContentDataviewView) ProtoMessage() {}
 
 func (x *BlockContentDataviewView) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[59]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8318,7 +8443,7 @@ type BlockContentDataviewRelation struct {
 
 func (x *BlockContentDataviewRelation) Reset() {
 	*x = BlockContentDataviewRelation{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[60]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8330,7 +8455,7 @@ func (x *BlockContentDataviewRelation) String() string {
 func (*BlockContentDataviewRelation) ProtoMessage() {}
 
 func (x *BlockContentDataviewRelation) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[60]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8418,7 +8543,7 @@ type BlockContentDataviewSort struct {
 
 func (x *BlockContentDataviewSort) Reset() {
 	*x = BlockContentDataviewSort{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[61]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8430,7 +8555,7 @@ func (x *BlockContentDataviewSort) String() string {
 func (*BlockContentDataviewSort) ProtoMessage() {}
 
 func (x *BlockContentDataviewSort) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[61]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8520,7 +8645,7 @@ type BlockContentDataviewFilter struct {
 
 func (x *BlockContentDataviewFilter) Reset() {
 	*x = BlockContentDataviewFilter{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[62]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8532,7 +8657,7 @@ func (x *BlockContentDataviewFilter) String() string {
 func (*BlockContentDataviewFilter) ProtoMessage() {}
 
 func (x *BlockContentDataviewFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[62]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8628,7 +8753,7 @@ type BlockContentDataviewGroupOrder struct {
 
 func (x *BlockContentDataviewGroupOrder) Reset() {
 	*x = BlockContentDataviewGroupOrder{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[63]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8640,7 +8765,7 @@ func (x *BlockContentDataviewGroupOrder) String() string {
 func (*BlockContentDataviewGroupOrder) ProtoMessage() {}
 
 func (x *BlockContentDataviewGroupOrder) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[63]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8682,7 +8807,7 @@ type BlockContentDataviewViewGroup struct {
 
 func (x *BlockContentDataviewViewGroup) Reset() {
 	*x = BlockContentDataviewViewGroup{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[64]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8694,7 +8819,7 @@ func (x *BlockContentDataviewViewGroup) String() string {
 func (*BlockContentDataviewViewGroup) ProtoMessage() {}
 
 func (x *BlockContentDataviewViewGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[64]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8749,7 +8874,7 @@ type BlockContentDataviewObjectOrder struct {
 
 func (x *BlockContentDataviewObjectOrder) Reset() {
 	*x = BlockContentDataviewObjectOrder{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[65]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8761,7 +8886,7 @@ func (x *BlockContentDataviewObjectOrder) String() string {
 func (*BlockContentDataviewObjectOrder) ProtoMessage() {}
 
 func (x *BlockContentDataviewObjectOrder) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[65]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8814,7 +8939,7 @@ type BlockContentDataviewGroup struct {
 
 func (x *BlockContentDataviewGroup) Reset() {
 	*x = BlockContentDataviewGroup{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[66]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8826,7 +8951,7 @@ func (x *BlockContentDataviewGroup) String() string {
 func (*BlockContentDataviewGroup) ProtoMessage() {}
 
 func (x *BlockContentDataviewGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[66]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8929,7 +9054,7 @@ type BlockContentDataviewStatus struct {
 
 func (x *BlockContentDataviewStatus) Reset() {
 	*x = BlockContentDataviewStatus{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[67]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8941,7 +9066,7 @@ func (x *BlockContentDataviewStatus) String() string {
 func (*BlockContentDataviewStatus) ProtoMessage() {}
 
 func (x *BlockContentDataviewStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[67]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8973,7 +9098,7 @@ type BlockContentDataviewTag struct {
 
 func (x *BlockContentDataviewTag) Reset() {
 	*x = BlockContentDataviewTag{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[68]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8985,7 +9110,7 @@ func (x *BlockContentDataviewTag) String() string {
 func (*BlockContentDataviewTag) ProtoMessage() {}
 
 func (x *BlockContentDataviewTag) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[68]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9017,7 +9142,7 @@ type BlockContentDataviewCheckbox struct {
 
 func (x *BlockContentDataviewCheckbox) Reset() {
 	*x = BlockContentDataviewCheckbox{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[69]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9029,7 +9154,7 @@ func (x *BlockContentDataviewCheckbox) String() string {
 func (*BlockContentDataviewCheckbox) ProtoMessage() {}
 
 func (x *BlockContentDataviewCheckbox) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[69]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9060,7 +9185,7 @@ type BlockContentDataviewDate struct {
 
 func (x *BlockContentDataviewDate) Reset() {
 	*x = BlockContentDataviewDate{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[70]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9072,7 +9197,7 @@ func (x *BlockContentDataviewDate) String() string {
 func (*BlockContentDataviewDate) ProtoMessage() {}
 
 func (x *BlockContentDataviewDate) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[70]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9101,7 +9226,7 @@ type AccountConfig struct {
 
 func (x *AccountConfig) Reset() {
 	*x = AccountConfig{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[71]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9113,7 +9238,7 @@ func (x *AccountConfig) String() string {
 func (*AccountConfig) ProtoMessage() {}
 
 func (x *AccountConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[71]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9174,7 +9299,7 @@ type AccountStatus struct {
 
 func (x *AccountStatus) Reset() {
 	*x = AccountStatus{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[72]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9186,7 +9311,7 @@ func (x *AccountStatus) String() string {
 func (*AccountStatus) ProtoMessage() {}
 
 func (x *AccountStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[72]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9240,7 +9365,7 @@ type AccountInfo struct {
 
 func (x *AccountInfo) Reset() {
 	*x = AccountInfo{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[73]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9252,7 +9377,7 @@ func (x *AccountInfo) String() string {
 func (*AccountInfo) ProtoMessage() {}
 
 func (x *AccountInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[73]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9388,7 +9513,7 @@ type AccountAuth struct {
 
 func (x *AccountAuth) Reset() {
 	*x = AccountAuth{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[74]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9400,7 +9525,7 @@ func (x *AccountAuth) String() string {
 func (*AccountAuth) ProtoMessage() {}
 
 func (x *AccountAuth) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[74]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9426,7 +9551,7 @@ type RestrictionsDataviewRestrictions struct {
 
 func (x *RestrictionsDataviewRestrictions) Reset() {
 	*x = RestrictionsDataviewRestrictions{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[75]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9438,7 +9563,7 @@ func (x *RestrictionsDataviewRestrictions) String() string {
 func (*RestrictionsDataviewRestrictions) ProtoMessage() {}
 
 func (x *RestrictionsDataviewRestrictions) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[75]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9479,7 +9604,7 @@ type ObjectChangePayload struct {
 
 func (x *ObjectChangePayload) Reset() {
 	*x = ObjectChangePayload{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[76]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9491,7 +9616,7 @@ func (x *ObjectChangePayload) String() string {
 func (*ObjectChangePayload) ProtoMessage() {}
 
 func (x *ObjectChangePayload) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[76]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9541,7 +9666,7 @@ type RelationOption struct {
 
 func (x *RelationOption) Reset() {
 	*x = RelationOption{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[77]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9553,7 +9678,7 @@ func (x *RelationOption) String() string {
 func (*RelationOption) ProtoMessage() {}
 
 func (x *RelationOption) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[77]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9608,7 +9733,7 @@ type ObjectViewDetailsSet struct {
 
 func (x *ObjectViewDetailsSet) Reset() {
 	*x = ObjectViewDetailsSet{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[78]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9620,7 +9745,7 @@ func (x *ObjectViewDetailsSet) String() string {
 func (*ObjectViewDetailsSet) ProtoMessage() {}
 
 func (x *ObjectViewDetailsSet) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[78]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9667,7 +9792,7 @@ type ObjectViewRelationWithValuePerObject struct {
 
 func (x *ObjectViewRelationWithValuePerObject) Reset() {
 	*x = ObjectViewRelationWithValuePerObject{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[79]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9679,7 +9804,7 @@ func (x *ObjectViewRelationWithValuePerObject) String() string {
 func (*ObjectViewRelationWithValuePerObject) ProtoMessage() {}
 
 func (x *ObjectViewRelationWithValuePerObject) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[79]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9719,7 +9844,7 @@ type ObjectViewHistorySize struct {
 
 func (x *ObjectViewHistorySize) Reset() {
 	*x = ObjectViewHistorySize{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[80]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9731,7 +9856,7 @@ func (x *ObjectViewHistorySize) String() string {
 func (*ObjectViewHistorySize) ProtoMessage() {}
 
 func (x *ObjectViewHistorySize) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[80]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9771,7 +9896,7 @@ type ObjectViewBlockParticipant struct {
 
 func (x *ObjectViewBlockParticipant) Reset() {
 	*x = ObjectViewBlockParticipant{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[81]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9783,7 +9908,7 @@ func (x *ObjectViewBlockParticipant) String() string {
 func (*ObjectViewBlockParticipant) ProtoMessage() {}
 
 func (x *ObjectViewBlockParticipant) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[81]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9821,7 +9946,7 @@ type MetadataPayload struct {
 
 func (x *MetadataPayload) Reset() {
 	*x = MetadataPayload{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[82]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9833,7 +9958,7 @@ func (x *MetadataPayload) String() string {
 func (*MetadataPayload) ProtoMessage() {}
 
 func (x *MetadataPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[82]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9858,7 +9983,7 @@ type MetadataPayloadIdentityPayload struct {
 
 func (x *MetadataPayloadIdentityPayload) Reset() {
 	*x = MetadataPayloadIdentityPayload{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[83]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9870,7 +9995,7 @@ func (x *MetadataPayloadIdentityPayload) String() string {
 func (*MetadataPayloadIdentityPayload) ProtoMessage() {}
 
 func (x *MetadataPayloadIdentityPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[83]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9907,7 +10032,7 @@ type NotificationImport struct {
 
 func (x *NotificationImport) Reset() {
 	*x = NotificationImport{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[84]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9919,7 +10044,7 @@ func (x *NotificationImport) String() string {
 func (*NotificationImport) ProtoMessage() {}
 
 func (x *NotificationImport) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[84]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9987,7 +10112,7 @@ type NotificationExport struct {
 
 func (x *NotificationExport) Reset() {
 	*x = NotificationExport{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[85]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9999,7 +10124,7 @@ func (x *NotificationExport) String() string {
 func (*NotificationExport) ProtoMessage() {}
 
 func (x *NotificationExport) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[85]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10042,7 +10167,7 @@ type NotificationGalleryImport struct {
 
 func (x *NotificationGalleryImport) Reset() {
 	*x = NotificationGalleryImport{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[86]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10054,7 +10179,7 @@ func (x *NotificationGalleryImport) String() string {
 func (*NotificationGalleryImport) ProtoMessage() {}
 
 func (x *NotificationGalleryImport) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[86]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10118,7 +10243,7 @@ type NotificationRequestToJoin struct {
 
 func (x *NotificationRequestToJoin) Reset() {
 	*x = NotificationRequestToJoin{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[87]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10130,7 +10255,7 @@ func (x *NotificationRequestToJoin) String() string {
 func (*NotificationRequestToJoin) ProtoMessage() {}
 
 func (x *NotificationRequestToJoin) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[87]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10189,7 +10314,7 @@ type NotificationTest struct {
 
 func (x *NotificationTest) Reset() {
 	*x = NotificationTest{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[88]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10201,7 +10326,7 @@ func (x *NotificationTest) String() string {
 func (*NotificationTest) ProtoMessage() {}
 
 func (x *NotificationTest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[88]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10228,7 +10353,7 @@ type NotificationParticipantRequestApproved struct {
 
 func (x *NotificationParticipantRequestApproved) Reset() {
 	*x = NotificationParticipantRequestApproved{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[89]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10240,7 +10365,7 @@ func (x *NotificationParticipantRequestApproved) String() string {
 func (*NotificationParticipantRequestApproved) ProtoMessage() {}
 
 func (x *NotificationParticipantRequestApproved) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[89]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10290,7 +10415,7 @@ type NotificationRequestToLeave struct {
 
 func (x *NotificationRequestToLeave) Reset() {
 	*x = NotificationRequestToLeave{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[90]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10302,7 +10427,7 @@ func (x *NotificationRequestToLeave) String() string {
 func (*NotificationRequestToLeave) ProtoMessage() {}
 
 func (x *NotificationRequestToLeave) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[90]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10366,7 +10491,7 @@ type NotificationParticipantRemove struct {
 
 func (x *NotificationParticipantRemove) Reset() {
 	*x = NotificationParticipantRemove{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[91]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10378,7 +10503,7 @@ func (x *NotificationParticipantRemove) String() string {
 func (*NotificationParticipantRemove) ProtoMessage() {}
 
 func (x *NotificationParticipantRemove) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[91]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10439,7 +10564,7 @@ type NotificationParticipantRequestDecline struct {
 
 func (x *NotificationParticipantRequestDecline) Reset() {
 	*x = NotificationParticipantRequestDecline{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[92]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10451,7 +10576,7 @@ func (x *NotificationParticipantRequestDecline) String() string {
 func (*NotificationParticipantRequestDecline) ProtoMessage() {}
 
 func (x *NotificationParticipantRequestDecline) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[92]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10492,7 +10617,7 @@ type NotificationParticipantPermissionsChange struct {
 
 func (x *NotificationParticipantPermissionsChange) Reset() {
 	*x = NotificationParticipantPermissionsChange{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[93]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10504,7 +10629,7 @@ func (x *NotificationParticipantPermissionsChange) String() string {
 func (*NotificationParticipantPermissionsChange) ProtoMessage() {}
 
 func (x *NotificationParticipantPermissionsChange) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[93]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10541,6 +10666,58 @@ func (x *NotificationParticipantPermissionsChange) GetSpaceName() string {
 	return ""
 }
 
+type ChatStateUnreadState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OldestOrderId string                 `protobuf:"bytes,1,opt,name=oldestOrderId,proto3" json:"oldestOrderId,omitempty"` // oldest(in the lex sorting) unread message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest
+	Counter       int32                  `protobuf:"varint,2,opt,name=counter,proto3" json:"counter,omitempty"`            // total number of unread messages
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChatStateUnreadState) Reset() {
+	*x = ChatStateUnreadState{}
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[95]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatStateUnreadState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatStateUnreadState) ProtoMessage() {}
+
+func (x *ChatStateUnreadState) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[95]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatStateUnreadState.ProtoReflect.Descriptor instead.
+func (*ChatStateUnreadState) Descriptor() ([]byte, []int) {
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{34, 0}
+}
+
+func (x *ChatStateUnreadState) GetOldestOrderId() string {
+	if x != nil {
+		return x.OldestOrderId
+	}
+	return ""
+}
+
+func (x *ChatStateUnreadState) GetCounter() int32 {
+	if x != nil {
+		return x.Counter
+	}
+	return 0
+}
+
 type ChatMessageMessageContent struct {
 	state         protoimpl.MessageState  `protogen:"open.v1"`
 	Text          string                  `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`                                             // The text content of the message part
@@ -10552,7 +10729,7 @@ type ChatMessageMessageContent struct {
 
 func (x *ChatMessageMessageContent) Reset() {
 	*x = ChatMessageMessageContent{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[94]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10564,7 +10741,7 @@ func (x *ChatMessageMessageContent) String() string {
 func (*ChatMessageMessageContent) ProtoMessage() {}
 
 func (x *ChatMessageMessageContent) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[94]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10577,7 +10754,7 @@ func (x *ChatMessageMessageContent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessageMessageContent.ProtoReflect.Descriptor instead.
 func (*ChatMessageMessageContent) Descriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{34, 0}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{35, 0}
 }
 
 func (x *ChatMessageMessageContent) GetText() string {
@@ -10611,7 +10788,7 @@ type ChatMessageAttachment struct {
 
 func (x *ChatMessageAttachment) Reset() {
 	*x = ChatMessageAttachment{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[95]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10623,7 +10800,7 @@ func (x *ChatMessageAttachment) String() string {
 func (*ChatMessageAttachment) ProtoMessage() {}
 
 func (x *ChatMessageAttachment) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[95]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10636,7 +10813,7 @@ func (x *ChatMessageAttachment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessageAttachment.ProtoReflect.Descriptor instead.
 func (*ChatMessageAttachment) Descriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{34, 1}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{35, 1}
 }
 
 func (x *ChatMessageAttachment) GetTarget() string {
@@ -10662,7 +10839,7 @@ type ChatMessageReactions struct {
 
 func (x *ChatMessageReactions) Reset() {
 	*x = ChatMessageReactions{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[96]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10674,7 +10851,7 @@ func (x *ChatMessageReactions) String() string {
 func (*ChatMessageReactions) ProtoMessage() {}
 
 func (x *ChatMessageReactions) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[96]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10687,7 +10864,7 @@ func (x *ChatMessageReactions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessageReactions.ProtoReflect.Descriptor instead.
 func (*ChatMessageReactions) Descriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{34, 2}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{35, 2}
 }
 
 func (x *ChatMessageReactions) GetReactions() map[string]*ChatMessageReactionsIdentityList {
@@ -10706,7 +10883,7 @@ type ChatMessageReactionsIdentityList struct {
 
 func (x *ChatMessageReactionsIdentityList) Reset() {
 	*x = ChatMessageReactionsIdentityList{}
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[98]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10718,7 +10895,7 @@ func (x *ChatMessageReactionsIdentityList) String() string {
 func (*ChatMessageReactionsIdentityList) ProtoMessage() {}
 
 func (x *ChatMessageReactionsIdentityList) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[98]
+	mi := &file_pkg_lib_pb_model_protos_models_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10731,7 +10908,7 @@ func (x *ChatMessageReactionsIdentityList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessageReactionsIdentityList.ProtoReflect.Descriptor instead.
 func (*ChatMessageReactionsIdentityList) Descriptor() ([]byte, []int) {
-	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{34, 2, 1}
+	return file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP(), []int{35, 2, 1}
 }
 
 func (x *ChatMessageReactionsIdentityList) GetIds() []string {
@@ -12200,147 +12377,169 @@ var file_pkg_lib_pb_model_protos_models_proto_rawDesc = string([]byte{
 	0x65, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x08, 0x61, 0x72, 0x63, 0x68, 0x69, 0x76,
 	0x65, 0x64, 0x12, 0x20, 0x0a, 0x0b, 0x69, 0x73, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x65,
 	0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0b, 0x69, 0x73, 0x43, 0x6f, 0x6e, 0x6e, 0x65,
-	0x63, 0x74, 0x65, 0x64, 0x22, 0xc7, 0x07, 0x0a, 0x0b, 0x43, 0x68, 0x61, 0x74, 0x4d, 0x65, 0x73,
-	0x73, 0x61, 0x67, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x02, 0x69, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x6f, 0x72, 0x64, 0x65, 0x72, 0x49, 0x64, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6f, 0x72, 0x64, 0x65, 0x72, 0x49, 0x64, 0x12, 0x18,
-	0x0a, 0x07, 0x63, 0x72, 0x65, 0x61, 0x74, 0x6f, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x07, 0x63, 0x72, 0x65, 0x61, 0x74, 0x6f, 0x72, 0x12, 0x1c, 0x0a, 0x09, 0x63, 0x72, 0x65, 0x61,
-	0x74, 0x65, 0x64, 0x41, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x63, 0x72, 0x65,
-	0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1e, 0x0a, 0x0a, 0x6d, 0x6f, 0x64, 0x69, 0x66, 0x69,
-	0x65, 0x64, 0x41, 0x74, 0x18, 0x09, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x6d, 0x6f, 0x64, 0x69,
-	0x66, 0x69, 0x65, 0x64, 0x41, 0x74, 0x12, 0x2a, 0x0a, 0x10, 0x72, 0x65, 0x70, 0x6c, 0x79, 0x54,
-	0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x49, 0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x10, 0x72, 0x65, 0x70, 0x6c, 0x79, 0x54, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
-	0x49, 0x64, 0x12, 0x43, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x06, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x29, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f,
-	0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e,
-	0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x52, 0x07,
-	0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x47, 0x0a, 0x0b, 0x61, 0x74, 0x74, 0x61, 0x63,
-	0x68, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x07, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x25, 0x2e, 0x61,
-	0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68, 0x61,
-	0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x41, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d,
-	0x65, 0x6e, 0x74, 0x52, 0x0b, 0x61, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x73,
-	0x12, 0x42, 0x0a, 0x09, 0x72, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x08, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x24, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f,
-	0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e,
-	0x52, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x09, 0x72, 0x65, 0x61, 0x63, 0x74,
-	0x69, 0x6f, 0x6e, 0x73, 0x1a, 0xa1, 0x01, 0x0a, 0x0e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
-	0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x65, 0x78, 0x74, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x65, 0x78, 0x74, 0x12, 0x3d, 0x0a, 0x05, 0x73,
-	0x74, 0x79, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x27, 0x2e, 0x61, 0x6e, 0x79,
+	0x63, 0x74, 0x65, 0x64, 0x22, 0x80, 0x02, 0x0a, 0x09, 0x43, 0x68, 0x61, 0x74, 0x53, 0x74, 0x61,
+	0x74, 0x65, 0x12, 0x40, 0x0a, 0x08, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x24, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d,
+	0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x53, 0x74, 0x61, 0x74, 0x65, 0x2e, 0x55,
+	0x6e, 0x72, 0x65, 0x61, 0x64, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x08, 0x6d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x73, 0x12, 0x40, 0x0a, 0x08, 0x6d, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x73,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x24, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65,
+	0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x53, 0x74, 0x61, 0x74, 0x65,
+	0x2e, 0x55, 0x6e, 0x72, 0x65, 0x61, 0x64, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x08, 0x6d, 0x65,
+	0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x20, 0x0a, 0x0b, 0x64, 0x62, 0x54, 0x69, 0x6d, 0x65,
+	0x73, 0x74, 0x61, 0x6d, 0x70, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0b, 0x64, 0x62, 0x54,
+	0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x1a, 0x4d, 0x0a, 0x0b, 0x55, 0x6e, 0x72, 0x65,
+	0x61, 0x64, 0x53, 0x74, 0x61, 0x74, 0x65, 0x12, 0x24, 0x0a, 0x0d, 0x6f, 0x6c, 0x64, 0x65, 0x73,
+	0x74, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d,
+	0x6f, 0x6c, 0x64, 0x65, 0x73, 0x74, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x49, 0x64, 0x12, 0x18, 0x0a,
+	0x07, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x07,
+	0x63, 0x6f, 0x75, 0x6e, 0x74, 0x65, 0x72, 0x22, 0xf5, 0x07, 0x0a, 0x0b, 0x43, 0x68, 0x61, 0x74,
+	0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x6f, 0x72, 0x64, 0x65, 0x72,
+	0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6f, 0x72, 0x64, 0x65, 0x72, 0x49,
+	0x64, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x72, 0x65, 0x61, 0x74, 0x6f, 0x72, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x07, 0x63, 0x72, 0x65, 0x61, 0x74, 0x6f, 0x72, 0x12, 0x1c, 0x0a, 0x09, 0x63,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09,
+	0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1e, 0x0a, 0x0a, 0x6d, 0x6f, 0x64,
+	0x69, 0x66, 0x69, 0x65, 0x64, 0x41, 0x74, 0x18, 0x09, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x6d,
+	0x6f, 0x64, 0x69, 0x66, 0x69, 0x65, 0x64, 0x41, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64,
+	0x65, 0x64, 0x41, 0x74, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x61, 0x64, 0x64, 0x65,
+	0x64, 0x41, 0x74, 0x12, 0x2a, 0x0a, 0x10, 0x72, 0x65, 0x70, 0x6c, 0x79, 0x54, 0x6f, 0x4d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x49, 0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x10, 0x72,
+	0x65, 0x70, 0x6c, 0x79, 0x54, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x49, 0x64, 0x12,
+	0x43, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x29, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c,
+	0x2e, 0x43, 0x68, 0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x4d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x52, 0x07, 0x6d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x12, 0x47, 0x0a, 0x0b, 0x61, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d, 0x65,
+	0x6e, 0x74, 0x73, 0x18, 0x07, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x25, 0x2e, 0x61, 0x6e, 0x79, 0x74,
+	0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x4d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x41, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74,
+	0x52, 0x0b, 0x61, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x42, 0x0a,
+	0x09, 0x72, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x24, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c,
+	0x2e, 0x43, 0x68, 0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x61,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x09, 0x72, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x12, 0x12, 0x0a, 0x04, 0x72, 0x65, 0x61, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x08, 0x52,
+	0x04, 0x72, 0x65, 0x61, 0x64, 0x1a, 0xa1, 0x01, 0x0a, 0x0e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x65, 0x78, 0x74,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x65, 0x78, 0x74, 0x12, 0x3d, 0x0a, 0x05,
+	0x73, 0x74, 0x79, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x27, 0x2e, 0x61, 0x6e,
+	0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x42, 0x6c, 0x6f, 0x63,
+	0x6b, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2e, 0x54, 0x65, 0x78, 0x74, 0x2e, 0x53,
+	0x74, 0x79, 0x6c, 0x65, 0x52, 0x05, 0x73, 0x74, 0x79, 0x6c, 0x65, 0x12, 0x3c, 0x0a, 0x05, 0x6d,
+	0x61, 0x72, 0x6b, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x26, 0x2e, 0x61, 0x6e, 0x79,
 	0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x42, 0x6c, 0x6f, 0x63, 0x6b,
-	0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2e, 0x54, 0x65, 0x78, 0x74, 0x2e, 0x53, 0x74,
-	0x79, 0x6c, 0x65, 0x52, 0x05, 0x73, 0x74, 0x79, 0x6c, 0x65, 0x12, 0x3c, 0x0a, 0x05, 0x6d, 0x61,
-	0x72, 0x6b, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x26, 0x2e, 0x61, 0x6e, 0x79, 0x74,
-	0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x2e,
-	0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2e, 0x54, 0x65, 0x78, 0x74, 0x2e, 0x4d, 0x61, 0x72,
-	0x6b, 0x52, 0x05, 0x6d, 0x61, 0x72, 0x6b, 0x73, 0x1a, 0x9f, 0x01, 0x0a, 0x0a, 0x41, 0x74, 0x74,
-	0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x74, 0x61, 0x72, 0x67, 0x65,
-	0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x12,
-	0x48, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x34, 0x2e,
-	0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68,
-	0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x41, 0x74, 0x74, 0x61, 0x63, 0x68,
-	0x6d, 0x65, 0x6e, 0x74, 0x2e, 0x41, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x54,
-	0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x22, 0x2f, 0x0a, 0x0e, 0x41, 0x74, 0x74,
-	0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x46,
-	0x49, 0x4c, 0x45, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x49, 0x4d, 0x41, 0x47, 0x45, 0x10, 0x01,
-	0x12, 0x08, 0x0a, 0x04, 0x4c, 0x49, 0x4e, 0x4b, 0x10, 0x02, 0x1a, 0xf1, 0x01, 0x0a, 0x09, 0x52,
-	0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x51, 0x0a, 0x09, 0x72, 0x65, 0x61, 0x63,
-	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x33, 0x2e, 0x61, 0x6e,
-	0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68, 0x61, 0x74,
-	0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e,
-	0x73, 0x2e, 0x52, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79,
-	0x52, 0x09, 0x72, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x1a, 0x6f, 0x0a, 0x0e, 0x52,
-	0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a,
-	0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12,
-	0x47, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x31,
+	0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2e, 0x54, 0x65, 0x78, 0x74, 0x2e, 0x4d, 0x61,
+	0x72, 0x6b, 0x52, 0x05, 0x6d, 0x61, 0x72, 0x6b, 0x73, 0x1a, 0x9f, 0x01, 0x0a, 0x0a, 0x41, 0x74,
+	0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x74, 0x61, 0x72, 0x67,
+	0x65, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74,
+	0x12, 0x48, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x34,
 	0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x43,
-	0x68, 0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x61, 0x63, 0x74,
-	0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x4c, 0x69, 0x73,
-	0x74, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x1a, 0x20, 0x0a, 0x0c,
-	0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03,
-	0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x03, 0x69, 0x64, 0x73, 0x2a, 0xf1,
-	0x03, 0x0a, 0x0e, 0x53, 0x6d, 0x61, 0x72, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x54, 0x79, 0x70,
-	0x65, 0x12, 0x0e, 0x0a, 0x0a, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x4f, 0x6c, 0x64, 0x10,
-	0x00, 0x12, 0x08, 0x0a, 0x04, 0x50, 0x61, 0x67, 0x65, 0x10, 0x10, 0x12, 0x0f, 0x0a, 0x0b, 0x50,
-	0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x50, 0x61, 0x67, 0x65, 0x10, 0x11, 0x12, 0x08, 0x0a, 0x04,
-	0x48, 0x6f, 0x6d, 0x65, 0x10, 0x20, 0x12, 0x0b, 0x0a, 0x07, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76,
-	0x65, 0x10, 0x30, 0x12, 0x0a, 0x0a, 0x06, 0x57, 0x69, 0x64, 0x67, 0x65, 0x74, 0x10, 0x70, 0x12,
-	0x09, 0x0a, 0x04, 0x46, 0x69, 0x6c, 0x65, 0x10, 0x80, 0x02, 0x12, 0x0d, 0x0a, 0x08, 0x54, 0x65,
-	0x6d, 0x70, 0x6c, 0x61, 0x74, 0x65, 0x10, 0xa0, 0x02, 0x12, 0x14, 0x0a, 0x0f, 0x42, 0x75, 0x6e,
-	0x64, 0x6c, 0x65, 0x64, 0x54, 0x65, 0x6d, 0x70, 0x6c, 0x61, 0x74, 0x65, 0x10, 0xa1, 0x02, 0x12,
-	0x14, 0x0a, 0x0f, 0x42, 0x75, 0x6e, 0x64, 0x6c, 0x65, 0x64, 0x52, 0x65, 0x6c, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x10, 0x80, 0x04, 0x12, 0x0e, 0x0a, 0x09, 0x53, 0x75, 0x62, 0x4f, 0x62, 0x6a, 0x65,
-	0x63, 0x74, 0x10, 0x81, 0x04, 0x12, 0x16, 0x0a, 0x11, 0x42, 0x75, 0x6e, 0x64, 0x6c, 0x65, 0x64,
-	0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0x82, 0x04, 0x12, 0x13, 0x0a,
-	0x0e, 0x41, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x10,
-	0x83, 0x04, 0x12, 0x09, 0x0a, 0x04, 0x44, 0x61, 0x74, 0x65, 0x10, 0x84, 0x04, 0x12, 0x0e, 0x0a,
-	0x09, 0x57, 0x6f, 0x72, 0x6b, 0x73, 0x70, 0x61, 0x63, 0x65, 0x10, 0x86, 0x04, 0x12, 0x0f, 0x0a,
-	0x0a, 0x53, 0x54, 0x52, 0x65, 0x6c, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x10, 0x89, 0x04, 0x12, 0x0b,
-	0x0a, 0x06, 0x53, 0x54, 0x54, 0x79, 0x70, 0x65, 0x10, 0x90, 0x04, 0x12, 0x15, 0x0a, 0x10, 0x53,
-	0x54, 0x52, 0x65, 0x6c, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x10,
-	0x91, 0x04, 0x12, 0x0e, 0x0a, 0x09, 0x53, 0x70, 0x61, 0x63, 0x65, 0x56, 0x69, 0x65, 0x77, 0x10,
-	0x92, 0x04, 0x12, 0x0d, 0x0a, 0x08, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x10, 0x94,
-	0x04, 0x12, 0x10, 0x0a, 0x0b, 0x50, 0x61, 0x72, 0x74, 0x69, 0x63, 0x69, 0x70, 0x61, 0x6e, 0x74,
-	0x10, 0x96, 0x04, 0x12, 0x12, 0x0a, 0x0d, 0x4d, 0x69, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x4f, 0x62,
-	0x6a, 0x65, 0x63, 0x74, 0x10, 0x87, 0x04, 0x12, 0x0f, 0x0a, 0x0a, 0x46, 0x69, 0x6c, 0x65, 0x4f,
-	0x62, 0x6a, 0x65, 0x63, 0x74, 0x10, 0x95, 0x04, 0x12, 0x17, 0x0a, 0x12, 0x4e, 0x6f, 0x74, 0x69,
-	0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x10, 0x97,
-	0x04, 0x12, 0x12, 0x0a, 0x0d, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x73, 0x4f, 0x62, 0x6a, 0x65,
-	0x63, 0x74, 0x10, 0x98, 0x04, 0x12, 0x0f, 0x0a, 0x0a, 0x43, 0x68, 0x61, 0x74, 0x4f, 0x62, 0x6a,
-	0x65, 0x63, 0x74, 0x10, 0x99, 0x04, 0x12, 0x16, 0x0a, 0x11, 0x43, 0x68, 0x61, 0x74, 0x44, 0x65,
-	0x72, 0x69, 0x76, 0x65, 0x64, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x10, 0xa0, 0x04, 0x12, 0x12,
-	0x0a, 0x0d, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x10,
-	0xa1, 0x04, 0x2a, 0xb5, 0x01, 0x0a, 0x0e, 0x52, 0x65, 0x6c, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x46,
-	0x6f, 0x72, 0x6d, 0x61, 0x74, 0x12, 0x0c, 0x0a, 0x08, 0x6c, 0x6f, 0x6e, 0x67, 0x74, 0x65, 0x78,
-	0x74, 0x10, 0x00, 0x12, 0x0d, 0x0a, 0x09, 0x73, 0x68, 0x6f, 0x72, 0x74, 0x74, 0x65, 0x78, 0x74,
-	0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x6e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x10, 0x02, 0x12, 0x0a,
-	0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x10, 0x03, 0x12, 0x07, 0x0a, 0x03, 0x74, 0x61,
-	0x67, 0x10, 0x0b, 0x12, 0x08, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x65, 0x10, 0x04, 0x12, 0x08, 0x0a,
-	0x04, 0x66, 0x69, 0x6c, 0x65, 0x10, 0x05, 0x12, 0x0c, 0x0a, 0x08, 0x63, 0x68, 0x65, 0x63, 0x6b,
-	0x62, 0x6f, 0x78, 0x10, 0x06, 0x12, 0x07, 0x0a, 0x03, 0x75, 0x72, 0x6c, 0x10, 0x07, 0x12, 0x09,
-	0x0a, 0x05, 0x65, 0x6d, 0x61, 0x69, 0x6c, 0x10, 0x08, 0x12, 0x09, 0x0a, 0x05, 0x70, 0x68, 0x6f,
-	0x6e, 0x65, 0x10, 0x09, 0x12, 0x09, 0x0a, 0x05, 0x65, 0x6d, 0x6f, 0x6a, 0x69, 0x10, 0x0a, 0x12,
-	0x0a, 0x0a, 0x06, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x10, 0x64, 0x12, 0x0d, 0x0a, 0x09, 0x72,
-	0x65, 0x6c, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x10, 0x65, 0x2a, 0x9b, 0x01, 0x0a, 0x0c, 0x4f,
-	0x62, 0x6a, 0x65, 0x63, 0x74, 0x4f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x12, 0x08, 0x0a, 0x04, 0x6e,
-	0x6f, 0x6e, 0x65, 0x10, 0x00, 0x12, 0x0d, 0x0a, 0x09, 0x63, 0x6c, 0x69, 0x70, 0x62, 0x6f, 0x61,
-	0x72, 0x64, 0x10, 0x01, 0x12, 0x0f, 0x0a, 0x0b, 0x64, 0x72, 0x61, 0x67, 0x41, 0x6e, 0x64, 0x44,
-	0x72, 0x6f, 0x70, 0x10, 0x02, 0x12, 0x0a, 0x0a, 0x06, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x10,
-	0x03, 0x12, 0x0e, 0x0a, 0x0a, 0x77, 0x65, 0x62, 0x63, 0x6c, 0x69, 0x70, 0x70, 0x65, 0x72, 0x10,
-	0x04, 0x12, 0x14, 0x0a, 0x10, 0x73, 0x68, 0x61, 0x72, 0x69, 0x6e, 0x67, 0x45, 0x78, 0x74, 0x65,
-	0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x10, 0x05, 0x12, 0x0b, 0x0a, 0x07, 0x75, 0x73, 0x65, 0x63, 0x61,
-	0x73, 0x65, 0x10, 0x06, 0x12, 0x0b, 0x0a, 0x07, 0x62, 0x75, 0x69, 0x6c, 0x74, 0x69, 0x6e, 0x10,
-	0x07, 0x12, 0x0c, 0x0a, 0x08, 0x62, 0x6f, 0x6f, 0x6b, 0x6d, 0x61, 0x72, 0x6b, 0x10, 0x08, 0x12,
-	0x07, 0x0a, 0x03, 0x61, 0x70, 0x69, 0x10, 0x09, 0x2a, 0xbd, 0x01, 0x0a, 0x0b, 0x53, 0x70, 0x61,
-	0x63, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x0b, 0x0a, 0x07, 0x55, 0x6e, 0x6b, 0x6e,
-	0x6f, 0x77, 0x6e, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x4c, 0x6f, 0x61, 0x64, 0x69, 0x6e, 0x67,
-	0x10, 0x01, 0x12, 0x06, 0x0a, 0x02, 0x4f, 0x6b, 0x10, 0x02, 0x12, 0x0b, 0x0a, 0x07, 0x4d, 0x69,
-	0x73, 0x73, 0x69, 0x6e, 0x67, 0x10, 0x03, 0x12, 0x09, 0x0a, 0x05, 0x45, 0x72, 0x72, 0x6f, 0x72,
-	0x10, 0x04, 0x12, 0x19, 0x0a, 0x15, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x57, 0x61, 0x69, 0x74,
-	0x69, 0x6e, 0x67, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x69, 0x6f, 0x6e, 0x10, 0x05, 0x12, 0x11, 0x0a,
-	0x0d, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x10, 0x06,
-	0x12, 0x10, 0x0a, 0x0c, 0x53, 0x70, 0x61, 0x63, 0x65, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64,
-	0x10, 0x07, 0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x70, 0x61, 0x63, 0x65, 0x41, 0x63, 0x74, 0x69, 0x76,
-	0x65, 0x10, 0x08, 0x12, 0x10, 0x0a, 0x0c, 0x53, 0x70, 0x61, 0x63, 0x65, 0x4a, 0x6f, 0x69, 0x6e,
-	0x69, 0x6e, 0x67, 0x10, 0x09, 0x12, 0x11, 0x0a, 0x0d, 0x53, 0x70, 0x61, 0x63, 0x65, 0x52, 0x65,
-	0x6d, 0x6f, 0x76, 0x69, 0x6e, 0x67, 0x10, 0x0a, 0x2a, 0x4e, 0x0a, 0x16, 0x50, 0x61, 0x72, 0x74,
-	0x69, 0x63, 0x69, 0x70, 0x61, 0x6e, 0x74, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f,
-	0x6e, 0x73, 0x12, 0x0a, 0x0a, 0x06, 0x52, 0x65, 0x61, 0x64, 0x65, 0x72, 0x10, 0x00, 0x12, 0x0a,
-	0x0a, 0x06, 0x57, 0x72, 0x69, 0x74, 0x65, 0x72, 0x10, 0x01, 0x12, 0x09, 0x0a, 0x05, 0x4f, 0x77,
-	0x6e, 0x65, 0x72, 0x10, 0x02, 0x12, 0x11, 0x0a, 0x0d, 0x4e, 0x6f, 0x50, 0x65, 0x72, 0x6d, 0x69,
-	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x10, 0x03, 0x2a, 0x63, 0x0a, 0x11, 0x50, 0x61, 0x72, 0x74,
-	0x69, 0x63, 0x69, 0x70, 0x61, 0x6e, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x0b, 0x0a,
-	0x07, 0x4a, 0x6f, 0x69, 0x6e, 0x69, 0x6e, 0x67, 0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x41, 0x63,
-	0x74, 0x69, 0x76, 0x65, 0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65,
-	0x64, 0x10, 0x02, 0x12, 0x0c, 0x0a, 0x08, 0x44, 0x65, 0x63, 0x6c, 0x69, 0x6e, 0x65, 0x64, 0x10,
-	0x03, 0x12, 0x0c, 0x0a, 0x08, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x69, 0x6e, 0x67, 0x10, 0x04, 0x12,
-	0x0c, 0x0a, 0x08, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x65, 0x64, 0x10, 0x05, 0x2a, 0x38, 0x0a,
-	0x0f, 0x53, 0x70, 0x61, 0x63, 0x65, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x54, 0x79, 0x70, 0x65,
-	0x12, 0x0b, 0x0a, 0x07, 0x50, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65, 0x10, 0x00, 0x12, 0x0c, 0x0a,
-	0x08, 0x50, 0x65, 0x72, 0x73, 0x6f, 0x6e, 0x61, 0x6c, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x53,
-	0x68, 0x61, 0x72, 0x65, 0x64, 0x10, 0x02, 0x2a, 0x43, 0x0a, 0x09, 0x49, 0x6d, 0x61, 0x67, 0x65,
+	0x68, 0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x41, 0x74, 0x74, 0x61, 0x63,
+	0x68, 0x6d, 0x65, 0x6e, 0x74, 0x2e, 0x41, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74,
+	0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x22, 0x2f, 0x0a, 0x0e, 0x41, 0x74,
+	0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04,
+	0x46, 0x49, 0x4c, 0x45, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x49, 0x4d, 0x41, 0x47, 0x45, 0x10,
+	0x01, 0x12, 0x08, 0x0a, 0x04, 0x4c, 0x49, 0x4e, 0x4b, 0x10, 0x02, 0x1a, 0xf1, 0x01, 0x0a, 0x09,
+	0x52, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x51, 0x0a, 0x09, 0x72, 0x65, 0x61,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x33, 0x2e, 0x61,
+	0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e, 0x43, 0x68, 0x61,
+	0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f,
+	0x6e, 0x73, 0x2e, 0x52, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x45, 0x6e, 0x74, 0x72,
+	0x79, 0x52, 0x09, 0x72, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x1a, 0x6f, 0x0a, 0x0e,
+	0x52, 0x65, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10,
+	0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79,
+	0x12, 0x47, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x31, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x2e,
+	0x43, 0x68, 0x61, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x61, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x4c, 0x69,
+	0x73, 0x74, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x1a, 0x20, 0x0a,
+	0x0c, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x10, 0x0a,
+	0x03, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x03, 0x69, 0x64, 0x73, 0x2a,
+	0xf1, 0x03, 0x0a, 0x0e, 0x53, 0x6d, 0x61, 0x72, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x54, 0x79,
+	0x70, 0x65, 0x12, 0x0e, 0x0a, 0x0a, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x4f, 0x6c, 0x64,
+	0x10, 0x00, 0x12, 0x08, 0x0a, 0x04, 0x50, 0x61, 0x67, 0x65, 0x10, 0x10, 0x12, 0x0f, 0x0a, 0x0b,
+	0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x50, 0x61, 0x67, 0x65, 0x10, 0x11, 0x12, 0x08, 0x0a,
+	0x04, 0x48, 0x6f, 0x6d, 0x65, 0x10, 0x20, 0x12, 0x0b, 0x0a, 0x07, 0x41, 0x72, 0x63, 0x68, 0x69,
+	0x76, 0x65, 0x10, 0x30, 0x12, 0x0a, 0x0a, 0x06, 0x57, 0x69, 0x64, 0x67, 0x65, 0x74, 0x10, 0x70,
+	0x12, 0x09, 0x0a, 0x04, 0x46, 0x69, 0x6c, 0x65, 0x10, 0x80, 0x02, 0x12, 0x0d, 0x0a, 0x08, 0x54,
+	0x65, 0x6d, 0x70, 0x6c, 0x61, 0x74, 0x65, 0x10, 0xa0, 0x02, 0x12, 0x14, 0x0a, 0x0f, 0x42, 0x75,
+	0x6e, 0x64, 0x6c, 0x65, 0x64, 0x54, 0x65, 0x6d, 0x70, 0x6c, 0x61, 0x74, 0x65, 0x10, 0xa1, 0x02,
+	0x12, 0x14, 0x0a, 0x0f, 0x42, 0x75, 0x6e, 0x64, 0x6c, 0x65, 0x64, 0x52, 0x65, 0x6c, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x10, 0x80, 0x04, 0x12, 0x0e, 0x0a, 0x09, 0x53, 0x75, 0x62, 0x4f, 0x62, 0x6a,
+	0x65, 0x63, 0x74, 0x10, 0x81, 0x04, 0x12, 0x16, 0x0a, 0x11, 0x42, 0x75, 0x6e, 0x64, 0x6c, 0x65,
+	0x64, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0x82, 0x04, 0x12, 0x13,
+	0x0a, 0x0e, 0x41, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65,
+	0x10, 0x83, 0x04, 0x12, 0x09, 0x0a, 0x04, 0x44, 0x61, 0x74, 0x65, 0x10, 0x84, 0x04, 0x12, 0x0e,
+	0x0a, 0x09, 0x57, 0x6f, 0x72, 0x6b, 0x73, 0x70, 0x61, 0x63, 0x65, 0x10, 0x86, 0x04, 0x12, 0x0f,
+	0x0a, 0x0a, 0x53, 0x54, 0x52, 0x65, 0x6c, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x10, 0x89, 0x04, 0x12,
+	0x0b, 0x0a, 0x06, 0x53, 0x54, 0x54, 0x79, 0x70, 0x65, 0x10, 0x90, 0x04, 0x12, 0x15, 0x0a, 0x10,
+	0x53, 0x54, 0x52, 0x65, 0x6c, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e,
+	0x10, 0x91, 0x04, 0x12, 0x0e, 0x0a, 0x09, 0x53, 0x70, 0x61, 0x63, 0x65, 0x56, 0x69, 0x65, 0x77,
+	0x10, 0x92, 0x04, 0x12, 0x0d, 0x0a, 0x08, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x10,
+	0x94, 0x04, 0x12, 0x10, 0x0a, 0x0b, 0x50, 0x61, 0x72, 0x74, 0x69, 0x63, 0x69, 0x70, 0x61, 0x6e,
+	0x74, 0x10, 0x96, 0x04, 0x12, 0x12, 0x0a, 0x0d, 0x4d, 0x69, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x4f,
+	0x62, 0x6a, 0x65, 0x63, 0x74, 0x10, 0x87, 0x04, 0x12, 0x0f, 0x0a, 0x0a, 0x46, 0x69, 0x6c, 0x65,
+	0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x10, 0x95, 0x04, 0x12, 0x17, 0x0a, 0x12, 0x4e, 0x6f, 0x74,
+	0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x10,
+	0x97, 0x04, 0x12, 0x12, 0x0a, 0x0d, 0x44, 0x65, 0x76, 0x69, 0x63, 0x65, 0x73, 0x4f, 0x62, 0x6a,
+	0x65, 0x63, 0x74, 0x10, 0x98, 0x04, 0x12, 0x0f, 0x0a, 0x0a, 0x43, 0x68, 0x61, 0x74, 0x4f, 0x62,
+	0x6a, 0x65, 0x63, 0x74, 0x10, 0x99, 0x04, 0x12, 0x16, 0x0a, 0x11, 0x43, 0x68, 0x61, 0x74, 0x44,
+	0x65, 0x72, 0x69, 0x76, 0x65, 0x64, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x10, 0xa0, 0x04, 0x12,
+	0x12, 0x0a, 0x0d, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74,
+	0x10, 0xa1, 0x04, 0x2a, 0xb5, 0x01, 0x0a, 0x0e, 0x52, 0x65, 0x6c, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x46, 0x6f, 0x72, 0x6d, 0x61, 0x74, 0x12, 0x0c, 0x0a, 0x08, 0x6c, 0x6f, 0x6e, 0x67, 0x74, 0x65,
+	0x78, 0x74, 0x10, 0x00, 0x12, 0x0d, 0x0a, 0x09, 0x73, 0x68, 0x6f, 0x72, 0x74, 0x74, 0x65, 0x78,
+	0x74, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x6e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x10, 0x02, 0x12,
+	0x0a, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x10, 0x03, 0x12, 0x07, 0x0a, 0x03, 0x74,
+	0x61, 0x67, 0x10, 0x0b, 0x12, 0x08, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x65, 0x10, 0x04, 0x12, 0x08,
+	0x0a, 0x04, 0x66, 0x69, 0x6c, 0x65, 0x10, 0x05, 0x12, 0x0c, 0x0a, 0x08, 0x63, 0x68, 0x65, 0x63,
+	0x6b, 0x62, 0x6f, 0x78, 0x10, 0x06, 0x12, 0x07, 0x0a, 0x03, 0x75, 0x72, 0x6c, 0x10, 0x07, 0x12,
+	0x09, 0x0a, 0x05, 0x65, 0x6d, 0x61, 0x69, 0x6c, 0x10, 0x08, 0x12, 0x09, 0x0a, 0x05, 0x70, 0x68,
+	0x6f, 0x6e, 0x65, 0x10, 0x09, 0x12, 0x09, 0x0a, 0x05, 0x65, 0x6d, 0x6f, 0x6a, 0x69, 0x10, 0x0a,
+	0x12, 0x0a, 0x0a, 0x06, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x10, 0x64, 0x12, 0x0d, 0x0a, 0x09,
+	0x72, 0x65, 0x6c, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x10, 0x65, 0x2a, 0x9b, 0x01, 0x0a, 0x0c,
+	0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x12, 0x08, 0x0a, 0x04,
+	0x6e, 0x6f, 0x6e, 0x65, 0x10, 0x00, 0x12, 0x0d, 0x0a, 0x09, 0x63, 0x6c, 0x69, 0x70, 0x62, 0x6f,
+	0x61, 0x72, 0x64, 0x10, 0x01, 0x12, 0x0f, 0x0a, 0x0b, 0x64, 0x72, 0x61, 0x67, 0x41, 0x6e, 0x64,
+	0x44, 0x72, 0x6f, 0x70, 0x10, 0x02, 0x12, 0x0a, 0x0a, 0x06, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74,
+	0x10, 0x03, 0x12, 0x0e, 0x0a, 0x0a, 0x77, 0x65, 0x62, 0x63, 0x6c, 0x69, 0x70, 0x70, 0x65, 0x72,
+	0x10, 0x04, 0x12, 0x14, 0x0a, 0x10, 0x73, 0x68, 0x61, 0x72, 0x69, 0x6e, 0x67, 0x45, 0x78, 0x74,
+	0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x10, 0x05, 0x12, 0x0b, 0x0a, 0x07, 0x75, 0x73, 0x65, 0x63,
+	0x61, 0x73, 0x65, 0x10, 0x06, 0x12, 0x0b, 0x0a, 0x07, 0x62, 0x75, 0x69, 0x6c, 0x74, 0x69, 0x6e,
+	0x10, 0x07, 0x12, 0x0c, 0x0a, 0x08, 0x62, 0x6f, 0x6f, 0x6b, 0x6d, 0x61, 0x72, 0x6b, 0x10, 0x08,
+	0x12, 0x07, 0x0a, 0x03, 0x61, 0x70, 0x69, 0x10, 0x09, 0x2a, 0xbd, 0x01, 0x0a, 0x0b, 0x53, 0x70,
+	0x61, 0x63, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x0b, 0x0a, 0x07, 0x55, 0x6e, 0x6b,
+	0x6e, 0x6f, 0x77, 0x6e, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x4c, 0x6f, 0x61, 0x64, 0x69, 0x6e,
+	0x67, 0x10, 0x01, 0x12, 0x06, 0x0a, 0x02, 0x4f, 0x6b, 0x10, 0x02, 0x12, 0x0b, 0x0a, 0x07, 0x4d,
+	0x69, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x10, 0x03, 0x12, 0x09, 0x0a, 0x05, 0x45, 0x72, 0x72, 0x6f,
+	0x72, 0x10, 0x04, 0x12, 0x19, 0x0a, 0x15, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x57, 0x61, 0x69,
+	0x74, 0x69, 0x6e, 0x67, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x69, 0x6f, 0x6e, 0x10, 0x05, 0x12, 0x11,
+	0x0a, 0x0d, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x10,
+	0x06, 0x12, 0x10, 0x0a, 0x0c, 0x53, 0x70, 0x61, 0x63, 0x65, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x64, 0x10, 0x07, 0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x70, 0x61, 0x63, 0x65, 0x41, 0x63, 0x74, 0x69,
+	0x76, 0x65, 0x10, 0x08, 0x12, 0x10, 0x0a, 0x0c, 0x53, 0x70, 0x61, 0x63, 0x65, 0x4a, 0x6f, 0x69,
+	0x6e, 0x69, 0x6e, 0x67, 0x10, 0x09, 0x12, 0x11, 0x0a, 0x0d, 0x53, 0x70, 0x61, 0x63, 0x65, 0x52,
+	0x65, 0x6d, 0x6f, 0x76, 0x69, 0x6e, 0x67, 0x10, 0x0a, 0x2a, 0x4e, 0x0a, 0x16, 0x50, 0x61, 0x72,
+	0x74, 0x69, 0x63, 0x69, 0x70, 0x61, 0x6e, 0x74, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69,
+	0x6f, 0x6e, 0x73, 0x12, 0x0a, 0x0a, 0x06, 0x52, 0x65, 0x61, 0x64, 0x65, 0x72, 0x10, 0x00, 0x12,
+	0x0a, 0x0a, 0x06, 0x57, 0x72, 0x69, 0x74, 0x65, 0x72, 0x10, 0x01, 0x12, 0x09, 0x0a, 0x05, 0x4f,
+	0x77, 0x6e, 0x65, 0x72, 0x10, 0x02, 0x12, 0x11, 0x0a, 0x0d, 0x4e, 0x6f, 0x50, 0x65, 0x72, 0x6d,
+	0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x10, 0x03, 0x2a, 0x63, 0x0a, 0x11, 0x50, 0x61, 0x72,
+	0x74, 0x69, 0x63, 0x69, 0x70, 0x61, 0x6e, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x0b,
+	0x0a, 0x07, 0x4a, 0x6f, 0x69, 0x6e, 0x69, 0x6e, 0x67, 0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x41,
+	0x63, 0x74, 0x69, 0x76, 0x65, 0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x52, 0x65, 0x6d, 0x6f, 0x76,
+	0x65, 0x64, 0x10, 0x02, 0x12, 0x0c, 0x0a, 0x08, 0x44, 0x65, 0x63, 0x6c, 0x69, 0x6e, 0x65, 0x64,
+	0x10, 0x03, 0x12, 0x0c, 0x0a, 0x08, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x69, 0x6e, 0x67, 0x10, 0x04,
+	0x12, 0x0c, 0x0a, 0x08, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x65, 0x64, 0x10, 0x05, 0x2a, 0x38,
+	0x0a, 0x0f, 0x53, 0x70, 0x61, 0x63, 0x65, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x54, 0x79, 0x70,
+	0x65, 0x12, 0x0b, 0x0a, 0x07, 0x50, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65, 0x10, 0x00, 0x12, 0x0c,
+	0x0a, 0x08, 0x50, 0x65, 0x72, 0x73, 0x6f, 0x6e, 0x61, 0x6c, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06,
+	0x53, 0x68, 0x61, 0x72, 0x65, 0x64, 0x10, 0x02, 0x2a, 0x2d, 0x0a, 0x0b, 0x53, 0x70, 0x61, 0x63,
+	0x65, 0x55, 0x78, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x43, 0x68, 0x61, 0x74, 0x10,
+	0x00, 0x12, 0x08, 0x0a, 0x04, 0x44, 0x61, 0x74, 0x61, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x53,
+	0x74, 0x72, 0x65, 0x61, 0x6d, 0x10, 0x02, 0x2a, 0x43, 0x0a, 0x09, 0x49, 0x6d, 0x61, 0x67, 0x65,
 	0x4b, 0x69, 0x6e, 0x64, 0x12, 0x09, 0x0a, 0x05, 0x42, 0x61, 0x73, 0x69, 0x63, 0x10, 0x00, 0x12,
 	0x09, 0x0a, 0x05, 0x43, 0x6f, 0x76, 0x65, 0x72, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x49, 0x63,
 	0x6f, 0x6e, 0x10, 0x02, 0x12, 0x16, 0x0a, 0x12, 0x41, 0x75, 0x74, 0x6f, 0x6d, 0x61, 0x74, 0x69,
@@ -12379,8 +12578,8 @@ func file_pkg_lib_pb_model_protos_models_proto_rawDescGZIP() []byte {
 	return file_pkg_lib_pb_model_protos_models_proto_rawDescData
 }
 
-var file_pkg_lib_pb_model_protos_models_proto_enumTypes = make([]protoimpl.EnumInfo, 59)
-var file_pkg_lib_pb_model_protos_models_proto_msgTypes = make([]protoimpl.MessageInfo, 99)
+var file_pkg_lib_pb_model_protos_models_proto_enumTypes = make([]protoimpl.EnumInfo, 60)
+var file_pkg_lib_pb_model_protos_models_proto_msgTypes = make([]protoimpl.MessageInfo, 101)
 var file_pkg_lib_pb_model_protos_models_proto_goTypes = []any{
 	(SmartBlockType)(0),                              // 0: anytype.model.SmartBlockType
 	(RelationFormat)(0),                              // 1: anytype.model.RelationFormat
@@ -12389,320 +12588,325 @@ var file_pkg_lib_pb_model_protos_models_proto_goTypes = []any{
 	(ParticipantPermissions)(0),                      // 4: anytype.model.ParticipantPermissions
 	(ParticipantStatus)(0),                           // 5: anytype.model.ParticipantStatus
 	(SpaceAccessType)(0),                             // 6: anytype.model.SpaceAccessType
-	(ImageKind)(0),                                   // 7: anytype.model.ImageKind
-	(FileIndexingStatus)(0),                          // 8: anytype.model.FileIndexingStatus
-	(SpaceShareableStatus)(0),                        // 9: anytype.model.SpaceShareableStatus
-	(NameserviceNameType)(0),                         // 10: anytype.model.NameserviceNameType
-	(DeviceNetworkType)(0),                           // 11: anytype.model.DeviceNetworkType
-	(BlockPosition)(0),                               // 12: anytype.model.Block.Position
-	(BlockAlign)(0),                                  // 13: anytype.model.Block.Align
-	(BlockVerticalAlign)(0),                          // 14: anytype.model.Block.VerticalAlign
-	(BlockContentLayoutStyle)(0),                     // 15: anytype.model.Block.Content.Layout.Style
-	(BlockContentLinkIconSize)(0),                    // 16: anytype.model.Block.Content.Link.IconSize
-	(BlockContentLinkStyle)(0),                       // 17: anytype.model.Block.Content.Link.Style
-	(BlockContentLinkDescription)(0),                 // 18: anytype.model.Block.Content.Link.Description
-	(BlockContentLinkCardStyle)(0),                   // 19: anytype.model.Block.Content.Link.CardStyle
-	(BlockContentDivStyle)(0),                        // 20: anytype.model.Block.Content.Div.Style
-	(BlockContentBookmarkState)(0),                   // 21: anytype.model.Block.Content.Bookmark.State
-	(BlockContentTextStyle)(0),                       // 22: anytype.model.Block.Content.Text.Style
-	(BlockContentTextMarkType)(0),                    // 23: anytype.model.Block.Content.Text.Mark.Type
-	(BlockContentFileType)(0),                        // 24: anytype.model.Block.Content.File.Type
-	(BlockContentFileStyle)(0),                       // 25: anytype.model.Block.Content.File.Style
-	(BlockContentFileState)(0),                       // 26: anytype.model.Block.Content.File.State
-	(BlockContentDataviewViewType)(0),                // 27: anytype.model.Block.Content.Dataview.View.Type
-	(BlockContentDataviewViewSize)(0),                // 28: anytype.model.Block.Content.Dataview.View.Size
-	(BlockContentDataviewRelationDateFormat)(0),      // 29: anytype.model.Block.Content.Dataview.Relation.DateFormat
-	(BlockContentDataviewRelationTimeFormat)(0),      // 30: anytype.model.Block.Content.Dataview.Relation.TimeFormat
-	(BlockContentDataviewRelationFormulaType)(0),     // 31: anytype.model.Block.Content.Dataview.Relation.FormulaType
-	(BlockContentDataviewSortType)(0),                // 32: anytype.model.Block.Content.Dataview.Sort.Type
-	(BlockContentDataviewSortEmptyType)(0),           // 33: anytype.model.Block.Content.Dataview.Sort.EmptyType
-	(BlockContentDataviewFilterOperator)(0),          // 34: anytype.model.Block.Content.Dataview.Filter.Operator
-	(BlockContentDataviewFilterCondition)(0),         // 35: anytype.model.Block.Content.Dataview.Filter.Condition
-	(BlockContentDataviewFilterQuickOption)(0),       // 36: anytype.model.Block.Content.Dataview.Filter.QuickOption
-	(BlockContentLatexProcessor)(0),                  // 37: anytype.model.Block.Content.Latex.Processor
-	(BlockContentWidgetLayout)(0),                    // 38: anytype.model.Block.Content.Widget.Layout
-	(AccountStatusType)(0),                           // 39: anytype.model.Account.StatusType
-	(AccountAuthLocalApiScope)(0),                    // 40: anytype.model.Account.Auth.LocalApiScope
-	(LinkPreviewType)(0),                             // 41: anytype.model.LinkPreview.Type
-	(RestrictionsObjectRestriction)(0),               // 42: anytype.model.Restrictions.ObjectRestriction
-	(RestrictionsDataviewRestriction)(0),             // 43: anytype.model.Restrictions.DataviewRestriction
-	(ObjectTypeLayout)(0),                            // 44: anytype.model.ObjectType.Layout
-	(RelationScope)(0),                               // 45: anytype.model.Relation.Scope
-	(RelationDataSource)(0),                          // 46: anytype.model.Relation.DataSource
-	(InternalFlagValue)(0),                           // 47: anytype.model.InternalFlag.Value
-	(NotificationStatus)(0),                          // 48: anytype.model.Notification.Status
-	(NotificationActionType)(0),                      // 49: anytype.model.Notification.ActionType
-	(NotificationExportCode)(0),                      // 50: anytype.model.Notification.Export.Code
-	(ExportFormat)(0),                                // 51: anytype.model.Export.Format
-	(ImportType)(0),                                  // 52: anytype.model.Import.Type
-	(ImportErrorCode)(0),                             // 53: anytype.model.Import.ErrorCode
-	(MembershipStatus)(0),                            // 54: anytype.model.Membership.Status
-	(MembershipPaymentMethod)(0),                     // 55: anytype.model.Membership.PaymentMethod
-	(MembershipEmailVerificationStatus)(0),           // 56: anytype.model.Membership.EmailVerificationStatus
-	(MembershipTierDataPeriodType)(0),                // 57: anytype.model.MembershipTierData.PeriodType
-	(ChatMessageAttachmentAttachmentType)(0),         // 58: anytype.model.ChatMessage.Attachment.AttachmentType
-	(*SmartBlockSnapshotBase)(nil),                   // 59: anytype.model.SmartBlockSnapshotBase
-	(*Search)(nil),                                   // 60: anytype.model.Search
-	(*Block)(nil),                                    // 61: anytype.model.Block
-	(*BlockMetaOnly)(nil),                            // 62: anytype.model.BlockMetaOnly
-	(*Range)(nil),                                    // 63: anytype.model.Range
-	(*Account)(nil),                                  // 64: anytype.model.Account
-	(*LinkPreview)(nil),                              // 65: anytype.model.LinkPreview
-	(*Restrictions)(nil),                             // 66: anytype.model.Restrictions
-	(*Object)(nil),                                   // 67: anytype.model.Object
-	(*SpaceObjectHeader)(nil),                        // 68: anytype.model.SpaceObjectHeader
-	(*ObjectType)(nil),                               // 69: anytype.model.ObjectType
-	(*Layout)(nil),                                   // 70: anytype.model.Layout
-	(*RelationWithValue)(nil),                        // 71: anytype.model.RelationWithValue
-	(*Relation)(nil),                                 // 72: anytype.model.Relation
-	(*RelationLink)(nil),                             // 73: anytype.model.RelationLink
-	(*Relations)(nil),                                // 74: anytype.model.Relations
-	(*RelationOptions)(nil),                          // 75: anytype.model.RelationOptions
-	(*InternalFlag)(nil),                             // 76: anytype.model.InternalFlag
-	(*ObjectView)(nil),                               // 77: anytype.model.ObjectView
-	(*ParticipantPermissionChange)(nil),              // 78: anytype.model.ParticipantPermissionChange
-	(*Metadata)(nil),                                 // 79: anytype.model.Metadata
-	(*Notification)(nil),                             // 80: anytype.model.Notification
-	(*Export)(nil),                                   // 81: anytype.model.Export
-	(*Import)(nil),                                   // 82: anytype.model.Import
-	(*Invite)(nil),                                   // 83: anytype.model.Invite
-	(*InvitePayload)(nil),                            // 84: anytype.model.InvitePayload
-	(*IdentityProfile)(nil),                          // 85: anytype.model.IdentityProfile
-	(*FileInfo)(nil),                                 // 86: anytype.model.FileInfo
-	(*FileEncryptionKey)(nil),                        // 87: anytype.model.FileEncryptionKey
-	(*ManifestInfo)(nil),                             // 88: anytype.model.ManifestInfo
-	(*Membership)(nil),                               // 89: anytype.model.Membership
-	(*MembershipTierData)(nil),                       // 90: anytype.model.MembershipTierData
-	(*Detail)(nil),                                   // 91: anytype.model.Detail
-	(*DeviceInfo)(nil),                               // 92: anytype.model.DeviceInfo
-	(*ChatMessage)(nil),                              // 93: anytype.model.ChatMessage
-	(*SearchResult)(nil),                             // 94: anytype.model.Search.Result
-	(*SearchMeta)(nil),                               // 95: anytype.model.Search.Meta
-	(*BlockRestrictions)(nil),                        // 96: anytype.model.Block.Restrictions
-	(*BlockContent)(nil),                             // 97: anytype.model.Block.Content
-	(*BlockContentLayout)(nil),                       // 98: anytype.model.Block.Content.Layout
-	(*BlockContentLink)(nil),                         // 99: anytype.model.Block.Content.Link
-	(*BlockContentDiv)(nil),                          // 100: anytype.model.Block.Content.Div
-	(*BlockContentBookmark)(nil),                     // 101: anytype.model.Block.Content.Bookmark
-	(*BlockContentIcon)(nil),                         // 102: anytype.model.Block.Content.Icon
-	(*BlockContentFeaturedRelations)(nil),            // 103: anytype.model.Block.Content.FeaturedRelations
-	(*BlockContentText)(nil),                         // 104: anytype.model.Block.Content.Text
-	(*BlockContentFile)(nil),                         // 105: anytype.model.Block.Content.File
-	(*BlockContentSmartblock)(nil),                   // 106: anytype.model.Block.Content.Smartblock
-	(*BlockContentDataview)(nil),                     // 107: anytype.model.Block.Content.Dataview
-	(*BlockContentRelation)(nil),                     // 108: anytype.model.Block.Content.Relation
-	(*BlockContentLatex)(nil),                        // 109: anytype.model.Block.Content.Latex
-	(*BlockContentTableOfContents)(nil),              // 110: anytype.model.Block.Content.TableOfContents
-	(*BlockContentTable)(nil),                        // 111: anytype.model.Block.Content.Table
-	(*BlockContentTableColumn)(nil),                  // 112: anytype.model.Block.Content.TableColumn
-	(*BlockContentTableRow)(nil),                     // 113: anytype.model.Block.Content.TableRow
-	(*BlockContentWidget)(nil),                       // 114: anytype.model.Block.Content.Widget
-	(*BlockContentChat)(nil),                         // 115: anytype.model.Block.Content.Chat
-	(*BlockContentTextMarks)(nil),                    // 116: anytype.model.Block.Content.Text.Marks
-	(*BlockContentTextMark)(nil),                     // 117: anytype.model.Block.Content.Text.Mark
-	(*BlockContentDataviewView)(nil),                 // 118: anytype.model.Block.Content.Dataview.View
-	(*BlockContentDataviewRelation)(nil),             // 119: anytype.model.Block.Content.Dataview.Relation
-	(*BlockContentDataviewSort)(nil),                 // 120: anytype.model.Block.Content.Dataview.Sort
-	(*BlockContentDataviewFilter)(nil),               // 121: anytype.model.Block.Content.Dataview.Filter
-	(*BlockContentDataviewGroupOrder)(nil),           // 122: anytype.model.Block.Content.Dataview.GroupOrder
-	(*BlockContentDataviewViewGroup)(nil),            // 123: anytype.model.Block.Content.Dataview.ViewGroup
-	(*BlockContentDataviewObjectOrder)(nil),          // 124: anytype.model.Block.Content.Dataview.ObjectOrder
-	(*BlockContentDataviewGroup)(nil),                // 125: anytype.model.Block.Content.Dataview.Group
-	(*BlockContentDataviewStatus)(nil),               // 126: anytype.model.Block.Content.Dataview.Status
-	(*BlockContentDataviewTag)(nil),                  // 127: anytype.model.Block.Content.Dataview.Tag
-	(*BlockContentDataviewCheckbox)(nil),             // 128: anytype.model.Block.Content.Dataview.Checkbox
-	(*BlockContentDataviewDate)(nil),                 // 129: anytype.model.Block.Content.Dataview.Date
-	(*AccountConfig)(nil),                            // 130: anytype.model.Account.Config
-	(*AccountStatus)(nil),                            // 131: anytype.model.Account.Status
-	(*AccountInfo)(nil),                              // 132: anytype.model.Account.Info
-	(*AccountAuth)(nil),                              // 133: anytype.model.Account.Auth
-	(*RestrictionsDataviewRestrictions)(nil),         // 134: anytype.model.Restrictions.DataviewRestrictions
-	(*ObjectChangePayload)(nil),                      // 135: anytype.model.Object.ChangePayload
-	(*RelationOption)(nil),                           // 136: anytype.model.Relation.Option
-	(*ObjectViewDetailsSet)(nil),                     // 137: anytype.model.ObjectView.DetailsSet
-	(*ObjectViewRelationWithValuePerObject)(nil),     // 138: anytype.model.ObjectView.RelationWithValuePerObject
-	(*ObjectViewHistorySize)(nil),                    // 139: anytype.model.ObjectView.HistorySize
-	(*ObjectViewBlockParticipant)(nil),               // 140: anytype.model.ObjectView.BlockParticipant
-	(*MetadataPayload)(nil),                          // 141: anytype.model.Metadata.Payload
-	(*MetadataPayloadIdentityPayload)(nil),           // 142: anytype.model.Metadata.Payload.IdentityPayload
-	(*NotificationImport)(nil),                       // 143: anytype.model.Notification.Import
-	(*NotificationExport)(nil),                       // 144: anytype.model.Notification.Export
-	(*NotificationGalleryImport)(nil),                // 145: anytype.model.Notification.GalleryImport
-	(*NotificationRequestToJoin)(nil),                // 146: anytype.model.Notification.RequestToJoin
-	(*NotificationTest)(nil),                         // 147: anytype.model.Notification.Test
-	(*NotificationParticipantRequestApproved)(nil),   // 148: anytype.model.Notification.ParticipantRequestApproved
-	(*NotificationRequestToLeave)(nil),               // 149: anytype.model.Notification.RequestToLeave
-	(*NotificationParticipantRemove)(nil),            // 150: anytype.model.Notification.ParticipantRemove
-	(*NotificationParticipantRequestDecline)(nil),    // 151: anytype.model.Notification.ParticipantRequestDecline
-	(*NotificationParticipantPermissionsChange)(nil), // 152: anytype.model.Notification.ParticipantPermissionsChange
-	(*ChatMessageMessageContent)(nil),                // 153: anytype.model.ChatMessage.MessageContent
-	(*ChatMessageAttachment)(nil),                    // 154: anytype.model.ChatMessage.Attachment
-	(*ChatMessageReactions)(nil),                     // 155: anytype.model.ChatMessage.Reactions
-	nil,                                              // 156: anytype.model.ChatMessage.Reactions.ReactionsEntry
-	(*ChatMessageReactionsIdentityList)(nil),         // 157: anytype.model.ChatMessage.Reactions.IdentityList
-	(*structpb.Struct)(nil),                          // 158: google.protobuf.Struct
-	(*structpb.Value)(nil),                           // 159: google.protobuf.Value
+	(SpaceUxType)(0),                                 // 7: anytype.model.SpaceUxType
+	(ImageKind)(0),                                   // 8: anytype.model.ImageKind
+	(FileIndexingStatus)(0),                          // 9: anytype.model.FileIndexingStatus
+	(SpaceShareableStatus)(0),                        // 10: anytype.model.SpaceShareableStatus
+	(NameserviceNameType)(0),                         // 11: anytype.model.NameserviceNameType
+	(DeviceNetworkType)(0),                           // 12: anytype.model.DeviceNetworkType
+	(BlockPosition)(0),                               // 13: anytype.model.Block.Position
+	(BlockAlign)(0),                                  // 14: anytype.model.Block.Align
+	(BlockVerticalAlign)(0),                          // 15: anytype.model.Block.VerticalAlign
+	(BlockContentLayoutStyle)(0),                     // 16: anytype.model.Block.Content.Layout.Style
+	(BlockContentLinkIconSize)(0),                    // 17: anytype.model.Block.Content.Link.IconSize
+	(BlockContentLinkStyle)(0),                       // 18: anytype.model.Block.Content.Link.Style
+	(BlockContentLinkDescription)(0),                 // 19: anytype.model.Block.Content.Link.Description
+	(BlockContentLinkCardStyle)(0),                   // 20: anytype.model.Block.Content.Link.CardStyle
+	(BlockContentDivStyle)(0),                        // 21: anytype.model.Block.Content.Div.Style
+	(BlockContentBookmarkState)(0),                   // 22: anytype.model.Block.Content.Bookmark.State
+	(BlockContentTextStyle)(0),                       // 23: anytype.model.Block.Content.Text.Style
+	(BlockContentTextMarkType)(0),                    // 24: anytype.model.Block.Content.Text.Mark.Type
+	(BlockContentFileType)(0),                        // 25: anytype.model.Block.Content.File.Type
+	(BlockContentFileStyle)(0),                       // 26: anytype.model.Block.Content.File.Style
+	(BlockContentFileState)(0),                       // 27: anytype.model.Block.Content.File.State
+	(BlockContentDataviewViewType)(0),                // 28: anytype.model.Block.Content.Dataview.View.Type
+	(BlockContentDataviewViewSize)(0),                // 29: anytype.model.Block.Content.Dataview.View.Size
+	(BlockContentDataviewRelationDateFormat)(0),      // 30: anytype.model.Block.Content.Dataview.Relation.DateFormat
+	(BlockContentDataviewRelationTimeFormat)(0),      // 31: anytype.model.Block.Content.Dataview.Relation.TimeFormat
+	(BlockContentDataviewRelationFormulaType)(0),     // 32: anytype.model.Block.Content.Dataview.Relation.FormulaType
+	(BlockContentDataviewSortType)(0),                // 33: anytype.model.Block.Content.Dataview.Sort.Type
+	(BlockContentDataviewSortEmptyType)(0),           // 34: anytype.model.Block.Content.Dataview.Sort.EmptyType
+	(BlockContentDataviewFilterOperator)(0),          // 35: anytype.model.Block.Content.Dataview.Filter.Operator
+	(BlockContentDataviewFilterCondition)(0),         // 36: anytype.model.Block.Content.Dataview.Filter.Condition
+	(BlockContentDataviewFilterQuickOption)(0),       // 37: anytype.model.Block.Content.Dataview.Filter.QuickOption
+	(BlockContentLatexProcessor)(0),                  // 38: anytype.model.Block.Content.Latex.Processor
+	(BlockContentWidgetLayout)(0),                    // 39: anytype.model.Block.Content.Widget.Layout
+	(AccountStatusType)(0),                           // 40: anytype.model.Account.StatusType
+	(AccountAuthLocalApiScope)(0),                    // 41: anytype.model.Account.Auth.LocalApiScope
+	(LinkPreviewType)(0),                             // 42: anytype.model.LinkPreview.Type
+	(RestrictionsObjectRestriction)(0),               // 43: anytype.model.Restrictions.ObjectRestriction
+	(RestrictionsDataviewRestriction)(0),             // 44: anytype.model.Restrictions.DataviewRestriction
+	(ObjectTypeLayout)(0),                            // 45: anytype.model.ObjectType.Layout
+	(RelationScope)(0),                               // 46: anytype.model.Relation.Scope
+	(RelationDataSource)(0),                          // 47: anytype.model.Relation.DataSource
+	(InternalFlagValue)(0),                           // 48: anytype.model.InternalFlag.Value
+	(NotificationStatus)(0),                          // 49: anytype.model.Notification.Status
+	(NotificationActionType)(0),                      // 50: anytype.model.Notification.ActionType
+	(NotificationExportCode)(0),                      // 51: anytype.model.Notification.Export.Code
+	(ExportFormat)(0),                                // 52: anytype.model.Export.Format
+	(ImportType)(0),                                  // 53: anytype.model.Import.Type
+	(ImportErrorCode)(0),                             // 54: anytype.model.Import.ErrorCode
+	(MembershipStatus)(0),                            // 55: anytype.model.Membership.Status
+	(MembershipPaymentMethod)(0),                     // 56: anytype.model.Membership.PaymentMethod
+	(MembershipEmailVerificationStatus)(0),           // 57: anytype.model.Membership.EmailVerificationStatus
+	(MembershipTierDataPeriodType)(0),                // 58: anytype.model.MembershipTierData.PeriodType
+	(ChatMessageAttachmentAttachmentType)(0),         // 59: anytype.model.ChatMessage.Attachment.AttachmentType
+	(*SmartBlockSnapshotBase)(nil),                   // 60: anytype.model.SmartBlockSnapshotBase
+	(*Search)(nil),                                   // 61: anytype.model.Search
+	(*Block)(nil),                                    // 62: anytype.model.Block
+	(*BlockMetaOnly)(nil),                            // 63: anytype.model.BlockMetaOnly
+	(*Range)(nil),                                    // 64: anytype.model.Range
+	(*Account)(nil),                                  // 65: anytype.model.Account
+	(*LinkPreview)(nil),                              // 66: anytype.model.LinkPreview
+	(*Restrictions)(nil),                             // 67: anytype.model.Restrictions
+	(*Object)(nil),                                   // 68: anytype.model.Object
+	(*SpaceObjectHeader)(nil),                        // 69: anytype.model.SpaceObjectHeader
+	(*ObjectType)(nil),                               // 70: anytype.model.ObjectType
+	(*Layout)(nil),                                   // 71: anytype.model.Layout
+	(*RelationWithValue)(nil),                        // 72: anytype.model.RelationWithValue
+	(*Relation)(nil),                                 // 73: anytype.model.Relation
+	(*RelationLink)(nil),                             // 74: anytype.model.RelationLink
+	(*Relations)(nil),                                // 75: anytype.model.Relations
+	(*RelationOptions)(nil),                          // 76: anytype.model.RelationOptions
+	(*InternalFlag)(nil),                             // 77: anytype.model.InternalFlag
+	(*ObjectView)(nil),                               // 78: anytype.model.ObjectView
+	(*ParticipantPermissionChange)(nil),              // 79: anytype.model.ParticipantPermissionChange
+	(*Metadata)(nil),                                 // 80: anytype.model.Metadata
+	(*Notification)(nil),                             // 81: anytype.model.Notification
+	(*Export)(nil),                                   // 82: anytype.model.Export
+	(*Import)(nil),                                   // 83: anytype.model.Import
+	(*Invite)(nil),                                   // 84: anytype.model.Invite
+	(*InvitePayload)(nil),                            // 85: anytype.model.InvitePayload
+	(*IdentityProfile)(nil),                          // 86: anytype.model.IdentityProfile
+	(*FileInfo)(nil),                                 // 87: anytype.model.FileInfo
+	(*FileEncryptionKey)(nil),                        // 88: anytype.model.FileEncryptionKey
+	(*ManifestInfo)(nil),                             // 89: anytype.model.ManifestInfo
+	(*Membership)(nil),                               // 90: anytype.model.Membership
+	(*MembershipTierData)(nil),                       // 91: anytype.model.MembershipTierData
+	(*Detail)(nil),                                   // 92: anytype.model.Detail
+	(*DeviceInfo)(nil),                               // 93: anytype.model.DeviceInfo
+	(*ChatState)(nil),                                // 94: anytype.model.ChatState
+	(*ChatMessage)(nil),                              // 95: anytype.model.ChatMessage
+	(*SearchResult)(nil),                             // 96: anytype.model.Search.Result
+	(*SearchMeta)(nil),                               // 97: anytype.model.Search.Meta
+	(*BlockRestrictions)(nil),                        // 98: anytype.model.Block.Restrictions
+	(*BlockContent)(nil),                             // 99: anytype.model.Block.Content
+	(*BlockContentLayout)(nil),                       // 100: anytype.model.Block.Content.Layout
+	(*BlockContentLink)(nil),                         // 101: anytype.model.Block.Content.Link
+	(*BlockContentDiv)(nil),                          // 102: anytype.model.Block.Content.Div
+	(*BlockContentBookmark)(nil),                     // 103: anytype.model.Block.Content.Bookmark
+	(*BlockContentIcon)(nil),                         // 104: anytype.model.Block.Content.Icon
+	(*BlockContentFeaturedRelations)(nil),            // 105: anytype.model.Block.Content.FeaturedRelations
+	(*BlockContentText)(nil),                         // 106: anytype.model.Block.Content.Text
+	(*BlockContentFile)(nil),                         // 107: anytype.model.Block.Content.File
+	(*BlockContentSmartblock)(nil),                   // 108: anytype.model.Block.Content.Smartblock
+	(*BlockContentDataview)(nil),                     // 109: anytype.model.Block.Content.Dataview
+	(*BlockContentRelation)(nil),                     // 110: anytype.model.Block.Content.Relation
+	(*BlockContentLatex)(nil),                        // 111: anytype.model.Block.Content.Latex
+	(*BlockContentTableOfContents)(nil),              // 112: anytype.model.Block.Content.TableOfContents
+	(*BlockContentTable)(nil),                        // 113: anytype.model.Block.Content.Table
+	(*BlockContentTableColumn)(nil),                  // 114: anytype.model.Block.Content.TableColumn
+	(*BlockContentTableRow)(nil),                     // 115: anytype.model.Block.Content.TableRow
+	(*BlockContentWidget)(nil),                       // 116: anytype.model.Block.Content.Widget
+	(*BlockContentChat)(nil),                         // 117: anytype.model.Block.Content.Chat
+	(*BlockContentTextMarks)(nil),                    // 118: anytype.model.Block.Content.Text.Marks
+	(*BlockContentTextMark)(nil),                     // 119: anytype.model.Block.Content.Text.Mark
+	(*BlockContentDataviewView)(nil),                 // 120: anytype.model.Block.Content.Dataview.View
+	(*BlockContentDataviewRelation)(nil),             // 121: anytype.model.Block.Content.Dataview.Relation
+	(*BlockContentDataviewSort)(nil),                 // 122: anytype.model.Block.Content.Dataview.Sort
+	(*BlockContentDataviewFilter)(nil),               // 123: anytype.model.Block.Content.Dataview.Filter
+	(*BlockContentDataviewGroupOrder)(nil),           // 124: anytype.model.Block.Content.Dataview.GroupOrder
+	(*BlockContentDataviewViewGroup)(nil),            // 125: anytype.model.Block.Content.Dataview.ViewGroup
+	(*BlockContentDataviewObjectOrder)(nil),          // 126: anytype.model.Block.Content.Dataview.ObjectOrder
+	(*BlockContentDataviewGroup)(nil),                // 127: anytype.model.Block.Content.Dataview.Group
+	(*BlockContentDataviewStatus)(nil),               // 128: anytype.model.Block.Content.Dataview.Status
+	(*BlockContentDataviewTag)(nil),                  // 129: anytype.model.Block.Content.Dataview.Tag
+	(*BlockContentDataviewCheckbox)(nil),             // 130: anytype.model.Block.Content.Dataview.Checkbox
+	(*BlockContentDataviewDate)(nil),                 // 131: anytype.model.Block.Content.Dataview.Date
+	(*AccountConfig)(nil),                            // 132: anytype.model.Account.Config
+	(*AccountStatus)(nil),                            // 133: anytype.model.Account.Status
+	(*AccountInfo)(nil),                              // 134: anytype.model.Account.Info
+	(*AccountAuth)(nil),                              // 135: anytype.model.Account.Auth
+	(*RestrictionsDataviewRestrictions)(nil),         // 136: anytype.model.Restrictions.DataviewRestrictions
+	(*ObjectChangePayload)(nil),                      // 137: anytype.model.Object.ChangePayload
+	(*RelationOption)(nil),                           // 138: anytype.model.Relation.Option
+	(*ObjectViewDetailsSet)(nil),                     // 139: anytype.model.ObjectView.DetailsSet
+	(*ObjectViewRelationWithValuePerObject)(nil),     // 140: anytype.model.ObjectView.RelationWithValuePerObject
+	(*ObjectViewHistorySize)(nil),                    // 141: anytype.model.ObjectView.HistorySize
+	(*ObjectViewBlockParticipant)(nil),               // 142: anytype.model.ObjectView.BlockParticipant
+	(*MetadataPayload)(nil),                          // 143: anytype.model.Metadata.Payload
+	(*MetadataPayloadIdentityPayload)(nil),           // 144: anytype.model.Metadata.Payload.IdentityPayload
+	(*NotificationImport)(nil),                       // 145: anytype.model.Notification.Import
+	(*NotificationExport)(nil),                       // 146: anytype.model.Notification.Export
+	(*NotificationGalleryImport)(nil),                // 147: anytype.model.Notification.GalleryImport
+	(*NotificationRequestToJoin)(nil),                // 148: anytype.model.Notification.RequestToJoin
+	(*NotificationTest)(nil),                         // 149: anytype.model.Notification.Test
+	(*NotificationParticipantRequestApproved)(nil),   // 150: anytype.model.Notification.ParticipantRequestApproved
+	(*NotificationRequestToLeave)(nil),               // 151: anytype.model.Notification.RequestToLeave
+	(*NotificationParticipantRemove)(nil),            // 152: anytype.model.Notification.ParticipantRemove
+	(*NotificationParticipantRequestDecline)(nil),    // 153: anytype.model.Notification.ParticipantRequestDecline
+	(*NotificationParticipantPermissionsChange)(nil), // 154: anytype.model.Notification.ParticipantPermissionsChange
+	(*ChatStateUnreadState)(nil),                     // 155: anytype.model.ChatState.UnreadState
+	(*ChatMessageMessageContent)(nil),                // 156: anytype.model.ChatMessage.MessageContent
+	(*ChatMessageAttachment)(nil),                    // 157: anytype.model.ChatMessage.Attachment
+	(*ChatMessageReactions)(nil),                     // 158: anytype.model.ChatMessage.Reactions
+	nil,                                              // 159: anytype.model.ChatMessage.Reactions.ReactionsEntry
+	(*ChatMessageReactionsIdentityList)(nil),         // 160: anytype.model.ChatMessage.Reactions.IdentityList
+	(*structpb.Struct)(nil),                          // 161: google.protobuf.Struct
+	(*structpb.Value)(nil),                           // 162: google.protobuf.Value
 }
 var file_pkg_lib_pb_model_protos_models_proto_depIdxs = []int32{
-	61,  // 0: anytype.model.SmartBlockSnapshotBase.blocks:type_name -> anytype.model.Block
-	158, // 1: anytype.model.SmartBlockSnapshotBase.details:type_name -> google.protobuf.Struct
-	158, // 2: anytype.model.SmartBlockSnapshotBase.fileKeys:type_name -> google.protobuf.Struct
-	72,  // 3: anytype.model.SmartBlockSnapshotBase.extraRelations:type_name -> anytype.model.Relation
-	158, // 4: anytype.model.SmartBlockSnapshotBase.collections:type_name -> google.protobuf.Struct
-	73,  // 5: anytype.model.SmartBlockSnapshotBase.relationLinks:type_name -> anytype.model.RelationLink
-	86,  // 6: anytype.model.SmartBlockSnapshotBase.fileInfo:type_name -> anytype.model.FileInfo
-	158, // 7: anytype.model.Block.fields:type_name -> google.protobuf.Struct
-	96,  // 8: anytype.model.Block.restrictions:type_name -> anytype.model.Block.Restrictions
-	13,  // 9: anytype.model.Block.align:type_name -> anytype.model.Block.Align
-	14,  // 10: anytype.model.Block.verticalAlign:type_name -> anytype.model.Block.VerticalAlign
-	106, // 11: anytype.model.Block.smartblock:type_name -> anytype.model.Block.Content.Smartblock
-	104, // 12: anytype.model.Block.text:type_name -> anytype.model.Block.Content.Text
-	105, // 13: anytype.model.Block.file:type_name -> anytype.model.Block.Content.File
-	98,  // 14: anytype.model.Block.layout:type_name -> anytype.model.Block.Content.Layout
-	100, // 15: anytype.model.Block.div:type_name -> anytype.model.Block.Content.Div
-	101, // 16: anytype.model.Block.bookmark:type_name -> anytype.model.Block.Content.Bookmark
-	102, // 17: anytype.model.Block.icon:type_name -> anytype.model.Block.Content.Icon
-	99,  // 18: anytype.model.Block.link:type_name -> anytype.model.Block.Content.Link
-	107, // 19: anytype.model.Block.dataview:type_name -> anytype.model.Block.Content.Dataview
-	108, // 20: anytype.model.Block.relation:type_name -> anytype.model.Block.Content.Relation
-	103, // 21: anytype.model.Block.featuredRelations:type_name -> anytype.model.Block.Content.FeaturedRelations
-	109, // 22: anytype.model.Block.latex:type_name -> anytype.model.Block.Content.Latex
-	110, // 23: anytype.model.Block.tableOfContents:type_name -> anytype.model.Block.Content.TableOfContents
-	111, // 24: anytype.model.Block.table:type_name -> anytype.model.Block.Content.Table
-	112, // 25: anytype.model.Block.tableColumn:type_name -> anytype.model.Block.Content.TableColumn
-	113, // 26: anytype.model.Block.tableRow:type_name -> anytype.model.Block.Content.TableRow
-	114, // 27: anytype.model.Block.widget:type_name -> anytype.model.Block.Content.Widget
-	115, // 28: anytype.model.Block.chat:type_name -> anytype.model.Block.Content.Chat
-	158, // 29: anytype.model.BlockMetaOnly.fields:type_name -> google.protobuf.Struct
-	130, // 30: anytype.model.Account.config:type_name -> anytype.model.Account.Config
-	131, // 31: anytype.model.Account.status:type_name -> anytype.model.Account.Status
-	132, // 32: anytype.model.Account.info:type_name -> anytype.model.Account.Info
-	41,  // 33: anytype.model.LinkPreview.type:type_name -> anytype.model.LinkPreview.Type
-	42,  // 34: anytype.model.Restrictions.object:type_name -> anytype.model.Restrictions.ObjectRestriction
-	134, // 35: anytype.model.Restrictions.dataview:type_name -> anytype.model.Restrictions.DataviewRestrictions
-	73,  // 36: anytype.model.ObjectType.relationLinks:type_name -> anytype.model.RelationLink
-	44,  // 37: anytype.model.ObjectType.layout:type_name -> anytype.model.ObjectType.Layout
+	62,  // 0: anytype.model.SmartBlockSnapshotBase.blocks:type_name -> anytype.model.Block
+	161, // 1: anytype.model.SmartBlockSnapshotBase.details:type_name -> google.protobuf.Struct
+	161, // 2: anytype.model.SmartBlockSnapshotBase.fileKeys:type_name -> google.protobuf.Struct
+	73,  // 3: anytype.model.SmartBlockSnapshotBase.extraRelations:type_name -> anytype.model.Relation
+	161, // 4: anytype.model.SmartBlockSnapshotBase.collections:type_name -> google.protobuf.Struct
+	74,  // 5: anytype.model.SmartBlockSnapshotBase.relationLinks:type_name -> anytype.model.RelationLink
+	87,  // 6: anytype.model.SmartBlockSnapshotBase.fileInfo:type_name -> anytype.model.FileInfo
+	161, // 7: anytype.model.Block.fields:type_name -> google.protobuf.Struct
+	98,  // 8: anytype.model.Block.restrictions:type_name -> anytype.model.Block.Restrictions
+	14,  // 9: anytype.model.Block.align:type_name -> anytype.model.Block.Align
+	15,  // 10: anytype.model.Block.verticalAlign:type_name -> anytype.model.Block.VerticalAlign
+	108, // 11: anytype.model.Block.smartblock:type_name -> anytype.model.Block.Content.Smartblock
+	106, // 12: anytype.model.Block.text:type_name -> anytype.model.Block.Content.Text
+	107, // 13: anytype.model.Block.file:type_name -> anytype.model.Block.Content.File
+	100, // 14: anytype.model.Block.layout:type_name -> anytype.model.Block.Content.Layout
+	102, // 15: anytype.model.Block.div:type_name -> anytype.model.Block.Content.Div
+	103, // 16: anytype.model.Block.bookmark:type_name -> anytype.model.Block.Content.Bookmark
+	104, // 17: anytype.model.Block.icon:type_name -> anytype.model.Block.Content.Icon
+	101, // 18: anytype.model.Block.link:type_name -> anytype.model.Block.Content.Link
+	109, // 19: anytype.model.Block.dataview:type_name -> anytype.model.Block.Content.Dataview
+	110, // 20: anytype.model.Block.relation:type_name -> anytype.model.Block.Content.Relation
+	105, // 21: anytype.model.Block.featuredRelations:type_name -> anytype.model.Block.Content.FeaturedRelations
+	111, // 22: anytype.model.Block.latex:type_name -> anytype.model.Block.Content.Latex
+	112, // 23: anytype.model.Block.tableOfContents:type_name -> anytype.model.Block.Content.TableOfContents
+	113, // 24: anytype.model.Block.table:type_name -> anytype.model.Block.Content.Table
+	114, // 25: anytype.model.Block.tableColumn:type_name -> anytype.model.Block.Content.TableColumn
+	115, // 26: anytype.model.Block.tableRow:type_name -> anytype.model.Block.Content.TableRow
+	116, // 27: anytype.model.Block.widget:type_name -> anytype.model.Block.Content.Widget
+	117, // 28: anytype.model.Block.chat:type_name -> anytype.model.Block.Content.Chat
+	161, // 29: anytype.model.BlockMetaOnly.fields:type_name -> google.protobuf.Struct
+	132, // 30: anytype.model.Account.config:type_name -> anytype.model.Account.Config
+	133, // 31: anytype.model.Account.status:type_name -> anytype.model.Account.Status
+	134, // 32: anytype.model.Account.info:type_name -> anytype.model.Account.Info
+	42,  // 33: anytype.model.LinkPreview.type:type_name -> anytype.model.LinkPreview.Type
+	43,  // 34: anytype.model.Restrictions.object:type_name -> anytype.model.Restrictions.ObjectRestriction
+	136, // 35: anytype.model.Restrictions.dataview:type_name -> anytype.model.Restrictions.DataviewRestrictions
+	74,  // 36: anytype.model.ObjectType.relationLinks:type_name -> anytype.model.RelationLink
+	45,  // 37: anytype.model.ObjectType.layout:type_name -> anytype.model.ObjectType.Layout
 	0,   // 38: anytype.model.ObjectType.types:type_name -> anytype.model.SmartBlockType
-	44,  // 39: anytype.model.Layout.id:type_name -> anytype.model.ObjectType.Layout
-	72,  // 40: anytype.model.Layout.requiredRelations:type_name -> anytype.model.Relation
-	72,  // 41: anytype.model.RelationWithValue.relation:type_name -> anytype.model.Relation
-	159, // 42: anytype.model.RelationWithValue.value:type_name -> google.protobuf.Value
+	45,  // 39: anytype.model.Layout.id:type_name -> anytype.model.ObjectType.Layout
+	73,  // 40: anytype.model.Layout.requiredRelations:type_name -> anytype.model.Relation
+	73,  // 41: anytype.model.RelationWithValue.relation:type_name -> anytype.model.Relation
+	162, // 42: anytype.model.RelationWithValue.value:type_name -> google.protobuf.Value
 	1,   // 43: anytype.model.Relation.format:type_name -> anytype.model.RelationFormat
-	159, // 44: anytype.model.Relation.defaultValue:type_name -> google.protobuf.Value
-	46,  // 45: anytype.model.Relation.dataSource:type_name -> anytype.model.Relation.DataSource
-	136, // 46: anytype.model.Relation.selectDict:type_name -> anytype.model.Relation.Option
-	45,  // 47: anytype.model.Relation.scope:type_name -> anytype.model.Relation.Scope
+	162, // 44: anytype.model.Relation.defaultValue:type_name -> google.protobuf.Value
+	47,  // 45: anytype.model.Relation.dataSource:type_name -> anytype.model.Relation.DataSource
+	138, // 46: anytype.model.Relation.selectDict:type_name -> anytype.model.Relation.Option
+	46,  // 47: anytype.model.Relation.scope:type_name -> anytype.model.Relation.Scope
 	1,   // 48: anytype.model.RelationLink.format:type_name -> anytype.model.RelationFormat
-	72,  // 49: anytype.model.Relations.relations:type_name -> anytype.model.Relation
-	136, // 50: anytype.model.RelationOptions.options:type_name -> anytype.model.Relation.Option
-	47,  // 51: anytype.model.InternalFlag.value:type_name -> anytype.model.InternalFlag.Value
-	61,  // 52: anytype.model.ObjectView.blocks:type_name -> anytype.model.Block
-	137, // 53: anytype.model.ObjectView.details:type_name -> anytype.model.ObjectView.DetailsSet
+	73,  // 49: anytype.model.Relations.relations:type_name -> anytype.model.Relation
+	138, // 50: anytype.model.RelationOptions.options:type_name -> anytype.model.Relation.Option
+	48,  // 51: anytype.model.InternalFlag.value:type_name -> anytype.model.InternalFlag.Value
+	62,  // 52: anytype.model.ObjectView.blocks:type_name -> anytype.model.Block
+	139, // 53: anytype.model.ObjectView.details:type_name -> anytype.model.ObjectView.DetailsSet
 	0,   // 54: anytype.model.ObjectView.type:type_name -> anytype.model.SmartBlockType
-	72,  // 55: anytype.model.ObjectView.relations:type_name -> anytype.model.Relation
-	73,  // 56: anytype.model.ObjectView.relationLinks:type_name -> anytype.model.RelationLink
-	66,  // 57: anytype.model.ObjectView.restrictions:type_name -> anytype.model.Restrictions
-	139, // 58: anytype.model.ObjectView.history:type_name -> anytype.model.ObjectView.HistorySize
-	140, // 59: anytype.model.ObjectView.blockParticipants:type_name -> anytype.model.ObjectView.BlockParticipant
+	73,  // 55: anytype.model.ObjectView.relations:type_name -> anytype.model.Relation
+	74,  // 56: anytype.model.ObjectView.relationLinks:type_name -> anytype.model.RelationLink
+	67,  // 57: anytype.model.ObjectView.restrictions:type_name -> anytype.model.Restrictions
+	141, // 58: anytype.model.ObjectView.history:type_name -> anytype.model.ObjectView.HistorySize
+	142, // 59: anytype.model.ObjectView.blockParticipants:type_name -> anytype.model.ObjectView.BlockParticipant
 	4,   // 60: anytype.model.ParticipantPermissionChange.perms:type_name -> anytype.model.ParticipantPermissions
-	142, // 61: anytype.model.Metadata.identity:type_name -> anytype.model.Metadata.Payload.IdentityPayload
-	48,  // 62: anytype.model.Notification.status:type_name -> anytype.model.Notification.Status
-	143, // 63: anytype.model.Notification.import:type_name -> anytype.model.Notification.Import
-	144, // 64: anytype.model.Notification.export:type_name -> anytype.model.Notification.Export
-	145, // 65: anytype.model.Notification.galleryImport:type_name -> anytype.model.Notification.GalleryImport
-	146, // 66: anytype.model.Notification.requestToJoin:type_name -> anytype.model.Notification.RequestToJoin
-	147, // 67: anytype.model.Notification.test:type_name -> anytype.model.Notification.Test
-	148, // 68: anytype.model.Notification.participantRequestApproved:type_name -> anytype.model.Notification.ParticipantRequestApproved
-	149, // 69: anytype.model.Notification.requestToLeave:type_name -> anytype.model.Notification.RequestToLeave
-	150, // 70: anytype.model.Notification.participantRemove:type_name -> anytype.model.Notification.ParticipantRemove
-	151, // 71: anytype.model.Notification.participantRequestDecline:type_name -> anytype.model.Notification.ParticipantRequestDecline
-	152, // 72: anytype.model.Notification.participantPermissionsChange:type_name -> anytype.model.Notification.ParticipantPermissionsChange
-	87,  // 73: anytype.model.InvitePayload.spaceIconEncryptionKeys:type_name -> anytype.model.FileEncryptionKey
-	87,  // 74: anytype.model.IdentityProfile.iconEncryptionKeys:type_name -> anytype.model.FileEncryptionKey
-	87,  // 75: anytype.model.FileInfo.encryptionKeys:type_name -> anytype.model.FileEncryptionKey
-	54,  // 76: anytype.model.Membership.status:type_name -> anytype.model.Membership.Status
-	55,  // 77: anytype.model.Membership.paymentMethod:type_name -> anytype.model.Membership.PaymentMethod
-	10,  // 78: anytype.model.Membership.nsNameType:type_name -> anytype.model.NameserviceNameType
-	57,  // 79: anytype.model.MembershipTierData.periodType:type_name -> anytype.model.MembershipTierData.PeriodType
-	159, // 80: anytype.model.Detail.value:type_name -> google.protobuf.Value
-	153, // 81: anytype.model.ChatMessage.message:type_name -> anytype.model.ChatMessage.MessageContent
-	154, // 82: anytype.model.ChatMessage.attachments:type_name -> anytype.model.ChatMessage.Attachment
-	155, // 83: anytype.model.ChatMessage.reactions:type_name -> anytype.model.ChatMessage.Reactions
-	158, // 84: anytype.model.Search.Result.details:type_name -> google.protobuf.Struct
-	95,  // 85: anytype.model.Search.Result.meta:type_name -> anytype.model.Search.Meta
-	63,  // 86: anytype.model.Search.Meta.highlightRanges:type_name -> anytype.model.Range
-	158, // 87: anytype.model.Search.Meta.relationDetails:type_name -> google.protobuf.Struct
-	15,  // 88: anytype.model.Block.Content.Layout.style:type_name -> anytype.model.Block.Content.Layout.Style
-	17,  // 89: anytype.model.Block.Content.Link.style:type_name -> anytype.model.Block.Content.Link.Style
-	158, // 90: anytype.model.Block.Content.Link.fields:type_name -> google.protobuf.Struct
-	16,  // 91: anytype.model.Block.Content.Link.iconSize:type_name -> anytype.model.Block.Content.Link.IconSize
-	19,  // 92: anytype.model.Block.Content.Link.cardStyle:type_name -> anytype.model.Block.Content.Link.CardStyle
-	18,  // 93: anytype.model.Block.Content.Link.description:type_name -> anytype.model.Block.Content.Link.Description
-	20,  // 94: anytype.model.Block.Content.Div.style:type_name -> anytype.model.Block.Content.Div.Style
-	41,  // 95: anytype.model.Block.Content.Bookmark.type:type_name -> anytype.model.LinkPreview.Type
-	21,  // 96: anytype.model.Block.Content.Bookmark.state:type_name -> anytype.model.Block.Content.Bookmark.State
-	22,  // 97: anytype.model.Block.Content.Text.style:type_name -> anytype.model.Block.Content.Text.Style
-	116, // 98: anytype.model.Block.Content.Text.marks:type_name -> anytype.model.Block.Content.Text.Marks
-	24,  // 99: anytype.model.Block.Content.File.type:type_name -> anytype.model.Block.Content.File.Type
-	26,  // 100: anytype.model.Block.Content.File.state:type_name -> anytype.model.Block.Content.File.State
-	25,  // 101: anytype.model.Block.Content.File.style:type_name -> anytype.model.Block.Content.File.Style
-	118, // 102: anytype.model.Block.Content.Dataview.views:type_name -> anytype.model.Block.Content.Dataview.View
-	72,  // 103: anytype.model.Block.Content.Dataview.relations:type_name -> anytype.model.Relation
-	122, // 104: anytype.model.Block.Content.Dataview.groupOrders:type_name -> anytype.model.Block.Content.Dataview.GroupOrder
-	124, // 105: anytype.model.Block.Content.Dataview.objectOrders:type_name -> anytype.model.Block.Content.Dataview.ObjectOrder
-	73,  // 106: anytype.model.Block.Content.Dataview.relationLinks:type_name -> anytype.model.RelationLink
-	37,  // 107: anytype.model.Block.Content.Latex.processor:type_name -> anytype.model.Block.Content.Latex.Processor
-	38,  // 108: anytype.model.Block.Content.Widget.layout:type_name -> anytype.model.Block.Content.Widget.Layout
-	117, // 109: anytype.model.Block.Content.Text.Marks.marks:type_name -> anytype.model.Block.Content.Text.Mark
-	63,  // 110: anytype.model.Block.Content.Text.Mark.range:type_name -> anytype.model.Range
-	23,  // 111: anytype.model.Block.Content.Text.Mark.type:type_name -> anytype.model.Block.Content.Text.Mark.Type
-	27,  // 112: anytype.model.Block.Content.Dataview.View.type:type_name -> anytype.model.Block.Content.Dataview.View.Type
-	120, // 113: anytype.model.Block.Content.Dataview.View.sorts:type_name -> anytype.model.Block.Content.Dataview.Sort
-	121, // 114: anytype.model.Block.Content.Dataview.View.filters:type_name -> anytype.model.Block.Content.Dataview.Filter
-	119, // 115: anytype.model.Block.Content.Dataview.View.relations:type_name -> anytype.model.Block.Content.Dataview.Relation
-	28,  // 116: anytype.model.Block.Content.Dataview.View.cardSize:type_name -> anytype.model.Block.Content.Dataview.View.Size
-	30,  // 117: anytype.model.Block.Content.Dataview.Relation.timeFormat:type_name -> anytype.model.Block.Content.Dataview.Relation.TimeFormat
-	29,  // 118: anytype.model.Block.Content.Dataview.Relation.dateFormat:type_name -> anytype.model.Block.Content.Dataview.Relation.DateFormat
-	31,  // 119: anytype.model.Block.Content.Dataview.Relation.formula:type_name -> anytype.model.Block.Content.Dataview.Relation.FormulaType
-	13,  // 120: anytype.model.Block.Content.Dataview.Relation.align:type_name -> anytype.model.Block.Align
-	32,  // 121: anytype.model.Block.Content.Dataview.Sort.type:type_name -> anytype.model.Block.Content.Dataview.Sort.Type
-	159, // 122: anytype.model.Block.Content.Dataview.Sort.customOrder:type_name -> google.protobuf.Value
-	1,   // 123: anytype.model.Block.Content.Dataview.Sort.format:type_name -> anytype.model.RelationFormat
-	33,  // 124: anytype.model.Block.Content.Dataview.Sort.emptyPlacement:type_name -> anytype.model.Block.Content.Dataview.Sort.EmptyType
-	34,  // 125: anytype.model.Block.Content.Dataview.Filter.operator:type_name -> anytype.model.Block.Content.Dataview.Filter.Operator
-	35,  // 126: anytype.model.Block.Content.Dataview.Filter.condition:type_name -> anytype.model.Block.Content.Dataview.Filter.Condition
-	159, // 127: anytype.model.Block.Content.Dataview.Filter.value:type_name -> google.protobuf.Value
-	36,  // 128: anytype.model.Block.Content.Dataview.Filter.quickOption:type_name -> anytype.model.Block.Content.Dataview.Filter.QuickOption
-	1,   // 129: anytype.model.Block.Content.Dataview.Filter.format:type_name -> anytype.model.RelationFormat
-	121, // 130: anytype.model.Block.Content.Dataview.Filter.nestedFilters:type_name -> anytype.model.Block.Content.Dataview.Filter
-	123, // 131: anytype.model.Block.Content.Dataview.GroupOrder.viewGroups:type_name -> anytype.model.Block.Content.Dataview.ViewGroup
-	126, // 132: anytype.model.Block.Content.Dataview.Group.status:type_name -> anytype.model.Block.Content.Dataview.Status
-	127, // 133: anytype.model.Block.Content.Dataview.Group.tag:type_name -> anytype.model.Block.Content.Dataview.Tag
-	128, // 134: anytype.model.Block.Content.Dataview.Group.checkbox:type_name -> anytype.model.Block.Content.Dataview.Checkbox
-	129, // 135: anytype.model.Block.Content.Dataview.Group.date:type_name -> anytype.model.Block.Content.Dataview.Date
-	158, // 136: anytype.model.Account.Config.extra:type_name -> google.protobuf.Struct
-	39,  // 137: anytype.model.Account.Status.statusType:type_name -> anytype.model.Account.StatusType
-	43,  // 138: anytype.model.Restrictions.DataviewRestrictions.restrictions:type_name -> anytype.model.Restrictions.DataviewRestriction
-	0,   // 139: anytype.model.Object.ChangePayload.smartBlockType:type_name -> anytype.model.SmartBlockType
-	158, // 140: anytype.model.ObjectView.DetailsSet.details:type_name -> google.protobuf.Struct
-	71,  // 141: anytype.model.ObjectView.RelationWithValuePerObject.relations:type_name -> anytype.model.RelationWithValue
-	53,  // 142: anytype.model.Notification.Import.errorCode:type_name -> anytype.model.Import.ErrorCode
-	52,  // 143: anytype.model.Notification.Import.importType:type_name -> anytype.model.Import.Type
-	50,  // 144: anytype.model.Notification.Export.errorCode:type_name -> anytype.model.Notification.Export.Code
-	51,  // 145: anytype.model.Notification.Export.exportType:type_name -> anytype.model.Export.Format
-	53,  // 146: anytype.model.Notification.GalleryImport.errorCode:type_name -> anytype.model.Import.ErrorCode
-	4,   // 147: anytype.model.Notification.ParticipantRequestApproved.permissions:type_name -> anytype.model.ParticipantPermissions
-	4,   // 148: anytype.model.Notification.ParticipantPermissionsChange.permissions:type_name -> anytype.model.ParticipantPermissions
-	22,  // 149: anytype.model.ChatMessage.MessageContent.style:type_name -> anytype.model.Block.Content.Text.Style
-	117, // 150: anytype.model.ChatMessage.MessageContent.marks:type_name -> anytype.model.Block.Content.Text.Mark
-	58,  // 151: anytype.model.ChatMessage.Attachment.type:type_name -> anytype.model.ChatMessage.Attachment.AttachmentType
-	156, // 152: anytype.model.ChatMessage.Reactions.reactions:type_name -> anytype.model.ChatMessage.Reactions.ReactionsEntry
-	157, // 153: anytype.model.ChatMessage.Reactions.ReactionsEntry.value:type_name -> anytype.model.ChatMessage.Reactions.IdentityList
-	154, // [154:154] is the sub-list for method output_type
-	154, // [154:154] is the sub-list for method input_type
-	154, // [154:154] is the sub-list for extension type_name
-	154, // [154:154] is the sub-list for extension extendee
-	0,   // [0:154] is the sub-list for field type_name
+	144, // 61: anytype.model.Metadata.identity:type_name -> anytype.model.Metadata.Payload.IdentityPayload
+	49,  // 62: anytype.model.Notification.status:type_name -> anytype.model.Notification.Status
+	145, // 63: anytype.model.Notification.import:type_name -> anytype.model.Notification.Import
+	146, // 64: anytype.model.Notification.export:type_name -> anytype.model.Notification.Export
+	147, // 65: anytype.model.Notification.galleryImport:type_name -> anytype.model.Notification.GalleryImport
+	148, // 66: anytype.model.Notification.requestToJoin:type_name -> anytype.model.Notification.RequestToJoin
+	149, // 67: anytype.model.Notification.test:type_name -> anytype.model.Notification.Test
+	150, // 68: anytype.model.Notification.participantRequestApproved:type_name -> anytype.model.Notification.ParticipantRequestApproved
+	151, // 69: anytype.model.Notification.requestToLeave:type_name -> anytype.model.Notification.RequestToLeave
+	152, // 70: anytype.model.Notification.participantRemove:type_name -> anytype.model.Notification.ParticipantRemove
+	153, // 71: anytype.model.Notification.participantRequestDecline:type_name -> anytype.model.Notification.ParticipantRequestDecline
+	154, // 72: anytype.model.Notification.participantPermissionsChange:type_name -> anytype.model.Notification.ParticipantPermissionsChange
+	88,  // 73: anytype.model.InvitePayload.spaceIconEncryptionKeys:type_name -> anytype.model.FileEncryptionKey
+	88,  // 74: anytype.model.IdentityProfile.iconEncryptionKeys:type_name -> anytype.model.FileEncryptionKey
+	88,  // 75: anytype.model.FileInfo.encryptionKeys:type_name -> anytype.model.FileEncryptionKey
+	55,  // 76: anytype.model.Membership.status:type_name -> anytype.model.Membership.Status
+	56,  // 77: anytype.model.Membership.paymentMethod:type_name -> anytype.model.Membership.PaymentMethod
+	11,  // 78: anytype.model.Membership.nsNameType:type_name -> anytype.model.NameserviceNameType
+	58,  // 79: anytype.model.MembershipTierData.periodType:type_name -> anytype.model.MembershipTierData.PeriodType
+	162, // 80: anytype.model.Detail.value:type_name -> google.protobuf.Value
+	155, // 81: anytype.model.ChatState.messages:type_name -> anytype.model.ChatState.UnreadState
+	155, // 82: anytype.model.ChatState.mentions:type_name -> anytype.model.ChatState.UnreadState
+	156, // 83: anytype.model.ChatMessage.message:type_name -> anytype.model.ChatMessage.MessageContent
+	157, // 84: anytype.model.ChatMessage.attachments:type_name -> anytype.model.ChatMessage.Attachment
+	158, // 85: anytype.model.ChatMessage.reactions:type_name -> anytype.model.ChatMessage.Reactions
+	161, // 86: anytype.model.Search.Result.details:type_name -> google.protobuf.Struct
+	97,  // 87: anytype.model.Search.Result.meta:type_name -> anytype.model.Search.Meta
+	64,  // 88: anytype.model.Search.Meta.highlightRanges:type_name -> anytype.model.Range
+	161, // 89: anytype.model.Search.Meta.relationDetails:type_name -> google.protobuf.Struct
+	16,  // 90: anytype.model.Block.Content.Layout.style:type_name -> anytype.model.Block.Content.Layout.Style
+	18,  // 91: anytype.model.Block.Content.Link.style:type_name -> anytype.model.Block.Content.Link.Style
+	161, // 92: anytype.model.Block.Content.Link.fields:type_name -> google.protobuf.Struct
+	17,  // 93: anytype.model.Block.Content.Link.iconSize:type_name -> anytype.model.Block.Content.Link.IconSize
+	20,  // 94: anytype.model.Block.Content.Link.cardStyle:type_name -> anytype.model.Block.Content.Link.CardStyle
+	19,  // 95: anytype.model.Block.Content.Link.description:type_name -> anytype.model.Block.Content.Link.Description
+	21,  // 96: anytype.model.Block.Content.Div.style:type_name -> anytype.model.Block.Content.Div.Style
+	42,  // 97: anytype.model.Block.Content.Bookmark.type:type_name -> anytype.model.LinkPreview.Type
+	22,  // 98: anytype.model.Block.Content.Bookmark.state:type_name -> anytype.model.Block.Content.Bookmark.State
+	23,  // 99: anytype.model.Block.Content.Text.style:type_name -> anytype.model.Block.Content.Text.Style
+	118, // 100: anytype.model.Block.Content.Text.marks:type_name -> anytype.model.Block.Content.Text.Marks
+	25,  // 101: anytype.model.Block.Content.File.type:type_name -> anytype.model.Block.Content.File.Type
+	27,  // 102: anytype.model.Block.Content.File.state:type_name -> anytype.model.Block.Content.File.State
+	26,  // 103: anytype.model.Block.Content.File.style:type_name -> anytype.model.Block.Content.File.Style
+	120, // 104: anytype.model.Block.Content.Dataview.views:type_name -> anytype.model.Block.Content.Dataview.View
+	73,  // 105: anytype.model.Block.Content.Dataview.relations:type_name -> anytype.model.Relation
+	124, // 106: anytype.model.Block.Content.Dataview.groupOrders:type_name -> anytype.model.Block.Content.Dataview.GroupOrder
+	126, // 107: anytype.model.Block.Content.Dataview.objectOrders:type_name -> anytype.model.Block.Content.Dataview.ObjectOrder
+	74,  // 108: anytype.model.Block.Content.Dataview.relationLinks:type_name -> anytype.model.RelationLink
+	38,  // 109: anytype.model.Block.Content.Latex.processor:type_name -> anytype.model.Block.Content.Latex.Processor
+	39,  // 110: anytype.model.Block.Content.Widget.layout:type_name -> anytype.model.Block.Content.Widget.Layout
+	119, // 111: anytype.model.Block.Content.Text.Marks.marks:type_name -> anytype.model.Block.Content.Text.Mark
+	64,  // 112: anytype.model.Block.Content.Text.Mark.range:type_name -> anytype.model.Range
+	24,  // 113: anytype.model.Block.Content.Text.Mark.type:type_name -> anytype.model.Block.Content.Text.Mark.Type
+	28,  // 114: anytype.model.Block.Content.Dataview.View.type:type_name -> anytype.model.Block.Content.Dataview.View.Type
+	122, // 115: anytype.model.Block.Content.Dataview.View.sorts:type_name -> anytype.model.Block.Content.Dataview.Sort
+	123, // 116: anytype.model.Block.Content.Dataview.View.filters:type_name -> anytype.model.Block.Content.Dataview.Filter
+	121, // 117: anytype.model.Block.Content.Dataview.View.relations:type_name -> anytype.model.Block.Content.Dataview.Relation
+	29,  // 118: anytype.model.Block.Content.Dataview.View.cardSize:type_name -> anytype.model.Block.Content.Dataview.View.Size
+	31,  // 119: anytype.model.Block.Content.Dataview.Relation.timeFormat:type_name -> anytype.model.Block.Content.Dataview.Relation.TimeFormat
+	30,  // 120: anytype.model.Block.Content.Dataview.Relation.dateFormat:type_name -> anytype.model.Block.Content.Dataview.Relation.DateFormat
+	32,  // 121: anytype.model.Block.Content.Dataview.Relation.formula:type_name -> anytype.model.Block.Content.Dataview.Relation.FormulaType
+	14,  // 122: anytype.model.Block.Content.Dataview.Relation.align:type_name -> anytype.model.Block.Align
+	33,  // 123: anytype.model.Block.Content.Dataview.Sort.type:type_name -> anytype.model.Block.Content.Dataview.Sort.Type
+	162, // 124: anytype.model.Block.Content.Dataview.Sort.customOrder:type_name -> google.protobuf.Value
+	1,   // 125: anytype.model.Block.Content.Dataview.Sort.format:type_name -> anytype.model.RelationFormat
+	34,  // 126: anytype.model.Block.Content.Dataview.Sort.emptyPlacement:type_name -> anytype.model.Block.Content.Dataview.Sort.EmptyType
+	35,  // 127: anytype.model.Block.Content.Dataview.Filter.operator:type_name -> anytype.model.Block.Content.Dataview.Filter.Operator
+	36,  // 128: anytype.model.Block.Content.Dataview.Filter.condition:type_name -> anytype.model.Block.Content.Dataview.Filter.Condition
+	162, // 129: anytype.model.Block.Content.Dataview.Filter.value:type_name -> google.protobuf.Value
+	37,  // 130: anytype.model.Block.Content.Dataview.Filter.quickOption:type_name -> anytype.model.Block.Content.Dataview.Filter.QuickOption
+	1,   // 131: anytype.model.Block.Content.Dataview.Filter.format:type_name -> anytype.model.RelationFormat
+	123, // 132: anytype.model.Block.Content.Dataview.Filter.nestedFilters:type_name -> anytype.model.Block.Content.Dataview.Filter
+	125, // 133: anytype.model.Block.Content.Dataview.GroupOrder.viewGroups:type_name -> anytype.model.Block.Content.Dataview.ViewGroup
+	128, // 134: anytype.model.Block.Content.Dataview.Group.status:type_name -> anytype.model.Block.Content.Dataview.Status
+	129, // 135: anytype.model.Block.Content.Dataview.Group.tag:type_name -> anytype.model.Block.Content.Dataview.Tag
+	130, // 136: anytype.model.Block.Content.Dataview.Group.checkbox:type_name -> anytype.model.Block.Content.Dataview.Checkbox
+	131, // 137: anytype.model.Block.Content.Dataview.Group.date:type_name -> anytype.model.Block.Content.Dataview.Date
+	161, // 138: anytype.model.Account.Config.extra:type_name -> google.protobuf.Struct
+	40,  // 139: anytype.model.Account.Status.statusType:type_name -> anytype.model.Account.StatusType
+	44,  // 140: anytype.model.Restrictions.DataviewRestrictions.restrictions:type_name -> anytype.model.Restrictions.DataviewRestriction
+	0,   // 141: anytype.model.Object.ChangePayload.smartBlockType:type_name -> anytype.model.SmartBlockType
+	161, // 142: anytype.model.ObjectView.DetailsSet.details:type_name -> google.protobuf.Struct
+	72,  // 143: anytype.model.ObjectView.RelationWithValuePerObject.relations:type_name -> anytype.model.RelationWithValue
+	54,  // 144: anytype.model.Notification.Import.errorCode:type_name -> anytype.model.Import.ErrorCode
+	53,  // 145: anytype.model.Notification.Import.importType:type_name -> anytype.model.Import.Type
+	51,  // 146: anytype.model.Notification.Export.errorCode:type_name -> anytype.model.Notification.Export.Code
+	52,  // 147: anytype.model.Notification.Export.exportType:type_name -> anytype.model.Export.Format
+	54,  // 148: anytype.model.Notification.GalleryImport.errorCode:type_name -> anytype.model.Import.ErrorCode
+	4,   // 149: anytype.model.Notification.ParticipantRequestApproved.permissions:type_name -> anytype.model.ParticipantPermissions
+	4,   // 150: anytype.model.Notification.ParticipantPermissionsChange.permissions:type_name -> anytype.model.ParticipantPermissions
+	23,  // 151: anytype.model.ChatMessage.MessageContent.style:type_name -> anytype.model.Block.Content.Text.Style
+	119, // 152: anytype.model.ChatMessage.MessageContent.marks:type_name -> anytype.model.Block.Content.Text.Mark
+	59,  // 153: anytype.model.ChatMessage.Attachment.type:type_name -> anytype.model.ChatMessage.Attachment.AttachmentType
+	159, // 154: anytype.model.ChatMessage.Reactions.reactions:type_name -> anytype.model.ChatMessage.Reactions.ReactionsEntry
+	160, // 155: anytype.model.ChatMessage.Reactions.ReactionsEntry.value:type_name -> anytype.model.ChatMessage.Reactions.IdentityList
+	156, // [156:156] is the sub-list for method output_type
+	156, // [156:156] is the sub-list for method input_type
+	156, // [156:156] is the sub-list for extension type_name
+	156, // [156:156] is the sub-list for extension extendee
+	0,   // [0:156] is the sub-list for field type_name
 }
 
 func init() { file_pkg_lib_pb_model_protos_models_proto_init() }
@@ -12745,7 +12949,7 @@ func file_pkg_lib_pb_model_protos_models_proto_init() {
 		(*NotificationPayloadOfParticipantRequestDecline)(nil),
 		(*NotificationPayloadOfParticipantPermissionsChange)(nil),
 	}
-	file_pkg_lib_pb_model_protos_models_proto_msgTypes[66].OneofWrappers = []any{
+	file_pkg_lib_pb_model_protos_models_proto_msgTypes[67].OneofWrappers = []any{
 		(*BlockContentDataviewGroupValueOfStatus)(nil),
 		(*BlockContentDataviewGroupValueOfTag)(nil),
 		(*BlockContentDataviewGroupValueOfCheckbox)(nil),
@@ -12756,8 +12960,8 @@ func file_pkg_lib_pb_model_protos_models_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_lib_pb_model_protos_models_proto_rawDesc), len(file_pkg_lib_pb_model_protos_models_proto_rawDesc)),
-			NumEnums:      59,
-			NumMessages:   99,
+			NumEnums:      60,
+			NumMessages:   101,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

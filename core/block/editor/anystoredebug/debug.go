@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/golang/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -73,7 +73,7 @@ func (s *debugComponent) DebugChanges(ctx context.Context) ([]*DebugChange, erro
 			return true
 		}
 		changeStruct := &types.Struct{Fields: map[string]*types.Value{}}
-		err = jsonpb.UnmarshalString(string(raw), changeStruct)
+		err = protojson.Unmarshal(raw, changeStruct)
 		if err != nil {
 			result = append(result, &DebugChange{
 				ChangeId: change.Id,

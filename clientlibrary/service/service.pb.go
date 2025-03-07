@@ -29,7 +29,7 @@ var file_pb_protos_service_service_proto_rawDesc = string([]byte{
 	0x6f, 0x12, 0x07, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x1a, 0x18, 0x70, 0x62, 0x2f, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x73, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x16, 0x70, 0x62, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2f,
-	0x65, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xa4, 0xf4, 0x01,
+	0x65, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xf4, 0xf6, 0x01,
 	0x0a, 0x0e, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x73,
 	0x12, 0x5a, 0x0a, 0x0d, 0x41, 0x70, 0x70, 0x47, 0x65, 0x74, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f,
 	0x6e, 0x12, 0x23, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x52, 0x70, 0x63, 0x2e,
@@ -1978,6 +1978,27 @@ var file_pb_protos_service_service_proto_rawDesc = string([]byte{
 	0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x26, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x52, 0x70, 0x63, 0x2e, 0x43,
 	0x68, 0x61, 0x74, 0x2e, 0x55, 0x6e, 0x73, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x2e,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x63, 0x0a, 0x10, 0x43, 0x68, 0x61, 0x74,
+	0x52, 0x65, 0x61, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x12, 0x26, 0x2e, 0x61,
+	0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x52, 0x70, 0x63, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x2e,
+	0x52, 0x65, 0x61, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x2e, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x27, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x52,
+	0x70, 0x63, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x61, 0x64, 0x4d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x73, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x59, 0x0a,
+	0x12, 0x43, 0x68, 0x61, 0x74, 0x55, 0x6e, 0x72, 0x65, 0x61, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x73, 0x12, 0x20, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x52, 0x70,
+	0x63, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x2e, 0x55, 0x6e, 0x72, 0x65, 0x61, 0x64, 0x2e, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e,
+	0x52, 0x70, 0x63, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x2e, 0x55, 0x6e, 0x72, 0x65, 0x61, 0x64, 0x2e,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x8d, 0x01, 0x0a, 0x1e, 0x43, 0x68, 0x61,
+	0x74, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x54, 0x6f, 0x4d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x50, 0x72, 0x65, 0x76, 0x69, 0x65, 0x77, 0x73, 0x12, 0x34, 0x2e, 0x61, 0x6e,
+	0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x52, 0x70, 0x63, 0x2e, 0x43, 0x68, 0x61, 0x74, 0x2e, 0x53,
+	0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x54, 0x6f, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x50, 0x72, 0x65, 0x76, 0x69, 0x65, 0x77, 0x73, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x35, 0x2e, 0x61, 0x6e, 0x79, 0x74, 0x79, 0x70, 0x65, 0x2e, 0x52, 0x70, 0x63, 0x2e,
+	0x43, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x54, 0x6f,
+	0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x50, 0x72, 0x65, 0x76, 0x69, 0x65, 0x77, 0x73, 0x2e,
 	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x5a, 0x0a, 0x0d, 0x4f, 0x62, 0x6a, 0x65,
 	0x63, 0x74, 0x43, 0x68, 0x61, 0x74, 0x41, 0x64, 0x64, 0x12, 0x23, 0x2e, 0x61, 0x6e, 0x79, 0x74,
 	0x79, 0x70, 0x65, 0x2e, 0x52, 0x70, 0x63, 0x2e, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x2e, 0x43,
@@ -2270,288 +2291,294 @@ var file_pb_protos_service_service_proto_goTypes = []any{
 	(*pb.RpcChatGetMessagesByIdsRequest)(nil),                       // 277: anytype.Rpc.Chat.GetMessagesByIds.Request
 	(*pb.RpcChatSubscribeLastMessagesRequest)(nil),                  // 278: anytype.Rpc.Chat.SubscribeLastMessages.Request
 	(*pb.RpcChatUnsubscribeRequest)(nil),                            // 279: anytype.Rpc.Chat.Unsubscribe.Request
-	(*pb.RpcObjectChatAddRequest)(nil),                              // 280: anytype.Rpc.Object.ChatAdd.Request
-	(*pb.RpcAppGetVersionResponse)(nil),                             // 281: anytype.Rpc.App.GetVersion.Response
-	(*pb.RpcAppSetDeviceStateResponse)(nil),                         // 282: anytype.Rpc.App.SetDeviceState.Response
-	(*pb.RpcAppShutdownResponse)(nil),                               // 283: anytype.Rpc.App.Shutdown.Response
-	(*pb.RpcWalletCreateResponse)(nil),                              // 284: anytype.Rpc.Wallet.Create.Response
-	(*pb.RpcWalletRecoverResponse)(nil),                             // 285: anytype.Rpc.Wallet.Recover.Response
-	(*pb.RpcWalletConvertResponse)(nil),                             // 286: anytype.Rpc.Wallet.Convert.Response
-	(*pb.RpcAccountLocalLinkNewChallengeResponse)(nil),              // 287: anytype.Rpc.Account.LocalLink.NewChallenge.Response
-	(*pb.RpcAccountLocalLinkSolveChallengeResponse)(nil),            // 288: anytype.Rpc.Account.LocalLink.SolveChallenge.Response
-	(*pb.RpcWalletCreateSessionResponse)(nil),                       // 289: anytype.Rpc.Wallet.CreateSession.Response
-	(*pb.RpcWalletCloseSessionResponse)(nil),                        // 290: anytype.Rpc.Wallet.CloseSession.Response
-	(*pb.RpcWorkspaceCreateResponse)(nil),                           // 291: anytype.Rpc.Workspace.Create.Response
-	(*pb.RpcWorkspaceOpenResponse)(nil),                             // 292: anytype.Rpc.Workspace.Open.Response
-	(*pb.RpcWorkspaceObjectAddResponse)(nil),                        // 293: anytype.Rpc.Workspace.Object.Add.Response
-	(*pb.RpcWorkspaceObjectListAddResponse)(nil),                    // 294: anytype.Rpc.Workspace.Object.ListAdd.Response
-	(*pb.RpcWorkspaceObjectListRemoveResponse)(nil),                 // 295: anytype.Rpc.Workspace.Object.ListRemove.Response
-	(*pb.RpcWorkspaceSelectResponse)(nil),                           // 296: anytype.Rpc.Workspace.Select.Response
-	(*pb.RpcWorkspaceGetCurrentResponse)(nil),                       // 297: anytype.Rpc.Workspace.GetCurrent.Response
-	(*pb.RpcWorkspaceGetAllResponse)(nil),                           // 298: anytype.Rpc.Workspace.GetAll.Response
-	(*pb.RpcWorkspaceSetInfoResponse)(nil),                          // 299: anytype.Rpc.Workspace.SetInfo.Response
-	(*pb.RpcWorkspaceExportResponse)(nil),                           // 300: anytype.Rpc.Workspace.Export.Response
-	(*pb.RpcAccountRecoverResponse)(nil),                            // 301: anytype.Rpc.Account.Recover.Response
-	(*pb.RpcAccountMigrateResponse)(nil),                            // 302: anytype.Rpc.Account.Migrate.Response
-	(*pb.RpcAccountMigrateCancelResponse)(nil),                      // 303: anytype.Rpc.Account.MigrateCancel.Response
-	(*pb.RpcAccountCreateResponse)(nil),                             // 304: anytype.Rpc.Account.Create.Response
-	(*pb.RpcAccountDeleteResponse)(nil),                             // 305: anytype.Rpc.Account.Delete.Response
-	(*pb.RpcAccountRevertDeletionResponse)(nil),                     // 306: anytype.Rpc.Account.RevertDeletion.Response
-	(*pb.RpcAccountSelectResponse)(nil),                             // 307: anytype.Rpc.Account.Select.Response
-	(*pb.RpcAccountEnableLocalNetworkSyncResponse)(nil),             // 308: anytype.Rpc.Account.EnableLocalNetworkSync.Response
-	(*pb.RpcAccountChangeJsonApiAddrResponse)(nil),                  // 309: anytype.Rpc.Account.ChangeJsonApiAddr.Response
-	(*pb.RpcAccountStopResponse)(nil),                               // 310: anytype.Rpc.Account.Stop.Response
-	(*pb.RpcAccountMoveResponse)(nil),                               // 311: anytype.Rpc.Account.Move.Response
-	(*pb.RpcAccountConfigUpdateResponse)(nil),                       // 312: anytype.Rpc.Account.ConfigUpdate.Response
-	(*pb.RpcAccountRecoverFromLegacyExportResponse)(nil),            // 313: anytype.Rpc.Account.RecoverFromLegacyExport.Response
-	(*pb.RpcAccountChangeNetworkConfigAndRestartResponse)(nil),      // 314: anytype.Rpc.Account.ChangeNetworkConfigAndRestart.Response
-	(*pb.RpcSpaceDeleteResponse)(nil),                               // 315: anytype.Rpc.Space.Delete.Response
-	(*pb.RpcSpaceInviteGenerateResponse)(nil),                       // 316: anytype.Rpc.Space.InviteGenerate.Response
-	(*pb.RpcSpaceInviteGetCurrentResponse)(nil),                     // 317: anytype.Rpc.Space.InviteGetCurrent.Response
-	(*pb.RpcSpaceInviteRevokeResponse)(nil),                         // 318: anytype.Rpc.Space.InviteRevoke.Response
-	(*pb.RpcSpaceInviteViewResponse)(nil),                           // 319: anytype.Rpc.Space.InviteView.Response
-	(*pb.RpcSpaceJoinResponse)(nil),                                 // 320: anytype.Rpc.Space.Join.Response
-	(*pb.RpcSpaceJoinCancelResponse)(nil),                           // 321: anytype.Rpc.Space.JoinCancel.Response
-	(*pb.RpcSpaceStopSharingResponse)(nil),                          // 322: anytype.Rpc.Space.StopSharing.Response
-	(*pb.RpcSpaceRequestApproveResponse)(nil),                       // 323: anytype.Rpc.Space.RequestApprove.Response
-	(*pb.RpcSpaceRequestDeclineResponse)(nil),                       // 324: anytype.Rpc.Space.RequestDecline.Response
-	(*pb.RpcSpaceLeaveApproveResponse)(nil),                         // 325: anytype.Rpc.Space.LeaveApprove.Response
-	(*pb.RpcSpaceMakeShareableResponse)(nil),                        // 326: anytype.Rpc.Space.MakeShareable.Response
-	(*pb.RpcSpaceParticipantRemoveResponse)(nil),                    // 327: anytype.Rpc.Space.ParticipantRemove.Response
-	(*pb.RpcSpaceParticipantPermissionsChangeResponse)(nil),         // 328: anytype.Rpc.Space.ParticipantPermissionsChange.Response
-	(*pb.RpcSpaceSetOrderResponse)(nil),                             // 329: anytype.Rpc.Space.SetOrder.Response
-	(*pb.RpcSpaceUnsetOrderResponse)(nil),                           // 330: anytype.Rpc.Space.UnsetOrder.Response
-	(*pb.RpcPublishingCreateResponse)(nil),                          // 331: anytype.Rpc.Publishing.Create.Response
-	(*pb.RpcPublishingRemoveResponse)(nil),                          // 332: anytype.Rpc.Publishing.Remove.Response
-	(*pb.RpcPublishingListResponse)(nil),                            // 333: anytype.Rpc.Publishing.List.Response
-	(*pb.RpcPublishingResolveUriResponse)(nil),                      // 334: anytype.Rpc.Publishing.ResolveUri.Response
-	(*pb.RpcPublishingGetStatusResponse)(nil),                       // 335: anytype.Rpc.Publishing.GetStatus.Response
-	(*pb.RpcObjectOpenResponse)(nil),                                // 336: anytype.Rpc.Object.Open.Response
-	(*pb.RpcObjectCloseResponse)(nil),                               // 337: anytype.Rpc.Object.Close.Response
-	(*pb.RpcObjectShowResponse)(nil),                                // 338: anytype.Rpc.Object.Show.Response
-	(*pb.RpcObjectCreateResponse)(nil),                              // 339: anytype.Rpc.Object.Create.Response
-	(*pb.RpcObjectCreateBookmarkResponse)(nil),                      // 340: anytype.Rpc.Object.CreateBookmark.Response
-	(*pb.RpcObjectCreateFromUrlResponse)(nil),                       // 341: anytype.Rpc.Object.CreateFromUrl.Response
-	(*pb.RpcObjectCreateSetResponse)(nil),                           // 342: anytype.Rpc.Object.CreateSet.Response
-	(*pb.RpcObjectGraphResponse)(nil),                               // 343: anytype.Rpc.Object.Graph.Response
-	(*pb.RpcObjectSearchResponse)(nil),                              // 344: anytype.Rpc.Object.Search.Response
-	(*pb.RpcObjectSearchWithMetaResponse)(nil),                      // 345: anytype.Rpc.Object.SearchWithMeta.Response
-	(*pb.RpcObjectSearchSubscribeResponse)(nil),                     // 346: anytype.Rpc.Object.SearchSubscribe.Response
-	(*pb.RpcObjectCrossSpaceSearchSubscribeResponse)(nil),           // 347: anytype.Rpc.Object.CrossSpaceSearchSubscribe.Response
-	(*pb.RpcObjectCrossSpaceSearchUnsubscribeResponse)(nil),         // 348: anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Response
-	(*pb.RpcObjectSubscribeIdsResponse)(nil),                        // 349: anytype.Rpc.Object.SubscribeIds.Response
-	(*pb.RpcObjectGroupsSubscribeResponse)(nil),                     // 350: anytype.Rpc.Object.GroupsSubscribe.Response
-	(*pb.RpcObjectSearchUnsubscribeResponse)(nil),                   // 351: anytype.Rpc.Object.SearchUnsubscribe.Response
-	(*pb.RpcObjectSetDetailsResponse)(nil),                          // 352: anytype.Rpc.Object.SetDetails.Response
-	(*pb.RpcObjectDuplicateResponse)(nil),                           // 353: anytype.Rpc.Object.Duplicate.Response
-	(*pb.RpcObjectSetObjectTypeResponse)(nil),                       // 354: anytype.Rpc.Object.SetObjectType.Response
-	(*pb.RpcObjectSetLayoutResponse)(nil),                           // 355: anytype.Rpc.Object.SetLayout.Response
-	(*pb.RpcObjectSetInternalFlagsResponse)(nil),                    // 356: anytype.Rpc.Object.SetInternalFlags.Response
-	(*pb.RpcObjectSetIsFavoriteResponse)(nil),                       // 357: anytype.Rpc.Object.SetIsFavorite.Response
-	(*pb.RpcObjectSetIsArchivedResponse)(nil),                       // 358: anytype.Rpc.Object.SetIsArchived.Response
-	(*pb.RpcObjectSetSourceResponse)(nil),                           // 359: anytype.Rpc.Object.SetSource.Response
-	(*pb.RpcObjectWorkspaceSetDashboardResponse)(nil),               // 360: anytype.Rpc.Object.WorkspaceSetDashboard.Response
-	(*pb.RpcObjectListDuplicateResponse)(nil),                       // 361: anytype.Rpc.Object.ListDuplicate.Response
-	(*pb.RpcObjectListDeleteResponse)(nil),                          // 362: anytype.Rpc.Object.ListDelete.Response
-	(*pb.RpcObjectListSetIsArchivedResponse)(nil),                   // 363: anytype.Rpc.Object.ListSetIsArchived.Response
-	(*pb.RpcObjectListSetIsFavoriteResponse)(nil),                   // 364: anytype.Rpc.Object.ListSetIsFavorite.Response
-	(*pb.RpcObjectListSetObjectTypeResponse)(nil),                   // 365: anytype.Rpc.Object.ListSetObjectType.Response
-	(*pb.RpcObjectListSetDetailsResponse)(nil),                      // 366: anytype.Rpc.Object.ListSetDetails.Response
-	(*pb.RpcObjectListModifyDetailValuesResponse)(nil),              // 367: anytype.Rpc.Object.ListModifyDetailValues.Response
-	(*pb.RpcObjectApplyTemplateResponse)(nil),                       // 368: anytype.Rpc.Object.ApplyTemplate.Response
-	(*pb.RpcObjectToSetResponse)(nil),                               // 369: anytype.Rpc.Object.ToSet.Response
-	(*pb.RpcObjectToCollectionResponse)(nil),                        // 370: anytype.Rpc.Object.ToCollection.Response
-	(*pb.RpcObjectShareByLinkResponse)(nil),                         // 371: anytype.Rpc.Object.ShareByLink.Response
-	(*pb.RpcObjectUndoResponse)(nil),                                // 372: anytype.Rpc.Object.Undo.Response
-	(*pb.RpcObjectRedoResponse)(nil),                                // 373: anytype.Rpc.Object.Redo.Response
-	(*pb.RpcObjectListExportResponse)(nil),                          // 374: anytype.Rpc.Object.ListExport.Response
-	(*pb.RpcObjectBookmarkFetchResponse)(nil),                       // 375: anytype.Rpc.Object.BookmarkFetch.Response
-	(*pb.RpcObjectToBookmarkResponse)(nil),                          // 376: anytype.Rpc.Object.ToBookmark.Response
-	(*pb.RpcObjectImportResponse)(nil),                              // 377: anytype.Rpc.Object.Import.Response
-	(*pb.RpcObjectImportListResponse)(nil),                          // 378: anytype.Rpc.Object.ImportList.Response
-	(*pb.RpcObjectImportNotionValidateTokenResponse)(nil),           // 379: anytype.Rpc.Object.Import.Notion.ValidateToken.Response
-	(*pb.RpcObjectImportUseCaseResponse)(nil),                       // 380: anytype.Rpc.Object.ImportUseCase.Response
-	(*pb.RpcObjectImportExperienceResponse)(nil),                    // 381: anytype.Rpc.Object.ImportExperience.Response
-	(*pb.RpcObjectDateByTimestampResponse)(nil),                     // 382: anytype.Rpc.Object.DateByTimestamp.Response
-	(*pb.RpcObjectCollectionAddResponse)(nil),                       // 383: anytype.Rpc.ObjectCollection.Add.Response
-	(*pb.RpcObjectCollectionRemoveResponse)(nil),                    // 384: anytype.Rpc.ObjectCollection.Remove.Response
-	(*pb.RpcObjectCollectionSortResponse)(nil),                      // 385: anytype.Rpc.ObjectCollection.Sort.Response
-	(*pb.RpcObjectCreateRelationResponse)(nil),                      // 386: anytype.Rpc.Object.CreateRelation.Response
-	(*pb.RpcObjectCreateRelationOptionResponse)(nil),                // 387: anytype.Rpc.Object.CreateRelationOption.Response
-	(*pb.RpcRelationListRemoveOptionResponse)(nil),                  // 388: anytype.Rpc.Relation.ListRemoveOption.Response
-	(*pb.RpcRelationOptionsResponse)(nil),                           // 389: anytype.Rpc.Relation.Options.Response
-	(*pb.RpcRelationListWithValueResponse)(nil),                     // 390: anytype.Rpc.Relation.ListWithValue.Response
-	(*pb.RpcObjectRelationAddResponse)(nil),                         // 391: anytype.Rpc.ObjectRelation.Add.Response
-	(*pb.RpcObjectRelationDeleteResponse)(nil),                      // 392: anytype.Rpc.ObjectRelation.Delete.Response
-	(*pb.RpcObjectRelationAddFeaturedResponse)(nil),                 // 393: anytype.Rpc.ObjectRelation.AddFeatured.Response
-	(*pb.RpcObjectRelationRemoveFeaturedResponse)(nil),              // 394: anytype.Rpc.ObjectRelation.RemoveFeatured.Response
-	(*pb.RpcObjectRelationListAvailableResponse)(nil),               // 395: anytype.Rpc.ObjectRelation.ListAvailable.Response
-	(*pb.RpcObjectCreateObjectTypeResponse)(nil),                    // 396: anytype.Rpc.Object.CreateObjectType.Response
-	(*pb.RpcObjectTypeRelationAddResponse)(nil),                     // 397: anytype.Rpc.ObjectType.Relation.Add.Response
-	(*pb.RpcObjectTypeRelationRemoveResponse)(nil),                  // 398: anytype.Rpc.ObjectType.Relation.Remove.Response
-	(*pb.RpcObjectTypeRecommendedRelationsSetResponse)(nil),         // 399: anytype.Rpc.ObjectType.Recommended.RelationsSet.Response
-	(*pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse)(nil), // 400: anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response
-	(*pb.RpcObjectTypeListConflictingRelationsResponse)(nil),        // 401: anytype.Rpc.ObjectType.ListConflictingRelations.Response
-	(*pb.RpcHistoryShowVersionResponse)(nil),                        // 402: anytype.Rpc.History.ShowVersion.Response
-	(*pb.RpcHistoryGetVersionsResponse)(nil),                        // 403: anytype.Rpc.History.GetVersions.Response
-	(*pb.RpcHistorySetVersionResponse)(nil),                         // 404: anytype.Rpc.History.SetVersion.Response
-	(*pb.RpcHistoryDiffVersionsResponse)(nil),                       // 405: anytype.Rpc.History.DiffVersions.Response
-	(*pb.RpcFileSpaceOffloadResponse)(nil),                          // 406: anytype.Rpc.File.SpaceOffload.Response
-	(*pb.RpcFileReconcileResponse)(nil),                             // 407: anytype.Rpc.File.Reconcile.Response
-	(*pb.RpcFileListOffloadResponse)(nil),                           // 408: anytype.Rpc.File.ListOffload.Response
-	(*pb.RpcFileUploadResponse)(nil),                                // 409: anytype.Rpc.File.Upload.Response
-	(*pb.RpcFileDownloadResponse)(nil),                              // 410: anytype.Rpc.File.Download.Response
-	(*pb.RpcFileDropResponse)(nil),                                  // 411: anytype.Rpc.File.Drop.Response
-	(*pb.RpcFileSpaceUsageResponse)(nil),                            // 412: anytype.Rpc.File.SpaceUsage.Response
-	(*pb.RpcFileNodeUsageResponse)(nil),                             // 413: anytype.Rpc.File.NodeUsage.Response
-	(*pb.RpcNavigationListObjectsResponse)(nil),                     // 414: anytype.Rpc.Navigation.ListObjects.Response
-	(*pb.RpcNavigationGetObjectInfoWithLinksResponse)(nil),          // 415: anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response
-	(*pb.RpcTemplateCreateFromObjectResponse)(nil),                  // 416: anytype.Rpc.Template.CreateFromObject.Response
-	(*pb.RpcTemplateCloneResponse)(nil),                             // 417: anytype.Rpc.Template.Clone.Response
-	(*pb.RpcTemplateExportAllResponse)(nil),                         // 418: anytype.Rpc.Template.ExportAll.Response
-	(*pb.RpcLinkPreviewResponse)(nil),                               // 419: anytype.Rpc.LinkPreview.Response
-	(*pb.RpcUnsplashSearchResponse)(nil),                            // 420: anytype.Rpc.Unsplash.Search.Response
-	(*pb.RpcUnsplashDownloadResponse)(nil),                          // 421: anytype.Rpc.Unsplash.Download.Response
-	(*pb.RpcGalleryDownloadManifestResponse)(nil),                   // 422: anytype.Rpc.Gallery.DownloadManifest.Response
-	(*pb.RpcGalleryDownloadIndexResponse)(nil),                      // 423: anytype.Rpc.Gallery.DownloadIndex.Response
-	(*pb.RpcBlockUploadResponse)(nil),                               // 424: anytype.Rpc.Block.Upload.Response
-	(*pb.RpcBlockReplaceResponse)(nil),                              // 425: anytype.Rpc.Block.Replace.Response
-	(*pb.RpcBlockCreateResponse)(nil),                               // 426: anytype.Rpc.Block.Create.Response
-	(*pb.RpcBlockSplitResponse)(nil),                                // 427: anytype.Rpc.Block.Split.Response
-	(*pb.RpcBlockMergeResponse)(nil),                                // 428: anytype.Rpc.Block.Merge.Response
-	(*pb.RpcBlockCopyResponse)(nil),                                 // 429: anytype.Rpc.Block.Copy.Response
-	(*pb.RpcBlockPasteResponse)(nil),                                // 430: anytype.Rpc.Block.Paste.Response
-	(*pb.RpcBlockCutResponse)(nil),                                  // 431: anytype.Rpc.Block.Cut.Response
-	(*pb.RpcBlockSetFieldsResponse)(nil),                            // 432: anytype.Rpc.Block.SetFields.Response
-	(*pb.RpcBlockExportResponse)(nil),                               // 433: anytype.Rpc.Block.Export.Response
-	(*pb.RpcBlockSetCarriageResponse)(nil),                          // 434: anytype.Rpc.Block.SetCarriage.Response
-	(*pb.RpcBlockPreviewResponse)(nil),                              // 435: anytype.Rpc.Block.Preview.Response
-	(*pb.RpcBlockListDeleteResponse)(nil),                           // 436: anytype.Rpc.Block.ListDelete.Response
-	(*pb.RpcBlockListMoveToExistingObjectResponse)(nil),             // 437: anytype.Rpc.Block.ListMoveToExistingObject.Response
-	(*pb.RpcBlockListMoveToNewObjectResponse)(nil),                  // 438: anytype.Rpc.Block.ListMoveToNewObject.Response
-	(*pb.RpcBlockListConvertToObjectsResponse)(nil),                 // 439: anytype.Rpc.Block.ListConvertToObjects.Response
-	(*pb.RpcBlockListSetFieldsResponse)(nil),                        // 440: anytype.Rpc.Block.ListSetFields.Response
-	(*pb.RpcBlockListDuplicateResponse)(nil),                        // 441: anytype.Rpc.Block.ListDuplicate.Response
-	(*pb.RpcBlockListSetBackgroundColorResponse)(nil),               // 442: anytype.Rpc.Block.ListSetBackgroundColor.Response
-	(*pb.RpcBlockListSetAlignResponse)(nil),                         // 443: anytype.Rpc.Block.ListSetAlign.Response
-	(*pb.RpcBlockListSetVerticalAlignResponse)(nil),                 // 444: anytype.Rpc.Block.ListSetVerticalAlign.Response
-	(*pb.RpcBlockListTurnIntoResponse)(nil),                         // 445: anytype.Rpc.Block.ListTurnInto.Response
-	(*pb.RpcBlockTextSetTextResponse)(nil),                          // 446: anytype.Rpc.BlockText.SetText.Response
-	(*pb.RpcBlockTextSetColorResponse)(nil),                         // 447: anytype.Rpc.BlockText.SetColor.Response
-	(*pb.RpcBlockTextSetStyleResponse)(nil),                         // 448: anytype.Rpc.BlockText.SetStyle.Response
-	(*pb.RpcBlockTextSetCheckedResponse)(nil),                       // 449: anytype.Rpc.BlockText.SetChecked.Response
-	(*pb.RpcBlockTextSetIconResponse)(nil),                          // 450: anytype.Rpc.BlockText.SetIcon.Response
-	(*pb.RpcBlockTextListSetColorResponse)(nil),                     // 451: anytype.Rpc.BlockText.ListSetColor.Response
-	(*pb.RpcBlockTextListSetMarkResponse)(nil),                      // 452: anytype.Rpc.BlockText.ListSetMark.Response
-	(*pb.RpcBlockTextListSetStyleResponse)(nil),                     // 453: anytype.Rpc.BlockText.ListSetStyle.Response
-	(*pb.RpcBlockTextListClearStyleResponse)(nil),                   // 454: anytype.Rpc.BlockText.ListClearStyle.Response
-	(*pb.RpcBlockTextListClearContentResponse)(nil),                 // 455: anytype.Rpc.BlockText.ListClearContent.Response
-	(*pb.RpcBlockFileSetNameResponse)(nil),                          // 456: anytype.Rpc.BlockFile.SetName.Response
-	(*pb.RpcBlockFileSetTargetObjectIdResponse)(nil),                // 457: anytype.Rpc.BlockFile.SetTargetObjectId.Response
-	(*pb.RpcBlockImageSetNameResponse)(nil),                         // 458: anytype.Rpc.BlockImage.SetName.Response
-	(*pb.RpcBlockVideoSetNameResponse)(nil),                         // 459: anytype.Rpc.BlockVideo.SetName.Response
-	(*pb.RpcBlockFileCreateAndUploadResponse)(nil),                  // 460: anytype.Rpc.BlockFile.CreateAndUpload.Response
-	(*pb.RpcBlockFileListSetStyleResponse)(nil),                     // 461: anytype.Rpc.BlockFile.ListSetStyle.Response
-	(*pb.RpcBlockDataviewViewCreateResponse)(nil),                   // 462: anytype.Rpc.BlockDataview.View.Create.Response
-	(*pb.RpcBlockDataviewViewDeleteResponse)(nil),                   // 463: anytype.Rpc.BlockDataview.View.Delete.Response
-	(*pb.RpcBlockDataviewViewUpdateResponse)(nil),                   // 464: anytype.Rpc.BlockDataview.View.Update.Response
-	(*pb.RpcBlockDataviewViewSetActiveResponse)(nil),                // 465: anytype.Rpc.BlockDataview.View.SetActive.Response
-	(*pb.RpcBlockDataviewViewSetPositionResponse)(nil),              // 466: anytype.Rpc.BlockDataview.View.SetPosition.Response
-	(*pb.RpcBlockDataviewSetSourceResponse)(nil),                    // 467: anytype.Rpc.BlockDataview.SetSource.Response
-	(*pb.RpcBlockDataviewRelationAddResponse)(nil),                  // 468: anytype.Rpc.BlockDataview.Relation.Add.Response
-	(*pb.RpcBlockDataviewRelationDeleteResponse)(nil),               // 469: anytype.Rpc.BlockDataview.Relation.Delete.Response
-	(*pb.RpcBlockDataviewGroupOrderUpdateResponse)(nil),             // 470: anytype.Rpc.BlockDataview.GroupOrder.Update.Response
-	(*pb.RpcBlockDataviewObjectOrderUpdateResponse)(nil),            // 471: anytype.Rpc.BlockDataview.ObjectOrder.Update.Response
-	(*pb.RpcBlockDataviewObjectOrderMoveResponse)(nil),              // 472: anytype.Rpc.BlockDataview.ObjectOrder.Move.Response
-	(*pb.RpcBlockDataviewCreateFromExistingObjectResponse)(nil),     // 473: anytype.Rpc.BlockDataview.CreateFromExistingObject.Response
-	(*pb.RpcBlockDataviewFilterAddResponse)(nil),                    // 474: anytype.Rpc.BlockDataview.Filter.Add.Response
-	(*pb.RpcBlockDataviewFilterRemoveResponse)(nil),                 // 475: anytype.Rpc.BlockDataview.Filter.Remove.Response
-	(*pb.RpcBlockDataviewFilterReplaceResponse)(nil),                // 476: anytype.Rpc.BlockDataview.Filter.Replace.Response
-	(*pb.RpcBlockDataviewFilterSortResponse)(nil),                   // 477: anytype.Rpc.BlockDataview.Filter.Sort.Response
-	(*pb.RpcBlockDataviewSortAddResponse)(nil),                      // 478: anytype.Rpc.BlockDataview.Sort.Add.Response
-	(*pb.RpcBlockDataviewSortRemoveResponse)(nil),                   // 479: anytype.Rpc.BlockDataview.Sort.Remove.Response
-	(*pb.RpcBlockDataviewSortReplaceResponse)(nil),                  // 480: anytype.Rpc.BlockDataview.Sort.Replace.Response
-	(*pb.RpcBlockDataviewSortSSortResponse)(nil),                    // 481: anytype.Rpc.BlockDataview.Sort.SSort.Response
-	(*pb.RpcBlockDataviewViewRelationAddResponse)(nil),              // 482: anytype.Rpc.BlockDataview.ViewRelation.Add.Response
-	(*pb.RpcBlockDataviewViewRelationRemoveResponse)(nil),           // 483: anytype.Rpc.BlockDataview.ViewRelation.Remove.Response
-	(*pb.RpcBlockDataviewViewRelationReplaceResponse)(nil),          // 484: anytype.Rpc.BlockDataview.ViewRelation.Replace.Response
-	(*pb.RpcBlockDataviewViewRelationSortResponse)(nil),             // 485: anytype.Rpc.BlockDataview.ViewRelation.Sort.Response
-	(*pb.RpcBlockTableCreateResponse)(nil),                          // 486: anytype.Rpc.BlockTable.Create.Response
-	(*pb.RpcBlockTableExpandResponse)(nil),                          // 487: anytype.Rpc.BlockTable.Expand.Response
-	(*pb.RpcBlockTableRowCreateResponse)(nil),                       // 488: anytype.Rpc.BlockTable.RowCreate.Response
-	(*pb.RpcBlockTableRowDeleteResponse)(nil),                       // 489: anytype.Rpc.BlockTable.RowDelete.Response
-	(*pb.RpcBlockTableRowDuplicateResponse)(nil),                    // 490: anytype.Rpc.BlockTable.RowDuplicate.Response
-	(*pb.RpcBlockTableRowSetHeaderResponse)(nil),                    // 491: anytype.Rpc.BlockTable.RowSetHeader.Response
-	(*pb.RpcBlockTableColumnCreateResponse)(nil),                    // 492: anytype.Rpc.BlockTable.ColumnCreate.Response
-	(*pb.RpcBlockTableColumnMoveResponse)(nil),                      // 493: anytype.Rpc.BlockTable.ColumnMove.Response
-	(*pb.RpcBlockTableColumnDeleteResponse)(nil),                    // 494: anytype.Rpc.BlockTable.ColumnDelete.Response
-	(*pb.RpcBlockTableColumnDuplicateResponse)(nil),                 // 495: anytype.Rpc.BlockTable.ColumnDuplicate.Response
-	(*pb.RpcBlockTableRowListFillResponse)(nil),                     // 496: anytype.Rpc.BlockTable.RowListFill.Response
-	(*pb.RpcBlockTableRowListCleanResponse)(nil),                    // 497: anytype.Rpc.BlockTable.RowListClean.Response
-	(*pb.RpcBlockTableColumnListFillResponse)(nil),                  // 498: anytype.Rpc.BlockTable.ColumnListFill.Response
-	(*pb.RpcBlockTableSortResponse)(nil),                            // 499: anytype.Rpc.BlockTable.Sort.Response
-	(*pb.RpcBlockCreateWidgetResponse)(nil),                         // 500: anytype.Rpc.Block.CreateWidget.Response
-	(*pb.RpcBlockWidgetSetTargetIdResponse)(nil),                    // 501: anytype.Rpc.BlockWidget.SetTargetId.Response
-	(*pb.RpcBlockWidgetSetLayoutResponse)(nil),                      // 502: anytype.Rpc.BlockWidget.SetLayout.Response
-	(*pb.RpcBlockWidgetSetLimitResponse)(nil),                       // 503: anytype.Rpc.BlockWidget.SetLimit.Response
-	(*pb.RpcBlockWidgetSetViewIdResponse)(nil),                      // 504: anytype.Rpc.BlockWidget.SetViewId.Response
-	(*pb.RpcBlockLinkCreateWithObjectResponse)(nil),                 // 505: anytype.Rpc.BlockLink.CreateWithObject.Response
-	(*pb.RpcBlockLinkListSetAppearanceResponse)(nil),                // 506: anytype.Rpc.BlockLink.ListSetAppearance.Response
-	(*pb.RpcBlockBookmarkFetchResponse)(nil),                        // 507: anytype.Rpc.BlockBookmark.Fetch.Response
-	(*pb.RpcBlockBookmarkCreateAndFetchResponse)(nil),               // 508: anytype.Rpc.BlockBookmark.CreateAndFetch.Response
-	(*pb.RpcBlockRelationSetKeyResponse)(nil),                       // 509: anytype.Rpc.BlockRelation.SetKey.Response
-	(*pb.RpcBlockRelationAddResponse)(nil),                          // 510: anytype.Rpc.BlockRelation.Add.Response
-	(*pb.RpcBlockDivListSetStyleResponse)(nil),                      // 511: anytype.Rpc.BlockDiv.ListSetStyle.Response
-	(*pb.RpcBlockLatexSetTextResponse)(nil),                         // 512: anytype.Rpc.BlockLatex.SetText.Response
-	(*pb.RpcProcessCancelResponse)(nil),                             // 513: anytype.Rpc.Process.Cancel.Response
-	(*pb.RpcProcessSubscribeResponse)(nil),                          // 514: anytype.Rpc.Process.Subscribe.Response
-	(*pb.RpcProcessUnsubscribeResponse)(nil),                        // 515: anytype.Rpc.Process.Unsubscribe.Response
-	(*pb.RpcLogSendResponse)(nil),                                   // 516: anytype.Rpc.Log.Send.Response
-	(*pb.RpcDebugStatResponse)(nil),                                 // 517: anytype.Rpc.Debug.Stat.Response
-	(*pb.RpcDebugTreeResponse)(nil),                                 // 518: anytype.Rpc.Debug.Tree.Response
-	(*pb.RpcDebugTreeHeadsResponse)(nil),                            // 519: anytype.Rpc.Debug.TreeHeads.Response
-	(*pb.RpcDebugSpaceSummaryResponse)(nil),                         // 520: anytype.Rpc.Debug.SpaceSummary.Response
-	(*pb.RpcDebugStackGoroutinesResponse)(nil),                      // 521: anytype.Rpc.Debug.StackGoroutines.Response
-	(*pb.RpcDebugExportLocalstoreResponse)(nil),                     // 522: anytype.Rpc.Debug.ExportLocalstore.Response
-	(*pb.RpcDebugPingResponse)(nil),                                 // 523: anytype.Rpc.Debug.Ping.Response
-	(*pb.RpcDebugSubscriptionsResponse)(nil),                        // 524: anytype.Rpc.Debug.Subscriptions.Response
-	(*pb.RpcDebugOpenedObjectsResponse)(nil),                        // 525: anytype.Rpc.Debug.OpenedObjects.Response
-	(*pb.RpcDebugRunProfilerResponse)(nil),                          // 526: anytype.Rpc.Debug.RunProfiler.Response
-	(*pb.RpcDebugAccountSelectTraceResponse)(nil),                   // 527: anytype.Rpc.Debug.AccountSelectTrace.Response
-	(*pb.RpcDebugAnystoreObjectChangesResponse)(nil),                // 528: anytype.Rpc.Debug.AnystoreObjectChanges.Response
-	(*pb.RpcDebugNetCheckResponse)(nil),                             // 529: anytype.Rpc.Debug.NetCheck.Response
-	(*pb.RpcDebugExportLogResponse)(nil),                            // 530: anytype.Rpc.Debug.ExportLog.Response
-	(*pb.RpcInitialSetParametersResponse)(nil),                      // 531: anytype.Rpc.Initial.SetParameters.Response
-	(*pb.Event)(nil),                                           // 532: anytype.Event
-	(*pb.RpcNotificationListResponse)(nil),                     // 533: anytype.Rpc.Notification.List.Response
-	(*pb.RpcNotificationReplyResponse)(nil),                    // 534: anytype.Rpc.Notification.Reply.Response
-	(*pb.RpcNotificationTestResponse)(nil),                     // 535: anytype.Rpc.Notification.Test.Response
-	(*pb.RpcMembershipGetStatusResponse)(nil),                  // 536: anytype.Rpc.Membership.GetStatus.Response
-	(*pb.RpcMembershipIsNameValidResponse)(nil),                // 537: anytype.Rpc.Membership.IsNameValid.Response
-	(*pb.RpcMembershipRegisterPaymentRequestResponse)(nil),     // 538: anytype.Rpc.Membership.RegisterPaymentRequest.Response
-	(*pb.RpcMembershipGetPortalLinkUrlResponse)(nil),           // 539: anytype.Rpc.Membership.GetPortalLinkUrl.Response
-	(*pb.RpcMembershipGetVerificationEmailStatusResponse)(nil), // 540: anytype.Rpc.Membership.GetVerificationEmailStatus.Response
-	(*pb.RpcMembershipGetVerificationEmailResponse)(nil),       // 541: anytype.Rpc.Membership.GetVerificationEmail.Response
-	(*pb.RpcMembershipVerifyEmailCodeResponse)(nil),            // 542: anytype.Rpc.Membership.VerifyEmailCode.Response
-	(*pb.RpcMembershipFinalizeResponse)(nil),                   // 543: anytype.Rpc.Membership.Finalize.Response
-	(*pb.RpcMembershipGetTiersResponse)(nil),                   // 544: anytype.Rpc.Membership.GetTiers.Response
-	(*pb.RpcMembershipVerifyAppStoreReceiptResponse)(nil),      // 545: anytype.Rpc.Membership.VerifyAppStoreReceipt.Response
-	(*pb.RpcNameServiceUserAccountGetResponse)(nil),            // 546: anytype.Rpc.NameService.UserAccount.Get.Response
-	(*pb.RpcNameServiceResolveNameResponse)(nil),               // 547: anytype.Rpc.NameService.ResolveName.Response
-	(*pb.RpcNameServiceResolveAnyIdResponse)(nil),              // 548: anytype.Rpc.NameService.ResolveAnyId.Response
-	(*pb.RpcBroadcastPayloadEventResponse)(nil),                // 549: anytype.Rpc.Broadcast.PayloadEvent.Response
-	(*pb.RpcDeviceSetNameResponse)(nil),                        // 550: anytype.Rpc.Device.SetName.Response
-	(*pb.RpcDeviceListResponse)(nil),                           // 551: anytype.Rpc.Device.List.Response
-	(*pb.RpcDeviceNetworkStateSetResponse)(nil),                // 552: anytype.Rpc.Device.NetworkState.Set.Response
-	(*pb.RpcChatAddMessageResponse)(nil),                       // 553: anytype.Rpc.Chat.AddMessage.Response
-	(*pb.RpcChatEditMessageContentResponse)(nil),               // 554: anytype.Rpc.Chat.EditMessageContent.Response
-	(*pb.RpcChatToggleMessageReactionResponse)(nil),            // 555: anytype.Rpc.Chat.ToggleMessageReaction.Response
-	(*pb.RpcChatDeleteMessageResponse)(nil),                    // 556: anytype.Rpc.Chat.DeleteMessage.Response
-	(*pb.RpcChatGetMessagesResponse)(nil),                      // 557: anytype.Rpc.Chat.GetMessages.Response
-	(*pb.RpcChatGetMessagesByIdsResponse)(nil),                 // 558: anytype.Rpc.Chat.GetMessagesByIds.Response
-	(*pb.RpcChatSubscribeLastMessagesResponse)(nil),            // 559: anytype.Rpc.Chat.SubscribeLastMessages.Response
-	(*pb.RpcChatUnsubscribeResponse)(nil),                      // 560: anytype.Rpc.Chat.Unsubscribe.Response
-	(*pb.RpcObjectChatAddResponse)(nil),                        // 561: anytype.Rpc.Object.ChatAdd.Response
+	(*pb.RpcChatReadMessagesRequest)(nil),                           // 280: anytype.Rpc.Chat.ReadMessages.Request
+	(*pb.RpcChatUnreadRequest)(nil),                                 // 281: anytype.Rpc.Chat.Unread.Request
+	(*pb.RpcChatSubscribeToMessagePreviewsRequest)(nil),             // 282: anytype.Rpc.Chat.SubscribeToMessagePreviews.Request
+	(*pb.RpcObjectChatAddRequest)(nil),                              // 283: anytype.Rpc.Object.ChatAdd.Request
+	(*pb.RpcAppGetVersionResponse)(nil),                             // 284: anytype.Rpc.App.GetVersion.Response
+	(*pb.RpcAppSetDeviceStateResponse)(nil),                         // 285: anytype.Rpc.App.SetDeviceState.Response
+	(*pb.RpcAppShutdownResponse)(nil),                               // 286: anytype.Rpc.App.Shutdown.Response
+	(*pb.RpcWalletCreateResponse)(nil),                              // 287: anytype.Rpc.Wallet.Create.Response
+	(*pb.RpcWalletRecoverResponse)(nil),                             // 288: anytype.Rpc.Wallet.Recover.Response
+	(*pb.RpcWalletConvertResponse)(nil),                             // 289: anytype.Rpc.Wallet.Convert.Response
+	(*pb.RpcAccountLocalLinkNewChallengeResponse)(nil),              // 290: anytype.Rpc.Account.LocalLink.NewChallenge.Response
+	(*pb.RpcAccountLocalLinkSolveChallengeResponse)(nil),            // 291: anytype.Rpc.Account.LocalLink.SolveChallenge.Response
+	(*pb.RpcWalletCreateSessionResponse)(nil),                       // 292: anytype.Rpc.Wallet.CreateSession.Response
+	(*pb.RpcWalletCloseSessionResponse)(nil),                        // 293: anytype.Rpc.Wallet.CloseSession.Response
+	(*pb.RpcWorkspaceCreateResponse)(nil),                           // 294: anytype.Rpc.Workspace.Create.Response
+	(*pb.RpcWorkspaceOpenResponse)(nil),                             // 295: anytype.Rpc.Workspace.Open.Response
+	(*pb.RpcWorkspaceObjectAddResponse)(nil),                        // 296: anytype.Rpc.Workspace.Object.Add.Response
+	(*pb.RpcWorkspaceObjectListAddResponse)(nil),                    // 297: anytype.Rpc.Workspace.Object.ListAdd.Response
+	(*pb.RpcWorkspaceObjectListRemoveResponse)(nil),                 // 298: anytype.Rpc.Workspace.Object.ListRemove.Response
+	(*pb.RpcWorkspaceSelectResponse)(nil),                           // 299: anytype.Rpc.Workspace.Select.Response
+	(*pb.RpcWorkspaceGetCurrentResponse)(nil),                       // 300: anytype.Rpc.Workspace.GetCurrent.Response
+	(*pb.RpcWorkspaceGetAllResponse)(nil),                           // 301: anytype.Rpc.Workspace.GetAll.Response
+	(*pb.RpcWorkspaceSetInfoResponse)(nil),                          // 302: anytype.Rpc.Workspace.SetInfo.Response
+	(*pb.RpcWorkspaceExportResponse)(nil),                           // 303: anytype.Rpc.Workspace.Export.Response
+	(*pb.RpcAccountRecoverResponse)(nil),                            // 304: anytype.Rpc.Account.Recover.Response
+	(*pb.RpcAccountMigrateResponse)(nil),                            // 305: anytype.Rpc.Account.Migrate.Response
+	(*pb.RpcAccountMigrateCancelResponse)(nil),                      // 306: anytype.Rpc.Account.MigrateCancel.Response
+	(*pb.RpcAccountCreateResponse)(nil),                             // 307: anytype.Rpc.Account.Create.Response
+	(*pb.RpcAccountDeleteResponse)(nil),                             // 308: anytype.Rpc.Account.Delete.Response
+	(*pb.RpcAccountRevertDeletionResponse)(nil),                     // 309: anytype.Rpc.Account.RevertDeletion.Response
+	(*pb.RpcAccountSelectResponse)(nil),                             // 310: anytype.Rpc.Account.Select.Response
+	(*pb.RpcAccountEnableLocalNetworkSyncResponse)(nil),             // 311: anytype.Rpc.Account.EnableLocalNetworkSync.Response
+	(*pb.RpcAccountChangeJsonApiAddrResponse)(nil),                  // 312: anytype.Rpc.Account.ChangeJsonApiAddr.Response
+	(*pb.RpcAccountStopResponse)(nil),                               // 313: anytype.Rpc.Account.Stop.Response
+	(*pb.RpcAccountMoveResponse)(nil),                               // 314: anytype.Rpc.Account.Move.Response
+	(*pb.RpcAccountConfigUpdateResponse)(nil),                       // 315: anytype.Rpc.Account.ConfigUpdate.Response
+	(*pb.RpcAccountRecoverFromLegacyExportResponse)(nil),            // 316: anytype.Rpc.Account.RecoverFromLegacyExport.Response
+	(*pb.RpcAccountChangeNetworkConfigAndRestartResponse)(nil),      // 317: anytype.Rpc.Account.ChangeNetworkConfigAndRestart.Response
+	(*pb.RpcSpaceDeleteResponse)(nil),                               // 318: anytype.Rpc.Space.Delete.Response
+	(*pb.RpcSpaceInviteGenerateResponse)(nil),                       // 319: anytype.Rpc.Space.InviteGenerate.Response
+	(*pb.RpcSpaceInviteGetCurrentResponse)(nil),                     // 320: anytype.Rpc.Space.InviteGetCurrent.Response
+	(*pb.RpcSpaceInviteRevokeResponse)(nil),                         // 321: anytype.Rpc.Space.InviteRevoke.Response
+	(*pb.RpcSpaceInviteViewResponse)(nil),                           // 322: anytype.Rpc.Space.InviteView.Response
+	(*pb.RpcSpaceJoinResponse)(nil),                                 // 323: anytype.Rpc.Space.Join.Response
+	(*pb.RpcSpaceJoinCancelResponse)(nil),                           // 324: anytype.Rpc.Space.JoinCancel.Response
+	(*pb.RpcSpaceStopSharingResponse)(nil),                          // 325: anytype.Rpc.Space.StopSharing.Response
+	(*pb.RpcSpaceRequestApproveResponse)(nil),                       // 326: anytype.Rpc.Space.RequestApprove.Response
+	(*pb.RpcSpaceRequestDeclineResponse)(nil),                       // 327: anytype.Rpc.Space.RequestDecline.Response
+	(*pb.RpcSpaceLeaveApproveResponse)(nil),                         // 328: anytype.Rpc.Space.LeaveApprove.Response
+	(*pb.RpcSpaceMakeShareableResponse)(nil),                        // 329: anytype.Rpc.Space.MakeShareable.Response
+	(*pb.RpcSpaceParticipantRemoveResponse)(nil),                    // 330: anytype.Rpc.Space.ParticipantRemove.Response
+	(*pb.RpcSpaceParticipantPermissionsChangeResponse)(nil),         // 331: anytype.Rpc.Space.ParticipantPermissionsChange.Response
+	(*pb.RpcSpaceSetOrderResponse)(nil),                             // 332: anytype.Rpc.Space.SetOrder.Response
+	(*pb.RpcSpaceUnsetOrderResponse)(nil),                           // 333: anytype.Rpc.Space.UnsetOrder.Response
+	(*pb.RpcPublishingCreateResponse)(nil),                          // 334: anytype.Rpc.Publishing.Create.Response
+	(*pb.RpcPublishingRemoveResponse)(nil),                          // 335: anytype.Rpc.Publishing.Remove.Response
+	(*pb.RpcPublishingListResponse)(nil),                            // 336: anytype.Rpc.Publishing.List.Response
+	(*pb.RpcPublishingResolveUriResponse)(nil),                      // 337: anytype.Rpc.Publishing.ResolveUri.Response
+	(*pb.RpcPublishingGetStatusResponse)(nil),                       // 338: anytype.Rpc.Publishing.GetStatus.Response
+	(*pb.RpcObjectOpenResponse)(nil),                                // 339: anytype.Rpc.Object.Open.Response
+	(*pb.RpcObjectCloseResponse)(nil),                               // 340: anytype.Rpc.Object.Close.Response
+	(*pb.RpcObjectShowResponse)(nil),                                // 341: anytype.Rpc.Object.Show.Response
+	(*pb.RpcObjectCreateResponse)(nil),                              // 342: anytype.Rpc.Object.Create.Response
+	(*pb.RpcObjectCreateBookmarkResponse)(nil),                      // 343: anytype.Rpc.Object.CreateBookmark.Response
+	(*pb.RpcObjectCreateFromUrlResponse)(nil),                       // 344: anytype.Rpc.Object.CreateFromUrl.Response
+	(*pb.RpcObjectCreateSetResponse)(nil),                           // 345: anytype.Rpc.Object.CreateSet.Response
+	(*pb.RpcObjectGraphResponse)(nil),                               // 346: anytype.Rpc.Object.Graph.Response
+	(*pb.RpcObjectSearchResponse)(nil),                              // 347: anytype.Rpc.Object.Search.Response
+	(*pb.RpcObjectSearchWithMetaResponse)(nil),                      // 348: anytype.Rpc.Object.SearchWithMeta.Response
+	(*pb.RpcObjectSearchSubscribeResponse)(nil),                     // 349: anytype.Rpc.Object.SearchSubscribe.Response
+	(*pb.RpcObjectCrossSpaceSearchSubscribeResponse)(nil),           // 350: anytype.Rpc.Object.CrossSpaceSearchSubscribe.Response
+	(*pb.RpcObjectCrossSpaceSearchUnsubscribeResponse)(nil),         // 351: anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Response
+	(*pb.RpcObjectSubscribeIdsResponse)(nil),                        // 352: anytype.Rpc.Object.SubscribeIds.Response
+	(*pb.RpcObjectGroupsSubscribeResponse)(nil),                     // 353: anytype.Rpc.Object.GroupsSubscribe.Response
+	(*pb.RpcObjectSearchUnsubscribeResponse)(nil),                   // 354: anytype.Rpc.Object.SearchUnsubscribe.Response
+	(*pb.RpcObjectSetDetailsResponse)(nil),                          // 355: anytype.Rpc.Object.SetDetails.Response
+	(*pb.RpcObjectDuplicateResponse)(nil),                           // 356: anytype.Rpc.Object.Duplicate.Response
+	(*pb.RpcObjectSetObjectTypeResponse)(nil),                       // 357: anytype.Rpc.Object.SetObjectType.Response
+	(*pb.RpcObjectSetLayoutResponse)(nil),                           // 358: anytype.Rpc.Object.SetLayout.Response
+	(*pb.RpcObjectSetInternalFlagsResponse)(nil),                    // 359: anytype.Rpc.Object.SetInternalFlags.Response
+	(*pb.RpcObjectSetIsFavoriteResponse)(nil),                       // 360: anytype.Rpc.Object.SetIsFavorite.Response
+	(*pb.RpcObjectSetIsArchivedResponse)(nil),                       // 361: anytype.Rpc.Object.SetIsArchived.Response
+	(*pb.RpcObjectSetSourceResponse)(nil),                           // 362: anytype.Rpc.Object.SetSource.Response
+	(*pb.RpcObjectWorkspaceSetDashboardResponse)(nil),               // 363: anytype.Rpc.Object.WorkspaceSetDashboard.Response
+	(*pb.RpcObjectListDuplicateResponse)(nil),                       // 364: anytype.Rpc.Object.ListDuplicate.Response
+	(*pb.RpcObjectListDeleteResponse)(nil),                          // 365: anytype.Rpc.Object.ListDelete.Response
+	(*pb.RpcObjectListSetIsArchivedResponse)(nil),                   // 366: anytype.Rpc.Object.ListSetIsArchived.Response
+	(*pb.RpcObjectListSetIsFavoriteResponse)(nil),                   // 367: anytype.Rpc.Object.ListSetIsFavorite.Response
+	(*pb.RpcObjectListSetObjectTypeResponse)(nil),                   // 368: anytype.Rpc.Object.ListSetObjectType.Response
+	(*pb.RpcObjectListSetDetailsResponse)(nil),                      // 369: anytype.Rpc.Object.ListSetDetails.Response
+	(*pb.RpcObjectListModifyDetailValuesResponse)(nil),              // 370: anytype.Rpc.Object.ListModifyDetailValues.Response
+	(*pb.RpcObjectApplyTemplateResponse)(nil),                       // 371: anytype.Rpc.Object.ApplyTemplate.Response
+	(*pb.RpcObjectToSetResponse)(nil),                               // 372: anytype.Rpc.Object.ToSet.Response
+	(*pb.RpcObjectToCollectionResponse)(nil),                        // 373: anytype.Rpc.Object.ToCollection.Response
+	(*pb.RpcObjectShareByLinkResponse)(nil),                         // 374: anytype.Rpc.Object.ShareByLink.Response
+	(*pb.RpcObjectUndoResponse)(nil),                                // 375: anytype.Rpc.Object.Undo.Response
+	(*pb.RpcObjectRedoResponse)(nil),                                // 376: anytype.Rpc.Object.Redo.Response
+	(*pb.RpcObjectListExportResponse)(nil),                          // 377: anytype.Rpc.Object.ListExport.Response
+	(*pb.RpcObjectBookmarkFetchResponse)(nil),                       // 378: anytype.Rpc.Object.BookmarkFetch.Response
+	(*pb.RpcObjectToBookmarkResponse)(nil),                          // 379: anytype.Rpc.Object.ToBookmark.Response
+	(*pb.RpcObjectImportResponse)(nil),                              // 380: anytype.Rpc.Object.Import.Response
+	(*pb.RpcObjectImportListResponse)(nil),                          // 381: anytype.Rpc.Object.ImportList.Response
+	(*pb.RpcObjectImportNotionValidateTokenResponse)(nil),           // 382: anytype.Rpc.Object.Import.Notion.ValidateToken.Response
+	(*pb.RpcObjectImportUseCaseResponse)(nil),                       // 383: anytype.Rpc.Object.ImportUseCase.Response
+	(*pb.RpcObjectImportExperienceResponse)(nil),                    // 384: anytype.Rpc.Object.ImportExperience.Response
+	(*pb.RpcObjectDateByTimestampResponse)(nil),                     // 385: anytype.Rpc.Object.DateByTimestamp.Response
+	(*pb.RpcObjectCollectionAddResponse)(nil),                       // 386: anytype.Rpc.ObjectCollection.Add.Response
+	(*pb.RpcObjectCollectionRemoveResponse)(nil),                    // 387: anytype.Rpc.ObjectCollection.Remove.Response
+	(*pb.RpcObjectCollectionSortResponse)(nil),                      // 388: anytype.Rpc.ObjectCollection.Sort.Response
+	(*pb.RpcObjectCreateRelationResponse)(nil),                      // 389: anytype.Rpc.Object.CreateRelation.Response
+	(*pb.RpcObjectCreateRelationOptionResponse)(nil),                // 390: anytype.Rpc.Object.CreateRelationOption.Response
+	(*pb.RpcRelationListRemoveOptionResponse)(nil),                  // 391: anytype.Rpc.Relation.ListRemoveOption.Response
+	(*pb.RpcRelationOptionsResponse)(nil),                           // 392: anytype.Rpc.Relation.Options.Response
+	(*pb.RpcRelationListWithValueResponse)(nil),                     // 393: anytype.Rpc.Relation.ListWithValue.Response
+	(*pb.RpcObjectRelationAddResponse)(nil),                         // 394: anytype.Rpc.ObjectRelation.Add.Response
+	(*pb.RpcObjectRelationDeleteResponse)(nil),                      // 395: anytype.Rpc.ObjectRelation.Delete.Response
+	(*pb.RpcObjectRelationAddFeaturedResponse)(nil),                 // 396: anytype.Rpc.ObjectRelation.AddFeatured.Response
+	(*pb.RpcObjectRelationRemoveFeaturedResponse)(nil),              // 397: anytype.Rpc.ObjectRelation.RemoveFeatured.Response
+	(*pb.RpcObjectRelationListAvailableResponse)(nil),               // 398: anytype.Rpc.ObjectRelation.ListAvailable.Response
+	(*pb.RpcObjectCreateObjectTypeResponse)(nil),                    // 399: anytype.Rpc.Object.CreateObjectType.Response
+	(*pb.RpcObjectTypeRelationAddResponse)(nil),                     // 400: anytype.Rpc.ObjectType.Relation.Add.Response
+	(*pb.RpcObjectTypeRelationRemoveResponse)(nil),                  // 401: anytype.Rpc.ObjectType.Relation.Remove.Response
+	(*pb.RpcObjectTypeRecommendedRelationsSetResponse)(nil),         // 402: anytype.Rpc.ObjectType.Recommended.RelationsSet.Response
+	(*pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse)(nil), // 403: anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response
+	(*pb.RpcObjectTypeListConflictingRelationsResponse)(nil),        // 404: anytype.Rpc.ObjectType.ListConflictingRelations.Response
+	(*pb.RpcHistoryShowVersionResponse)(nil),                        // 405: anytype.Rpc.History.ShowVersion.Response
+	(*pb.RpcHistoryGetVersionsResponse)(nil),                        // 406: anytype.Rpc.History.GetVersions.Response
+	(*pb.RpcHistorySetVersionResponse)(nil),                         // 407: anytype.Rpc.History.SetVersion.Response
+	(*pb.RpcHistoryDiffVersionsResponse)(nil),                       // 408: anytype.Rpc.History.DiffVersions.Response
+	(*pb.RpcFileSpaceOffloadResponse)(nil),                          // 409: anytype.Rpc.File.SpaceOffload.Response
+	(*pb.RpcFileReconcileResponse)(nil),                             // 410: anytype.Rpc.File.Reconcile.Response
+	(*pb.RpcFileListOffloadResponse)(nil),                           // 411: anytype.Rpc.File.ListOffload.Response
+	(*pb.RpcFileUploadResponse)(nil),                                // 412: anytype.Rpc.File.Upload.Response
+	(*pb.RpcFileDownloadResponse)(nil),                              // 413: anytype.Rpc.File.Download.Response
+	(*pb.RpcFileDropResponse)(nil),                                  // 414: anytype.Rpc.File.Drop.Response
+	(*pb.RpcFileSpaceUsageResponse)(nil),                            // 415: anytype.Rpc.File.SpaceUsage.Response
+	(*pb.RpcFileNodeUsageResponse)(nil),                             // 416: anytype.Rpc.File.NodeUsage.Response
+	(*pb.RpcNavigationListObjectsResponse)(nil),                     // 417: anytype.Rpc.Navigation.ListObjects.Response
+	(*pb.RpcNavigationGetObjectInfoWithLinksResponse)(nil),          // 418: anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response
+	(*pb.RpcTemplateCreateFromObjectResponse)(nil),                  // 419: anytype.Rpc.Template.CreateFromObject.Response
+	(*pb.RpcTemplateCloneResponse)(nil),                             // 420: anytype.Rpc.Template.Clone.Response
+	(*pb.RpcTemplateExportAllResponse)(nil),                         // 421: anytype.Rpc.Template.ExportAll.Response
+	(*pb.RpcLinkPreviewResponse)(nil),                               // 422: anytype.Rpc.LinkPreview.Response
+	(*pb.RpcUnsplashSearchResponse)(nil),                            // 423: anytype.Rpc.Unsplash.Search.Response
+	(*pb.RpcUnsplashDownloadResponse)(nil),                          // 424: anytype.Rpc.Unsplash.Download.Response
+	(*pb.RpcGalleryDownloadManifestResponse)(nil),                   // 425: anytype.Rpc.Gallery.DownloadManifest.Response
+	(*pb.RpcGalleryDownloadIndexResponse)(nil),                      // 426: anytype.Rpc.Gallery.DownloadIndex.Response
+	(*pb.RpcBlockUploadResponse)(nil),                               // 427: anytype.Rpc.Block.Upload.Response
+	(*pb.RpcBlockReplaceResponse)(nil),                              // 428: anytype.Rpc.Block.Replace.Response
+	(*pb.RpcBlockCreateResponse)(nil),                               // 429: anytype.Rpc.Block.Create.Response
+	(*pb.RpcBlockSplitResponse)(nil),                                // 430: anytype.Rpc.Block.Split.Response
+	(*pb.RpcBlockMergeResponse)(nil),                                // 431: anytype.Rpc.Block.Merge.Response
+	(*pb.RpcBlockCopyResponse)(nil),                                 // 432: anytype.Rpc.Block.Copy.Response
+	(*pb.RpcBlockPasteResponse)(nil),                                // 433: anytype.Rpc.Block.Paste.Response
+	(*pb.RpcBlockCutResponse)(nil),                                  // 434: anytype.Rpc.Block.Cut.Response
+	(*pb.RpcBlockSetFieldsResponse)(nil),                            // 435: anytype.Rpc.Block.SetFields.Response
+	(*pb.RpcBlockExportResponse)(nil),                               // 436: anytype.Rpc.Block.Export.Response
+	(*pb.RpcBlockSetCarriageResponse)(nil),                          // 437: anytype.Rpc.Block.SetCarriage.Response
+	(*pb.RpcBlockPreviewResponse)(nil),                              // 438: anytype.Rpc.Block.Preview.Response
+	(*pb.RpcBlockListDeleteResponse)(nil),                           // 439: anytype.Rpc.Block.ListDelete.Response
+	(*pb.RpcBlockListMoveToExistingObjectResponse)(nil),             // 440: anytype.Rpc.Block.ListMoveToExistingObject.Response
+	(*pb.RpcBlockListMoveToNewObjectResponse)(nil),                  // 441: anytype.Rpc.Block.ListMoveToNewObject.Response
+	(*pb.RpcBlockListConvertToObjectsResponse)(nil),                 // 442: anytype.Rpc.Block.ListConvertToObjects.Response
+	(*pb.RpcBlockListSetFieldsResponse)(nil),                        // 443: anytype.Rpc.Block.ListSetFields.Response
+	(*pb.RpcBlockListDuplicateResponse)(nil),                        // 444: anytype.Rpc.Block.ListDuplicate.Response
+	(*pb.RpcBlockListSetBackgroundColorResponse)(nil),               // 445: anytype.Rpc.Block.ListSetBackgroundColor.Response
+	(*pb.RpcBlockListSetAlignResponse)(nil),                         // 446: anytype.Rpc.Block.ListSetAlign.Response
+	(*pb.RpcBlockListSetVerticalAlignResponse)(nil),                 // 447: anytype.Rpc.Block.ListSetVerticalAlign.Response
+	(*pb.RpcBlockListTurnIntoResponse)(nil),                         // 448: anytype.Rpc.Block.ListTurnInto.Response
+	(*pb.RpcBlockTextSetTextResponse)(nil),                          // 449: anytype.Rpc.BlockText.SetText.Response
+	(*pb.RpcBlockTextSetColorResponse)(nil),                         // 450: anytype.Rpc.BlockText.SetColor.Response
+	(*pb.RpcBlockTextSetStyleResponse)(nil),                         // 451: anytype.Rpc.BlockText.SetStyle.Response
+	(*pb.RpcBlockTextSetCheckedResponse)(nil),                       // 452: anytype.Rpc.BlockText.SetChecked.Response
+	(*pb.RpcBlockTextSetIconResponse)(nil),                          // 453: anytype.Rpc.BlockText.SetIcon.Response
+	(*pb.RpcBlockTextListSetColorResponse)(nil),                     // 454: anytype.Rpc.BlockText.ListSetColor.Response
+	(*pb.RpcBlockTextListSetMarkResponse)(nil),                      // 455: anytype.Rpc.BlockText.ListSetMark.Response
+	(*pb.RpcBlockTextListSetStyleResponse)(nil),                     // 456: anytype.Rpc.BlockText.ListSetStyle.Response
+	(*pb.RpcBlockTextListClearStyleResponse)(nil),                   // 457: anytype.Rpc.BlockText.ListClearStyle.Response
+	(*pb.RpcBlockTextListClearContentResponse)(nil),                 // 458: anytype.Rpc.BlockText.ListClearContent.Response
+	(*pb.RpcBlockFileSetNameResponse)(nil),                          // 459: anytype.Rpc.BlockFile.SetName.Response
+	(*pb.RpcBlockFileSetTargetObjectIdResponse)(nil),                // 460: anytype.Rpc.BlockFile.SetTargetObjectId.Response
+	(*pb.RpcBlockImageSetNameResponse)(nil),                         // 461: anytype.Rpc.BlockImage.SetName.Response
+	(*pb.RpcBlockVideoSetNameResponse)(nil),                         // 462: anytype.Rpc.BlockVideo.SetName.Response
+	(*pb.RpcBlockFileCreateAndUploadResponse)(nil),                  // 463: anytype.Rpc.BlockFile.CreateAndUpload.Response
+	(*pb.RpcBlockFileListSetStyleResponse)(nil),                     // 464: anytype.Rpc.BlockFile.ListSetStyle.Response
+	(*pb.RpcBlockDataviewViewCreateResponse)(nil),                   // 465: anytype.Rpc.BlockDataview.View.Create.Response
+	(*pb.RpcBlockDataviewViewDeleteResponse)(nil),                   // 466: anytype.Rpc.BlockDataview.View.Delete.Response
+	(*pb.RpcBlockDataviewViewUpdateResponse)(nil),                   // 467: anytype.Rpc.BlockDataview.View.Update.Response
+	(*pb.RpcBlockDataviewViewSetActiveResponse)(nil),                // 468: anytype.Rpc.BlockDataview.View.SetActive.Response
+	(*pb.RpcBlockDataviewViewSetPositionResponse)(nil),              // 469: anytype.Rpc.BlockDataview.View.SetPosition.Response
+	(*pb.RpcBlockDataviewSetSourceResponse)(nil),                    // 470: anytype.Rpc.BlockDataview.SetSource.Response
+	(*pb.RpcBlockDataviewRelationAddResponse)(nil),                  // 471: anytype.Rpc.BlockDataview.Relation.Add.Response
+	(*pb.RpcBlockDataviewRelationDeleteResponse)(nil),               // 472: anytype.Rpc.BlockDataview.Relation.Delete.Response
+	(*pb.RpcBlockDataviewGroupOrderUpdateResponse)(nil),             // 473: anytype.Rpc.BlockDataview.GroupOrder.Update.Response
+	(*pb.RpcBlockDataviewObjectOrderUpdateResponse)(nil),            // 474: anytype.Rpc.BlockDataview.ObjectOrder.Update.Response
+	(*pb.RpcBlockDataviewObjectOrderMoveResponse)(nil),              // 475: anytype.Rpc.BlockDataview.ObjectOrder.Move.Response
+	(*pb.RpcBlockDataviewCreateFromExistingObjectResponse)(nil),     // 476: anytype.Rpc.BlockDataview.CreateFromExistingObject.Response
+	(*pb.RpcBlockDataviewFilterAddResponse)(nil),                    // 477: anytype.Rpc.BlockDataview.Filter.Add.Response
+	(*pb.RpcBlockDataviewFilterRemoveResponse)(nil),                 // 478: anytype.Rpc.BlockDataview.Filter.Remove.Response
+	(*pb.RpcBlockDataviewFilterReplaceResponse)(nil),                // 479: anytype.Rpc.BlockDataview.Filter.Replace.Response
+	(*pb.RpcBlockDataviewFilterSortResponse)(nil),                   // 480: anytype.Rpc.BlockDataview.Filter.Sort.Response
+	(*pb.RpcBlockDataviewSortAddResponse)(nil),                      // 481: anytype.Rpc.BlockDataview.Sort.Add.Response
+	(*pb.RpcBlockDataviewSortRemoveResponse)(nil),                   // 482: anytype.Rpc.BlockDataview.Sort.Remove.Response
+	(*pb.RpcBlockDataviewSortReplaceResponse)(nil),                  // 483: anytype.Rpc.BlockDataview.Sort.Replace.Response
+	(*pb.RpcBlockDataviewSortSSortResponse)(nil),                    // 484: anytype.Rpc.BlockDataview.Sort.SSort.Response
+	(*pb.RpcBlockDataviewViewRelationAddResponse)(nil),              // 485: anytype.Rpc.BlockDataview.ViewRelation.Add.Response
+	(*pb.RpcBlockDataviewViewRelationRemoveResponse)(nil),           // 486: anytype.Rpc.BlockDataview.ViewRelation.Remove.Response
+	(*pb.RpcBlockDataviewViewRelationReplaceResponse)(nil),          // 487: anytype.Rpc.BlockDataview.ViewRelation.Replace.Response
+	(*pb.RpcBlockDataviewViewRelationSortResponse)(nil),             // 488: anytype.Rpc.BlockDataview.ViewRelation.Sort.Response
+	(*pb.RpcBlockTableCreateResponse)(nil),                          // 489: anytype.Rpc.BlockTable.Create.Response
+	(*pb.RpcBlockTableExpandResponse)(nil),                          // 490: anytype.Rpc.BlockTable.Expand.Response
+	(*pb.RpcBlockTableRowCreateResponse)(nil),                       // 491: anytype.Rpc.BlockTable.RowCreate.Response
+	(*pb.RpcBlockTableRowDeleteResponse)(nil),                       // 492: anytype.Rpc.BlockTable.RowDelete.Response
+	(*pb.RpcBlockTableRowDuplicateResponse)(nil),                    // 493: anytype.Rpc.BlockTable.RowDuplicate.Response
+	(*pb.RpcBlockTableRowSetHeaderResponse)(nil),                    // 494: anytype.Rpc.BlockTable.RowSetHeader.Response
+	(*pb.RpcBlockTableColumnCreateResponse)(nil),                    // 495: anytype.Rpc.BlockTable.ColumnCreate.Response
+	(*pb.RpcBlockTableColumnMoveResponse)(nil),                      // 496: anytype.Rpc.BlockTable.ColumnMove.Response
+	(*pb.RpcBlockTableColumnDeleteResponse)(nil),                    // 497: anytype.Rpc.BlockTable.ColumnDelete.Response
+	(*pb.RpcBlockTableColumnDuplicateResponse)(nil),                 // 498: anytype.Rpc.BlockTable.ColumnDuplicate.Response
+	(*pb.RpcBlockTableRowListFillResponse)(nil),                     // 499: anytype.Rpc.BlockTable.RowListFill.Response
+	(*pb.RpcBlockTableRowListCleanResponse)(nil),                    // 500: anytype.Rpc.BlockTable.RowListClean.Response
+	(*pb.RpcBlockTableColumnListFillResponse)(nil),                  // 501: anytype.Rpc.BlockTable.ColumnListFill.Response
+	(*pb.RpcBlockTableSortResponse)(nil),                            // 502: anytype.Rpc.BlockTable.Sort.Response
+	(*pb.RpcBlockCreateWidgetResponse)(nil),                         // 503: anytype.Rpc.Block.CreateWidget.Response
+	(*pb.RpcBlockWidgetSetTargetIdResponse)(nil),                    // 504: anytype.Rpc.BlockWidget.SetTargetId.Response
+	(*pb.RpcBlockWidgetSetLayoutResponse)(nil),                      // 505: anytype.Rpc.BlockWidget.SetLayout.Response
+	(*pb.RpcBlockWidgetSetLimitResponse)(nil),                       // 506: anytype.Rpc.BlockWidget.SetLimit.Response
+	(*pb.RpcBlockWidgetSetViewIdResponse)(nil),                      // 507: anytype.Rpc.BlockWidget.SetViewId.Response
+	(*pb.RpcBlockLinkCreateWithObjectResponse)(nil),                 // 508: anytype.Rpc.BlockLink.CreateWithObject.Response
+	(*pb.RpcBlockLinkListSetAppearanceResponse)(nil),                // 509: anytype.Rpc.BlockLink.ListSetAppearance.Response
+	(*pb.RpcBlockBookmarkFetchResponse)(nil),                        // 510: anytype.Rpc.BlockBookmark.Fetch.Response
+	(*pb.RpcBlockBookmarkCreateAndFetchResponse)(nil),               // 511: anytype.Rpc.BlockBookmark.CreateAndFetch.Response
+	(*pb.RpcBlockRelationSetKeyResponse)(nil),                       // 512: anytype.Rpc.BlockRelation.SetKey.Response
+	(*pb.RpcBlockRelationAddResponse)(nil),                          // 513: anytype.Rpc.BlockRelation.Add.Response
+	(*pb.RpcBlockDivListSetStyleResponse)(nil),                      // 514: anytype.Rpc.BlockDiv.ListSetStyle.Response
+	(*pb.RpcBlockLatexSetTextResponse)(nil),                         // 515: anytype.Rpc.BlockLatex.SetText.Response
+	(*pb.RpcProcessCancelResponse)(nil),                             // 516: anytype.Rpc.Process.Cancel.Response
+	(*pb.RpcProcessSubscribeResponse)(nil),                          // 517: anytype.Rpc.Process.Subscribe.Response
+	(*pb.RpcProcessUnsubscribeResponse)(nil),                        // 518: anytype.Rpc.Process.Unsubscribe.Response
+	(*pb.RpcLogSendResponse)(nil),                                   // 519: anytype.Rpc.Log.Send.Response
+	(*pb.RpcDebugStatResponse)(nil),                                 // 520: anytype.Rpc.Debug.Stat.Response
+	(*pb.RpcDebugTreeResponse)(nil),                                 // 521: anytype.Rpc.Debug.Tree.Response
+	(*pb.RpcDebugTreeHeadsResponse)(nil),                            // 522: anytype.Rpc.Debug.TreeHeads.Response
+	(*pb.RpcDebugSpaceSummaryResponse)(nil),                         // 523: anytype.Rpc.Debug.SpaceSummary.Response
+	(*pb.RpcDebugStackGoroutinesResponse)(nil),                      // 524: anytype.Rpc.Debug.StackGoroutines.Response
+	(*pb.RpcDebugExportLocalstoreResponse)(nil),                     // 525: anytype.Rpc.Debug.ExportLocalstore.Response
+	(*pb.RpcDebugPingResponse)(nil),                                 // 526: anytype.Rpc.Debug.Ping.Response
+	(*pb.RpcDebugSubscriptionsResponse)(nil),                        // 527: anytype.Rpc.Debug.Subscriptions.Response
+	(*pb.RpcDebugOpenedObjectsResponse)(nil),                        // 528: anytype.Rpc.Debug.OpenedObjects.Response
+	(*pb.RpcDebugRunProfilerResponse)(nil),                          // 529: anytype.Rpc.Debug.RunProfiler.Response
+	(*pb.RpcDebugAccountSelectTraceResponse)(nil),                   // 530: anytype.Rpc.Debug.AccountSelectTrace.Response
+	(*pb.RpcDebugAnystoreObjectChangesResponse)(nil),                // 531: anytype.Rpc.Debug.AnystoreObjectChanges.Response
+	(*pb.RpcDebugNetCheckResponse)(nil),                             // 532: anytype.Rpc.Debug.NetCheck.Response
+	(*pb.RpcDebugExportLogResponse)(nil),                            // 533: anytype.Rpc.Debug.ExportLog.Response
+	(*pb.RpcInitialSetParametersResponse)(nil),                      // 534: anytype.Rpc.Initial.SetParameters.Response
+	(*pb.Event)(nil),                                           // 535: anytype.Event
+	(*pb.RpcNotificationListResponse)(nil),                     // 536: anytype.Rpc.Notification.List.Response
+	(*pb.RpcNotificationReplyResponse)(nil),                    // 537: anytype.Rpc.Notification.Reply.Response
+	(*pb.RpcNotificationTestResponse)(nil),                     // 538: anytype.Rpc.Notification.Test.Response
+	(*pb.RpcMembershipGetStatusResponse)(nil),                  // 539: anytype.Rpc.Membership.GetStatus.Response
+	(*pb.RpcMembershipIsNameValidResponse)(nil),                // 540: anytype.Rpc.Membership.IsNameValid.Response
+	(*pb.RpcMembershipRegisterPaymentRequestResponse)(nil),     // 541: anytype.Rpc.Membership.RegisterPaymentRequest.Response
+	(*pb.RpcMembershipGetPortalLinkUrlResponse)(nil),           // 542: anytype.Rpc.Membership.GetPortalLinkUrl.Response
+	(*pb.RpcMembershipGetVerificationEmailStatusResponse)(nil), // 543: anytype.Rpc.Membership.GetVerificationEmailStatus.Response
+	(*pb.RpcMembershipGetVerificationEmailResponse)(nil),       // 544: anytype.Rpc.Membership.GetVerificationEmail.Response
+	(*pb.RpcMembershipVerifyEmailCodeResponse)(nil),            // 545: anytype.Rpc.Membership.VerifyEmailCode.Response
+	(*pb.RpcMembershipFinalizeResponse)(nil),                   // 546: anytype.Rpc.Membership.Finalize.Response
+	(*pb.RpcMembershipGetTiersResponse)(nil),                   // 547: anytype.Rpc.Membership.GetTiers.Response
+	(*pb.RpcMembershipVerifyAppStoreReceiptResponse)(nil),      // 548: anytype.Rpc.Membership.VerifyAppStoreReceipt.Response
+	(*pb.RpcNameServiceUserAccountGetResponse)(nil),            // 549: anytype.Rpc.NameService.UserAccount.Get.Response
+	(*pb.RpcNameServiceResolveNameResponse)(nil),               // 550: anytype.Rpc.NameService.ResolveName.Response
+	(*pb.RpcNameServiceResolveAnyIdResponse)(nil),              // 551: anytype.Rpc.NameService.ResolveAnyId.Response
+	(*pb.RpcBroadcastPayloadEventResponse)(nil),                // 552: anytype.Rpc.Broadcast.PayloadEvent.Response
+	(*pb.RpcDeviceSetNameResponse)(nil),                        // 553: anytype.Rpc.Device.SetName.Response
+	(*pb.RpcDeviceListResponse)(nil),                           // 554: anytype.Rpc.Device.List.Response
+	(*pb.RpcDeviceNetworkStateSetResponse)(nil),                // 555: anytype.Rpc.Device.NetworkState.Set.Response
+	(*pb.RpcChatAddMessageResponse)(nil),                       // 556: anytype.Rpc.Chat.AddMessage.Response
+	(*pb.RpcChatEditMessageContentResponse)(nil),               // 557: anytype.Rpc.Chat.EditMessageContent.Response
+	(*pb.RpcChatToggleMessageReactionResponse)(nil),            // 558: anytype.Rpc.Chat.ToggleMessageReaction.Response
+	(*pb.RpcChatDeleteMessageResponse)(nil),                    // 559: anytype.Rpc.Chat.DeleteMessage.Response
+	(*pb.RpcChatGetMessagesResponse)(nil),                      // 560: anytype.Rpc.Chat.GetMessages.Response
+	(*pb.RpcChatGetMessagesByIdsResponse)(nil),                 // 561: anytype.Rpc.Chat.GetMessagesByIds.Response
+	(*pb.RpcChatSubscribeLastMessagesResponse)(nil),            // 562: anytype.Rpc.Chat.SubscribeLastMessages.Response
+	(*pb.RpcChatUnsubscribeResponse)(nil),                      // 563: anytype.Rpc.Chat.Unsubscribe.Response
+	(*pb.RpcChatReadMessagesResponse)(nil),                     // 564: anytype.Rpc.Chat.ReadMessages.Response
+	(*pb.RpcChatUnreadResponse)(nil),                           // 565: anytype.Rpc.Chat.Unread.Response
+	(*pb.RpcChatSubscribeToMessagePreviewsResponse)(nil),       // 566: anytype.Rpc.Chat.SubscribeToMessagePreviews.Response
+	(*pb.RpcObjectChatAddResponse)(nil),                        // 567: anytype.Rpc.Object.ChatAdd.Response
 }
 var file_pb_protos_service_service_proto_depIdxs = []int32{
 	0,   // 0: anytype.ClientCommands.AppGetVersion:input_type -> anytype.Rpc.App.GetVersion.Request
@@ -2834,290 +2861,296 @@ var file_pb_protos_service_service_proto_depIdxs = []int32{
 	277, // 277: anytype.ClientCommands.ChatGetMessagesByIds:input_type -> anytype.Rpc.Chat.GetMessagesByIds.Request
 	278, // 278: anytype.ClientCommands.ChatSubscribeLastMessages:input_type -> anytype.Rpc.Chat.SubscribeLastMessages.Request
 	279, // 279: anytype.ClientCommands.ChatUnsubscribe:input_type -> anytype.Rpc.Chat.Unsubscribe.Request
-	280, // 280: anytype.ClientCommands.ObjectChatAdd:input_type -> anytype.Rpc.Object.ChatAdd.Request
-	281, // 281: anytype.ClientCommands.AppGetVersion:output_type -> anytype.Rpc.App.GetVersion.Response
-	282, // 282: anytype.ClientCommands.AppSetDeviceState:output_type -> anytype.Rpc.App.SetDeviceState.Response
-	283, // 283: anytype.ClientCommands.AppShutdown:output_type -> anytype.Rpc.App.Shutdown.Response
-	284, // 284: anytype.ClientCommands.WalletCreate:output_type -> anytype.Rpc.Wallet.Create.Response
-	285, // 285: anytype.ClientCommands.WalletRecover:output_type -> anytype.Rpc.Wallet.Recover.Response
-	286, // 286: anytype.ClientCommands.WalletConvert:output_type -> anytype.Rpc.Wallet.Convert.Response
-	287, // 287: anytype.ClientCommands.AccountLocalLinkNewChallenge:output_type -> anytype.Rpc.Account.LocalLink.NewChallenge.Response
-	288, // 288: anytype.ClientCommands.AccountLocalLinkSolveChallenge:output_type -> anytype.Rpc.Account.LocalLink.SolveChallenge.Response
-	289, // 289: anytype.ClientCommands.WalletCreateSession:output_type -> anytype.Rpc.Wallet.CreateSession.Response
-	290, // 290: anytype.ClientCommands.WalletCloseSession:output_type -> anytype.Rpc.Wallet.CloseSession.Response
-	291, // 291: anytype.ClientCommands.WorkspaceCreate:output_type -> anytype.Rpc.Workspace.Create.Response
-	292, // 292: anytype.ClientCommands.WorkspaceOpen:output_type -> anytype.Rpc.Workspace.Open.Response
-	293, // 293: anytype.ClientCommands.WorkspaceObjectAdd:output_type -> anytype.Rpc.Workspace.Object.Add.Response
-	294, // 294: anytype.ClientCommands.WorkspaceObjectListAdd:output_type -> anytype.Rpc.Workspace.Object.ListAdd.Response
-	295, // 295: anytype.ClientCommands.WorkspaceObjectListRemove:output_type -> anytype.Rpc.Workspace.Object.ListRemove.Response
-	296, // 296: anytype.ClientCommands.WorkspaceSelect:output_type -> anytype.Rpc.Workspace.Select.Response
-	297, // 297: anytype.ClientCommands.WorkspaceGetCurrent:output_type -> anytype.Rpc.Workspace.GetCurrent.Response
-	298, // 298: anytype.ClientCommands.WorkspaceGetAll:output_type -> anytype.Rpc.Workspace.GetAll.Response
-	299, // 299: anytype.ClientCommands.WorkspaceSetInfo:output_type -> anytype.Rpc.Workspace.SetInfo.Response
-	300, // 300: anytype.ClientCommands.WorkspaceExport:output_type -> anytype.Rpc.Workspace.Export.Response
-	301, // 301: anytype.ClientCommands.AccountRecover:output_type -> anytype.Rpc.Account.Recover.Response
-	302, // 302: anytype.ClientCommands.AccountMigrate:output_type -> anytype.Rpc.Account.Migrate.Response
-	303, // 303: anytype.ClientCommands.AccountMigrateCancel:output_type -> anytype.Rpc.Account.MigrateCancel.Response
-	304, // 304: anytype.ClientCommands.AccountCreate:output_type -> anytype.Rpc.Account.Create.Response
-	305, // 305: anytype.ClientCommands.AccountDelete:output_type -> anytype.Rpc.Account.Delete.Response
-	306, // 306: anytype.ClientCommands.AccountRevertDeletion:output_type -> anytype.Rpc.Account.RevertDeletion.Response
-	307, // 307: anytype.ClientCommands.AccountSelect:output_type -> anytype.Rpc.Account.Select.Response
-	308, // 308: anytype.ClientCommands.AccountEnableLocalNetworkSync:output_type -> anytype.Rpc.Account.EnableLocalNetworkSync.Response
-	309, // 309: anytype.ClientCommands.AccountChangeJsonApiAddr:output_type -> anytype.Rpc.Account.ChangeJsonApiAddr.Response
-	310, // 310: anytype.ClientCommands.AccountStop:output_type -> anytype.Rpc.Account.Stop.Response
-	311, // 311: anytype.ClientCommands.AccountMove:output_type -> anytype.Rpc.Account.Move.Response
-	312, // 312: anytype.ClientCommands.AccountConfigUpdate:output_type -> anytype.Rpc.Account.ConfigUpdate.Response
-	313, // 313: anytype.ClientCommands.AccountRecoverFromLegacyExport:output_type -> anytype.Rpc.Account.RecoverFromLegacyExport.Response
-	314, // 314: anytype.ClientCommands.AccountChangeNetworkConfigAndRestart:output_type -> anytype.Rpc.Account.ChangeNetworkConfigAndRestart.Response
-	315, // 315: anytype.ClientCommands.SpaceDelete:output_type -> anytype.Rpc.Space.Delete.Response
-	316, // 316: anytype.ClientCommands.SpaceInviteGenerate:output_type -> anytype.Rpc.Space.InviteGenerate.Response
-	317, // 317: anytype.ClientCommands.SpaceInviteGetCurrent:output_type -> anytype.Rpc.Space.InviteGetCurrent.Response
-	318, // 318: anytype.ClientCommands.SpaceInviteRevoke:output_type -> anytype.Rpc.Space.InviteRevoke.Response
-	319, // 319: anytype.ClientCommands.SpaceInviteView:output_type -> anytype.Rpc.Space.InviteView.Response
-	320, // 320: anytype.ClientCommands.SpaceJoin:output_type -> anytype.Rpc.Space.Join.Response
-	321, // 321: anytype.ClientCommands.SpaceJoinCancel:output_type -> anytype.Rpc.Space.JoinCancel.Response
-	322, // 322: anytype.ClientCommands.SpaceStopSharing:output_type -> anytype.Rpc.Space.StopSharing.Response
-	323, // 323: anytype.ClientCommands.SpaceRequestApprove:output_type -> anytype.Rpc.Space.RequestApprove.Response
-	324, // 324: anytype.ClientCommands.SpaceRequestDecline:output_type -> anytype.Rpc.Space.RequestDecline.Response
-	325, // 325: anytype.ClientCommands.SpaceLeaveApprove:output_type -> anytype.Rpc.Space.LeaveApprove.Response
-	326, // 326: anytype.ClientCommands.SpaceMakeShareable:output_type -> anytype.Rpc.Space.MakeShareable.Response
-	327, // 327: anytype.ClientCommands.SpaceParticipantRemove:output_type -> anytype.Rpc.Space.ParticipantRemove.Response
-	328, // 328: anytype.ClientCommands.SpaceParticipantPermissionsChange:output_type -> anytype.Rpc.Space.ParticipantPermissionsChange.Response
-	329, // 329: anytype.ClientCommands.SpaceSetOrder:output_type -> anytype.Rpc.Space.SetOrder.Response
-	330, // 330: anytype.ClientCommands.SpaceUnsetOrder:output_type -> anytype.Rpc.Space.UnsetOrder.Response
-	331, // 331: anytype.ClientCommands.PublishingCreate:output_type -> anytype.Rpc.Publishing.Create.Response
-	332, // 332: anytype.ClientCommands.PublishingRemove:output_type -> anytype.Rpc.Publishing.Remove.Response
-	333, // 333: anytype.ClientCommands.PublishingList:output_type -> anytype.Rpc.Publishing.List.Response
-	334, // 334: anytype.ClientCommands.PublishingResolveUri:output_type -> anytype.Rpc.Publishing.ResolveUri.Response
-	335, // 335: anytype.ClientCommands.PublishingGetStatus:output_type -> anytype.Rpc.Publishing.GetStatus.Response
-	336, // 336: anytype.ClientCommands.ObjectOpen:output_type -> anytype.Rpc.Object.Open.Response
-	337, // 337: anytype.ClientCommands.ObjectClose:output_type -> anytype.Rpc.Object.Close.Response
-	338, // 338: anytype.ClientCommands.ObjectShow:output_type -> anytype.Rpc.Object.Show.Response
-	339, // 339: anytype.ClientCommands.ObjectCreate:output_type -> anytype.Rpc.Object.Create.Response
-	340, // 340: anytype.ClientCommands.ObjectCreateBookmark:output_type -> anytype.Rpc.Object.CreateBookmark.Response
-	341, // 341: anytype.ClientCommands.ObjectCreateFromUrl:output_type -> anytype.Rpc.Object.CreateFromUrl.Response
-	342, // 342: anytype.ClientCommands.ObjectCreateSet:output_type -> anytype.Rpc.Object.CreateSet.Response
-	343, // 343: anytype.ClientCommands.ObjectGraph:output_type -> anytype.Rpc.Object.Graph.Response
-	344, // 344: anytype.ClientCommands.ObjectSearch:output_type -> anytype.Rpc.Object.Search.Response
-	345, // 345: anytype.ClientCommands.ObjectSearchWithMeta:output_type -> anytype.Rpc.Object.SearchWithMeta.Response
-	346, // 346: anytype.ClientCommands.ObjectSearchSubscribe:output_type -> anytype.Rpc.Object.SearchSubscribe.Response
-	347, // 347: anytype.ClientCommands.ObjectCrossSpaceSearchSubscribe:output_type -> anytype.Rpc.Object.CrossSpaceSearchSubscribe.Response
-	348, // 348: anytype.ClientCommands.ObjectCrossSpaceSearchUnsubscribe:output_type -> anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Response
-	349, // 349: anytype.ClientCommands.ObjectSubscribeIds:output_type -> anytype.Rpc.Object.SubscribeIds.Response
-	350, // 350: anytype.ClientCommands.ObjectGroupsSubscribe:output_type -> anytype.Rpc.Object.GroupsSubscribe.Response
-	351, // 351: anytype.ClientCommands.ObjectSearchUnsubscribe:output_type -> anytype.Rpc.Object.SearchUnsubscribe.Response
-	352, // 352: anytype.ClientCommands.ObjectSetDetails:output_type -> anytype.Rpc.Object.SetDetails.Response
-	353, // 353: anytype.ClientCommands.ObjectDuplicate:output_type -> anytype.Rpc.Object.Duplicate.Response
-	354, // 354: anytype.ClientCommands.ObjectSetObjectType:output_type -> anytype.Rpc.Object.SetObjectType.Response
-	355, // 355: anytype.ClientCommands.ObjectSetLayout:output_type -> anytype.Rpc.Object.SetLayout.Response
-	356, // 356: anytype.ClientCommands.ObjectSetInternalFlags:output_type -> anytype.Rpc.Object.SetInternalFlags.Response
-	357, // 357: anytype.ClientCommands.ObjectSetIsFavorite:output_type -> anytype.Rpc.Object.SetIsFavorite.Response
-	358, // 358: anytype.ClientCommands.ObjectSetIsArchived:output_type -> anytype.Rpc.Object.SetIsArchived.Response
-	359, // 359: anytype.ClientCommands.ObjectSetSource:output_type -> anytype.Rpc.Object.SetSource.Response
-	360, // 360: anytype.ClientCommands.ObjectWorkspaceSetDashboard:output_type -> anytype.Rpc.Object.WorkspaceSetDashboard.Response
-	361, // 361: anytype.ClientCommands.ObjectListDuplicate:output_type -> anytype.Rpc.Object.ListDuplicate.Response
-	362, // 362: anytype.ClientCommands.ObjectListDelete:output_type -> anytype.Rpc.Object.ListDelete.Response
-	363, // 363: anytype.ClientCommands.ObjectListSetIsArchived:output_type -> anytype.Rpc.Object.ListSetIsArchived.Response
-	364, // 364: anytype.ClientCommands.ObjectListSetIsFavorite:output_type -> anytype.Rpc.Object.ListSetIsFavorite.Response
-	365, // 365: anytype.ClientCommands.ObjectListSetObjectType:output_type -> anytype.Rpc.Object.ListSetObjectType.Response
-	366, // 366: anytype.ClientCommands.ObjectListSetDetails:output_type -> anytype.Rpc.Object.ListSetDetails.Response
-	367, // 367: anytype.ClientCommands.ObjectListModifyDetailValues:output_type -> anytype.Rpc.Object.ListModifyDetailValues.Response
-	368, // 368: anytype.ClientCommands.ObjectApplyTemplate:output_type -> anytype.Rpc.Object.ApplyTemplate.Response
-	369, // 369: anytype.ClientCommands.ObjectToSet:output_type -> anytype.Rpc.Object.ToSet.Response
-	370, // 370: anytype.ClientCommands.ObjectToCollection:output_type -> anytype.Rpc.Object.ToCollection.Response
-	371, // 371: anytype.ClientCommands.ObjectShareByLink:output_type -> anytype.Rpc.Object.ShareByLink.Response
-	372, // 372: anytype.ClientCommands.ObjectUndo:output_type -> anytype.Rpc.Object.Undo.Response
-	373, // 373: anytype.ClientCommands.ObjectRedo:output_type -> anytype.Rpc.Object.Redo.Response
-	374, // 374: anytype.ClientCommands.ObjectListExport:output_type -> anytype.Rpc.Object.ListExport.Response
-	375, // 375: anytype.ClientCommands.ObjectBookmarkFetch:output_type -> anytype.Rpc.Object.BookmarkFetch.Response
-	376, // 376: anytype.ClientCommands.ObjectToBookmark:output_type -> anytype.Rpc.Object.ToBookmark.Response
-	377, // 377: anytype.ClientCommands.ObjectImport:output_type -> anytype.Rpc.Object.Import.Response
-	378, // 378: anytype.ClientCommands.ObjectImportList:output_type -> anytype.Rpc.Object.ImportList.Response
-	379, // 379: anytype.ClientCommands.ObjectImportNotionValidateToken:output_type -> anytype.Rpc.Object.Import.Notion.ValidateToken.Response
-	380, // 380: anytype.ClientCommands.ObjectImportUseCase:output_type -> anytype.Rpc.Object.ImportUseCase.Response
-	381, // 381: anytype.ClientCommands.ObjectImportExperience:output_type -> anytype.Rpc.Object.ImportExperience.Response
-	382, // 382: anytype.ClientCommands.ObjectDateByTimestamp:output_type -> anytype.Rpc.Object.DateByTimestamp.Response
-	383, // 383: anytype.ClientCommands.ObjectCollectionAdd:output_type -> anytype.Rpc.ObjectCollection.Add.Response
-	384, // 384: anytype.ClientCommands.ObjectCollectionRemove:output_type -> anytype.Rpc.ObjectCollection.Remove.Response
-	385, // 385: anytype.ClientCommands.ObjectCollectionSort:output_type -> anytype.Rpc.ObjectCollection.Sort.Response
-	386, // 386: anytype.ClientCommands.ObjectCreateRelation:output_type -> anytype.Rpc.Object.CreateRelation.Response
-	387, // 387: anytype.ClientCommands.ObjectCreateRelationOption:output_type -> anytype.Rpc.Object.CreateRelationOption.Response
-	388, // 388: anytype.ClientCommands.RelationListRemoveOption:output_type -> anytype.Rpc.Relation.ListRemoveOption.Response
-	389, // 389: anytype.ClientCommands.RelationOptions:output_type -> anytype.Rpc.Relation.Options.Response
-	390, // 390: anytype.ClientCommands.RelationListWithValue:output_type -> anytype.Rpc.Relation.ListWithValue.Response
-	391, // 391: anytype.ClientCommands.ObjectRelationAdd:output_type -> anytype.Rpc.ObjectRelation.Add.Response
-	392, // 392: anytype.ClientCommands.ObjectRelationDelete:output_type -> anytype.Rpc.ObjectRelation.Delete.Response
-	393, // 393: anytype.ClientCommands.ObjectRelationAddFeatured:output_type -> anytype.Rpc.ObjectRelation.AddFeatured.Response
-	394, // 394: anytype.ClientCommands.ObjectRelationRemoveFeatured:output_type -> anytype.Rpc.ObjectRelation.RemoveFeatured.Response
-	395, // 395: anytype.ClientCommands.ObjectRelationListAvailable:output_type -> anytype.Rpc.ObjectRelation.ListAvailable.Response
-	396, // 396: anytype.ClientCommands.ObjectCreateObjectType:output_type -> anytype.Rpc.Object.CreateObjectType.Response
-	397, // 397: anytype.ClientCommands.ObjectTypeRelationAdd:output_type -> anytype.Rpc.ObjectType.Relation.Add.Response
-	398, // 398: anytype.ClientCommands.ObjectTypeRelationRemove:output_type -> anytype.Rpc.ObjectType.Relation.Remove.Response
-	399, // 399: anytype.ClientCommands.ObjectTypeRecommendedRelationsSet:output_type -> anytype.Rpc.ObjectType.Recommended.RelationsSet.Response
-	400, // 400: anytype.ClientCommands.ObjectTypeRecommendedFeaturedRelationsSet:output_type -> anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response
-	401, // 401: anytype.ClientCommands.ObjectTypeListConflictingRelations:output_type -> anytype.Rpc.ObjectType.ListConflictingRelations.Response
-	402, // 402: anytype.ClientCommands.HistoryShowVersion:output_type -> anytype.Rpc.History.ShowVersion.Response
-	403, // 403: anytype.ClientCommands.HistoryGetVersions:output_type -> anytype.Rpc.History.GetVersions.Response
-	404, // 404: anytype.ClientCommands.HistorySetVersion:output_type -> anytype.Rpc.History.SetVersion.Response
-	405, // 405: anytype.ClientCommands.HistoryDiffVersions:output_type -> anytype.Rpc.History.DiffVersions.Response
-	406, // 406: anytype.ClientCommands.FileSpaceOffload:output_type -> anytype.Rpc.File.SpaceOffload.Response
-	407, // 407: anytype.ClientCommands.FileReconcile:output_type -> anytype.Rpc.File.Reconcile.Response
-	408, // 408: anytype.ClientCommands.FileListOffload:output_type -> anytype.Rpc.File.ListOffload.Response
-	409, // 409: anytype.ClientCommands.FileUpload:output_type -> anytype.Rpc.File.Upload.Response
-	410, // 410: anytype.ClientCommands.FileDownload:output_type -> anytype.Rpc.File.Download.Response
-	411, // 411: anytype.ClientCommands.FileDrop:output_type -> anytype.Rpc.File.Drop.Response
-	412, // 412: anytype.ClientCommands.FileSpaceUsage:output_type -> anytype.Rpc.File.SpaceUsage.Response
-	413, // 413: anytype.ClientCommands.FileNodeUsage:output_type -> anytype.Rpc.File.NodeUsage.Response
-	414, // 414: anytype.ClientCommands.NavigationListObjects:output_type -> anytype.Rpc.Navigation.ListObjects.Response
-	415, // 415: anytype.ClientCommands.NavigationGetObjectInfoWithLinks:output_type -> anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response
-	416, // 416: anytype.ClientCommands.TemplateCreateFromObject:output_type -> anytype.Rpc.Template.CreateFromObject.Response
-	417, // 417: anytype.ClientCommands.TemplateClone:output_type -> anytype.Rpc.Template.Clone.Response
-	418, // 418: anytype.ClientCommands.TemplateExportAll:output_type -> anytype.Rpc.Template.ExportAll.Response
-	419, // 419: anytype.ClientCommands.LinkPreview:output_type -> anytype.Rpc.LinkPreview.Response
-	420, // 420: anytype.ClientCommands.UnsplashSearch:output_type -> anytype.Rpc.Unsplash.Search.Response
-	421, // 421: anytype.ClientCommands.UnsplashDownload:output_type -> anytype.Rpc.Unsplash.Download.Response
-	422, // 422: anytype.ClientCommands.GalleryDownloadManifest:output_type -> anytype.Rpc.Gallery.DownloadManifest.Response
-	423, // 423: anytype.ClientCommands.GalleryDownloadIndex:output_type -> anytype.Rpc.Gallery.DownloadIndex.Response
-	424, // 424: anytype.ClientCommands.BlockUpload:output_type -> anytype.Rpc.Block.Upload.Response
-	425, // 425: anytype.ClientCommands.BlockReplace:output_type -> anytype.Rpc.Block.Replace.Response
-	426, // 426: anytype.ClientCommands.BlockCreate:output_type -> anytype.Rpc.Block.Create.Response
-	427, // 427: anytype.ClientCommands.BlockSplit:output_type -> anytype.Rpc.Block.Split.Response
-	428, // 428: anytype.ClientCommands.BlockMerge:output_type -> anytype.Rpc.Block.Merge.Response
-	429, // 429: anytype.ClientCommands.BlockCopy:output_type -> anytype.Rpc.Block.Copy.Response
-	430, // 430: anytype.ClientCommands.BlockPaste:output_type -> anytype.Rpc.Block.Paste.Response
-	431, // 431: anytype.ClientCommands.BlockCut:output_type -> anytype.Rpc.Block.Cut.Response
-	432, // 432: anytype.ClientCommands.BlockSetFields:output_type -> anytype.Rpc.Block.SetFields.Response
-	433, // 433: anytype.ClientCommands.BlockExport:output_type -> anytype.Rpc.Block.Export.Response
-	434, // 434: anytype.ClientCommands.BlockSetCarriage:output_type -> anytype.Rpc.Block.SetCarriage.Response
-	435, // 435: anytype.ClientCommands.BlockPreview:output_type -> anytype.Rpc.Block.Preview.Response
-	436, // 436: anytype.ClientCommands.BlockListDelete:output_type -> anytype.Rpc.Block.ListDelete.Response
-	437, // 437: anytype.ClientCommands.BlockListMoveToExistingObject:output_type -> anytype.Rpc.Block.ListMoveToExistingObject.Response
-	438, // 438: anytype.ClientCommands.BlockListMoveToNewObject:output_type -> anytype.Rpc.Block.ListMoveToNewObject.Response
-	439, // 439: anytype.ClientCommands.BlockListConvertToObjects:output_type -> anytype.Rpc.Block.ListConvertToObjects.Response
-	440, // 440: anytype.ClientCommands.BlockListSetFields:output_type -> anytype.Rpc.Block.ListSetFields.Response
-	441, // 441: anytype.ClientCommands.BlockListDuplicate:output_type -> anytype.Rpc.Block.ListDuplicate.Response
-	442, // 442: anytype.ClientCommands.BlockListSetBackgroundColor:output_type -> anytype.Rpc.Block.ListSetBackgroundColor.Response
-	443, // 443: anytype.ClientCommands.BlockListSetAlign:output_type -> anytype.Rpc.Block.ListSetAlign.Response
-	444, // 444: anytype.ClientCommands.BlockListSetVerticalAlign:output_type -> anytype.Rpc.Block.ListSetVerticalAlign.Response
-	445, // 445: anytype.ClientCommands.BlockListTurnInto:output_type -> anytype.Rpc.Block.ListTurnInto.Response
-	446, // 446: anytype.ClientCommands.BlockTextSetText:output_type -> anytype.Rpc.BlockText.SetText.Response
-	447, // 447: anytype.ClientCommands.BlockTextSetColor:output_type -> anytype.Rpc.BlockText.SetColor.Response
-	448, // 448: anytype.ClientCommands.BlockTextSetStyle:output_type -> anytype.Rpc.BlockText.SetStyle.Response
-	449, // 449: anytype.ClientCommands.BlockTextSetChecked:output_type -> anytype.Rpc.BlockText.SetChecked.Response
-	450, // 450: anytype.ClientCommands.BlockTextSetIcon:output_type -> anytype.Rpc.BlockText.SetIcon.Response
-	451, // 451: anytype.ClientCommands.BlockTextListSetColor:output_type -> anytype.Rpc.BlockText.ListSetColor.Response
-	452, // 452: anytype.ClientCommands.BlockTextListSetMark:output_type -> anytype.Rpc.BlockText.ListSetMark.Response
-	453, // 453: anytype.ClientCommands.BlockTextListSetStyle:output_type -> anytype.Rpc.BlockText.ListSetStyle.Response
-	454, // 454: anytype.ClientCommands.BlockTextListClearStyle:output_type -> anytype.Rpc.BlockText.ListClearStyle.Response
-	455, // 455: anytype.ClientCommands.BlockTextListClearContent:output_type -> anytype.Rpc.BlockText.ListClearContent.Response
-	456, // 456: anytype.ClientCommands.BlockFileSetName:output_type -> anytype.Rpc.BlockFile.SetName.Response
-	457, // 457: anytype.ClientCommands.BlockFileSetTargetObjectId:output_type -> anytype.Rpc.BlockFile.SetTargetObjectId.Response
-	458, // 458: anytype.ClientCommands.BlockImageSetName:output_type -> anytype.Rpc.BlockImage.SetName.Response
-	459, // 459: anytype.ClientCommands.BlockVideoSetName:output_type -> anytype.Rpc.BlockVideo.SetName.Response
-	460, // 460: anytype.ClientCommands.BlockFileCreateAndUpload:output_type -> anytype.Rpc.BlockFile.CreateAndUpload.Response
-	461, // 461: anytype.ClientCommands.BlockFileListSetStyle:output_type -> anytype.Rpc.BlockFile.ListSetStyle.Response
-	462, // 462: anytype.ClientCommands.BlockDataviewViewCreate:output_type -> anytype.Rpc.BlockDataview.View.Create.Response
-	463, // 463: anytype.ClientCommands.BlockDataviewViewDelete:output_type -> anytype.Rpc.BlockDataview.View.Delete.Response
-	464, // 464: anytype.ClientCommands.BlockDataviewViewUpdate:output_type -> anytype.Rpc.BlockDataview.View.Update.Response
-	465, // 465: anytype.ClientCommands.BlockDataviewViewSetActive:output_type -> anytype.Rpc.BlockDataview.View.SetActive.Response
-	466, // 466: anytype.ClientCommands.BlockDataviewViewSetPosition:output_type -> anytype.Rpc.BlockDataview.View.SetPosition.Response
-	467, // 467: anytype.ClientCommands.BlockDataviewSetSource:output_type -> anytype.Rpc.BlockDataview.SetSource.Response
-	468, // 468: anytype.ClientCommands.BlockDataviewRelationAdd:output_type -> anytype.Rpc.BlockDataview.Relation.Add.Response
-	469, // 469: anytype.ClientCommands.BlockDataviewRelationDelete:output_type -> anytype.Rpc.BlockDataview.Relation.Delete.Response
-	470, // 470: anytype.ClientCommands.BlockDataviewGroupOrderUpdate:output_type -> anytype.Rpc.BlockDataview.GroupOrder.Update.Response
-	471, // 471: anytype.ClientCommands.BlockDataviewObjectOrderUpdate:output_type -> anytype.Rpc.BlockDataview.ObjectOrder.Update.Response
-	472, // 472: anytype.ClientCommands.BlockDataviewObjectOrderMove:output_type -> anytype.Rpc.BlockDataview.ObjectOrder.Move.Response
-	473, // 473: anytype.ClientCommands.BlockDataviewCreateFromExistingObject:output_type -> anytype.Rpc.BlockDataview.CreateFromExistingObject.Response
-	474, // 474: anytype.ClientCommands.BlockDataviewFilterAdd:output_type -> anytype.Rpc.BlockDataview.Filter.Add.Response
-	475, // 475: anytype.ClientCommands.BlockDataviewFilterRemove:output_type -> anytype.Rpc.BlockDataview.Filter.Remove.Response
-	476, // 476: anytype.ClientCommands.BlockDataviewFilterReplace:output_type -> anytype.Rpc.BlockDataview.Filter.Replace.Response
-	477, // 477: anytype.ClientCommands.BlockDataviewFilterSort:output_type -> anytype.Rpc.BlockDataview.Filter.Sort.Response
-	478, // 478: anytype.ClientCommands.BlockDataviewSortAdd:output_type -> anytype.Rpc.BlockDataview.Sort.Add.Response
-	479, // 479: anytype.ClientCommands.BlockDataviewSortRemove:output_type -> anytype.Rpc.BlockDataview.Sort.Remove.Response
-	480, // 480: anytype.ClientCommands.BlockDataviewSortReplace:output_type -> anytype.Rpc.BlockDataview.Sort.Replace.Response
-	481, // 481: anytype.ClientCommands.BlockDataviewSortSort:output_type -> anytype.Rpc.BlockDataview.Sort.SSort.Response
-	482, // 482: anytype.ClientCommands.BlockDataviewViewRelationAdd:output_type -> anytype.Rpc.BlockDataview.ViewRelation.Add.Response
-	483, // 483: anytype.ClientCommands.BlockDataviewViewRelationRemove:output_type -> anytype.Rpc.BlockDataview.ViewRelation.Remove.Response
-	484, // 484: anytype.ClientCommands.BlockDataviewViewRelationReplace:output_type -> anytype.Rpc.BlockDataview.ViewRelation.Replace.Response
-	485, // 485: anytype.ClientCommands.BlockDataviewViewRelationSort:output_type -> anytype.Rpc.BlockDataview.ViewRelation.Sort.Response
-	486, // 486: anytype.ClientCommands.BlockTableCreate:output_type -> anytype.Rpc.BlockTable.Create.Response
-	487, // 487: anytype.ClientCommands.BlockTableExpand:output_type -> anytype.Rpc.BlockTable.Expand.Response
-	488, // 488: anytype.ClientCommands.BlockTableRowCreate:output_type -> anytype.Rpc.BlockTable.RowCreate.Response
-	489, // 489: anytype.ClientCommands.BlockTableRowDelete:output_type -> anytype.Rpc.BlockTable.RowDelete.Response
-	490, // 490: anytype.ClientCommands.BlockTableRowDuplicate:output_type -> anytype.Rpc.BlockTable.RowDuplicate.Response
-	491, // 491: anytype.ClientCommands.BlockTableRowSetHeader:output_type -> anytype.Rpc.BlockTable.RowSetHeader.Response
-	492, // 492: anytype.ClientCommands.BlockTableColumnCreate:output_type -> anytype.Rpc.BlockTable.ColumnCreate.Response
-	493, // 493: anytype.ClientCommands.BlockTableColumnMove:output_type -> anytype.Rpc.BlockTable.ColumnMove.Response
-	494, // 494: anytype.ClientCommands.BlockTableColumnDelete:output_type -> anytype.Rpc.BlockTable.ColumnDelete.Response
-	495, // 495: anytype.ClientCommands.BlockTableColumnDuplicate:output_type -> anytype.Rpc.BlockTable.ColumnDuplicate.Response
-	496, // 496: anytype.ClientCommands.BlockTableRowListFill:output_type -> anytype.Rpc.BlockTable.RowListFill.Response
-	497, // 497: anytype.ClientCommands.BlockTableRowListClean:output_type -> anytype.Rpc.BlockTable.RowListClean.Response
-	498, // 498: anytype.ClientCommands.BlockTableColumnListFill:output_type -> anytype.Rpc.BlockTable.ColumnListFill.Response
-	499, // 499: anytype.ClientCommands.BlockTableSort:output_type -> anytype.Rpc.BlockTable.Sort.Response
-	500, // 500: anytype.ClientCommands.BlockCreateWidget:output_type -> anytype.Rpc.Block.CreateWidget.Response
-	501, // 501: anytype.ClientCommands.BlockWidgetSetTargetId:output_type -> anytype.Rpc.BlockWidget.SetTargetId.Response
-	502, // 502: anytype.ClientCommands.BlockWidgetSetLayout:output_type -> anytype.Rpc.BlockWidget.SetLayout.Response
-	503, // 503: anytype.ClientCommands.BlockWidgetSetLimit:output_type -> anytype.Rpc.BlockWidget.SetLimit.Response
-	504, // 504: anytype.ClientCommands.BlockWidgetSetViewId:output_type -> anytype.Rpc.BlockWidget.SetViewId.Response
-	505, // 505: anytype.ClientCommands.BlockLinkCreateWithObject:output_type -> anytype.Rpc.BlockLink.CreateWithObject.Response
-	506, // 506: anytype.ClientCommands.BlockLinkListSetAppearance:output_type -> anytype.Rpc.BlockLink.ListSetAppearance.Response
-	507, // 507: anytype.ClientCommands.BlockBookmarkFetch:output_type -> anytype.Rpc.BlockBookmark.Fetch.Response
-	508, // 508: anytype.ClientCommands.BlockBookmarkCreateAndFetch:output_type -> anytype.Rpc.BlockBookmark.CreateAndFetch.Response
-	509, // 509: anytype.ClientCommands.BlockRelationSetKey:output_type -> anytype.Rpc.BlockRelation.SetKey.Response
-	510, // 510: anytype.ClientCommands.BlockRelationAdd:output_type -> anytype.Rpc.BlockRelation.Add.Response
-	511, // 511: anytype.ClientCommands.BlockDivListSetStyle:output_type -> anytype.Rpc.BlockDiv.ListSetStyle.Response
-	512, // 512: anytype.ClientCommands.BlockLatexSetText:output_type -> anytype.Rpc.BlockLatex.SetText.Response
-	513, // 513: anytype.ClientCommands.ProcessCancel:output_type -> anytype.Rpc.Process.Cancel.Response
-	514, // 514: anytype.ClientCommands.ProcessSubscribe:output_type -> anytype.Rpc.Process.Subscribe.Response
-	515, // 515: anytype.ClientCommands.ProcessUnsubscribe:output_type -> anytype.Rpc.Process.Unsubscribe.Response
-	516, // 516: anytype.ClientCommands.LogSend:output_type -> anytype.Rpc.Log.Send.Response
-	517, // 517: anytype.ClientCommands.DebugStat:output_type -> anytype.Rpc.Debug.Stat.Response
-	518, // 518: anytype.ClientCommands.DebugTree:output_type -> anytype.Rpc.Debug.Tree.Response
-	519, // 519: anytype.ClientCommands.DebugTreeHeads:output_type -> anytype.Rpc.Debug.TreeHeads.Response
-	520, // 520: anytype.ClientCommands.DebugSpaceSummary:output_type -> anytype.Rpc.Debug.SpaceSummary.Response
-	521, // 521: anytype.ClientCommands.DebugStackGoroutines:output_type -> anytype.Rpc.Debug.StackGoroutines.Response
-	522, // 522: anytype.ClientCommands.DebugExportLocalstore:output_type -> anytype.Rpc.Debug.ExportLocalstore.Response
-	523, // 523: anytype.ClientCommands.DebugPing:output_type -> anytype.Rpc.Debug.Ping.Response
-	524, // 524: anytype.ClientCommands.DebugSubscriptions:output_type -> anytype.Rpc.Debug.Subscriptions.Response
-	525, // 525: anytype.ClientCommands.DebugOpenedObjects:output_type -> anytype.Rpc.Debug.OpenedObjects.Response
-	526, // 526: anytype.ClientCommands.DebugRunProfiler:output_type -> anytype.Rpc.Debug.RunProfiler.Response
-	527, // 527: anytype.ClientCommands.DebugAccountSelectTrace:output_type -> anytype.Rpc.Debug.AccountSelectTrace.Response
-	528, // 528: anytype.ClientCommands.DebugAnystoreObjectChanges:output_type -> anytype.Rpc.Debug.AnystoreObjectChanges.Response
-	529, // 529: anytype.ClientCommands.DebugNetCheck:output_type -> anytype.Rpc.Debug.NetCheck.Response
-	530, // 530: anytype.ClientCommands.DebugExportLog:output_type -> anytype.Rpc.Debug.ExportLog.Response
-	531, // 531: anytype.ClientCommands.InitialSetParameters:output_type -> anytype.Rpc.Initial.SetParameters.Response
-	532, // 532: anytype.ClientCommands.ListenSessionEvents:output_type -> anytype.Event
-	533, // 533: anytype.ClientCommands.NotificationList:output_type -> anytype.Rpc.Notification.List.Response
-	534, // 534: anytype.ClientCommands.NotificationReply:output_type -> anytype.Rpc.Notification.Reply.Response
-	535, // 535: anytype.ClientCommands.NotificationTest:output_type -> anytype.Rpc.Notification.Test.Response
-	536, // 536: anytype.ClientCommands.MembershipGetStatus:output_type -> anytype.Rpc.Membership.GetStatus.Response
-	537, // 537: anytype.ClientCommands.MembershipIsNameValid:output_type -> anytype.Rpc.Membership.IsNameValid.Response
-	538, // 538: anytype.ClientCommands.MembershipRegisterPaymentRequest:output_type -> anytype.Rpc.Membership.RegisterPaymentRequest.Response
-	539, // 539: anytype.ClientCommands.MembershipGetPortalLinkUrl:output_type -> anytype.Rpc.Membership.GetPortalLinkUrl.Response
-	540, // 540: anytype.ClientCommands.MembershipGetVerificationEmailStatus:output_type -> anytype.Rpc.Membership.GetVerificationEmailStatus.Response
-	541, // 541: anytype.ClientCommands.MembershipGetVerificationEmail:output_type -> anytype.Rpc.Membership.GetVerificationEmail.Response
-	542, // 542: anytype.ClientCommands.MembershipVerifyEmailCode:output_type -> anytype.Rpc.Membership.VerifyEmailCode.Response
-	543, // 543: anytype.ClientCommands.MembershipFinalize:output_type -> anytype.Rpc.Membership.Finalize.Response
-	544, // 544: anytype.ClientCommands.MembershipGetTiers:output_type -> anytype.Rpc.Membership.GetTiers.Response
-	545, // 545: anytype.ClientCommands.MembershipVerifyAppStoreReceipt:output_type -> anytype.Rpc.Membership.VerifyAppStoreReceipt.Response
-	546, // 546: anytype.ClientCommands.NameServiceUserAccountGet:output_type -> anytype.Rpc.NameService.UserAccount.Get.Response
-	547, // 547: anytype.ClientCommands.NameServiceResolveName:output_type -> anytype.Rpc.NameService.ResolveName.Response
-	548, // 548: anytype.ClientCommands.NameServiceResolveAnyId:output_type -> anytype.Rpc.NameService.ResolveAnyId.Response
-	549, // 549: anytype.ClientCommands.BroadcastPayloadEvent:output_type -> anytype.Rpc.Broadcast.PayloadEvent.Response
-	550, // 550: anytype.ClientCommands.DeviceSetName:output_type -> anytype.Rpc.Device.SetName.Response
-	551, // 551: anytype.ClientCommands.DeviceList:output_type -> anytype.Rpc.Device.List.Response
-	552, // 552: anytype.ClientCommands.DeviceNetworkStateSet:output_type -> anytype.Rpc.Device.NetworkState.Set.Response
-	553, // 553: anytype.ClientCommands.ChatAddMessage:output_type -> anytype.Rpc.Chat.AddMessage.Response
-	554, // 554: anytype.ClientCommands.ChatEditMessageContent:output_type -> anytype.Rpc.Chat.EditMessageContent.Response
-	555, // 555: anytype.ClientCommands.ChatToggleMessageReaction:output_type -> anytype.Rpc.Chat.ToggleMessageReaction.Response
-	556, // 556: anytype.ClientCommands.ChatDeleteMessage:output_type -> anytype.Rpc.Chat.DeleteMessage.Response
-	557, // 557: anytype.ClientCommands.ChatGetMessages:output_type -> anytype.Rpc.Chat.GetMessages.Response
-	558, // 558: anytype.ClientCommands.ChatGetMessagesByIds:output_type -> anytype.Rpc.Chat.GetMessagesByIds.Response
-	559, // 559: anytype.ClientCommands.ChatSubscribeLastMessages:output_type -> anytype.Rpc.Chat.SubscribeLastMessages.Response
-	560, // 560: anytype.ClientCommands.ChatUnsubscribe:output_type -> anytype.Rpc.Chat.Unsubscribe.Response
-	561, // 561: anytype.ClientCommands.ObjectChatAdd:output_type -> anytype.Rpc.Object.ChatAdd.Response
-	281, // [281:562] is the sub-list for method output_type
-	0,   // [0:281] is the sub-list for method input_type
+	280, // 280: anytype.ClientCommands.ChatReadMessages:input_type -> anytype.Rpc.Chat.ReadMessages.Request
+	281, // 281: anytype.ClientCommands.ChatUnreadMessages:input_type -> anytype.Rpc.Chat.Unread.Request
+	282, // 282: anytype.ClientCommands.ChatSubscribeToMessagePreviews:input_type -> anytype.Rpc.Chat.SubscribeToMessagePreviews.Request
+	283, // 283: anytype.ClientCommands.ObjectChatAdd:input_type -> anytype.Rpc.Object.ChatAdd.Request
+	284, // 284: anytype.ClientCommands.AppGetVersion:output_type -> anytype.Rpc.App.GetVersion.Response
+	285, // 285: anytype.ClientCommands.AppSetDeviceState:output_type -> anytype.Rpc.App.SetDeviceState.Response
+	286, // 286: anytype.ClientCommands.AppShutdown:output_type -> anytype.Rpc.App.Shutdown.Response
+	287, // 287: anytype.ClientCommands.WalletCreate:output_type -> anytype.Rpc.Wallet.Create.Response
+	288, // 288: anytype.ClientCommands.WalletRecover:output_type -> anytype.Rpc.Wallet.Recover.Response
+	289, // 289: anytype.ClientCommands.WalletConvert:output_type -> anytype.Rpc.Wallet.Convert.Response
+	290, // 290: anytype.ClientCommands.AccountLocalLinkNewChallenge:output_type -> anytype.Rpc.Account.LocalLink.NewChallenge.Response
+	291, // 291: anytype.ClientCommands.AccountLocalLinkSolveChallenge:output_type -> anytype.Rpc.Account.LocalLink.SolveChallenge.Response
+	292, // 292: anytype.ClientCommands.WalletCreateSession:output_type -> anytype.Rpc.Wallet.CreateSession.Response
+	293, // 293: anytype.ClientCommands.WalletCloseSession:output_type -> anytype.Rpc.Wallet.CloseSession.Response
+	294, // 294: anytype.ClientCommands.WorkspaceCreate:output_type -> anytype.Rpc.Workspace.Create.Response
+	295, // 295: anytype.ClientCommands.WorkspaceOpen:output_type -> anytype.Rpc.Workspace.Open.Response
+	296, // 296: anytype.ClientCommands.WorkspaceObjectAdd:output_type -> anytype.Rpc.Workspace.Object.Add.Response
+	297, // 297: anytype.ClientCommands.WorkspaceObjectListAdd:output_type -> anytype.Rpc.Workspace.Object.ListAdd.Response
+	298, // 298: anytype.ClientCommands.WorkspaceObjectListRemove:output_type -> anytype.Rpc.Workspace.Object.ListRemove.Response
+	299, // 299: anytype.ClientCommands.WorkspaceSelect:output_type -> anytype.Rpc.Workspace.Select.Response
+	300, // 300: anytype.ClientCommands.WorkspaceGetCurrent:output_type -> anytype.Rpc.Workspace.GetCurrent.Response
+	301, // 301: anytype.ClientCommands.WorkspaceGetAll:output_type -> anytype.Rpc.Workspace.GetAll.Response
+	302, // 302: anytype.ClientCommands.WorkspaceSetInfo:output_type -> anytype.Rpc.Workspace.SetInfo.Response
+	303, // 303: anytype.ClientCommands.WorkspaceExport:output_type -> anytype.Rpc.Workspace.Export.Response
+	304, // 304: anytype.ClientCommands.AccountRecover:output_type -> anytype.Rpc.Account.Recover.Response
+	305, // 305: anytype.ClientCommands.AccountMigrate:output_type -> anytype.Rpc.Account.Migrate.Response
+	306, // 306: anytype.ClientCommands.AccountMigrateCancel:output_type -> anytype.Rpc.Account.MigrateCancel.Response
+	307, // 307: anytype.ClientCommands.AccountCreate:output_type -> anytype.Rpc.Account.Create.Response
+	308, // 308: anytype.ClientCommands.AccountDelete:output_type -> anytype.Rpc.Account.Delete.Response
+	309, // 309: anytype.ClientCommands.AccountRevertDeletion:output_type -> anytype.Rpc.Account.RevertDeletion.Response
+	310, // 310: anytype.ClientCommands.AccountSelect:output_type -> anytype.Rpc.Account.Select.Response
+	311, // 311: anytype.ClientCommands.AccountEnableLocalNetworkSync:output_type -> anytype.Rpc.Account.EnableLocalNetworkSync.Response
+	312, // 312: anytype.ClientCommands.AccountChangeJsonApiAddr:output_type -> anytype.Rpc.Account.ChangeJsonApiAddr.Response
+	313, // 313: anytype.ClientCommands.AccountStop:output_type -> anytype.Rpc.Account.Stop.Response
+	314, // 314: anytype.ClientCommands.AccountMove:output_type -> anytype.Rpc.Account.Move.Response
+	315, // 315: anytype.ClientCommands.AccountConfigUpdate:output_type -> anytype.Rpc.Account.ConfigUpdate.Response
+	316, // 316: anytype.ClientCommands.AccountRecoverFromLegacyExport:output_type -> anytype.Rpc.Account.RecoverFromLegacyExport.Response
+	317, // 317: anytype.ClientCommands.AccountChangeNetworkConfigAndRestart:output_type -> anytype.Rpc.Account.ChangeNetworkConfigAndRestart.Response
+	318, // 318: anytype.ClientCommands.SpaceDelete:output_type -> anytype.Rpc.Space.Delete.Response
+	319, // 319: anytype.ClientCommands.SpaceInviteGenerate:output_type -> anytype.Rpc.Space.InviteGenerate.Response
+	320, // 320: anytype.ClientCommands.SpaceInviteGetCurrent:output_type -> anytype.Rpc.Space.InviteGetCurrent.Response
+	321, // 321: anytype.ClientCommands.SpaceInviteRevoke:output_type -> anytype.Rpc.Space.InviteRevoke.Response
+	322, // 322: anytype.ClientCommands.SpaceInviteView:output_type -> anytype.Rpc.Space.InviteView.Response
+	323, // 323: anytype.ClientCommands.SpaceJoin:output_type -> anytype.Rpc.Space.Join.Response
+	324, // 324: anytype.ClientCommands.SpaceJoinCancel:output_type -> anytype.Rpc.Space.JoinCancel.Response
+	325, // 325: anytype.ClientCommands.SpaceStopSharing:output_type -> anytype.Rpc.Space.StopSharing.Response
+	326, // 326: anytype.ClientCommands.SpaceRequestApprove:output_type -> anytype.Rpc.Space.RequestApprove.Response
+	327, // 327: anytype.ClientCommands.SpaceRequestDecline:output_type -> anytype.Rpc.Space.RequestDecline.Response
+	328, // 328: anytype.ClientCommands.SpaceLeaveApprove:output_type -> anytype.Rpc.Space.LeaveApprove.Response
+	329, // 329: anytype.ClientCommands.SpaceMakeShareable:output_type -> anytype.Rpc.Space.MakeShareable.Response
+	330, // 330: anytype.ClientCommands.SpaceParticipantRemove:output_type -> anytype.Rpc.Space.ParticipantRemove.Response
+	331, // 331: anytype.ClientCommands.SpaceParticipantPermissionsChange:output_type -> anytype.Rpc.Space.ParticipantPermissionsChange.Response
+	332, // 332: anytype.ClientCommands.SpaceSetOrder:output_type -> anytype.Rpc.Space.SetOrder.Response
+	333, // 333: anytype.ClientCommands.SpaceUnsetOrder:output_type -> anytype.Rpc.Space.UnsetOrder.Response
+	334, // 334: anytype.ClientCommands.PublishingCreate:output_type -> anytype.Rpc.Publishing.Create.Response
+	335, // 335: anytype.ClientCommands.PublishingRemove:output_type -> anytype.Rpc.Publishing.Remove.Response
+	336, // 336: anytype.ClientCommands.PublishingList:output_type -> anytype.Rpc.Publishing.List.Response
+	337, // 337: anytype.ClientCommands.PublishingResolveUri:output_type -> anytype.Rpc.Publishing.ResolveUri.Response
+	338, // 338: anytype.ClientCommands.PublishingGetStatus:output_type -> anytype.Rpc.Publishing.GetStatus.Response
+	339, // 339: anytype.ClientCommands.ObjectOpen:output_type -> anytype.Rpc.Object.Open.Response
+	340, // 340: anytype.ClientCommands.ObjectClose:output_type -> anytype.Rpc.Object.Close.Response
+	341, // 341: anytype.ClientCommands.ObjectShow:output_type -> anytype.Rpc.Object.Show.Response
+	342, // 342: anytype.ClientCommands.ObjectCreate:output_type -> anytype.Rpc.Object.Create.Response
+	343, // 343: anytype.ClientCommands.ObjectCreateBookmark:output_type -> anytype.Rpc.Object.CreateBookmark.Response
+	344, // 344: anytype.ClientCommands.ObjectCreateFromUrl:output_type -> anytype.Rpc.Object.CreateFromUrl.Response
+	345, // 345: anytype.ClientCommands.ObjectCreateSet:output_type -> anytype.Rpc.Object.CreateSet.Response
+	346, // 346: anytype.ClientCommands.ObjectGraph:output_type -> anytype.Rpc.Object.Graph.Response
+	347, // 347: anytype.ClientCommands.ObjectSearch:output_type -> anytype.Rpc.Object.Search.Response
+	348, // 348: anytype.ClientCommands.ObjectSearchWithMeta:output_type -> anytype.Rpc.Object.SearchWithMeta.Response
+	349, // 349: anytype.ClientCommands.ObjectSearchSubscribe:output_type -> anytype.Rpc.Object.SearchSubscribe.Response
+	350, // 350: anytype.ClientCommands.ObjectCrossSpaceSearchSubscribe:output_type -> anytype.Rpc.Object.CrossSpaceSearchSubscribe.Response
+	351, // 351: anytype.ClientCommands.ObjectCrossSpaceSearchUnsubscribe:output_type -> anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Response
+	352, // 352: anytype.ClientCommands.ObjectSubscribeIds:output_type -> anytype.Rpc.Object.SubscribeIds.Response
+	353, // 353: anytype.ClientCommands.ObjectGroupsSubscribe:output_type -> anytype.Rpc.Object.GroupsSubscribe.Response
+	354, // 354: anytype.ClientCommands.ObjectSearchUnsubscribe:output_type -> anytype.Rpc.Object.SearchUnsubscribe.Response
+	355, // 355: anytype.ClientCommands.ObjectSetDetails:output_type -> anytype.Rpc.Object.SetDetails.Response
+	356, // 356: anytype.ClientCommands.ObjectDuplicate:output_type -> anytype.Rpc.Object.Duplicate.Response
+	357, // 357: anytype.ClientCommands.ObjectSetObjectType:output_type -> anytype.Rpc.Object.SetObjectType.Response
+	358, // 358: anytype.ClientCommands.ObjectSetLayout:output_type -> anytype.Rpc.Object.SetLayout.Response
+	359, // 359: anytype.ClientCommands.ObjectSetInternalFlags:output_type -> anytype.Rpc.Object.SetInternalFlags.Response
+	360, // 360: anytype.ClientCommands.ObjectSetIsFavorite:output_type -> anytype.Rpc.Object.SetIsFavorite.Response
+	361, // 361: anytype.ClientCommands.ObjectSetIsArchived:output_type -> anytype.Rpc.Object.SetIsArchived.Response
+	362, // 362: anytype.ClientCommands.ObjectSetSource:output_type -> anytype.Rpc.Object.SetSource.Response
+	363, // 363: anytype.ClientCommands.ObjectWorkspaceSetDashboard:output_type -> anytype.Rpc.Object.WorkspaceSetDashboard.Response
+	364, // 364: anytype.ClientCommands.ObjectListDuplicate:output_type -> anytype.Rpc.Object.ListDuplicate.Response
+	365, // 365: anytype.ClientCommands.ObjectListDelete:output_type -> anytype.Rpc.Object.ListDelete.Response
+	366, // 366: anytype.ClientCommands.ObjectListSetIsArchived:output_type -> anytype.Rpc.Object.ListSetIsArchived.Response
+	367, // 367: anytype.ClientCommands.ObjectListSetIsFavorite:output_type -> anytype.Rpc.Object.ListSetIsFavorite.Response
+	368, // 368: anytype.ClientCommands.ObjectListSetObjectType:output_type -> anytype.Rpc.Object.ListSetObjectType.Response
+	369, // 369: anytype.ClientCommands.ObjectListSetDetails:output_type -> anytype.Rpc.Object.ListSetDetails.Response
+	370, // 370: anytype.ClientCommands.ObjectListModifyDetailValues:output_type -> anytype.Rpc.Object.ListModifyDetailValues.Response
+	371, // 371: anytype.ClientCommands.ObjectApplyTemplate:output_type -> anytype.Rpc.Object.ApplyTemplate.Response
+	372, // 372: anytype.ClientCommands.ObjectToSet:output_type -> anytype.Rpc.Object.ToSet.Response
+	373, // 373: anytype.ClientCommands.ObjectToCollection:output_type -> anytype.Rpc.Object.ToCollection.Response
+	374, // 374: anytype.ClientCommands.ObjectShareByLink:output_type -> anytype.Rpc.Object.ShareByLink.Response
+	375, // 375: anytype.ClientCommands.ObjectUndo:output_type -> anytype.Rpc.Object.Undo.Response
+	376, // 376: anytype.ClientCommands.ObjectRedo:output_type -> anytype.Rpc.Object.Redo.Response
+	377, // 377: anytype.ClientCommands.ObjectListExport:output_type -> anytype.Rpc.Object.ListExport.Response
+	378, // 378: anytype.ClientCommands.ObjectBookmarkFetch:output_type -> anytype.Rpc.Object.BookmarkFetch.Response
+	379, // 379: anytype.ClientCommands.ObjectToBookmark:output_type -> anytype.Rpc.Object.ToBookmark.Response
+	380, // 380: anytype.ClientCommands.ObjectImport:output_type -> anytype.Rpc.Object.Import.Response
+	381, // 381: anytype.ClientCommands.ObjectImportList:output_type -> anytype.Rpc.Object.ImportList.Response
+	382, // 382: anytype.ClientCommands.ObjectImportNotionValidateToken:output_type -> anytype.Rpc.Object.Import.Notion.ValidateToken.Response
+	383, // 383: anytype.ClientCommands.ObjectImportUseCase:output_type -> anytype.Rpc.Object.ImportUseCase.Response
+	384, // 384: anytype.ClientCommands.ObjectImportExperience:output_type -> anytype.Rpc.Object.ImportExperience.Response
+	385, // 385: anytype.ClientCommands.ObjectDateByTimestamp:output_type -> anytype.Rpc.Object.DateByTimestamp.Response
+	386, // 386: anytype.ClientCommands.ObjectCollectionAdd:output_type -> anytype.Rpc.ObjectCollection.Add.Response
+	387, // 387: anytype.ClientCommands.ObjectCollectionRemove:output_type -> anytype.Rpc.ObjectCollection.Remove.Response
+	388, // 388: anytype.ClientCommands.ObjectCollectionSort:output_type -> anytype.Rpc.ObjectCollection.Sort.Response
+	389, // 389: anytype.ClientCommands.ObjectCreateRelation:output_type -> anytype.Rpc.Object.CreateRelation.Response
+	390, // 390: anytype.ClientCommands.ObjectCreateRelationOption:output_type -> anytype.Rpc.Object.CreateRelationOption.Response
+	391, // 391: anytype.ClientCommands.RelationListRemoveOption:output_type -> anytype.Rpc.Relation.ListRemoveOption.Response
+	392, // 392: anytype.ClientCommands.RelationOptions:output_type -> anytype.Rpc.Relation.Options.Response
+	393, // 393: anytype.ClientCommands.RelationListWithValue:output_type -> anytype.Rpc.Relation.ListWithValue.Response
+	394, // 394: anytype.ClientCommands.ObjectRelationAdd:output_type -> anytype.Rpc.ObjectRelation.Add.Response
+	395, // 395: anytype.ClientCommands.ObjectRelationDelete:output_type -> anytype.Rpc.ObjectRelation.Delete.Response
+	396, // 396: anytype.ClientCommands.ObjectRelationAddFeatured:output_type -> anytype.Rpc.ObjectRelation.AddFeatured.Response
+	397, // 397: anytype.ClientCommands.ObjectRelationRemoveFeatured:output_type -> anytype.Rpc.ObjectRelation.RemoveFeatured.Response
+	398, // 398: anytype.ClientCommands.ObjectRelationListAvailable:output_type -> anytype.Rpc.ObjectRelation.ListAvailable.Response
+	399, // 399: anytype.ClientCommands.ObjectCreateObjectType:output_type -> anytype.Rpc.Object.CreateObjectType.Response
+	400, // 400: anytype.ClientCommands.ObjectTypeRelationAdd:output_type -> anytype.Rpc.ObjectType.Relation.Add.Response
+	401, // 401: anytype.ClientCommands.ObjectTypeRelationRemove:output_type -> anytype.Rpc.ObjectType.Relation.Remove.Response
+	402, // 402: anytype.ClientCommands.ObjectTypeRecommendedRelationsSet:output_type -> anytype.Rpc.ObjectType.Recommended.RelationsSet.Response
+	403, // 403: anytype.ClientCommands.ObjectTypeRecommendedFeaturedRelationsSet:output_type -> anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response
+	404, // 404: anytype.ClientCommands.ObjectTypeListConflictingRelations:output_type -> anytype.Rpc.ObjectType.ListConflictingRelations.Response
+	405, // 405: anytype.ClientCommands.HistoryShowVersion:output_type -> anytype.Rpc.History.ShowVersion.Response
+	406, // 406: anytype.ClientCommands.HistoryGetVersions:output_type -> anytype.Rpc.History.GetVersions.Response
+	407, // 407: anytype.ClientCommands.HistorySetVersion:output_type -> anytype.Rpc.History.SetVersion.Response
+	408, // 408: anytype.ClientCommands.HistoryDiffVersions:output_type -> anytype.Rpc.History.DiffVersions.Response
+	409, // 409: anytype.ClientCommands.FileSpaceOffload:output_type -> anytype.Rpc.File.SpaceOffload.Response
+	410, // 410: anytype.ClientCommands.FileReconcile:output_type -> anytype.Rpc.File.Reconcile.Response
+	411, // 411: anytype.ClientCommands.FileListOffload:output_type -> anytype.Rpc.File.ListOffload.Response
+	412, // 412: anytype.ClientCommands.FileUpload:output_type -> anytype.Rpc.File.Upload.Response
+	413, // 413: anytype.ClientCommands.FileDownload:output_type -> anytype.Rpc.File.Download.Response
+	414, // 414: anytype.ClientCommands.FileDrop:output_type -> anytype.Rpc.File.Drop.Response
+	415, // 415: anytype.ClientCommands.FileSpaceUsage:output_type -> anytype.Rpc.File.SpaceUsage.Response
+	416, // 416: anytype.ClientCommands.FileNodeUsage:output_type -> anytype.Rpc.File.NodeUsage.Response
+	417, // 417: anytype.ClientCommands.NavigationListObjects:output_type -> anytype.Rpc.Navigation.ListObjects.Response
+	418, // 418: anytype.ClientCommands.NavigationGetObjectInfoWithLinks:output_type -> anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response
+	419, // 419: anytype.ClientCommands.TemplateCreateFromObject:output_type -> anytype.Rpc.Template.CreateFromObject.Response
+	420, // 420: anytype.ClientCommands.TemplateClone:output_type -> anytype.Rpc.Template.Clone.Response
+	421, // 421: anytype.ClientCommands.TemplateExportAll:output_type -> anytype.Rpc.Template.ExportAll.Response
+	422, // 422: anytype.ClientCommands.LinkPreview:output_type -> anytype.Rpc.LinkPreview.Response
+	423, // 423: anytype.ClientCommands.UnsplashSearch:output_type -> anytype.Rpc.Unsplash.Search.Response
+	424, // 424: anytype.ClientCommands.UnsplashDownload:output_type -> anytype.Rpc.Unsplash.Download.Response
+	425, // 425: anytype.ClientCommands.GalleryDownloadManifest:output_type -> anytype.Rpc.Gallery.DownloadManifest.Response
+	426, // 426: anytype.ClientCommands.GalleryDownloadIndex:output_type -> anytype.Rpc.Gallery.DownloadIndex.Response
+	427, // 427: anytype.ClientCommands.BlockUpload:output_type -> anytype.Rpc.Block.Upload.Response
+	428, // 428: anytype.ClientCommands.BlockReplace:output_type -> anytype.Rpc.Block.Replace.Response
+	429, // 429: anytype.ClientCommands.BlockCreate:output_type -> anytype.Rpc.Block.Create.Response
+	430, // 430: anytype.ClientCommands.BlockSplit:output_type -> anytype.Rpc.Block.Split.Response
+	431, // 431: anytype.ClientCommands.BlockMerge:output_type -> anytype.Rpc.Block.Merge.Response
+	432, // 432: anytype.ClientCommands.BlockCopy:output_type -> anytype.Rpc.Block.Copy.Response
+	433, // 433: anytype.ClientCommands.BlockPaste:output_type -> anytype.Rpc.Block.Paste.Response
+	434, // 434: anytype.ClientCommands.BlockCut:output_type -> anytype.Rpc.Block.Cut.Response
+	435, // 435: anytype.ClientCommands.BlockSetFields:output_type -> anytype.Rpc.Block.SetFields.Response
+	436, // 436: anytype.ClientCommands.BlockExport:output_type -> anytype.Rpc.Block.Export.Response
+	437, // 437: anytype.ClientCommands.BlockSetCarriage:output_type -> anytype.Rpc.Block.SetCarriage.Response
+	438, // 438: anytype.ClientCommands.BlockPreview:output_type -> anytype.Rpc.Block.Preview.Response
+	439, // 439: anytype.ClientCommands.BlockListDelete:output_type -> anytype.Rpc.Block.ListDelete.Response
+	440, // 440: anytype.ClientCommands.BlockListMoveToExistingObject:output_type -> anytype.Rpc.Block.ListMoveToExistingObject.Response
+	441, // 441: anytype.ClientCommands.BlockListMoveToNewObject:output_type -> anytype.Rpc.Block.ListMoveToNewObject.Response
+	442, // 442: anytype.ClientCommands.BlockListConvertToObjects:output_type -> anytype.Rpc.Block.ListConvertToObjects.Response
+	443, // 443: anytype.ClientCommands.BlockListSetFields:output_type -> anytype.Rpc.Block.ListSetFields.Response
+	444, // 444: anytype.ClientCommands.BlockListDuplicate:output_type -> anytype.Rpc.Block.ListDuplicate.Response
+	445, // 445: anytype.ClientCommands.BlockListSetBackgroundColor:output_type -> anytype.Rpc.Block.ListSetBackgroundColor.Response
+	446, // 446: anytype.ClientCommands.BlockListSetAlign:output_type -> anytype.Rpc.Block.ListSetAlign.Response
+	447, // 447: anytype.ClientCommands.BlockListSetVerticalAlign:output_type -> anytype.Rpc.Block.ListSetVerticalAlign.Response
+	448, // 448: anytype.ClientCommands.BlockListTurnInto:output_type -> anytype.Rpc.Block.ListTurnInto.Response
+	449, // 449: anytype.ClientCommands.BlockTextSetText:output_type -> anytype.Rpc.BlockText.SetText.Response
+	450, // 450: anytype.ClientCommands.BlockTextSetColor:output_type -> anytype.Rpc.BlockText.SetColor.Response
+	451, // 451: anytype.ClientCommands.BlockTextSetStyle:output_type -> anytype.Rpc.BlockText.SetStyle.Response
+	452, // 452: anytype.ClientCommands.BlockTextSetChecked:output_type -> anytype.Rpc.BlockText.SetChecked.Response
+	453, // 453: anytype.ClientCommands.BlockTextSetIcon:output_type -> anytype.Rpc.BlockText.SetIcon.Response
+	454, // 454: anytype.ClientCommands.BlockTextListSetColor:output_type -> anytype.Rpc.BlockText.ListSetColor.Response
+	455, // 455: anytype.ClientCommands.BlockTextListSetMark:output_type -> anytype.Rpc.BlockText.ListSetMark.Response
+	456, // 456: anytype.ClientCommands.BlockTextListSetStyle:output_type -> anytype.Rpc.BlockText.ListSetStyle.Response
+	457, // 457: anytype.ClientCommands.BlockTextListClearStyle:output_type -> anytype.Rpc.BlockText.ListClearStyle.Response
+	458, // 458: anytype.ClientCommands.BlockTextListClearContent:output_type -> anytype.Rpc.BlockText.ListClearContent.Response
+	459, // 459: anytype.ClientCommands.BlockFileSetName:output_type -> anytype.Rpc.BlockFile.SetName.Response
+	460, // 460: anytype.ClientCommands.BlockFileSetTargetObjectId:output_type -> anytype.Rpc.BlockFile.SetTargetObjectId.Response
+	461, // 461: anytype.ClientCommands.BlockImageSetName:output_type -> anytype.Rpc.BlockImage.SetName.Response
+	462, // 462: anytype.ClientCommands.BlockVideoSetName:output_type -> anytype.Rpc.BlockVideo.SetName.Response
+	463, // 463: anytype.ClientCommands.BlockFileCreateAndUpload:output_type -> anytype.Rpc.BlockFile.CreateAndUpload.Response
+	464, // 464: anytype.ClientCommands.BlockFileListSetStyle:output_type -> anytype.Rpc.BlockFile.ListSetStyle.Response
+	465, // 465: anytype.ClientCommands.BlockDataviewViewCreate:output_type -> anytype.Rpc.BlockDataview.View.Create.Response
+	466, // 466: anytype.ClientCommands.BlockDataviewViewDelete:output_type -> anytype.Rpc.BlockDataview.View.Delete.Response
+	467, // 467: anytype.ClientCommands.BlockDataviewViewUpdate:output_type -> anytype.Rpc.BlockDataview.View.Update.Response
+	468, // 468: anytype.ClientCommands.BlockDataviewViewSetActive:output_type -> anytype.Rpc.BlockDataview.View.SetActive.Response
+	469, // 469: anytype.ClientCommands.BlockDataviewViewSetPosition:output_type -> anytype.Rpc.BlockDataview.View.SetPosition.Response
+	470, // 470: anytype.ClientCommands.BlockDataviewSetSource:output_type -> anytype.Rpc.BlockDataview.SetSource.Response
+	471, // 471: anytype.ClientCommands.BlockDataviewRelationAdd:output_type -> anytype.Rpc.BlockDataview.Relation.Add.Response
+	472, // 472: anytype.ClientCommands.BlockDataviewRelationDelete:output_type -> anytype.Rpc.BlockDataview.Relation.Delete.Response
+	473, // 473: anytype.ClientCommands.BlockDataviewGroupOrderUpdate:output_type -> anytype.Rpc.BlockDataview.GroupOrder.Update.Response
+	474, // 474: anytype.ClientCommands.BlockDataviewObjectOrderUpdate:output_type -> anytype.Rpc.BlockDataview.ObjectOrder.Update.Response
+	475, // 475: anytype.ClientCommands.BlockDataviewObjectOrderMove:output_type -> anytype.Rpc.BlockDataview.ObjectOrder.Move.Response
+	476, // 476: anytype.ClientCommands.BlockDataviewCreateFromExistingObject:output_type -> anytype.Rpc.BlockDataview.CreateFromExistingObject.Response
+	477, // 477: anytype.ClientCommands.BlockDataviewFilterAdd:output_type -> anytype.Rpc.BlockDataview.Filter.Add.Response
+	478, // 478: anytype.ClientCommands.BlockDataviewFilterRemove:output_type -> anytype.Rpc.BlockDataview.Filter.Remove.Response
+	479, // 479: anytype.ClientCommands.BlockDataviewFilterReplace:output_type -> anytype.Rpc.BlockDataview.Filter.Replace.Response
+	480, // 480: anytype.ClientCommands.BlockDataviewFilterSort:output_type -> anytype.Rpc.BlockDataview.Filter.Sort.Response
+	481, // 481: anytype.ClientCommands.BlockDataviewSortAdd:output_type -> anytype.Rpc.BlockDataview.Sort.Add.Response
+	482, // 482: anytype.ClientCommands.BlockDataviewSortRemove:output_type -> anytype.Rpc.BlockDataview.Sort.Remove.Response
+	483, // 483: anytype.ClientCommands.BlockDataviewSortReplace:output_type -> anytype.Rpc.BlockDataview.Sort.Replace.Response
+	484, // 484: anytype.ClientCommands.BlockDataviewSortSort:output_type -> anytype.Rpc.BlockDataview.Sort.SSort.Response
+	485, // 485: anytype.ClientCommands.BlockDataviewViewRelationAdd:output_type -> anytype.Rpc.BlockDataview.ViewRelation.Add.Response
+	486, // 486: anytype.ClientCommands.BlockDataviewViewRelationRemove:output_type -> anytype.Rpc.BlockDataview.ViewRelation.Remove.Response
+	487, // 487: anytype.ClientCommands.BlockDataviewViewRelationReplace:output_type -> anytype.Rpc.BlockDataview.ViewRelation.Replace.Response
+	488, // 488: anytype.ClientCommands.BlockDataviewViewRelationSort:output_type -> anytype.Rpc.BlockDataview.ViewRelation.Sort.Response
+	489, // 489: anytype.ClientCommands.BlockTableCreate:output_type -> anytype.Rpc.BlockTable.Create.Response
+	490, // 490: anytype.ClientCommands.BlockTableExpand:output_type -> anytype.Rpc.BlockTable.Expand.Response
+	491, // 491: anytype.ClientCommands.BlockTableRowCreate:output_type -> anytype.Rpc.BlockTable.RowCreate.Response
+	492, // 492: anytype.ClientCommands.BlockTableRowDelete:output_type -> anytype.Rpc.BlockTable.RowDelete.Response
+	493, // 493: anytype.ClientCommands.BlockTableRowDuplicate:output_type -> anytype.Rpc.BlockTable.RowDuplicate.Response
+	494, // 494: anytype.ClientCommands.BlockTableRowSetHeader:output_type -> anytype.Rpc.BlockTable.RowSetHeader.Response
+	495, // 495: anytype.ClientCommands.BlockTableColumnCreate:output_type -> anytype.Rpc.BlockTable.ColumnCreate.Response
+	496, // 496: anytype.ClientCommands.BlockTableColumnMove:output_type -> anytype.Rpc.BlockTable.ColumnMove.Response
+	497, // 497: anytype.ClientCommands.BlockTableColumnDelete:output_type -> anytype.Rpc.BlockTable.ColumnDelete.Response
+	498, // 498: anytype.ClientCommands.BlockTableColumnDuplicate:output_type -> anytype.Rpc.BlockTable.ColumnDuplicate.Response
+	499, // 499: anytype.ClientCommands.BlockTableRowListFill:output_type -> anytype.Rpc.BlockTable.RowListFill.Response
+	500, // 500: anytype.ClientCommands.BlockTableRowListClean:output_type -> anytype.Rpc.BlockTable.RowListClean.Response
+	501, // 501: anytype.ClientCommands.BlockTableColumnListFill:output_type -> anytype.Rpc.BlockTable.ColumnListFill.Response
+	502, // 502: anytype.ClientCommands.BlockTableSort:output_type -> anytype.Rpc.BlockTable.Sort.Response
+	503, // 503: anytype.ClientCommands.BlockCreateWidget:output_type -> anytype.Rpc.Block.CreateWidget.Response
+	504, // 504: anytype.ClientCommands.BlockWidgetSetTargetId:output_type -> anytype.Rpc.BlockWidget.SetTargetId.Response
+	505, // 505: anytype.ClientCommands.BlockWidgetSetLayout:output_type -> anytype.Rpc.BlockWidget.SetLayout.Response
+	506, // 506: anytype.ClientCommands.BlockWidgetSetLimit:output_type -> anytype.Rpc.BlockWidget.SetLimit.Response
+	507, // 507: anytype.ClientCommands.BlockWidgetSetViewId:output_type -> anytype.Rpc.BlockWidget.SetViewId.Response
+	508, // 508: anytype.ClientCommands.BlockLinkCreateWithObject:output_type -> anytype.Rpc.BlockLink.CreateWithObject.Response
+	509, // 509: anytype.ClientCommands.BlockLinkListSetAppearance:output_type -> anytype.Rpc.BlockLink.ListSetAppearance.Response
+	510, // 510: anytype.ClientCommands.BlockBookmarkFetch:output_type -> anytype.Rpc.BlockBookmark.Fetch.Response
+	511, // 511: anytype.ClientCommands.BlockBookmarkCreateAndFetch:output_type -> anytype.Rpc.BlockBookmark.CreateAndFetch.Response
+	512, // 512: anytype.ClientCommands.BlockRelationSetKey:output_type -> anytype.Rpc.BlockRelation.SetKey.Response
+	513, // 513: anytype.ClientCommands.BlockRelationAdd:output_type -> anytype.Rpc.BlockRelation.Add.Response
+	514, // 514: anytype.ClientCommands.BlockDivListSetStyle:output_type -> anytype.Rpc.BlockDiv.ListSetStyle.Response
+	515, // 515: anytype.ClientCommands.BlockLatexSetText:output_type -> anytype.Rpc.BlockLatex.SetText.Response
+	516, // 516: anytype.ClientCommands.ProcessCancel:output_type -> anytype.Rpc.Process.Cancel.Response
+	517, // 517: anytype.ClientCommands.ProcessSubscribe:output_type -> anytype.Rpc.Process.Subscribe.Response
+	518, // 518: anytype.ClientCommands.ProcessUnsubscribe:output_type -> anytype.Rpc.Process.Unsubscribe.Response
+	519, // 519: anytype.ClientCommands.LogSend:output_type -> anytype.Rpc.Log.Send.Response
+	520, // 520: anytype.ClientCommands.DebugStat:output_type -> anytype.Rpc.Debug.Stat.Response
+	521, // 521: anytype.ClientCommands.DebugTree:output_type -> anytype.Rpc.Debug.Tree.Response
+	522, // 522: anytype.ClientCommands.DebugTreeHeads:output_type -> anytype.Rpc.Debug.TreeHeads.Response
+	523, // 523: anytype.ClientCommands.DebugSpaceSummary:output_type -> anytype.Rpc.Debug.SpaceSummary.Response
+	524, // 524: anytype.ClientCommands.DebugStackGoroutines:output_type -> anytype.Rpc.Debug.StackGoroutines.Response
+	525, // 525: anytype.ClientCommands.DebugExportLocalstore:output_type -> anytype.Rpc.Debug.ExportLocalstore.Response
+	526, // 526: anytype.ClientCommands.DebugPing:output_type -> anytype.Rpc.Debug.Ping.Response
+	527, // 527: anytype.ClientCommands.DebugSubscriptions:output_type -> anytype.Rpc.Debug.Subscriptions.Response
+	528, // 528: anytype.ClientCommands.DebugOpenedObjects:output_type -> anytype.Rpc.Debug.OpenedObjects.Response
+	529, // 529: anytype.ClientCommands.DebugRunProfiler:output_type -> anytype.Rpc.Debug.RunProfiler.Response
+	530, // 530: anytype.ClientCommands.DebugAccountSelectTrace:output_type -> anytype.Rpc.Debug.AccountSelectTrace.Response
+	531, // 531: anytype.ClientCommands.DebugAnystoreObjectChanges:output_type -> anytype.Rpc.Debug.AnystoreObjectChanges.Response
+	532, // 532: anytype.ClientCommands.DebugNetCheck:output_type -> anytype.Rpc.Debug.NetCheck.Response
+	533, // 533: anytype.ClientCommands.DebugExportLog:output_type -> anytype.Rpc.Debug.ExportLog.Response
+	534, // 534: anytype.ClientCommands.InitialSetParameters:output_type -> anytype.Rpc.Initial.SetParameters.Response
+	535, // 535: anytype.ClientCommands.ListenSessionEvents:output_type -> anytype.Event
+	536, // 536: anytype.ClientCommands.NotificationList:output_type -> anytype.Rpc.Notification.List.Response
+	537, // 537: anytype.ClientCommands.NotificationReply:output_type -> anytype.Rpc.Notification.Reply.Response
+	538, // 538: anytype.ClientCommands.NotificationTest:output_type -> anytype.Rpc.Notification.Test.Response
+	539, // 539: anytype.ClientCommands.MembershipGetStatus:output_type -> anytype.Rpc.Membership.GetStatus.Response
+	540, // 540: anytype.ClientCommands.MembershipIsNameValid:output_type -> anytype.Rpc.Membership.IsNameValid.Response
+	541, // 541: anytype.ClientCommands.MembershipRegisterPaymentRequest:output_type -> anytype.Rpc.Membership.RegisterPaymentRequest.Response
+	542, // 542: anytype.ClientCommands.MembershipGetPortalLinkUrl:output_type -> anytype.Rpc.Membership.GetPortalLinkUrl.Response
+	543, // 543: anytype.ClientCommands.MembershipGetVerificationEmailStatus:output_type -> anytype.Rpc.Membership.GetVerificationEmailStatus.Response
+	544, // 544: anytype.ClientCommands.MembershipGetVerificationEmail:output_type -> anytype.Rpc.Membership.GetVerificationEmail.Response
+	545, // 545: anytype.ClientCommands.MembershipVerifyEmailCode:output_type -> anytype.Rpc.Membership.VerifyEmailCode.Response
+	546, // 546: anytype.ClientCommands.MembershipFinalize:output_type -> anytype.Rpc.Membership.Finalize.Response
+	547, // 547: anytype.ClientCommands.MembershipGetTiers:output_type -> anytype.Rpc.Membership.GetTiers.Response
+	548, // 548: anytype.ClientCommands.MembershipVerifyAppStoreReceipt:output_type -> anytype.Rpc.Membership.VerifyAppStoreReceipt.Response
+	549, // 549: anytype.ClientCommands.NameServiceUserAccountGet:output_type -> anytype.Rpc.NameService.UserAccount.Get.Response
+	550, // 550: anytype.ClientCommands.NameServiceResolveName:output_type -> anytype.Rpc.NameService.ResolveName.Response
+	551, // 551: anytype.ClientCommands.NameServiceResolveAnyId:output_type -> anytype.Rpc.NameService.ResolveAnyId.Response
+	552, // 552: anytype.ClientCommands.BroadcastPayloadEvent:output_type -> anytype.Rpc.Broadcast.PayloadEvent.Response
+	553, // 553: anytype.ClientCommands.DeviceSetName:output_type -> anytype.Rpc.Device.SetName.Response
+	554, // 554: anytype.ClientCommands.DeviceList:output_type -> anytype.Rpc.Device.List.Response
+	555, // 555: anytype.ClientCommands.DeviceNetworkStateSet:output_type -> anytype.Rpc.Device.NetworkState.Set.Response
+	556, // 556: anytype.ClientCommands.ChatAddMessage:output_type -> anytype.Rpc.Chat.AddMessage.Response
+	557, // 557: anytype.ClientCommands.ChatEditMessageContent:output_type -> anytype.Rpc.Chat.EditMessageContent.Response
+	558, // 558: anytype.ClientCommands.ChatToggleMessageReaction:output_type -> anytype.Rpc.Chat.ToggleMessageReaction.Response
+	559, // 559: anytype.ClientCommands.ChatDeleteMessage:output_type -> anytype.Rpc.Chat.DeleteMessage.Response
+	560, // 560: anytype.ClientCommands.ChatGetMessages:output_type -> anytype.Rpc.Chat.GetMessages.Response
+	561, // 561: anytype.ClientCommands.ChatGetMessagesByIds:output_type -> anytype.Rpc.Chat.GetMessagesByIds.Response
+	562, // 562: anytype.ClientCommands.ChatSubscribeLastMessages:output_type -> anytype.Rpc.Chat.SubscribeLastMessages.Response
+	563, // 563: anytype.ClientCommands.ChatUnsubscribe:output_type -> anytype.Rpc.Chat.Unsubscribe.Response
+	564, // 564: anytype.ClientCommands.ChatReadMessages:output_type -> anytype.Rpc.Chat.ReadMessages.Response
+	565, // 565: anytype.ClientCommands.ChatUnreadMessages:output_type -> anytype.Rpc.Chat.Unread.Response
+	566, // 566: anytype.ClientCommands.ChatSubscribeToMessagePreviews:output_type -> anytype.Rpc.Chat.SubscribeToMessagePreviews.Response
+	567, // 567: anytype.ClientCommands.ObjectChatAdd:output_type -> anytype.Rpc.Object.ChatAdd.Response
+	284, // [284:568] is the sub-list for method output_type
+	0,   // [0:284] is the sub-list for method input_type
 	0,   // [0:0] is the sub-list for extension type_name
 	0,   // [0:0] is the sub-list for extension extendee
 	0,   // [0:0] is the sub-list for field type_name

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -282,11 +282,16 @@ func (p *Pb) makeSnapshot(name, profileID, path string,
 }
 
 func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.SnapshotModel, error) {
+
 	defer rd.Close()
 	if filepath.Ext(name) == ".json" {
 		snapshot := &pb.SnapshotWithType{}
-		um := jsonpb.Unmarshaler{AllowUnknownFields: true}
-		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
+		um := protojson.UnmarshalOptions{DiscardUnknown: true}
+		data, err := io.ReadAll(rd)
+		if err != nil {
+			return nil, err
+		}
+		if uErr := um.Unmarshal(data, snapshot); uErr != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
 		return common.NewSnapshotModelFromProto(snapshot)

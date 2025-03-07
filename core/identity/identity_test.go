@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
@@ -106,7 +105,7 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 }
 
 func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.SymKey) []byte {
-	data, err := proto.Marshal(profile)
+	data, err := profile.MarshalVT()
 	require.NoError(t, err)
 	data, err = key.Encrypt(data)
 	require.NoError(t, err)

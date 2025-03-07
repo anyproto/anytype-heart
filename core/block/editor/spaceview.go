@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/lexid"
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -234,7 +233,7 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 		return "", ErrIncorrectSpaceInfo
 	}
 	changePayload := &model.ObjectChangePayload{}
-	err = proto.Unmarshal(changeInfo.ChangePayload, changePayload)
+	err = changePayload.UnmarshalVT(changeInfo.ChangePayload)
 	if err != nil {
 		return "", ErrIncorrectSpaceInfo
 	}

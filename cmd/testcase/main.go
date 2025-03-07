@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -84,7 +84,7 @@ func generateJsonHelper(dir string, pbFileName string) error {
 	if err != nil {
 		return fmt.Errorf("read pb file: %w", err)
 	}
-	err = proto.Unmarshal(data, snapshot)
+	err = snapshot.UnmarshalVT(data)
 	if err != nil {
 		return fmt.Errorf("unmarshal pb: %w", err)
 	}
@@ -96,8 +96,13 @@ func generateJsonHelper(dir string, pbFileName string) error {
 	}
 	defer jsonFile.Close()
 
-	marshaler := &jsonpb.Marshaler{Indent: "  "}
-	err = marshaler.Marshal(jsonFile, snapshot)
+	marshaler := &protojson.MarshalOptions{Indent: "  "}
+	res, err := marshaler.Marshal(snapshot)
+	if len(res) > 0 {
+		if _, err := jsonFile.Write(res); err != nil {
+			return err
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("marshal to json: %w", err)
 	}

@@ -20,7 +20,6 @@ import (
 	"github.com/miolini/datacounter"
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -288,7 +287,7 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 
 				continue
 			}
-			err = proto.Unmarshal(b, &file)
+			err = file.UnmarshalVT(b)
 			if err != nil || file.Hash == "" {
 				if i == len(modes)-1 {
 					return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
@@ -304,7 +303,7 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 		if err != nil {
 			return nil, err
 		}
-		err = proto.Unmarshal(b, &file)
+		err = file.UnmarshalVT(b)
 		if err != nil || file.Hash == "" {
 			return nil, fmt.Errorf("failed to unmarshal not-encrypted file info: %w", err)
 		}
@@ -457,7 +456,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	fileInfo.Hash = contentNode.Cid().String()
-	rawMeta, err := proto.Marshal(fileInfo)
+	rawMeta, err := fileInfo.MarshalVT()
 	if err != nil {
 		return nil, err
 	}

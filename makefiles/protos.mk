@@ -49,7 +49,7 @@ define generate_proto
 		$(wildcard $(2)/*.proto)
 endef
 
-define generate_proto_drpc
+define generate_proto_drpc2
 	@echo "Generating Protobuf for directory: $(1)"
 	$(PROTOC) \
 		--proto_path=. \
@@ -63,6 +63,17 @@ define generate_proto_drpc
 		--go-drpc_out=protolib=github.com/planetscale/vtprotobuf/codec/drpc:. \
 		--go_opt=$(1) \
 		$(wildcard $(2)/*.proto)
+endef
+
+define generate_proto_drpc
+	@echo "Generating Protobuf for directory: $(1)"
+	$(PROTOC) \
+		--go_out=. --plugin protoc-gen-go="$(PROTOC_GEN_GO)" \
+		--plugin protoc-gen-go-drpc="$(PROTOC_GEN_DRPC)" \
+		--go_opt=$(1) \
+		--go-vtproto_out=:. --plugin protoc-gen-go-vtproto="$(PROTOC_GEN_VTPROTO)" \
+		--go-vtproto_opt=features=marshal+unmarshal+size \
+		--go-drpc_out=protolib=github.com/planetscale/vtprotobuf/codec/drpc:. $(wildcard $(2)/*.proto)
 endef
 
 define generate_proto_grpc
@@ -177,16 +188,23 @@ VT_PROTOBUF_REPO := /Users/mikhailyudin/GolandProjects/vtprotobuf
 GO_PROTOBUF_REPO := /Users/mikhailyudin/GolandProjects/protobuf-go
 PROTOC_GEN_VTPROTO := $(DEPS)/protoc-gen-go-vtproto
 
-VT_PROTOBUF_COMMIT := 03e7317ec5e0776c99aef116e26f39c02c7e4f0f
-	#@echo "Cloning vtprotobuf fork..."
-	#git clone https://github.com/anyproto/vtprotobuf.git $(VT_PROTOBUF_REPO) || true
-	#cd $(VT_PROTOBUF_REPO) && git fetch && git checkout $(VT_PROTOBUF_COMMIT)
+VT_PROTOBUF_COMMIT := 57a97b786bfdef686fce425af0b32376dedac8ce
+GO_PROTOBUF_COMMIT := 3739fe9d181cb579358238ed7861202ba028de2b
+
 fork1:
+	@echo "Cloning vtprotobuf fork..."
+	@rm -rf VT_PROTOBUF_REPO
+	git clone https://github.com/anyproto/vtprotobuf.git $(VT_PROTOBUF_REPO) || true
+	cd $(VT_PROTOBUF_REPO) && git fetch && git checkout $(VT_PROTOBUF_COMMIT)
 	@echo "Building protoc-gen-go-vtproto..."
+	@echo "Cloning protoc-gen-go fork..."
+	@rm -rf GO_PROTOBUF_REPO
+	git clone https://github.com/anyproto/protobuf-go.git $(GO_PROTOBUF_REPO) || true
+	cd $(GO_PROTOBUF_REPO) && git fetch && git checkout $(GO_PROTOBUF_COMMIT)
+	@echo "Building protoc-gen-go..."
 	GOBIN=$(DEPS) go install storj.io/drpc/cmd/protoc-gen-go-drpc@latest
 	go build -o deps github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 	cd $(VT_PROTOBUF_REPO)/cmd/protoc-gen-go-vtproto && go build -o $(PROTOC_GEN_VTPROTO)
-	cd $(GO_PROTOBUF_REPO)/cmd/protoc-gen-go && go build -o $(PROTOC_GEN_GO)
 	cd $(GO_PROTOBUF_REPO)/cmd/protoc-gen-go && go build -o $(PROTOC_GEN_GO)
 
 deps2: fork1
@@ -208,18 +226,6 @@ deps2: fork1
 
 @GOGO_NO_UNDERSCORE=1 GOGO_GOMOBILE_WITH_CONTEXT=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anyproto/anytype-heart/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./clientlibrary/service/
 
-lolka: fork1
-	@echo 'Generating protobuf packages for lib (Go)...'
-	@$(eval P_PROTOS := Mpkg/lib/pb/model/protos/models.proto=github.com/anyproto/anytype-heart/pkg/lib/pb/model)
-	@$(eval P_PROTOS2 := Mpkg/lib/pb/model/protos/localstore.proto=github.com/anyproto/anytype-heart/pkg/lib/pb/model)
-	@$(eval P_PROTOS3 := Mpb/protos/events.proto=github.com/anyproto/anytype-heart/pb)
-
-	$(eval PKGMAP := $$(P_PROTOS)$(comma)$$(P_PROTOS2)$(comma)$$(P_PROTOS3))
-
-	$(call generate_proto,$(PKGMAP),pb/protos/service)
-	mv ./pb/protos/service/*.pb.go ./clientlibrary/service/
-
-
 lolka2: fork1
 	@echo 'Generating protobuf packages for lib (Go)...'
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=google.golang.org/protobuf/jsonpbtypes)
@@ -235,7 +241,7 @@ lolka2: fork1
 	$(call generate_proto,$(PKGMAP):./pkg/lib/pb/,pkg/lib/pb/storage/protos)
 	mv pkg/lib/pb/storage/protos/*.go pkg/lib/pb/storage/;
 	$(call generate_proto_drpc,,space/spacecore/clientspaceproto/protos)
-	mv space/spacecore/clientspaceproto/protos/*.go space/spacecore/clientspaceproto;
+	mv commonspace/clientspaceproto/*.go space/spacecore/clientspaceproto;
 	@echo 'Generating protobuf packages for mw (Go)...'
 	@$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=google.golang.org/protobuf/jsonpbtypes)
 	@$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=google.golang.org/protobuf/jsonpbtypes)
