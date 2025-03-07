@@ -7,9 +7,9 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"

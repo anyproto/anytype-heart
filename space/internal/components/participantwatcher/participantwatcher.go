@@ -127,12 +127,12 @@ func (p *participantWatcher) Run(ctx context.Context) error {
 
 func getSymKey(metadata []byte) (crypto.SymKey, error) {
 	md := &model.Metadata{}
-	err := md.Unmarshal(metadata)
+	err := md.UnmarshalVT(metadata)
 	if err != nil {
 		return nil, err
 	}
 	keyProto := &cryptoproto.Key{}
-	err = keyProto.Unmarshal(md.GetIdentity().GetProfileSymKey())
+	err = keyProto.UnmarshalVT(md.GetIdentity().GetProfileSymKey())
 	if err != nil {
 		return nil, err
 	}

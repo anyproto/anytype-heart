@@ -3,6 +3,8 @@ package text
 import (
 	"sort"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -57,8 +59,5 @@ func markEq(m1, m2 *model.BlockContentTextMark) bool {
 	if m1.Param != m2.Param {
 		return false
 	}
-	if *m1.Range != *m2.Range {
-		return false
-	}
-	return true
+	return proto.Equal(m1, m2)
 }

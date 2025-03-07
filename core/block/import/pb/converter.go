@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -200,7 +200,7 @@ func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = profile.Unmarshal(data); err != nil {
+	if err = profile.UnmarshalVT(data); err != nil {
 		return nil, err
 	}
 	return profile, nil
@@ -297,7 +297,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.Snapsho
 		if err != nil {
 			return nil, err
 		}
-		if err = snapshot.Unmarshal(data); err != nil {
+		if err = snapshot.UnmarshalVT(data); err != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		return common.NewSnapshotModelFromProto(snapshot)

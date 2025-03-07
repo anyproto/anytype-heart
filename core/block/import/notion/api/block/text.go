@@ -2,7 +2,7 @@ package block
 
 import (
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

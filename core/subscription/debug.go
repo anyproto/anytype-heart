@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/gogo/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"

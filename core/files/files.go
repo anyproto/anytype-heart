@@ -14,13 +14,13 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/gogo/protobuf/proto"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/miolini/datacounter"
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
@@ -167,7 +167,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	return &AddResult{
 		FileId:         fileId,
 		EncryptionKeys: &fileKeys,
-		Size:           addNodeResult.variant.Size_,
+		Size:           addNodeResult.variant.Size,
 		MIME:           opts.Media,
 		lock:           addLock,
 	}, nil
@@ -190,7 +190,7 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) 
 	for _, v := range variants {
 		if variant == nil {
 			variant = v
-		} else if variant.Size_ < v.Size_ {
+		} else if variant.Size < v.Size {
 			variant = v
 		}
 	}
@@ -200,7 +200,7 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) 
 		FileId:         fileId,
 		EncryptionKeys: keys,
 		MIME:           variant.GetMedia(),
-		Size:           variant.GetSize_(),
+		Size:           variant.Size,
 		lock:           lock,
 	}, nil
 
@@ -434,7 +434,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		LastModifiedDate: conf.LastModifiedDate,
 		Added:            time.Now().Unix(),
 		Meta:             pbtypes.ToStruct(res.Meta),
-		Size_:            int64(readerWithCounter.Count()),
+		Size:             int64(readerWithCounter.Count()),
 	}
 
 	key, err := getOrGenerateSymmetricKey(linkName, conf)

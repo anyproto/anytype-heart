@@ -2,8 +2,8 @@ package notifications
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

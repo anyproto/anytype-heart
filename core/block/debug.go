@@ -9,7 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/go-chi/chi/v5"
-	"github.com/gogo/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"

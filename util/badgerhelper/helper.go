@@ -7,7 +7,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func RetryOnConflict(proc func() error) error {

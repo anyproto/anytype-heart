@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gogo/protobuf/types"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -535,7 +535,7 @@ func (s *ObjectService) GetBlocks(resp *pb.RpcObjectShowResponse) []Block {
 				Name:           content.File.Name,
 				Type:           model.BlockContentFileType_name[int32(content.File.Type)],
 				Mime:           content.File.Mime,
-				Size:           content.File.Size(),
+				Size:           int(content.File.Size),
 				AddedAt:        int(content.File.AddedAt),
 				TargetObjectId: content.File.TargetObjectId,
 				State:          model.BlockContentFileState_name[int32(content.File.State)],

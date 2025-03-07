@@ -6,14 +6,12 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	_ "net/http/pprof"
 	"os"
 
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pb"
-
-	_ "net/http/pprof"
 )
 
 func main() {

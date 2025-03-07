@@ -12,9 +12,9 @@ import (
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"

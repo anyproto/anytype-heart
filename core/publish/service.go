@@ -15,11 +15,11 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/anytype-publish-server/publishclient"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
+	"github.com/golang/protobuf/jsonpb"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/identity"
@@ -455,7 +455,7 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 			Status:    pb.RpcPublishingPublishStatus(publish.Status),
 			Version:   publish.Version,
 			Timestamp: publish.Timestamp,
-			Size_:     publish.Size_,
+			Size:      publish.Size_,
 			JoinSpace: version.JoinSpace,
 			Details:   details,
 		})
@@ -499,7 +499,7 @@ func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishing
 		Status:    pb.RpcPublishingPublishStatus(publish.Status),
 		Version:   publish.Version,
 		Timestamp: publish.Timestamp,
-		Size_:     publish.Size_,
+		Size:      publish.Size_,
 		JoinSpace: version.JoinSpace,
 	}, nil
 }
@@ -517,7 +517,7 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 		Status:    pb.RpcPublishingPublishStatus(status.Status),
 		Version:   status.Version,
 		Timestamp: status.Timestamp,
-		Size_:     status.Size_,
+		Size:      status.Size_,
 		JoinSpace: version.JoinSpace,
 	}, nil
 }

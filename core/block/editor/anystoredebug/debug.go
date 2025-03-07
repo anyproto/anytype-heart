@@ -7,8 +7,8 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/types"
+	"github.com/golang/protobuf/jsonpb"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"

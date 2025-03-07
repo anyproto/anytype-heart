@@ -2,8 +2,8 @@ package device
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -35,7 +35,7 @@ func (n *deviceStore) SaveDevice(device *model.DeviceInfo) error {
 			return err
 		}
 		if badgerhelper.IsNotFound(err) {
-			infoRaw, err := device.Marshal()
+			infoRaw, err := device.MarshalVT()
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ func (n *deviceStore) UpdateDeviceName(id, name string) error {
 			}
 			info.Name = name
 		}
-		infoRaw, err := info.Marshal()
+		infoRaw, err := info.MarshalVT()
 		if err != nil {
 			return err
 		}

@@ -17,8 +17,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-graphviz"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/debug/exporter"
