@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
@@ -34,6 +35,7 @@ func New() ClientStorage {
 
 type configGetter interface {
 	GetNewSpaceStorePath() string
+	GetAnyStoreConfig() *anystore.Config
 }
 
 func (s *storageService) Name() (name string) {
@@ -41,7 +43,7 @@ func (s *storageService) Name() (name string) {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	rootPath := a.MustComponent("config").(configGetter).GetNewSpaceStorePath()
-	s.ClientStorage = anystorage.New(rootPath)
+	getter := a.MustComponent("config").(configGetter)
+	s.ClientStorage = anystorage.New(getter.GetNewSpaceStorePath(), getter.GetAnyStoreConfig())
 	return s.ClientStorage.Init(a)
 }

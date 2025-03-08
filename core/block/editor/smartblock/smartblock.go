@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -70,9 +69,10 @@ const (
 type Hook int
 
 type ApplyInfo struct {
-	State   *state.State
-	Events  []simple.EventMessage
-	Changes []*pb.ChangeContent
+	State       *state.State
+	ParentState *state.State
+	Events      []simple.EventMessage
+	Changes     []*pb.ChangeContent
 }
 
 type HookCallback func(info ApplyInfo) (err error)
@@ -628,7 +628,6 @@ func (sb *smartBlock) EnabledRelationAsDependentObjects() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
-	startTime := time.Now()
 	if sb.IsDeleted() {
 		return domain.ErrObjectIsDeleted
 	}
@@ -700,10 +699,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		removeInternalFlags(s)
 	}
 
-	beforeApplyStateTime := time.Now()
-
 	migrationVersionUpdated := true
-	if parent := s.ParentState(); parent != nil {
+	parent := s.ParentState()
+	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
 
@@ -712,15 +710,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return
 	}
 
-	if err = sb.changeResolvedLayoutForObjects(msgs, true); err != nil {
-		return
-	}
-
 	// we may have layout changed, so we need to update restrictions
 	sb.updateRestrictions()
 	sb.setRestrictionsDetail(s)
 
-	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
 	changes := st.GetChanges()
@@ -805,7 +798,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
-	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
@@ -821,22 +813,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
-	afterReportChangeTime := time.Now()
 	if hooks {
-		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
+		if e := sb.execHooks(HookAfterApply, ApplyInfo{
+			State:       sb.Doc.(*state.State),
+			ParentState: parent,
+			Events:      msgs,
+			Changes:     changes,
+		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
-	afterApplyHookTime := time.Now()
-
-	metrics.Service.Send(&metrics.StateApply{
-		BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
-		StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
-		PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
-		ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
-		ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
-		ObjectId:       sb.Id(),
-	})
 
 	return
 }
@@ -962,10 +948,6 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	}
 	log.Infof("changes: stateAppend: %d events", len(msgs))
 
-	if err = sb.changeResolvedLayoutForObjects(msgs, true); err != nil {
-		return err
-	}
-
 	if len(msgs) > 0 {
 		sb.sendEvent(&pb.Event{
 			Messages:  msgsToEvents(msgs),
@@ -977,7 +959,14 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
-	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes})
+	if err = sb.execHooks(HookAfterApply, ApplyInfo{
+		State:       s,
+		ParentState: s.ParentState(),
+		Events:      msgs,
+		Changes:     changes,
+	}); err != nil {
+		log.Errorf("failed to execute smartblock hooks after apply on StateAppend: %v", err)
+	}
 
 	return nil
 }

@@ -30,7 +30,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
 	}
 
-	keys, isAlreadyFilled, err := relationutils.FillRecommendedRelations(ctx, space, object)
+	keys, isAlreadyFilled, err := relationutils.FillRecommendedRelations(ctx, space, object, domain.TypeKey(uniqueKey.InternalKey()))
 	if err != nil {
 		return "", nil, fmt.Errorf("fill recommended relations: %w", err)
 	}
@@ -45,7 +45,6 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	}
 
 	object.SetString(bundle.RelationKeyId, id)
-	object.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
