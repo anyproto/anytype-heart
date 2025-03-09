@@ -137,11 +137,11 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		ObjectId: objectId,
 	})
 
-	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND || resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue() {
+	if resp.Error != nil && resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND || resp.ObjectView != nil && resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue() {
 		return Object{}, ErrObjectNotFound
 	}
 
-	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 		return Object{}, ErrFailedRetrieveObject
 	}
 
@@ -521,6 +521,8 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		bundle.RelationKeyBacklinks.String():         true,
 		bundle.RelationKeySourceObject.String():      true,
 		bundle.RelationKeyLayoutAlign.String():       true,
+		bundle.RelationKeyIsHiddenDiscovery.String(): true,
+		bundle.RelationKeyLayout.String():            true,
 	}
 
 	var details []Detail
