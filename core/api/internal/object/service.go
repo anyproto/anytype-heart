@@ -578,14 +578,6 @@ func (s *ObjectService) convertValue(key string, value *types.Value, format stri
 		}
 		return kind.NumberValue
 	case *types.Value_StringValue:
-		if key == bundle.RelationKeyCreator.String() || key == bundle.RelationKeyLastModifiedBy.String() {
-			member, err := s.spaceService.GetMember(context.Background(), details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
-			if err != nil {
-				return nil
-			}
-			return member
-		}
-
 		// TODO: investigate how this is possible? select option not list and not returned in further details
 		if format == "select" || format == "multi_select" {
 			return s.resolveTag(details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
