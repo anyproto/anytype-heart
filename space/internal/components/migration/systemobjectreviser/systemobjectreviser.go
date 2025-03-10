@@ -38,14 +38,14 @@ var (
 		bundle.RelationKeyIconEmoji,
 		bundle.RelationKeyIconOption,
 		bundle.RelationKeyIconName,
-		bundle.RelationKeySingleName,
+		bundle.RelationKeySingularName,
 	}
 
 	customFilterKeys = []domain.RelationKey{
 		bundle.RelationKeyIconOption,
 		bundle.RelationKeyIconName,
 		bundle.RelationKeyName,
-		bundle.RelationKeySingleName,
+		bundle.RelationKeySingularName,
 	}
 )
 
@@ -190,13 +190,13 @@ func buildDiffDetails(origin, current *domain.Details, isSystem bool) *domain.De
 
 	if cannotApplyName(isSystem, diff, current) {
 		diff.Delete(bundle.RelationKeyName)
-		diff.Delete(bundle.RelationKeySingleName)
+		diff.Delete(bundle.RelationKeySingularName)
 	}
 	return diff
 }
 
 func cannotApplyName(isSystem bool, diff, current *domain.Details) bool {
-	return !isSystem && diff.Has(bundle.RelationKeyName) && diff.GetString(bundle.RelationKeySingleName) != current.GetString(bundle.RelationKeyName)
+	return !isSystem && diff.Has(bundle.RelationKeyName) && diff.GetString(bundle.RelationKeySingularName) != current.GetString(bundle.RelationKeyName)
 }
 
 func checkRelationFormatObjectTypes(

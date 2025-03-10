@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f3a68f025ab0d0a0aaec219a67098a864020317a8b08a67ff266a1d979e45013"
+const RelationChecksum = "08fa44c6567ebe4aafbe09f524406f023397534b703268a66cd492c854247baa"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -153,7 +153,7 @@ const (
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
-	RelationKeySingleName                   domain.RelationKey = "singleName"
+	RelationKeySingularName                 domain.RelationKey = "singularName"
 )
 
 var (
@@ -1612,16 +1612,16 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeySingleName: {
+		RelationKeySingularName: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Name of Object type in single form",
+			Description:      "Name of Object type in singular form",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
-			Id:               "_brsingleName",
-			Key:              "singleName",
+			Id:               "_brsingularName",
+			Key:              "singularName",
 			MaxCount:         1,
-			Name:             "Single name",
+			Name:             "Singular name",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

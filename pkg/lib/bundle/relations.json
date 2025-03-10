@@ -1470,12 +1470,12 @@
     "source": "details"
   },
   {
-    "description": "Name of Object type in single form",
+    "description": "Name of Object type in singular form",
     "format": "longtext",
     "hidden": true,
-    "key": "singleName",
+    "key": "singularName",
     "maxCount": 1,
-    "name": "Single name",
+    "name": "Singular name",
     "readonly": false,
     "source": "details"
   }

@@ -55,6 +55,6 @@ func (ot *ObjectType) BundledTypeDetails() *domain.Details {
 	det.SetInt64(bundle.RelationKeyRevision, ot.Revision)
 	det.SetInt64(bundle.RelationKeyIconOption, ot.IconColor)
 	det.SetString(bundle.RelationKeyIconName, ot.IconName)
-	det.SetString(bundle.RelationKeySingleName, ot.SingleName)
+	det.SetString(bundle.RelationKeySingularName, ot.SingularName)
 	return det
 }

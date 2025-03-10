@@ -39,7 +39,7 @@ var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeySmartblockTypes,
 	bundle.RelationKeyIconOption,
 	bundle.RelationKeyIconName,
-	bundle.RelationKeySingleName,
+	bundle.RelationKeySingularName,
 )
 
 type ObjectType struct {

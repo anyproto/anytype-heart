@@ -30321,7 +30321,7 @@ Used to decode block meta only, without the content itself
 | restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
 | iconColor | [int64](#int64) |  | color of object type icon |
 | iconName | [string](#string) |  | name of object type icon |
-| singleName | [string](#string) |  | name of objectType in single form |
+| singularName | [string](#string) |  | name of objectType in singular form |
 
 
 

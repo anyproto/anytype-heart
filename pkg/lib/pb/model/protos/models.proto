@@ -772,7 +772,7 @@ message ObjectType {
     bool restrictObjectCreation = 14; // restricts creating objects of this type for users
     int64 iconColor = 15; // color of object type icon
     string iconName = 16; // name of object type icon
-    string singleName = 17; // name of objectType in single form
+    string singularName = 17; // name of objectType in singular form
 
     enum Layout {
         basic = 0;
