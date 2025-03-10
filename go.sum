@@ -84,6 +84,8 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.1.8 h1:/bxUVq6sBTwYkmPL2g1xUAWNb3axF+zPhP2dvdEBH68=
 github.com/anyproto/any-store v0.1.8/go.mod h1:GpnVhcGm5aUQtOwCnKeTt4jsWgVXZ773WbQVLFdeCFo=
+github.com/anyproto/any-store v0.1.7 h1:E3DntI+JXo3h7v0WTUJWH+nm7G4MV0PNOXZ6SFzQ2OU=
+github.com/anyproto/any-store v0.1.7/go.mod h1:nbyRoJYOlvSWU1xDOrmgPP96UeoTf4eYZ9k+qqLK9k8=
 github.com/anyproto/any-sync v0.6.1 h1:Dasbp7qGQme8diGGpzaDQfSDs5o7PAK3E5rxHHrB/+4=
 github.com/anyproto/any-sync v0.6.1/go.mod h1:5js8TNBdqe75zwlr9XEQSVDtwhsvEU2qLeC2wTnT/Fo=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=
@@ -543,6 +545,7 @@ github.com/hashicorp/go-version v1.2.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09
 github.com/hashicorp/go.net v0.0.1/go.mod h1:hjKkEWcCURg++eb33jQU7oqQcI9XDCnUzHA0oac0k90=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
+github.com/hashicorp/golang-lru v1.0.2 h1:dV3g9Z/unq5DpblPpw+Oqcv4dU/1omnb4Ok8iPY6p1c=
 github.com/hashicorp/golang-lru/v2 v2.0.7 h1:a+bsQ5rvGLjzHuww6tVxozPZFVghXaHOwFs4luLUK2k=
 github.com/hashicorp/golang-lru/v2 v2.0.7/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
