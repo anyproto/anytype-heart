@@ -29,7 +29,11 @@ permissions:
   contents: 'write'
 
 jobs:
+  wait_for_perftest:
+    uses: ./.github/workflows/reusable_wait_for_perftest.yml
+
   build:
+    needs: wait_for_perftest
     runs-on: ${{ github.event.inputs.run-on-runner }}
     steps:
       - name: Install Go

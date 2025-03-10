@@ -381,6 +381,9 @@ type EventMatcher struct {
 }
 
 func (m EventMatcher) Match(msg *pb.EventMessage) {
+	if msg == nil || msg.Value == nil {
+		return
+	}
 	switch v := msg.Value.(type) {
 	case *pb.EventMessageValueOfSubscriptionAdd:
 		if m.OnAdd != nil {
