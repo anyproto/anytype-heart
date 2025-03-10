@@ -261,16 +261,5 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	migrations := []migration.Migration{
-		{
-			Version: 2,
-			Proc:    func(s *state.State) {},
-		},
-	})
-
-	if oldLen == len(recommendedRelations) {
-		return
-	}
-
-	s.SetDetail(bundle.RelationKeyRecommendedRelations, domain.StringList(recommendedRelations))
+	return migration.Migrations{Migrations: []migration.Migration{}}
 }
