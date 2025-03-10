@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -362,8 +363,21 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 
 	widgetObjectID := spc.DerivedIDs().Widgets
+	typeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
+	if err != nil {
+		log.Errorf("failed to get type id: %w", err)
+		return
+	}
 
+	// todo: rewrite to use CreateTypeWidgetIfMissing in block.Service
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+		targets := s.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+		if slices.Contains(targets, typeId) {
+			return nil
+		}
+		targets = append(targets, typeId)
+		s.Details().Set(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
+
 		objectID, e := spc.DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyPage.String()))
 		if e != nil {
 			return fmt.Errorf("failed to derive page type object id: %w", err)
