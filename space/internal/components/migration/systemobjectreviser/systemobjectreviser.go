@@ -26,6 +26,29 @@ const MName = "SystemObjectReviser"
 
 const revisionKey = bundle.RelationKeyRevision
 
+var (
+	systemFilterKeys = []domain.RelationKey{
+		bundle.RelationKeyName,
+		bundle.RelationKeyDescription,
+		bundle.RelationKeyIsReadonly,
+		bundle.RelationKeyIsHidden,
+		bundle.RelationKeyRevision,
+		bundle.RelationKeyRelationReadonlyValue,
+		bundle.RelationKeyRelationMaxCount,
+		bundle.RelationKeyIconEmoji,
+		bundle.RelationKeyIconOption,
+		bundle.RelationKeyIconName,
+		bundle.RelationKeySingleName,
+	}
+
+	customFilterKeys = []domain.RelationKey{
+		bundle.RelationKeyIconOption,
+		bundle.RelationKeyIconName,
+		bundle.RelationKeyName,
+		bundle.RelationKeySingleName,
+	}
+)
+
 // Migration SystemObjectReviser performs revision of all system object types and relations, so after Migration
 // objects installed in space should correspond to bundled objects from library.
 // To modify relations of system objects relation revision should be incremented in types.json or relations.json
@@ -157,30 +180,23 @@ func getBundleObjectDetails(uk domain.UniqueKey) (details *domain.Details, isSys
 }
 
 func buildDiffDetails(origin, current *domain.Details, isSystem bool) *domain.Details {
-	// non-system bundled types are going to update only icons for now
-	filterKeys := []domain.RelationKey{bundle.RelationKeyIconOption, bundle.RelationKeyIconName}
+	// non-system bundled types are going to update only icons and single/plural names for now
+	filterKeys := customFilterKeys
 	if isSystem {
-		filterKeys = []domain.RelationKey{
-			bundle.RelationKeyName,
-			bundle.RelationKeyDescription,
-			bundle.RelationKeyIsReadonly,
-			bundle.RelationKeyIsHidden,
-			bundle.RelationKeyRevision,
-			bundle.RelationKeyRelationReadonlyValue,
-			bundle.RelationKeyRelationMaxCount,
-			bundle.RelationKeyIconEmoji,
-			bundle.RelationKeyIconOption,
-			bundle.RelationKeyIconName,
-		}
+		filterKeys = systemFilterKeys
 	}
 	diff, _ := domain.StructDiff(current, origin)
 	diff = diff.CopyOnlyKeys(filterKeys...)
 
-	details := domain.NewDetails()
-	for key, value := range diff.Iterate() {
-		details.Set(key, value)
+	if cannotApplyName(isSystem, diff, current) {
+		diff.Delete(bundle.RelationKeyName)
+		diff.Delete(bundle.RelationKeySingleName)
 	}
-	return details
+	return diff
+}
+
+func cannotApplyName(isSystem bool, diff, current *domain.Details) bool {
+	return !isSystem && diff.Has(bundle.RelationKeyName) && diff.GetString(bundle.RelationKeySingleName) != current.GetString(bundle.RelationKeyName)
 }
 
 func checkRelationFormatObjectTypes(

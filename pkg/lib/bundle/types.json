@@ -1,7 +1,8 @@
 [
   {
     "id": "recipe",
-    "name": "Recipe",
+    "name": "Recipes",
+    "singleName": "Recipe",
     "types": [
       "Page"
     ],
@@ -15,11 +16,12 @@
       "time"
     ],
     "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "note",
-    "name": "Note",
+    "name": "Notes",
+    "singleName": "Note",
     "types": [
       "Page"
     ],
@@ -31,11 +33,12 @@
       "tag"
     ],
     "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "contact",
-    "name": "Contact",
+    "name": "Contacts",
+    "singleName": "Contact",
     "types": [
       "Page"
     ],
@@ -50,11 +53,12 @@
       "phone"
     ],
     "description": "Information to make action of communicating or meeting with Human or Company",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "bookmark",
-    "name": "Bookmark",
+    "name": "Bookmarks",
+    "singleName": "Bookmark",
     "types": [
       "Page"
     ],
@@ -68,11 +72,12 @@
       "source"
     ],
     "description": "URL that is stored as Object and may be categorised and linked with objects",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "date",
-    "name": "Date",
+    "name": "Dates",
+    "singleName": "Date",
     "types": [
       "Date"
     ],
@@ -87,7 +92,8 @@
   },
   {
     "id": "task",
-    "name": "Task",
+    "name": "Tasks",
+    "singleName": "Task",
     "types": [
       "Page"
     ],
@@ -106,11 +112,12 @@
       "tasks"
     ],
     "description": "A piece of work to be done or undertaken",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "relation",
-    "name": "Relation",
+    "name": "Relations",
+    "singleName": "Relation",
     "types": [
       "SubObject",
       "BundledRelation"
@@ -126,11 +133,12 @@
       "relationFormatObjectTypes"
     ],
     "description": "Meaningful connection between objects",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "book",
-    "name": "Book",
+    "name": "Books",
+    "singleName": "Book",
     "types": [
       "Page"
     ],
@@ -146,11 +154,12 @@
       "url"
     ],
     "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "video",
-    "name": "Video",
+    "name": "Videos",
+    "singleName": "Video",
     "types": [
       "File"
     ],
@@ -173,7 +182,7 @@
     ],
     "description": "The recording of moving visual images",
     "restrictObjectCreation": true,
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "dashboard",
@@ -190,7 +199,8 @@
   },
   {
     "id": "movie",
-    "name": "Movie",
+    "name": "Movies",
+    "singleName": "Movie",
     "types": [
       "Page"
     ],
@@ -204,11 +214,12 @@
       "status"
     ],
     "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "objectType",
-    "name": "Type",
+    "name": "Types",
+    "singleName": "Type",
     "types": [
       "SubObject",
       "BundledObjectType"
@@ -222,7 +233,7 @@
       "recommendedLayout"
     ],
     "description": "Object that contains a definition of some object type",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "relationOption",
@@ -237,7 +248,8 @@
   },
   {
     "id": "space",
-    "name": "Space",
+    "name": "Spaces",
+    "singleName": "Space",
     "types": [
       "Workspace"
     ],
@@ -250,11 +262,12 @@
     ],
     "description": "Workspace",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "spaceView",
-    "name": "Space",
+    "name": "Spaces",
+    "singleName": "Space",
     "types": [
       "SpaceView"
     ],
@@ -266,11 +279,13 @@
       "tag"
     ],
     "description": "Space",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "participant",
-    "name": "Space member",
+    "name": "Space members",
+    "singleName": "Space member",
     "types": [
       "Participant"
     ],
@@ -283,11 +298,12 @@
     ],
     "description": "Anytype identity as a space participant",
     "restrictObjectCreation": true,
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "template",
-    "name": "Template",
+    "name": "Templates",
+    "singleName": "Template",
     "types": [
       "Template"
     ],
@@ -300,11 +316,12 @@
       "templateIsBundled"
     ],
     "description": "Sample object that has already some details in place and used to create objects from",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "set",
-    "name": "Query",
+    "name": "Queries",
+    "singleName": "Query",
     "types": [
       "Page"
     ],
@@ -317,11 +334,12 @@
       "setOf"
     ],
     "description": "Query all objects in your space based on types and relations",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "collection",
-    "name": "Collection",
+    "name": "Collections",
+    "singleName": "Collection",
     "types": [
       "Page"
     ],
@@ -333,11 +351,12 @@
       "tag"
     ],
     "description": "Collect objects in one place, use different views to organize them",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "diaryEntry",
-    "name": "Diary Entry",
+    "name": "Diary Entries",
+    "singleName": "Diary Entry",
     "types": [
       "Page"
     ],
@@ -350,11 +369,12 @@
       "mood"
     ],
     "description": "Record of events and experiences",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "page",
-    "name": "Page",
+    "name": "Pages",
+    "singleName": "Page",
     "types": [
       "Page"
     ],
@@ -366,11 +386,12 @@
       "tag"
     ],
     "description": "Blank canvas with Title",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "image",
-    "name": "Image",
+    "name": "Images",
+    "singleName": "Image",
     "types": [
       "File"
     ],
@@ -394,11 +415,12 @@
     ],
     "description": "A representation of the external form of a person or thing in art",
     "restrictObjectCreation": true,
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "profile",
-    "name": "Human",
+    "name": "Humans",
+    "singleName": "Human",
     "types": [
       "Page",
       "ProfilePage"
@@ -411,11 +433,12 @@
       "tag"
     ],
     "description": "Homo sapiens",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "audio",
     "name": "Audio",
+    "singleName": "Audio",
     "types": [
       "File"
     ],
@@ -438,11 +461,12 @@
     ],
     "description": "Sound when recorded, with ability to reproduce",
     "restrictObjectCreation": true,
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "goal",
-    "name": "Goal",
+    "name": "Goals",
+    "singleName": "Goal",
     "types": [
       "Page"
     ],
@@ -458,11 +482,12 @@
       "tasks"
     ],
     "description": "The object of a person's ambition or effort; an aim or desired result",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "file",
-    "name": "File",
+    "name": "Files",
+    "singleName": "File",
     "types": [
       "File"
     ],
@@ -479,11 +504,12 @@
     ],
     "description": "Computer resource for recording data in a computer storage device",
     "restrictObjectCreation": true,
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "project",
-    "name": "Project",
+    "name": "Projects",
+    "singleName": "Project",
     "types": [
       "Page"
     ],
@@ -496,7 +522,7 @@
       "tasks"
     ],
     "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "chat",
@@ -517,6 +543,7 @@
   {
     "id": "chatDerived",
     "name": "Chat Derived Object",
+    "singleName": "Chat Derived Objects",
     "types": [
       "ChatDerivedObject"
     ],
@@ -528,6 +555,6 @@
       "tag"
     ],
     "description": "A chat derived object",
-    "revision": 2
+    "revision": 3
   }
 ]

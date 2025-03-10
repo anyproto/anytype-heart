@@ -30306,7 +30306,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  | leave empty in case you want to create the new one |
-| name | [string](#string) |  | name of objectType (can be localized for bundled types) |
+| name | [string](#string) |  | name of objectType in plural form (can be localized for bundled types) |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated | cannot contain more than one Relation with the same RelationType |
 | layout | [ObjectType.Layout](#anytype-model-ObjectType-Layout) |  |  |
 | iconEmoji | [string](#string) |  | emoji symbol |
@@ -30321,6 +30321,7 @@ Used to decode block meta only, without the content itself
 | restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
 | iconColor | [int64](#int64) |  | color of object type icon |
 | iconName | [string](#string) |  | name of object type icon |
+| singleName | [string](#string) |  | name of objectType in single form |
 
 
 

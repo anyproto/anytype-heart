@@ -1468,5 +1468,15 @@
     "name": "Default type id",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Name of Object type in single form",
+    "format": "longtext",
+    "hidden": true,
+    "key": "singleName",
+    "maxCount": 1,
+    "name": "Single name",
+    "readonly": false,
+    "source": "details"
   }
 ]

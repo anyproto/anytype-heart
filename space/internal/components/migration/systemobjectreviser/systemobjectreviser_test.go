@@ -345,3 +345,41 @@ func TestReviseSystemObject(t *testing.T) {
 		assert.True(t, toRevise)
 	})
 }
+
+func TestBuildDiffDetails(t *testing.T) {
+	t.Run("new name is applied to system types", func(t *testing.T) {
+		diff := buildDiffDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:       domain.String("Pages"),
+			bundle.RelationKeySingleName: domain.String("Page"),
+		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("Page"),
+		}), true)
+
+		assert.Equal(t, "Pages", diff.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "Page", diff.GetString(bundle.RelationKeySingleName))
+	})
+
+	t.Run("new name is applied to custom types, if name was not modified", func(t *testing.T) {
+		diff := buildDiffDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:       domain.String("Projects"),
+			bundle.RelationKeySingleName: domain.String("Project"),
+		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("Project"),
+		}), false)
+
+		assert.Equal(t, "Projects", diff.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "Project", diff.GetString(bundle.RelationKeySingleName))
+	})
+
+	t.Run("new name is NOT applied to custom types, if name was modified", func(t *testing.T) {
+		diff := buildDiffDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:       domain.String("Projects"),
+			bundle.RelationKeySingleName: domain.String("Project"),
+		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("Проект"),
+		}), false)
+
+		assert.False(t, diff.Has(bundle.RelationKeyName))
+		assert.False(t, diff.Has(bundle.RelationKeySingleName))
+	})
+}
