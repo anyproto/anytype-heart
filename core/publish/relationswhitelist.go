@@ -40,7 +40,7 @@ var derivedObjectsWhiteList = append(slices.Clone(allObjectsRelationsWhiteList),
 var relationsWhiteList = append(slices.Clone(derivedObjectsWhiteList), bundle.RelationKeyRelationFormat.String())
 
 var relationOptionWhiteList = append(slices.Clone(derivedObjectsWhiteList), bundle.RelationKeyRelationOptionColor.String())
-var objectWhiteList = append(slices.Clone(derivedObjectsWhiteList),
+var objectTypeWhiteList = append(slices.Clone(derivedObjectsWhiteList),
 	bundle.RelationKeyRecommendedRelations.String(),
 	bundle.RelationKeyRecommendedFeaturedRelations.String(),
 	bundle.RelationKeyRecommendedLayout.String(),
@@ -64,7 +64,7 @@ var imageRelationsWhiteList = append(slices.Clone(fileRelationsWhiteList),
 	bundle.RelationKeyMediaArtistURL.String(),
 )
 
-var spacedWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyIconImage.String())
+var spacedWhiteList = append(slices.Clone(documentRelationsWhiteList), bundle.RelationKeyIconImage.String(), bundle.RelationKeyIconOption.String())
 
 var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_basic:      documentRelationsWhiteList,
@@ -72,7 +72,7 @@ var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_todo:       todoRelationsWhiteList,
 	model.ObjectType_set:        documentRelationsWhiteList,
 	model.ObjectType_collection: documentRelationsWhiteList,
-	model.ObjectType_objectType: objectWhiteList,
+	model.ObjectType_objectType: objectTypeWhiteList,
 	model.ObjectType_relation:   relationsWhiteList,
 	model.ObjectType_file:       fileRelationsWhiteList,
 	model.ObjectType_pdf:        fileRelationsWhiteList,
