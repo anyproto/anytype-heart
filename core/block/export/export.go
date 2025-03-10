@@ -760,7 +760,7 @@ func (e *exportContext) getRelationsFromStore(relations []string) ([]database.Re
 
 func (e *exportContext) addRelation(relation database.Record) {
 	relationKey := domain.RelationKey(relation.Details.GetString(bundle.RelationKeyRelationKey))
-	if relationKey != "" && !bundle.HasRelation(relationKey) {
+	if relationKey != "" {
 		id := relation.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: relation.Details, isLink: e.isLinkProcess}
 	}
