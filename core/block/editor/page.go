@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"slices"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -17,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -36,7 +33,6 @@ var pageRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyLinks,
 	bundle.RelationKeyBacklinks,
 	bundle.RelationKeyMentions,
-	bundle.RelationKeyLayoutAlign,
 }
 
 const objectTypeAllViewId = "all"
@@ -48,17 +44,6 @@ var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyRevision,
 	bundle.RelationKeyIsHidden,
 }
-
-var typeRequiredRelations = append(typeAndRelationRequiredRelations,
-	bundle.RelationKeyRecommendedRelations,
-	bundle.RelationKeyRecommendedFeaturedRelations,
-	bundle.RelationKeyRecommendedHiddenRelations,
-	bundle.RelationKeyRecommendedFileRelations,
-	bundle.RelationKeyRecommendedLayout,
-	bundle.RelationKeySmartblockTypes,
-	bundle.RelationKeyIconOption,
-	bundle.RelationKeyIconName,
-)
 
 var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationFormat,
@@ -245,12 +230,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithLayout(layout),
 				)
-			case model.ObjectType_objectType:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithLayout(layout),
-				)
-				templates = append(templates, p.getObjectTypeTemplates()...)
 			case model.ObjectType_chat:
 				templates = append(templates,
 					template.WithTitle,
@@ -287,81 +266,6 @@ func (p *Page) StateMigrations() migration.Migrations {
 			Version: 2,
 			Proc:    func(s *state.State) {},
 		},
-		{
-			Version: 3,
-			Proc:    p.featuredRelationsMigration,
-		},
-	}
-
-	// migration 3 is skipped
-	// migration 4 is applied only for ObjectType
-	if p.ObjectTypeKey() == bundle.TypeKeyObjectType {
-		migrations = append(migrations,
-			migration.Migration{
-				Version: 4,
-				Proc: func(s *state.State) {
-					template.InitTemplate(s, p.getObjectTypeTemplates()...)
-				},
-			})
-	}
-
-	return migration.MakeMigrations(migrations)
-}
-
-func (p *Page) getObjectTypeTemplates() []template.StateTransformer {
-	details := p.Details()
-	name := details.GetString(bundle.RelationKeyName)
-	key := details.GetString(bundle.RelationKeyUniqueKey)
-
-	dvContent := template.MakeDataviewContent(false, &model.ObjectType{
-		Url:  p.Id(),
-		Name: name,
-		// todo: add RelationLinks, because they are not indexed at this moment :(
-		Key: key,
-	}, []*model.RelationLink{
-		{
-			Key:    bundle.RelationKeyName.String(),
-			Format: model.RelationFormat_longtext,
-		},
-	}, objectTypeAllViewId)
-
-	dvContent.Dataview.TargetObjectId = p.Id()
-	return []template.StateTransformer{
-		template.WithDataviewID(state.DataviewBlockID, dvContent, false),
-		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{p.Id()})),
-	}
-}
-
-func (p *Page) featuredRelationsMigration(s *state.State) {
-	if p.Type() != coresb.SmartBlockTypeObjectType {
-		return
-	}
-
-	if s.HasRelation(bundle.RelationKeyRecommendedFeaturedRelations.String()) {
-		return
-	}
-
-	featuredRelationKeys := relationutils.DefaultFeaturedRelationKeys()
-	featuredRelationIds := make([]string, 0, len(featuredRelationKeys))
-	for _, key := range featuredRelationKeys {
-		id, err := p.Space().DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
-		if err != nil {
-			log.Errorf("failed to derive object id: %v", err)
-			continue
-		}
-		featuredRelationIds = append(featuredRelationIds, id)
-	}
-
-	if len(featuredRelationIds) == 0 {
-		return
-	}
-
-	s.SetDetail(bundle.RelationKeyRecommendedFeaturedRelations, domain.StringList(featuredRelationIds))
-
-	recommendedRelations := s.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
-	oldLen := len(recommendedRelations)
-	recommendedRelations = slices.DeleteFunc(recommendedRelations, func(s string) bool {
-		return slices.Contains(featuredRelationIds, s)
 	})
 
 	if oldLen == len(recommendedRelations) {

@@ -308,7 +308,7 @@
   },
   {
     "id": "set",
-    "name": "Set",
+    "name": "Query",
     "types": [
       "Page"
     ],
@@ -321,7 +321,7 @@
       "setOf"
     ],
     "description": "Query all objects in your space based on types and relations",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "collection",

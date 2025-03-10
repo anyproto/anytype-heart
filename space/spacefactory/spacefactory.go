@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/streamablespace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -75,7 +76,7 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte)
 	if err != nil {
 		return
 	}
-	err = s.storageService.MarkSpaceCreated(coreSpace.Id())
+	err = coreSpace.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
 	if err != nil {
 		return
 	}
@@ -196,7 +197,11 @@ func (s *spaceFactory) CreateInvitingSpace(ctx context.Context, id, aclHeadId st
 }
 
 func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error) {
-	err = s.storageService.MarkSpaceCreated(id)
+	coreSpace, err := s.spaceCore.Get(ctx, id)
+	if err != nil {
+		return
+	}
+	err = coreSpace.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
 	if err != nil {
 		return
 	}

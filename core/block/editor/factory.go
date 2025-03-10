@@ -170,22 +170,23 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 }
 
 func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType) (smartblock.SmartBlock, error) {
-	sb, store := f.produceSmartblock(space)
+	sb, spaceIndex := f.produceSmartblock(space)
 	switch sbType {
 	case coresb.SmartBlockTypePage,
 		coresb.SmartBlockTypeDate,
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
-		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeChatObject,
 		coresb.SmartBlockTypeEphemeralVirtualObject:
 		return f.newPage(space.Id(), sb), nil
+	case coresb.SmartBlockTypeObjectType:
+		return f.newObjectType(space.Id(), sb), nil
 	case coresb.SmartBlockTypeArchive:
-		return NewArchive(sb, store), nil
+		return NewArchive(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, store, f.layoutConverter), nil
+		return NewDashboard(sb, spaceIndex, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return f.newProfile(space.Id(), sb), nil
@@ -195,25 +196,25 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledTemplate:
 		return f.newTemplate(space.Id(), sb), nil
 	case coresb.SmartBlockTypeWorkspace:
-		return f.newWorkspace(sb, store), nil
+		return f.newWorkspace(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeSpaceView:
 		return f.newSpaceView(sb), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, store, f.layoutConverter), nil
+		return NewWidgetObject(sb, spaceIndex, f.layoutConverter), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	case coresb.SmartBlockTypeParticipant:
-		return f.newParticipant(space.Id(), sb, store), nil
+		return f.newParticipant(space.Id(), sb, spaceIndex), nil
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id())), nil
+		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id()), spaceIndex), nil
 	case coresb.SmartBlockTypeAccountObject:
-		return accountobject.New(sb, f.accountService.Keys(), store, f.layoutConverter, f.fileObjectService, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
+		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

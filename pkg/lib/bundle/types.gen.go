@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "6ee38b2f2411ceac16ec6f6b0d71be9d57a4436a377d0ced293eec68ec02221c"
+const TypeChecksum = "0d2b4f839dd21d6e7abce40021cda9dbc2ed6caef0cff7bbff21c7c5b815b716"
 const (
 	TypePrefix = "_ot"
 )
@@ -382,10 +382,10 @@ var (
 			IconColor:     6,
 			IconName:      "search",
 			Layout:        model.ObjectType_set,
-			Name:          "Set",
+			Name:          "Query",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySetOf)},
-			Revision:      1,
+			Revision:      2,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "set",
 		},

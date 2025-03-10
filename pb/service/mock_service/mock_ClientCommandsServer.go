@@ -5659,6 +5659,55 @@ func (_c *MockClientCommandsServer_ChatSubscribeLastMessages_Call) RunAndReturn(
 	return _c
 }
 
+// ChatSubscribeToMessagePreviews provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) ChatSubscribeToMessagePreviews(_a0 context.Context, _a1 *pb.RpcChatSubscribeToMessagePreviewsRequest) *pb.RpcChatSubscribeToMessagePreviewsResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatSubscribeToMessagePreviews")
+	}
+
+	var r0 *pb.RpcChatSubscribeToMessagePreviewsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatSubscribeToMessagePreviewsRequest) *pb.RpcChatSubscribeToMessagePreviewsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatSubscribeToMessagePreviewsResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatSubscribeToMessagePreviews'
+type MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call struct {
+	*mock.Call
+}
+
+// ChatSubscribeToMessagePreviews is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatSubscribeToMessagePreviewsRequest
+func (_e *MockClientCommandsServer_Expecter) ChatSubscribeToMessagePreviews(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call {
+	return &MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call{Call: _e.mock.On("ChatSubscribeToMessagePreviews", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatSubscribeToMessagePreviewsRequest)) *MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatSubscribeToMessagePreviewsRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call) Return(_a0 *pb.RpcChatSubscribeToMessagePreviewsResponse) *MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call) RunAndReturn(run func(context.Context, *pb.RpcChatSubscribeToMessagePreviewsRequest) *pb.RpcChatSubscribeToMessagePreviewsResponse) *MockClientCommandsServer_ChatSubscribeToMessagePreviews_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ChatToggleMessageReaction provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) ChatToggleMessageReaction(_a0 context.Context, _a1 *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse {
 	ret := _m.Called(_a0, _a1)
