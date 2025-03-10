@@ -11,7 +11,6 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -22,10 +21,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-var log = logger.NewNamed("common.editor.chatobject")
 
 const (
 	collectionName = "chats"
@@ -33,6 +32,8 @@ const (
 	ascOrder       = "_o.id"
 	descAdded      = "-a"
 )
+
+var log = logging.Logger("core.block.editor.chatobject").Desugar()
 
 type StoreObject interface {
 	smartblock.SmartBlock
@@ -44,9 +45,9 @@ type StoreObject interface {
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
-	SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, *model.ChatState, error)
+	SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) ([]*model.ChatMessage, int, *model.ChatState, error)
 	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64) error
-	Unsubscribe() error
+	Unsubscribe(subId string) error
 }
 
 type GetMessagesRequest struct {
@@ -71,13 +72,14 @@ type storeObject struct {
 	eventSender    event.Sender
 	subscription   *subscription
 	crdtDb         anystore.DB
+	spaceIndex     spaceindex.Store
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB, spaceIndex spaceindex.Store) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &storeObject{
 		SmartBlock:         sb,
@@ -88,6 +90,7 @@ func New(sb smartblock.SmartBlock, accountService AccountService, eventSender ev
 		crdtDb:             crdtDb,
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,
+		spaceIndex:         spaceIndex,
 	}
 }
 
@@ -103,7 +106,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return err
 	}
 
-	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender)
+	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender, s.spaceIndex)
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
 		subscription:    s.subscription,
@@ -527,13 +530,20 @@ func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, me
 	return false, nil
 }
 
-func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*model.ChatMessage, int, *model.ChatState, error) {
+func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) ([]*model.ChatMessage, int, *model.ChatState, error) {
 	coll, err := s.store.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("get collection: %w", err)
 	}
+
+	txn, err := s.store.NewTx(ctx)
+	if err != nil {
+		return nil, 0, nil, fmt.Errorf("init read transaction: %w", err)
+	}
+	defer txn.Commit()
+
 	query := coll.Find(nil).Sort(descOrder).Limit(uint(limit))
-	messages, err := s.queryMessages(ctx, query)
+	messages, err := s.queryMessages(txn.Context(), query)
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("query messages: %w", err)
 	}
@@ -542,18 +552,35 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, limit int) ([]*
 		return messages[i].OrderId < messages[j].OrderId
 	})
 
-	if s.subscription.enable() {
+	isNewSubscription := s.subscription.subscribe(subId)
+	if isNewSubscription {
 		s.subscription.chatState, err = s.initialChatState()
 		if err != nil {
 			return nil, 0, s.subscription.chatState, fmt.Errorf("failed to fetch initial chat state: %w", err)
 		}
 	}
-
-	return messages, 0, s.subscription.chatState, nil
+	if asyncInit {
+		var previousOrderId string
+		if len(messages) > 0 {
+			previousOrderId, err = txn.GetPrevOrderId(messages[0].OrderId)
+			if err != nil {
+				return nil, 0, nil, fmt.Errorf("get previous order id: %w", err)
+			}
+		}
+		for _, message := range messages {
+			s.subscription.add(previousOrderId, message)
+			previousOrderId = message.OrderId
+		}
+		s.subscription.flush()
+		// TODO Do not return chat state?
+		return nil, 0, s.subscription.chatState, nil
+	} else {
+		return messages, 0, s.subscription.chatState, nil
+	}
 }
 
-func (s *storeObject) Unsubscribe() error {
-	s.subscription.close()
+func (s *storeObject) Unsubscribe(subId string) error {
+	s.subscription.unsubscribe(subId)
 	return nil
 }
 
@@ -561,7 +588,7 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 	if !s.locker.TryLock() {
 		return false, nil
 	}
-	isActive := s.subscription.enabled
+	isActive := s.subscription.isActive()
 	s.Unlock()
 
 	if isActive {
