@@ -158,7 +158,7 @@ var classificationPrompts = map[string]struct {
 	User   string
 }{
 	"type": {
-		System: "You are a classification assistant. Your task is to classify text into one of the following categories: 'recipe', 'company', or 'event'. Return ONLY the category name. Do NOT add explanations, punctuation, or extra words. If uncertain, answer with best possible guess. If none apply, answer with 'none'",
-		User:   "Classify the following content into one of the categories: 'recipe', 'company', or 'event'. Answer with ONLY one of these words, nothing else. The content is: '%s'",
+		System: "You are a classification assistant. Your task is to classify text into one of the following categories: 'recipe' or 'event'. Return ONLY the category name. Do NOT add explanations, punctuation, or extra words. If uncertain, answer with best possible guess. If none apply, answer with 'none'",
+		User:   "Classify the following content into one of the categories: 'recipe' or 'event'. Answer with ONLY one of these words, nothing else. The content is: '%s'",
 	},
 }

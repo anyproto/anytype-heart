@@ -578,7 +578,7 @@ func (ai *AIService) ClassifyWebsiteContent(ctx context.Context, content string)
 
 	classification := strings.ToLower(strings.TrimSpace(answer))
 	switch classification {
-	case "recipe", "company", "event":
+	case "recipe": // , "company", "event":
 		return classification, nil
 	default:
 		return "", fmt.Errorf("invalid classification: %s", classification)
