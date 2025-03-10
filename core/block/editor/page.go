@@ -231,12 +231,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithLayout(layout),
 				)
-			case model.ObjectType_objectType:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithLayout(layout),
-				)
-				templates = append(templates, p.getObjectTypeTemplates()...)
 			case model.ObjectType_chat:
 				templates = append(templates,
 					template.WithTitle,
@@ -268,48 +262,5 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	migrations := []migration.Migration{
-		{
-			Version: 2,
-			Proc:    func(s *state.State) {},
-		},
-	}
-
-	// migration 3 is skipped
-	// migration 4 is applied only for ObjectType
-	if p.ObjectTypeKey() == bundle.TypeKeyObjectType {
-		migrations = append(migrations,
-			migration.Migration{
-				Version: 4,
-				Proc: func(s *state.State) {
-					template.InitTemplate(s, p.getObjectTypeTemplates()...)
-				},
-			})
-	}
-
-	return migration.MakeMigrations(migrations)
-}
-
-func (p *Page) getObjectTypeTemplates() []template.StateTransformer {
-	details := p.Details()
-	name := details.GetString(bundle.RelationKeyName)
-	key := details.GetString(bundle.RelationKeyUniqueKey)
-
-	dvContent := template.MakeDataviewContent(false, &model.ObjectType{
-		Url:  p.Id(),
-		Name: name,
-		// todo: add RelationLinks, because they are not indexed at this moment :(
-		Key: key,
-	}, []*model.RelationLink{
-		{
-			Key:    bundle.RelationKeyName.String(),
-			Format: model.RelationFormat_longtext,
-		},
-	}, objectTypeAllViewId)
-
-	dvContent.Dataview.TargetObjectId = p.Id()
-	return []template.StateTransformer{
-		template.WithDataviewID(state.DataviewBlockID, dvContent, false),
-		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{p.Id()})),
-	}
+	return migration.Migrations{Migrations: []migration.Migration{}}
 }
