@@ -69,9 +69,10 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 	chatService := mustService[chats.Service](mw)
 
 	resp, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
-		AfterOrderId:  req.AfterOrderId,
-		BeforeOrderId: req.BeforeOrderId,
-		Limit:         int(req.Limit),
+		AfterOrderId:    req.AfterOrderId,
+		BeforeOrderId:   req.BeforeOrderId,
+		Limit:           int(req.Limit),
+		IncludeBoundary: req.IncludeBoundary,
 	})
 	code := mapErrorCode[pb.RpcChatGetMessagesResponseErrorCode](err)
 	return &pb.RpcChatGetMessagesResponse{

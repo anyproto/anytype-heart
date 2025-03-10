@@ -50,9 +50,10 @@ type StoreObject interface {
 }
 
 type GetMessagesRequest struct {
-	AfterOrderId  string
-	BeforeOrderId string
-	Limit         int
+	AfterOrderId    string
+	BeforeOrderId   string
+	Limit           int
+	IncludeBoundary bool
 }
 
 type AccountService interface {
@@ -346,9 +347,17 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 	}
 	var qry anystore.Query
 	if req.AfterOrderId != "" {
-		qry = coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGt, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
+		operator := query.CompOpGt
+		if req.IncludeBoundary {
+			operator = query.CompOpGte
+		}
+		qry = coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(operator, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
 	} else if req.BeforeOrderId != "" {
-		qry = coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
+		operator := query.CompOpLt
+		if req.IncludeBoundary {
+			operator = query.CompOpLte
+		}
+		qry = coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(operator, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
 	} else {
 		qry = coll.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
 	}
