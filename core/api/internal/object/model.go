@@ -1,5 +1,7 @@
 package object
 
+import "github.com/anyproto/anytype-heart/core/api/util"
+
 type CreateObjectRequest struct {
 	Name                string `json:"name" example:"My object"`                                                          // The name of the object
 	Icon                string `json:"icon" example:"📄"`                                                                  // The icon of the object
@@ -15,17 +17,17 @@ type ObjectResponse struct {
 }
 
 type Object struct {
-	Object  string   `json:"object" example:"object"`                                                                      // The data model of the object
-	Id      string   `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
-	Name    string   `json:"name" example:"My object"`                                                                     // The name of the object
-	Icon    string   `json:"icon" example:"📄"`                                                                             // The icon of the object
-	Type    Type     `json:"type"`                                                                                         // The type of the object
-	Snippet string   `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout  string   `json:"layout" example:"basic"`                                                                       // The layout of the object
-	SpaceId string   `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
-	RootId  string   `json:"root_id" example:"bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"`                // The id of the object's root
-	Blocks  []Block  `json:"blocks"`                                                                                       // The blocks of the object
-	Details []Detail `json:"details"`                                                                                      // The details of the object
+	Object  string    `json:"object" example:"object"`                                                                      // The data model of the object
+	Id      string    `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
+	Name    string    `json:"name" example:"My object"`                                                                     // The name of the object
+	Icon    util.Icon `json:"icon"`                                                                                         // The icon of the object
+	Type    Type      `json:"type"`                                                                                         // The type of the object
+	Snippet string    `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
+	Layout  string    `json:"layout" example:"basic"`                                                                       // The layout of the object
+	SpaceId string    `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
+	RootId  string    `json:"root_id" example:"bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"`                // The id of the object's root
+	Blocks  []Block   `json:"blocks"`                                                                                       // The blocks of the object
+	Details []Detail  `json:"details"`                                                                                      // The details of the object
 }
 
 type Block struct {
@@ -40,11 +42,11 @@ type Block struct {
 }
 
 type Text struct {
-	Text    string `json:"text" example:"Some text..."`                                                                                                                      // The text
-	Style   string `json:"style" enums:"Paragraph,Header1,Header2,Header3,Header4,Quote,Code,Title,Checkbox,Marked,Numbered,Toggle,Description,Callout" example:"Paragraph"` // The style of the text
-	Checked bool   `json:"checked" example:"true"`                                                                                                                           // Whether the text is checked
-	Color   string `json:"color" example:"red"`                                                                                                                              // The color of the text
-	Icon    string `json:"icon" example:"📄"`                                                                                                                                 // The icon of the text
+	Text    string    `json:"text" example:"Some text..."`                                                                                                                      // The text
+	Style   string    `json:"style" enums:"Paragraph,Header1,Header2,Header3,Header4,Quote,Code,Title,Checkbox,Marked,Numbered,Toggle,Description,Callout" example:"Paragraph"` // The style of the text
+	Checked bool      `json:"checked" example:"true"`                                                                                                                           // Whether the text is checked
+	Color   string    `json:"color" example:"red"`                                                                                                                              // The color of the text
+	Icon    util.Icon `json:"icon"`                                                                                                                                             // The icon of the text
 }
 
 type File struct {
@@ -80,12 +82,12 @@ type TypeResponse struct {
 }
 
 type Type struct {
-	Object            string `json:"object" example:"type"`                                                    // The data model of the object
-	Id                string `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type
-	UniqueKey         string `json:"unique_key" example:"ot-page"`                                             // The unique key of the type
-	Name              string `json:"name" example:"Page"`                                                      // The name of the type
-	Icon              string `json:"icon" example:"📄"`                                                         // The icon of the type
-	RecommendedLayout string `json:"recommended_layout" example:"todo"`                                        // The recommended layout of the type
+	Object            string    `json:"object" example:"type"`                                                    // The data model of the object
+	Id                string    `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type
+	UniqueKey         string    `json:"unique_key" example:"ot-page"`                                             // The unique key of the type
+	Name              string    `json:"name" example:"Page"`                                                      // The name of the type
+	Icon              util.Icon `json:"icon"`                                                                     // The icon of the type
+	RecommendedLayout string    `json:"recommended_layout" example:"todo"`                                        // The recommended layout of the type
 }
 
 type TemplateResponse struct {
@@ -93,8 +95,8 @@ type TemplateResponse struct {
 }
 
 type Template struct {
-	Object string `json:"object" example:"template"`                                                // The data model of the object
-	Id     string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template
-	Name   string `json:"name" example:"My template"`                                               // The name of the template
-	Icon   string `json:"icon" example:"📄"`                                                         // The icon of the template
+	Object string    `json:"object" example:"template"`                                                // The data model of the object
+	Id     string    `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template
+	Name   string    `json:"name" example:"My template"`                                               // The name of the template
+	Icon   util.Icon `json:"icon"`                                                                     // The icon of the template
 }

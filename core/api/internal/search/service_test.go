@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -18,28 +19,23 @@ import (
 )
 
 const (
-	offset                      = 0
-	limit                       = 100
-	techSpaceId                 = "tech-space-id"
-	gatewayUrl                  = "http://localhost:31006"
-	mockedSpaceId               = "mocked-space-id"
-	mockedSearchTerm            = "mocked-search-term"
-	mockedObjectId              = "mocked-object-id"
-	mockedObjectName            = "mocked-object-name"
-	mockedRootId                = "mocked-root-id"
-	mockedParticipantId         = "mocked-participant-id"
-	mockedType                  = "mocked-type"
-	mockedTagId1                = "mocked-tag-id-1"
-	mockedTagValue1             = "mocked-tag-value-1"
-	mockedTagColor1             = "mocked-tag-color-1"
-	mockedTagId2                = "mocked-tag-id-2"
-	mockedTagValue2             = "mocked-tag-value-2"
-	mockedTagColor2             = "mocked-tag-color-2"
-	mockedParticipantName       = "mocked-participant-name"
-	mockedParticipantIcon       = "mocked-participant-icon"
-	mockedParticipantImage      = "mocked-participant-image"
-	mockedParticipantIdentity   = "mocked-participant-identity"
-	mockedParticipantGlobalName = "mocked-participant-global-name"
+	offset              = 0
+	limit               = 100
+	techSpaceId         = "tech-space-id"
+	gatewayUrl          = "http://localhost:31006"
+	mockedSpaceId       = "mocked-space-id"
+	mockedSearchTerm    = "mocked-search-term"
+	mockedObjectId      = "mocked-object-id"
+	mockedObjectName    = "mocked-object-name"
+	mockedRootId        = "mocked-root-id"
+	mockedParticipantId = "mocked-participant-id"
+	mockedType          = "mocked-type"
+	mockedTagId1        = "mocked-tag-id-1"
+	mockedTagValue1     = "mocked-tag-value-1"
+	mockedTagColor1     = "mocked-tag-color-1"
+	mockedTagId2        = "mocked-tag-id-2"
+	mockedTagValue2     = "mocked-tag-value-2"
+	mockedTagColor2     = "mocked-tag-color-2"
 )
 
 type fixture struct {
@@ -339,42 +335,6 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}, nil).Once()
 
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedParticipantId),
-				},
-			},
-			Keys: []string{bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():                     pbtypes.String(mockedParticipantId),
-						bundle.RelationKeyName.String():                   pbtypes.String(mockedParticipantName),
-						bundle.RelationKeyIconEmoji.String():              pbtypes.String(mockedParticipantIcon),
-						bundle.RelationKeyIconImage.String():              pbtypes.String(mockedParticipantImage),
-						bundle.RelationKeyIdentity.String():               pbtypes.String(mockedParticipantIdentity),
-						bundle.RelationKeyGlobalName.String():             pbtypes.String(mockedParticipantGlobalName),
-						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
-					},
-				},
-			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Twice()
-
 		// Mock tag-1 open
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
 			SpaceId:  mockedSpaceId,
@@ -426,7 +386,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, mockedType, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
-		require.Equal(t, "🌐", objects[0].Icon)
+		require.Equal(t, util.Icon{Type: "emoji", Emoji: "🌐"}, objects[0].Icon)
 		require.Equal(t, "This is a sample text block", objects[0].Blocks[2].Text.Text)
 
 		// check details
@@ -436,13 +396,9 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			} else if detail.Id == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["date"])
 			} else if detail.Id == "created_by" {
-				require.Equal(t, mockedParticipantId, detail.Details["object"].(space.Member).Id)
-				require.Equal(t, mockedParticipantName, detail.Details["object"].(space.Member).Name)
-				require.Equal(t, gatewayUrl+"/image/"+mockedParticipantImage, detail.Details["object"].(space.Member).Icon)
-				require.Equal(t, mockedParticipantIdentity, detail.Details["object"].(space.Member).Identity)
-				require.Equal(t, mockedParticipantGlobalName, detail.Details["object"].(space.Member).GlobalName)
+				require.Equal(t, mockedParticipantId, detail.Details["object"])
 			} else if detail.Id == "last_modified_by" {
-				require.Equal(t, mockedParticipantId, detail.Details["object"].(space.Member).Id)
+				require.Equal(t, mockedParticipantId, detail.Details["object"])
 			}
 		}
 

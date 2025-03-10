@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
@@ -16,24 +15,53 @@ import (
 var (
 	ErrFailedSearchType = errors.New("failed to search for type")
 	ErrorTypeNotFound   = errors.New("type not found")
+	iconOptionToColor   = map[float64]string{
+		1:  "grey",
+		2:  "yellow",
+		3:  "orange",
+		4:  "red",
+		5:  "pink",
+		6:  "purple",
+		7:  "blue",
+		8:  "ice",
+		9:  "teal",
+		10: "lime",
+	}
 )
 
-func PosixToISO8601(posix float64) string {
-	t := time.Unix(int64(posix), 0).UTC()
-	return t.Format(time.RFC3339)
+type Icon struct {
+	Type  string `json:"type" enums:"emoji,file,icon" example:"emoji"`                                                                      // The type of the icon
+	Emoji string `json:"emoji,omitempty" example:"📄"`                                                                                       // The emoji of the icon
+	File  string `json:"file,omitempty" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
+	Name  string `json:"name,omitempty" example:"document"`                                                                                 // The name of the icon
+	Color string `json:"color,omitempty" example:"red"`                                                                                     // The color of the icon
 }
 
-// GetIconFromEmojiOrImage returns the icon to use for the object, which can be either an emoji or an image url
-func GetIconFromEmojiOrImage(accountInfo *model.AccountInfo, iconEmoji string, iconImage string) string {
+// GetIcon returns the icon to use for the object, which can be builtin icon, emoji or file
+func GetIcon(accountInfo *model.AccountInfo, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
+	if iconName != "" {
+		return Icon{
+			Type:  "icon",
+			Name:  iconName,
+			Color: iconOptionToColor[iconOption],
+		}
+	}
+
 	if iconEmoji != "" {
-		return iconEmoji
+		return Icon{
+			Type:  "emoji",
+			Emoji: iconEmoji,
+		}
 	}
 
 	if iconImage != "" {
-		return fmt.Sprintf("%s/image/%s", accountInfo.GatewayUrl, iconImage)
+		return Icon{
+			Type: "file",
+			File: fmt.Sprintf("%s/image/%s", accountInfo.GatewayUrl, iconImage),
+		}
 	}
 
-	return ""
+	return Icon{}
 }
 
 func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, uniqueKey string) (typeId string, err error) {

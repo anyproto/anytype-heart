@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/iancoleman/strcase"
@@ -145,17 +146,18 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		return Object{}, ErrFailedRetrieveObject
 	}
 
-	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
+	details := resp.ObjectView.Details[0].Details.Fields
+	icon := util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details[bundle.RelationKeyIconImage.String()].GetStringValue(), details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue())
 
 	object := Object{
 		Object:  "object",
-		Id:      resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Id:      details[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:    details[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:    icon,
-		Type:    s.getTypeFromDetails(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
-		Snippet: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:  model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		SpaceId: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		Type:    s.getTypeFromDetails(details[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
+		Snippet: details[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:  model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+		SpaceId: details[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		RootId:  resp.ObjectView.RootId,
 		Blocks:  s.getBlocks(resp),
 		Details: s.getDetails(resp),
@@ -305,7 +307,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyRecommendedLayout.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconName.String(), bundle.RelationKeyIconOption.String(), bundle.RelationKeyRecommendedLayout.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -322,7 +324,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			UniqueKey:         record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:              record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+			Icon:              util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 		})
 	}
@@ -344,13 +346,14 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 		return Type{}, ErrFailedRetrieveType
 	}
 
+	details := resp.ObjectView.Details[0].Details.Fields
 	return Type{
 		Object:            "type",
 		Id:                typeId,
-		UniqueKey:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-		Name:              resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
-		RecommendedLayout: model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+		UniqueKey:         details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:              details[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:              util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		RecommendedLayout: model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 	}, nil
 }
 
@@ -423,7 +426,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 			Object: "template",
 			Id:     templateId,
 			Name:   templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:   templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+			Icon:   util.GetIcon(s.AccountInfo, templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
 		})
 	}
 
@@ -449,7 +452,7 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 		Object: "template",
 		Id:     templateId,
 		Name:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+		Icon:   util.GetIcon(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
 	}, nil
 }
 
@@ -472,7 +475,7 @@ func (s *ObjectService) getTypeFromDetails(typeId string, details []*model.Objec
 		Id:                typeId,
 		UniqueKey:         objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(),
+		Icon:              util.GetIcon(s.AccountInfo, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 	}
 }
@@ -576,7 +579,7 @@ func (s *ObjectService) convertValue(key string, value *types.Value, format stri
 		return nil
 	case *types.Value_NumberValue:
 		if format == "date" {
-			return util.PosixToISO8601(kind.NumberValue)
+			return time.Unix(int64(kind.NumberValue), 0).UTC().Format(time.RFC3339)
 		}
 		return kind.NumberValue
 	case *types.Value_StringValue:
@@ -692,7 +695,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 				Checked: content.Text.Checked,
 				Color:   content.Text.Color,
-				Icon:    util.GetIconFromEmojiOrImage(s.AccountInfo, content.Text.IconEmoji, content.Text.IconImage),
+				Icon:    util.GetIcon(s.AccountInfo, content.Text.IconEmoji, content.Text.IconImage, "", 0),
 			}
 		case *model.BlockContentOfFile:
 			file = &File{

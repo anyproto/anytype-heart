@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -127,7 +128,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), spaces[0].Icon, "Icon URL does not match")
 		require.Equal(t, "My Workspace", spaces[1].Name)
 		require.Equal(t, "my-space-id", spaces[1].Id)
-		require.Equal(t, "🚀", spaces[1].Icon)
+		require.Equal(t, util.Icon{Type: "emoji", Emoji: "🚀"}, spaces[1].Icon)
 		require.Equal(t, 2, total)
 		require.False(t, hasMore)
 	})
@@ -281,7 +282,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		require.Len(t, members, 2)
 		require.Equal(t, "member-1", members[0].Id)
 		require.Equal(t, "John Doe", members[0].Name)
-		require.Equal(t, "👤", members[0].Icon)
+		require.Equal(t, util.Icon{Type: "emoji", Emoji: "👤"}, members[0].Icon)
 		require.Equal(t, "john.any", members[0].GlobalName)
 		require.Equal(t, "member-2", members[1].Id)
 		require.Equal(t, "Jane Doe", members[1].Name)

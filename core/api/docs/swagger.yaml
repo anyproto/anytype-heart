@@ -164,9 +164,7 @@ components:
           type: array
           uniqueItems: false
         icon:
-          description: The icon of the object
-          example: "\U0001F4C4"
-          type: string
+          $ref: '#/components/schemas/util.Icon'
         id:
           description: The id of the object
           example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
@@ -214,9 +212,7 @@ components:
       description: The template
       properties:
         icon:
-          description: The icon of the template
-          example: "\U0001F4C4"
-          type: string
+          $ref: '#/components/schemas/util.Icon'
         id:
           description: The id of the template
           example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
@@ -278,9 +274,7 @@ components:
       description: The type of the object
       properties:
         icon:
-          description: The icon of the type
-          example: "\U0001F4C4"
-          type: string
+          $ref: '#/components/schemas/util.Icon'
         id:
           description: The id of the type
           example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
@@ -439,9 +433,7 @@ components:
           example: john.any
           type: string
         icon:
-          description: The icon of the member
-          example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay?width=100
-          type: string
+          $ref: '#/components/schemas/util.Icon'
         id:
           description: The profile object id of the member
           example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
@@ -501,9 +493,7 @@ components:
           example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
           type: string
         icon:
-          description: The icon of the space
-          example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
-          type: string
+          $ref: '#/components/schemas/util.Icon'
         id:
           description: The id of the space
           example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
@@ -559,6 +549,13 @@ components:
         space:
           $ref: '#/components/schemas/space.Space'
       type: object
+    util.FileReference:
+      description: The file of the icon
+      properties:
+        url:
+          example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
+          type: string
+      type: object
     util.ForbiddenError:
       properties:
         error:
@@ -567,6 +564,23 @@ components:
               example: Forbidden
               type: string
           type: object
+      type: object
+    util.Icon:
+      description: The icon of the object
+      properties:
+        emoji:
+          description: The emoji of the icon
+          example: "\U0001F4C4"
+          type: string
+        file:
+          $ref: '#/components/schemas/util.FileReference'
+        type:
+          description: The type of the icon
+          enum:
+          - emoji
+          - file
+          example: emoji
+          type: string
       type: object
     util.NotFoundError:
       properties:

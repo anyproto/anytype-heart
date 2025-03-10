@@ -84,7 +84,7 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 
 	for _, record := range paginatedRecords {
 		name := record.Fields[bundle.RelationKeyName.String()].GetStringValue()
-		icon := util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
+		icon := util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 		workspace, err := s.getWorkspaceInfo(record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue(), name, icon)
 		if err != nil {
@@ -128,7 +128,7 @@ func (s *SpaceService) GetSpace(ctx context.Context, spaceId string) (Space, err
 	}
 
 	name := resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, resp.Records[0].Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
+	icon := util.GetIcon(s.AccountInfo, resp.Records[0].Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	return s.getWorkspaceInfo(spaceId, name, icon)
 }
 
@@ -156,7 +156,7 @@ func (s *SpaceService) CreateSpace(ctx context.Context, name string) (Space, err
 		return Space{}, ErrFailedCreateSpace
 	}
 
-	return s.getWorkspaceInfo(resp.SpaceId, name, "")
+	return s.getWorkspaceInfo(resp.SpaceId, name, util.Icon{})
 }
 
 // ListMembers returns a paginated list of members in the space with the given ID.
@@ -195,7 +195,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 	members = make([]Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := util.GetIconFromEmojiOrImage(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
+		icon := util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 		member := Member{
 			Object:     "member",
@@ -236,7 +236,7 @@ func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId s
 		return Member{}, ErrMemberNotFound
 	}
 
-	icon := util.GetIconFromEmojiOrImage(s.AccountInfo, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue())
+	icon := util.GetIcon(s.AccountInfo, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 	return Member{
 		Object:     "member",
@@ -250,7 +250,7 @@ func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId s
 }
 
 // getWorkspaceInfo returns the workspace info for the space with the given ID.
-func (s *SpaceService) getWorkspaceInfo(spaceId string, name string, icon string) (space Space, err error) {
+func (s *SpaceService) getWorkspaceInfo(spaceId string, name string, icon util.Icon) (space Space, err error) {
 	workspaceResponse := s.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
 		SpaceId:  spaceId,
 		WithChat: true,
