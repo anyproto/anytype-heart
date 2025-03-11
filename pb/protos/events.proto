@@ -151,10 +151,12 @@ message Event {
         message UpdateReadStatus {
             repeated string ids = 1;
             bool isRead = 2;
+            repeated string subIds = 3;
         }
 
         message UpdateState {
             model.ChatState state = 1;
+            repeated string subIds = 2;
         }
     }
 

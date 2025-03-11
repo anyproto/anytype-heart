@@ -85,7 +85,8 @@ func (s *subscription) flush() {
 
 	if s.chatStateUpdated {
 		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
-			State: s.getChatState(),
+			State:  s.getChatState(),
+			SubIds: slices.Clone(s.ids),
 		}}))
 		s.chatStateUpdated = false
 	}
@@ -219,6 +220,7 @@ func (s *subscription) updateReadStatus(ids []string, read bool) {
 		ChatUpdateReadStatus: &pb.EventChatUpdateReadStatus{
 			Ids:    ids,
 			IsRead: read,
+			SubIds: slices.Clone(s.ids),
 		},
 	}))
 }

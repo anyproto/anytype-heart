@@ -27769,6 +27769,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | ids | [string](#string) | repeated |  |
 | isRead | [bool](#bool) |  |  |
+| subIds | [string](#string) | repeated |  |
 
 
 
@@ -27784,6 +27785,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | state | [model.ChatState](#anytype-model-ChatState) |  |  |
+| subIds | [string](#string) | repeated |  |
 
 
 
