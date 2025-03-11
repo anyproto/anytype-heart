@@ -541,29 +541,47 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 			convertedVal := s.convertValue(key, val, format, resp.ObjectView.Details)
 
 			var entry DetailEntry
-			entry.Name = name
-			entry.Type = format
 
 			switch format {
 			case "text":
 				if str, ok := convertedVal.(string); ok {
-					entry.Value = TextDetail{Text: str}
+					entry = TextDetailEntry{
+						Name: name,
+						Type: "text",
+						Text: str,
+					}
 				}
 			case "number":
 				if num, ok := convertedVal.(float64); ok {
-					entry.Value = NumberDetail{Number: num}
+					entry = NumberDetailEntry{
+						Name:   name,
+						Type:   "number",
+						Number: num,
+					}
 				}
 			case "select":
 				if sel, ok := convertedVal.(Tag); ok {
-					entry.Value = SelectDetail{Select: &sel}
+					entry = SelectDetailEntry{
+						Name:   name,
+						Type:   "select",
+						Select: &sel,
+					}
 				}
 			case "multi_select":
 				if ms, ok := convertedVal.([]Tag); ok {
-					entry.Value = MultiSelectDetail{MultiSelect: ms}
+					entry = MultiSelectDetailEntry{
+						Name:        name,
+						Type:        "multi_select",
+						MultiSelect: ms,
+					}
 				}
 			case "date":
 				if dateStr, ok := convertedVal.(string); ok {
-					entry.Value = DateDetail{Date: dateStr}
+					entry = DateDetailEntry{
+						Name: name,
+						Type: "date",
+						Date: dateStr,
+					}
 				}
 			case "file":
 				if file, ok := convertedVal.([]interface{}); ok {
@@ -573,27 +591,51 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 							files = append(files, str)
 						}
 					}
-					entry.Value = FileDetail{File: files}
+					entry = FileDetailEntry{
+						Name: name,
+						Type: "file",
+						File: files,
+					}
 				}
 			case "checkbox":
 				if cb, ok := convertedVal.(bool); ok {
-					entry.Value = CheckboxDetail{Checkbox: cb}
+					entry = CheckboxDetailEntry{
+						Name:     name,
+						Type:     "checkbox",
+						Checkbox: cb,
+					}
 				}
 			case "url":
 				if url, ok := convertedVal.(string); ok {
-					entry.Value = UrlDetail{Url: url}
+					entry = UrlDetailEntry{
+						Name: name,
+						Type: "url",
+						Url:  url,
+					}
 				}
 			case "email":
 				if email, ok := convertedVal.(string); ok {
-					entry.Value = EmailDetail{Email: email}
+					entry = EmailDetailEntry{
+						Name:  name,
+						Type:  "email",
+						Email: email,
+					}
 				}
 			case "phone":
 				if phone, ok := convertedVal.(string); ok {
-					entry.Value = PhoneDetail{Phone: phone}
+					entry = PhoneDetailEntry{
+						Name:  name,
+						Type:  "phone",
+						Phone: phone,
+					}
 				}
 			case "object":
 				if obj, ok := convertedVal.(string); ok {
-					entry.Value = ObjectDetail{Object: []string{obj}}
+					entry = ObjectDetailEntry{
+						Name:   name,
+						Type:   "object",
+						Object: []string{obj},
+					}
 				} else if objSlice, ok := convertedVal.([]interface{}); ok {
 					var objects []string
 					for _, v := range objSlice {
@@ -601,18 +643,29 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 							objects = append(objects, str)
 						}
 					}
-					entry.Value = ObjectDetail{Object: objects}
+					entry = ObjectDetailEntry{
+						Name:   name,
+						Type:   "object",
+						Object: objects,
+					}
 				}
 			default:
 				if str, ok := convertedVal.(string); ok {
-					entry.Value = TextDetail{Text: str}
+					entry = TextDetailEntry{
+						Name: name,
+						Type: "text",
+						Text: str,
+					}
 				}
 			}
 
-			details = append(details, Detail{
-				Id:      id,
-				Details: entry,
-			})
+			// Only append if an entry was created.
+			if entry != nil {
+				details = append(details, Detail{
+					Id:      id,
+					Details: entry,
+				})
+			}
 		}
 	}
 	return details

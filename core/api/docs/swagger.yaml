@@ -68,11 +68,19 @@ components:
           example: VerticalAlignTop
           type: string
       type: object
-    object.CheckboxDetail:
+    object.CheckboxDetailEntry:
       properties:
         checkbox:
           example: true
           type: boolean
+        name:
+          example: Done
+          type: string
+        type:
+          enum:
+          - checkbox
+          example: checkbox
+          type: string
       type: object
     object.CreateObjectRequest:
       properties:
@@ -105,64 +113,51 @@ components:
           example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
           type: string
       type: object
-    object.DateDetail:
+    object.DateDetailEntry:
       properties:
         date:
           example: "2024-02-14T12:34:56Z"
+          type: string
+        name:
+          example: Last modified date
+          type: string
+        type:
+          enum:
+          - date
+          example: date
           type: string
       type: object
     object.Detail:
       properties:
         details:
-          $ref: '#/components/schemas/object.DetailEntry'
+          oneOf:
+          - $ref: '#/components/schemas/object.TextDetailEntry'
+          - $ref: '#/components/schemas/object.NumberDetailEntry'
+          - $ref: '#/components/schemas/object.SelectDetailEntry'
+          - $ref: '#/components/schemas/object.MultiSelectDetailEntry'
+          - $ref: '#/components/schemas/object.DateDetailEntry'
+          - $ref: '#/components/schemas/object.FileDetailEntry'
+          - $ref: '#/components/schemas/object.CheckboxDetailEntry'
+          - $ref: '#/components/schemas/object.UrlDetailEntry'
+          - $ref: '#/components/schemas/object.EmailDetailEntry'
+          - $ref: '#/components/schemas/object.PhoneDetailEntry'
+          - $ref: '#/components/schemas/object.ObjectDetailEntry'
         id:
-          description: The id of the detail
           example: last_modified_date
           type: string
       type: object
-    object.DetailEntry:
-      description: The details
-      properties:
-        name:
-          description: The name of the detail
-          example: Last modified date
-          type: string
-        type:
-          description: The type of the detail, which should correspond to the field
-            that is set
-          enum:
-          - text
-          - number
-          - select
-          - multi_select
-          - date
-          - file
-          - checkbox
-          - url
-          - email
-          - phone
-          - object
-          example: date
-          type: string
-        value:
-          description: The value of the detail
-          oneOf:
-          - $ref: '#/components/schemas/object.TextDetail'
-          - $ref: '#/components/schemas/object.NumberDetail'
-          - $ref: '#/components/schemas/object.SelectDetail'
-          - $ref: '#/components/schemas/object.MultiSelectDetail'
-          - $ref: '#/components/schemas/object.DateDetail'
-          - $ref: '#/components/schemas/object.FileDetail'
-          - $ref: '#/components/schemas/object.CheckboxDetail'
-          - $ref: '#/components/schemas/object.UrlDetail'
-          - $ref: '#/components/schemas/object.EmailDetail'
-          - $ref: '#/components/schemas/object.PhoneDetail'
-          - $ref: '#/components/schemas/object.ObjectDetail'
-      type: object
-    object.EmailDetail:
+    object.EmailDetailEntry:
       properties:
         email:
           example: example@example.com
+          type: string
+        name:
+          example: Email
+          type: string
+        type:
+          enum:
+          - email
+          example: email
           type: string
       type: object
     object.File:
@@ -196,7 +191,7 @@ components:
           description: The type of the file
           type: string
       type: object
-    object.FileDetail:
+    object.FileDetailEntry:
       properties:
         file:
           example:
@@ -205,20 +200,44 @@ components:
             type: string
           type: array
           uniqueItems: false
+        name:
+          example: File
+          type: string
+        type:
+          enum:
+          - file
+          example: file
+          type: string
       type: object
-    object.MultiSelectDetail:
+    object.MultiSelectDetailEntry:
       properties:
         multi_select:
           items:
             $ref: '#/components/schemas/object.Tag'
           type: array
           uniqueItems: false
+        name:
+          example: Tag
+          type: string
+        type:
+          enum:
+          - multi_select
+          example: multi_select
+          type: string
       type: object
-    object.NumberDetail:
+    object.NumberDetailEntry:
       properties:
+        name:
+          example: Size
+          type: string
         number:
           example: 42
           type: number
+        type:
+          enum:
+          - number
+          example: number
+          type: string
       type: object
     object.Object:
       description: The object
@@ -269,8 +288,11 @@ components:
         type:
           $ref: '#/components/schemas/object.Type'
       type: object
-    object.ObjectDetail:
+    object.ObjectDetailEntry:
       properties:
+        name:
+          example: Assignee
+          type: string
         object:
           example:
           - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
@@ -278,16 +300,29 @@ components:
             type: string
           type: array
           uniqueItems: false
+        type:
+          enum:
+          - object
+          example: object
+          type: string
       type: object
     object.ObjectResponse:
       properties:
         object:
           $ref: '#/components/schemas/object.Object'
       type: object
-    object.PhoneDetail:
+    object.PhoneDetailEntry:
       properties:
+        name:
+          example: Phone
+          type: string
         phone:
           example: "+1234567890"
+          type: string
+        type:
+          enum:
+          - phone
+          example: phone
           type: string
       type: object
     object.Relation:
@@ -296,10 +331,18 @@ components:
         id:
           type: string
       type: object
-    object.SelectDetail:
+    object.SelectDetailEntry:
       properties:
+        name:
+          example: Status
+          type: string
         select:
           $ref: '#/components/schemas/object.Tag'
+        type:
+          enum:
+          - select
+          example: select
+          type: string
       type: object
     object.Tag:
       properties:
@@ -376,10 +419,18 @@ components:
           example: Some text...
           type: string
       type: object
-    object.TextDetail:
+    object.TextDetailEntry:
       properties:
+        name:
+          example: Description
+          type: string
         text:
           example: Some text...
+          type: string
+        type:
+          enum:
+          - text
+          example: text
           type: string
       type: object
     object.Type:
@@ -413,8 +464,16 @@ components:
         type:
           $ref: '#/components/schemas/object.Type'
       type: object
-    object.UrlDetail:
+    object.UrlDetailEntry:
       properties:
+        name:
+          example: URL
+          type: string
+        type:
+          enum:
+          - url
+          example: url
+          type: string
         url:
           example: https://example.com
           type: string

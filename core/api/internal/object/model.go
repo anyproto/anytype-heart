@@ -67,59 +67,101 @@ type Relation struct {
 }
 
 type Detail struct {
-	Id      string      `json:"id" example:"last_modified_date"` // The id of the detail
-	Details DetailEntry `json:"details"`                         // The details
+	Id      string      `json:"id" example:"last_modified_date"`
+	Details DetailEntry `json:"details" oneOf:"TextDetailEntry,NumberDetailEntry,SelectDetailEntry,MultiSelectDetailEntry,DateDetailEntry,FileDetailEntry,CheckboxDetailEntry,UrlDetailEntry,EmailDetailEntry,PhoneDetailEntry,ObjectDetailEntry"`
 }
 
-type DetailEntry struct {
-	Name  string `json:"name" example:"Last modified date"`                                                                                                                        // The name of the detail
-	Type  string `json:"type" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object" example:"date"`                                                    // The type of the detail, which should correspond to the field that is set
-	Value any    `json:"value" oneOf:"TextDetail,NumberDetail,SelectDetail,MultiSelectDetail,DateDetail,FileDetail,CheckboxDetail,UrlDetail,EmailDetail,PhoneDetail,ObjectDetail"` // The value of the detail
+type DetailEntry interface {
+	GetType() string
 }
 
-type TextDetail struct {
+type TextDetailEntry struct {
+	Name string `json:"name" example:"Description"`
+	Type string `json:"type" example:"text" enums:"text"`
 	Text string `json:"text" example:"Some text..."`
 }
 
-type NumberDetail struct {
+func (t TextDetailEntry) GetType() string { return t.Type }
+
+type NumberDetailEntry struct {
+	Name   string  `json:"name" example:"Size"`
+	Type   string  `json:"type" example:"number" enums:"number"`
 	Number float64 `json:"number" example:"42"`
 }
 
-type SelectDetail struct {
-	Select *Tag `json:"select"`
+func (n NumberDetailEntry) GetType() string { return n.Type }
+
+type SelectDetailEntry struct {
+	Name   string `json:"name" example:"Status"`
+	Type   string `json:"type" example:"select" enums:"select"`
+	Select *Tag   `json:"select"`
 }
 
-type MultiSelectDetail struct {
-	MultiSelect []Tag `json:"multi_select"`
+func (s SelectDetailEntry) GetType() string { return s.Type }
+
+type MultiSelectDetailEntry struct {
+	Name        string `json:"name" example:"Tag"`
+	Type        string `json:"type" example:"multi_select" enums:"multi_select"`
+	MultiSelect []Tag  `json:"multi_select"`
 }
 
-type DateDetail struct {
+func (m MultiSelectDetailEntry) GetType() string { return m.Type }
+
+type DateDetailEntry struct {
+	Name string `json:"name" example:"Last modified date"`
+	Type string `json:"type" example:"date" enums:"date"`
 	Date string `json:"date" example:"2024-02-14T12:34:56Z"`
 }
 
-type FileDetail struct {
+func (d DateDetailEntry) GetType() string { return d.Type }
+
+type FileDetailEntry struct {
+	Name string   `json:"name" example:"File"`
+	Type string   `json:"type" example:"file" enums:"file"`
 	File []string `json:"file" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"`
 }
 
-type CheckboxDetail struct {
-	Checkbox bool `json:"checkbox" example:"true"`
+func (f FileDetailEntry) GetType() string { return f.Type }
+
+type CheckboxDetailEntry struct {
+	Name     string `json:"name" example:"Done"`
+	Type     string `json:"type" example:"checkbox" enums:"checkbox"`
+	Checkbox bool   `json:"checkbox" example:"true"`
 }
 
-type UrlDetail struct {
-	Url string `json:"url" example:"https://example.com"`
+func (c CheckboxDetailEntry) GetType() string { return c.Type }
+
+type UrlDetailEntry struct {
+	Name string `json:"name" example:"URL"`
+	Type string `json:"type" example:"url" enums:"url"`
+	Url  string `json:"url" example:"https://example.com"`
 }
 
-type EmailDetail struct {
+func (u UrlDetailEntry) GetType() string { return u.Type }
+
+type EmailDetailEntry struct {
+	Name  string `json:"name" example:"Email"`
+	Type  string `json:"type" example:"email" enums:"email"`
 	Email string `json:"email" example:"example@example.com"`
 }
 
-type PhoneDetail struct {
+func (e EmailDetailEntry) GetType() string { return e.Type }
+
+type PhoneDetailEntry struct {
+	Name  string `json:"name" example:"Phone"`
+	Type  string `json:"type" example:"phone" enums:"phone"`
 	Phone string `json:"phone" example:"+1234567890"`
 }
 
-type ObjectDetail struct {
+func (p PhoneDetailEntry) GetType() string { return p.Type }
+
+type ObjectDetailEntry struct {
+	Name   string   `json:"name" example:"Assignee"`
+	Type   string   `json:"type" example:"object" enums:"object"`
 	Object []string `json:"object" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"`
 }
+
+func (o ObjectDetailEntry) GetType() string { return o.Type }
 
 type Tag struct {
 	Id    string `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"` // The id of the tag
