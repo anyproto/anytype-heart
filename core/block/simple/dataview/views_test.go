@@ -29,14 +29,11 @@ func makeDataviewForViewRelationsTest(relationLinks []*model.RelationLink, relat
 }
 
 func TestReorderViewRelations(t *testing.T) {
-	t.Run("reorder: add missing relation from relation links", func(t *testing.T) {
-		dv := makeDataviewForViewRelationsTest(
-			[]*model.RelationLink{
-				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
-				{Key: bundle.RelationKeyCreator.String(), Format: model.RelationFormat_object},
-				{Key: bundle.RelationKeyCreatedDate.String(), Format: model.RelationFormat_date},
-			},
+	t.Run("reorder: add missing relations from view relations", func(t *testing.T) {
+		dv := makeDataviewForViewRelationsTest(nil,
 			[]*model.BlockContentDataviewRelation{
+				{Key: bundle.RelationKeyCreatedDate.String(), IsVisible: false, Width: DefaultViewRelationWidth},
+				{Key: bundle.RelationKeyCreator.String(), IsVisible: false, Width: DefaultViewRelationWidth},
 				{Key: bundle.RelationKeyName.String(), IsVisible: true, Width: DefaultViewRelationWidth},
 			},
 		)
@@ -44,12 +41,7 @@ func TestReorderViewRelations(t *testing.T) {
 		err := dv.ReorderViewRelations(testViewId, []string{bundle.RelationKeyCreator.String(), bundle.RelationKeyName.String()})
 		require.NoError(t, err)
 
-		want := makeDataviewForViewRelationsTest(
-			[]*model.RelationLink{
-				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
-				{Key: bundle.RelationKeyCreator.String(), Format: model.RelationFormat_object},
-				{Key: bundle.RelationKeyCreatedDate.String(), Format: model.RelationFormat_date},
-			},
+		want := makeDataviewForViewRelationsTest(nil,
 			[]*model.BlockContentDataviewRelation{
 				{Key: bundle.RelationKeyCreator.String(), IsVisible: false, Width: DefaultViewRelationWidth},
 				{Key: bundle.RelationKeyName.String(), IsVisible: true, Width: DefaultViewRelationWidth},
@@ -60,12 +52,8 @@ func TestReorderViewRelations(t *testing.T) {
 		assert.Equal(t, want, dv)
 	})
 
-	t.Run("reorder: remove extra relation that don't exist in relation links", func(t *testing.T) {
-		dv := makeDataviewForViewRelationsTest(
-			[]*model.RelationLink{
-				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
-				{Key: bundle.RelationKeyCreatedDate.String(), Format: model.RelationFormat_date},
-			},
+	t.Run("reorder: remove extra relation that don't exist in view relations", func(t *testing.T) {
+		dv := makeDataviewForViewRelationsTest(nil,
 			[]*model.BlockContentDataviewRelation{
 				{Key: bundle.RelationKeyCreator.String(), IsVisible: false, Width: DefaultViewRelationWidth},
 				{Key: bundle.RelationKeyName.String(), IsVisible: true, Width: DefaultViewRelationWidth},
@@ -76,13 +64,10 @@ func TestReorderViewRelations(t *testing.T) {
 		err := dv.ReorderViewRelations(testViewId, []string{bundle.RelationKeyName.String(), bundle.RelationKeyCreator.String(), bundle.RelationKeyDescription.String()})
 		require.NoError(t, err)
 
-		want := makeDataviewForViewRelationsTest(
-			[]*model.RelationLink{
-				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
-				{Key: bundle.RelationKeyCreatedDate.String(), Format: model.RelationFormat_date},
-			},
+		want := makeDataviewForViewRelationsTest(nil,
 			[]*model.BlockContentDataviewRelation{
 				{Key: bundle.RelationKeyName.String(), IsVisible: true, Width: DefaultViewRelationWidth},
+				{Key: bundle.RelationKeyCreator.String(), IsVisible: false, Width: DefaultViewRelationWidth},
 				{Key: bundle.RelationKeyCreatedDate.String(), IsVisible: false, Width: DefaultViewRelationWidth},
 			},
 		)
@@ -93,12 +78,7 @@ func TestReorderViewRelations(t *testing.T) {
 
 func TestReplaceViewRelation(t *testing.T) {
 	t.Run("add new relation", func(t *testing.T) {
-		dv := makeDataviewForViewRelationsTest(
-			[]*model.RelationLink{
-				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
-			},
-			[]*model.BlockContentDataviewRelation{},
-		)
+		dv := makeDataviewForViewRelationsTest(nil, []*model.BlockContentDataviewRelation{})
 
 		err := dv.ReplaceViewRelation(testViewId, bundle.RelationKeyDescription.String(), &model.BlockContentDataviewRelation{
 			Key:       bundle.RelationKeyDescription.String(),
@@ -107,17 +87,8 @@ func TestReplaceViewRelation(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		want := makeDataviewForViewRelationsTest(
-			[]*model.RelationLink{
-				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
-			},
+		want := makeDataviewForViewRelationsTest(nil,
 			[]*model.BlockContentDataviewRelation{
-				// Added automatically from relation links
-				{
-					Key:       bundle.RelationKeyName.String(),
-					Width:     DefaultViewRelationWidth,
-					IsVisible: false,
-				},
 				{
 					Key:       bundle.RelationKeyDescription.String(),
 					Width:     DefaultViewRelationWidth,
