@@ -1,6 +1,7 @@
 package uri
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -117,4 +118,115 @@ func TestURI_ValidateURI(t *testing.T) {
 		err := ValidateURI(uri)
 		assert.NoError(t, err)
 	})
+}
+
+func TestGetFileNameFromURLWithContentTypeAndMime(t *testing.T) {
+	mustParseURL := func(s string) *url.URL {
+		u, err := url.Parse(s)
+		if err != nil {
+			t.Fatalf("url.Parse(%q) failed: %v", s, err)
+		}
+		return u
+	}
+
+	tests := []struct {
+		name        string
+		url         *url.URL
+		contentType string
+		expected    string
+	}{
+		{
+			name:        "URL with explicit filename and extension",
+			url:         mustParseURL("https://example.com/image.jpg"),
+			contentType: "image/jpeg",
+			expected:    "image.jpg",
+		},
+		{
+			name:        "URL with explicit filename and extension, but wrong content type",
+			url:         mustParseURL("https://example.com/image.jpg"),
+			contentType: "image/png",
+			expected:    "image.jpg",
+		},
+		{
+			name:        "URL with explicit filename and extension, and empty content type",
+			url:         mustParseURL("https://example.com/image.jpg"),
+			contentType: "",
+			expected:    "image.jpg",
+		},
+		{
+			name:        "URL with query and fragment, explicit filename",
+			url:         mustParseURL("https://example.com/file.jpeg?query=1#111"),
+			contentType: "image/jpeg",
+			expected:    "file.jpeg",
+		},
+		{
+			name:        "No filename in URL, fallback to host and image/jpeg",
+			url:         mustParseURL("https://www.example.com/path/to/"),
+			contentType: "image/jpeg",
+			// host -> example_com
+			// image/jpeg typically corresponds to .jpeg or .jpg (mime usually returns .jpeg)
+			expected: "example_com_image.jpeg",
+		},
+		{
+			name:        "Host-only URL, fallback with image/png",
+			url:         mustParseURL("https://www.example.com"),
+			contentType: "image/png",
+			expected:    "example_com_image.png",
+		},
+		{
+			name:        "Filename present with video/mp4",
+			url:         mustParseURL("https://www.sub.example.co.uk/folder/video.mp4"),
+			contentType: "video/mp4",
+			expected:    "video.mp4",
+		},
+		{
+			name:        "No extension but filename present",
+			url:         mustParseURL("https://example.com/filename"),
+			contentType: "image/gif",
+			expected:    "example_com_image.gif",
+		},
+		{
+			name:        "Invalid URL returns empty",
+			url:         nil,
+			contentType: "image/jpeg",
+			expected:    "image.jpeg",
+		},
+		{
+			name:        "No filename, video/unknown fallback to .bin",
+			url:         mustParseURL("https://www.subdomain.example.com/folder/"),
+			contentType: "video/unknown",
+			// no known extension for "video/unknown", fallback .bin
+			expected: "subdomain_example_com_video.bin",
+		},
+		{
+			name:        "Hidden file as filename",
+			url:         mustParseURL("https://example.com/.htaccess"),
+			contentType: "text/plain",
+			expected:    ".htaccess",
+		},
+		{
+			name:        "URL with query but no filename extension, fallback audio/mpeg",
+			url:         mustParseURL("https://example.com/path?version=2"),
+			contentType: "audio/mpeg",
+			// audio/mpeg known extension: .mp3
+			expected: "example_com_audio.mp3",
+		},
+		{
+			name:        "Unknown type entirely",
+			url:         mustParseURL("https://example.net/"),
+			contentType: "application/x-something-strange",
+			// no filename, fallback host: example_net
+			// unknown type -> .bin
+			expected: "example_net_file.bin",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetFileNameFromURLAndContentType(tt.url, tt.contentType)
+			if got != tt.expected {
+				t.Errorf("GetFileNameFromURL(%q, %q) = %q; want %q", tt.url, tt.contentType, got, tt.expected)
+			}
+		})
+	}
 }

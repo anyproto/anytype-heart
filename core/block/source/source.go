@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -25,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/reflection"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -149,7 +150,7 @@ type Source interface {
 
 type SourceIdEndodedDetails interface {
 	Id() string
-	DetailsFromId() (*types.Struct, error)
+	DetailsFromId() (*domain.Details, error)
 }
 
 type IDsLister interface {
@@ -192,7 +193,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
-		return &store{source: src}, nil
+		return &store{source: src, sbType: sbt}, nil
 	}
 
 	return src, nil
@@ -332,8 +333,12 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// we need to have required internal relations for all objects, including system
 	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
-		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+	}
+
+	if s.Type() == smartblock.SmartBlockTypeWidget {
+		// todo: remove this after 0.41 release
+		state.CleanupLayouts(st)
 	}
 
 	s.fileObjectMigrator.MigrateFiles(st, s.space, s.GetFileKeysSnapshot())
@@ -349,7 +354,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 
 	// TODO: check if we can use apply fast one
-	if _, _, err = state.ApplyState(st, false); err != nil {
+	if _, _, err = state.ApplyState(s.spaceID, st, false); err != nil {
 		return
 	}
 	return st, nil
@@ -373,6 +378,20 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
+	for _, change := range params.Changes {
+		name := reflection.GetChangeContent(change.Value)
+		if name == "" {
+			log.Errorf("can't detect change content for %s", change.Value)
+		} else {
+			ev := &metrics.ChangeEvent{
+				ChangeName: name,
+				SbType:     s.smartblockType.String(),
+				Count:      1,
+			}
+			metrics.Service.SendSampled(ev)
+		}
+	}
+
 	if params.Time.IsZero() {
 		params.Time = time.Now()
 	}
@@ -421,7 +440,7 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:                   params.State.BlocksToSave(),
-				Details:                  params.State.Details(),
+				Details:                  params.State.Details().ToProto(),
 				ObjectTypes:              domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
 				Collections:              params.State.Store(),
 				RelationLinks:            params.State.PickRelationLinks(),
@@ -623,7 +642,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		return
 	}
 	if applyState {
-		_, _, err = state.ApplyStateFastOne(st)
+		_, _, err = state.ApplyStateFastOne(spaceId, st)
 		if err != nil {
 			return
 		}

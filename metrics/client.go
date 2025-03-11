@@ -149,7 +149,6 @@ func (c *client) recordAggregatedData() {
 	toSend := c.aggregatableMap
 	c.aggregatableMap = make(map[string]SamplableEvent)
 	c.lock.Unlock()
-	// итерейтим сразу старую мапу и скармливаем ГЦ
 	for _, ev := range toSend {
 		c.send(ev)
 	}

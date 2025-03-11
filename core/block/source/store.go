@@ -11,16 +11,17 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type PushChangeHook func(params PushChangeParams) (id string, err error)
@@ -32,6 +33,7 @@ type Store interface {
 	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 	SetPushChangeHook(onPushChange PushChangeHook)
+	MarkSeenHeads(heads []string)
 }
 
 type PushStoreChangeParams struct {
@@ -50,6 +52,8 @@ type store struct {
 	store        *storestate.StoreState
 	onUpdateHook func()
 	onPushChange PushChangeHook
+	diffManager  *objecttree.DiffManager
+	sbType       smartblock.SmartBlockType
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
@@ -58,6 +62,17 @@ func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 
 func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
 	s.onPushChange = onPushChange
+}
+
+func (s *store) createDiffManager(ctx context.Context, curTreeHeads, seenHeads []string) (err error) {
+	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
+		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
+			Heads:   heads,
+			Include: true,
+		})
+	}
+	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, func(ids []string) {})
+	return
 }
 
 func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -73,9 +88,18 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 
 	st := state.NewDoc(s.id, nil).(*state.State)
 	// Set object type here in order to derive value of Type relation in smartblock.Init
-	st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Int64(int64(model.ObjectType_chatDerived)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, pbtypes.Bool(true))
+	switch s.sbType {
+	case smartblock.SmartBlockTypeChatDerivedObject:
+		st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	case smartblock.SmartBlockTypeAccountObject:
+		st.SetObjectTypeKey(bundle.TypeKeyProfile)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_profile)))
+	default:
+		return nil, fmt.Errorf("unsupported smartblock type: %v", s.sbType)
+	}
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(true))
 	return st, nil
 }
 
@@ -89,7 +113,10 @@ func (s *store) PushChange(params PushChangeParams) (id string, err error) {
 func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState, onUpdateHook func()) (err error) {
 	s.onUpdateHook = onUpdateHook
 	s.store = storeState
-
+	err = s.createDiffManager(ctx, s.source.Tree().Heads(), nil)
+	if err != nil {
+		return err
+	}
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
@@ -132,11 +159,11 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 		IsEncrypted: true,
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),
-	}, func(change *treechangeproto.RawTreeChangeWithId) error {
-		order := tx.NextOrder(tx.GetMaxOrder())
+	}, func(change objecttree.StorageChange) error {
+		// TODO: get order here
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
 			Id:        change.Id,
-			Order:     order,
+			Order:     change.OrderId,
 			Changes:   params.Changes,
 			Creator:   s.accountService.AccountID(),
 			Timestamp: params.Time.Unix(),
@@ -158,6 +185,14 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	if err == nil {
 		s.onUpdateHook()
 	}
+	ch, err := s.ObjectTree.GetChange(changeId)
+	if err != nil {
+		return "", err
+	}
+	s.diffManager.Add(&objecttree.Change{
+		Id:          changeId,
+		PreviousIds: ch.PreviousIds,
+	})
 	return changeId, err
 }
 
@@ -174,10 +209,15 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return errors.Join(tx.Rollback(), err)
 	}
 	err = tx.Commit()
+	s.diffManager.Update(tree)
 	if err == nil {
 		s.onUpdateHook()
 	}
 	return err
+}
+
+func (s *store) MarkSeenHeads(heads []string) {
+	s.diffManager.Remove(heads)
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) error {

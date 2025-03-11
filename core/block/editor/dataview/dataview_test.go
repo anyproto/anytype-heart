@@ -13,12 +13,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -148,14 +148,14 @@ func TestDataview_SetSource(t *testing.T) {
 
 		fx.store.AddObjects(t, []objectstore.TestObject{
 			{
-				bundle.RelationKeySpaceId:     pbtypes.String(spcId),
-				bundle.RelationKeyId:          pbtypes.String("rel-id"),
-				bundle.RelationKeyRelationKey: pbtypes.String("id"),
+				bundle.RelationKeySpaceId:     domain.String(spcId),
+				bundle.RelationKeyId:          domain.String("rel-id"),
+				bundle.RelationKeyRelationKey: domain.String("id"),
 			},
 			{
-				bundle.RelationKeySpaceId:     pbtypes.String(spcId),
-				bundle.RelationKeyId:          pbtypes.String("rel-name"),
-				bundle.RelationKeyRelationKey: pbtypes.String("name"),
+				bundle.RelationKeySpaceId:     domain.String(spcId),
+				bundle.RelationKeyId:          domain.String("rel-name"),
+				bundle.RelationKeyRelationKey: domain.String("name"),
 			},
 		})
 
@@ -164,7 +164,7 @@ func TestDataview_SetSource(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		setOf := pbtypes.GetStringList(fx.sb.LocalDetails(), bundle.RelationKeySetOf.String())
+		setOf := fx.sb.CombinedDetails().GetStringList(bundle.RelationKeySetOf)
 		require.Len(t, setOf, 2)
 		assert.True(t, slice.UnsortedEqual(setOf, source))
 
@@ -181,9 +181,9 @@ func TestDataview_SetSource(t *testing.T) {
 		fx.sb.AddBlock(simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
 			Source: []string{"ot-bookmark"},
 		}}}))
-		err := fx.sb.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeySetOf.String(),
-			Value: pbtypes.StringList([]string{"ot-bookmark"}),
+		err := fx.sb.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeySetOf,
+			Value: domain.StringList([]string{"ot-bookmark"}),
 		}}, false)
 		require.NoError(t, err)
 
@@ -192,7 +192,7 @@ func TestDataview_SetSource(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		setOf := pbtypes.GetStringList(fx.sb.LocalDetails(), bundle.RelationKeySetOf.String())
+		setOf := fx.sb.CombinedDetails().GetStringList(bundle.RelationKeySetOf)
 		assert.Len(t, setOf, 0)
 
 		block := fx.sb.Pick("dv")
@@ -209,21 +209,38 @@ func TestDataview_SetSourceInSet(t *testing.T) {
 			{DefaultObjectTypeId: "ot-note", DefaultTemplateId: "NoTe"},
 			{DefaultObjectTypeId: "ot-task", DefaultTemplateId: "tAsK"},
 		}}}}))
-		err := fx.sb.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeySetOf.String(),
-			Value: pbtypes.StringList([]string{"rel-name", "rel-id"}),
+		err := fx.sb.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeySetOf,
+			Value: domain.StringList([]string{"rel-name", "rel-id"}),
 		}, {
-			Key:   bundle.RelationKeyInternalFlags.String(),
-			Value: pbtypes.IntList(int(model.InternalFlag_editorDeleteEmpty)),
+			Key:   bundle.RelationKeyInternalFlags,
+			Value: domain.Int64List([]int64{int64(model.InternalFlag_editorDeleteEmpty)}),
 		}}, false)
 		require.NoError(t, err)
 
+		fx.store.AddObjects(t, []objectstore.TestObject{map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:                           domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeySpaceId:                      domain.String(spcId),
+			bundle.RelationKeyUniqueKey:                    domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeyType:                         domain.String(bundle.TypeKeyObjectType.URL()),
+			bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL()}),
+			bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{bundle.RelationKeyType.URL(), bundle.RelationKeyBacklinks.URL(), bundle.RelationKeyDone.URL()}),
+			bundle.RelationKeyRecommendedFileRelations:     domain.StringList([]string{bundle.RelationKeyFileExt.URL()}),
+			bundle.RelationKeyRecommendedHiddenRelations:   domain.StringList([]string{bundle.RelationKeyTag.URL()}),
+		}, generateTestRelationObject(bundle.RelationKeyAssignee, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyDone, model.RelationFormat_checkbox),
+			generateTestRelationObject(bundle.RelationKeyType, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyBacklinks, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyFileExt, model.RelationFormat_shorttext),
+			generateTestRelationObject(bundle.RelationKeyTag, model.RelationFormat_tag),
+		})
+
 		// when
-		err = fx.SetSourceInSet(nil, []string{"ot-page"})
+		err = fx.SetSourceInSet(nil, []string{bundle.TypeKeyPage.URL()})
 
 		// then
 		assert.NoError(t, err)
-		setOf := pbtypes.GetStringList(fx.sb.NewState().Details(), bundle.RelationKeySetOf.String())
+		setOf := fx.sb.NewState().Details().GetStringList(bundle.RelationKeySetOf)
 		require.Len(t, setOf, 1)
 		assert.Equal(t, "ot-page", setOf[0])
 
@@ -232,13 +249,25 @@ func TestDataview_SetSourceInSet(t *testing.T) {
 		dv := b.Model().GetDataview()
 		require.NotNil(t, dv)
 		require.Len(t, dv.Views, 2)
+		assert.Len(t, dv.RelationLinks, 12) // 7 default + 6 recommended - 1 common (backlinks)
 		assert.Empty(t, dv.Views[0].DefaultTemplateId)
 		assert.Empty(t, dv.Views[0].DefaultObjectTypeId)
+		assert.Len(t, dv.Views[0].Relations, 12)
 		assert.Empty(t, dv.Views[1].DefaultTemplateId)
 		assert.Empty(t, dv.Views[1].DefaultObjectTypeId)
+		assert.Len(t, dv.Views[1].Relations, 12)
 
-		assert.Empty(t, pbtypes.GetIntList(fx.sb.NewState().Details(), bundle.RelationKeyInternalFlags.String()))
+		assert.Empty(t, fx.sb.NewState().Details().GetInt64List(bundle.RelationKeyInternalFlags))
 	})
 
 	// TODO: GO-4189 Add more tests when more logic on SetSourceToSet will be added
+}
+
+func generateTestRelationObject(key domain.RelationKey, format model.RelationFormat) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String(key.URL()),
+		bundle.RelationKeyRelationKey:    domain.String(key.String()),
+		bundle.RelationKeyType:           domain.String(bundle.TypeKeyRelation.URL()),
+		bundle.RelationKeyRelationFormat: domain.Int64(format),
+	}
 }

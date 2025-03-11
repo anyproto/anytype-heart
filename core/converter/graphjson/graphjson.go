@@ -3,8 +3,6 @@ package graphjson
 import (
 	"encoding/json"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
@@ -14,7 +12,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type edgeType int
@@ -47,7 +44,7 @@ type Graph struct {
 }
 
 type graphjson struct {
-	knownDocs   map[string]*types.Struct
+	knownDocs   map[string]*domain.Details
 	fileHashes  []string
 	imageHashes []string
 	nodes       map[string]*Node
@@ -66,7 +63,7 @@ func NewMultiConverter(
 	}
 }
 
-func (g *graphjson) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+func (g *graphjson) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	g.knownDocs = docs
 	return g
 }
@@ -82,12 +79,12 @@ func (g *graphjson) ImageHashes() []string {
 func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	n := Node{
 		Id:          st.RootId(),
-		Name:        pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()),
-		IconImage:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconImage.String()),
-		IconEmoji:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String()),
-		Description: pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String()),
+		Name:        st.Details().GetString(bundle.RelationKeyName),
+		IconImage:   st.Details().GetString(bundle.RelationKeyIconImage),
+		IconEmoji:   st.Details().GetString(bundle.RelationKeyIconEmoji),
+		Description: st.Details().GetString(bundle.RelationKeyDescription),
 		Type:        st.ObjectTypeKey(),
-		Layout:      int(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())),
+		Layout:      int(st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)),
 	}
 
 	g.nodes[st.RootId()] = &n

@@ -17,7 +17,6 @@ import (
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -31,8 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -72,9 +69,10 @@ const (
 type Hook int
 
 type ApplyInfo struct {
-	State   *state.State
-	Events  []simple.EventMessage
-	Changes []*pb.ChangeContent
+	State       *state.State
+	ParentState *state.State
+	Events      []simple.EventMessage
+	Changes     []*pb.ChangeContent
 }
 
 type HookCallback func(info ApplyInfo) (err error)
@@ -120,7 +118,7 @@ func New(
 		eventSender:        eventSender,
 		objectStore:        objectStore,
 		spaceIdResolver:    spaceIdResolver,
-		lastDepDetails:     map[string]*pb.EventObjectDetailsSet{},
+		lastDepDetails:     map[string]*domain.Details{},
 	}
 	return s
 }
@@ -155,9 +153,8 @@ type SmartBlock interface {
 	History() undo.History
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddRelationLinks(ctx session.Context, relationIds ...string) (err error)
-	AddRelationLinksToState(s *state.State, relationIds ...string) (err error)
-	RemoveExtraRelations(ctx session.Context, relationKeys []string) (err error)
+	AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error)
+	RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetIsDeleted()
 	IsDeleted() bool
@@ -165,7 +162,7 @@ type SmartBlock interface {
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
-	DisableLayouts()
+	EnableLayouts()
 	EnabledRelationAsDependentObjects()
 	AddHook(f HookCallback, events ...Hook)
 	AddHookOnce(id string, f HookCallback, events ...Hook)
@@ -190,7 +187,7 @@ type DocInfo struct {
 	Heads   []string
 	Creator string
 	Type    domain.TypeKey
-	Details *types.Struct
+	Details *domain.Details
 
 	SmartblockType smartblock.SmartBlockType
 }
@@ -200,7 +197,7 @@ type InitContext struct {
 	IsNewObject                  bool
 	Source                       source.Source
 	ObjectTypeKeys               []domain.TypeKey
-	RelationKeys                 []string
+	RelationKeys                 []domain.RelationKey
 	RequiredInternalRelationKeys []domain.RelationKey // bundled relations that MUST be present in the state
 	State                        *state.State
 	Relations                    []*model.Relation
@@ -235,10 +232,10 @@ type smartBlock struct {
 	sessions             map[string]session.Context
 	undo                 undo.History
 	source               source.Source
-	lastDepDetails       map[string]*pb.EventObjectDetailsSet
+	lastDepDetails       map[string]*domain.Details
 	restrictions         restriction.Restrictions
 	isDeleted            bool
-	disableLayouts       bool
+	enableLayouts        bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -314,7 +311,7 @@ func (sb *smartBlock) Type() smartblock.SmartBlockType {
 }
 
 func (sb *smartBlock) ObjectTypeID() string {
-	return pbtypes.GetString(sb.Doc.Details(), bundle.RelationKeyType.String())
+	return sb.Doc.LocalDetails().GetString(bundle.RelationKeyType)
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
@@ -357,9 +354,9 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	// Add bundled relations
 	var relKeys []domain.RelationKey
-	for k := range ctx.State.Details().GetFields() {
+	for k, _ := range ctx.State.Details().Iterate() {
 		if bundle.HasRelation(k) {
-			relKeys = append(relKeys, domain.RelationKey(k))
+			relKeys = append(relKeys, k)
 		}
 	}
 	ctx.State.AddBundledRelationLinks(relKeys...)
@@ -379,14 +376,12 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
 	sb.sendEvent(&pb.Event{
 		ContextId: sb.Id(),
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectClose{
+		Messages: []*pb.EventMessage{
+			event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectClose{
 				ObjectClose: &pb.EventObjectClose{
 					Id: sb.Id(),
-				},
-			},
-		}},
-	})
+				}}),
+		}})
 	return nil
 }
 
@@ -397,7 +392,11 @@ func (sb *smartBlock) updateRestrictions() {
 		return
 	}
 	sb.restrictions = r
-	sb.SendEvent([]*pb.EventMessage{{Value: &pb.EventMessageValueOfObjectRestrictionsSet{ObjectRestrictionsSet: &pb.EventObjectRestrictionsSet{Id: sb.Id(), Restrictions: r.Proto()}}}})
+	sb.SendEvent([]*pb.EventMessage{
+		event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectRestrictionsSet{
+			ObjectRestrictionsSet: &pb.EventObjectRestrictionsSet{Id: sb.Id(), Restrictions: r.Proto()},
+		}),
+	})
 }
 
 func (sb *smartBlock) SetIsDeleted() {
@@ -462,7 +461,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 
 	perSpace := sb.partitionIdsBySpace(sb.depIds)
 
-	recordsCh := make(chan *types.Struct, 10)
+	recordsCh := make(chan *domain.Details, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 
 	var records []database.Record
@@ -496,13 +495,13 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	// add self details
 	details = append(details, &model.ObjectViewDetailsSet{
 		Id:      sb.Id(),
-		Details: sb.CombinedDetails(),
+		Details: sb.CombinedDetails().ToProto(),
 	})
 
 	for _, rec := range records {
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
-			Details: rec.Details,
+			Id:      rec.Details.GetString(bundle.RelationKeyId),
+			Details: rec.Details.ToProto(),
 		})
 	}
 	go sb.metaListener(recordsCh)
@@ -545,7 +544,7 @@ func (sb *smartBlock) Unlock() {
 	sb.Locker.Unlock()
 }
 
-func (sb *smartBlock) metaListener(ch chan *types.Struct) {
+func (sb *smartBlock) metaListener(ch chan *domain.Details) {
 	for {
 		rec, ok := <-ch
 		if !ok {
@@ -557,34 +556,29 @@ func (sb *smartBlock) metaListener(ch chan *types.Struct) {
 	}
 }
 
-func (sb *smartBlock) onMetaChange(details *types.Struct) {
+func (sb *smartBlock) onMetaChange(details *domain.Details) {
 	if details == nil {
 		return
 	}
-	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	msgs := []*pb.EventMessage{}
+	id := details.GetString(bundle.RelationKeyId)
+	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
-		diff := pbtypes.StructDiff(v.Details, details)
+		diff, keysToUnset := domain.StructDiff(v, details)
 		if id == sb.Id() {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
-			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
+			diff = diff.CopyOnlyKeys(bundle.LocalRelationsKeys...)
 		}
 
-		msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)
+		msgs = append(msgs, state.StructDiffIntoEvents(sb.SpaceID(), id, diff, keysToUnset)...)
 	} else {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectDetailsSet{
-				ObjectDetailsSet: &pb.EventObjectDetailsSet{
-					Id:      id,
-					Details: details,
-				},
+		msgs = append(msgs, event.NewMessage(sb.SpaceID(), &pb.EventMessageValueOfObjectDetailsSet{
+			ObjectDetailsSet: &pb.EventObjectDetailsSet{
+				Id:      id,
+				Details: details.ToProto(),
 			},
-		})
+		}))
 	}
-	sb.lastDepDetails[id] = &pb.EventObjectDetailsSet{
-		Id:      id,
-		Details: details,
-	}
+	sb.lastDepDetails[id] = details
 
 	if len(msgs) == 0 {
 		return
@@ -621,8 +615,12 @@ func (sb *smartBlock) IsLocked() bool {
 	return activeCount > 0
 }
 
-func (sb *smartBlock) DisableLayouts() {
-	sb.disableLayouts = true
+func (sb *smartBlock) EnableLayouts() {
+	sb.enableLayouts = true
+}
+
+func (sb *smartBlock) IsLayoutsEnabled() bool {
+	return sb.enableLayouts
 }
 
 func (sb *smartBlock) EnabledRelationAsDependentObjects() {
@@ -630,7 +628,6 @@ func (sb *smartBlock) EnabledRelationAsDependentObjects() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
-	startTime := time.Now()
 	if sb.IsDeleted() {
 		return domain.ErrObjectIsDeleted
 	}
@@ -687,14 +684,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if s.ParentState() != nil && s.ParentState().IsTheHeaderChange() {
 		// for the first change allow to set the last modified date from the state
 		// this used for the object imports
-		lastModifiedFromState := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		lastModifiedFromState := s.LocalDetails().GetInt64(bundle.RelationKeyLastModifiedDate)
 		if lastModifiedFromState > 0 {
 			lastModified = time.Unix(lastModifiedFromState, 0)
 		}
 
-		if existingCreatedDate := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()); existingCreatedDate == 0 || existingCreatedDate > lastModified.Unix() {
+		if existingCreatedDate := s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate); existingCreatedDate == 0 || existingCreatedDate > lastModified.Unix() {
 			// this can happen if we don't have creation date in the root change
-			s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
+			s.SetLocalDetail(bundle.RelationKeyCreatedDate, domain.Int64(lastModified.Unix()))
 		}
 	}
 
@@ -702,14 +699,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		removeInternalFlags(s)
 	}
 
-	beforeApplyStateTime := time.Now()
-
 	migrationVersionUpdated := true
-	if parent := s.ParentState(); parent != nil {
+	parent := s.ParentState()
+	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
 
-	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
 		return
 	}
@@ -718,7 +714,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	sb.updateRestrictions()
 	sb.setRestrictionsDetail(s)
 
-	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
 	changes := st.GetChanges()
@@ -739,15 +734,15 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 		if !sb.source.ReadOnly() {
 			// We can set details directly in object's state, they'll be indexed correctly
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentParticipantId))
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, domain.String(sb.currentParticipantId))
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, domain.Int64(lastModified.Unix()))
 		}
 		fileDetailsKeys := st.FileRelationKeys()
-		var fileDetailsKeysFiltered []string
+		var fileDetailsKeysFiltered []domain.RelationKey
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
-				if slice.FindPos(fileDetailsKeys, ds.Key) != -1 {
-					fileDetailsKeysFiltered = append(fileDetailsKeysFiltered, ds.Key)
+				if slice.FindPos(fileDetailsKeys, domain.RelationKey(ds.Key)) != -1 {
+					fileDetailsKeysFiltered = append(fileDetailsKeysFiltered, domain.RelationKey(ds.Key))
 				}
 			}
 		}
@@ -775,7 +770,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	if !act.IsEmpty() {
 		if len(changes) == 0 && !doSnapshot {
-			log.Errorf("apply 0 changes %s: %v", st.RootId(), anonymize.Events(msgsToEvents(msgs)))
+			log.With("sbType", sb.Type().String()).Errorf("apply 0 changes %s: %v", st.RootId(), anonymize.Events(msgsToEvents(msgs)))
 		}
 		err = pushChange()
 		if err != nil {
@@ -803,7 +798,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
-	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
@@ -819,22 +813,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
-	afterReportChangeTime := time.Now()
 	if hooks {
-		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
+		if e := sb.execHooks(HookAfterApply, ApplyInfo{
+			State:       sb.Doc.(*state.State),
+			ParentState: parent,
+			Events:      msgs,
+			Changes:     changes,
+		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
-	afterApplyHookTime := time.Now()
-
-	metrics.Service.Send(&metrics.StateApply{
-		BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
-		StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
-		PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
-		ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
-		ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
-		ObjectId:       sb.Id(),
-	})
 
 	return
 }
@@ -908,15 +896,7 @@ func (sb *smartBlock) History() undo.History {
 	return sb.undo
 }
 
-func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
-	s := sb.NewStateCtx(ctx)
-	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
-		return
-	}
-	return sb.Apply(s)
-}
-
-func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...string) (err error) {
+func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
 	if len(relationKeys) == 0 {
 		return
 	}
@@ -934,115 +914,6 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	return
 }
 
-func (sb *smartBlock) injectLocalDetails(s *state.State) error {
-	details, err := sb.getDetailsFromStore()
-	if err != nil {
-		return err
-	}
-
-	details, hasPendingLocalDetails := sb.appendPendingDetails(details)
-
-	// inject also derived keys, because it may be a good idea to have created date and creator cached,
-	// so we don't need to traverse changes every time
-	keys := bundle.LocalAndDerivedRelationKeys
-
-	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
-
-	s.InjectLocalDetails(localDetailsFromStore)
-	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
-		// inject for both current and parent state
-		p.InjectLocalDetails(localDetailsFromStore)
-	}
-
-	err = sb.injectCreationInfo(s)
-	if err != nil {
-		log.With("objectID", sb.Id()).With("sbtype", sb.Type().String()).Errorf("failed to inject creation info: %s", err.Error())
-	}
-	return nil
-}
-
-func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
-	storedDetails, err := sb.spaceIndex.GetDetails(sb.Id())
-	if err != nil || storedDetails == nil {
-		return nil, err
-	}
-	return pbtypes.CopyStruct(storedDetails.GetDetails(), true), nil
-}
-
-func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
-	// Consume pending details
-	err := sb.spaceIndex.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
-		if len(pending.GetFields()) > 0 {
-			hasPendingLocalDetails = true
-		}
-		details = pbtypes.StructMerge(details, pending, false)
-		return nil, nil
-	})
-	if err != nil {
-		log.With("objectID", sb.Id()).
-			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
-	}
-	return details, hasPendingLocalDetails
-}
-
-func (sb *smartBlock) getCreationInfo() (creatorObjectId string, treeCreatedDate int64, err error) {
-	creatorObjectId, treeCreatedDate, err = sb.source.GetCreationInfo()
-	if err != nil {
-		return
-	}
-
-	return creatorObjectId, treeCreatedDate, nil
-}
-
-func (sb *smartBlock) injectCreationInfo(s *state.State) error {
-	if sb.Type() == smartblock.SmartBlockTypeProfilePage {
-		// todo: for the shared spaces we need to change this for sophisticated logic
-		creatorIdentityObjectId, _, err := sb.getCreationInfo()
-		if err != nil {
-			return err
-		}
-
-		if creatorIdentityObjectId != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(creatorIdentityObjectId))
-		}
-	} else {
-		// make sure we don't have this relation for other objects
-		s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity.String())
-	}
-
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) != "" && pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) != 0 {
-		return nil
-	}
-
-	creatorIdentityObjectId, treeCreatedDate, err := sb.getCreationInfo()
-	if err != nil {
-		return err
-	}
-
-	if creatorIdentityObjectId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
-	} else {
-		// For derived objects we set current identity
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(sb.currentParticipantId))
-	}
-
-	if originalCreated := s.OriginalCreatedTimestamp(); originalCreated > 0 {
-		// means we have imported object, so we need to set original created date
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(originalCreated)))
-		// Only set AddedDate once because we have a side effect with treeCreatedDate:
-		// - When we import object, treeCreateDate is set to time.Now()
-		// - But after push it is changed to original modified date
-		// - So after account recovery we will get treeCreateDate = original modified date, which is not equal to AddedDate
-		if pbtypes.GetInt64(s.Details(), bundle.RelationKeyAddedDate.String()) == 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyAddedDate, pbtypes.Float64(float64(treeCreatedDate)))
-		}
-	} else {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(treeCreatedDate)))
-	}
-
-	return nil
-}
-
 func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	for _, id := range ids {
@@ -1053,7 +924,7 @@ func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVer
 	return sb.Apply(s)
 }
 
-func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []string) (err error) {
+func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []domain.RelationKey) (err error) {
 	st := sb.NewStateCtx(ctx)
 	st.RemoveRelation(relationIds...)
 
@@ -1071,11 +942,12 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
-	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
+	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
 		return err
 	}
 	log.Infof("changes: stateAppend: %d events", len(msgs))
+
 	if len(msgs) > 0 {
 		sb.sendEvent(&pb.Event{
 			Messages:  msgsToEvents(msgs),
@@ -1087,7 +959,14 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
-	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes})
+	if err = sb.execHooks(HookAfterApply, ApplyInfo{
+		State:       s,
+		ParentState: s.ParentState(),
+		Events:      msgs,
+		Changes:     changes,
+	}); err != nil {
+		log.Errorf("failed to execute smartblock hooks after apply on StateAppend: %v", err)
+	}
 
 	return nil
 }
@@ -1106,7 +985,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
-	msgs, _, err := state.ApplyState(d.(*state.State), !sb.disableLayouts)
+	msgs, _, err := state.ApplyState(sb.SpaceID(), d.(*state.State), sb.enableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
 		// can't make diff - reopen doc
@@ -1181,17 +1060,18 @@ func hasDepIds(relations pbtypes.RelationLinks, act *undo.Action) bool {
 		if act.Details.Before == nil || act.Details.After == nil {
 			return true
 		}
-		for k, after := range act.Details.After.Fields {
-			rel := relations.Get(k)
+
+		for k, after := range act.Details.After.Iterate() {
+			rel := relations.Get(string(k))
 			if rel != nil && (rel.Format == model.RelationFormat_status ||
 				rel.Format == model.RelationFormat_tag ||
 				rel.Format == model.RelationFormat_object ||
 				rel.Format == model.RelationFormat_file ||
 				isCoverId(rel)) {
 
-				before := act.Details.Before.Fields[k]
+				before := act.Details.Before.Get(k)
 				// Check that value is actually changed
-				if before == nil || !before.Equal(after) {
+				if !before.Ok() || !before.Equal(after) {
 					return true
 				}
 			}
@@ -1226,7 +1106,7 @@ func isCoverId(rel *model.RelationLink) bool {
 	return rel.Key == bundle.RelationKeyCoverId.String()
 }
 
-func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Action) (hashes []string) {
+func getChangedFileHashes(s *state.State, fileDetailKeys []domain.RelationKey, act undo.Action) (hashes []string) {
 	for _, nb := range act.Add {
 		if fh, ok := nb.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)
@@ -1239,11 +1119,11 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Acti
 	}
 	if act.Details != nil {
 		det := act.Details.After
-		if det != nil && det.Fields != nil {
-			for _, field := range fileDetailKeys {
-				if list := pbtypes.GetStringList(det, field); list != nil {
+		if det != nil {
+			for _, detKey := range fileDetailKeys {
+				if list := det.GetStringList(detKey); len(list) > 0 {
 					hashes = append(hashes, list...)
-				} else if s := pbtypes.GetString(det, field); s != "" {
+				} else if s := det.GetString(detKey); s != "" {
 					hashes = append(hashes, s)
 				}
 			}
@@ -1318,10 +1198,10 @@ func (sb *smartBlock) GetDocInfo() DocInfo {
 }
 
 func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
-	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
+	creator := st.Details().GetString(bundle.RelationKeyCreator)
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
-	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
+	links := sb.LocalDetails().GetStringList(bundle.RelationKeyLinks)
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)
@@ -1337,7 +1217,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	// todo: heads in source and the state may be inconsistent?
 	heads := sb.source.Heads()
 	if len(heads) == 0 {
-		lastChangeId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyLastChangeId.String())
+		lastChangeId := st.LocalDetails().GetString(bundle.RelationKeyLastChangeId)
 		if lastChangeId != "" {
 			heads = []string{lastChangeId}
 		}
@@ -1376,17 +1256,18 @@ func removeInternalFlags(s *state.State) {
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
-	rawRestrictions := make([]int, len(sb.Restrictions().Object))
-	for i, r := range sb.Restrictions().Object {
-		rawRestrictions[i] = int(r)
+	currentRestrictions := restriction.NewObjectRestrictionsFromValue(s.LocalDetails().Get(bundle.RelationKeyRestrictions))
+	if currentRestrictions.Equal(sb.Restrictions().Object) {
+		return
 	}
-	s.SetLocalDetail(bundle.RelationKeyRestrictions.String(), pbtypes.IntList(rawRestrictions...))
+
+	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
 
 	// todo: verify this logic with clients
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
 		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
 	}
 }
 
@@ -1450,102 +1331,6 @@ func SkipIfHeadsNotChanged(o *IndexOptions) {
 
 func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 	o.SkipFullTextIfHeadsNotChanged = true
-}
-
-// injectDerivedDetails injects the local data
-func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt smartblock.SmartBlockType) {
-	id := s.RootId()
-	if id != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
-	}
-
-	if v, ok := s.Details().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
-		status := filesyncstatus.Status(v.GetNumberValue())
-		// Clients expect syncstatus constants in this relation
-		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, pbtypes.Int64(int64(status.ToSyncStatus())))
-	}
-
-	if info := s.GetFileInfo(); info.FileId != "" {
-		err := sb.fileStore.AddFileKeys(domain.FileEncryptionKeys{
-			FileId:         info.FileId,
-			EncryptionKeys: info.EncryptionKeys,
-		})
-		if err != nil {
-			log.Errorf("failed to store file keys: %v", err)
-		}
-	}
-
-	if spaceID != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
-	} else {
-		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()))
-	}
-	if ot := s.ObjectTypeKey(); ot != "" {
-		typeID, err := sb.space.GetTypeIdByKey(context.Background(), ot)
-		if err != nil {
-			log.Errorf("failed to get type id for %s: %v", ot, err)
-		}
-
-		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeID))
-	}
-
-	if uki := s.UniqueKeyInternal(); uki != "" {
-		// todo: remove this hack after spaceService refactored to include marketplace virtual space
-		if sbt == smartblock.SmartBlockTypeBundledObjectType {
-			sbt = smartblock.SmartBlockTypeObjectType
-		} else if sbt == smartblock.SmartBlockTypeBundledRelation {
-			sbt = smartblock.SmartBlockTypeRelation
-		}
-
-		uk, err := domain.NewUniqueKey(sbt, uki)
-		if err != nil {
-			log.Errorf("failed to get unique key for %s: %v", uki, err)
-		} else {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
-		}
-	}
-
-	err := sb.deriveChatId(s)
-	if err != nil {
-		log.With("objectId", sb.Id()).Errorf("can't derive chat id: %v", err)
-	}
-
-	sb.setRestrictionsDetail(s)
-
-	snippet := s.Snippet()
-	if snippet != "" || s.LocalDetails() != nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
-	}
-
-	// Set isDeleted relation only if isUninstalled is present in details
-	if isUninstalled := s.Details().GetFields()[bundle.RelationKeyIsUninstalled.String()]; isUninstalled != nil {
-		var isDeleted bool
-		if isUninstalled.GetBoolValue() {
-			isDeleted = true
-		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
-	}
-
-	sb.injectLinksDetails(s)
-	sb.injectMentions(s)
-	sb.updateBackLinks(s)
-}
-
-func (sb *smartBlock) deriveChatId(s *state.State) error {
-	hasChat := pbtypes.GetBool(s.Details(), bundle.RelationKeyHasChat.String())
-	if hasChat {
-		chatUk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, sb.Id())
-		if err != nil {
-			return err
-		}
-
-		chatId, err := sb.space.DeriveObjectID(context.Background(), chatUk)
-		if err != nil {
-			return err
-		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, pbtypes.String(chatId))
-	}
-	return nil
 }
 
 type InitFunc = func(id string) *InitContext

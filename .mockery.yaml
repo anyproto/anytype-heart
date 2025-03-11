@@ -19,6 +19,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/cache:
     interfaces:
       ObjectGetter:
+      CachedObjectGetter:
       ObjectGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
@@ -37,15 +38,20 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+      Space:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/import:
     interfaces:
       Importer:
-  github.com/anyproto/anytype-heart/core/block/editor/lastused:
-    interfaces:
-      ObjectUsageUpdater:
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
+  github.com/anyproto/anytype-heart/core/block/import/web/parsers:
+    interfaces:
+      Parser:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
@@ -94,6 +100,9 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore/storage:
     interfaces:
       ClientStorage:
+  github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage:
+    interfaces:
+      ClientSpaceStorage:
   github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
@@ -223,5 +232,17 @@ packages:
     interfaces:
       Service:
   github.com/anyproto/anytype-heart/core/kanban:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/core/inviteservice:
+    interfaces:
+      InviteService:
+  github.com/anyproto/anytype-heart/core/identity:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/pb/service:
+    interfaces:
+      ClientCommandsServer:
+  github.com/anyproto/anytype-heart/core/block/template:
     interfaces:
       Service:

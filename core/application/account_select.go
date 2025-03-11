@@ -31,14 +31,22 @@ var (
 	ErrNoMnemonicProvided  = errors.New("no mnemonic provided")
 	ErrIncompatibleVersion = errors.New("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version")
 
-	ErrAnotherProcessIsRunning = errors.New("another anytype process is running")
-	ErrFailedToFindAccountInfo = errors.New("failed to find account info")
-	ErrAccountIsDeleted        = errors.New("account is deleted")
+	ErrAnotherProcessIsRunning   = errors.New("another anytype process is running")
+	ErrFailedToFindAccountInfo   = errors.New("failed to find account info")
+	ErrAccountIsDeleted          = errors.New("account is deleted")
+	ErrAccountStoreIsNotMigrated = errors.New("account store is not migrated")
 )
 
 func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) (*model.Account, error) {
 	if req.Id == "" {
 		return nil, ErrEmptyAccountID
+	}
+	curMigration := s.migrationManager.getOrCreateMigration(req.RootPath, req.Id, req.FulltextPrimaryLanguage)
+	if !curMigration.successful() {
+		return nil, ErrAccountStoreIsNotMigrated
+	}
+	if s.migrationManager.isRunning() {
+		return nil, ErrMigrationRunning
 	}
 
 	if runtime.GOOS != "android" && runtime.GOOS != "ios" {
@@ -74,15 +82,29 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	}
 	metrics.Service.SetWorkingDir(req.RootPath, req.Id)
 
-	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath)
+	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.JsonApiListenAddr,
+		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.FulltextPrimaryLanguage)
 }
 
-func (s *Service) start(ctx context.Context, id string, rootPath string, disableLocalNetworkSync bool, preferYamux bool, networkMode pb.RpcAccountNetworkMode, networkConfigFilePath string) (*model.Account, error) {
+func (s *Service) start(
+	ctx context.Context,
+	id string,
+	rootPath string,
+	disableLocalNetworkSync bool,
+	jsonApiListenAddr string,
+	preferYamux bool,
+	networkMode pb.RpcAccountNetworkMode,
+	networkConfigFilePath string,
+	lang string,
+) (*model.Account, error) {
 	ctx, task := trace2.NewTask(ctx, "application.start")
 	defer task.End()
 
 	if rootPath != "" {
 		s.rootPath = rootPath
+	}
+	if lang != "" {
+		s.fulltextPrimaryLanguage = lang
 	}
 	if s.mnemonic == "" {
 		return nil, ErrNoMnemonicProvided
@@ -108,6 +130,10 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
+
+	if jsonApiListenAddr != "" {
+		cfg.JsonApiListenAddr = jsonApiListenAddr
+	}
 	if preferYamux {
 		cfg.PeferYamuxTransport = true
 	}
@@ -117,7 +143,7 @@ func (s *Service) start(ctx context.Context, id string, rootPath string, disable
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res),
+		anytype.BootstrapWallet(s.rootPath, res, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 

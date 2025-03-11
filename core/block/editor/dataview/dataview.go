@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -90,7 +89,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 
 	if len(source) == 0 {
 		s.Unlink(blockId)
-		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		s.SetLocalDetail(bundle.RelationKeySetOf, domain.StringList(source))
 		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
@@ -108,7 +107,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		s.InsertTo("", 0, blockId)
 	}
 
-	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+	s.SetLocalDetail(bundle.RelationKeySetOf, domain.StringList(source))
 	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
@@ -119,15 +118,25 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 		return err
 	}
 
+	var viewRelations []*model.BlockContentDataviewRelation
+	if srcBlock, err := BlockBySource(d.objectStore, source); err != nil {
+		log.Errorf("failed to build dataview block to modify view relation lists: %v", err)
+	} else {
+		dv.SetRelations(srcBlock.Dataview.RelationLinks)
+		viewRelations = srcBlock.Dataview.Views[0].Relations
+	}
+
 	for _, view := range dv.ListViews() {
-		// TODO: GO-4189 Need to review relation lists modification in each view on source change
 		view.DefaultTemplateId = ""
 		view.DefaultObjectTypeId = ""
+		if len(viewRelations) > 0 {
+			view.Relations = viewRelations
+		}
 		if err = dv.SetView(view.Id, *view); err != nil {
 			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
 		}
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(source))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, domain.StringList(source))
 
 	flags := internalflag.NewFromState(s)
 	// set with source is no longer empty

@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestGetObjectType(t *testing.T) {
@@ -30,8 +29,8 @@ func TestGetObjectType(t *testing.T) {
 
 		id := "id1"
 		obj := TestObject{
-			bundle.RelationKeyId:   pbtypes.String(id),
-			bundle.RelationKeyType: pbtypes.String(bundle.TypeKeyNote.URL()),
+			bundle.RelationKeyId:   domain.String(id),
+			bundle.RelationKeyType: domain.String(bundle.TypeKeyNote.URL()),
 		}
 		s.AddObjects(t, []TestObject{obj})
 
@@ -44,25 +43,29 @@ func TestGetObjectType(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		id := "id1"
-		relationID := "derivedFrom(assignee)"
 		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, "note")
 		require.NoError(t, err)
 		obj := TestObject{
-			bundle.RelationKeyId:                   pbtypes.String(id),
-			bundle.RelationKeyType:                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
-			bundle.RelationKeyName:                 pbtypes.String("my note"),
-			bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{relationID}),
-			bundle.RelationKeyRecommendedLayout:    pbtypes.Int64(int64(model.ObjectType_note)),
-			bundle.RelationKeyIconEmoji:            pbtypes.String("📝"),
-			bundle.RelationKeyIsArchived:           pbtypes.Bool(true),
-			bundle.RelationKeyUniqueKey:            pbtypes.String(uniqueKey.Marshal()),
+			bundle.RelationKeyId:                           domain.String(id),
+			bundle.RelationKeyType:                         domain.String(bundle.TypeKeyObjectType.URL()),
+			bundle.RelationKeyName:                         domain.String("my note"),
+			bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{bundle.RelationKeyAssignee.URL(), bundle.RelationKeyDone.URL()}),
+			bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{bundle.RelationKeyType.URL(), bundle.RelationKeyBacklinks.URL(), bundle.RelationKeyDone.URL()}),
+			bundle.RelationKeyRecommendedFileRelations:     domain.StringList([]string{bundle.RelationKeyFileExt.URL()}),
+			bundle.RelationKeyRecommendedHiddenRelations:   domain.StringList([]string{bundle.RelationKeyTag.URL()}),
+			bundle.RelationKeyRecommendedLayout:            domain.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyIconEmoji:                    domain.String("📝"),
+			bundle.RelationKeyIsArchived:                   domain.Bool(true),
+			bundle.RelationKeyUniqueKey:                    domain.String(uniqueKey.Marshal()),
 		}
-		relObj := TestObject{
-			bundle.RelationKeyId:          pbtypes.String(relationID),
-			bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyAssignee.String()),
-			bundle.RelationKeyType:        pbtypes.String(bundle.TypeKeyRelation.URL()),
-		}
-		s.AddObjects(t, []TestObject{obj, relObj})
+		s.AddObjects(t, []TestObject{obj,
+			generateTestRelationObject(bundle.RelationKeyAssignee, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyDone, model.RelationFormat_checkbox),
+			generateTestRelationObject(bundle.RelationKeyType, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyBacklinks, model.RelationFormat_object),
+			generateTestRelationObject(bundle.RelationKeyFileExt, model.RelationFormat_shorttext),
+			generateTestRelationObject(bundle.RelationKeyTag, model.RelationFormat_tag),
+		})
 
 		// When
 		got, err := s.GetObjectType(id)
@@ -78,13 +81,24 @@ func TestGetObjectType(t *testing.T) {
 			Types:      []model.SmartBlockType{model.SmartBlockType_Page},
 			Key:        "note",
 			RelationLinks: []*model.RelationLink{
-				{
-					Key:    bundle.RelationKeyAssignee.String(),
-					Format: model.RelationFormat_longtext,
-				},
+				{Key: bundle.RelationKeyAssignee.String(), Format: model.RelationFormat_object},
+				{Key: bundle.RelationKeyDone.String(), Format: model.RelationFormat_checkbox},
+				{Key: bundle.RelationKeyType.String(), Format: model.RelationFormat_object},
+				{Key: bundle.RelationKeyBacklinks.String(), Format: model.RelationFormat_object},
+				{Key: bundle.RelationKeyFileExt.String(), Format: model.RelationFormat_shorttext},
+				{Key: bundle.RelationKeyTag.String(), Format: model.RelationFormat_tag},
 			},
 		}
 
 		assert.Equal(t, want, got)
 	})
+}
+
+func generateTestRelationObject(key domain.RelationKey, format model.RelationFormat) TestObject {
+	return TestObject{
+		bundle.RelationKeyId:             domain.String(key.URL()),
+		bundle.RelationKeyRelationKey:    domain.String(key.String()),
+		bundle.RelationKeyType:           domain.String(bundle.TypeKeyRelation.URL()),
+		bundle.RelationKeyRelationFormat: domain.Int64(format),
+	}
 }

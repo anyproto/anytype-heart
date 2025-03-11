@@ -55,3 +55,16 @@ func (es *CallbackSender) Broadcast(event *pb.Event) {
 func (es *CallbackSender) BroadcastExceptSessions(event *pb.Event, exceptTokens []string) {
 	es.callback(event)
 }
+
+func NewMessage(spaceId string, value pb.IsEventMessageValue) *pb.EventMessage {
+	return &pb.EventMessage{
+		SpaceId: spaceId,
+		Value:   value,
+	}
+}
+
+func NewEventSingleMessage(spaceId string, value pb.IsEventMessageValue) *pb.Event {
+	return &pb.Event{
+		Messages: []*pb.EventMessage{NewMessage(spaceId, value)},
+	}
+}

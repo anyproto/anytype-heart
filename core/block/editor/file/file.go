@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -48,7 +50,7 @@ func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.O
 }
 
 type BlockService interface {
-	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, details *types.Struct, err error)
+	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, details *domain.Details, err error)
 }
 
 type File interface {
@@ -125,7 +127,8 @@ func (sf *sfile) SetFileTargetObjectId(ctx session.Context, blockId, targetObjec
 		return err
 	}
 	var blockContentFileType model.BlockContentFileType
-	switch model.ObjectTypeLayout(pbtypes.GetInt64(sb.Details(), bundle.RelationKeyLayout.String())) {
+	//nolint:gosec
+	switch model.ObjectTypeLayout(sb.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)) {
 	case model.ObjectType_image:
 		blockContentFileType = model.BlockContentFile_Image
 	case model.ObjectType_audio:
@@ -305,10 +308,13 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 }
 
 func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
-	if info.err == context.Canceled {
+	if errors.Is(info.err, context.Canceled) {
 		s := sf.NewState().SetGroupId(info.groupId)
 		s.Unlink(info.blockId)
 		return sf.Apply(s)
+	}
+	if info.err != nil {
+		return fmt.Errorf("drop file: %w", info.err)
 	}
 	if isCollection(sf) {
 		s := sf.NewState()

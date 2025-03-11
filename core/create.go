@@ -9,9 +9,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
@@ -29,7 +29,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 
 	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
-		Details:       req.Details,
+		Details:       domain.NewDetailsFromProto(req.Details),
 		InternalFlags: req.InternalFlags,
 		TemplateId:    req.TemplateId,
 	}
@@ -40,7 +40,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	if req.WithChat {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
-	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
+	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 
 func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
@@ -71,13 +71,14 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	if req.Details.Fields == nil {
 		req.Details.Fields = map[string]*types.Value{}
 	}
-	req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
+	details := domain.NewDetailsFromProto(req.Details)
+	details.SetStringList(bundle.RelationKeySetOf, req.Source)
 
 	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeySet,
 		InternalFlags: req.InternalFlags,
-		Details:       req.Details,
+		Details:       details,
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
@@ -89,7 +90,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	if req.WithChat {
 		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
-	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
+	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 
 func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
@@ -104,17 +105,18 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details:       req.Details,
+		Details:       domain.NewDetailsFromProto(req.Details),
+		TemplateId:    req.TemplateId,
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 	if req.WithChat {
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
 
-	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails, nil)
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 
 func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
@@ -130,18 +132,18 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyObjectType,
 		InternalFlags: req.InternalFlags,
-		Details:       req.Details,
+		Details:       domain.NewDetailsFromProto(req.Details),
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
 		return response(pb.RpcObjectCreateObjectTypeResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 
-	return response(pb.RpcObjectCreateObjectTypeResponseError_NULL, id, newDetails, nil)
+	return response(pb.RpcObjectCreateObjectTypeResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 
 func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
-	response := func(id string, object *types.Struct, err error) *pb.RpcObjectCreateRelationResponse {
+	response := func(id string, object *domain.Details, err error) *pb.RpcObjectCreateRelationResponse {
 		if err != nil {
 			return &pb.RpcObjectCreateRelationResponse{
 				Error: &pb.RpcObjectCreateRelationResponseError{
@@ -150,20 +152,20 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 				},
 			}
 		}
-		key := pbtypes.GetString(object, bundle.RelationKeyRelationKey.String())
+		key := object.GetString(bundle.RelationKeyRelationKey)
 		return &pb.RpcObjectCreateRelationResponse{
 			Error: &pb.RpcObjectCreateRelationResponseError{
 				Code: pb.RpcObjectCreateRelationResponseError_NULL,
 			},
 			ObjectId: id,
 			Key:      key,
-			Details:  object,
+			Details:  object.ToProto(),
 		}
 	}
 	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyRelation,
-		Details:       req.Details,
+		Details:       domain.NewDetailsFromProto(req.Details),
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
@@ -194,10 +196,10 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: bundle.TypeKeyRelationOption,
-		Details:       req.Details,
+		Details:       domain.NewDetailsFromProto(req.Details),
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
-	return response(id, newDetails, err)
+	return response(id, newDetails.ToProto(), err)
 }
 
 func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjectCreateFromUrlRequest) *pb.RpcObjectCreateFromUrlResponse {
@@ -218,5 +220,5 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 	if req.WithChat {
 		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", fmt.Errorf("WithChat is not implemented"), nil)
 	}
-	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails)
+	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails.ToProto())
 }

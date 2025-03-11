@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -107,7 +108,7 @@ type testSubscription struct {
 	subscriptionId string
 }
 
-func newTestSubscription(t *testing.T, app *testApplication, keys []domain.RelationKey, filters []*model.BlockContentDataviewFilter) *testSubscription {
+func newTestSubscription(t *testing.T, app *testApplication, keys []domain.RelationKey, filters []database.FilterRequest) *testSubscription {
 	keysConverted := make([]string, 0, len(keys))
 	for _, key := range keys {
 		keysConverted = append(keysConverted, key.String())

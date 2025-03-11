@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -12,11 +11,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	simpleDataview "github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ImportCollectionSetting struct {
@@ -73,7 +72,7 @@ func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*
 		}
 	}
 
-	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
+	detailsStruct = st.CombinedDetails().Merge(detailsStruct)
 	st.UpdateStoreSlice(template.CollectionStoreKey, req.targetObjects)
 
 	return r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct, req.fileKeys), nil
@@ -82,19 +81,19 @@ func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*
 func (r *ImportCollection) getRootCollectionSnapshot(
 	collectionName string,
 	st *state.State,
-	detailsStruct *types.Struct,
+	detailsStruct *domain.Details,
 	fileKeys []*pb.ChangeFileKeys,
 ) *Snapshot {
-	if detailsStruct.GetFields() == nil {
-		detailsStruct = &types.Struct{Fields: map[string]*types.Value{}}
+	if detailsStruct == nil {
+		detailsStruct = domain.NewDetails()
 	}
-	detailsStruct.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_collection))
+	detailsStruct.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_collection))
 	return &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
-		SbType:   sb.SmartBlockTypePage,
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
+		Snapshot: &SnapshotModel{
+			SbType: sb.SmartBlockTypePage,
+			Data: &StateSnapshot{
 				Blocks:        st.Blocks(),
 				Details:       detailsStruct,
 				ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
@@ -125,16 +124,14 @@ func (r *ImportCollection) addRelations(st *state.State) error {
 	return nil
 }
 
-func (r *ImportCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *types.Struct {
-	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyName.String()] = pbtypes.String(collectionName)
-	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(shouldBeFavorite)
-	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-	details[bundle.RelationKeyIconImage.String()] = pbtypes.String(icon)
-
-	detailsStruct := &types.Struct{Fields: details}
-	return detailsStruct
+func (r *ImportCollection) getCreateCollectionRequest(collectionName string, icon string, shouldBeFavorite bool) *domain.Details {
+	return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeySourceFilePath: domain.String(collectionName),
+		bundle.RelationKeyName:           domain.String(collectionName),
+		bundle.RelationKeyIsFavorite:     domain.Bool(shouldBeFavorite),
+		bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_collection),
+		bundle.RelationKeyIconImage:      domain.String(icon),
+	})
 }
 
 func ReplaceRelationsInDataView(st *state.State, rel *model.RelationLink) error {

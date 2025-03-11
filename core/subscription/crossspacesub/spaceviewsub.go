@@ -8,9 +8,11 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -20,21 +22,21 @@ func (s *service) runSpaceViewSub() error {
 	resp, err := s.subscriptionService.Search(subscriptionservice.SubscribeRequest{
 		SpaceId: s.spaceService.TechSpaceId(),
 		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetSpaceId.String()},
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
+				RelationKey: bundle.RelationKeySpaceAccountStatus,
 				Condition:   model.BlockContentDataviewFilter_NotIn,
-				Value:       pbtypes.IntList(int(model.Account_Deleted)),
+				Value:       domain.Int64List([]model.AccountStatusType{model.Account_Deleted}),
 			},
 			{
-				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+				RelationKey: bundle.RelationKeySpaceLocalStatus,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(model.SpaceStatus_Ok), int(model.SpaceStatus_Unknown)),
+				Value:       domain.Int64List([]model.SpaceStatus{model.SpaceStatus_Ok, model.SpaceStatus_Unknown}),
 			},
 		},
 		Internal: true,
@@ -48,8 +50,8 @@ func (s *service) runSpaceViewSub() error {
 	s.spaceViewsSubId = resp.SubId
 	s.spaceViewTargetIds = make(map[string]string, len(resp.Records))
 	for _, r := range resp.Records {
-		id := pbtypes.GetString(r, bundle.RelationKeyId.String())
-		targetId := pbtypes.GetString(r, bundle.RelationKeyTargetSpaceId.String())
+		id := r.GetString(bundle.RelationKeyId)
+		targetId := r.GetString(bundle.RelationKeyTargetSpaceId)
 		s.spaceViewTargetIds[id] = targetId
 		s.spaceIds = append(s.spaceIds, targetId)
 	}

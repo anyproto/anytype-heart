@@ -14,7 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	pbMiddle "github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -83,13 +83,13 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 	techSpace := c.getter.TechSpace()
 	res, err := c.client.StatusCheck(ctx, techSpace.Id())
 	if errors.Is(err, coordinatorproto.ErrSpaceNotExists) {
-		header, sErr := techSpace.Storage().SpaceHeader()
+		state, sErr := techSpace.Storage().StateStorage().GetState(ctx)
 		if sErr != nil {
 			return sErr
 		}
 		payload := coordinatorclient.SpaceSignPayload{
-			SpaceId:     header.Id,
-			SpaceHeader: header.RawHeader,
+			SpaceId:     techSpace.Id(),
+			SpaceHeader: state.SpaceHeader,
 			OldAccount:  c.wallet.GetOldAccountKey(),
 			Identity:    c.wallet.GetAccountPrivkey(),
 		}
@@ -130,17 +130,11 @@ func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayl
 	}
 
 	c.lastStatus = s.StatusType
-	ev := &pbMiddle.Event{
-		Messages: []*pbMiddle.EventMessage{
-			{
-				Value: &pbMiddle.EventMessageValueOfAccountUpdate{
-					AccountUpdate: &pbMiddle.EventAccountUpdate{
-						Status: s,
-					},
-				},
-			},
+	ev := event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountUpdate{
+		AccountUpdate: &pb.EventAccountUpdate{
+			Status: s,
 		},
-	}
+	})
 	if c.eventSender != nil {
 		c.eventSender.Broadcast(ev)
 	}

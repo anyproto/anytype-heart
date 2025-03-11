@@ -10,16 +10,15 @@ import (
 	"strings"
 
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -39,7 +38,7 @@ type MD struct {
 	fileHashes  []string
 	imageHashes []string
 
-	knownDocs map[string]*types.Struct
+	knownDocs map[string]*domain.Details
 
 	mw *marksWriter
 	fn FileNamer
@@ -218,13 +217,17 @@ func (h *MD) renderFile(buf writer, in *renderState, b *model.Block) {
 	if file == nil || file.State != model.BlockContentFile_Done {
 		return
 	}
-	name := escape.MarkdownCharacters(html.EscapeString(file.Name))
+	title, filename, ok := h.getLinkInfo(file.TargetObjectId)
+	if !ok {
+		filename = h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name))
+		title = filepath.Base(file.Name)
+	}
 	buf.WriteString(in.indent)
 	if file.Type != model.BlockContentFile_Image {
-		fmt.Fprintf(buf, "[%s](%s)    \n", name, h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name)))
+		fmt.Fprintf(buf, "[%s](%s)    \n", title, filename)
 		h.fileHashes = append(h.fileHashes, file.TargetObjectId)
 	} else {
-		fmt.Fprintf(buf, "![%s](%s)    \n", name, h.fn.Get("files", file.TargetObjectId, filepath.Base(file.Name), filepath.Ext(file.Name)))
+		fmt.Fprintf(buf, "![%s](%s)    \n", title, filename)
 		h.imageHashes = append(h.imageHashes, file.TargetObjectId)
 	}
 }
@@ -384,7 +387,7 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 	return h.mw.Init(text)
 }
 
-func (h *MD) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	h.knownDocs = docs
 	return h
 }
@@ -394,13 +397,28 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 	if !ok {
 		return
 	}
-	title = pbtypes.GetString(info, bundle.RelationKeyName.String())
+	title = info.GetString(bundle.RelationKeyName)
+	// if object is a file
+	layout := info.GetInt64(bundle.RelationKeyLayout)
+	if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) || layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) || layout == int64(model.ObjectType_pdf) {
+		ext := info.GetString(bundle.RelationKeyFileExt)
+		if ext != "" {
+			ext = "." + ext
+		}
+		title = strings.TrimSuffix(title, ext)
+		if title == "" {
+			title = docId
+		}
+		filename = h.fn.Get("files", docId, title, ext)
+		return
+	}
 	if title == "" {
-		title = pbtypes.GetString(info, bundle.RelationKeySnippet.String())
+		title = info.GetString(bundle.RelationKeySnippet)
 	}
 	if title == "" {
 		title = docId
 	}
+
 	filename = h.fn.Get("", docId, title, h.Ext())
 	return
 }

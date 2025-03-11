@@ -1,7 +1,6 @@
 package relationutils
 
 import (
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -9,14 +8,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ObjectType struct {
 	*model.ObjectType
 }
 
-func (ot *ObjectType) BundledTypeDetails() *types.Struct {
+func (ot *ObjectType) BundledTypeDetails() *domain.Details {
 	var (
 		relationIds []string
 	)
@@ -27,9 +25,9 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		relationIds = append(relationIds, bundle.RelationKeyDescription.BundledURL())
 	}
 
-	var sbTypes = make([]int, 0, len(ot.Types))
+	sbTypes := make([]float64, 0, len(ot.Types))
 	for _, t := range ot.Types {
-		sbTypes = append(sbTypes, int(t))
+		sbTypes = append(sbTypes, float64(t))
 	}
 
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, ot.Key)
@@ -37,23 +35,25 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		return nil
 	}
 
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.BundledURL()),
-		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
-		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
-		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
-		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
-		bundle.RelationKeyUniqueKey.String():            pbtypes.String(uk.Marshal()),
-		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationIds),
-		bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(ot.Layout)),
-		bundle.RelationKeyDescription.String():          pbtypes.String(ot.Description),
-		bundle.RelationKeyId.String():                   pbtypes.String(ot.Url),
-		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
-		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
-		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
-		bundle.RelationKeySmartblockTypes.String():      pbtypes.IntList(sbTypes...),
-		bundle.RelationKeySpaceId.String():              pbtypes.String(addr.AnytypeMarketplaceWorkspace),
-		bundle.RelationKeyOrigin.String():               pbtypes.Int64(int64(model.ObjectOrigin_builtin)),
-		bundle.RelationKeyRevision.String():             pbtypes.Int64(ot.Revision),
-	}}
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyType, bundle.TypeKeyObjectType.BundledURL())
+	det.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
+	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
+	det.SetString(bundle.RelationKeyName, ot.Name)
+	det.SetString(bundle.RelationKeyCreator, addr.AnytypeProfileId)
+	det.SetString(bundle.RelationKeyUniqueKey, uk.Marshal())
+	det.SetStringList(bundle.RelationKeyRecommendedRelations, relationIds)
+	det.SetInt64(bundle.RelationKeyRecommendedLayout, int64(ot.Layout))
+	det.SetString(bundle.RelationKeyDescription, ot.Description)
+	det.SetString(bundle.RelationKeyId, ot.Url)
+	det.SetBool(bundle.RelationKeyIsHidden, ot.Hidden)
+	det.SetBool(bundle.RelationKeyIsArchived, false)
+	det.SetBool(bundle.RelationKeyIsReadonly, ot.Readonly)
+	det.SetFloat64List(bundle.RelationKeySmartblockTypes, sbTypes)
+	det.SetString(bundle.RelationKeySpaceId, addr.AnytypeMarketplaceWorkspace)
+	det.SetInt64(bundle.RelationKeyOrigin, int64(model.ObjectOrigin_builtin))
+	det.SetInt64(bundle.RelationKeyRevision, ot.Revision)
+	det.SetInt64(bundle.RelationKeyIconOption, ot.IconColor)
+	det.SetString(bundle.RelationKeyIconName, ot.IconName)
+	return det
 }

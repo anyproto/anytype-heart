@@ -9,16 +9,13 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
-	"github.com/cheggaaa/mb"
-	mb2 "github.com/cheggaaa/mb/v3"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pb"
@@ -26,9 +23,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -36,7 +33,7 @@ const CName = "subscription"
 
 var log = logging.Logger("anytype-mw-subscription")
 
-var batchTime = 50 * time.Millisecond
+var batchTime = 250 * time.Millisecond
 
 func New() Service {
 	return &service{}
@@ -45,8 +42,8 @@ func New() Service {
 type SubscribeRequest struct {
 	SpaceId string
 	SubId   string
-	Filters []*model.BlockContentDataviewFilter
-	Sorts   []*model.BlockContentDataviewSort
+	Filters []database.FilterRequest
+	Sorts   []database.SortRequest
 	Limit   int64
 	Offset  int64
 	// (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
@@ -63,25 +60,25 @@ type SubscribeRequest struct {
 	// Internal indicates that subscription will send events into message queue instead of global client's event system
 	Internal bool
 	// InternalQueue is used when Internal flag is set to true. If it's nil, new queue will be created
-	InternalQueue *mb2.MB[*pb.EventMessage]
+	InternalQueue *mb.MB[*pb.EventMessage]
 	AsyncInit     bool
 }
 
 type SubscribeResponse struct {
 	SubId        string
-	Records      []*types.Struct
-	Dependencies []*types.Struct
+	Records      []*domain.Details
+	Dependencies []*domain.Details
 	Counters     *pb.EventObjectSubscriptionCounters
 
 	// Used when Internal flag is set to true
-	Output *mb2.MB[*pb.EventMessage]
+	Output *mb.MB[*pb.EventMessage]
 }
 
 type Service interface {
 	Search(req SubscribeRequest) (resp *SubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
-	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
-	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
+	SubscribeIds(subId string, ids []string) (records []*domain.Details, err error)
+	SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error)
 	UnsubscribeAll() (err error)
@@ -94,7 +91,7 @@ type subscription interface {
 	init(entries []*entry) (err error)
 	counters() (prev, next int)
 	onChange(ctx *opCtx)
-	getActiveRecords() (res []*types.Struct)
+	getActiveRecords() (res []*domain.Details)
 	hasDep() bool
 	getDep() subscription
 	close()
@@ -119,13 +116,13 @@ type service struct {
 
 type internalSubOutput struct {
 	externallyManaged bool
-	queue             *mb2.MB[*pb.EventMessage]
+	queue             *mb.MB[*pb.EventMessage]
 }
 
-func newInternalSubOutput(queue *mb2.MB[*pb.EventMessage]) *internalSubOutput {
+func newInternalSubOutput(queue *mb.MB[*pb.EventMessage]) *internalSubOutput {
 	if queue == nil {
 		return &internalSubOutput{
-			queue: mb2.New[*pb.EventMessage](0),
+			queue: mb.New[*pb.EventMessage](0),
 		}
 	}
 	return &internalSubOutput{
@@ -202,11 +199,11 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	return spaceSubs.SubscribeIdsReq(req)
 }
 
-func (s *service) SubscribeIds(subId string, ids []string) (records []*types.Struct, err error) {
+func (s *service) SubscribeIds(subId string, ids []string) (records []*domain.Details, err error) {
 	return
 }
 
-func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	// todo: removed temp fix after we will have session-scoped subscriptions
 	// this is to prevent multiple subscriptions with the same id in different spaces
 	err := s.Unsubscribe(req.SubId)
@@ -272,17 +269,17 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 			subscriptionKeys:  make([]string, 0, 20),
 			subscriptions:     make(map[string]subscription, 20),
 			customOutput:      map[string]*internalSubOutput{},
-			recBatch:          mb.New(0),
+			recBatch:          mb.New[database.Record](0),
 			objectStore:       s.objectStore.SpaceIndex(spaceId),
 			kanban:            s.kanban,
 			collectionService: s.collectionService,
 			eventSender:       s.eventSender,
-			ctxBuf:            &opCtx{c: cache},
+			ctxBuf:            &opCtx{spaceId: spaceId, c: cache},
 			arenaPool:         s.arenaPool,
 		}
 		spaceSubs.ds = newDependencyService(spaceSubs)
 		spaceSubs.initDebugger()
-		err := spaceSubs.Run(context.Background())
+		err := spaceSubs.Run()
 		if err != nil {
 			return nil, fmt.Errorf("run space subscriptions: %w", err)
 		}
@@ -296,7 +293,7 @@ type spaceSubscriptions struct {
 	subscriptions    map[string]subscription
 
 	customOutput map[string]*internalSubOutput
-	recBatch     *mb.MB
+	recBatch     *mb.MB[database.Record]
 
 	// Deps
 	objectStore       spaceindex.Store
@@ -311,12 +308,19 @@ type spaceSubscriptions struct {
 
 	subDebugger *subDebugger
 	arenaPool   *anyenc.ArenaPool
+	ctx         context.Context
+	cancelCtx   context.CancelFunc
 }
 
-func (s *spaceSubscriptions) Run(context.Context) (err error) {
+func (s *spaceSubscriptions) Run() (err error) {
+	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
+	var batchErr error
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
-		s.recBatch.Add(rec)
+		batchErr = s.recBatch.Add(s.ctx, rec)
 	})
+	if batchErr != nil {
+		return batchErr
+	}
 	go s.recordsHandler()
 	return
 }
@@ -401,7 +405,7 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 }
 
 func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, entries []*entry, filterDepIds []string) (*SubscribeResponse, error) {
-	sub := s.newSortedSub(req.SubId, req.SpaceId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	sub := s.newSortedSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
 	} else {
@@ -416,7 +420,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 			nestedCount++
 			f, ok := nestedFilter.(*database.FilterNestedIn)
 			if ok {
-				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), req.SpaceId, []string{"id"}, f.FilterForNestedObjects, nil, 0, 0)
+				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), req.SpaceId, []domain.RelationKey{bundle.RelationKeyId}, f.FilterForNestedObjects, nil, 0, 0)
 				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.FilterForNestedObjects}, childSub)
 				if err != nil {
 					return fmt.Errorf("init nested sub %s entries: %w", childSub.id, err)
@@ -433,7 +437,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		}
 	}
 
-	var outputQueue *mb2.MB[*pb.EventMessage]
+	var outputQueue *mb.MB[*pb.EventMessage]
 	if req.Internal {
 		output := newInternalSubOutput(req.InternalQueue)
 		outputQueue = output.queue
@@ -459,7 +463,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 	s.setSubscription(sub.id, sub)
 	prev, next := sub.counters()
 
-	var depRecords, subRecords []*types.Struct
+	var depRecords, subRecords []*domain.Details
 
 	if !req.AsyncInit {
 		subRecords = sub.getActiveRecords()
@@ -500,13 +504,13 @@ func queryEntries(objectStore spaceindex.Store, f *database.Filters) ([]*entry, 
 	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
-		entries = append(entries, newEntry(pbtypes.GetString(r.Details, "id"), r.Details))
+		entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 	}
 	return entries, nil
 }
 
 func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req.SubId, req.SpaceId, req.CollectionId, req.Keys, filterDepIds, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
+	sub, err := s.newCollectionSub(req.SubId, req.SpaceId, req.CollectionId, slice.StringsInto[domain.RelationKey](req.Keys), filterDepIds, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
 	if err != nil {
 		return nil, err
 	}
@@ -516,14 +520,14 @@ func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *dat
 	s.setSubscription(sub.sortedSub.id, sub)
 	prev, next := sub.counters()
 
-	var depRecords, subRecords []*types.Struct
+	var depRecords, subRecords []*domain.Details
 	subRecords = sub.getActiveRecords()
 
 	if sub.sortedSub.depSub != nil && !sub.sortedSub.disableDep {
 		depRecords = sub.sortedSub.depSub.getActiveRecords()
 	}
 
-	var outputQueue *mb2.MB[*pb.EventMessage]
+	var outputQueue *mb.MB[*pb.EventMessage]
 	if req.Internal {
 		output := newInternalSubOutput(req.InternalQueue)
 		outputQueue = output.queue
@@ -559,17 +563,17 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	sub := s.newSimpleSub(req.SubId, req.SpaceId, req.Keys, !req.NoDepSubscription)
+	sub := s.newSimpleSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), !req.NoDepSubscription)
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
-		entries = append(entries, newEntry(pbtypes.GetString(r.Details, "id"), r.Details))
+		entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 	}
 	if err = sub.init(entries); err != nil {
 		return
 	}
 	s.setSubscription(sub.id, sub)
 
-	var depRecords, subRecords []*types.Struct
+	var depRecords, subRecords []*domain.Details
 	subRecords = sub.getActiveRecords()
 
 	if sub.depSub != nil {
@@ -578,13 +582,30 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 
 	return &pb.RpcObjectSubscribeIdsResponse{
 		Error:        &pb.RpcObjectSubscribeIdsResponseError{},
-		Records:      subRecords,
-		Dependencies: depRecords,
+		Records:      detailsToProtos(subRecords),
+		Dependencies: detailsToProtos(depRecords),
 		SubId:        req.SubId,
 	}, nil
 }
 
-func (s *spaceSubscriptions) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+func detailsToProtos(detailsList []*domain.Details) []*types.Struct {
+	res := make([]*types.Struct, 0, len(detailsList))
+	for _, d := range detailsList {
+		res = append(res, d.ToProto())
+	}
+	return res
+}
+
+type SubscribeGroupsRequest struct {
+	SpaceId      string
+	SubId        string
+	RelationKey  string
+	Filters      []database.FilterRequest
+	Source       []string
+	CollectionId string
+}
+
+func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	subId := ""
 
 	s.m.Lock()
@@ -653,14 +674,14 @@ func (s *spaceSubscriptions) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequ
 
 		var sub subscription
 		if colObserver != nil {
-			sub = s.newCollectionGroupSub(subId, req.RelationKey, flt, groups, colObserver)
+			sub = s.newCollectionGroupSub(subId, domain.RelationKey(req.RelationKey), flt, groups, colObserver)
 		} else {
-			sub = s.newGroupSub(subId, req.RelationKey, flt, groups)
+			sub = s.newGroupSub(subId, domain.RelationKey(req.RelationKey), flt, groups)
 		}
 
 		entries := make([]*entry, 0, len(tagGrouper.Records))
 		for _, r := range tagGrouper.Records {
-			entries = append(entries, newEntry(pbtypes.GetString(r.Details, "id"), r.Details))
+			entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 		}
 
 		if err := sub.init(entries); err != nil {
@@ -678,7 +699,7 @@ func (s *spaceSubscriptions) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequ
 	}, nil
 }
 
-func (s *spaceSubscriptions) SubscribeIds(subId string, ids []string) (records []*types.Struct, err error) {
+func (s *spaceSubscriptions) SubscribeIds(subId string, ids []string) (records []*domain.Details, err error) {
 	return
 }
 
@@ -718,7 +739,7 @@ func (s *spaceSubscriptions) UnsubscribeAndReturnIds(subId string) ([]string, er
 		recs := sub.getActiveRecords()
 		ids := make([]string, 0, len(recs))
 		for _, rec := range recs {
-			ids = append(ids, pbtypes.GetString(rec, bundle.RelationKeyId.String()))
+			ids = append(ids, rec.GetString(bundle.RelationKeyId))
 		}
 		err := s.unsubscribe(subId, sub)
 		if err != nil {
@@ -757,15 +778,18 @@ func (s *spaceSubscriptions) recordsHandler() {
 		}
 	}
 	for {
-		records := s.recBatch.Wait()
+		records, err := s.recBatch.Wait(s.ctx)
+		if err != nil {
+			return
+		}
 		if len(records) == 0 {
 			return
 		}
 		for _, rec := range records {
-			id := pbtypes.GetString(rec.(database.Record).Details, "id")
+			id := rec.Details.GetString(bundle.RelationKeyId)
 			// nil previous version
 			nilIfExists(id)
-			entries = append(entries, newEntry(id, rec.(database.Record).Details))
+			entries = append(entries, newEntry(id, rec.Details))
 		}
 		// filter nil entries
 		filtered := entries[:0]
@@ -830,7 +854,7 @@ func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(c
 				s.eventSender.Broadcast(&pb.Event{Messages: msgs})
 			} else {
 				err := s.customOutput[id].add(msgs...)
-				if err != nil && !errors.Is(err, mb2.ErrClosed) {
+				if err != nil && !errors.Is(err, mb.ErrClosed) {
 					log.With("subId", id, "error", err).Errorf("push to output")
 				}
 			}
@@ -867,10 +891,10 @@ func (s *spaceSubscriptions) filtersFromSource(spaceId string, sources []string)
 	}
 
 	if len(typeUniqueKeys) > 0 {
-		nestedFiler, err := database.MakeFilter("", &model.BlockContentDataviewFilter{
+		nestedFiler, err := database.MakeFilter("", database.FilterRequest{
 			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.StringList(typeUniqueKeys),
+			Value:       domain.StringList(typeUniqueKeys),
 		}, s.objectStore)
 		if err != nil {
 			return nil, fmt.Errorf("make nested filter: %w", err)
@@ -880,16 +904,16 @@ func (s *spaceSubscriptions) filtersFromSource(spaceId string, sources []string)
 
 	for _, relKey := range relKeys {
 		relTypeFilter = append(relTypeFilter, database.FilterExists{
-			Key: relKey,
+			Key: domain.RelationKey(relKey),
 		})
 	}
 	return relTypeFilter, nil
 }
 
-func (s *spaceSubscriptions) depIdsFromFilter(spaceId string, filters []*model.BlockContentDataviewFilter) (depIds []string) {
+func (s *spaceSubscriptions) depIdsFromFilter(spaceId string, filters []database.FilterRequest) (depIds []string) {
 	for _, f := range filters {
 		if s.ds.isRelationObject(spaceId, f.RelationKey) {
-			for _, id := range pbtypes.GetStringListValue(f.Value) {
+			for _, id := range f.Value.StringList() {
 				if slice.FindPos(depIds, id) == -1 && id != "" {
 					depIds = append(depIds, id)
 				}
@@ -902,6 +926,9 @@ func (s *spaceSubscriptions) depIdsFromFilter(spaceId string, filters []*model.B
 func (s *spaceSubscriptions) Close(ctx context.Context) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.cancelCtx != nil {
+		s.cancelCtx()
+	}
 	s.recBatch.Close()
 	for subId, sub := range s.subscriptions {
 		sub.close()

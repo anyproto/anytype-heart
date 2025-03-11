@@ -151,9 +151,11 @@ var filesLayouts = map[model.ObjectTypeLayout]struct{}{
 
 func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []ftsearch.SearchDoc, err error) {
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
+	var fulltextSkipped bool
 	err = cache.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
-		indexDetails, _ := sb.Type().Indexable()
-		if !indexDetails {
+		fulltext, _, _ := sb.Type().Indexable()
+		if !fulltext {
+			fulltextSkipped = true
 			return nil
 		}
 
@@ -161,13 +163,26 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
 				continue
 			}
-			val := pbtypes.GetString(sb.Details(), rel.Key)
+			val := sb.Details().GetString(domain.RelationKey(rel.Key))
 			if val == "" {
-				continue
+				val = sb.LocalDetails().GetString(domain.RelationKey(rel.Key))
+				if val == "" {
+					continue
+				}
 			}
 			// skip readonly and hidden system relations
 			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
-				if bundledRel.ReadOnly || bundledRel.Hidden && rel.Key != bundle.RelationKeyName.String() {
+				layout, _ := sb.Layout()
+				skip := bundledRel.ReadOnly || bundledRel.Hidden
+				if rel.Key == bundle.RelationKeyName.String() {
+					skip = false
+				}
+				if layout == model.ObjectType_note && rel.Key == bundle.RelationKeySnippet.String() {
+					// index snippet only for notes, so we will be able to do fast prefix queries
+					skip = false
+				}
+
+				if skip {
 					continue
 				}
 			}
@@ -221,6 +236,16 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 
 		return nil
 	})
+	if fulltextSkipped {
+		// todo: this should be removed. objects which is not supposed to be added to fulltext index should not be added to the queue
+		// but now it happens in the ftInit that some objects still can be added to the queue
+		// we need to avoid TryRemoveFromCache in this case
+		return docs, nil
+	}
+	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
+	if cacheErr != nil {
+		log.With("objectId", id).Errorf("object cache remove: %v", err)
+	}
 
 	return docs, err
 }

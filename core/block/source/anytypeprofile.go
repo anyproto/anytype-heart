@@ -3,15 +3,13 @@ package source
 import (
 	"context"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // TODO Is it used?
@@ -45,17 +43,18 @@ func (v *anytypeProfile) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeAnytypeProfile
 }
 
-func (v *anytypeProfile) getDetails() (p *types.Struct) {
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String("Anytype"),
-		bundle.RelationKeyDescription.String(): pbtypes.String("Authored by Anytype team"),
-		bundle.RelationKeyIconImage.String():   pbtypes.String("bafybeihdxbwosreebqthjccgjygystk2mgg3ebrctv2j36xghaawnqrz5e"),
-		bundle.RelationKeyId.String():          pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false),
-		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(true),
-		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_profile)),
-	}}
+func (v *anytypeProfile) getDetails() (p *domain.Details) {
+	det := domain.NewDetails()
+
+	det.SetString(bundle.RelationKeyName, "Anytype")
+	det.SetString(bundle.RelationKeyDescription, "Authored by Anytype team")
+	det.SetString(bundle.RelationKeyIconImage, "bafybeihdxbwosreebqthjccgjygystk2mgg3ebrctv2j36xghaawnqrz5e")
+	det.SetString(bundle.RelationKeyId, v.id)
+	det.SetBool(bundle.RelationKeyIsReadonly, true)
+	det.SetBool(bundle.RelationKeyIsArchived, false)
+	det.SetBool(bundle.RelationKeyIsHidden, true)
+	det.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_profile))
+	return det
 }
 
 func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -68,10 +67,6 @@ func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, e
 	// todo: add object type
 	// s.SetObjectTypeKey(v.coreService.PredefinedObjects(v.spaceID).SystemTypes[bundle.TypeKeyDate])
 	return s, nil
-}
-
-func (v *anytypeProfile) ReadMeta(ctx context.Context, r ChangeReceiver) (doc state.Doc, err error) {
-	return v.ReadDoc(ctx, r, false)
 }
 
 func (v *anytypeProfile) Close() (err error) {

@@ -1,20 +1,21 @@
 package database
 
 import (
+	"time"
+
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	time_util "github.com/anyproto/anytype-heart/util/time"
+	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
 type Order interface {
-	Compare(a, b *types.Struct) int
+	Compare(a, b *domain.Details) int
 	AnystoreSort() query.Sort
 }
 
@@ -23,13 +24,13 @@ type ObjectStore interface {
 	SpaceId() string
 	Query(q Query) (records []Record, err error)
 	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
-	GetRelationFormatByKey(key string) (model.RelationFormat, error)
-	ListRelationOptions(relationKey string) (options []*model.RelationOption, err error)
+	GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error)
+	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 }
 
 type SetOrder []Order
 
-func (so SetOrder) Compare(a, b *types.Struct) int {
+func (so SetOrder) Compare(a, b *domain.Details) int {
 	for _, o := range so {
 		if comp := o.Compare(a, b); comp != 0 {
 			return comp
@@ -51,7 +52,7 @@ func (so SetOrder) AnystoreSort() query.Sort {
 
 type KeyOrder struct {
 	SpaceID         string
-	Key             string
+	Key             domain.RelationKey
 	Type            model.BlockContentDataviewSortType
 	EmptyPlacement  model.BlockContentDataviewSortEmptyType
 	relationFormat  model.RelationFormat
@@ -71,13 +72,14 @@ func (ko *KeyOrder) ensureCollator() {
 	}
 }
 
-func (ko *KeyOrder) Compare(a, b *types.Struct) int {
-	av := pbtypes.Get(a, ko.Key)
-	bv := pbtypes.Get(b, ko.Key)
+func (ko *KeyOrder) Compare(a, b *domain.Details) int {
+	av := a.Get(ko.Key)
+	bv := b.Get(ko.Key)
 
 	av, bv = ko.tryExtractSnippet(a, b, av, bv)
 	av, bv = ko.tryExtractDateTime(av, bv)
 	av, bv = ko.tryExtractTag(av, bv)
+	av, bv = ko.tryExtractBool(av, bv)
 
 	comp := ko.tryCompareStrings(av, bv)
 	if comp == 0 {
@@ -111,6 +113,8 @@ func (ko *KeyOrder) AnystoreSort() query.Sort {
 		return ko.basicSort(anyenc.TypeString)
 	case model.RelationFormat_tag, model.RelationFormat_status:
 		return ko.tagStatusSort()
+	case model.RelationFormat_checkbox:
+		return ko.boolSort()
 	default:
 		return ko.basicSort(anyenc.TypeString)
 	}
@@ -123,9 +127,9 @@ func (ko *KeyOrder) basicSort(valType anyenc.Type) query.Sort {
 		return ko.emptyPlacementSort(valType)
 	} else {
 		return &query.SortField{
-			Path:    []string{ko.Key},
+			Path:    []string{string(ko.Key)},
 			Reverse: ko.Type == model.BlockContentDataviewSort_Desc,
-			Field:   ko.Key,
+			Field:   string(ko.Key),
 		}
 	}
 }
@@ -139,7 +143,7 @@ func (ko *KeyOrder) tagStatusSort() query.Sort {
 	}
 	return tagStatusSort{
 		arena:       ko.arena,
-		relationKey: ko.Key,
+		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
 		idToName:    ko.Options,
@@ -149,7 +153,7 @@ func (ko *KeyOrder) tagStatusSort() query.Sort {
 func (ko *KeyOrder) emptyPlacementSort(valType anyenc.Type) query.Sort {
 	return emptyPlacementSort{
 		arena:       ko.arena,
-		relationKey: ko.Key,
+		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
 		valType:     valType,
@@ -159,7 +163,7 @@ func (ko *KeyOrder) emptyPlacementSort(valType anyenc.Type) query.Sort {
 func (ko *KeyOrder) dateOnlySort() query.Sort {
 	return dateOnlySort{
 		arena:       ko.arena,
-		relationKey: ko.Key,
+		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
 	}
@@ -171,24 +175,26 @@ func (ko *KeyOrder) textSort() query.Sort {
 		arena:          ko.arena,
 		collator:       ko.collator,
 		collatorBuffer: ko.collatorBuffer,
-		relationKey:    ko.Key,
+		relationKey:    string(ko.Key),
 		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:          ko.EmptyPlacement,
 	}
 }
 
-func (ko *KeyOrder) tryAdjustEmptyPositions(av *types.Value, bv *types.Value, comp int) int {
+func (ko *KeyOrder) boolSort() query.Sort {
+	return boolSort{
+		arena:       ko.arena,
+		relationKey: ko.Key.String(),
+		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
+	}
+}
+
+func (ko *KeyOrder) tryAdjustEmptyPositions(av domain.Value, bv domain.Value, comp int) int {
 	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {
 		return comp
 	}
-	_, aNull := av.GetKind().(*types.Value_NullValue)
-	_, bNull := bv.GetKind().(*types.Value_NullValue)
-	if av == nil {
-		aNull = true
-	}
-	if bv == nil {
-		bNull = true
-	}
+	aNull := !av.Ok()
+	bNull := !bv.Ok()
 	if aNull && bNull {
 		comp = 0
 	} else if aNull {
@@ -203,22 +209,22 @@ func (ko *KeyOrder) tryAdjustEmptyPositions(av *types.Value, bv *types.Value, co
 	return comp
 }
 
-func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
+func (ko *KeyOrder) tryCompareStrings(av domain.Value, bv domain.Value) int {
 	comp := 0
-	_, aString := av.GetKind().(*types.Value_StringValue)
-	_, bString := bv.GetKind().(*types.Value_StringValue)
+	aStringVal, aString := av.TryString()
+	bStringVal, bString := bv.TryString()
 	if ko.isSpecialSortOfEmptyValuesNeed(av, bv, aString, bString) {
-		if av.GetStringValue() == "" && bv.GetStringValue() != "" {
+		if aStringVal == "" && bStringVal != "" {
 			comp = 1
-		} else if av.GetStringValue() != "" && bv.GetStringValue() == "" {
+		} else if aStringVal != "" && bStringVal == "" {
 			comp = -1
 		}
 	}
 	if aString && bString && comp == 0 && !ko.disableCollator {
 		ko.ensureCollator()
-		comp = ko.collator.CompareString(av.GetStringValue(), bv.GetStringValue())
+		comp = ko.collator.CompareString(aStringVal, bStringVal)
 	}
-	if av.GetStringValue() == "" || bv.GetStringValue() == "" {
+	if aStringVal == "" || bStringVal == "" {
 		comp = ko.tryFlipComp(comp)
 	}
 	return comp
@@ -232,12 +238,24 @@ func (ko *KeyOrder) tryFlipComp(comp int) int {
 	return comp
 }
 
-func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av *types.Value, bv *types.Value, aString bool, bString bool) bool {
+func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av domain.Value, bv domain.Value, aString bool, bString bool) bool {
 	return (ko.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified) &&
-		(aString || av == nil) && (bString || bv == nil)
+		(aString || !av.Ok()) && (bString || !bv.Ok())
 }
 
-func (ko *KeyOrder) tryExtractTag(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+func (ko *KeyOrder) tryExtractBool(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
+	if ko.relationFormat == model.RelationFormat_checkbox {
+		if !av.Ok() {
+			av = domain.Bool(false)
+		}
+		if !bv.Ok() {
+			bv = domain.Bool(false)
+		}
+	}
+	return av, bv
+}
+
+func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
 	if ko.relationFormat == model.RelationFormat_tag || ko.relationFormat == model.RelationFormat_status {
 		av = ko.GetOptionValue(av)
 		bv = ko.GetOptionValue(bv)
@@ -245,36 +263,40 @@ func (ko *KeyOrder) tryExtractTag(av *types.Value, bv *types.Value) (*types.Valu
 	return av, bv
 }
 
-func (ko *KeyOrder) tryExtractDateTime(av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+func (ko *KeyOrder) tryExtractDateTime(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
 	if ko.relationFormat == model.RelationFormat_date && !ko.IncludeTime {
-		av = time_util.CutValueToDay(av)
-		bv = time_util.CutValueToDay(bv)
+		if v, ok := av.TryFloat64(); ok {
+			av = domain.Int64(timeutil.CutToDay(time.Unix(int64(v), 0)).Unix())
+		}
+		if v, ok := bv.TryFloat64(); ok {
+			bv = domain.Int64(timeutil.CutToDay(time.Unix(int64(v), 0)).Unix())
+		}
 	}
 	return av, bv
 }
 
-func (ko *KeyOrder) tryExtractSnippet(a *types.Struct, b *types.Struct, av *types.Value, bv *types.Value) (*types.Value, *types.Value) {
+func (ko *KeyOrder) tryExtractSnippet(a *domain.Details, b *domain.Details, av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
 	av = ko.trySubstituteSnippet(a, av)
 	bv = ko.trySubstituteSnippet(b, bv)
 	return av, bv
 }
 
-func (ko *KeyOrder) trySubstituteSnippet(getter *types.Struct, value *types.Value) *types.Value {
-	if ko.Key == bundle.RelationKeyName.String() && getLayout(getter) == model.ObjectType_note {
-		value = pbtypes.Get(getter, bundle.RelationKeyName.String())
-		if value == nil {
-			value = pbtypes.Get(getter, bundle.RelationKeySnippet.String())
+func (ko *KeyOrder) trySubstituteSnippet(getter *domain.Details, value domain.Value) domain.Value {
+	if ko.Key == bundle.RelationKeyName && getLayout(getter) == model.ObjectType_note {
+		_, ok := getter.TryString(bundle.RelationKeyName)
+		if !ok {
+			return getter.Get(bundle.RelationKeySnippet)
 		}
 	}
 	return value
 }
 
-func getLayout(getter *types.Struct) model.ObjectTypeLayout {
-	rawLayout := pbtypes.Get(getter, bundle.RelationKeyLayout.String()).GetNumberValue()
+func getLayout(getter *domain.Details) model.ObjectTypeLayout {
+	rawLayout := getter.GetInt64(bundle.RelationKeyResolvedLayout)
 	return model.ObjectTypeLayout(int32(rawLayout))
 }
 
-func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
+func (ko *KeyOrder) GetOptionValue(value domain.Value) domain.Value {
 	if ko.Options == nil {
 		ko.Options = make(map[string]string)
 	}
@@ -284,14 +306,14 @@ func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
 	}
 
 	res := ""
-	for _, optID := range pbtypes.GetStringListValue(value) {
+	for _, optID := range value.StringList() {
 		res += ko.Options[optID]
 	}
 
-	return pbtypes.String(res)
+	return domain.String(res)
 }
 
-func newCustomOrder(arena *anyenc.Arena, key string, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
+func newCustomOrder(arena *anyenc.Arena, key domain.RelationKey, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
 	return customOrder{
 		arena:        arena,
 		Key:          key,
@@ -302,7 +324,7 @@ func newCustomOrder(arena *anyenc.Arena, key string, idsIndices map[string]int, 
 
 type customOrder struct {
 	arena        *anyenc.Arena
-	Key          string
+	Key          domain.RelationKey
 	NeedOrderMap map[string]int
 	KeyOrd       *KeyOrder
 
@@ -316,7 +338,7 @@ func (co customOrder) AppendKey(k anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	}()
 
 	var rawValue string
-	if val := v.Get(co.Key); val != nil {
+	if val := v.Get(string(co.Key)); val != nil {
 		rawValue = string(val.MarshalTo(co.buf))
 	}
 	idx, ok := co.NeedOrderMap[rawValue]
@@ -334,7 +356,7 @@ func (co customOrder) Fields() []query.SortField {
 	return []query.SortField{
 		{
 			Field: "",
-			Path:  []string{co.Key},
+			Path:  []string{string(co.Key)},
 		},
 	}
 }
@@ -343,23 +365,23 @@ func (co customOrder) AnystoreSort() query.Sort {
 	return co
 }
 
-func (co customOrder) getStringVal(val *types.Value) string {
+func (co customOrder) getStringVal(val domain.Value) string {
 	defer func() {
 		co.arena.Reset()
 		co.buf = co.buf[:0]
 	}()
 
-	jsonVal := pbtypes.ProtoValueToAnyEnc(co.arena, val)
+	jsonVal := val.ToAnyEnc(co.arena)
 	if jsonVal == nil {
 		return ""
 	}
 	return string(jsonVal.MarshalTo(co.buf))
 }
 
-func (co customOrder) Compare(a, b *types.Struct) int {
+func (co customOrder) Compare(a, b *domain.Details) int {
 
-	aID, okA := co.NeedOrderMap[co.getStringVal(pbtypes.Get(a, co.Key))]
-	bID, okB := co.NeedOrderMap[co.getStringVal(pbtypes.Get(b, co.Key))]
+	aID, okA := co.NeedOrderMap[co.getStringVal(a.Get(co.Key))]
+	bID, okB := co.NeedOrderMap[co.getStringVal(b.Get(co.Key))]
 
 	if okA && okB {
 		if aID == bID {

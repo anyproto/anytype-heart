@@ -35,7 +35,7 @@ func (dp *dumbProgress) Cancel(string) error {
 	return nil
 }
 
-func (dp *dumbProgress) NewQueue(pb.ModelProcess, int) process.Queue {
+func (dp *dumbProgress) NewQueue(pb.ModelProcess, int, bool, process.NotificationService) process.Queue {
 	return nil
 }
 

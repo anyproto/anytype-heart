@@ -3,10 +3,6 @@ package bookmark
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -14,11 +10,11 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
@@ -31,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -41,8 +36,13 @@ const CName = "bookmark"
 type ContentFuture func() *bookmark.ObjectContent
 
 type Service interface {
-	CreateObjectAndFetch(ctx context.Context, spaceId string, details *types.Struct) (objectID string, newDetails *types.Struct, err error)
-	CreateBookmarkObject(ctx context.Context, spaceId string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
+	CreateObjectAndFetch(
+		ctx context.Context, spaceId, templateId string, details *domain.Details,
+	) (objectID string, newDetails *domain.Details, err error)
+	CreateBookmarkObject(
+		ctx context.Context, spaceId, templateId string, details *domain.Details, getContent ContentFuture,
+	) (objectId string, newDetails *domain.Details, err error)
+
 	UpdateObject(objectId string, getContent *bookmark.ObjectContent) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
 	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
@@ -52,13 +52,15 @@ type Service interface {
 	app.Component
 }
 
-type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
-}
+type (
+	ObjectCreator interface {
+		CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
+	}
 
-type DetailsSetter interface {
-	SetDetails(ctx session.Context, objectId string, details []*model.Detail) (err error)
-}
+	DetailsSetter interface {
+		SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error)
+	}
+)
 
 type service struct {
 	detailsSetter       DetailsSetter
@@ -68,6 +70,7 @@ type service struct {
 	tempDirService      core.TempDirProvider
 	spaceService        space.Service
 	fileUploaderFactory fileuploader.Service
+	templateService     template.Service
 }
 
 func New() Service {
@@ -76,12 +79,13 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.detailsSetter = app.MustComponent[DetailsSetter](a)
-	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
+	s.creator = app.MustComponent[ObjectCreator](a)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	s.fileUploaderFactory = app.MustComponent[fileuploader.Service](a)
+	s.templateService = app.MustComponent[template.Service](a)
 	return nil
 }
 
@@ -92,9 +96,9 @@ func (s *service) Name() (name string) {
 var log = logging.Logger("anytype-mw-bookmark")
 
 func (s *service) CreateObjectAndFetch(
-	ctx context.Context, spaceId string, details *types.Struct,
-) (objectID string, newDetails *types.Struct, err error) {
-	source := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	ctx context.Context, spaceId, templateId string, details *domain.Details,
+) (objectID string, newDetails *domain.Details, err error) {
+	source := details.GetString(bundle.RelationKeySource)
 	var res ContentFuture
 	if source != "" {
 		u, err := uri.NormalizeURI(source)
@@ -107,17 +111,17 @@ func (s *service) CreateObjectAndFetch(
 			return nil
 		}
 	}
-	return s.CreateBookmarkObject(ctx, spaceId, details, res)
+	return s.CreateBookmarkObject(ctx, spaceId, templateId, details, res)
 }
 
 func (s *service) CreateBookmarkObject(
-	ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture,
-) (objectId string, objectDetails *types.Struct, err error) {
-	if details == nil || details.Fields == nil {
+	ctx context.Context, spaceId, templateId string, details *domain.Details, getContent ContentFuture,
+) (objectId string, objectDetails *domain.Details, err error) {
+	if details == nil {
 		return "", nil, fmt.Errorf("empty details")
 	}
 
-	spc, err := s.spaceService.Get(ctx, spaceID)
+	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
@@ -125,25 +129,25 @@ func (s *service) CreateBookmarkObject(
 	if err != nil {
 		return "", nil, fmt.Errorf("get bookmark type id: %w", err)
 	}
-	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
+	url := details.GetString(bundle.RelationKeySource)
 
-	records, err := s.store.SpaceIndex(spaceID).Query(database.Query{
-		Sorts: []*model.BlockContentDataviewSort{
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Sorts: []database.SortRequest{
 			{
-				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+				RelationKey: bundle.RelationKeyLastModifiedDate,
 				Type:        model.BlockContentDataviewSort_Desc,
 			},
 		},
-		Filters: []*model.BlockContentDataviewFilter{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeySource.String(),
+				RelationKey: bundle.RelationKeySource,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(url),
+				Value:       domain.String(url),
 			},
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyType,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeId),
+				Value:       domain.String(typeId),
 			},
 		},
 		Limit: 1,
@@ -154,14 +158,23 @@ func (s *service) CreateBookmarkObject(
 
 	if len(records) > 0 {
 		rec := records[0]
-		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+		objectId = rec.Details.GetString(bundle.RelationKeyId)
 		objectDetails = rec.Details
 	} else {
-		creationState := state.NewDoc("", nil).(*state.State)
-		creationState.SetDetails(details)
+		creationState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{
+			SpaceId:                spaceId,
+			TemplateId:             templateId,
+			TypeId:                 typeId,
+			Layout:                 model.ObjectType_bookmark,
+			Details:                details,
+			WithTemplateValidation: true,
+		})
+		if err != nil {
+			log.Errorf("failed to build state for bookmark: %v", err)
+		}
 		objectId, objectDetails, err = s.creator.CreateSmartBlockFromState(
 			ctx,
-			spaceID,
+			spaceId,
 			[]domain.TypeKey{bundle.TypeKeyBookmark},
 			creationState,
 		)
@@ -183,25 +196,13 @@ func (s *service) CreateBookmarkObject(
 	return objectId, objectDetails, nil
 }
 
-func detailsFromContent(content *bookmark.ObjectContent) map[string]*types.Value {
-	return map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(content.BookmarkContent.Title),
-		bundle.RelationKeyDescription.String(): pbtypes.String(content.BookmarkContent.Description),
-		bundle.RelationKeySource.String():      pbtypes.String(content.BookmarkContent.Url),
-		bundle.RelationKeyPicture.String():     pbtypes.String(content.BookmarkContent.ImageHash),
-		bundle.RelationKeyIconImage.String():   pbtypes.String(content.BookmarkContent.FaviconHash),
-	}
-}
-
-func (s *service) UpdateObject(objectId string, getContent *bookmark.ObjectContent) error {
-	detailsMap := detailsFromContent(getContent)
-
-	details := make([]*model.Detail, 0, len(detailsMap))
-	for k, v := range detailsMap {
-		details = append(details, &model.Detail{
-			Key:   k,
-			Value: v,
-		})
+func (s *service) UpdateObject(objectId string, content *bookmark.ObjectContent) error {
+	details := []domain.Detail{
+		{Key: bundle.RelationKeyName, Value: domain.String(content.BookmarkContent.Title)},
+		{Key: bundle.RelationKeyDescription, Value: domain.String(content.BookmarkContent.Description)},
+		{Key: bundle.RelationKeySource, Value: domain.String(content.BookmarkContent.Url)},
+		{Key: bundle.RelationKeyPicture, Value: domain.String(content.BookmarkContent.ImageHash)},
+		{Key: bundle.RelationKeyIconImage, Value: domain.String(content.BookmarkContent.FaviconHash)},
 	}
 
 	return s.detailsSetter.SetDetails(nil, objectId, details)
@@ -280,7 +281,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := s.loadImage(spaceID, data.Title, data.ImageUrl)
+			hash, err := s.loadImage(spaceID, getFileNameFromURL(url, "cover"), data.ImageUrl)
 			if err != nil {
 				log.Errorf("load image: %s", err)
 				return
@@ -297,7 +298,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := s.loadImage(spaceID, "", data.FaviconUrl)
+			hash, err := s.loadImage(spaceID, getFileNameFromURL(url, "icon"), data.FaviconUrl)
 			if err != nil {
 				log.Errorf("load favicon: %s", err)
 				return
@@ -372,55 +373,35 @@ func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchP
 	return nil
 }
 
+func getFileNameFromURL(url, filename string) string {
+	u, err := uri.ParseURI(url)
+	if err != nil {
+		return ""
+	}
+	if u.Hostname() == "" {
+		return ""
+	}
+	var urlFileExt string
+	lastPath := strings.Split(u.Path, "/")
+	if len(lastPath) > 0 {
+		urlFileExt = filepath.Ext(lastPath[len(lastPath)-1])
+	}
+
+	source := strings.TrimPrefix(u.Hostname(), "www.")
+	source = strings.ReplaceAll(source, ".", "_")
+	if source != "" {
+		source += "_"
+	}
+	source += filename + urlFileExt
+	return source
+}
+
 func (s *service) loadImage(spaceId string, title, url string) (hash string, err error) {
 	uploader := s.fileUploaderFactory.NewUploader(spaceId, objectorigin.Bookmark())
 
-	tempDir := s.tempDirService.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download image: %s", resp.Status)
-	}
-
-	tmpFile, err := ioutil.TempFile(tempDir, "anytype_downloaded_file_*")
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(tmpFile.Name())
-
-	_, err = io.Copy(tmpFile, resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	_, err = tmpFile.Seek(0, io.SeekStart)
-	if err != nil {
-		return "", err
-	}
-
-	fileName := strings.Split(filepath.Base(url), "?")[0]
-	if value := resp.Header.Get("Content-Disposition"); value != "" {
-		contentDisposition := strings.Split(value, "filename=")
-		if len(contentDisposition) > 1 {
-			fileName = strings.Trim(contentDisposition[1], "\"")
-		}
-
-	}
-
-	if title != "" {
-		fileName = title
-	}
-	res := uploader.SetName(fileName).SetFile(tmpFile.Name()).SetImageKind(model.ImageKind_AutomaticallyAdded).Upload(ctx)
+	res := uploader.SetName(title).SetUrl(url).SetImageKind(model.ImageKind_AutomaticallyAdded).Upload(ctx)
 	return res.FileObjectId, res.Err
 }

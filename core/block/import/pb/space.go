@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type SpaceImport struct {
@@ -65,13 +64,13 @@ func (s *SpaceImport) ProvideCollection(
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
-	return item.SbType == smartblock.SmartBlockTypeSubObject || item.SbType == smartblock.SmartBlockTypeTemplate ||
-		item.SbType == smartblock.SmartBlockTypeRelation || item.SbType == smartblock.SmartBlockTypeObjectType ||
-		item.SbType == smartblock.SmartBlockTypeRelationOption
+	return item.Snapshot.SbType == smartblock.SmartBlockTypeSubObject ||
+		item.Snapshot.SbType == smartblock.SmartBlockTypeRelation || item.Snapshot.SbType == smartblock.SmartBlockTypeObjectType ||
+		item.Snapshot.SbType == smartblock.SmartBlockTypeRelationOption
 }
 
 func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
-	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot).(*state.State)
+	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot.ToProto()).(*state.State)
 	var (
 		objectsInWidget     []string
 		objectTypesToImport widget.ImportWidgetFlags
@@ -107,12 +106,12 @@ func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags
 			rootObjects = append(rootObjects, snapshot.Id)
 			continue
 		}
-		if pbtypes.GetBool(snapshot.Snapshot.Data.Details, bundle.RelationKeyIsFavorite.String()) {
+		if snapshot.Snapshot.Data.Details.GetBool(bundle.RelationKeyIsFavorite) {
 			rootObjects = append(rootObjects, snapshot.Id)
 			continue
 		}
-		if spaceDashboardID := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySpaceDashboardId.String()); spaceDashboardID != "" {
-			rootObjects = append(rootObjects, spaceDashboardID)
+		if ids := snapshot.Snapshot.Data.Details.GetStringList(bundle.RelationKeySpaceDashboardId); len(ids) > 0 {
+			rootObjects = append(rootObjects, ids...)
 			continue
 		}
 	}

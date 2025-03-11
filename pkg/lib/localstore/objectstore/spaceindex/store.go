@@ -8,7 +8,6 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -40,29 +39,28 @@ type Store interface {
 	QueryByIds(ids []string) (records []database.Record, err error)
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIds(q database.Query) (ids []string, total int, err error)
-	QueryIterate(q database.Query, proc func(details *types.Struct)) error
+	QueryIterate(q database.Query, proc func(details *domain.Details)) error
 
 	HasIds(ids []string) (exists []string, err error)
-	GetInfosByIds(ids []string) ([]*model.ObjectInfo, error)
-	List(includeArchived bool) ([]*model.ObjectInfo, error)
+	GetInfosByIds(ids []string) ([]*database.ObjectInfo, error)
+	List(includeArchived bool) ([]*database.ObjectInfo, error)
 
 	ListIds() ([]string, error)
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
-	UpdateObjectDetails(ctx context.Context, id string, details *types.Struct) error
+	UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error
 	SubscribeForAll(callback func(rec database.Record))
-
 	UpdateObjectLinks(ctx context.Context, id string, links []string) error
-	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
-	ModifyObjectDetails(id string, proc func(details *types.Struct) (*types.Struct, bool, error)) error
+	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
+	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error
 
 	DeleteObject(id string) error
 	DeleteDetails(ctx context.Context, ids []string) error
 	DeleteLinks(ids []string) error
 
-	GetDetails(id string) (*model.ObjectDetails, error)
-	GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
+	GetDetails(id string) (*domain.Details, error)
+	GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*domain.Details, error)
 	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
 
 	GetInboundLinksById(id string) ([]string, error)
@@ -75,13 +73,13 @@ type Store interface {
 
 	GetRelationLink(key string) (*model.RelationLink, error)
 	FetchRelationByKey(key string) (relation *relationutils.Relation, err error)
-	FetchRelationByKeys(keys ...string) (relations relationutils.Relations, err error)
+	FetchRelationByKeys(keys ...domain.RelationKey) (relations relationutils.Relations, err error)
 	FetchRelationByLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	ListAllRelations() (relations relationutils.Relations, err error)
 	GetRelationById(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (*model.Relation, error)
-	GetRelationFormatByKey(key string) (model.RelationFormat, error)
-	ListRelationOptions(relationKey string) (options []*model.RelationOption, err error)
+	GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error)
+	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 
 	GetObjectType(id string) (*model.ObjectType, error)
 
@@ -92,7 +90,7 @@ type Store interface {
 }
 
 type SourceDetailsFromID interface {
-	DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error)
+	DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error)
 }
 
 type FulltextQueue interface {
@@ -213,7 +211,7 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 		},
 		{
 			Name:   "layout",
-			Fields: []string{bundle.RelationKeyLayout.String()},
+			Fields: []string{bundle.RelationKeyResolvedLayout.String()},
 		},
 		{
 			Name:   "type",

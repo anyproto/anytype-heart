@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/testutil/accounttest"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -38,7 +37,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ctx = context.Background()
@@ -62,7 +60,7 @@ func TestService_Init(t *testing.T) {
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 
 		// initialized - expect space
-		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), time.Millisecond)
+		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), 2*time.Millisecond)
 		defer ctxCancel2()
 
 		factory.EXPECT().LoadAndSetTechSpace(ctx2).Return(&clientspace.TechSpace{}, nil)
@@ -241,11 +239,11 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 		}).Return(nil)
 
 		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{map[domain.RelationKey]*types.Value{
-			bundle.RelationKeyLayout:        pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyId:            pbtypes.String("spaceViewId"),
-			bundle.RelationKeyTargetSpaceId: pbtypes.String(spaceID),
-			bundle.RelationKeyName:          pbtypes.String("Test"),
+		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{{
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyId:             domain.String("spaceViewId"),
+			bundle.RelationKeyTargetSpaceId:  domain.String(spaceID),
+			bundle.RelationKeyName:           domain.String("Test"),
 		}})
 
 		s := service{

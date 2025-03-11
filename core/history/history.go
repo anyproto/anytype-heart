@@ -18,7 +18,7 @@ import (
 	"github.com/zeebo/blake3"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	history2 "github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -28,7 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -92,13 +92,9 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		return
 	}
 
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id.ObjectID))
-	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(id.SpaceID))
-	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
-	if err != nil {
-		return nil, nil, fmt.Errorf("get type id by key: %w", err)
+	if err = h.injectLocalDetails(s, id, space); err != nil {
+		return nil, nil, fmt.Errorf("failed to inject local details to state: %w", err)
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeId))
 
 	details, err := h.buildDetails(s, space)
 	if err != nil {
@@ -241,7 +237,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	}
 
 	currState.SetParent(previousState)
-	msg, _, err := state.ApplyState(currState, false)
+	msg, _, err := state.ApplyState(req.SpaceId, currState, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get history events for versions %s, %s: %w", req.CurrentVersion, req.PreviousVersion, err)
 	}
@@ -270,8 +266,8 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details []*model.ObjectViewDetailsSet, resultErr error) {
 	rootDetails := s.CombinedDetails()
 	details = []*model.ObjectViewDetailsSet{{
-		Id:      pbtypes.GetString(rootDetails, bundle.RelationKeyId.String()),
-		Details: rootDetails,
+		Id:      rootDetails.GetString(bundle.RelationKeyId),
+		Details: rootDetails.ToProto(),
 	}}
 
 	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, objectlink.Flags{
@@ -292,8 +288,8 @@ func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details [
 
 		for _, record := range records {
 			details = append(details, &model.ObjectViewDetailsSet{
-				Id:      pbtypes.GetString(record.Details, bundle.RelationKeyId.String()),
-				Details: record.Details,
+				Id:      record.Details.GetString(bundle.RelationKeyId),
+				Details: record.Details.ToProto(),
 			})
 		}
 	}
@@ -349,7 +345,7 @@ func filterLocalAndDerivedRelationsByKey(removedRelations *pb.EventObjectRelatio
 	}
 	var relKeysWithoutLocal []string
 	for _, key := range removedRelations.RelationKeys {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
 			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
 		}
 	}
@@ -362,7 +358,7 @@ func filterLocalAndDerivedRelations(addedRelations *pb.EventObjectRelationsAmend
 	}
 	var relLinksWithoutLocal pbtypes.RelationLinks
 	for _, link := range addedRelations.RelationLinks {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, link.Key) {
+		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(link.Key)) {
 			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
 		}
 	}
@@ -521,12 +517,12 @@ func (h *history) SetVersion(id domain.FullID, versionId string) (err error) {
 	if err != nil {
 		return
 	}
-	return cache.Do(h.picker, id.ObjectID, func(sb smartblock2.SmartBlock) error {
+	return cache.Do(h.picker, id.ObjectID, func(sb smartblock.SmartBlock) error {
 		return history2.ResetToVersion(sb, s)
 	})
 }
 
-func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
+func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt coresb.SmartBlockType, err error) {
 	heads := h.retrieveHeads(versionId)
 	spc, err := h.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
@@ -546,11 +542,14 @@ func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId
 		return
 	}
 
-	sbt = smartblock.SmartBlockType(payload.SmartBlockType)
+	// nolint:gosec
+	sbt = coresb.SmartBlockType(payload.SmartBlockType)
 	return
 }
 
-func (h *history) buildState(id domain.FullID, versionId string) (st *state.State, sbType smartblock.SmartBlockType, ver *pb.RpcHistoryVersion, err error) {
+func (h *history) buildState(id domain.FullID, versionId string) (
+	st *state.State, sbType coresb.SmartBlockType, ver *pb.RpcHistoryVersion, err error,
+) {
 	tree, sbType, err := h.treeWithId(id, versionId, true)
 	if err != nil {
 		return
@@ -560,7 +559,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	if err != nil {
 		return
 	}
-	if _, _, err = state.ApplyStateFast(st); err != nil {
+	if _, _, err = state.ApplyStateFast(id.SpaceID, st); err != nil {
 		return
 	}
 
@@ -575,4 +574,51 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 		}
 	}
 	return
+}
+
+func (h *history) injectLocalDetails(s *state.State, id domain.FullID, space clientspace.Space) error {
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id.ObjectID))
+	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
+	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
+	if err != nil {
+		return fmt.Errorf("get type id by key: %w", err)
+	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeId))
+
+	rawValue := s.Details().Get(bundle.RelationKeyLayout)
+	if rawValue.Ok() {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+		return nil
+	}
+
+	typeObjectId := s.LocalDetails().GetString(bundle.RelationKeyType)
+	if typeObjectId == "" {
+		if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
+			return nil
+		}
+		log.Errorf("failed to find id of object type. Falling back to basic layout")
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		return nil
+	}
+
+	if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
+		return nil
+	}
+
+	records, err := h.objectStore.SpaceIndex(id.SpaceID).QueryByIds([]string{typeObjectId})
+	if err != nil || len(records) != 1 {
+		log.Errorf("failed to query object %s: %v. Fallback to basic layout", typeObjectId, err)
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		return nil
+	}
+	rawValue = records[0].Details.Get(bundle.RelationKeyRecommendedLayout)
+
+	if !rawValue.Ok() {
+		log.Errorf("failed to get recommended layout from details of type. Fallback to basic layout")
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		return nil
+	}
+
+	s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+	return nil
 }

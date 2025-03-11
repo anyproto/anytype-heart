@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -17,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -32,7 +29,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		}
 		st = b.NewState().Copy()
 		st.SetLocalDetails(nil)
-		st.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(id))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(id))
 		return nil
 	}); err != nil {
 		return
@@ -57,11 +54,11 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
-		details := make([]*model.Detail, 0, len(req.Details.GetFields()))
+		details := make([]domain.Detail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
-			details = append(details, &model.Detail{
-				Key:   k,
-				Value: v,
+			details = append(details, domain.Detail{
+				Key:   domain.RelationKey(k),
+				Value: domain.ValueFromProto(v),
 			})
 		}
 		return b.SetDetails(nil, details, true)
@@ -81,7 +78,7 @@ func (s *Service) CreateLinkToTheNewObject(
 	ctx context.Context,
 	sctx session.Context,
 	req *pb.RpcBlockLinkCreateWithObjectRequest,
-) (linkID string, objectId string, objectDetails *types.Struct, err error) {
+) (linkID string, objectId string, objectDetails *domain.Details, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
@@ -93,7 +90,7 @@ func (s *Service) CreateLinkToTheNewObject(
 	}
 
 	createReq := objectcreator.CreateObjectRequest{
-		Details:       req.Details,
+		Details:       domain.NewDetailsFromProto(req.Details),
 		InternalFlags: req.InternalFlags,
 		ObjectTypeKey: objectTypeKey,
 		TemplateId:    req.TemplateId,
@@ -141,7 +138,7 @@ func (s *Service) CreateLinkToTheNewObject(
 
 func (s *Service) ObjectToSet(id string, source []string) error {
 	return cache.DoState(s, id, func(st *state.State, b basic.CommonOperations) error {
-		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		st.SetDetail(bundle.RelationKeySetOf, domain.StringList(source))
 		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeySet}, true)
 	})
 }

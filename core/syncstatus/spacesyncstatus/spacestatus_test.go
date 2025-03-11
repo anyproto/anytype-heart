@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ctx = context.Background()
@@ -82,11 +81,11 @@ type fixture struct {
 func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.TestObject {
 	id := fmt.Sprintf("%d", rand.Int())
 	return objectstore.TestObject{
-		bundle.RelationKeyId:         pbtypes.String(id),
-		bundle.RelationKeySyncStatus: pbtypes.Int64(int64(syncStatus)),
-		bundle.RelationKeyLayout:     pbtypes.Int64(int64(model.ObjectType_basic)),
-		bundle.RelationKeyName:       pbtypes.String("name" + id),
-		bundle.RelationKeySpaceId:    pbtypes.String(spaceId),
+		bundle.RelationKeyId:             domain.String(id),
+		bundle.RelationKeySyncStatus:     domain.Int64(int64(syncStatus)),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		bundle.RelationKeyName:           domain.String("name" + id),
+		bundle.RelationKeySpaceId:        domain.String(spaceId),
 	}
 }
 
@@ -148,17 +147,13 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:      "spaceId",
-							Status:  pb.EventSpace_Synced,
-							Network: pb.EventSpace_Anytype,
-						},
-					},
-				}},
-			})
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:      "spaceId",
+					Status:  pb.EventSpace_Synced,
+					Network: pb.EventSpace_Anytype,
+				},
+			}))
 		})
 		defer fx.ctrl.Finish()
 	})
@@ -177,18 +172,14 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:                    "spaceId",
-							SyncingObjectsCounter: 110,
-							Status:                pb.EventSpace_Syncing,
-							Network:               pb.EventSpace_Anytype,
-						},
-					},
-				}},
-			})
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:                    "spaceId",
+					SyncingObjectsCounter: 110,
+					Status:                pb.EventSpace_Syncing,
+					Network:               pb.EventSpace_Anytype,
+				},
+			}))
 		})
 		defer fx.ctrl.Finish()
 	})
@@ -208,18 +199,14 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:                    "spaceId",
-							SyncingObjectsCounter: 110,
-							Status:                pb.EventSpace_Syncing,
-							Network:               pb.EventSpace_Anytype,
-						},
-					},
-				}},
-			}).Times(1)
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:                    "spaceId",
+					SyncingObjectsCounter: 110,
+					Status:                pb.EventSpace_Syncing,
+					Network:               pb.EventSpace_Anytype,
+				},
+			})).Times(1)
 		})
 		fx.Refresh("spaceId")
 		time.Sleep(100 * time.Millisecond)
@@ -231,17 +218,13 @@ func Test(t *testing.T) {
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:      "spaceId",
-							Status:  pb.EventSpace_Offline,
-							Network: pb.EventSpace_LocalOnly,
-						},
-					},
-				}},
-			})
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:      "spaceId",
+					Status:  pb.EventSpace_Offline,
+					Network: pb.EventSpace_LocalOnly,
+				},
+			}))
 		})
 		defer fx.ctrl.Finish()
 	})
@@ -260,19 +243,15 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:                    "spaceId",
-							SyncingObjectsCounter: 110,
-							Status:                pb.EventSpace_Error,
-							Network:               pb.EventSpace_Anytype,
-							Error:                 pb.EventSpace_StorageLimitExceed,
-						},
-					},
-				}},
-			})
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:                    "spaceId",
+					SyncingObjectsCounter: 110,
+					Status:                pb.EventSpace_Error,
+					Network:               pb.EventSpace_Anytype,
+					Error:                 pb.EventSpace_StorageLimitExceed,
+				},
+			}))
 		})
 		defer fx.ctrl.Finish()
 	})
@@ -291,19 +270,15 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:                    "spaceId",
-							SyncingObjectsCounter: 110,
-							Status:                pb.EventSpace_Offline,
-							Network:               pb.EventSpace_Anytype,
-							Error:                 pb.EventSpace_NetworkError,
-						},
-					},
-				}},
-			})
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:                    "spaceId",
+					SyncingObjectsCounter: 110,
+					Status:                pb.EventSpace_Offline,
+					Network:               pb.EventSpace_Anytype,
+					Error:                 pb.EventSpace_NetworkError,
+				},
+			}))
 		})
 		defer fx.ctrl.Finish()
 	})
@@ -322,19 +297,15 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusIncompatible)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:                    "spaceId",
-							SyncingObjectsCounter: 110,
-							Status:                pb.EventSpace_Error,
-							Network:               pb.EventSpace_Anytype,
-							Error:                 pb.EventSpace_IncompatibleVersion,
-						},
-					},
-				}},
-			})
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:                    "spaceId",
+					SyncingObjectsCounter: 110,
+					Status:                pb.EventSpace_Error,
+					Network:               pb.EventSpace_Anytype,
+					Error:                 pb.EventSpace_IncompatibleVersion,
+				},
+			}))
 		})
 		defer fx.ctrl.Finish()
 	})
@@ -354,33 +325,25 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusOk)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:                    "spaceId",
-							SyncingObjectsCounter: 110,
-							Status:                pb.EventSpace_Syncing,
-							Network:               pb.EventSpace_Anytype,
-						},
-					},
-				}},
-			})
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:                    "spaceId",
+					SyncingObjectsCounter: 110,
+					Status:                pb.EventSpace_Syncing,
+					Network:               pb.EventSpace_Anytype,
+				},
+			}))
 		})
 		fx.UpdateMissingIds("spaceId", []string{"missingId"})
 		fx.Refresh("spaceId")
-		fx.eventSender.EXPECT().Broadcast(&pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						SyncingObjectsCounter: 111,
-						Status:                pb.EventSpace_Syncing,
-						Network:               pb.EventSpace_Anytype,
-					},
-				},
-			}},
-		}).Times(1)
+		fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+			SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+				Id:                    "spaceId",
+				SyncingObjectsCounter: 111,
+				Status:                pb.EventSpace_Syncing,
+				Network:               pb.EventSpace_Anytype,
+			},
+		})).Times(1)
 		time.Sleep(100 * time.Millisecond)
 		defer fx.ctrl.Finish()
 	})
@@ -397,17 +360,13 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusNeedsUpdate)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:      "spaceId",
-							Status:  pb.EventSpace_NetworkNeedsUpdate,
-							Network: pb.EventSpace_Anytype,
-						},
-					},
-				}},
-			})
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:      "spaceId",
+					Status:  pb.EventSpace_NetworkNeedsUpdate,
+					Network: pb.EventSpace_Anytype,
+				},
+			}))
 		})
 		defer fx.ctrl.Finish()
 	})
@@ -426,33 +385,25 @@ func Test(t *testing.T) {
 				LocalUsageBytes: 0,
 			}, nil)
 			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().AnyTimes().Return(nodeconf.NetworkCompatibilityStatusIncompatible)
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:                    "spaceId",
-							SyncingObjectsCounter: 110,
-							Status:                pb.EventSpace_Error,
-							Network:               pb.EventSpace_Anytype,
-							Error:                 pb.EventSpace_IncompatibleVersion,
-						},
-					},
-				}},
-			})
-		})
-		fx.eventSender.EXPECT().SendToSession("sessionId", &pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:                    "spaceId",
-						SyncingObjectsCounter: 110,
-						Status:                pb.EventSpace_Error,
-						Network:               pb.EventSpace_Anytype,
-						Error:                 pb.EventSpace_IncompatibleVersion,
-					},
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:                    "spaceId",
+					SyncingObjectsCounter: 110,
+					Status:                pb.EventSpace_Error,
+					Network:               pb.EventSpace_Anytype,
+					Error:                 pb.EventSpace_IncompatibleVersion,
 				},
-			}},
+			}))
 		})
+		fx.eventSender.EXPECT().SendToSession("sessionId", event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+			SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+				Id:                    "spaceId",
+				SyncingObjectsCounter: 110,
+				Status:                pb.EventSpace_Error,
+				Network:               pb.EventSpace_Anytype,
+				Error:                 pb.EventSpace_IncompatibleVersion,
+			},
+		}))
 		fx.session.RunHooks(mockSessionContext{"sessionId"})
 		defer fx.ctrl.Finish()
 	})
@@ -462,29 +413,21 @@ func Test(t *testing.T) {
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
 			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
-			fx.eventSender.EXPECT().Broadcast(&pb.Event{
-				Messages: []*pb.EventMessage{{
-					Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-						SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-							Id:      "spaceId",
-							Status:  pb.EventSpace_Offline,
-							Network: pb.EventSpace_LocalOnly,
-						},
-					},
-				}},
-			})
-		})
-		fx.eventSender.EXPECT().SendToSession("sessionId", &pb.Event{
-			Messages: []*pb.EventMessage{{
-				Value: &pb.EventMessageValueOfSpaceSyncStatusUpdate{
-					SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
-						Id:      "spaceId",
-						Status:  pb.EventSpace_Offline,
-						Network: pb.EventSpace_LocalOnly,
-					},
+			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+					Id:      "spaceId",
+					Status:  pb.EventSpace_Offline,
+					Network: pb.EventSpace_LocalOnly,
 				},
-			}},
+			}))
 		})
+		fx.eventSender.EXPECT().SendToSession("sessionId", event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
+			SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
+				Id:      "spaceId",
+				Status:  pb.EventSpace_Offline,
+				Network: pb.EventSpace_LocalOnly,
+			},
+		}))
 		fx.session.RunHooks(mockSessionContext{"sessionId"})
 		defer fx.ctrl.Finish()
 	})

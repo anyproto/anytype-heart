@@ -1,10 +1,15 @@
 package converter
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/samber/lo"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/any-sync/app/logger"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -17,12 +22,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type LayoutConverter interface {
-	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error
+	CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error
 	app.Component
 }
 
@@ -30,6 +35,8 @@ type layoutConverter struct {
 	objectStore objectstore.ObjectStore
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
+
+var log = logger.NewNamed("layout.converter")
 
 func NewLayoutConverter() LayoutConverter {
 	return &layoutConverter{}
@@ -45,9 +52,47 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) CheckRecommendedLayoutConversionAllowed(st *state.State, layout model.ObjectTypeLayout) error {
+	fromLayout := st.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
+	if !c.isConversionAllowed(model.ObjectTypeLayout(fromLayout), layout) { //nolint:gosec
+		return fmt.Errorf("can't change object type recommended layout from '%s' to '%s'",
+			model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(layout)]) //nolint:gosec
+	}
+	return nil
+}
+
+// isConversionAllowed provides more strict check of layout conversion with introduction of primitives.
+// Only conversion between page layouts (page/note/task/profile) and list layouts (set->collection) is allowed
+func (c *layoutConverter) isConversionAllowed(from, to model.ObjectTypeLayout) bool {
+	if from == to {
+		return true
+	}
+	if isPageLayout(from) && isPageLayout(to) {
+		return true
+	}
+	if from == model.ObjectType_set && to == model.ObjectType_collection {
+		return true
+	}
+	return false
+}
+
+func isPageLayout(layout model.ObjectTypeLayout) bool {
+	return slices.Contains([]model.ObjectTypeLayout{
+		model.ObjectType_basic,
+		model.ObjectType_todo,
+		model.ObjectType_note,
+		model.ObjectType_profile,
+		model.ObjectType_bookmark,
+	}, layout)
+}
+
+func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout, ignoreIntergroupConversion bool) error {
 	if fromLayout == toLayout {
 		return nil
+	}
+
+	if !ignoreIntergroupConversion && !c.isConversionAllowed(fromLayout, toLayout) {
+		return fmt.Errorf("layout conversion from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 	}
 
 	if fromLayout == model.ObjectType_chat || fromLayout == model.ObjectType_chatDerived {
@@ -135,23 +180,26 @@ func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 }
 
 func (c *layoutConverter) fromAnyToSet(st *state.State) error {
-	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
+	source := st.Details().GetStringList(bundle.RelationKeySetOf)
 	addFeaturedRelationSetOf(st)
 
 	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source)
 	if err != nil {
 		return err
 	}
+	if err = c.insertTypeLevelFieldsToDataview(dvBlock, st); err != nil {
+		log.Error("failed to insert type level fields to dataview block", zap.Error(err))
+	}
 	template.InitTemplate(st, template.WithDataview(dvBlock, false))
 	return nil
 }
 
 func addFeaturedRelationSetOf(st *state.State) {
-	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
 		fr = append(fr, bundle.RelationKeySetOf.String())
 	}
-	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 }
 
 func (c *layoutConverter) fromSetToCollection(st *state.State) error {
@@ -160,7 +208,11 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 		return fmt.Errorf("dataview block is not found")
 	}
 	details := st.Details()
-	setSourceIds := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	err := c.addDefaultCollectionRelationIfNotPresent(st)
+	if err != nil {
+		return err
+	}
+	setSourceIds := details.GetStringList(bundle.RelationKeySetOf)
 	spaceId := st.SpaceID()
 
 	c.removeRelationSetOf(st)
@@ -173,6 +225,38 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 	}
 	st.UpdateStoreSlice(template.CollectionStoreKey, ids)
 	return nil
+}
+
+func (c *layoutConverter) addDefaultCollectionRelationIfNotPresent(st *state.State) error {
+	relationExists := func(relations []*model.BlockContentDataviewRelation, relationKey domain.RelationKey) bool {
+		return lo.ContainsBy(relations, func(item *model.BlockContentDataviewRelation) bool {
+			return item.Key == relationKey.String()
+		})
+	}
+
+	addRelationToView := func(view *model.BlockContentDataviewView, dv *model.BlockContentDataview, relationKey domain.RelationKey) {
+		if !relationExists(view.Relations, relationKey) {
+			bundleRelation := bundle.MustGetRelation(relationKey)
+			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: bundleRelation.Key})
+			dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{
+				Key:    bundleRelation.Key,
+				Format: bundleRelation.Format,
+			})
+		}
+	}
+
+	return st.Iterate(func(block simple.Block) (isContinue bool) {
+		dataview := block.Model().GetDataview()
+		if dataview == nil {
+			return true
+		}
+		for _, view := range dataview.Views {
+			for _, defaultRelation := range template.DefaultCollectionRelations() {
+				addRelationToView(view, dataview, defaultRelation)
+			}
+		}
+		return false
+	})
 }
 
 func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) ([]string, error) {
@@ -194,7 +278,7 @@ func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) 
 	}
 	ids := make([]string, 0, len(records))
 	for _, record := range records {
-		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+		ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 	}
 	return ids, nil
 }
@@ -213,14 +297,17 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 	blockContent := template.MakeDataviewContent(true, nil, nil)
+	if err := c.insertTypeLevelFieldsToDataview(blockContent, st); err != nil {
+		log.Error("failed to insert type level fields to dataview block", zap.Error(err))
+	}
 	template.InitTemplate(st, template.WithDataview(blockContent, false))
 	return nil
 }
 
 func (c *layoutConverter) fromNoteToAny(st *state.State) error {
-	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
+	name, ok := st.Details().TryString(bundle.RelationKeyName)
 
-	if !ok || name.GetStringValue() == "" {
+	if !ok || name == "" {
 		textBlock, err := getFirstTextBlock(st)
 		if err != nil {
 			return err
@@ -228,7 +315,7 @@ func (c *layoutConverter) fromNoteToAny(st *state.State) error {
 		if textBlock == nil {
 			return nil
 		}
-		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Model().GetText().GetText()))
+		st.SetDetail(bundle.RelationKeyName, domain.String(textBlock.Model().GetText().GetText()))
 
 		for _, id := range textBlock.Model().ChildrenIds {
 			st.Unlink(id)
@@ -252,11 +339,11 @@ func (c *layoutConverter) fromAnyToNote(st *state.State) error {
 }
 
 func (c *layoutConverter) removeRelationSetOf(st *state.State) {
-	st.RemoveDetail(bundle.RelationKeySetOf.String())
+	st.RemoveDetail(bundle.RelationKeySetOf)
 
-	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
+	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())
-	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
+	st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 }
 
 func getFirstTextBlock(st *state.State) (simple.Block, error) {
@@ -274,8 +361,8 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 	return res, nil
 }
 
-func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]*model.BlockContentDataviewFilter, error) {
-	var filters []*model.BlockContentDataviewFilter
+func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]database.FilterRequest, error) {
+	var filters []database.FilterRequest
 	m, err := c.sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
 	if err != nil {
 		return nil, fmt.Errorf("partition ids by sb type: %w", err)
@@ -288,27 +375,77 @@ func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []st
 	return filters, nil
 }
 
-func (c *layoutConverter) appendRelationFilters(spaceId string, relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
+func (c *layoutConverter) appendRelationFilters(spaceId string, relationIDs []string, filters []database.FilterRequest) ([]database.FilterRequest, error) {
 	for _, relationID := range relationIDs {
 		relation, err := c.objectStore.SpaceIndex(spaceId).GetRelationById(relationID)
 		if err != nil {
 			return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
 		}
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: relation.Key,
+		filters = append(filters, database.FilterRequest{
+			RelationKey: domain.RelationKey(relation.Key),
 			Condition:   model.BlockContentDataviewFilter_Exists,
 		})
 	}
 	return filters, nil
 }
 
-func (c *layoutConverter) appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+func (c *layoutConverter) appendTypesFilter(types []string, filters []database.FilterRequest) []database.FilterRequest {
 	if len(types) != 0 {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeyType.String(),
+		filters = append(filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeyType,
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.StringList(types),
+			Value:       domain.StringList(types),
 		})
 	}
 	return filters
+}
+
+func (c *layoutConverter) insertTypeLevelFieldsToDataview(block *model.BlockContentOfDataview, st *state.State) error {
+	typeId := st.LocalDetails().GetString(bundle.RelationKeyType)
+	records, err := c.objectStore.SpaceIndex(st.SpaceID()).QueryByIds([]string{typeId})
+	if err != nil {
+		return fmt.Errorf("failed to get type object from store: %w", err)
+	}
+	if len(records) != 1 {
+		return fmt.Errorf("failed to get type object: expected 1 record")
+	}
+
+	rawViewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
+	defaultTypeId := records[0].Details.GetString(bundle.RelationKeyDefaultTypeId)
+
+	// nolint:gosec
+	viewType := model.BlockContentDataviewViewType(rawViewType)
+	block.Dataview.Views[0].Type = viewType
+	block.Dataview.Views[0].DefaultObjectTypeId = defaultTypeId
+	insertGroupRelationKey(block, viewType)
+
+	return nil
+}
+
+func insertGroupRelationKey(block *model.BlockContentOfDataview, viewType model.BlockContentDataviewViewType) {
+	var formats map[model.RelationFormat]struct{}
+	switch viewType {
+	case model.BlockContentDataviewView_Kanban:
+		formats = map[model.RelationFormat]struct{}{
+			model.RelationFormat_status:   {},
+			model.RelationFormat_tag:      {},
+			model.RelationFormat_checkbox: {},
+		}
+	case model.BlockContentDataviewView_Calendar:
+		formats = map[model.RelationFormat]struct{}{model.RelationFormat_date: {}}
+	default:
+		return
+	}
+
+	for _, relLink := range block.Dataview.RelationLinks {
+		_, found := formats[relLink.Format]
+		if !found {
+			continue
+		}
+		relation, err := bundle.GetRelation(domain.RelationKey(relLink.Key))
+		if errors.Is(err, bundle.ErrNotFound) || (relation != nil && !relation.Hidden) {
+			block.Dataview.Views[0].GroupRelationKey = relLink.Key
+			return
+		}
+	}
 }

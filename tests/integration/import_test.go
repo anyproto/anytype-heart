@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -19,15 +20,14 @@ func TestImportFileFromRelation(t *testing.T) {
 	ctx := context.Background()
 	app := createAccountAndStartApp(t, pb.RpcObjectImportUseCaseRequest_NONE)
 
-	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
-		filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "Saturn"),
 		filterEqualsToString(bundle.RelationKeyFileMimeType, "image/jpeg"),
 		filterNotEmpty(bundle.RelationKeyFileId),
 	})
 
-	objectSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId, bundle.RelationKeyIconImage}, []*model.BlockContentDataviewFilter{
+	objectSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId, bundle.RelationKeyIconImage}, []database.FilterRequest{
 		filterNotEmpty(bundle.RelationKeyIconImage),
 	})
 
@@ -82,9 +82,8 @@ func testImportFileFromMarkdown(t *testing.T, path string) {
 	ctx := context.Background()
 	app := createAccountAndStartApp(t, pb.RpcObjectImportUseCaseRequest_NONE)
 
-	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
-		filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "saturn"), // Name comes from file's name
 		filterEqualsToString(bundle.RelationKeyFileMimeType, "image/jpeg"),
 		filterNotEmpty(bundle.RelationKeyFileId),
@@ -123,9 +122,8 @@ func testImportObjectWithFileBlock(t *testing.T, path string) {
 	ctx := context.Background()
 	app := createAccountAndStartApp(t, pb.RpcObjectImportUseCaseRequest_NONE)
 
-	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []*model.BlockContentDataviewFilter{
+	fileSub := newTestSubscription(t, app, []domain.RelationKey{bundle.RelationKeyId}, []database.FilterRequest{
 		filterEqualsToInteger(bundle.RelationKeyFileIndexingStatus, model.FileIndexingStatus_Indexed),
-		filterEqualsToInteger(bundle.RelationKeyLayout, model.ObjectType_image),
 		filterEqualsToString(bundle.RelationKeyName, "test_image"),
 		filterEqualsToString(bundle.RelationKeyFileMimeType, "image/png"),
 		filterNotEmpty(bundle.RelationKeyFileId),

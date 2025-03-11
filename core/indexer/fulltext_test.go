@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/indexer/mock_indexer"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -31,12 +31,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type IndexerFixture struct {
 	*indexer
-	pickerFx         *mock_cache.MockObjectGetter
+	pickerFx         *mock_cache.MockCachedObjectGetter
 	storageServiceFx *mock_storage.MockClientStorage
 	objectStore      *objectstore.StoreFixture
 	sourceFx         *mock_source.MockService
@@ -46,7 +45,6 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
-
 	objectStore := objectstore.NewStoreFixture(t)
 	clientStorage := mock_storage.NewMockClientStorage(t)
 
@@ -83,13 +81,14 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indxr.fileStore = fileStore
 	indxr.ftsearch = objectStore.FullText
 	indexerFx.ftsearch = indxr.ftsearch
-	indexerFx.pickerFx = mock_cache.NewMockObjectGetter(t)
+	indexerFx.pickerFx = mock_cache.NewMockCachedObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
 	indxr.spaceIndexers = make(map[string]*spaceIndexer)
 	indxr.forceFt = make(chan struct{})
 	indxr.config = &config.Config{NetworkMode: pb.RpcAccount_LocalOnly}
 	indxr.runCtx, indxr.runCtxCancel = context.WithCancel(ctx)
-	// go indxr.indexBatchLoop()
+
+	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, mock.Anything).Maybe().Return(true, nil)
 	return indexerFx
 }
 
@@ -106,6 +105,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 			),
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, "objectId1").Return(true, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
 	assert.NoError(t, err)
@@ -174,11 +174,9 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 		Key:    bundle.RelationKeyName.String(),
 		Format: model.RelationFormat_shorttext,
 	})
-	smartTest.Doc.(*state.State).SetDetails(&types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String(): pbtypes.String("Title Text"),
-		},
-	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String("Title Text"),
+	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
@@ -196,11 +194,9 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 		Key:    bundle.RelationKeyName.String(),
 		Format: model.RelationFormat_longtext,
 	})
-	smartTest.Doc.(*state.State).SetDetails(&types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String(): pbtypes.String("Title Text"),
-		},
-	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String("Title Text"),
+	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
@@ -219,11 +215,9 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 		Format: model.RelationFormat_shorttext,
 	})
 	// Empty value for relation key
-	smartTest.Doc.(*state.State).SetDetails(&types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String(): pbtypes.String(""),
-		},
-	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String(""),
+	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
@@ -239,11 +233,9 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 		Key:    bundle.RelationKeyName.String(),
 		Format: model.RelationFormat_email, // Wrong format
 	})
-	smartTest.Doc.(*state.State).SetDetails(&types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String(): pbtypes.String("Title Text"),
-		},
-	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String("Title Text"),
+	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")

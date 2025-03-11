@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -21,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -52,7 +53,7 @@ type indexer struct {
 	store          objectstore.ObjectStore
 	fileStore      filestore.FileStore
 	source         source.Service
-	picker         cache.ObjectGetter
+	picker         cache.CachedObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 
@@ -77,7 +78,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.picker = app.MustComponent[cache.ObjectGetter](a)
+	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
@@ -121,26 +122,28 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 }
 
 func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
-	ids, _, err := i.store.SpaceIndex(spaceId).QueryObjectIds(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
+	// TODO: It seems we should also filter objects by Layout, because participants should be re-indexed to receive resolvedLayout
+	store := i.store.SpaceIndex(spaceId)
+	ids, _, err := store.QueryObjectIds(database.Query{
+		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout.String(),
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+				Value:       domain.Int64(model.ObjectType_participant),
 			},
 		},
 	})
 	if err != nil {
-		return
+		return fmt.Errorf("remove acl: %w", err)
 	}
-	return i.store.SpaceIndex(spaceId).DeleteDetails(i.runCtx, ids)
+	return store.DeleteDetails(i.runCtx, ids)
 }
 
 func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {
-		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store, i.storageService)
+		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}
 	i.lock.Unlock()

@@ -2,16 +2,16 @@ package spaceindex
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
-	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
@@ -24,41 +24,45 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 		return nil, err
 	}
 
-	if pbtypes.IsStructEmpty(details.GetDetails()) {
+	if details.Len() == 0 {
 		return nil, ErrObjectNotFound
 	}
 
-	if pbtypes.GetBool(details.GetDetails(), bundle.RelationKeyIsDeleted.String()) {
+	if details.GetBool(bundle.RelationKeyIsDeleted) {
 		return nil, fmt.Errorf("type was removed")
 	}
 
-	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
+	rawUniqueKey := details.GetString(bundle.RelationKeyUniqueKey)
 	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 	if err != nil {
 		return nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
-	ot := s.extractObjectTypeFromDetails(details.Details, id, objectTypeKey)
+	ot := s.extractObjectTypeFromDetails(details, id, objectTypeKey)
 	return ot, nil
 }
 
-func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string, objectTypeKey domain.TypeKey) *model.ObjectType {
+func (s *dsObjectStore) extractObjectTypeFromDetails(details *domain.Details, url string, objectTypeKey domain.TypeKey) *model.ObjectType {
 	return &model.ObjectType{
 		Url:        url,
 		Key:        string(objectTypeKey),
-		Name:       pbtypes.GetString(details, bundle.RelationKeyName.String()),
-		Layout:     model.ObjectTypeLayout(int(pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String()))),
-		IconEmoji:  pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String()),
-		IsArchived: pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String()),
+		Name:       details.GetString(bundle.RelationKeyName),
+		Layout:     model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyRecommendedLayout)),
+		IconEmoji:  details.GetString(bundle.RelationKeyIconEmoji),
+		IsArchived: details.GetBool(bundle.RelationKeyIsArchived),
 		// we use Page for all custom object types
 		Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 		RelationLinks: s.getRelationLinksForRecommendedRelations(details),
 	}
 }
 
-func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *types.Struct) []*model.RelationLink {
-	recommendedRelationIDs := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
-	relationLinks := make([]*model.RelationLink, 0, len(recommendedRelationIDs))
-	for _, relationID := range recommendedRelationIDs {
+func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *domain.Details) []*model.RelationLink {
+	recommendedRelationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	featuredRelationIds := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	fileRelationIds := details.GetStringList(bundle.RelationKeyRecommendedFileRelations)
+	hiddenRelationIds := details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)
+	allRelationIds := lo.Uniq(slices.Concat(recommendedRelationIds, featuredRelationIds, fileRelationIds, hiddenRelationIds))
+	relationLinks := make([]*model.RelationLink, 0, len(allRelationIds))
+	for _, relationID := range allRelationIds {
 		relation, err := s.GetRelationById(relationID)
 		if err != nil {
 			log.Errorf("failed to get relation %s: %s", relationID, err)

@@ -1,14 +1,12 @@
 package basic
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused/mock_lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -16,14 +14,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type basicFixture struct {
-	sb       *smarttest.SmartTest
-	store    *spaceindex.StoreFixture
-	lastUsed *mock_lastused.MockObjectUsageUpdater
-	basic    CommonOperations
+	sb    *smarttest.SmartTest
+	store *spaceindex.StoreFixture
+	basic CommonOperations
 }
 
 var (
@@ -37,15 +33,13 @@ func newBasicFixture(t *testing.T) *basicFixture {
 	sb.SetSpaceId(spaceId)
 
 	store := spaceindex.NewStoreFixture(t)
-	lastUsed := mock_lastused.NewMockObjectUsageUpdater(t)
 
-	b := NewBasic(sb, store, converter.NewLayoutConverter(), nil, lastUsed)
+	b := NewBasic(sb, store, converter.NewLayoutConverter(), nil)
 
 	return &basicFixture{
-		sb:       sb,
-		store:    store,
-		lastUsed: lastUsed,
-		basic:    b,
+		sb:    sb,
+		store: store,
+		basic: b,
 	}
 }
 
@@ -54,92 +48,94 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
 		f.store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeyId:             pbtypes.String("rel-aperture"),
-			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
-			bundle.RelationKeyRelationKey:    pbtypes.String("aperture"),
-			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-aperture"),
-			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_longtext)),
+			bundle.RelationKeyId:             domain.String("rel-aperture"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String("aperture"),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-aperture"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
 		}, {
-			bundle.RelationKeyId:             pbtypes.String("rel-maxCount"),
-			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
-			bundle.RelationKeyRelationKey:    pbtypes.String("relationMaxCount"),
-			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-relationMaxCount"),
-			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_number)),
+			bundle.RelationKeyId:             domain.String("rel-maxCount"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String("relationMaxCount"),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-relationMaxCount"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
 		}})
 
 		// when
-		err := f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-			current.Fields[bundle.RelationKeyAperture.String()] = pbtypes.String("aperture")
-			current.Fields[bundle.RelationKeyRelationMaxCount.String()] = pbtypes.Int64(5)
+		err := f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
+			current.Set(bundle.RelationKeyAperture, domain.String("aperture"))
+			current.Set(bundle.RelationKeyRelationMaxCount, domain.Int64(5))
 			return current, nil
 		})
 
 		// then
 		assert.NoError(t, err)
 
-		value, found := f.sb.Details().Fields[bundle.RelationKeyAperture.String()]
+		value, found := f.sb.Details().TryString(bundle.RelationKeyAperture)
 		assert.True(t, found)
-		assert.Equal(t, pbtypes.String("aperture"), value)
+		assert.Equal(t, "aperture", value)
 		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyAperture.String()))
 
-		value, found = f.sb.Details().Fields[bundle.RelationKeyRelationMaxCount.String()]
-		assert.True(t, found)
-		assert.Equal(t, pbtypes.Int64(5), value)
-		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyRelationMaxCount.String()))
+		{
+			value, found := f.sb.Details().TryInt64(bundle.RelationKeyRelationMaxCount)
+			assert.True(t, found)
+			assert.Equal(t, int64(5), value)
+			assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyRelationMaxCount.String()))
+		}
 	})
 
 	t.Run("modify details", func(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
-		err := f.sb.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeySpaceDashboardId.String(),
-			Value: pbtypes.String("123"),
+		err := f.sb.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeySpaceDashboardId,
+			Value: domain.String("123"),
 		}}, false)
 		assert.NoError(t, err)
 		f.store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeyId:             pbtypes.String("rel-spaceDashboardId"),
-			bundle.RelationKeySpaceId:        pbtypes.String(spaceId),
-			bundle.RelationKeyRelationKey:    pbtypes.String("spaceDashboardId"),
-			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-spaceDashboardId"),
-			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_object)),
+			bundle.RelationKeyId:             domain.String("rel-spaceDashboardId"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyRelationKey:    domain.String("spaceDashboardId"),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-spaceDashboardId"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 		}})
 
 		// when
-		err = f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-			current.Fields[bundle.RelationKeySpaceDashboardId.String()] = pbtypes.String("new123")
+		err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
+			current.Set(bundle.RelationKeySpaceDashboardId, domain.String("new123"))
 			return current, nil
 		})
 
 		// then
 		assert.NoError(t, err)
 
-		value, found := f.sb.Details().Fields[bundle.RelationKeySpaceDashboardId.String()]
+		value, found := f.sb.Details().TryString(bundle.RelationKeySpaceDashboardId)
 		assert.True(t, found)
-		assert.Equal(t, pbtypes.String("new123"), value)
+		assert.Equal(t, "new123", value)
 		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeySpaceDashboardId.String()))
 	})
 
 	t.Run("delete details", func(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
-		err := f.sb.SetDetails(nil, []*model.Detail{{
-			Key:   bundle.RelationKeyTargetObjectType.String(),
-			Value: pbtypes.String("ot-note"),
+		err := f.sb.SetDetails(nil, []domain.Detail{{
+			Key:   bundle.RelationKeyTargetObjectType,
+			Value: domain.String("ot-note"),
 		}}, false)
 		assert.NoError(t, err)
 
 		// when
-		err = f.basic.UpdateDetails(func(current *types.Struct) (*types.Struct, error) {
-			delete(current.Fields, bundle.RelationKeyTargetObjectType.String())
+		err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
+			current.Delete(bundle.RelationKeyTargetObjectType)
 			return current, nil
 		})
 
 		// then
 		assert.NoError(t, err)
 
-		value, found := f.sb.Details().Fields[bundle.RelationKeyTargetObjectType.String()]
+		value, found := f.sb.Details().TryString(bundle.RelationKeyTargetObjectType)
 		assert.False(t, found)
-		assert.Nil(t, value)
+		assert.Empty(t, value)
 		assert.False(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyTargetObjectType.String()))
 	})
 }
@@ -149,12 +145,11 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
 
-		f.lastUsed.EXPECT().UpdateLastUsedDate(mock.Anything, bundle.TypeKeyTask, mock.Anything).Return().Once()
 		f.store.AddObjects(t, []objectstore.TestObject{{
-			bundle.RelationKeySpaceId:   pbtypes.String(spaceId),
-			bundle.RelationKeyId:        pbtypes.String("ot-task"),
-			bundle.RelationKeyUniqueKey: pbtypes.String("ot-task"),
-			bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_todo)),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyId:             domain.String("ot-task"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-task"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
 		}})
 
 		s := f.sb.NewState()
@@ -179,6 +174,44 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 		// then
 		assert.ErrorIs(t, err, restriction.ErrRestricted)
 	})
+
+	typeKey := "type"
+	for _, tc := range []struct {
+		from, to    model.ObjectTypeLayout
+		shouldError bool
+	}{
+		{model.ObjectType_basic, model.ObjectType_todo, false},
+		{model.ObjectType_profile, model.ObjectType_note, false},
+		{model.ObjectType_basic, model.ObjectType_set, true},
+		{model.ObjectType_collection, model.ObjectType_todo, true},
+		{model.ObjectType_tag, model.ObjectType_note, true},
+		{model.ObjectType_dashboard, model.ObjectType_collection, true},
+		{model.ObjectType_todo, model.ObjectType_relation, true},
+	} {
+		t.Run(fmt.Sprintf("change to type with other layout group is restricted. From '%s' to '%s'",
+			model.ObjectTypeLayout_name[int32(tc.from)], model.ObjectTypeLayout_name[int32(tc.to)]), func(t *testing.T) {
+			// given
+			f := newBasicFixture(t)
+			f.store.AddObjects(t, []objectstore.TestObject{{
+				bundle.RelationKeyId:                domain.String(typeKey),
+				bundle.RelationKeySpaceId:           domain.String(spaceId),
+				bundle.RelationKeyUniqueKey:         domain.String("ot-" + typeKey),
+				bundle.RelationKeyRecommendedLayout: domain.Int64(int64(tc.to)),
+			}})
+			s := f.sb.NewState()
+			s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(tc.from)))
+
+			// when
+			err := f.basic.SetObjectTypesInState(s, []domain.TypeKey{domain.TypeKey(typeKey)}, false)
+
+			// then
+			if tc.shouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 
 	t.Run("changing to template type is restricted", func(t *testing.T) {
 		// given

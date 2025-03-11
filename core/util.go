@@ -5,8 +5,10 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
@@ -22,10 +24,16 @@ func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {
 type errToCodeTuple[T ~int32] struct {
 	err  error
 	code T
+
+	checkErrorType any
 }
 
 func errToCode[T ~int32](err error, code T) errToCodeTuple[T] {
-	return errToCodeTuple[T]{err, code}
+	return errToCodeTuple[T]{err: err, code: code}
+}
+
+func errTypeToCode[T ~int32](errTypeProto any, code T) errToCodeTuple[T] {
+	return errToCodeTuple[T]{code: code, checkErrorType: errTypeProto}
 }
 
 func mapErrorCode[T ~int32](err error, mappings ...errToCodeTuple[T]) T {
@@ -33,8 +41,15 @@ func mapErrorCode[T ~int32](err error, mappings ...errToCodeTuple[T]) T {
 		return 0
 	}
 	for _, m := range mappings {
-		if errors.Is(err, m.err) {
-			return m.code
+		if m.err != nil {
+			if errors.Is(err, m.err) {
+				return m.code
+			}
+		}
+		if m.checkErrorType != nil {
+			if errors.As(err, m.checkErrorType) {
+				return m.code
+			}
 		}
 	}
 	// Unknown error
@@ -46,6 +61,17 @@ func getErrorDescription(err error) string {
 		return ""
 	}
 	return anyerror.CleanupError(err).Error()
+}
+
+func requestDetailsListToDomain(list []*model.Detail) []domain.Detail {
+	details := make([]domain.Detail, 0, len(list))
+	for _, it := range list {
+		details = append(details, domain.Detail{
+			Key:   domain.RelationKey(it.Key),
+			Value: domain.ValueFromProto(it.Value),
+		})
+	}
+	return details
 }
 
 func init() {

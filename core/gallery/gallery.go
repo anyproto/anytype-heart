@@ -139,7 +139,7 @@ func getRawJson(url string, timeoutInSeconds int, currentVersion string) (body [
 	if currentVersion != "" {
 		req.Header.Add(versionHeader, currentVersion)
 	}
-
+	req.Close = true
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, "", err

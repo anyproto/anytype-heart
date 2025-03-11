@@ -13,13 +13,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {
@@ -57,9 +57,12 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		cfg.NetworkMode = req.NetworkMode
 		cfg.NetworkCustomConfigFilePath = req.NetworkCustomConfigFilePath
 	}
+	if req.JsonApiListenAddr != "" {
+		cfg.JsonApiListenAddr = req.JsonApiListenAddr
+	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, derivationResult),
+		anytype.BootstrapWallet(s.rootPath, derivationResult, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 
@@ -115,17 +118,17 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	newAcc.Info.AccountSpaceId = spaceService.FirstCreatedSpaceId()
 
 	bs := s.app.MustComponent(block.CName).(*block.Service)
-	commonDetails := []*model.Detail{
+	commonDetails := []domain.Detail{
 		{
-			Key:   bundle.RelationKeyName.String(),
-			Value: pbtypes.String(req.Name),
+			Key:   bundle.RelationKeyName,
+			Value: domain.String(req.Name),
 		},
 		{
-			Key:   bundle.RelationKeyIconOption.String(),
-			Value: pbtypes.Int64(req.Icon),
+			Key:   bundle.RelationKeyIconOption,
+			Value: domain.Int64(req.Icon),
 		},
 	}
-	profileDetails := make([]*model.Detail, 0)
+	profileDetails := make([]domain.Detail, 0)
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
@@ -140,9 +143,9 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		if err != nil {
 			log.Warnf("can't add avatar: %v", err)
 		} else {
-			profileDetails = append(profileDetails, &model.Detail{
-				Key:   bundle.RelationKeyIconImage.String(),
-				Value: pbtypes.String(hash),
+			profileDetails = append(profileDetails, domain.Detail{
+				Key:   bundle.RelationKeyIconImage,
+				Value: domain.String(hash),
 			})
 		}
 	}

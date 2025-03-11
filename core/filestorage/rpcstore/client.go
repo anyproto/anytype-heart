@@ -68,8 +68,12 @@ func (c *client) opLoop(ctx context.Context) {
 	c.mu.Lock()
 	allowWrite := c.allowWrite
 	c.mu.Unlock()
-	cond := c.taskQueue.NewCond().WithFilter(func(t *task) bool {
-		if t.write && !allowWrite {
+
+	writeCond := c.taskQueue.NewCond().WithFilter(func(t *task) bool {
+		if !t.write {
+			return false
+		}
+		if !allowWrite {
 			return false
 		}
 		if slices.Index(t.denyPeerIds, c.peerId) != -1 {
@@ -77,12 +81,40 @@ func (c *client) opLoop(ctx context.Context) {
 		}
 		return c.checkSpaceFilter(t)
 	})
+
+	readCond := c.taskQueue.NewCond().WithFilter(func(t *task) bool {
+		if t.write {
+			return false
+		}
+		if slices.Index(t.denyPeerIds, c.peerId) != -1 {
+			return false
+		}
+		return c.checkSpaceFilter(t)
+	})
+
+	go func() {
+		c.runWorkers(ctx, maxSubConnections, readCond)
+	}()
+	c.runWorkers(ctx, maxSubConnections, writeCond)
+}
+
+func (c *client) runWorkers(ctx context.Context, count int, waitCond mb.WaitCond[*task]) {
+	connections := make(chan struct{}, count)
 	for {
-		t, err := cond.WithPriority(c.stat.Score()).WaitOne(ctx)
+		t, err := waitCond.WithPriority(c.stat.Score()).WaitOne(ctx)
 		if err != nil {
 			return
 		}
-		t.execWithClient(c)
+
+		if count == 1 {
+			t.execWithClient(c)
+		} else {
+			connections <- struct{}{}
+			go func() {
+				t.execWithClient(c)
+				<-connections
+			}()
+		}
 	}
 }
 

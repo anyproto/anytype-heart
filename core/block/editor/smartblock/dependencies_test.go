@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -26,21 +27,21 @@ func TestDependenciesSubscription(t *testing.T) {
 
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String(space1obj1),
-				bundle.RelationKeySpaceId: pbtypes.String(testSpaceId),
-				bundle.RelationKeyName:    pbtypes.String("Object 1"),
+				bundle.RelationKeyId:      domain.String(space1obj1),
+				bundle.RelationKeySpaceId: domain.String(testSpaceId),
+				bundle.RelationKeyName:    domain.String("Object 1"),
 			},
 			{
-				bundle.RelationKeyId:      pbtypes.String(space1obj2),
-				bundle.RelationKeySpaceId: pbtypes.String(testSpaceId),
-				bundle.RelationKeyName:    pbtypes.String("Object 2"),
+				bundle.RelationKeyId:      domain.String(space1obj2),
+				bundle.RelationKeySpaceId: domain.String(testSpaceId),
+				bundle.RelationKeyName:    domain.String("Object 2"),
 			},
 		})
 		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String(space2obj1),
-				bundle.RelationKeySpaceId: pbtypes.String("space2"),
-				bundle.RelationKeyName:    pbtypes.String("Object 3"),
+				bundle.RelationKeyId:      domain.String(space2obj1),
+				bundle.RelationKeySpaceId: domain.String("space2"),
+				bundle.RelationKeyName:    domain.String("Object 3"),
 			},
 		})
 
@@ -58,13 +59,12 @@ func TestDependenciesSubscription(t *testing.T) {
 		)
 
 		fx.Doc = state.NewDoc(mainObjId, root.BuildMap()).NewState()
-		objDetails := &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():      pbtypes.String(mainObjId),
-				bundle.RelationKeySpaceId.String(): pbtypes.String(testSpaceId),
-				bundle.RelationKeyName.String():    pbtypes.String("Main object"),
-			},
-		}
+		objDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String(mainObjId),
+			bundle.RelationKeySpaceId: domain.String(testSpaceId),
+			bundle.RelationKeyName:    domain.String("Main object"),
+			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_todo)),
+		})
 
 		fx.Doc.(*state.State).SetDetails(objDetails)
 
@@ -80,6 +80,7 @@ func TestDependenciesSubscription(t *testing.T) {
 						bundle.RelationKeyId.String():      pbtypes.String(mainObjId),
 						bundle.RelationKeySpaceId.String(): pbtypes.String(testSpaceId),
 						bundle.RelationKeyName.String():    pbtypes.String("Main object"),
+						bundle.RelationKeyLayout.String():  pbtypes.Int64(int64(model.ObjectType_todo)),
 					},
 				},
 			},
@@ -142,21 +143,21 @@ func TestDependenciesSubscription(t *testing.T) {
 
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String(space1obj1),
-				bundle.RelationKeySpaceId: pbtypes.String(testSpaceId),
-				bundle.RelationKeyName:    pbtypes.String("Object 1"),
+				bundle.RelationKeyId:      domain.String(space1obj1),
+				bundle.RelationKeySpaceId: domain.String(testSpaceId),
+				bundle.RelationKeyName:    domain.String("Object 1"),
 			},
 			{
-				bundle.RelationKeyId:      pbtypes.String(space1obj2),
-				bundle.RelationKeySpaceId: pbtypes.String(testSpaceId),
-				bundle.RelationKeyName:    pbtypes.String("Object 2"),
+				bundle.RelationKeyId:      domain.String(space1obj2),
+				bundle.RelationKeySpaceId: domain.String(testSpaceId),
+				bundle.RelationKeyName:    domain.String("Object 2"),
 			},
 		})
 		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String(space2obj1),
-				bundle.RelationKeySpaceId: pbtypes.String("space2"),
-				bundle.RelationKeyName:    pbtypes.String("Object 3"),
+				bundle.RelationKeyId:      domain.String(space2obj1),
+				bundle.RelationKeySpaceId: domain.String("space2"),
+				bundle.RelationKeyName:    domain.String("Object 3"),
 			},
 		})
 

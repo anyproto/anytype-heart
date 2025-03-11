@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "status"
@@ -67,13 +66,13 @@ func (s *service) onFileLimited(objectId string, _ domain.FullFileId, bytesLeftP
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {
 	err := cache.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
-		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
+		prevStatus := sb.Details().GetInt64(bundle.RelationKeyFileBackupStatus)
 		newStatus := int64(status)
-		if prevStatus == newStatus {
+		if prevStatus == newStatus || prevStatus == int64(filesyncstatus.Synced) {
 			return nil
 		}
 		st := sb.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, pbtypes.Int64(newStatus))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(newStatus))
 		return sb.Apply(st)
 	})
 	if err != nil {

@@ -146,7 +146,7 @@ func (s *service) ImportBuiltInUseCase(
 
 func (s *service) ImportExperience(ctx context.Context, spaceID, artifactPath string, info UseCaseInfo, isNewSpace bool) (err error) {
 	var (
-		progress      process.Notificationable
+		progress      process.Progress
 		pathToArchive string
 		remove        = func(string) {}
 	)
@@ -155,7 +155,11 @@ func (s *service) ImportExperience(ctx context.Context, spaceID, artifactPath st
 		if remove != nil && pathToArchive != "" {
 			remove(pathToArchive)
 		}
-		progress.FinishWithNotification(s.provideNotification(spaceID, progress, err, info.Title), err)
+		if np, ok := progress.(process.Notificationable); ok {
+			np.FinishWithNotification(s.provideNotification(spaceID, progress, err, info.Title), err)
+		} else {
+			log.Error("progress does not implement Notificationable interface")
+		}
 	}()
 
 	progress, err = s.setupProgress()
@@ -173,7 +177,7 @@ func (s *service) ImportExperience(ctx context.Context, spaceID, artifactPath st
 }
 
 func (s *service) getPathAndRemoveFunc(
-	info UseCaseInfo, artifactPath string, progress process.Notificationable,
+	info UseCaseInfo, artifactPath string, progress process.Progress,
 ) (path string, removeFunc func(string), err error) {
 	if _, err = os.Stat(info.DownloadLink); err == nil {
 		return info.DownloadLink, func(string) {}, nil
@@ -409,7 +413,7 @@ func (s *service) downloadZipToFile(url string, progress process.Progress) (path
 	return path, nil
 }
 
-func (s *service) setupProgress() (process.Notificationable, error) {
+func (s *service) setupProgress() (process.Progress, error) {
 	progress := process.NewNotificationProcess(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}}, s.notifications)
 	if err := s.progress.Add(progress); err != nil {
 		return nil, fmt.Errorf("failed to add progress bar: %w", err)

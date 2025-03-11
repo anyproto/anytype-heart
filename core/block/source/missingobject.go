@@ -3,14 +3,12 @@ package source
 import (
 	"context"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type missingObject struct {
@@ -41,13 +39,13 @@ func (m *missingObject) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeMissingObject
 }
 
-func (m *missingObject) getDetails() (p *types.Struct) {
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyIsDeleted.String():  pbtypes.Bool(true),
-		bundle.RelationKeyId.String():         pbtypes.String(addr.MissingObject),
-		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(true),
-	}}
+func (m *missingObject) getDetails() (p *domain.Details) {
+	det := domain.NewDetails()
+	det.SetString(bundle.RelationKeyId, addr.MissingObject)
+	det.SetBool(bundle.RelationKeyIsDeleted, true)
+	det.SetBool(bundle.RelationKeyIsReadonly, true)
+	det.SetBool(bundle.RelationKeyIsHidden, true)
+	return det
 }
 
 func (m *missingObject) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -57,14 +55,6 @@ func (m *missingObject) ReadDoc(ctx context.Context, receiver ChangeReceiver, em
 
 	s.SetDetails(d)
 
-	return s, nil
-}
-
-func (m *missingObject) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	s := &state.State{}
-	d := m.getDetails()
-
-	s.SetDetails(d)
 	return s, nil
 }
 

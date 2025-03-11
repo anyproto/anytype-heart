@@ -4,8 +4,12 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 )
+
+var log = logger.NewNamed("core.domain")
 
 // Detail is Key-Value pair
 type Detail struct {
@@ -52,7 +56,7 @@ func NewDetailsFromAnyEnc(v *anyenc.Value) (*Details, error) {
 		// key is copied
 		err := setValueFromAnyEnc(res, RelationKey(k), v)
 		if err != nil {
-			visitErr = err
+			visitErr = fmt.Errorf("key %s: %w", k, err)
 		}
 	})
 	return res, visitErr
@@ -92,10 +96,25 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			return nil
 		}
 
-		firstVal := arrVals[0]
-		if firstVal.Type() == anyenc.TypeString {
+		var arrayType anyenc.Type
+		for _, arrVal := range arrVals {
+			if arrVal.Type() == anyenc.TypeNumber {
+				arrayType = anyenc.TypeNumber
+				break
+			}
+			if arrVal.Type() == anyenc.TypeString {
+				arrayType = anyenc.TypeString
+				break
+			}
+		}
+		if arrayType == anyenc.TypeString {
 			res := make([]string, 0, len(arrVals))
-			for _, arrVal := range arrVals {
+			for i, arrVal := range arrVals {
+				if arrVal.Type() != anyenc.TypeString {
+					// todo: make it not possible to create such an arrays and remove this
+					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected string, got %s", arrVal.Type()))
+					continue
+				}
 				v, err := arrVal.StringBytes()
 				if err != nil {
 					return fmt.Errorf("array item: string: %w", err)
@@ -104,9 +123,14 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			}
 			d.SetStringList(key, res)
 			return nil
-		} else if firstVal.Type() == anyenc.TypeNumber {
+		} else if arrayType == anyenc.TypeNumber {
 			res := make([]float64, 0, len(arrVals))
-			for _, arrVal := range arrVals {
+			for i, arrVal := range arrVals {
+				if arrVal.Type() != anyenc.TypeNumber {
+					// todo: make it not possible to create such an arrays and remove this
+					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected number, got %s", arrVal.Type()))
+					continue
+				}
 				v, err := arrVal.Float64()
 				if err != nil {
 					return fmt.Errorf("array item: number: %w", err)
@@ -116,7 +140,16 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			d.SetFloat64List(key, res)
 			return nil
 		} else {
-			return fmt.Errorf("unsupported array type %s", firstVal.Type())
+			var elTypes []string
+			for _, arrVal := range arrVals {
+				elTypes = append(elTypes, arrVal.Type().String())
+			}
+
+			d.SetStringList(key, []string{})
+			log.With(zap.String("key", key.String())).Error(fmt.Sprintf("unsupported array: %v", elTypes))
+
+			// todo: make it not possible to create such an arrays and remove this logic
+			return nil
 		}
 	}
 	d.Set(key, Null())
@@ -126,20 +159,18 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 // StructDiff returns pb struct which contains:
 // - st2 fields that not exist in st1
 // - st2 fields that not equal to ones exist in st1
-// - nil map value for st1 fields not exist in st2
+// - absentKeys are st1 fields that do not exist in st2
 // In case st1 and st2 are equal returns nil
-func StructDiff(st1, st2 *Details) *Details {
-	var diff *Details
+func StructDiff(st1, st2 *Details) (diff *Details, absentKeys []RelationKey) {
 	if st1 == nil {
-		return st2
+		return st2, nil
 	}
 	if st2 == nil {
 		diff = NewDetails()
 		for k, _ := range st1.Iterate() {
-			// TODO This is not correct, Null value could be a valid value. Just rewrite this diff and generate events logic
-			diff.Set(k, Null())
+			absentKeys = append(absentKeys, k)
 		}
-		return diff
+		return nil, absentKeys
 	}
 
 	for k2, v2 := range st2.Iterate() {
@@ -154,14 +185,11 @@ func StructDiff(st1, st2 *Details) *Details {
 
 	for k, _ := range st1.Iterate() {
 		if !st2.Has(k) {
-			if diff == nil {
-				diff = NewDetails()
-			}
-			diff.Set(k, Null())
+			absentKeys = append(absentKeys, k)
 		}
 	}
 
-	return diff
+	return diff, absentKeys
 }
 
 func DetailsListToProtos(dets []*Details) []*types.Struct {

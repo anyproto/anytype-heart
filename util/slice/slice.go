@@ -124,6 +124,32 @@ func RemoveIndex[T any](s []T, idx int) []T {
 	return s[:n]
 }
 
+// RemoveN is an analog of Remove function, but removing a range of values
+func RemoveN[T comparable](s []T, vs ...T) []T {
+	var (
+		n     int
+		found bool
+		sc    = slices.Clone(s)
+	)
+	if len(vs) == 0 {
+		return sc
+	}
+	for _, x := range s {
+		found = false
+		for _, v := range vs {
+			if x == v {
+				found = true
+				break
+			}
+		}
+		if !found {
+			sc[n] = x
+			n++
+		}
+	}
+	return sc[:n]
+}
+
 func Filter[T any](vals []T, cond func(T) bool) []T {
 	var result = make([]T, 0, len(vals))
 	for i := range vals {
@@ -236,6 +262,34 @@ func FilterCID(cids []string) []string {
 		_, err := cid.Parse(item)
 		return err == nil
 	})
+}
+
+func StringsInto[T ~string](from []string) []T {
+	to := make([]T, len(from))
+	for i, v := range from {
+		to[i] = T(v)
+	}
+	return to
+}
+
+func IntoStrings[T ~string](from []T) []string {
+	to := make([]string, len(from))
+	for i, v := range from {
+		to[i] = string(v)
+	}
+	return to
+}
+
+type numeric interface {
+	constraints.Integer | constraints.Float
+}
+
+func FloatsInto[T numeric](from []float64) []T {
+	to := make([]T, len(from))
+	for i, v := range from {
+		to[i] = T(v)
+	}
+	return to
 }
 
 // MergeUniqBy merges two slices with comparator. Resulting slice saves values' order and uniqueness.

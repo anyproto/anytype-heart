@@ -1,3 +1,5 @@
+name: Build
+
 on:
   push:
     tags:
@@ -10,17 +12,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'arm64'
-      perf-test:
-        description: 'Run perf test times'
-        required: true
-        default: '0'
-  schedule:
-    - cron: '0 0 * * *' # every day at midnight
-      filters:
-        branches:
-          include:
-            - 'main'
+        default: 'mac-mini-org-heart'
 
 
 permissions:
@@ -29,48 +21,47 @@ permissions:
   contents: 'write'
 
 
-name: Build
 jobs:
+  wait_for_perftest:
+    uses: ./.github/workflows/reusable_wait_for_perftest.yml
+
   build:
-    runs-on: ${{ github.event_name == 'push' && 'arm64' || (github.event.inputs.run-on-runner || 'arm64') }}
+    needs: wait_for_perftest
+    runs-on: ${{ github.event_name == 'push' && 'mac-mini-org-heart' || (github.event.inputs.run-on-runner || 'mac-mini-org-heart') }}
     steps:
       - name: validate agent
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "arm64" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "mac-mini-org-heart" ]]; then
             echo "Invalid runner"
             exit 1
           fi
+
       - name: Install Go
-        uses: actions/setup-go@v1
+        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
+        uses: actions/setup-go@v4
         with:
           go-version: 1.23.2
-        if: runner.name != 'mac-mini-org-heart'
+          check-latest: true
+
       - name: Setup GO
         run: |
           go version
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-      - name: Install brew and node deps
-        run: |
-          curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
-          curl https://raw.githubusercontent.com/Homebrew/homebrew-core/d600b1f7119f6e6a4e97fb83233b313b0468b7e4/Formula/s/swift-protobuf.rb --output swift-protobuf.rb
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install ./protobuf.rb
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies ./swift-protobuf.rb
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install grpcurl
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew tap messense/macos-cross-toolchains && brew install x86_64-unknown-linux-musl && brew install aarch64-unknown-linux-musl
-          npm i -g node-gyp
-        if: runner.name != 'mac-mini-org-heart'
+
       - name: Checkout
         uses: actions/checkout@v3
-      - uses: actions/cache@v3
+
+      - name: Install brew and node deps
+        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
+        run: make install-brew-and-node-deps
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
-          path: |
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-
+          xcode-version: '16.2'
+
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -88,196 +79,75 @@ jobs:
             VERSION=${GITHUB_REF##*/}
           fi
           echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo BUILD_TAG_NETWORK=envproduction >> $GITHUB_ENV
           echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
           echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
+
       - name: Go mod download
         run: |
           go mod download
+
       - name: install protoc
         run: |
           make setup-protoc
+
       - name: setup go
         run: |
           make setup-go
           make setup-gomobile
           which gomobile
+
       - name: Cross-compile library mac/win/linux
         run: |
-          echo $FLAGS
-          mkdir -p .release
-          echo $SDKROOT
-          GOOS="darwin" CGO_CFLAGS="-mmacosx-version-min=11" MACOSX_DEPLOYMENT_TARGET=11.0 GOARCH="amd64" CGO_ENABLED="1" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -ldflags="$FLAGS" -o darwin-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
-          export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
-          echo $SDKROOT
-          GOOS="darwin" CGO_CFLAGS="-mmacosx-version-min=11" MACOSX_DEPLOYMENT_TARGET=11.0 GOARCH="arm64" CGO_ENABLED="1" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector" -ldflags="$FLAGS" -o darwin-arm64 github.com/anyproto/anytype-heart/cmd/grpcserver
-          GOOS="windows" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags=-static" -o windows-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
-          GOOS="linux" GOARCH="amd64" CGO_ENABLED="1" CC="x86_64-linux-musl-gcc" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external -extldflags '-static -Wl,-z stack-size=1000000'" -o linux-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
-          GOOS="linux" GOARCH="arm64" CGO_ENABLED="1" CC="aarch64-linux-musl-gcc" go build -tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -ldflags="$FLAGS -linkmode external" -o linux-arm64 github.com/anyproto/anytype-heart/cmd/grpcserver
+          make cross-compile-library
           ls -lha .
-      - name: run perf tests
-        run: |
-          echo "Running perf tests"
-          RUN_COUNT=${{ github.event.inputs.perf-test }}
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            RUN_COUNT=10
-          fi
-          cd cmd/perftester/
-          CGO_ENABLED="1" go run main.go $RUN_COUNT
-        env:
-          ANYTYPE_REPORT_MEMORY: 'true'
-          TEST_MNEMONIC: ${{ secrets.TEST_MNEMONIC }}
-          PROM_KEY: ${{ secrets.PROMETHEUS_USERNAME }}
-          PROM_PASSWORD: ${{ secrets.PROMETHEUS_PASSWORD }}
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
-      - name: Archive perf tests results
-        uses: actions/upload-artifact@v4
-        with:
-          name: pprofs
-          path: |
-            *.pprof
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
-      - name: end run perf tests
-        run: |
-          rm -rf *.pprof
-          echo "End running perf tests"
-          gh run cancel ${{ github.run_id }}
-          gh run watch ${{ github.run_id }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.event.inputs.perf-test != '0' || github.event_name == 'schedule'
+
       - name: Make JS protos
+        if: github.event_name == 'push'
         run: |
           make protos-js
-          mv dist/js/pb protobuf
-          mkdir -p protobuf/protos
-          cp pb/protos/*.proto ./protobuf/protos
-          cp pb/protos/service/*.proto ./protobuf/protos
-          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+          make ci-js-protos
+
+      - name: Pack servers
         if: github.event_name == 'push'
-      - name: Add system relations/types jsons
-        run: |
-          mkdir -p json/
-          cp pkg/lib/bundle/systemRelations.json ./json
-          cp pkg/lib/bundle/systemTypes.json ./json
-          cp pkg/lib/bundle/internalRelations.json ./json
-          cp pkg/lib/bundle/internalTypes.json ./json
-      - name: Pack server win
-        run: |
-          declare -a arr=("windows-amd64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server.exe
-          zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
-          mv js_${VERSION}_${OSARCH}.zip .release/
-          done
-        if: github.event_name == 'push'
-      - name: Pack server osx
-        run: |
-          declare -a arr=("darwin-amd64" "darwin-arm64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-          mv js_${VERSION}_${OSARCH}.tar.gz .release/
-          done
-        if: github.event_name == 'push'
-      - name: Pack server unix amd64
-        run: |
-          declare -a arr=("linux-amd64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-          mv js_${VERSION}_${OSARCH}.tar.gz .release/
-          done
-        if: github.event_name == 'push'
-      - name: Pack server unix arm64
-        run: |
-          declare -a arr=("linux-arm64")
-          for i in "${arr[@]}"
-          do
-          OSARCH=${i%.*}
-          cp ./${i}* ./grpc-server
-          tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
-          mv js_${VERSION}_${OSARCH}.tar.gz .release/
-          done
-        if: github.event_name == 'push'
+        run: make pack-server
+
       - name: Make swift protos
-        run: |
-          mkdir -p .release
-          make protos-swift
-          rm -rf protobuf
-          mv dist/ios/protobuf protobuf
-          mkdir -p protobuf/protos
-          cp pb/protos/*.proto ./protobuf/protos
-          cp pb/protos/service/*.proto ./protobuf/protos
-          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-      - name: Add system relations/types jsons
-        run: |
-          mkdir -p json/
-          cp pkg/lib/bundle/systemRelations.json ./json
-          cp pkg/lib/bundle/relations.json ./json
-          cp pkg/lib/bundle/systemTypes.json ./json
-          cp pkg/lib/bundle/internalRelations.json ./json
-          cp pkg/lib/bundle/internalTypes.json ./json
+        run: make swift-protos
+
       - name: Compile ios lib
-        run: |
-          go install github.com/vektra/mockery/v2@v2.47.0
-          go install go.uber.org/mock/mockgen@v0.5.0
-          make test-deps
-          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
-          mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
-          go run cmd/iosrepack/main.go
-          mv dist/ios/Lib.xcframework .
-          gtar --exclude ".*" -czvf ios_framework.tar.gz Lib.xcframework protobuf json
-          gradle publish
-          mv ios_framework.tar.gz .release/ios_framework_${VERSION}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
           MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
           MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
+          PUBLISH_GRADLE: 1
+        run: make compile-ios-lib
+
       - name: Make java protos
-        run: |
-          make protos-java
-          rm -rf protobuf
-          mv dist/android/pb protobuf
-          mkdir -p protobuf/protos
-          cp pb/protos/*.proto ./protobuf/protos
-          cp pb/protos/service/*.proto ./protobuf/protos
-          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-      - name: Add system relations/types jsons
-        run: |
-          mkdir -p json/
-          cp pkg/lib/bundle/systemRelations.json ./json
-          cp pkg/lib/bundle/systemTypes.json ./json
-          cp pkg/lib/bundle/internalRelations.json ./json
-          cp pkg/lib/bundle/internalTypes.json ./json
+        run: make ci-java-protos
+
       - name: Compile android lib
-        run: |
-          gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector timetzdata rasterizesvg" -ldflags "$FLAGS" -v -target=android -androidapi 26 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
-          gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
-          mv android_lib_${VERSION}.tar.gz .release/
+        run: make compile-android-lib
+
       - name: Publish android lib to maven
-        run: |
-          gradle publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
           MAVEN_ARTIFACT_ID: 'anytype-heart-android'
           MAVEN_ARTIFACT_NAME: 'lib.aar'
+        run: |
+          gradle publish
+
       - name: Release
         if: github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
           fail_on_unmatched_files: true
           files: '.release/*'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

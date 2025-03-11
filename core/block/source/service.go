@@ -6,13 +6,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -56,7 +53,7 @@ type Service interface {
 	RegisterStaticSource(s Source) error
 	NewStaticSource(params StaticSourceParams) SourceWithType
 
-	DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error)
+	DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error)
 	IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error)
 	app.Component
 }
@@ -102,7 +99,7 @@ type BuildOptions struct {
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
 		Listener: b.Listener,
-		TreeBuilder: func(treeStorage treestorage.TreeStorage, aclList list.AclList) (objecttree.ObjectTree, error) {
+		TreeBuilder: func(treeStorage objecttree.Storage, aclList list.AclList) (objecttree.ObjectTree, error) {
 			ot, err := objecttree.BuildKeyFilterableObjectTree(treeStorage, aclList)
 			if err != nil {
 				return nil, err
@@ -125,7 +122,7 @@ func (s *service) NewSource(ctx context.Context, space Space, id string, buildOp
 	if err != nil {
 		return nil, err
 	}
-	err = s.storageService.BindSpaceID(src.SpaceID(), src.Id())
+	err = s.objectStore.BindSpaceId(src.SpaceID(), src.Id())
 	if err != nil {
 		return nil, fmt.Errorf("store space id for object: %w", err)
 	}
@@ -159,13 +156,20 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		case smartblock.SmartBlockTypeBundledRelation:
 			return NewBundledRelation(id), nil
 		case smartblock.SmartBlockTypeParticipant:
+			spaceId, _, err := domain.ParseParticipantId(id)
+			if err != nil {
+				return nil, err
+			}
+			if spaceId != space.Id() {
+				return nil, fmt.Errorf("invalid space id for participant object")
+			}
 			participantState := state.NewDoc(id, nil).(*state.State)
 			// Set object type here in order to derive value of Type relation in smartblock.Init
 			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
 			params := StaticSourceParams{
 				Id: domain.FullID{
 					ObjectID: id,
-					SpaceID:  space.Id(),
+					SpaceID:  spaceId,
 				},
 				State:     participantState,
 				SbType:    smartblock.SmartBlockTypeParticipant,
@@ -214,7 +218,7 @@ func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.Sm
 	}
 }
 
-func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*types.Struct, error) {
+func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
 	if !strings.HasPrefix(id.ObjectID, addr.DatePrefix) {
 		return nil, fmt.Errorf("unsupported id")
 	}
@@ -241,7 +245,7 @@ func (s *service) RegisterStaticSource(src Source) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[src.Id()] = src
-	err := s.storageService.BindSpaceID(src.SpaceID(), src.Id())
+	err := s.objectStore.BindSpaceId(src.SpaceID(), src.Id())
 	if err != nil {
 		return fmt.Errorf("store space id for object: %w", err)
 	}

@@ -3,9 +3,11 @@
 package mock_clientspace
 
 import (
-	context "context"
+	anystorage "github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 
 	commonspace "github.com/anyproto/any-sync/commonspace"
+
+	context "context"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
@@ -20,8 +22,6 @@ import (
 	payloadcreator "github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-
-	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 
@@ -1511,19 +1511,19 @@ func (_c *MockSpace_Remove_Call) RunAndReturn(run func(context.Context, string) 
 }
 
 // Storage provides a mock function with given fields:
-func (_m *MockSpace) Storage() spacestorage.SpaceStorage {
+func (_m *MockSpace) Storage() anystorage.ClientSpaceStorage {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Storage")
 	}
 
-	var r0 spacestorage.SpaceStorage
-	if rf, ok := ret.Get(0).(func() spacestorage.SpaceStorage); ok {
+	var r0 anystorage.ClientSpaceStorage
+	if rf, ok := ret.Get(0).(func() anystorage.ClientSpaceStorage); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(spacestorage.SpaceStorage)
+			r0 = ret.Get(0).(anystorage.ClientSpaceStorage)
 		}
 	}
 
@@ -1547,12 +1547,12 @@ func (_c *MockSpace_Storage_Call) Run(run func()) *MockSpace_Storage_Call {
 	return _c
 }
 
-func (_c *MockSpace_Storage_Call) Return(_a0 spacestorage.SpaceStorage) *MockSpace_Storage_Call {
+func (_c *MockSpace_Storage_Call) Return(_a0 anystorage.ClientSpaceStorage) *MockSpace_Storage_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSpace_Storage_Call) RunAndReturn(run func() spacestorage.SpaceStorage) *MockSpace_Storage_Call {
+func (_c *MockSpace_Storage_Call) RunAndReturn(run func() anystorage.ClientSpaceStorage) *MockSpace_Storage_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1647,6 +1647,62 @@ func (_c *MockSpace_TreeBuilder_Call) Return(_a0 objecttreebuilder.TreeBuilder) 
 }
 
 func (_c *MockSpace_TreeBuilder_Call) RunAndReturn(run func() objecttreebuilder.TreeBuilder) *MockSpace_TreeBuilder_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TryRemove provides a mock function with given fields: objectId
+func (_m *MockSpace) TryRemove(objectId string) (bool, error) {
+	ret := _m.Called(objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TryRemove")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(objectId)
+	}
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(objectId)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(objectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpace_TryRemove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TryRemove'
+type MockSpace_TryRemove_Call struct {
+	*mock.Call
+}
+
+// TryRemove is a helper method to define mock.On call
+//   - objectId string
+func (_e *MockSpace_Expecter) TryRemove(objectId interface{}) *MockSpace_TryRemove_Call {
+	return &MockSpace_TryRemove_Call{Call: _e.mock.On("TryRemove", objectId)}
+}
+
+func (_c *MockSpace_TryRemove_Call) Run(run func(objectId string)) *MockSpace_TryRemove_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockSpace_TryRemove_Call) Return(_a0 bool, _a1 error) *MockSpace_TryRemove_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSpace_TryRemove_Call) RunAndReturn(run func(string) (bool, error)) *MockSpace_TryRemove_Call {
 	_c.Call.Return(run)
 	return _c
 }

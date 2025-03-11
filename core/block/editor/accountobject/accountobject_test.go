@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/metricsid"
@@ -55,7 +55,7 @@ func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB))
 	indexStore := objectstore.NewStoreFixture(t).SpaceIndex("spaceId")
 	keys, err := accountdata.NewRandom()
 	require.NoError(t, err)
-	object := New(sb, keys, indexStore, nil, nil, nil, db, cfg)
+	object := New(sb, keys, indexStore, nil, nil, db, cfg)
 	fx := &fixture{
 		storeFx:       objectstore.NewStoreFixture(t),
 		db:            db,
@@ -133,7 +133,7 @@ func (fx *fixture) assertStoreValue(t *testing.T, test any, extract func(val *an
 	require.Equal(t, test, extract(val))
 }
 
-func (fx *fixture) assertStateValue(t *testing.T, val any, extract func(str *types.Struct) any) {
+func (fx *fixture) assertStateValue(t *testing.T, val any, extract func(str *domain.Details) any) {
 	require.Equal(t, val, extract(fx.SmartBlock.NewState().CombinedDetails()))
 }
 
@@ -175,11 +175,11 @@ func TestAccountOldInitWithData(t *testing.T) {
 	id, err := fx.GetAnalyticsId()
 	require.NoError(t, err)
 	require.Equal(t, "analyticsId", id)
-	fx.assertStateValue(t, "Anna", func(str *types.Struct) any {
-		return pbtypes.GetString(str, "name")
+	fx.assertStateValue(t, "Anna", func(str *domain.Details) any {
+		return str.GetString("name")
 	})
-	fx.assertStateValue(t, "Molly", func(str *types.Struct) any {
-		return pbtypes.GetString(str, "description")
+	fx.assertStateValue(t, "Molly", func(str *domain.Details) any {
+		return str.GetString("description")
 	})
 	require.NotNil(t, fx)
 }
@@ -189,11 +189,11 @@ func TestPushNewChanges(t *testing.T) {
 	fx := newFixture(t, true, nil)
 	_, err := fx.OnPushChange(makeStoreContent(map[string]any{"name": "Anna", "description": "Molly"}))
 	require.NoError(t, err)
-	fx.assertStateValue(t, "Anna", func(str *types.Struct) any {
-		return pbtypes.GetString(str, "name")
+	fx.assertStateValue(t, "Anna", func(str *domain.Details) any {
+		return str.GetString("name")
 	})
-	fx.assertStateValue(t, "Molly", func(str *types.Struct) any {
-		return pbtypes.GetString(str, "description")
+	fx.assertStateValue(t, "Molly", func(str *domain.Details) any {
+		return str.GetString("description")
 	})
 	require.NotNil(t, fx)
 }

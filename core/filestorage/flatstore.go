@@ -190,17 +190,11 @@ func (d *localBytesUsageEventSender) sendLocalBytesUsageEvent(localBytesUsage ui
 }
 
 func (d *localBytesUsageEventSender) send(usage uint64) {
-	d.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfFileLocalUsage{
-					FileLocalUsage: &pb.EventFileLocalUsage{
-						LocalBytesUsage: usage,
-					},
-				},
-			},
+	d.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfFileLocalUsage{
+		FileLocalUsage: &pb.EventFileLocalUsage{
+			LocalBytesUsage: usage,
 		},
-	})
+	}))
 }
 
 type LocalStoreGarbageCollector interface {
@@ -239,7 +233,8 @@ func (c *flatStoreGarbageCollector) CollectGarbage(ctx context.Context) error {
 	}
 
 	c.flatStore.sendLocalBytesUsageEvent(ctx)
-	return results.Close()
+	results.Close()
+	return nil
 }
 
 func newFlatStoreGarbageCollector(flatStore *flatStore) LocalStoreGarbageCollector {

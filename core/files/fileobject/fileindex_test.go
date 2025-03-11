@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type indexerFixture struct {
@@ -30,8 +28,9 @@ func newIndexerFixture(t *testing.T) *indexerFixture {
 	fileService := mock_files.NewMockService(t)
 
 	svc := &service{
-		objectStore: objectStore,
-		fileService: fileService,
+		objectStore:    objectStore,
+		fileService:    fileService,
+		accountService: &dummyAccountService{},
 	}
 	ind := svc.newIndexer()
 
@@ -62,18 +61,17 @@ func TestIndexer_buildDetails(t *testing.T) {
 					Mill:  mill.BlobId,
 					Media: "text",
 				})
-				file.EXPECT().Details(ctx).Return(&types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String("name"),
-					},
-				}, typeKey, nil)
+				file.EXPECT().Details(ctx).Return(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyName: domain.String("name"),
+				},
+				), typeKey, nil)
 				fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
 
 				details, gotTypeKey, err := fx.buildDetails(ctx, id)
 				require.NoError(t, err)
 				assert.Equal(t, typeKey, gotTypeKey)
-				assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
-				assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
+				assert.Equal(t, "name", details.GetString(bundle.RelationKeyName))
+				assert.Equal(t, int64(model.FileIndexingStatus_Indexed), details.GetInt64(bundle.RelationKeyFileIndexingStatus))
 			})
 		}
 	})
@@ -92,19 +90,18 @@ func TestIndexer_buildDetails(t *testing.T) {
 		})
 
 		image := mock_files.NewMockImage(t)
-		image.EXPECT().Details(ctx).Return(&types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String(): pbtypes.String("name"),
-			},
-		}, nil)
+		image.EXPECT().Details(ctx).Return(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("name"),
+		},
+		), nil)
 		fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
 		fx.fileService.EXPECT().ImageByHash(ctx, id).Return(image, nil)
 
 		details, gotTypeKey, err := fx.buildDetails(ctx, id)
 		require.NoError(t, err)
 		assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
-		assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
-		assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
+		assert.Equal(t, "name", details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, int64(model.FileIndexingStatus_Indexed), details.GetInt64(bundle.RelationKeyFileIndexingStatus))
 	})
 	t.Run("with image fell back to file", func(t *testing.T) {
 		for _, typeKey := range []domain.TypeKey{
@@ -126,18 +123,17 @@ func TestIndexer_buildDetails(t *testing.T) {
 					Mill:  mill.BlobId,
 					Media: "image/jpeg",
 				})
-				file.EXPECT().Details(ctx).Return(&types.Struct{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String("name"),
-					},
-				}, typeKey, nil)
+				file.EXPECT().Details(ctx).Return(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyName: domain.String("name"),
+				},
+				), typeKey, nil)
 				fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
 
 				details, gotTypeKey, err := fx.buildDetails(ctx, id)
 				require.NoError(t, err)
 				assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
-				assert.Equal(t, "name", pbtypes.GetString(details, bundle.RelationKeyName.String()))
-				assert.Equal(t, pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)), details.Fields[bundle.RelationKeyFileIndexingStatus.String()])
+				assert.Equal(t, "name", details.GetString(bundle.RelationKeyName))
+				assert.Equal(t, int64(model.FileIndexingStatus_Indexed), details.GetInt64(bundle.RelationKeyFileIndexingStatus))
 			})
 		}
 	})
@@ -162,44 +158,44 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		//  Use same testFileId everywhere to pass domain.IsFileId check. It doesn't matter that files are same here
 		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                 pbtypes.String("id1"),
-				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
-				bundle.RelationKeySpaceId:            pbtypes.String("space1"),
-				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
-				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_file)),
+				bundle.RelationKeyId:                 domain.String("id1"),
+				bundle.RelationKeyFileId:             domain.String(testFileId.String()),
+				bundle.RelationKeySpaceId:            domain.String("space1"),
+				bundle.RelationKeyFileIndexingStatus: domain.Int64(int64(model.FileIndexingStatus_NotIndexed)),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_file)),
 			},
 		})
 		fx.objectStoreFixture.AddObjects(t, "space2", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                 pbtypes.String("id2"),
-				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
-				bundle.RelationKeySpaceId:            pbtypes.String("space2"),
-				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_Indexed)),
-				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_image)),
+				bundle.RelationKeyId:                 domain.String("id2"),
+				bundle.RelationKeyFileId:             domain.String(testFileId.String()),
+				bundle.RelationKeySpaceId:            domain.String("space2"),
+				bundle.RelationKeyFileIndexingStatus: domain.Int64(int64(model.FileIndexingStatus_Indexed)),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_image)),
 			},
 		})
 		fx.objectStoreFixture.AddObjects(t, "space3", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                 pbtypes.String("id3"),
-				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
-				bundle.RelationKeySpaceId:            pbtypes.String("space3"),
-				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotFound)),
-				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_video)),
+				bundle.RelationKeyId:                 domain.String("id3"),
+				bundle.RelationKeyFileId:             domain.String(testFileId.String()),
+				bundle.RelationKeySpaceId:            domain.String("space3"),
+				bundle.RelationKeyFileIndexingStatus: domain.Int64(int64(model.FileIndexingStatus_NotFound)),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_video)),
 			},
 		})
 		fx.objectStoreFixture.AddObjects(t, "space4", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id4"),
-				bundle.RelationKeyFileId:  pbtypes.String(testFileId.String()),
-				bundle.RelationKeySpaceId: pbtypes.String("space4"),
-				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_audio)),
+				bundle.RelationKeyId:             domain.String("id4"),
+				bundle.RelationKeyFileId:         domain.String(testFileId.String()),
+				bundle.RelationKeySpaceId:        domain.String("space4"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_audio)),
 			},
 		})
 		fx.objectStoreFixture.AddObjects(t, "space5", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      pbtypes.String("id5"),
-				bundle.RelationKeySpaceId: pbtypes.String("space5"),
-				bundle.RelationKeyLayout:  pbtypes.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:             domain.String("id5"),
+				bundle.RelationKeySpaceId:        domain.String("space5"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			},
 		})
 
@@ -223,11 +219,11 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 
 		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                 pbtypes.String("id1"),
-				bundle.RelationKeyFileId:             pbtypes.String(testFileId.String()),
-				bundle.RelationKeySpaceId:            pbtypes.String("space1"),
-				bundle.RelationKeyLayout:             pbtypes.Int64(int64(model.ObjectType_audio)),
-				bundle.RelationKeyFileIndexingStatus: pbtypes.Int64(int64(model.FileIndexingStatus_NotIndexed)),
+				bundle.RelationKeyId:                 domain.String("id1"),
+				bundle.RelationKeyFileId:             domain.String(testFileId.String()),
+				bundle.RelationKeySpaceId:            domain.String("space1"),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_audio)),
+				bundle.RelationKeyFileIndexingStatus: domain.Int64(int64(model.FileIndexingStatus_NotIndexed)),
 			},
 		})
 
