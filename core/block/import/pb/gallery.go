@@ -26,41 +26,43 @@ func NewGalleryImport(service *collection.Service) *GalleryImport {
 	return &GalleryImport{service: service}
 }
 
-func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
-	widget *common.Snapshot,
+func (g *GalleryImport) ProvideCollection(
+	snapshots *snapshotSet,
 	_ map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
-	workspaceSnapshot *common.Snapshot,
 	isNewSpace bool,
 ) (collectionsSnapshots []*common.Snapshot, err error) {
 	if isNewSpace {
 		return nil, nil
 	}
 	var widgetObjects []string
-	if widget != nil {
-		widgetObjects = g.getObjectsFromWidgets(widget)
+	if snapshots != nil && snapshots.Widget != nil {
+		widgetObjects = g.getObjectsFromWidgets(snapshots.Widget)
 	}
 	var (
-		icon     string
-		fileKeys []*pb.ChangeFileKeys
+		icon       string
+		fileKeys   []*pb.ChangeFileKeys
+		objectsIds []string
 	)
-	if workspaceSnapshot != nil { // we use space icon for import collection
-		icon = workspaceSnapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
-		fileKeys = lo.Filter(workspaceSnapshot.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
+	if snapshots != nil && snapshots.Workspace != nil { // we use space icon for import collection
+		icon = snapshots.Workspace.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
+		fileKeys = lo.Filter(snapshots.Workspace.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
 	}
 	collectionName := params.GetCollectionTitle() // collection name should be the name of experience
 	if collectionName == "" {
 		collectionName = rootCollectionName
 	}
 	rootCollection := common.NewImportCollection(g.service)
-	if len(widgetObjects) > 0 {
-		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, widget, collectionsSnapshots)
+	if len(widgetObjects) > 0 && snapshots != nil {
+		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, snapshots.Widget, collectionsSnapshots)
 		if err != nil {
 			return nil, err
 		}
 	}
-	objectsIDs := g.getObjectsIDs(snapshots)
-	settings := common.MakeImportCollectionSetting(collectionName, objectsIDs, icon, fileKeys, false, true, true)
+	if snapshots != nil {
+		objectsIds = g.getObjectsIDs(snapshots.List)
+	}
+	settings := common.MakeImportCollectionSetting(collectionName, objectsIds, icon, fileKeys, false, true, true)
 	objectsCollection, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err

@@ -21,11 +21,10 @@ func NewSpaceImport(service *collection.Service) *SpaceImport {
 	return &SpaceImport{service: service}
 }
 
-func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
-	widgetSnapshot *common.Snapshot,
+func (s *SpaceImport) ProvideCollection(
+	snapshots *snapshotSet,
 	oldToNewID map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
-	_ *common.Snapshot,
 	_ bool,
 ) ([]*common.Snapshot, error) {
 	if params.GetNoCollection() {
@@ -37,18 +36,18 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 		objectsNotInWidget []*common.Snapshot
 	)
 
-	if widgetSnapshot != nil {
-		widgetFlags, rootObjects = s.getObjectsFromWidget(widgetSnapshot, oldToNewID)
-		objectsNotInWidget = lo.Filter(snapshots, func(item *common.Snapshot, index int) bool {
+	if snapshots != nil && snapshots.Widget != nil {
+		widgetFlags, rootObjects = s.getObjectsFromWidget(snapshots.Widget, oldToNewID)
+		objectsNotInWidget = lo.Filter(snapshots.List, func(item *common.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
 		})
 	}
 	if !widgetFlags.IsEmpty() || len(rootObjects) > 0 {
 		// add to root collection only objects from widget, dashboard and favorites
 		rootObjects = append(rootObjects, s.filterObjects(widgetFlags, objectsNotInWidget)...)
-	} else {
+	} else if snapshots != nil {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
-		rootObjects = lo.FilterMap(snapshots, func(item *common.Snapshot, index int) (string, bool) {
+		rootObjects = lo.FilterMap(snapshots.List, func(item *common.Snapshot, index int) (string, bool) {
 			if !s.objectShouldBeSkipped(item) {
 				return item.Id, true
 			}
