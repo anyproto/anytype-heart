@@ -72,19 +72,53 @@ type Detail struct {
 }
 
 type DetailEntry struct {
-	Name        string   `json:"name" example:"Last modified date"`                                                          // The name of the detail
-	Type        string   `json:"type" example:"date"`                                                                        // The type of the detail, which should correspond to the field that is set
-	Text        string   `json:"text,omitempty" example:"Some text"`                                                         // For text details
-	Number      float64  `json:"number,omitempty" example:"42"`                                                              // For number details
-	Select      *Tag     `json:"select,omitempty"`                                                                           // For select details
-	MultiSelect []Tag    `json:"multi_select,omitempty"`                                                                     // For multi-select details
-	Date        string   `json:"date,omitempty" example:"2024-02-14T12:34:56Z"`                                              // For date details
-	File        []string `json:"file,omitempty" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"`   // For file details
-	Checkbox    bool     `json:"checkbox,omitempty" example:"true"`                                                          // For checkbox details
-	Url         string   `json:"url,omitempty" example:"https://example.com"`                                                // For URL details
-	Email       string   `json:"email,omitempty" example:"example@example.com"`                                              // For email details
-	Phone       string   `json:"phone,omitempty" example:"+1234567890"`                                                      // For phone details
-	Object      []string `json:"object,omitempty" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"` // For object details
+	Name  string `json:"name" example:"Last modified date"`                                                                                                                        // The name of the detail
+	Type  string `json:"type" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object" example:"date"`                                                    // The type of the detail, which should correspond to the field that is set
+	Value any    `json:"value" oneOf:"TextDetail,NumberDetail,SelectDetail,MultiSelectDetail,DateDetail,FileDetail,CheckboxDetail,UrlDetail,EmailDetail,PhoneDetail,ObjectDetail"` // The value of the detail
+}
+
+type TextDetail struct {
+	Text string `json:"text" example:"Some text..."`
+}
+
+type NumberDetail struct {
+	Number float64 `json:"number" example:"42"`
+}
+
+type SelectDetail struct {
+	Select *Tag `json:"select"`
+}
+
+type MultiSelectDetail struct {
+	MultiSelect []Tag `json:"multi_select"`
+}
+
+type DateDetail struct {
+	Date string `json:"date" example:"2024-02-14T12:34:56Z"`
+}
+
+type FileDetail struct {
+	File []string `json:"file" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"`
+}
+
+type CheckboxDetail struct {
+	Checkbox bool `json:"checkbox" example:"true"`
+}
+
+type UrlDetail struct {
+	Url string `json:"url" example:"https://example.com"`
+}
+
+type EmailDetail struct {
+	Email string `json:"email" example:"example@example.com"`
+}
+
+type PhoneDetail struct {
+	Phone string `json:"phone" example:"+1234567890"`
+}
+
+type ObjectDetail struct {
+	Object []string `json:"object" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"`
 }
 
 type Tag struct {

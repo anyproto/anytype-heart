@@ -547,23 +547,23 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 			switch format {
 			case "text":
 				if str, ok := convertedVal.(string); ok {
-					entry.Text = str
+					entry.Value = TextDetail{Text: str}
 				}
 			case "number":
 				if num, ok := convertedVal.(float64); ok {
-					entry.Number = num
+					entry.Value = NumberDetail{Number: num}
 				}
 			case "select":
 				if sel, ok := convertedVal.(Tag); ok {
-					entry.Select = &sel
+					entry.Value = SelectDetail{Select: &sel}
 				}
 			case "multi_select":
 				if ms, ok := convertedVal.([]Tag); ok {
-					entry.MultiSelect = ms
+					entry.Value = MultiSelectDetail{MultiSelect: ms}
 				}
 			case "date":
 				if dateStr, ok := convertedVal.(string); ok {
-					entry.Date = dateStr
+					entry.Value = DateDetail{Date: dateStr}
 				}
 			case "file":
 				if file, ok := convertedVal.([]interface{}); ok {
@@ -573,27 +573,27 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 							files = append(files, str)
 						}
 					}
-					entry.File = files
+					entry.Value = FileDetail{File: files}
 				}
 			case "checkbox":
 				if cb, ok := convertedVal.(bool); ok {
-					entry.Checkbox = cb
+					entry.Value = CheckboxDetail{Checkbox: cb}
 				}
 			case "url":
 				if url, ok := convertedVal.(string); ok {
-					entry.Url = url
+					entry.Value = UrlDetail{Url: url}
 				}
 			case "email":
 				if email, ok := convertedVal.(string); ok {
-					entry.Email = email
+					entry.Value = EmailDetail{Email: email}
 				}
 			case "phone":
 				if phone, ok := convertedVal.(string); ok {
-					entry.Phone = phone
+					entry.Value = PhoneDetail{Phone: phone}
 				}
 			case "object":
 				if obj, ok := convertedVal.(string); ok {
-					entry.Object = []string{obj}
+					entry.Value = ObjectDetail{Object: []string{obj}}
 				} else if objSlice, ok := convertedVal.([]interface{}); ok {
 					var objects []string
 					for _, v := range objSlice {
@@ -601,11 +601,11 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 							objects = append(objects, str)
 						}
 					}
-					entry.Object = objects
+					entry.Value = ObjectDetail{Object: objects}
 				}
 			default:
 				if str, ok := convertedVal.(string); ok {
-					entry.Text = str
+					entry.Value = TextDetail{Text: str}
 				}
 			}
 

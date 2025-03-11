@@ -68,6 +68,12 @@ components:
           example: VerticalAlignTop
           type: string
       type: object
+    object.CheckboxDetail:
+      properties:
+        checkbox:
+          example: true
+          type: boolean
+      type: object
     object.CreateObjectRequest:
       properties:
         body:
@@ -99,6 +105,12 @@ components:
           example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
           type: string
       type: object
+    object.DateDetail:
+      properties:
+        date:
+          example: "2024-02-14T12:34:56Z"
+          type: string
+      type: object
     object.Detail:
       properties:
         details:
@@ -111,66 +123,46 @@ components:
     object.DetailEntry:
       description: The details
       properties:
-        checkbox:
-          description: For checkbox details
-          example: true
-          type: boolean
-        date:
-          description: For date details
-          example: "2024-02-14T12:34:56Z"
-          type: string
-        email:
-          description: For email details
-          example: example@example.com
-          type: string
-        file:
-          description: For file details
-          example:
-          - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        multi_select:
-          description: For multi-select details
-          items:
-            $ref: '#/components/schemas/object.Tag'
-          type: array
-          uniqueItems: false
         name:
           description: The name of the detail
           example: Last modified date
           type: string
-        number:
-          description: For number details
-          example: 42
-          type: number
-        object:
-          description: For object details
-          example:
-          - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        phone:
-          description: For phone details
-          example: "+1234567890"
-          type: string
-        select:
-          $ref: '#/components/schemas/object.Tag'
-        text:
-          description: For text details
-          example: Some text
-          type: string
         type:
           description: The type of the detail, which should correspond to the field
             that is set
+          enum:
+          - text
+          - number
+          - select
+          - multi_select
+          - date
+          - file
+          - checkbox
+          - url
+          - email
+          - phone
+          - object
           example: date
           type: string
-        url:
-          description: For URL details
-          example: https://example.com
+        value:
+          description: The value of the detail
+          oneOf:
+          - $ref: '#/components/schemas/object.TextDetail'
+          - $ref: '#/components/schemas/object.NumberDetail'
+          - $ref: '#/components/schemas/object.SelectDetail'
+          - $ref: '#/components/schemas/object.MultiSelectDetail'
+          - $ref: '#/components/schemas/object.DateDetail'
+          - $ref: '#/components/schemas/object.FileDetail'
+          - $ref: '#/components/schemas/object.CheckboxDetail'
+          - $ref: '#/components/schemas/object.UrlDetail'
+          - $ref: '#/components/schemas/object.EmailDetail'
+          - $ref: '#/components/schemas/object.PhoneDetail'
+          - $ref: '#/components/schemas/object.ObjectDetail'
+      type: object
+    object.EmailDetail:
+      properties:
+        email:
+          example: example@example.com
           type: string
       type: object
     object.File:
@@ -203,6 +195,30 @@ components:
         type:
           description: The type of the file
           type: string
+      type: object
+    object.FileDetail:
+      properties:
+        file:
+          example:
+          - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: object
+    object.MultiSelectDetail:
+      properties:
+        multi_select:
+          items:
+            $ref: '#/components/schemas/object.Tag'
+          type: array
+          uniqueItems: false
+      type: object
+    object.NumberDetail:
+      properties:
+        number:
+          example: 42
+          type: number
       type: object
     object.Object:
       description: The object
@@ -253,10 +269,26 @@ components:
         type:
           $ref: '#/components/schemas/object.Type'
       type: object
+    object.ObjectDetail:
+      properties:
+        object:
+          example:
+          - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: object
     object.ObjectResponse:
       properties:
         object:
           $ref: '#/components/schemas/object.Object'
+      type: object
+    object.PhoneDetail:
+      properties:
+        phone:
+          example: "+1234567890"
+          type: string
       type: object
     object.Relation:
       description: The relation of the block, if applicable
@@ -264,8 +296,12 @@ components:
         id:
           type: string
       type: object
+    object.SelectDetail:
+      properties:
+        select:
+          $ref: '#/components/schemas/object.Tag'
+      type: object
     object.Tag:
-      description: For select details
       properties:
         color:
           description: The color of the tag
@@ -340,6 +376,12 @@ components:
           example: Some text...
           type: string
       type: object
+    object.TextDetail:
+      properties:
+        text:
+          example: Some text...
+          type: string
+      type: object
     object.Type:
       description: The type of the object
       properties:
@@ -370,6 +412,12 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/object.Type'
+      type: object
+    object.UrlDetail:
+      properties:
+        url:
+          example: https://example.com
+          type: string
       type: object
     pagination.PaginatedResponse-object_Object:
       properties:
