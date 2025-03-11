@@ -311,7 +311,7 @@ func (s *service) syncViewRelationsAndRelationLinks(objectId, viewId string, dv 
 				log.Error("failed to get relation link", zap.String("key", rel.Key), zap.Error(err))
 				continue
 			}
-			_ = dv.AddRelation(relLink)
+			_ = dv.AddRelation(relLink) // nolint:errcheck
 		}
 	}
 
