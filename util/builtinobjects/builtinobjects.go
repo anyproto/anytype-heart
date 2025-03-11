@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -76,19 +78,6 @@ var (
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
 		pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
-	}
-
-	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
-	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
-		pb.RpcObjectImportUseCaseRequest_EMPTY: {
-			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
-		},
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Link, "bafyreiccjf5vbijsmr55ypsnnzltmcvl4n63g73twwxqnfkn5usoq2iqyi", "", true},
-			{model.BlockContentWidget_View, "bafyreigigitlypzxjf2trrguj7ict7y6xu2r3qi6hc5eycp47pz66ghlpy", "all", true},
-			{model.BlockContentWidget_View, "bafyreihruv47l2cm3fh5rl7gou2s3re2dtd6iofjahogp7nockgsaomg5m", "all", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecentOpen, "", false},
-		},
 	}
 )
 
@@ -374,39 +363,43 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 
 	widgetObjectID := spc.DerivedIDs().Widgets
+	typeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
+	if err != nil {
+		log.Errorf("failed to get type id: %w", err)
+		return
+	}
 
+	// todo: rewrite to use CreateTypeWidgetIfMissing in block.Service
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		for _, param := range widgetParams[useCase] {
-			objectID := param.objectID
-			if param.isObjectIDChanged {
-				objectID, err = b.getNewObjectID(spc.Id(), objectID)
-				if err != nil {
-					log.Errorf("Skipping creation of widget block as failed to get new object id using old one '%s': %v", objectID, err)
-					continue
-				}
-			}
-			request := &pb.RpcBlockCreateWidgetRequest{
-				ContextId:    widgetObjectID,
-				Position:     model.Block_Bottom,
-				WidgetLayout: param.layout,
-				Block: &model.Block{
-					Content: &model.BlockContentOfLink{
-						Link: &model.BlockContentLink{
-							TargetBlockId: objectID,
-							Style:         model.BlockContentLink_Page,
-							IconSize:      model.BlockContentLink_SizeNone,
-							CardStyle:     model.BlockContentLink_Inline,
-							Description:   model.BlockContentLink_None,
-						},
+		targets := s.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+		if slices.Contains(targets, typeId) {
+			return nil
+		}
+		targets = append(targets, typeId)
+		s.Details().Set(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
+
+		objectID, e := spc.DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyPage.String()))
+		if e != nil {
+			return fmt.Errorf("failed to derive page type object id: %w", err)
+		}
+		request := &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    widgetObjectID,
+			Position:     model.Block_Bottom,
+			WidgetLayout: model.BlockContentWidget_View,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: objectID,
+						Style:         model.BlockContentLink_Page,
+						IconSize:      model.BlockContentLink_SizeNone,
+						CardStyle:     model.BlockContentLink_Inline,
+						Description:   model.BlockContentLink_None,
 					},
 				},
-			}
-			if param.viewID != "" {
-				request.ViewId = param.viewID
-			}
-			if _, err = w.CreateBlock(s, request); err != nil {
-				log.Errorf("Failed to make Widget blocks: %v", err)
-			}
+			},
+		}
+		if _, e = w.CreateBlock(s, request); err != nil {
+			return fmt.Errorf("failed to make Widget block: %v", e)
 		}
 		return nil
 	}); err != nil {
