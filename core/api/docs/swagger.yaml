@@ -1167,7 +1167,7 @@ paths:
       - bearerauth: []
       summary: List members
       tags:
-      - spaces
+      - members
   /spaces/{space_id}/members/{member_id}:
     get:
       description: Fetches detailed information about a single member within a space.
@@ -1216,7 +1216,7 @@ paths:
       - bearerauth: []
       summary: Get member
       tags:
-      - spaces
+      - members
   /spaces/{space_id}/objects:
     get:
       description: Retrieves a paginated list of objects in the given space. The endpoint
@@ -1726,7 +1726,7 @@ paths:
       - bearerauth: []
       summary: List templates
       tags:
-      - types
+      - templates
   /spaces/{space_id}/types/{type_id}/templates/{template_id}:
     get:
       description: Fetches full details for one template associated with a particular
@@ -1781,7 +1781,7 @@ paths:
       - bearerauth: []
       summary: Get template
       tags:
-      - types
+      - templates
   /v1/spaces/{space_id}/lists/{list_id}/objects:
     get:
       description: Returns a paginated list of objects that are associated with a

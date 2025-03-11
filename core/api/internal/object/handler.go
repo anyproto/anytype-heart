@@ -240,7 +240,7 @@ func GetTypeHandler(s *ObjectService) gin.HandlerFunc {
 //
 //	@Summary		List templates
 //	@Description	This endpoint returns a paginated list of templates that are associated with a specific object type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.
-//	@Tags			types
+//	@Tags			templates
 //	@Produce		json
 //	@Param			space_id	path		string									true	"Space ID"
 //	@Param			type_id		path		string									true	"Type ID"
@@ -280,7 +280,7 @@ func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 //
 //	@Summary		Get template
 //	@Description	Fetches full details for one template associated with a particular object type in a space. The response provides the template’s identifier, name, icon, and any other relevant metadata. This endpoint is useful when a client needs to preview or apply a template to prefill object creation fields.
-//	@Tags			types
+//	@Tags			templates
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space ID"
 //	@Param			type_id		path		string					true	"Type ID"
