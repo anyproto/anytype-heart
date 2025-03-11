@@ -77,7 +77,7 @@ func TestURI_ValidateURI(t *testing.T) {
 		uri := ""
 		err := ValidateURI(uri)
 		assert.Error(t, err)
-		assert.Equal(t, err, ErrURLEmpty)
+		assert.Equal(t, err, errURLEmpty)
 	})
 
 	t.Run("should return error on win filepath", func(t *testing.T) {

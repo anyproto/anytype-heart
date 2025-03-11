@@ -19,14 +19,14 @@ var (
 	winFilepathPrefixRegex = regexp.MustCompile(`^[a-zA-Z]:[\\\/]`)
 
 	// errors
-	ErrURLEmpty             = fmt.Errorf("url is empty")
+	errURLEmpty             = fmt.Errorf("url is empty")
 	ErrFilepathNotSupported = fmt.Errorf("filepath not supported")
 )
 
 func excludePathAndEmptyURIs(uri string) error {
 	switch {
 	case len(uri) == 0:
-		return ErrURLEmpty
+		return errURLEmpty
 	case winFilepathPrefixRegex.MatchString(uri):
 		return ErrFilepathNotSupported
 	case strings.HasPrefix(uri, string(os.PathSeparator)):
