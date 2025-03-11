@@ -307,7 +307,8 @@ func getTableSizes(mw *core.Middleware) (tables map[string]uint64) {
 	cfg := mw.GetApp().MustComponent(config.CName).(*config.Config)
 	sqliteDBs, err := findSQLiteFiles(cfg.GetNewSpaceStorePath())
 	if err != nil {
-		log.Fatalf("sqlite find error: %v", err)
+		fmt.Printf("sqlite find error: %v\n", err)
+		return
 	}
 
 	for _, dbPath := range sqliteDBs {
