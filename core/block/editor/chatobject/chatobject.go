@@ -105,6 +105,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return err
 	}
+	s.storeSource = storeSource
 
 	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender, s.spaceIndex)
 
@@ -112,18 +113,20 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		subscription:    s.subscription,
 		currentIdentity: s.accountService.AccountID(),
 	})
-
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
 	s.store = stateStore
-
 	s.collection, err = s.store.Collection(s.componentCtx, collectionName)
 	if err != nil {
 		return fmt.Errorf("get s.collection.ction: %w", err)
 	}
 
-	s.storeSource = storeSource
+	s.subscription.chatState, err = s.initialChatState()
+	if err != nil {
+		return fmt.Errorf("init chat state: %w", err)
+	}
+
 	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, s.onUpdate)
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
@@ -135,7 +138,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (s *storeObject) onUpdate() {
-	_ = s.subscription.flush()
+	s.subscription.flush()
 }
 
 // initialChatState returns the initial chat state for the chat object from the DB
@@ -245,7 +248,7 @@ func (s *storeObject) markReadMessages(ids []string) {
 		log.With(zap.Error(err)).Error("markReadMessages: commit")
 		return
 	}
-	log.Debug(fmt.Sprintf("markReadMessages: %d/%d messages marked as read", len(idsModified), len(ids)))
+
 	if len(idsModified) > 0 {
 		// it doesn't work within the same transaction
 		// query the new oldest unread message's orderId
@@ -268,8 +271,11 @@ func (s *storeObject) markReadMessages(ids []string) {
 				newOldestOrderId = val.Value().GetObject(orderKey).Get("id").GetString()
 			}
 		}
-		log.Debug(fmt.Sprintf("markReadMessages: new oldest unread message: %s", newOldestOrderId))
-		s.subscription.chatState.Messages.OldestOrderId = newOldestOrderId
+
+		s.subscription.updateChatState(func(state *model.ChatState) {
+			state.Messages.OldestOrderId = newOldestOrderId
+		})
+
 		s.subscription.updateReadStatus(idsModified, true)
 		s.onUpdate()
 	}
@@ -368,8 +374,7 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 	} else {
 		qry = s.collection.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
 	}
-	// make sure we flush all the pending message updates first
-	chatState := s.subscription.flush()
+
 	msgs, err := s.queryMessages(ctx, qry)
 	if err != nil {
 		return nil, fmt.Errorf("query messages: %w", err)
@@ -380,7 +385,7 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 
 	return &GetMessagesResponse{
 		Messages:  msgs,
-		ChatState: chatState,
+		ChatState: s.subscription.getChatState(),
 	}, nil
 }
 
@@ -546,13 +551,8 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 		return messages[i].OrderId < messages[j].OrderId
 	})
 
-	isNewSubscription := s.subscription.subscribe(subId)
-	if isNewSubscription {
-		s.subscription.chatState, err = s.initialChatState()
-		if err != nil {
-			return nil, 0, s.subscription.chatState, fmt.Errorf("failed to fetch initial chat state: %w", err)
-		}
-	}
+	s.subscription.subscribe(subId)
+
 	if asyncInit {
 		var previousOrderId string
 		if len(messages) > 0 {
@@ -565,11 +565,13 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 			s.subscription.add(previousOrderId, message)
 			previousOrderId = message.OrderId
 		}
+
+		// Force chatState to be sent
+		s.subscription.chatStateUpdated = true
 		s.subscription.flush()
-		// TODO Do not return chat state?
-		return nil, 0, s.subscription.chatState, nil
+		return nil, 0, nil, nil
 	} else {
-		return messages, 0, s.subscription.chatState, nil
+		return messages, 0, s.subscription.getChatState(), nil
 	}
 }
 

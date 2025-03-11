@@ -33,15 +33,11 @@ func TestSubscription(t *testing.T) {
 
 		messageId, err := fx.AddMessage(ctx, nil, givenMessage())
 		require.NoError(t, err)
-		require.Len(t, fx.events, 2)
+		require.Len(t, fx.events, 1)
 
 		ev := fx.events[0].GetChatAdd()
 		require.NotNil(t, ev)
 		assert.Equal(t, messageId, ev.Id)
-
-		evState := fx.events[1].GetChatStateUpdate()
-		require.NotNil(t, evState)
-		assert.NotZero(t, evState.State.DbTimestamp)
 	})
 
 	t.Run("edit message", func(t *testing.T) {
@@ -52,16 +48,12 @@ func TestSubscription(t *testing.T) {
 
 		err = fx.EditMessage(ctx, messages[0].Id, edited)
 		require.NoError(t, err)
-		require.Len(t, fx.events, 2)
+		require.Len(t, fx.events, 1)
 
 		ev := fx.events[0].GetChatUpdate()
 		require.NotNil(t, ev)
 		assert.Equal(t, messages[0].Id, ev.Id)
 		assert.Equal(t, edited.Message.Text, ev.Message.Message.Text)
-
-		evState := fx.events[1].GetChatStateUpdate()
-		require.NotNil(t, evState)
-		assert.NotZero(t, evState.State.DbTimestamp)
 	})
 
 	t.Run("toggle message reaction", func(t *testing.T) {
@@ -69,17 +61,13 @@ func TestSubscription(t *testing.T) {
 
 		err = fx.ToggleMessageReaction(ctx, messages[0].Id, "👍")
 		require.NoError(t, err)
-		require.Len(t, fx.events, 2)
+		require.Len(t, fx.events, 1)
 
 		ev := fx.events[0].GetChatUpdateReactions()
 		require.NotNil(t, ev)
 		assert.Equal(t, messages[0].Id, ev.Id)
 		_, ok := ev.Reactions.Reactions["👍"]
 		assert.True(t, ok)
-
-		evState := fx.events[1].GetChatStateUpdate()
-		require.NotNil(t, evState)
-		assert.NotZero(t, evState.State.DbTimestamp)
 	})
 
 	t.Run("delete message", func(t *testing.T) {
@@ -87,14 +75,10 @@ func TestSubscription(t *testing.T) {
 
 		err = fx.DeleteMessage(ctx, messages[0].Id)
 		require.NoError(t, err)
-		require.Len(t, fx.events, 2)
+		require.Len(t, fx.events, 1)
 
 		ev := fx.events[0].GetChatDelete()
 		require.NotNil(t, ev)
 		assert.Equal(t, messages[0].Id, ev.Id)
-
-		evState := fx.events[1].GetChatStateUpdate()
-		require.NotNil(t, evState)
-		assert.NotZero(t, evState.State.DbTimestamp)
 	})
 }

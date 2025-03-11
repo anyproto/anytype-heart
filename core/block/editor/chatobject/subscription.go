@@ -29,7 +29,9 @@ type subscription struct {
 	eventsBuffer  []*pb.EventMessage
 	identityCache *expirable.LRU[string, *domain.Details]
 	ids           []string
-	chatState     *model.ChatState
+
+	chatState        *model.ChatState
+	chatStateUpdated bool
 }
 
 func newSubscription(spaceId string, chatId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
@@ -68,21 +70,30 @@ func (s *subscription) setSessionContext(ctx session.Context) {
 	s.sessionContext = ctx
 }
 
-func (s *subscription) flush() *model.ChatState {
+func (s *subscription) getChatState() *model.ChatState {
+	return copyChatState(s.chatState)
+}
+
+func (s *subscription) updateChatState(updater func(*model.ChatState)) {
+	updater(s.chatState)
+}
+
+func (s *subscription) flush() {
 	events := slices.Clone(s.eventsBuffer)
 	s.eventsBuffer = s.eventsBuffer[:0]
-	chatState := copyChatState(s.chatState)
 
-	events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
-		State: chatState,
-	}}))
+	if s.chatStateUpdated {
+		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
+			State: s.getChatState(),
+		}}))
+		s.chatStateUpdated = false
+	}
 
 	ev := &pb.Event{
 		ContextId: s.chatId,
 		Messages:  events,
 	}
 
-	// ????
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, events)
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
@@ -90,7 +101,6 @@ func (s *subscription) flush() *model.ChatState {
 	} else if s.isActive() {
 		s.eventSender.Broadcast(ev)
 	}
-	return chatState
 }
 
 func (s *subscription) getIdentityDetails(identity string) (*domain.Details, error) {
@@ -138,10 +148,13 @@ func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
 	}
 
 	if !message.Read {
-		if message.OrderId < s.chatState.Messages.OldestOrderId {
-			s.chatState.Messages.OldestOrderId = message.OrderId
-		}
-		s.chatState.Messages.Counter++
+		s.updateChatState(func(state *model.ChatState) {
+			if message.OrderId < state.Messages.OldestOrderId {
+				state.Messages.OldestOrderId = message.OrderId
+			}
+			state.Messages.Counter++
+		})
+
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
 		ChatAdd: ev,
@@ -192,11 +205,14 @@ func (s *subscription) updateReadStatus(ids []string, read bool) {
 	if !s.canSend() {
 		return
 	}
-	if read {
-		s.chatState.Messages.Counter -= int32(len(ids))
-	} else {
-		s.chatState.Messages.Counter += int32(len(ids))
-	}
+
+	s.updateChatState(func(state *model.ChatState) {
+		if read {
+			state.Messages.Counter -= int32(len(ids))
+		} else {
+			state.Messages.Counter += int32(len(ids))
+		}
+	})
 
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReadStatus{
 		ChatUpdateReadStatus: &pb.EventChatUpdateReadStatus{

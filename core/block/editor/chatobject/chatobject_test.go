@@ -175,6 +175,7 @@ func TestGetMessagesByIds(t *testing.T) {
 	want := givenMessage()
 	want.Id = messageId
 	want.Creator = testCreator
+	want.Read = true
 	got := messages[0]
 	assertMessagesEqual(t, want, got)
 }
@@ -205,6 +206,7 @@ func TestEditMessage(t *testing.T) {
 		want := editedMessage
 		want.Id = messageId
 		want.Creator = testCreator
+		want.Read = true
 
 		got := messagesResp.Messages[0]
 		assert.True(t, got.ModifiedAt > 0)
@@ -338,7 +340,7 @@ func givenMessage() *model.ChatMessage {
 		Id:               "",
 		OrderId:          "",
 		Creator:          "",
-		Read:             true,
+		Read:             false,
 		ReplyToMessageId: "replyToMessageId1",
 		Message: &model.ChatMessageMessageContent{
 			Text:  "text!",
