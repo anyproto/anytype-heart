@@ -34,5 +34,22 @@ func getStringValueFromDetail(details *domain.Details, key domain.RelationKey) s
 	if strList, ok := details.TryStringList(key); ok {
 		return strings.Join(strList, ", ")
 	}
+	if floatList, ok := details.TryFloat64List(key); ok {
+		return toStringSlice(floatList, "%f")
+	}
+	if intList, ok := details.TryInt64List(key); ok {
+		return toStringSlice(intList, "%d")
+	}
 	return ""
+}
+
+func toStringSlice[T float64 | int64](list []T, format string) string {
+	var sb strings.Builder
+	for i, val := range list {
+		sb.WriteString(fmt.Sprintf(format, val))
+		if i < len(list)-1 {
+			sb.WriteString(", ")
+		}
+	}
+	return sb.String()
 }

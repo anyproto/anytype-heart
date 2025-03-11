@@ -32,7 +32,13 @@ type FileNamer interface {
 }
 
 func NewMDConverter(fn FileNamer, store objectstore.ObjectStore, knownDocs map[string]*domain.Details) converter.Converter {
-	return &MD{fn: fn, objectTypeFiles: csv.ObjectTypeFiles{}, store: store, listCsv: csv.NewConverter(store, knownDocs), knownDocs: knownDocs}
+	return &MD{
+		fn:              fn,
+		objectTypeFiles: csv.ObjectTypeFiles{},
+		store:           store,
+		listCsv:         csv.NewConverter(store, knownDocs),
+		knownDocs:       knownDocs,
+	}
 }
 
 type MD struct {

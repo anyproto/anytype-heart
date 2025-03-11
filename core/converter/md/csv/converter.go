@@ -26,11 +26,10 @@ func (c *Converter) Convert(st *state.State) []byte {
 	if block == nil {
 		return nil
 	}
-	dataview := block.GetDataview()
-	if len(dataview.Views) == 0 {
+	if len(block.Views) == 0 {
 		return nil
 	}
-	headers, headersName, err := c.extractHeaders(dataview, st.SpaceID())
+	headers, headersName, err := c.extractHeaders(block, st.SpaceID())
 	if err != nil {
 		log.Errorf("failed extracting headers for csv export: %v", err)
 		return nil
@@ -73,10 +72,10 @@ func (c *Converter) extractHeaders(dataview *model.BlockContentDataview, spaceId
 	return headersKeys, headersName, nil
 }
 
-func findDataviewBlock(st *state.State) *model.Block {
+func findDataviewBlock(st *state.State) *model.BlockContentDataview {
 	for _, block := range st.Blocks() {
 		if block.GetDataview() != nil {
-			return block
+			return block.GetDataview()
 		}
 	}
 	return nil

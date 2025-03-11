@@ -1171,7 +1171,7 @@ func objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, in
 	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !shouldExportRelationsAndType && !validTypeForNonProtobuf(sbType) {
+	if !shouldExportRelationsAndType && !validDocumentType(sbType) {
 		return false
 	}
 	if shouldExportRelationsAndType && !validType(sbType) {
@@ -1239,15 +1239,10 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeParticipant
 }
 
-func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
+func validDocumentType(sbType smartblock.SmartBlockType) bool {
 	return sbType == smartblock.SmartBlockTypeProfilePage ||
 		sbType == smartblock.SmartBlockTypePage ||
 		sbType == smartblock.SmartBlockTypeFileObject
-}
-
-func validLayoutForNonProtobuf(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_collection) &&
-		details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_set)
 }
 
 func cleanupFile(wr writer) {

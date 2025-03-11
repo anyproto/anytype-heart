@@ -44,7 +44,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 }
 
 func (d *dot) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
-	panic("not supported on windows")
+	panic("not supported on windows and mobiles")
 	return nil
 }
 

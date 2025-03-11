@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"encoding/csv"
+	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -25,6 +26,9 @@ func ExtractHeaders(spaceIndex spaceindex.Store, keys []string) ([]string, error
 		return nil, err
 	}
 
+	if len(records) != len(keys) {
+		return nil, fmt.Errorf("expected %d records, got %d", len(keys), len(records))
+	}
 	recordMap := make(map[string]string, len(records))
 	for _, record := range records {
 		recordMap[record.Details.GetString(bundle.RelationKeyRelationKey)] = record.Details.GetString(bundle.RelationKeyName)

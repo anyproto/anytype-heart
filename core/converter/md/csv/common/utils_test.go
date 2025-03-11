@@ -46,7 +46,7 @@ func TestExtractHeaders(t *testing.T) {
 		headers, err := ExtractHeaders(storeFixture, keys)
 
 		// then
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.Empty(t, headers)
 	})
 }

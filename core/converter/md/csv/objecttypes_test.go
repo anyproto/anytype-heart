@@ -113,7 +113,28 @@ func TestObjectTypeFiles_Flush(t *testing.T) {
 func TestObjectType_WriteRecord(t *testing.T) {
 	t.Run("write rows", func(t *testing.T) {
 		// given
-		objType := newObjectType("test.csv", objectstore.NewStoreFixture(t).SpaceIndex("spaceId"))
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, "spaceId", []objectstore.TestObject{
+			{
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
+				bundle.RelationKeyName:        domain.String("Name"),
+				bundle.RelationKeyId:          domain.String("id1"),
+			},
+			{
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeySpaceId.String()),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
+				bundle.RelationKeyName:        domain.String("Space"),
+				bundle.RelationKeyId:          domain.String("id2"),
+			},
+			{
+				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeySourceFilePath.String()),
+				bundle.RelationKeySpaceId:     domain.String("spaceId"),
+				bundle.RelationKeyName:        domain.String("Source"),
+				bundle.RelationKeyId:          domain.String("id3"),
+			},
+		})
+		objType := newObjectType("test.csv", store.SpaceIndex("spaceId"))
 
 		// when
 		st := state.NewDoc("root", nil).(*state.State)
