@@ -11,8 +11,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
+
+type ApiSessionEntry struct {
+	Token   string `json:"token"`
+	AppName string `json:"appName"`
+}
 
 // Server wraps the HTTP server and service logic.
 type Server struct {
@@ -25,11 +31,11 @@ type Server struct {
 	searchService *search.SearchService
 
 	mu         sync.Mutex
-	KeyToToken map[string]string // appKey -> token
+	KeyToToken map[string]ApiSessionEntry // appKey -> token
 }
 
 // NewServer constructs a new Server with default config and sets up the routes.
-func NewServer(accountService account.Service, mw service.ClientCommandsServer) *Server {
+func NewServer(mw service.ClientCommandsServer, accountService account.Service, eventService event.Sender) *Server {
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw),
@@ -38,8 +44,8 @@ func NewServer(accountService account.Service, mw service.ClientCommandsServer) 
 
 	s.objectService = object.NewService(mw, s.spaceService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
-	s.engine = s.NewRouter(accountService, mw)
-	s.KeyToToken = make(map[string]string)
+	s.engine = s.NewRouter(mw, accountService, eventService)
+	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
 }
