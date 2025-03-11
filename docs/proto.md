@@ -3506,6 +3506,7 @@ Front end to middleware request-to-create-an account
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
+| joinStreamUrl | [string](#string) |  | anytype:// schema URL to join an embed stream |
 
 
 
@@ -4167,6 +4168,7 @@ User can select an account from those, that came with an AccountAdd events
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 | fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
+| joinStreamURL | [string](#string) |  | anytype:// schema URL to join an embed stream |
 
 
 

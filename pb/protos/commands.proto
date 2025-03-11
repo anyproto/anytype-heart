@@ -738,6 +738,7 @@ message Rpc {
                 string networkCustomConfigFilePath = 7; // config path for the custom network mode            }
                 bool preferYamuxTransport = 8; // optional, default is false, recommended in case of problems with QUIC transport
                 string jsonApiListenAddr = 9; // optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one
+                string joinStreamUrl = 10; // anytype:// schema URL to join an embed stream
             }
             /**
             * Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
@@ -910,6 +911,7 @@ message Rpc {
                 bool preferYamuxTransport = 6; // optional, default is false, recommended in case of problems with QUIC transport
                 string jsonApiListenAddr = 7; // optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one
                 string fulltextPrimaryLanguage = 8; // optional, default fts language
+                string joinStreamURL = 9; // anytype:// schema URL to join an embed stream
             }
 
             /**
