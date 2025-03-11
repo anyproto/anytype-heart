@@ -13,21 +13,24 @@ import (
 )
 
 var (
-	ErrFailedSearchType = errors.New("failed to search for type")
-	ErrorTypeNotFound   = errors.New("type not found")
-	iconOptionToColor   = map[float64]string{
-		1:  "grey",
-		2:  "yellow",
-		3:  "orange",
-		4:  "red",
-		5:  "pink",
-		6:  "purple",
-		7:  "blue",
-		8:  "ice",
-		9:  "teal",
-		10: "lime",
-	}
+	ErrFailedSearchType     = errors.New("failed to search for type")
+	ErrorTypeNotFound       = errors.New("type not found")
+	ErrFailedSearchRelation = errors.New("failed to search for relation")
+	ErrorRelationNotFound   = errors.New("relation not found")
 )
+
+var iconOptionToColor = map[float64]string{
+	1:  "grey",
+	2:  "yellow",
+	3:  "orange",
+	4:  "red",
+	5:  "pink",
+	6:  "purple",
+	7:  "blue",
+	8:  "ice",
+	9:  "teal",
+	10: "lime",
+}
 
 type Icon struct {
 	Type  string `json:"type" enums:"emoji,file,icon" example:"emoji"`                                                                      // The type of the icon
@@ -108,11 +111,11 @@ func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId s
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return "", ErrFailedSearchType
+		return "", ErrFailedSearchRelation
 	}
 
 	if len(resp.Records) == 0 {
-		return "", ErrorTypeNotFound
+		return "", ErrorRelationNotFound
 	}
 
 	return resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(), nil
