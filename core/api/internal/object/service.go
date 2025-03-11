@@ -540,6 +540,16 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 			format := relationFormatMap[key]
 			convertedVal := s.convertValue(key, val, format, resp.ObjectView.Details)
 
+			// Skip any detail where the value indicates a missing object.
+			if str, ok := convertedVal.(string); ok && str == "_missing_object" {
+				continue
+			}
+			if list, ok := convertedVal.([]interface{}); ok && len(list) == 1 {
+				if str, ok := list[0].(string); ok && str == "_missing_object" {
+					continue
+				}
+			}
+
 			var entry DetailEntry
 
 			switch format {
@@ -561,6 +571,9 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 				}
 			case "select":
 				if sel, ok := convertedVal.(Tag); ok {
+					if sel.Id == "_missing_object" {
+						continue
+					}
 					entry = SelectDetailEntry{
 						Name:   name,
 						Type:   "select",
@@ -569,6 +582,9 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 				}
 			case "multi_select":
 				if ms, ok := convertedVal.([]Tag); ok {
+					if len(ms) == 1 && ms[0].Id == "_missing_object" {
+						continue
+					}
 					entry = MultiSelectDetailEntry{
 						Name:        name,
 						Type:        "multi_select",
@@ -672,7 +688,7 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 }
 
 // getRelationName returns the relation id and relation name from the ObjectShowResponse.
-func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) (id string, name string) {
+func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) (string, string) {
 	// Handle special cases first
 	switch key {
 	case bundle.RelationKeyCreator.String():
@@ -687,7 +703,7 @@ func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) 
 
 	// Fallback to resolving the relation name
 	spaceId := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
-	if name, err := util.ResolveRelationKeyToRelationName(s.mw, spaceId, key); err == nil {
+	if name, err2 := util.ResolveRelationKeyToRelationName(s.mw, spaceId, key); err2 == nil {
 		return key, name
 	}
 	return key, key
