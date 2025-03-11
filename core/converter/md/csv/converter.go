@@ -65,11 +65,7 @@ func (c *Converter) extractHeaders(dataview *model.BlockContentDataview, spaceId
 			headersKeys = append(headersKeys, relation.Key)
 		}
 	}
-	headersName, err := common.ExtractHeaders(c.store.SpaceIndex(spaceId), headersKeys)
-	if err != nil {
-		return nil, nil, err
-	}
-	return headersKeys, headersName, nil
+	return common.ExtractHeaders(c.store.SpaceIndex(spaceId), headersKeys)
 }
 
 func findDataviewBlock(st *state.State) *model.BlockContentDataview {

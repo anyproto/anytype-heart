@@ -3,7 +3,6 @@ package common
 import (
 	"bytes"
 	"encoding/csv"
-	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -12,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func ExtractHeaders(spaceIndex spaceindex.Store, keys []string) ([]string, error) {
+func ExtractHeaders(spaceIndex spaceindex.Store, keys []string) ([]string, []string, error) {
 	records, err := spaceIndex.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -23,25 +22,28 @@ func ExtractHeaders(spaceIndex spaceindex.Store, keys []string) ([]string, error
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if len(records) != len(keys) {
-		return nil, fmt.Errorf("expected %d records, got %d", len(keys), len(records))
-	}
 	recordMap := make(map[string]string, len(records))
 	for _, record := range records {
-		recordMap[record.Details.GetString(bundle.RelationKeyRelationKey)] = record.Details.GetString(bundle.RelationKeyName)
+		if record.Details.GetBool(bundle.RelationKeyIsDeleted) {
+			continue
+		}
+		key := record.Details.GetString(bundle.RelationKeyRelationKey)
+		recordMap[key] = record.Details.GetString(bundle.RelationKeyName)
 	}
 
-	headersNames := make([]string, 0, len(keys))
+	headersNames := make([]string, 0, len(recordMap))
+	resultKeys := make([]string, 0, len(recordMap))
 	for _, key := range keys {
 		if name, exists := recordMap[key]; exists {
 			headersNames = append(headersNames, name)
+			resultKeys = append(resultKeys, key)
 		}
 	}
 
-	return headersNames, nil
+	return resultKeys, headersNames, nil
 }
 
 func WriteCSV(csvRows [][]string) (*bytes.Buffer, error) {

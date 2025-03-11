@@ -31,11 +31,11 @@ func TestExtractHeaders(t *testing.T) {
 		})
 
 		// when
-		headers, err := ExtractHeaders(storeFixture, keys)
+		_, headersName, err := ExtractHeaders(storeFixture, keys)
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, []string{"Name1", "Name2"}, headers)
+		assert.Equal(t, []string{"Name1", "Name2"}, headersName)
 	})
 	t.Run("empty", func(t *testing.T) {
 		// given
@@ -43,10 +43,10 @@ func TestExtractHeaders(t *testing.T) {
 		keys := []string{"key1", "key2"}
 
 		// when
-		headers, err := ExtractHeaders(storeFixture, keys)
+		headers, _, err := ExtractHeaders(storeFixture, keys)
 
 		// then
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.Empty(t, headers)
 	})
 }

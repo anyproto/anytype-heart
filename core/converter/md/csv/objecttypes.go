@@ -104,11 +104,7 @@ func (o *objectType) collectHeaders(details, localDetails *domain.Details) ([]st
 		headersKeys = append(headersKeys, key.String())
 	}
 
-	headersName, err := common.ExtractHeaders(o.spaceIndex, headersKeys)
-	if err != nil {
-		return nil, nil, err
-	}
-	return headersKeys, headersName, nil
+	return common.ExtractHeaders(o.spaceIndex, headersKeys)
 }
 
 func (o *objectType) Flush(fn writer) error {
