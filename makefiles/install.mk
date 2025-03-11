@@ -15,7 +15,6 @@ else
 endif
 
 	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
-	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
 	@mkdir -p $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
 	@cp pkg/lib/bundle/system*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
 	@cp pkg/lib/bundle/internal*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
