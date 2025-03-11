@@ -170,10 +170,13 @@ func (r *clientds) Init(a *app.App) (err error) {
 	r.localstoreDS, err = openBadgerWithRecover(opts)
 	err = anyerror.CleanupError(err)
 	if err != nil && isBadgerCorrupted(err) {
+		log.With("error", err).Error("badger db is corrupted")
 		// because localstore contains mostly recoverable info (with th only exception of objects' lastOpenedDate)
 		// we can just remove and recreate it
-		err2 := os.Rename(opts.Dir, filepath.Join(opts.Dir, "-corrupted"))
-		log.Errorf("failed to rename corrupted localstore: %s", err2)
+		err2 := os.Rename(opts.Dir, opts.Dir+"-corrupted")
+		if err2 != nil {
+			log.Errorf("failed to rename corrupted localstore: %s", err2)
+		}
 		var errAfterRemove error
 		r.localstoreDS, errAfterRemove = openBadgerWithRecover(opts)
 		errAfterRemove = anyerror.CleanupError(errAfterRemove)

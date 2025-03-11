@@ -7,10 +7,10 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/dgraph-io/badger/v4"
 	"golang.org/x/exp/slices"
@@ -21,7 +21,7 @@ type spaceStorage struct {
 	spaceSettingsId string
 	objDb           *badger.DB
 	keys            spaceKeys
-	aclStorage      liststorage.ListStorage
+	aclStorage      oldstorage.ListStorage
 	header          *spacesyncproto.RawSpaceHeaderWithId
 	service         *storageService
 }
@@ -38,7 +38,7 @@ func (s *spaceStorage) Name() (name string) {
 	return spacestorage.CName
 }
 
-func newSpaceStorage(objDb *badger.DB, spaceId string, service *storageService) (store spacestorage.SpaceStorage, err error) {
+func newSpaceStorage(objDb *badger.DB, spaceId string, service *storageService) (store oldstorage.SpaceStorage, err error) {
 	keys := newSpaceKeys(spaceId)
 	err = objDb.View(func(txn *badger.Txn) error {
 		header, err := getTxn(txn, keys.HeaderKey())
@@ -75,7 +75,7 @@ func newSpaceStorage(objDb *badger.DB, spaceId string, service *storageService) 
 	return
 }
 
-func createSpaceStorage(db *badger.DB, payload spacestorage.SpaceStorageCreatePayload, service *storageService) (store spacestorage.SpaceStorage, err error) {
+func createSpaceStorage(db *badger.DB, payload spacestorage.SpaceStorageCreatePayload, service *storageService) (store oldstorage.SpaceStorage, err error) {
 	keys := newSpaceKeys(payload.SpaceHeaderWithId.Id)
 	if hasDB(db, keys.HeaderKey()) {
 		err = spacestorage.ErrSpaceStorageExists
@@ -133,15 +133,15 @@ func (s *spaceStorage) HasTree(id string) (bool, error) {
 	return hasDB(s.objDb, keys.RootIdKey()), nil
 }
 
-func (s *spaceStorage) TreeStorage(id string) (treestorage.TreeStorage, error) {
+func (s *spaceStorage) TreeStorage(id string) (oldstorage.TreeStorage, error) {
 	return newTreeStorage(s.objDb, s.spaceId, id)
 }
 
-func (s *spaceStorage) CreateTreeStorage(payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
+func (s *spaceStorage) CreateTreeStorage(payload treestorage.TreeStorageCreatePayload) (ts oldstorage.TreeStorage, err error) {
 	return createTreeStorage(s.objDb, s.spaceId, payload)
 }
 
-func (s *spaceStorage) AclStorage() (liststorage.ListStorage, error) {
+func (s *spaceStorage) AclStorage() (oldstorage.ListStorage, error) {
 	return s.aclStorage, nil
 }
 
@@ -186,7 +186,7 @@ func (s *spaceStorage) AllDeletedTreeIds() (ids []string, err error) {
 
 			var isDeleted bool
 			err = item.Value(func(val []byte) error {
-				if bytes.Equal(val, []byte(spacestorage.TreeDeletedStatusDeleted)) {
+				if bytes.Equal(val, []byte(oldstorage.TreeDeletedStatusDeleted)) {
 					isDeleted = true
 				}
 				return nil

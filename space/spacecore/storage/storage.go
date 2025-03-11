@@ -2,13 +2,12 @@ package storage
 
 import (
 	"context"
-	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/badgerstorage"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/sqlitestorage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 )
 
 type SpaceStorageMode int
@@ -22,12 +21,7 @@ type ClientStorage interface {
 	spacestorage.SpaceStorageProvider
 	app.ComponentRunnable
 	AllSpaceIds() (ids []string, err error)
-	GetSpaceID(objectID string) (spaceID string, err error)
-	BindSpaceID(spaceID, objectID string) (err error)
 	DeleteSpaceStorage(ctx context.Context, spaceId string) error
-	MarkSpaceCreated(id string) (err error)
-	UnmarkSpaceCreated(id string) (err error)
-	IsSpaceCreated(id string) (created bool)
 }
 
 // storageService is a proxy for the actual storage implementation
@@ -40,7 +34,8 @@ func New() ClientStorage {
 }
 
 type configGetter interface {
-	GetSpaceStorageMode() SpaceStorageMode
+	GetNewSpaceStorePath() string
+	GetAnyStoreConfig() *anystore.Config
 }
 
 func (s *storageService) Name() (name string) {
@@ -48,16 +43,7 @@ func (s *storageService) Name() (name string) {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	mode := a.MustComponent("config").(configGetter).GetSpaceStorageMode()
-	if mode == SpaceStorageModeBadger {
-		// for already existing account repos
-		s.ClientStorage = badgerstorage.New()
-	} else if mode == SpaceStorageModeSqlite {
-		// sqlite used for new account repos
-		s.ClientStorage = sqlitestorage.New()
-	} else {
-		return fmt.Errorf("unknown storage mode %d", mode)
-	}
-
+	getter := a.MustComponent("config").(configGetter)
+	s.ClientStorage = anystorage.New(getter.GetNewSpaceStorePath(), getter.GetAnyStoreConfig())
 	return s.ClientStorage.Init(a)
 }

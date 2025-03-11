@@ -87,7 +87,7 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 		return false, fmt.Errorf("failed to unmarshal unique key '%s': %w", uniqueKeyRaw, err)
 	}
 
-	bundleObject := getBundleSystemObjectDetails(uk)
+	bundleObject, isSystem := getBundleObjectDetails(uk)
 	if bundleObject == nil {
 		return false, nil
 	}
@@ -95,24 +95,26 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	if bundleObject.GetInt64(revisionKey) <= localObject.GetInt64(revisionKey) {
 		return false, nil
 	}
-	details := buildDiffDetails(bundleObject, localObject)
+	details := buildDiffDetails(bundleObject, localObject, isSystem)
 
-	recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
-	if err != nil {
-		log.Error("failed to check recommended relations", zap.Error(err))
-	}
+	if isSystem {
+		recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject, uk)
+		if err != nil {
+			log.Error("failed to check recommended relations", zap.Error(err))
+		}
 
-	for _, recRelsDetail := range recRelsDetails {
-		details.Set(recRelsDetail.Key, recRelsDetail.Value)
-	}
+		for _, recRelsDetail := range recRelsDetails {
+			details.Set(recRelsDetail.Key, recRelsDetail.Value)
+		}
 
-	relFormatOTDetail, err := checkRelationFormatObjectTypes(ctx, space, bundleObject, localObject)
-	if err != nil {
-		log.Error("failed to check relation format object types", zap.Error(err))
-	}
+		relFormatOTDetail, err := checkRelationFormatObjectTypes(ctx, space, bundleObject, localObject)
+		if err != nil {
+			log.Error("failed to check relation format object types", zap.Error(err))
+		}
 
-	if relFormatOTDetail != nil {
-		details.Set(relFormatOTDetail.Key, relFormatOTDetail.Value)
+		if relFormatOTDetail != nil {
+			details.Set(relFormatOTDetail.Key, relFormatOTDetail.Value)
+		}
 	}
 
 	if details.Len() > 0 {
@@ -130,44 +132,49 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	return true, nil
 }
 
-// getBundleSystemObjectDetails returns nil if the object with provided unique key is not either system relation or system type
-func getBundleSystemObjectDetails(uk domain.UniqueKey) *domain.Details {
+// getBundleObjectDetails returns nil if the object with provided unique key is not either system relation or bundled type
+func getBundleObjectDetails(uk domain.UniqueKey) (details *domain.Details, isSystem bool) {
 	switch uk.SmartblockType() {
 	case coresb.SmartBlockTypeObjectType:
-		if !isSystemType(uk) {
-			// non system object type, no need to revise
-			return nil
-		}
 		typeKey := domain.TypeKey(uk.InternalKey())
-		objectType := bundle.MustGetType(typeKey)
-		return (&relationutils.ObjectType{ObjectType: objectType}).BundledTypeDetails()
+		objectType, err := bundle.GetType(typeKey)
+		if err != nil {
+			// not bundled type, no need to revise
+			return nil, false
+		}
+		return (&relationutils.ObjectType{ObjectType: objectType}).BundledTypeDetails(), isSystemType(uk)
 	case coresb.SmartBlockTypeRelation:
 		if !isSystemRelation(uk) {
 			// non system relation, no need to revise
-			return nil
+			return nil, false
 		}
 		relationKey := domain.RelationKey(uk.InternalKey())
 		relation := bundle.MustGetRelation(relationKey)
-		return (&relationutils.Relation{Relation: relation}).ToDetails()
+		return (&relationutils.Relation{Relation: relation}).ToDetails(), true
 	default:
-		return nil
+		return nil, false
 	}
 }
 
-func buildDiffDetails(origin, current *domain.Details) *domain.Details {
+func buildDiffDetails(origin, current *domain.Details, isSystem bool) *domain.Details {
+	// non-system bundled types are going to update only icons for now
+	filterKeys := []domain.RelationKey{bundle.RelationKeyIconOption, bundle.RelationKeyIconName}
+	if isSystem {
+		filterKeys = []domain.RelationKey{
+			bundle.RelationKeyName,
+			bundle.RelationKeyDescription,
+			bundle.RelationKeyIsReadonly,
+			bundle.RelationKeyIsHidden,
+			bundle.RelationKeyRevision,
+			bundle.RelationKeyRelationReadonlyValue,
+			bundle.RelationKeyRelationMaxCount,
+			bundle.RelationKeyIconEmoji,
+			bundle.RelationKeyIconOption,
+			bundle.RelationKeyIconName,
+		}
+	}
 	diff, _ := domain.StructDiff(current, origin)
-	diff = diff.CopyOnlyKeys(
-		bundle.RelationKeyName,
-		bundle.RelationKeyDescription,
-		bundle.RelationKeyIsReadonly,
-		bundle.RelationKeyIsHidden,
-		bundle.RelationKeyRevision,
-		bundle.RelationKeyRelationReadonlyValue,
-		bundle.RelationKeyRelationMaxCount,
-		bundle.RelationKeyIconEmoji,
-		bundle.RelationKeyIconOption,
-		bundle.RelationKeyIconName,
-	)
+	diff = diff.CopyOnlyKeys(filterKeys...)
 
 	details := domain.NewDetails()
 	for key, value := range diff.Iterate() {
@@ -218,7 +225,7 @@ func checkRelationFormatObjectTypes(
 }
 
 func checkRecommendedRelations(
-	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details,
+	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details, uk domain.UniqueKey,
 ) (newValues []*domain.Detail, err error) {
 	details := origin.CopyOnlyKeys(
 		bundle.RelationKeyRecommendedRelations,
@@ -226,7 +233,7 @@ func checkRecommendedRelations(
 		bundle.RelationKeyUniqueKey,
 	)
 
-	_, filled, err := relationutils.FillRecommendedRelations(ctx, space, details)
+	_, filled, err := relationutils.FillRecommendedRelations(ctx, space, details, domain.TypeKey(uk.InternalKey()))
 	if filled {
 		return nil, nil
 	}

@@ -1,0 +1,22 @@
+name: Reusable Workflow wait for perftests to finish
+
+on:
+  workflow_call:
+
+jobs:
+  wait_for_perftest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for perftests to finish
+        run: |
+          while true; do
+            RUNNING=$(gh run list --repo $GITHUB_REPOSITORY --workflow perftests.yml --workflow perftests-grafana.yml --status in_progress --json status --jq 'length')
+            if [[ "$RUNNING" -eq 0 ]]; then
+              echo "perftests is finished, proceeding with build."
+              break
+            fi
+            echo "perftests is still running. Waiting 10 seconds..."
+            sleep 10
+          done
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

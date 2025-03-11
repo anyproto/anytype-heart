@@ -6,7 +6,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'arm64'
+        default: 'mac-mini-org-heart'
       perf-test:
         description: 'Run perf test times'
         required: true
@@ -26,11 +26,15 @@ permissions:
 
 
 jobs:
+  wait_for_self_hosted_mac_mini:
+    uses: ./.github/workflows/reusable_wait_for_self_hosted_mac_mini.yml
+
   perftests-grafana:
-    runs-on: ${{ github.event.inputs.run-on-runner || 'arm64' }}
+    needs: wait_for_self_hosted_mac_mini
+    runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
     steps:
       - name: Install Go
-        if: runner.name != 'mac-mini-org-heart'
+        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         uses: actions/setup-go@v4
         with:
           go-version: 1.23.2
@@ -47,7 +51,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install brew and node deps
-        if: runner.name != 'mac-mini-org-heart'
+        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         run: make install-brew-and-node-deps
 
       - name: Set env vars
