@@ -224,8 +224,8 @@ func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int, error) {
 	return 0, nil
 }
 
-func (s *storeObject) markReadMessages(ids []string) {
-	if len(ids) == 0 {
+func (s *storeObject) markReadMessages(changeIds []string) {
+	if len(changeIds) == 0 {
 		return
 	}
 
@@ -234,57 +234,43 @@ func (s *storeObject) markReadMessages(ids []string) {
 		log.With(zap.Error(err)).Error("markReadMessages: start write tx")
 		return
 	}
-	ctx := txn.Context()
-	idsModified := make([]string, 0, len(ids))
-	for _, id := range ids {
+	defer txn.Commit()
+
+	var idsModified []string
+	for _, id := range changeIds {
 		if id == s.Id() {
 			// skip tree root
 			continue
 		}
-		res, err := s.collection.UpdateId(ctx, id, query.MustParseModifier(`{"$set":{"`+readKey+`":true}}`))
+		res, err := s.collection.UpdateId(txn.Context(), id, query.MustParseModifier(`{"$set":{"`+readKey+`":true}}`))
+		// Not all changes are messages, skip them
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			continue
+		}
 		if err != nil {
-			log.With(zap.Error(err)).With(zap.String("id", id)).With(zap.String("chatId", s.Id())).Error("markReadMessages: update message")
+			log.Error("markReadMessages: update message", zap.Error(err), zap.String("changeId", id), zap.String("chatObjectId", s.Id()))
 			continue
 		}
 		if res.Modified > 0 {
 			idsModified = append(idsModified, id)
 		}
 	}
-	err = txn.Commit()
-	if err != nil {
-		log.With(zap.Error(err)).Error("markReadMessages: commit")
-		return
-	}
 
 	if len(idsModified) > 0 {
-		// it doesn't work within the same transaction
-		// query the new oldest unread message's orderId
-		iter, err := s.collection.Find(
-			query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, false)},
-		).Sort(ascOrder).
-			Limit(1).
-			Iter(s.componentCtx)
+		newOldestOrderId, err := s.getOldestOrderId(txn)
 		if err != nil {
-			log.With(zap.Error(err)).Error("markReadMessages: failed to find oldest unread message")
-		}
-		defer iter.Close()
-		var newOldestOrderId string
-		if iter.Next() {
-			val, err := iter.Doc()
+			log.Error("markReadMessages: get oldest order id", zap.Error(err))
+			err = txn.Rollback()
 			if err != nil {
-				log.With(zap.Error(err)).Error("markReadMessages: failed to get oldest unread message")
-			}
-			if val != nil {
-				newOldestOrderId = val.Value().GetObject(orderKey).Get("id").GetString()
+				log.Error("markReadMessages: rollback transaction", zap.Error(err))
 			}
 		}
 
 		s.subscription.updateChatState(func(state *model.ChatState) {
 			state.Messages.OldestOrderId = newOldestOrderId
 		})
-
 		s.subscription.updateReadStatus(idsModified, true)
-		s.onUpdate()
+		s.subscription.flush()
 	}
 }
 
@@ -314,7 +300,11 @@ func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrder
 		query.And{
 			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
-			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, lastAddedMessageTimestamp)},
+			// TODO addedKey can be absent,
+			query.Or{
+				query.Not{query.Key{Path: []string{addedKey}, Filter: query.Exists{}}},
+				query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, lastAddedMessageTimestamp)},
+			},
 			unreadFilter(),
 		},
 	).Sort(descAdded).Iter(ctx)
