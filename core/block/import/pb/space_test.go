@@ -23,7 +23,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -38,7 +38,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: true}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -77,7 +77,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, nil, nil, params, nil, false)
+		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -167,7 +167,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -256,7 +256,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot}, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -360,7 +360,8 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, nil, false)
+		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot},
+			map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, false)
 
 		// then
 		assert.Nil(t, err)

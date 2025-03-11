@@ -1234,7 +1234,7 @@ enum SpaceShareableStatus {
 }
 
 message ManifestInfo {
-    string schema = 1;
+    string schema = 1 [ json_name = "$schema" ];
     string id = 2;
     string name = 3;
     string author = 4;
@@ -1246,6 +1246,7 @@ message ManifestInfo {
     int32 fileSize = 10;
     repeated string categories = 11;
     string language = 12;
+    string hash = 13;
 }
 
 enum NameserviceNameType {

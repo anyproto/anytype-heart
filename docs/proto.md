@@ -12290,6 +12290,11 @@ Get marks list in the selected range in text block.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| artifactPath | [string](#string) |  |  |
+
+
 
 
 
@@ -15396,6 +15401,8 @@ DEPRECATED, GO-1926 |
 | url | [string](#string) |  |  |
 | title | [string](#string) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
+| name | [string](#string) |  |  |
+| artifactPath | [string](#string) |  |  |
 
 
 
@@ -15521,6 +15528,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  |  |
+| artifactPath | [string](#string) |  |  |
 
 
 
@@ -20549,6 +20557,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
 | withChat | [bool](#bool) |  | create space-level chat; temporary solution, should be removed after chats released for all users |
+| artifactPath | [string](#string) |  |  |
 
 
 
@@ -30047,6 +30056,7 @@ Used to decode block meta only, without the content itself
 | fileSize | [int32](#int32) |  |  |
 | categories | [string](#string) | repeated |  |
 | language | [string](#string) |  |  |
+| hash | [string](#string) |  |  |
 
 
 

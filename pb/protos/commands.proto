@@ -1252,6 +1252,7 @@ message Rpc {
                 google.protobuf.Struct details = 1; // object details
                 anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
                 bool withChat = 3; // create space-level chat; temporary solution, should be removed after chats released for all users
+                string artifactPath = 4;
             }
 
             message Response {
@@ -3034,6 +3035,7 @@ message Rpc {
             message Request {
                 string spaceId = 2;
                 UseCase useCase = 1;
+                string artifactPath = 3;
 
                 enum UseCase {
                     NONE = 0;
@@ -3065,6 +3067,8 @@ message Rpc {
                 string url = 2;
                 string title = 3;
                 bool isNewSpace = 4;
+                string name = 5;
+                string artifactPath = 6;
             }
 
             message Response {
@@ -4099,6 +4103,7 @@ message Rpc {
 
         message DownloadIndex {
             message Request {
+                string artifactPath = 1;
             }
 
             message Response {
