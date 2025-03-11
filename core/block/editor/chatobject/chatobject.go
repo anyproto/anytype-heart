@@ -175,7 +175,7 @@ func (s *storeObject) initialChatState() (*model.ChatState, error) {
 }
 
 func (s *storeObject) getOldestOrderId(txn anystore.ReadTx) (string, error) {
-	unreadQuery := s.collection.Find(query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, false)}).Sort(ascOrder)
+	unreadQuery := s.collection.Find(unreadFilter()).Sort(ascOrder)
 
 	iter, err := unreadQuery.Limit(1).Iter(txn.Context())
 	if err != nil {
@@ -194,9 +194,16 @@ func (s *storeObject) getOldestOrderId(txn anystore.ReadTx) (string, error) {
 }
 
 func (s *storeObject) countUnreadMessages(txn anystore.ReadTx) (int, error) {
-	unreadQuery := s.collection.Find(query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, false)}).Sort(ascOrder)
+	unreadQuery := s.collection.Find(unreadFilter())
 
 	return unreadQuery.Limit(1).Count(txn.Context())
+}
+
+func unreadFilter() query.Filter {
+	// Use Not because old messages don't have read key
+	return query.Not{
+		Filter: query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
+	}
 }
 
 func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int, error) {
@@ -287,17 +294,17 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, before
 	// 3. update the MarkSeenHeads
 	// 2. mark messages as read in the DB
 
-	msg, err := s.GetLastAddedMessageInOrderRange(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp)
+	msgs, err := s.getUnreadMessageIdsInRange(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp)
 	if err != nil {
 		return fmt.Errorf("get message: %w", err)
 	}
 
 	// mark the whole tree as seen from the current message
-	s.storeSource.MarkSeenHeads([]string{msg.Id})
+	s.storeSource.MarkSeenHeads(msgs)
 	return nil
 }
 
-func (s *storeObject) GetLastAddedMessageInOrderRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64) (*model.ChatMessage, error) {
+func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64) ([]string, error) {
 	if lastAddedMessageTimestamp < 0 {
 		// todo: remove this
 		// for testing purposes
@@ -308,28 +315,28 @@ func (s *storeObject) GetLastAddedMessageInOrderRange(ctx context.Context, after
 			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
 			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, lastAddedMessageTimestamp)},
+			unreadFilter(),
 		},
-	).Sort(descAdded).
-		Limit(1).
-		Iter(ctx)
+	).Sort(descAdded).Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find id: %w", err)
 	}
 	defer iter.Close()
+
+	var msgIds []string
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
 			return nil, fmt.Errorf("get doc: %w", err)
 		}
-		msg := newMessageWrapper(nil, doc.Value()).toModel()
-		return msg, nil
+		msgIds = append(msgIds, doc.Value().GetString("id"))
 	}
 
 	if err := iter.Err(); err != nil {
 		return nil, fmt.Errorf("iter error: %w", err)
 	}
 
-	return nil, anystore.ErrDocNotFound
+	return msgIds, nil
 }
 
 func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error) {
