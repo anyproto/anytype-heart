@@ -43,6 +43,47 @@ var (
 	ErrTemplateNotFound           = errors.New("template not found")
 )
 
+var excludedSystemRelations = map[string]bool{
+	bundle.RelationKeyId.String():                true,
+	bundle.RelationKeySpaceId.String():           true,
+	bundle.RelationKeyName.String():              true,
+	bundle.RelationKeyIconEmoji.String():         true,
+	bundle.RelationKeyIconImage.String():         true,
+	bundle.RelationKeyType.String():              true,
+	bundle.RelationKeyResolvedLayout.String():    true,
+	bundle.RelationKeyIsFavorite.String():        true,
+	bundle.RelationKeyIsArchived.String():        true,
+	bundle.RelationKeyIsDeleted.String():         true,
+	bundle.RelationKeyIsHidden.String():          true,
+	bundle.RelationKeyWorkspaceId.String():       true,
+	bundle.RelationKeyInternalFlags.String():     true,
+	bundle.RelationKeyRestrictions.String():      true,
+	bundle.RelationKeyOrigin.String():            true,
+	bundle.RelationKeySnippet.String():           true,
+	bundle.RelationKeySyncStatus.String():        true,
+	bundle.RelationKeySyncError.String():         true,
+	bundle.RelationKeySyncDate.String():          true,
+	bundle.RelationKeyCoverId.String():           true,
+	bundle.RelationKeyCoverType.String():         true,
+	bundle.RelationKeyCoverScale.String():        true,
+	bundle.RelationKeyCoverX.String():            true,
+	bundle.RelationKeyCoverY.String():            true,
+	bundle.RelationKeyMentions.String():          true,
+	bundle.RelationKeyOldAnytypeID.String():      true,
+	bundle.RelationKeySource.String():            true,
+	bundle.RelationKeySourceFilePath.String():    true,
+	bundle.RelationKeyImportType.String():        true,
+	bundle.RelationKeyTargetObjectType.String():  true,
+	bundle.RelationKeyFeaturedRelations.String(): true,
+	bundle.RelationKeySetOf.String():             true,
+	bundle.RelationKeyLinks.String():             true,
+	bundle.RelationKeyBacklinks.String():         true,
+	bundle.RelationKeySourceObject.String():      true,
+	bundle.RelationKeyLayoutAlign.String():       true,
+	bundle.RelationKeyIsHiddenDiscovery.String(): true,
+	bundle.RelationKeyLayout.String():            true,
+}
+
 type Service interface {
 	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
 	GetObject(ctx context.Context, spaceId string, objectId string) (Object, error)
@@ -486,205 +527,124 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 	linkedRelations := resp.ObjectView.RelationLinks
 	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
 
-	// system relations to be excluded
-	excludeRelations := map[string]bool{
-		bundle.RelationKeyId.String():                true,
-		bundle.RelationKeySpaceId.String():           true,
-		bundle.RelationKeyName.String():              true,
-		bundle.RelationKeyIconEmoji.String():         true,
-		bundle.RelationKeyIconImage.String():         true,
-		bundle.RelationKeyType.String():              true,
-		bundle.RelationKeyResolvedLayout.String():    true,
-		bundle.RelationKeyIsFavorite.String():        true,
-		bundle.RelationKeyIsArchived.String():        true,
-		bundle.RelationKeyIsDeleted.String():         true,
-		bundle.RelationKeyIsHidden.String():          true,
-		bundle.RelationKeyWorkspaceId.String():       true,
-		bundle.RelationKeyInternalFlags.String():     true,
-		bundle.RelationKeyRestrictions.String():      true,
-		bundle.RelationKeyOrigin.String():            true,
-		bundle.RelationKeySnippet.String():           true,
-		bundle.RelationKeySyncStatus.String():        true,
-		bundle.RelationKeySyncError.String():         true,
-		bundle.RelationKeySyncDate.String():          true,
-		bundle.RelationKeyCoverId.String():           true,
-		bundle.RelationKeyCoverType.String():         true,
-		bundle.RelationKeyCoverScale.String():        true,
-		bundle.RelationKeyCoverX.String():            true,
-		bundle.RelationKeyCoverY.String():            true,
-		bundle.RelationKeyMentions.String():          true,
-		bundle.RelationKeyOldAnytypeID.String():      true,
-		bundle.RelationKeySource.String():            true,
-		bundle.RelationKeySourceFilePath.String():    true,
-		bundle.RelationKeyImportType.String():        true,
-		bundle.RelationKeyTargetObjectType.String():  true,
-		bundle.RelationKeyFeaturedRelations.String(): true,
-		bundle.RelationKeySetOf.String():             true,
-		bundle.RelationKeyLinks.String():             true,
-		bundle.RelationKeyBacklinks.String():         true,
-		bundle.RelationKeySourceObject.String():      true,
-		bundle.RelationKeyLayoutAlign.String():       true,
-		bundle.RelationKeyIsHiddenDiscovery.String(): true,
-		bundle.RelationKeyLayout.String():            true,
-	}
-
 	var details []Detail
 	for _, r := range linkedRelations {
 		key := r.Key
-		if _, isExcluded := excludeRelations[key]; isExcluded {
+		if _, isExcluded := excludedSystemRelations[key]; isExcluded {
+			continue
+		}
+		if _, ok := primaryDetailFields[key]; !ok {
 			continue
 		}
 
-		if val, ok := primaryDetailFields[key]; ok {
-			id, name := s.getRelation(key, resp)
-			format := relationFormatMap[key]
-			convertedVal := s.convertValue(key, val, format, resp.ObjectView.Details)
+		id, name := s.getRelation(key, resp)
+		format := relationFormatMap[key]
+		convertedVal := s.convertValue(key, primaryDetailFields[key], format, resp.ObjectView.Details)
 
-			// Skip any detail where the value indicates a missing object.
-			if str, ok := convertedVal.(string); ok && str == "_missing_object" {
-				continue
-			}
-			if list, ok := convertedVal.([]interface{}); ok && len(list) == 1 {
-				if str, ok := list[0].(string); ok && str == "_missing_object" {
-					continue
-				}
-			}
+		if s.isMissingObject(convertedVal) {
+			continue
+		}
 
-			var entry DetailEntry
-
-			switch format {
-			case "text":
-				if str, ok := convertedVal.(string); ok {
-					entry = TextDetailEntry{
-						Name: name,
-						Type: "text",
-						Text: str,
-					}
-				}
-			case "number":
-				if num, ok := convertedVal.(float64); ok {
-					entry = NumberDetailEntry{
-						Name:   name,
-						Type:   "number",
-						Number: num,
-					}
-				}
-			case "select":
-				if sel, ok := convertedVal.(Tag); ok {
-					if sel.Id == "_missing_object" {
-						continue
-					}
-					entry = SelectDetailEntry{
-						Name:   name,
-						Type:   "select",
-						Select: &sel,
-					}
-				}
-			case "multi_select":
-				if ms, ok := convertedVal.([]Tag); ok {
-					if len(ms) == 1 && ms[0].Id == "_missing_object" {
-						continue
-					}
-					entry = MultiSelectDetailEntry{
-						Name:        name,
-						Type:        "multi_select",
-						MultiSelect: ms,
-					}
-				}
-			case "date":
-				if dateStr, ok := convertedVal.(string); ok {
-					entry = DateDetailEntry{
-						Name: name,
-						Type: "date",
-						Date: dateStr,
-					}
-				}
-			case "file":
-				if file, ok := convertedVal.([]interface{}); ok {
-					var files []string
-					for _, v := range file {
-						if str, ok := v.(string); ok {
-							files = append(files, str)
-						}
-					}
-					entry = FileDetailEntry{
-						Name: name,
-						Type: "file",
-						File: files,
-					}
-				}
-			case "checkbox":
-				if cb, ok := convertedVal.(bool); ok {
-					entry = CheckboxDetailEntry{
-						Name:     name,
-						Type:     "checkbox",
-						Checkbox: cb,
-					}
-				}
-			case "url":
-				if url, ok := convertedVal.(string); ok {
-					entry = UrlDetailEntry{
-						Name: name,
-						Type: "url",
-						Url:  url,
-					}
-				}
-			case "email":
-				if email, ok := convertedVal.(string); ok {
-					entry = EmailDetailEntry{
-						Name:  name,
-						Type:  "email",
-						Email: email,
-					}
-				}
-			case "phone":
-				if phone, ok := convertedVal.(string); ok {
-					entry = PhoneDetailEntry{
-						Name:  name,
-						Type:  "phone",
-						Phone: phone,
-					}
-				}
-			case "object":
-				if obj, ok := convertedVal.(string); ok {
-					entry = ObjectDetailEntry{
-						Name:   name,
-						Type:   "object",
-						Object: []string{obj},
-					}
-				} else if objSlice, ok := convertedVal.([]interface{}); ok {
-					var objects []string
-					for _, v := range objSlice {
-						if str, ok := v.(string); ok {
-							objects = append(objects, str)
-						}
-					}
-					entry = ObjectDetailEntry{
-						Name:   name,
-						Type:   "object",
-						Object: objects,
-					}
-				}
-			default:
-				if str, ok := convertedVal.(string); ok {
-					entry = TextDetailEntry{
-						Name: name,
-						Type: "text",
-						Text: str,
-					}
-				}
-			}
-
-			// Only append if an entry was created.
-			if entry != nil {
-				details = append(details, Detail{
-					Id:      id,
-					Details: entry,
-				})
-			}
+		entry := s.createDetailEntry(name, format, convertedVal)
+		if entry != nil {
+			details = append(details, Detail{
+				Id:      id,
+				Details: entry,
+			})
 		}
 	}
+
 	return details
+}
+
+// isMissingObject returns true if val indicates a "_missing_object" placeholder.
+func (s *ObjectService) isMissingObject(val interface{}) bool {
+	switch v := val.(type) {
+	case string:
+		return v == "_missing_object"
+	case []interface{}:
+		if len(v) == 1 {
+			if str, ok := v[0].(string); ok {
+				return str == "_missing_object"
+			}
+		}
+	case Tag:
+		return v.Id == "_missing_object"
+	case []Tag:
+		if len(v) == 1 && v[0].Id == "_missing_object" {
+			return true
+		}
+	}
+	return false
+}
+
+// createDetailEntry creates a DetailEntry based on the format and converted value.
+func (s *ObjectService) createDetailEntry(name, format string, val interface{}) DetailEntry {
+	switch format {
+	case "text":
+		if str, ok := val.(string); ok {
+			return TextDetailEntry{Name: name, Type: "text", Text: str}
+		}
+	case "number":
+		if num, ok := val.(float64); ok {
+			return NumberDetailEntry{Name: name, Type: "number", Number: num}
+		}
+	case "select":
+		if sel, ok := val.(Tag); ok {
+			return SelectDetailEntry{Name: name, Type: "select", Select: &sel}
+		}
+	case "multi_select":
+		if ms, ok := val.([]Tag); ok {
+			return MultiSelectDetailEntry{Name: name, Type: "multi_select", MultiSelect: ms}
+		}
+	case "date":
+		if dateStr, ok := val.(string); ok {
+			return DateDetailEntry{Name: name, Type: "date", Date: dateStr}
+		}
+	case "file":
+		if file, ok := val.([]interface{}); ok {
+			var files []string
+			for _, v := range file {
+				if str, ok := v.(string); ok {
+					files = append(files, str)
+				}
+			}
+			return FileDetailEntry{Name: name, Type: "file", File: files}
+		}
+	case "checkbox":
+		if cb, ok := val.(bool); ok {
+			return CheckboxDetailEntry{Name: name, Type: "checkbox", Checkbox: cb}
+		}
+	case "url":
+		if url, ok := val.(string); ok {
+			return UrlDetailEntry{Name: name, Type: "url", Url: url}
+		}
+	case "email":
+		if email, ok := val.(string); ok {
+			return EmailDetailEntry{Name: name, Type: "email", Email: email}
+		}
+	case "phone":
+		if phone, ok := val.(string); ok {
+			return PhoneDetailEntry{Name: name, Type: "phone", Phone: phone}
+		}
+	case "object":
+		if obj, ok := val.(string); ok {
+			return ObjectDetailEntry{Name: name, Type: "object", Object: []string{obj}}
+		} else if objSlice, ok := val.([]interface{}); ok {
+			var objects []string
+			for _, v := range objSlice {
+				if str, ok := v.(string); ok {
+					objects = append(objects, str)
+				}
+			}
+			return ObjectDetailEntry{Name: name, Type: "object", Object: objects}
+		}
+	default:
+		if str, ok := val.(string); ok {
+			return TextDetailEntry{Name: name, Type: "text", Text: str}
+		}
+	}
+	return nil
 }
 
 // getRelationName returns the relation id and relation name from the ObjectShowResponse.
