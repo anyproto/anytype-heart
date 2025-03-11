@@ -89,6 +89,9 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 	if len(req.Sorts) > 0 {
 		return nil, fmt.Errorf("sorting is not supported")
 	}
+	if req.AsyncInit {
+		return nil, fmt.Errorf("async init is not supported")
+	}
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -97,7 +100,7 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 		return nil, fmt.Errorf("new cross space subscription: %w", err)
 	}
 	s.subscriptions[req.SubId] = spaceSub
-	go spaceSub.run()
+	go spaceSub.run(req.InternalQueue)
 	return resp, nil
 }
 
