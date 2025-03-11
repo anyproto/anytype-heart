@@ -102,19 +102,75 @@ components:
     object.Detail:
       properties:
         details:
-          additionalProperties: {}
-          description: The details
-          type: object
+          $ref: '#/components/schemas/object.DetailEntry'
         id:
           description: The id of the detail
-          enum:
-          - last_modified_date
-          - last_modified_by
-          - created_date
-          - created_by
-          - last_opened_date
-          - tags
           example: last_modified_date
+          type: string
+      type: object
+    object.DetailEntry:
+      description: The details
+      properties:
+        checkbox:
+          description: For checkbox details
+          example: true
+          type: boolean
+        date:
+          description: For date details
+          example: "2024-02-14T12:34:56Z"
+          type: string
+        email:
+          description: For email details
+          example: example@example.com
+          type: string
+        file:
+          description: For file details
+          example:
+          - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        multi_select:
+          description: For multi-select details
+          items:
+            $ref: '#/components/schemas/object.Tag'
+          type: array
+          uniqueItems: false
+        name:
+          description: The name of the detail
+          example: Last modified date
+          type: string
+        number:
+          description: For number details
+          example: 42
+          type: number
+        object:
+          description: For object details
+          example:
+          - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        phone:
+          description: For phone details
+          example: "+1234567890"
+          type: string
+        select:
+          $ref: '#/components/schemas/object.Tag'
+        text:
+          description: For text details
+          example: Some text
+          type: string
+        type:
+          description: The type of the detail, which should correspond to the field
+            that is set
+          example: date
+          type: string
+        url:
+          description: For URL details
+          example: https://example.com
           type: string
       type: object
     object.File:
@@ -208,6 +264,22 @@ components:
         id:
           type: string
       type: object
+    object.Tag:
+      description: For select details
+      properties:
+        color:
+          description: The color of the tag
+          example: yellow
+          type: string
+        id:
+          description: The id of the tag
+          example: bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
+          type: string
+        name:
+          description: The name of the tag
+          example: in-progress
+          type: string
+      type: object
     object.Template:
       description: The template
       properties:
@@ -243,9 +315,7 @@ components:
           example: red
           type: string
         icon:
-          description: The icon of the text
-          example: "\U0001F4C4"
-          type: string
+          $ref: '#/components/schemas/util.Icon'
         style:
           description: The style of the text
           enum:
@@ -390,7 +460,6 @@ components:
           description: The types of objects to search for, specified by unique key
             or ID
           example:
-          - ot-note
           - ot-page
           - ot-678043f0cda9133be777049f
           - bafyreightzrdts2ymxyaeyzspwdfo2juspyam76ewq6qq7ixnw3523gs7q
@@ -549,13 +618,6 @@ components:
         space:
           $ref: '#/components/schemas/space.Space'
       type: object
-    util.FileReference:
-      description: The file of the icon
-      properties:
-        url:
-          example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
-          type: string
-      type: object
     util.ForbiddenError:
       properties:
         error:
@@ -568,17 +630,28 @@ components:
     util.Icon:
       description: The icon of the object
       properties:
+        color:
+          description: The color of the icon
+          example: red
+          type: string
         emoji:
           description: The emoji of the icon
           example: "\U0001F4C4"
           type: string
         file:
-          $ref: '#/components/schemas/util.FileReference'
+          description: The file of the icon
+          example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
+          type: string
+        name:
+          description: The name of the icon
+          example: document
+          type: string
         type:
           description: The type of the icon
           enum:
           - emoji
           - file
+          - icon
           example: emoji
           type: string
       type: object

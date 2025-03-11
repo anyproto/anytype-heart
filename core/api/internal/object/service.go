@@ -538,13 +538,80 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 		if val, ok := primaryDetailFields[key]; ok {
 			id, name := s.getRelation(key, resp)
 			format := relationFormatMap[key]
+			convertedVal := s.convertValue(key, val, format, resp.ObjectView.Details)
+
+			var entry DetailEntry
+			entry.Name = name
+			entry.Type = format
+
+			switch format {
+			case "text":
+				if str, ok := convertedVal.(string); ok {
+					entry.Text = str
+				}
+			case "number":
+				if num, ok := convertedVal.(float64); ok {
+					entry.Number = num
+				}
+			case "select":
+				if sel, ok := convertedVal.(Tag); ok {
+					entry.Select = &sel
+				}
+			case "multi_select":
+				if ms, ok := convertedVal.([]Tag); ok {
+					entry.MultiSelect = ms
+				}
+			case "date":
+				if dateStr, ok := convertedVal.(string); ok {
+					entry.Date = dateStr
+				}
+			case "file":
+				if file, ok := convertedVal.([]interface{}); ok {
+					var files []string
+					for _, v := range file {
+						if str, ok := v.(string); ok {
+							files = append(files, str)
+						}
+					}
+					entry.File = files
+				}
+			case "checkbox":
+				if cb, ok := convertedVal.(bool); ok {
+					entry.Checkbox = cb
+				}
+			case "url":
+				if url, ok := convertedVal.(string); ok {
+					entry.Url = url
+				}
+			case "email":
+				if email, ok := convertedVal.(string); ok {
+					entry.Email = email
+				}
+			case "phone":
+				if phone, ok := convertedVal.(string); ok {
+					entry.Phone = phone
+				}
+			case "object":
+				if obj, ok := convertedVal.(string); ok {
+					entry.Object = []string{obj}
+				} else if objSlice, ok := convertedVal.([]interface{}); ok {
+					var objects []string
+					for _, v := range objSlice {
+						if str, ok := v.(string); ok {
+							objects = append(objects, str)
+						}
+					}
+					entry.Object = objects
+				}
+			default:
+				if str, ok := convertedVal.(string); ok {
+					entry.Text = str
+				}
+			}
+
 			details = append(details, Detail{
-				Id: id,
-				Details: map[string]interface{}{
-					"name": name,
-					"type": format,
-					format: s.convertValue(key, val, format, resp.ObjectView.Details),
-				},
+				Id:      id,
+				Details: entry,
 			})
 		}
 	}
@@ -553,23 +620,24 @@ func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
 
 // getRelationName returns the relation id and relation name from the ObjectShowResponse.
 func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) (id string, name string) {
-	relation, err := bundle.GetRelation(domain.RelationKey(key))
-	if err != nil {
-		name, err = util.ResolveRelationKeyToRelationName(s.mw, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
-		if err != nil {
-			return key, key
-		}
-		return key, name
-	}
-
-	// special cases of relation keys and names
-	if key == bundle.RelationKeyCreator.String() {
+	// Handle special cases first
+	switch key {
+	case bundle.RelationKeyCreator.String():
 		return "created_by", "Created By"
-	} else if key == bundle.RelationKeyCreatedDate.String() {
+	case bundle.RelationKeyCreatedDate.String():
 		return "created_date", "Created Date"
 	}
 
-	return strcase.ToSnake(key), relation.Name
+	if relation, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
+		return strcase.ToSnake(key), relation.Name
+	}
+
+	// Fallback to resolving the relation name
+	spaceId := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+	if name, err := util.ResolveRelationKeyToRelationName(s.mw, spaceId, key); err == nil {
+		return key, name
+	}
+	return key, key
 }
 
 // convertValue converts a protobuf types.Value into a native Go value.
@@ -584,10 +652,12 @@ func (s *ObjectService) convertValue(key string, value *types.Value, format stri
 		return kind.NumberValue
 	case *types.Value_StringValue:
 		// TODO: investigate how this is possible? select option not list and not returned in further details
-		if format == "select" || format == "multi_select" {
+		if format == "select" {
 			return s.resolveTag(details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
 		}
-
+		if format == "multi_select" {
+			return []Tag{s.resolveTag(details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)}
+		}
 		return kind.StringValue
 	case *types.Value_BoolValue:
 		return kind.BoolValue
@@ -602,11 +672,16 @@ func (s *ObjectService) convertValue(key string, value *types.Value, format stri
 		for _, v := range kind.ListValue.Values {
 			list = append(list, s.convertValue(key, v, format, details))
 		}
-
-		if format == "select" || format == "multi_select" {
+		if format == "select" {
+			tags := s.getTags(key, details)
+			if len(tags) > 0 {
+				return tags[0]
+			}
+			return nil
+		}
+		if format == "multi_select" {
 			return s.getTags(key, details)
 		}
-
 		return list
 	default:
 		return nil

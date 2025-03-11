@@ -67,8 +67,24 @@ type Relation struct {
 }
 
 type Detail struct {
-	Id      string                 `json:"id" enums:"last_modified_date,last_modified_by,created_date,created_by,last_opened_date,tags" example:"last_modified_date"` // The id of the detail
-	Details map[string]interface{} `json:"details"`                                                                                                                   // The details
+	Id      string      `json:"id" example:"last_modified_date"` // The id of the detail
+	Details DetailEntry `json:"details"`                         // The details
+}
+
+type DetailEntry struct {
+	Name        string   `json:"name" example:"Last modified date"`                                                          // The name of the detail
+	Type        string   `json:"type" example:"date"`                                                                        // The type of the detail, which should correspond to the field that is set
+	Text        string   `json:"text,omitempty" example:"Some text"`                                                         // For text details
+	Number      float64  `json:"number,omitempty" example:"42"`                                                              // For number details
+	Select      *Tag     `json:"select,omitempty"`                                                                           // For select details
+	MultiSelect []Tag    `json:"multi_select,omitempty"`                                                                     // For multi-select details
+	Date        string   `json:"date,omitempty" example:"2024-02-14T12:34:56Z"`                                              // For date details
+	File        []string `json:"file,omitempty" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"`   // For file details
+	Checkbox    bool     `json:"checkbox,omitempty" example:"true"`                                                          // For checkbox details
+	Url         string   `json:"url,omitempty" example:"https://example.com"`                                                // For URL details
+	Email       string   `json:"email,omitempty" example:"example@example.com"`                                              // For email details
+	Phone       string   `json:"phone,omitempty" example:"+1234567890"`                                                      // For phone details
+	Object      []string `json:"object,omitempty" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"` // For object details
 }
 
 type Tag struct {
