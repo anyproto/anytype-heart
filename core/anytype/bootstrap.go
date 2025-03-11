@@ -223,6 +223,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(backlinks.New()).
 		Register(filestore.New()).
 		// Services
+		Register(collection.New()).
+		Register(subscription.New()).
+		Register(crossspacesub.New()).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
@@ -295,9 +298,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
-		Register(collection.New()).
-		Register(subscription.New()).
-		Register(crossspacesub.New()).
 		Register(syncsubscriptions.New()).
 		Register(gallery.NewCache()).
 		Register(gallery.New()).
