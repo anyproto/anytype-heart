@@ -392,21 +392,21 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		// check details
 		for _, detail := range objects[0].Details {
 			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["date"])
+				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details.(object.DateDetailEntry).Date)
 			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["date"])
+				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details.(object.DateDetailEntry).Date)
 			} else if detail.Id == "created_by" {
-				require.Equal(t, mockedParticipantId, detail.Details["object"])
+				require.Equal(t, []string{mockedParticipantId}, detail.Details.(object.ObjectDetailEntry).Object)
 			} else if detail.Id == "last_modified_by" {
-				require.Equal(t, mockedParticipantId, detail.Details["object"])
+				require.Equal(t, []string{mockedParticipantId}, detail.Details.(object.ObjectDetailEntry).Object)
 			}
 		}
 
 		// check tags
 		tags := []object.Tag{}
 		for _, detail := range objects[0].Details {
-			if tagList, ok := detail.Details["multi_select"].([]object.Tag); ok {
-				for _, tag := range tagList {
+			if tagList, ok := detail.Details.(object.MultiSelectDetailEntry); ok {
+				for _, tag := range tagList.MultiSelect {
 					tags = append(tags, tag)
 				}
 			}
