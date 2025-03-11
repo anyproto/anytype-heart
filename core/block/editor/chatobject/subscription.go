@@ -76,6 +76,7 @@ func (s *subscription) getChatState() *model.ChatState {
 
 func (s *subscription) updateChatState(updater func(*model.ChatState)) {
 	updater(s.chatState)
+	s.chatStateUpdated = true
 }
 
 func (s *subscription) flush() {

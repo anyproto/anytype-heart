@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"sort"
 	"time"
 
@@ -291,11 +290,6 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, before
 }
 
 func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64) ([]string, error) {
-	if lastAddedMessageTimestamp < 0 {
-		// todo: remove this
-		// for testing purposes
-		lastAddedMessageTimestamp = math.MaxInt64
-	}
 	iter, err := s.collection.Find(
 		query.And{
 			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
