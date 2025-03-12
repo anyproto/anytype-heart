@@ -146,9 +146,6 @@ func (s *service) ObjectTypeListConflictingRelations(spaceId, typeObjectId strin
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch relations by keys: %w", err)
 	}
-	if len(records) != len(allRelationKeys) {
-		return nil, fmt.Errorf("failed to query relations from store, number of records is less than expected")
-	}
 
 	conflictingRelations := make([]string, 0, len(records))
 	for _, record := range records {

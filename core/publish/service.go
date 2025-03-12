@@ -137,6 +137,7 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 		NoProgress:       true,
 		IncludeNested:    true,
 		IncludeBacklinks: true,
+		IncludeSpace:     true,
 		LinksStateFilters: &pb.RpcObjectListExportStateFilters{
 			RelationsWhiteList: relationsWhiteListToPbModel(),
 			RemoveBlocks:       true,
@@ -406,8 +407,6 @@ func (s *service) getPublishLimit(globalName string) (int64, error) {
 }
 
 func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
-	log.Info("Publish called", zap.String("pageId", pageId))
-
 	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
 	globalName := details.GetString(bundle.RelationKeyGlobalName)
 
