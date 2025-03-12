@@ -30,6 +30,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const ObjectTypeAllViewId = "all"
+
 var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRecommendedRelations,
 	bundle.RelationKeyRecommendedFeaturedRelations,
@@ -411,7 +413,7 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_longtext,
 		},
-	}, objectTypeAllViewId)
+	}, ObjectTypeAllViewId)
 
 	dvContent.Dataview.TargetObjectId = ot.Id()
 	return []template.StateTransformer{

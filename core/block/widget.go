@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -122,7 +123,7 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 			ObjectLimit:  6,
 			WidgetLayout: model.BlockContentWidget_View,
 			Position:     model.Block_Bottom,
-			ViewId:       "all",
+			ViewId:       editor.ObjectTypeAllViewId,
 			Block: &model.Block{
 				Id: widgetBlockId, // hardcode id to avoid duplicates
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{

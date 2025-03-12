@@ -35,8 +35,6 @@ var pageRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyMentions,
 }
 
-const objectTypeAllViewId = "all"
-
 var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyUniqueKey,
 	bundle.RelationKeyIsReadonly,
