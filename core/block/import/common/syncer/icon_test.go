@@ -146,7 +146,7 @@ func TestIconSyncer_Sync(t *testing.T) {
 				Url: "http://url.com",
 			},
 			ObjectOrigin: objectorigin.Import(model.Import_Pb),
-		}).Return("newFileObjectId", nil, nil)
+		}).Return("newFileObjectId", model.BlockContentFile_Image, nil, nil)
 
 		syncer := NewIconSyncer(fileUploader, service)
 
@@ -191,7 +191,7 @@ func TestIconSyncer_Sync(t *testing.T) {
 				Url: "http://url.com",
 			},
 			ObjectOrigin: objectorigin.Import(model.Import_Pb),
-		}).Return("", nil, fmt.Errorf("failed to upload"))
+		}).Return("", model.BlockContentFile_Image, nil, fmt.Errorf("failed to upload"))
 
 		syncer := NewIconSyncer(fileUploader, service)
 
