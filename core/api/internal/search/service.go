@@ -56,7 +56,7 @@ func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest,
 	allResponses := make([]*pb.RpcObjectSearchResponse, 0, len(spaces))
 	for _, space := range spaces {
 		// Resolve template type and object type IDs per space, as they are unique per space
-		templateFilter := s.prepareTemplateFilter(space.Id)
+		templateFilter := s.prepareTemplateFilter()
 		typeFilters := s.prepareObjectTypeFilters(space.Id, request.Types)
 		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
 
@@ -117,7 +117,7 @@ func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest,
 // Search retrieves a paginated list of objects from a specific space that match the search parameters.
 func (s *SearchService) Search(ctx context.Context, spaceId string, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error) {
 	baseFilters := s.prepareBaseFilters()
-	templateFilter := s.prepareTemplateFilter(spaceId)
+	templateFilter := s.prepareTemplateFilter()
 	queryFilters := s.prepareQueryFilter(request.Query)
 	typeFilters := s.prepareObjectTypeFilters(spaceId, request.Types)
 	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
@@ -203,18 +203,13 @@ func (s *SearchService) prepareBaseFilters() []*model.BlockContentDataviewFilter
 }
 
 // prepareTemplateFilter returns a filter that excludes templates from the search results.
-func (s *SearchService) prepareTemplateFilter(spaceId string) []*model.BlockContentDataviewFilter {
-	typeId, err := util.ResolveUniqueKeyToTypeId(s.mw, spaceId, "ot-template")
-	if err != nil {
-		return nil
-	}
-
+func (s *SearchService) prepareTemplateFilter() []*model.BlockContentDataviewFilter {
 	return []*model.BlockContentDataviewFilter{
 		{
 			Operator:    model.BlockContentDataviewFilter_No,
-			RelationKey: bundle.RelationKeyType.String(),
+			RelationKey: "type.uniqueKey",
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
-			Value:       pbtypes.String(typeId),
+			Value:       pbtypes.String("ot-template"),
 		},
 	}
 }

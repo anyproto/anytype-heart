@@ -67,8 +67,8 @@ func GetIcon(accountInfo *model.AccountInfo, iconEmoji string, iconImage string,
 	return Icon{}
 }
 
+// ResolveUniqueKeyToTypeId resolves the unique key to the type's ID
 func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, uniqueKey string) (typeId string, err error) {
-	// Call ObjectSearch for type with unique key and return the type's ID
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -92,6 +92,7 @@ func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, u
 	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
 }
 
+// ResolveRelationKeyToRelationName resolves the relation key to the relation's name
 func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId string, relationKey string) (relation string, err error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
