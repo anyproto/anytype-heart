@@ -68,20 +68,6 @@ components:
           example: VerticalAlignTop
           type: string
       type: object
-    object.CheckboxDetailEntry:
-      properties:
-        checkbox:
-          example: true
-          type: boolean
-        name:
-          example: Done
-          type: string
-        type:
-          enum:
-          - checkbox
-          example: checkbox
-          type: string
-      type: object
     object.CreateObjectRequest:
       properties:
         body:
@@ -111,53 +97,6 @@ components:
         template_id:
           description: The id of the template to use
           example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
-          type: string
-      type: object
-    object.DateDetailEntry:
-      properties:
-        date:
-          example: "2024-02-14T12:34:56Z"
-          type: string
-        name:
-          example: Last modified date
-          type: string
-        type:
-          enum:
-          - date
-          example: date
-          type: string
-      type: object
-    object.Detail:
-      properties:
-        details:
-          oneOf:
-          - $ref: '#/components/schemas/object.TextDetailEntry'
-          - $ref: '#/components/schemas/object.NumberDetailEntry'
-          - $ref: '#/components/schemas/object.SelectDetailEntry'
-          - $ref: '#/components/schemas/object.MultiSelectDetailEntry'
-          - $ref: '#/components/schemas/object.DateDetailEntry'
-          - $ref: '#/components/schemas/object.FileDetailEntry'
-          - $ref: '#/components/schemas/object.CheckboxDetailEntry'
-          - $ref: '#/components/schemas/object.UrlDetailEntry'
-          - $ref: '#/components/schemas/object.EmailDetailEntry'
-          - $ref: '#/components/schemas/object.PhoneDetailEntry'
-          - $ref: '#/components/schemas/object.ObjectDetailEntry'
-        id:
-          example: last_modified_date
-          type: string
-      type: object
-    object.EmailDetailEntry:
-      properties:
-        email:
-          example: example@example.com
-          type: string
-        name:
-          example: Email
-          type: string
-        type:
-          enum:
-          - email
-          example: email
           type: string
       type: object
     object.File:
@@ -191,54 +130,6 @@ components:
           description: The type of the file
           type: string
       type: object
-    object.FileDetailEntry:
-      properties:
-        file:
-          example:
-          - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        name:
-          example: File
-          type: string
-        type:
-          enum:
-          - file
-          example: file
-          type: string
-      type: object
-    object.MultiSelectDetailEntry:
-      properties:
-        multi_select:
-          items:
-            $ref: '#/components/schemas/object.Tag'
-          type: array
-          uniqueItems: false
-        name:
-          example: Tag
-          type: string
-        type:
-          enum:
-          - multi_select
-          example: multi_select
-          type: string
-      type: object
-    object.NumberDetailEntry:
-      properties:
-        name:
-          example: Size
-          type: string
-        number:
-          example: 42
-          type: number
-        type:
-          enum:
-          - number
-          example: number
-          type: string
-      type: object
     object.Object:
       description: The object
       properties:
@@ -246,12 +137,6 @@ components:
           description: The blocks of the object
           items:
             $ref: '#/components/schemas/object.Block'
-          type: array
-          uniqueItems: false
-        details:
-          description: The details of the object
-          items:
-            $ref: '#/components/schemas/object.Detail'
           type: array
           uniqueItems: false
         icon:
@@ -272,6 +157,12 @@ components:
           description: The data model of the object
           example: object
           type: string
+        properties:
+          description: The properties of the object
+          items:
+            $ref: '#/components/schemas/object.Property'
+          type: array
+          uniqueItems: false
         root_id:
           description: The id of the object's root
           example: bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u
@@ -288,60 +179,81 @@ components:
         type:
           $ref: '#/components/schemas/object.Type'
       type: object
-    object.ObjectDetailEntry:
-      properties:
-        name:
-          example: Assignee
-          type: string
-        object:
-          example:
-          - '[''bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        type:
-          enum:
-          - object
-          example: object
-          type: string
-      type: object
     object.ObjectResponse:
       properties:
         object:
           $ref: '#/components/schemas/object.Object'
       type: object
-    object.PhoneDetailEntry:
+    object.Property:
       properties:
-        name:
-          example: Phone
+        checkbox:
+          example: true
+          type: boolean
+        date:
+          example: "2025-02-14T12:34:56Z"
           type: string
+        email:
+          example: example@example.com
+          type: string
+        file:
+          example:
+          - '[''fileId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        format:
+          enum:
+          - text
+          - number
+          - select
+          - multi_select
+          - date
+          - file
+          - checkbox
+          - url
+          - email
+          - phone
+          - object
+          example: date
+          type: string
+        id:
+          example: last_modified_date
+          type: string
+        multi_select:
+          items:
+            $ref: '#/components/schemas/object.Tag'
+          type: array
+          uniqueItems: false
+        name:
+          example: Last modified date
+          type: string
+        number:
+          example: 42
+          type: number
+        object:
+          example:
+          - '[''objectId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
         phone:
           example: "+1234567890"
           type: string
-        type:
-          enum:
-          - phone
-          example: phone
+        select:
+          $ref: '#/components/schemas/object.Tag'
+        text:
+          example: Some text...
+          type: string
+        url:
+          example: https://example.com
           type: string
       type: object
     object.Relation:
       description: The relation of the block, if applicable
       properties:
         id:
-          type: string
-      type: object
-    object.SelectDetailEntry:
-      properties:
-        name:
-          example: Status
-          type: string
-        select:
-          $ref: '#/components/schemas/object.Tag'
-        type:
-          enum:
-          - select
-          example: select
           type: string
       type: object
     object.Tag:
@@ -419,20 +331,6 @@ components:
           example: Some text...
           type: string
       type: object
-    object.TextDetailEntry:
-      properties:
-        name:
-          example: Description
-          type: string
-        text:
-          example: Some text...
-          type: string
-        type:
-          enum:
-          - text
-          example: text
-          type: string
-      type: object
     object.Type:
       description: The type of the object
       properties:
@@ -463,20 +361,6 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/object.Type'
-      type: object
-    object.UrlDetailEntry:
-      properties:
-        name:
-          example: URL
-          type: string
-        type:
-          enum:
-          - url
-          example: url
-          type: string
-        url:
-          example: https://example.com
-          type: string
       type: object
     pagination.PaginatedResponse-object_Object:
       properties:
@@ -749,17 +633,17 @@ components:
           description: The file of the icon
           example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
           type: string
-        name:
-          description: The name of the icon
-          example: document
-          type: string
-        type:
+        format:
           description: The type of the icon
           enum:
           - emoji
           - file
           - icon
           example: emoji
+          type: string
+        name:
+          description: The name of the icon
+          example: document
           type: string
       type: object
     util.NotFoundError:

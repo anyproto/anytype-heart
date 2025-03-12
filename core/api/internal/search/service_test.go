@@ -27,6 +27,7 @@ const (
 	mockedSearchTerm    = "mocked-search-term"
 	mockedObjectId      = "mocked-object-id"
 	mockedObjectName    = "mocked-object-name"
+	mockedObjectIcon    = "🌐"
 	mockedRootId        = "mocked-root-id"
 	mockedParticipantId = "mocked-participant-id"
 	mockedType          = "mocked-type"
@@ -240,7 +241,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
 								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
 								bundle.RelationKeyResolvedLayout.String():   pbtypes.Int64(int64(model.ObjectType_basic)),
-								bundle.RelationKeyIconEmoji.String():        pbtypes.String("🌐"),
+								bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
 								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String(mockedParticipantId),
 								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
@@ -364,29 +365,27 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, mockedType, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: "🌐"}, objects[0].Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, objects[0].Icon)
 		require.Equal(t, "This is a sample text block", objects[0].Blocks[2].Text.Text)
 
 		// check details
-		for _, detail := range objects[0].Details {
-			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details.(object.DateDetailEntry).Date)
-			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details.(object.DateDetailEntry).Date)
-			} else if detail.Id == "created_by" {
-				require.Equal(t, []string{mockedParticipantId}, detail.Details.(object.ObjectDetailEntry).Object)
-			} else if detail.Id == "last_modified_by" {
-				require.Equal(t, []string{mockedParticipantId}, detail.Details.(object.ObjectDetailEntry).Object)
+		for _, property := range objects[0].Properties {
+			if property.Id == "created_date" {
+				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
+			} else if property.Id == "last_modified_date" {
+				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
+			} else if property.Id == "created_by" {
+				require.Equal(t, []string{mockedParticipantId}, property.Object)
+			} else if property.Id == "last_modified_by" {
+				require.Equal(t, []string{mockedParticipantId}, property.Object)
 			}
 		}
 
 		// check tags
 		tags := []object.Tag{}
-		for _, detail := range objects[0].Details {
-			if tagList, ok := detail.Details.(object.MultiSelectDetailEntry); ok {
-				for _, tag := range tagList.MultiSelect {
-					tags = append(tags, tag)
-				}
+		for _, detail := range objects[0].Properties {
+			for _, tag := range detail.MultiSelect {
+				tags = append(tags, tag)
 			}
 		}
 		require.Len(t, tags, 2)

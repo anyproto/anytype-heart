@@ -33,34 +33,39 @@ var iconOptionToColor = map[float64]string{
 }
 
 type Icon struct {
-	Type  string `json:"type" enums:"emoji,file,icon" example:"emoji"`                                                                      // The type of the icon
-	Emoji string `json:"emoji,omitempty" example:"📄"`                                                                                       // The emoji of the icon
-	File  string `json:"file,omitempty" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
-	Name  string `json:"name,omitempty" example:"document"`                                                                                 // The name of the icon
-	Color string `json:"color,omitempty" example:"red"`                                                                                     // The color of the icon
+	Format string  `json:"format" enums:"emoji,file,icon" example:"emoji"`                                                                    // The type of the icon
+	Emoji  *string `json:"emoji,omitempty" example:"📄"`                                                                                       // The emoji of the icon
+	File   *string `json:"file,omitempty" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
+	Name   *string `json:"name,omitempty" example:"document"`                                                                                 // The name of the icon
+	Color  *string `json:"color,omitempty" example:"red"`                                                                                     // The color of the icon
+}
+
+// StringPtr returns a pointer to the string
+func StringPtr(s string) *string {
+	return &s
 }
 
 // GetIcon returns the icon to use for the object, which can be builtin icon, emoji or file
 func GetIcon(accountInfo *model.AccountInfo, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
 	if iconName != "" {
 		return Icon{
-			Type:  "icon",
-			Name:  iconName,
-			Color: iconOptionToColor[iconOption],
+			Format: "icon",
+			Name:   &iconName,
+			Color:  StringPtr(iconOptionToColor[iconOption]),
 		}
 	}
 
 	if iconEmoji != "" {
 		return Icon{
-			Type:  "emoji",
-			Emoji: iconEmoji,
+			Format: "emoji",
+			Emoji:  &iconEmoji,
 		}
 	}
 
 	if iconImage != "" {
 		return Icon{
-			Type: "file",
-			File: fmt.Sprintf("%s/image/%s", accountInfo.GatewayUrl, iconImage),
+			Format: "file",
+			File:   StringPtr(fmt.Sprintf("%s/image/%s", accountInfo.GatewayUrl, iconImage)),
 		}
 	}
 

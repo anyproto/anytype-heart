@@ -17,17 +17,17 @@ type ObjectResponse struct {
 }
 
 type Object struct {
-	Object  string    `json:"object" example:"object"`                                                                      // The data model of the object
-	Id      string    `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
-	Name    string    `json:"name" example:"My object"`                                                                     // The name of the object
-	Icon    util.Icon `json:"icon"`                                                                                         // The icon of the object
-	Type    Type      `json:"type"`                                                                                         // The type of the object
-	Snippet string    `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout  string    `json:"layout" example:"basic"`                                                                       // The layout of the object
-	SpaceId string    `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
-	RootId  string    `json:"root_id" example:"bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"`                // The id of the object's root
-	Blocks  []Block   `json:"blocks"`                                                                                       // The blocks of the object
-	Details []Detail  `json:"details"`                                                                                      // The details of the object
+	Object     string     `json:"object" example:"object"`                                                                      // The data model of the object
+	Id         string     `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
+	Name       string     `json:"name" example:"My object"`                                                                     // The name of the object
+	Icon       util.Icon  `json:"icon"`                                                                                         // The icon of the object
+	Type       Type       `json:"type"`                                                                                         // The type of the object
+	Snippet    string     `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
+	Layout     string     `json:"layout" example:"basic"`                                                                       // The layout of the object
+	SpaceId    string     `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
+	RootId     string     `json:"root_id" example:"bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"`                // The id of the object's root
+	Blocks     []Block    `json:"blocks"`                                                                                       // The blocks of the object
+	Properties []Property `json:"properties"`                                                                                   // The properties of the object
 }
 
 type Block struct {
@@ -66,102 +66,22 @@ type Relation struct {
 	Id string
 }
 
-type Detail struct {
-	Id      string      `json:"id" example:"last_modified_date"`
-	Details DetailEntry `json:"details" oneOf:"TextDetailEntry,NumberDetailEntry,SelectDetailEntry,MultiSelectDetailEntry,DateDetailEntry,FileDetailEntry,CheckboxDetailEntry,UrlDetailEntry,EmailDetailEntry,PhoneDetailEntry,ObjectDetailEntry"`
+type Property struct {
+	Id          string   `json:"id" example:"last_modified_date"`
+	Name        string   `json:"name" example:"Last modified date"`
+	Format      string   `json:"format" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"`
+	Text        *string  `json:"text,omitempty" example:"Some text..."`
+	Number      *float64 `json:"number,omitempty" example:"42"`
+	Select      *Tag     `json:"select,omitempty"`
+	MultiSelect []Tag    `json:"multi_select,omitempty"`
+	Date        *string  `json:"date,omitempty" example:"2025-02-14T12:34:56Z"`
+	File        []string `json:"file,omitempty" example:"['fileId']"`
+	Checkbox    *bool    `json:"checkbox,omitempty" example:"true"`
+	Url         *string  `json:"url,omitempty" example:"https://example.com"`
+	Email       *string  `json:"email,omitempty" example:"example@example.com"`
+	Phone       *string  `json:"phone,omitempty" example:"+1234567890"`
+	Object      []string `json:"object,omitempty" example:"['objectId']"`
 }
-
-type DetailEntry interface {
-	GetType() string
-}
-
-type TextDetailEntry struct {
-	Name string `json:"name" example:"Description"`
-	Type string `json:"type" example:"text" enums:"text"`
-	Text string `json:"text" example:"Some text..."`
-}
-
-func (t TextDetailEntry) GetType() string { return t.Type }
-
-type NumberDetailEntry struct {
-	Name   string  `json:"name" example:"Size"`
-	Type   string  `json:"type" example:"number" enums:"number"`
-	Number float64 `json:"number" example:"42"`
-}
-
-func (n NumberDetailEntry) GetType() string { return n.Type }
-
-type SelectDetailEntry struct {
-	Name   string `json:"name" example:"Status"`
-	Type   string `json:"type" example:"select" enums:"select"`
-	Select *Tag   `json:"select"`
-}
-
-func (s SelectDetailEntry) GetType() string { return s.Type }
-
-type MultiSelectDetailEntry struct {
-	Name        string `json:"name" example:"Tag"`
-	Type        string `json:"type" example:"multi_select" enums:"multi_select"`
-	MultiSelect []Tag  `json:"multi_select"`
-}
-
-func (m MultiSelectDetailEntry) GetType() string { return m.Type }
-
-type DateDetailEntry struct {
-	Name string `json:"name" example:"Last modified date"`
-	Type string `json:"type" example:"date" enums:"date"`
-	Date string `json:"date" example:"2024-02-14T12:34:56Z"`
-}
-
-func (d DateDetailEntry) GetType() string { return d.Type }
-
-type FileDetailEntry struct {
-	Name string   `json:"name" example:"File"`
-	Type string   `json:"type" example:"file" enums:"file"`
-	File []string `json:"file" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"`
-}
-
-func (f FileDetailEntry) GetType() string { return f.Type }
-
-type CheckboxDetailEntry struct {
-	Name     string `json:"name" example:"Done"`
-	Type     string `json:"type" example:"checkbox" enums:"checkbox"`
-	Checkbox bool   `json:"checkbox" example:"true"`
-}
-
-func (c CheckboxDetailEntry) GetType() string { return c.Type }
-
-type UrlDetailEntry struct {
-	Name string `json:"name" example:"URL"`
-	Type string `json:"type" example:"url" enums:"url"`
-	Url  string `json:"url" example:"https://example.com"`
-}
-
-func (u UrlDetailEntry) GetType() string { return u.Type }
-
-type EmailDetailEntry struct {
-	Name  string `json:"name" example:"Email"`
-	Type  string `json:"type" example:"email" enums:"email"`
-	Email string `json:"email" example:"example@example.com"`
-}
-
-func (e EmailDetailEntry) GetType() string { return e.Type }
-
-type PhoneDetailEntry struct {
-	Name  string `json:"name" example:"Phone"`
-	Type  string `json:"type" example:"phone" enums:"phone"`
-	Phone string `json:"phone" example:"+1234567890"`
-}
-
-func (p PhoneDetailEntry) GetType() string { return p.Type }
-
-type ObjectDetailEntry struct {
-	Name   string   `json:"name" example:"Assignee"`
-	Type   string   `json:"type" example:"object" enums:"object"`
-	Object []string `json:"object" example:"['bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5iutge']"`
-}
-
-func (o ObjectDetailEntry) GetType() string { return o.Type }
 
 type Tag struct {
 	Id    string `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"` // The id of the tag

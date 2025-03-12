@@ -228,26 +228,26 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedTypeName, objects[0].Type.Name)
 		require.Equal(t, mockedTypeUniqueKey, objects[0].Type.UniqueKey)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: mockedTypeIcon}, objects[0].Type.Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, objects[0].Type.Icon)
 		require.Equal(t, mockedObjectId, objects[0].Id)
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: mockedObjectIcon}, objects[0].Icon)
-		require.Equal(t, 5, len(objects[0].Details))
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, objects[0].Icon)
+		require.Equal(t, 5, len(objects[0].Properties))
 
-		for _, detail := range objects[0].Details {
+		for _, detail := range objects[0].Properties {
 			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details.(DateDetailEntry).Date)
+				require.Equal(t, "1970-01-11T06:54:48Z", *detail.Date)
 			} else if detail.Id == "created_by" {
-				require.Equal(t, []string{mockedParticipantId}, detail.Details.(ObjectDetailEntry).Object)
+				require.Equal(t, []string{mockedParticipantId}, detail.Object)
 			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details.(DateDetailEntry).Date)
+				require.Equal(t, "1970-01-12T13:46:39Z", *detail.Date)
 			} else if detail.Id == "last_modified_by" {
-				require.Equal(t, []string{mockedParticipantId}, detail.Details.(ObjectDetailEntry).Object)
+				require.Equal(t, []string{mockedParticipantId}, detail.Object)
 			} else if detail.Id == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details.(DateDetailEntry).Date)
-			} else if detail.Id == "tags" {
-				require.Empty(t, detail.Details.(SelectDetailEntry).Select)
+				require.Equal(t, "1970-01-01T00:00:00Z", *detail.Date)
+			} else if detail.Id == "tag" {
+				require.Empty(t, detail.MultiSelect)
 			} else {
 				t.Errorf("unexpected detail id: %s", detail.Id)
 			}
@@ -420,28 +420,28 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedTypeId, object.Type.Id)
 		require.Equal(t, mockedTypeName, object.Type.Name)
 		require.Equal(t, mockedTypeUniqueKey, object.Type.UniqueKey)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: mockedTypeIcon}, object.Type.Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, object.Type.Icon)
 		require.Equal(t, mockedObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: mockedObjectIcon}, object.Icon)
-		require.Equal(t, 3, len(object.Details))
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, object.Icon)
+		require.Equal(t, 3, len(object.Properties))
 
-		for _, detail := range object.Details {
-			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details.(DateDetailEntry).Date)
-			} else if detail.Id == "created_by" {
-				require.Empty(t, detail.Details.(ObjectDetailEntry).Object)
-			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details.(DateDetailEntry).Date)
-			} else if detail.Id == "last_modified_by" {
-				require.Empty(t, detail.Details.(ObjectDetailEntry).Object)
-			} else if detail.Id == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details.(DateDetailEntry).Date)
-			} else if detail.Id == "tags" {
-				require.Empty(t, detail.Details.(SelectDetailEntry).Select)
+		for _, property := range object.Properties {
+			if property.Id == "created_date" {
+				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
+			} else if property.Id == "created_by" {
+				require.Empty(t, property.Object)
+			} else if property.Id == "last_modified_date" {
+				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
+			} else if property.Id == "last_modified_by" {
+				require.Empty(t, property.Object)
+			} else if property.Id == "last_opened_date" {
+				require.Equal(t, "1970-01-01T00:00:00Z", *property.Date)
+			} else if property.Id == "tag" {
+				require.Empty(t, property.MultiSelect)
 			} else {
-				t.Errorf("unexpected detail id: %s", detail.Id)
+				t.Errorf("unexpected property id: %s", property.Id)
 			}
 		}
 	})
@@ -549,10 +549,10 @@ func TestObjectService_CreateObject(t *testing.T) {
 		require.Equal(t, mockedTypeId, object.Type.Id)
 		require.Equal(t, mockedTypeName, object.Type.Name)
 		require.Equal(t, mockedTypeUniqueKey, object.Type.UniqueKey)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: mockedTypeIcon}, object.Type.Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, object.Type.Icon)
 		require.Equal(t, mockedNewObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: mockedObjectIcon}, object.Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, object.Icon)
 		require.Equal(t, mockedSpaceId, object.SpaceId)
 	})
 
@@ -608,7 +608,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		require.Equal(t, "type-1", types[0].Id)
 		require.Equal(t, "Type One", types[0].Name)
 		require.Equal(t, "type-one-key", types[0].UniqueKey)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: "🗂️"}, types[0].Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🗂️")}, types[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -671,7 +671,7 @@ func TestObjectService_GetType(t *testing.T) {
 		require.Equal(t, mockedTypeId, objType.Id)
 		require.Equal(t, mockedTypeName, objType.Name)
 		require.Equal(t, mockedTypeUniqueKey, objType.UniqueKey)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: mockedTypeIcon}, objType.Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, objType.Icon)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objType.RecommendedLayout)
 	})
 
@@ -753,7 +753,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		require.Len(t, templates, 1)
 		require.Equal(t, "template-1", templates[0].Id)
 		require.Equal(t, "Template Name", templates[0].Name)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: "📝"}, templates[0].Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("📝")}, templates[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -813,7 +813,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, mockedTemplateId, template.Id)
 		require.Equal(t, mockedTemplateName, template.Name)
-		require.Equal(t, util.Icon{Type: "emoji", Emoji: mockedTemplateIcon}, template.Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTemplateIcon)}, template.Icon)
 	})
 
 	t.Run("template not found", func(t *testing.T) {

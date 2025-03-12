@@ -27,7 +27,7 @@ var (
 	ErrFailedDeleteObject        = errors.New("failed to delete object")
 	ErrFailedCreateObject        = errors.New("failed to create object")
 	ErrInputMissingSource        = errors.New("source is missing for bookmark")
-	ErrFailedSetRelationFeatured = errors.New("failed to set relation featured")
+	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
 	ErrFailedFetchBookmark       = errors.New("failed to fetch bookmark")
 	ErrFailedCreateBlock         = errors.New("failed to create block")
 	ErrFailedPasteBody           = errors.New("failed to paste body")
@@ -43,7 +43,7 @@ var (
 	ErrTemplateNotFound           = errors.New("template not found")
 )
 
-var excludedSystemRelations = map[string]bool{
+var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyId.String():                true,
 	bundle.RelationKeySpaceId.String():           true,
 	bundle.RelationKeyName.String():              true,
@@ -191,17 +191,17 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 	icon := util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details[bundle.RelationKeyIconImage.String()].GetStringValue(), details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue())
 
 	object := Object{
-		Object:  "object",
-		Id:      details[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:    details[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:    icon,
-		Type:    s.getTypeFromDetails(details[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
-		Snippet: details[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:  model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		SpaceId: details[bundle.RelationKeySpaceId.String()].GetStringValue(),
-		RootId:  resp.ObjectView.RootId,
-		Blocks:  s.getBlocks(resp),
-		Details: s.getDetails(resp),
+		Object:     "object",
+		Id:         details[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:       icon,
+		Type:       s.getTypeFromDetails(details[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
+		Snippet:    details[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+		SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		RootId:     resp.ObjectView.RootId,
+		Blocks:     s.getBlocks(resp),
+		Properties: s.getProperties(resp),
 	}
 
 	return object, nil
@@ -263,7 +263,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 
 		if relAddFeatResp.Error.Code != pb.RpcObjectRelationAddFeaturedResponseError_NULL {
 			object, _ := s.GetObject(ctx, spaceId, resp.ObjectId) // nolint:errcheck
-			return object, ErrFailedSetRelationFeatured
+			return object, ErrFailedSetPropertyFeatured
 		}
 	}
 
@@ -521,40 +521,34 @@ func (s *ObjectService) getTypeFromDetails(typeId string, details []*model.Objec
 	}
 }
 
-// getDetails returns a list of details by iterating over all relations found in the RelationLinks and mapping their format and value.
-func (s *ObjectService) getDetails(resp *pb.RpcObjectShowResponse) []Detail {
-	relationFormatMap := s.getRelationFormatMap(resp.ObjectView.RelationLinks)
-	linkedRelations := resp.ObjectView.RelationLinks
+// getProperties returns a list of properties by iterating over all properties found in the RelationLinks and mapping their format and value.
+func (s *ObjectService) getProperties(resp *pb.RpcObjectShowResponse) []Property {
+	propertyFormatMap := s.getPropertyFormatMap(resp.ObjectView.RelationLinks)
+	linkedProperties := resp.ObjectView.RelationLinks
 	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
 
-	var details []Detail
-	for _, r := range linkedRelations {
+	var properties []Property
+	for _, r := range linkedProperties {
 		key := r.Key
-		if _, isExcluded := excludedSystemRelations[key]; isExcluded {
+		if _, isExcluded := excludedSystemProperties[key]; isExcluded {
 			continue
 		}
 		if _, ok := primaryDetailFields[key]; !ok {
 			continue
 		}
 
-		id, name := s.getRelation(key, resp)
-		format := relationFormatMap[key]
+		id, name := s.getProperty(key, resp)
+		format := propertyFormatMap[key]
 		convertedVal := s.convertValue(key, primaryDetailFields[key], format, resp.ObjectView.Details)
 
 		if s.isMissingObject(convertedVal) {
 			continue
 		}
 
-		entry := s.createDetailEntry(name, format, convertedVal)
-		if entry != nil {
-			details = append(details, Detail{
-				Id:      id,
-				Details: entry,
-			})
-		}
+		properties = append(properties, s.buildProperty(id, name, format, convertedVal))
 	}
 
-	return details
+	return properties
 }
 
 // isMissingObject returns true if val indicates a "_missing_object" placeholder.
@@ -578,58 +572,64 @@ func (s *ObjectService) isMissingObject(val interface{}) bool {
 	return false
 }
 
-// createDetailEntry creates a DetailEntry based on the format and converted value.
-func (s *ObjectService) createDetailEntry(name, format string, val interface{}) DetailEntry {
+// buildProperty creates a Property based on the format and converted value.
+func (s *ObjectService) buildProperty(id string, name string, format string, val interface{}) Property {
+	prop := &Property{
+		Id:     id,
+		Name:   name,
+		Format: format,
+	}
+
 	switch format {
 	case "text":
 		if str, ok := val.(string); ok {
-			return TextDetailEntry{Name: name, Type: "text", Text: str}
+			prop.Text = &str
 		}
 	case "number":
 		if num, ok := val.(float64); ok {
-			return NumberDetailEntry{Name: name, Type: "number", Number: num}
+			prop.Number = &num
 		}
 	case "select":
 		if sel, ok := val.(Tag); ok {
-			return SelectDetailEntry{Name: name, Type: "select", Select: &sel}
+			prop.Select = &sel
 		}
 	case "multi_select":
 		if ms, ok := val.([]Tag); ok {
-			return MultiSelectDetailEntry{Name: name, Type: "multi_select", MultiSelect: ms}
+			prop.MultiSelect = ms
 		}
 	case "date":
 		if dateStr, ok := val.(string); ok {
-			return DateDetailEntry{Name: name, Type: "date", Date: dateStr}
+			prop.Date = &dateStr
 		}
 	case "file":
-		if file, ok := val.([]interface{}); ok {
+		if fileList, ok := val.([]interface{}); ok {
 			var files []string
-			for _, v := range file {
+			for _, v := range fileList {
 				if str, ok := v.(string); ok {
 					files = append(files, str)
 				}
 			}
-			return FileDetailEntry{Name: name, Type: "file", File: files}
+			prop.File = files
 		}
 	case "checkbox":
 		if cb, ok := val.(bool); ok {
-			return CheckboxDetailEntry{Name: name, Type: "checkbox", Checkbox: cb}
+			prop.Checkbox = &cb
 		}
 	case "url":
-		if url, ok := val.(string); ok {
-			return UrlDetailEntry{Name: name, Type: "url", Url: url}
+		if urlStr, ok := val.(string); ok {
+			prop.Url = &urlStr
 		}
 	case "email":
 		if email, ok := val.(string); ok {
-			return EmailDetailEntry{Name: name, Type: "email", Email: email}
+			prop.Email = &email
 		}
 	case "phone":
 		if phone, ok := val.(string); ok {
-			return PhoneDetailEntry{Name: name, Type: "phone", Phone: phone}
+			prop.Phone = &phone
 		}
 	case "object":
 		if obj, ok := val.(string); ok {
-			return ObjectDetailEntry{Name: name, Type: "object", Object: []string{obj}}
+			prop.Object = []string{obj}
 		} else if objSlice, ok := val.([]interface{}); ok {
 			var objects []string
 			for _, v := range objSlice {
@@ -637,18 +637,19 @@ func (s *ObjectService) createDetailEntry(name, format string, val interface{}) 
 					objects = append(objects, str)
 				}
 			}
-			return ObjectDetailEntry{Name: name, Type: "object", Object: objects}
+			prop.Object = objects
 		}
 	default:
 		if str, ok := val.(string); ok {
-			return TextDetailEntry{Name: name, Type: "text", Text: str}
+			prop.Text = &str
 		}
 	}
-	return nil
+
+	return *prop
 }
 
-// getRelationName returns the relation id and relation name from the ObjectShowResponse.
-func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) (string, string) {
+// getProperty returns the property id and name from the ObjectShowResponse.
+func (s *ObjectService) getProperty(key string, resp *pb.RpcObjectShowResponse) (string, string) {
 	// Handle special cases first
 	switch key {
 	case bundle.RelationKeyCreator.String():
@@ -657,11 +658,11 @@ func (s *ObjectService) getRelation(key string, resp *pb.RpcObjectShowResponse) 
 		return "created_date", "Created Date"
 	}
 
-	if relation, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
-		return strcase.ToSnake(key), relation.Name
+	if property, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
+		return strcase.ToSnake(key), property.Name
 	}
 
-	// Fallback to resolving the relation name
+	// Fallback to resolving the property name
 	spaceId := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
 	if name, err2 := util.ResolveRelationKeyToRelationName(s.mw, spaceId, key); err2 == nil {
 		return key, name
@@ -717,23 +718,23 @@ func (s *ObjectService) convertValue(key string, value *types.Value, format stri
 	}
 }
 
-// getRelationFormatMapFromResponse returns the map of relation key to relation format from the ObjectShowResponse.
-func (s *ObjectService) getRelationFormatMap(relationLinks []*model.RelationLink) map[string]string {
-	relationFormatToName := make(map[int32]string, len(model.RelationFormat_name))
+// getPropertyFormatMap returns the map of property key to property format from the ObjectShowResponse.
+func (s *ObjectService) getPropertyFormatMap(propertyLinks []*model.RelationLink) map[string]string {
+	propertyFormatToName := make(map[int32]string, len(model.RelationFormat_name))
 	for k, v := range model.RelationFormat_name {
-		relationFormatToName[k] = v
+		propertyFormatToName[k] = v
 	}
-	relationFormatToName[int32(model.RelationFormat_longtext)] = "text"
-	relationFormatToName[int32(model.RelationFormat_shorttext)] = "text"
-	relationFormatToName[int32(model.RelationFormat_tag)] = "multi_select"
-	relationFormatToName[int32(model.RelationFormat_status)] = "select"
+	propertyFormatToName[int32(model.RelationFormat_longtext)] = "text"
+	propertyFormatToName[int32(model.RelationFormat_shorttext)] = "text"
+	propertyFormatToName[int32(model.RelationFormat_tag)] = "multi_select"
+	propertyFormatToName[int32(model.RelationFormat_status)] = "select"
 
-	relationFormatMap := map[string]string{}
-	for _, detail := range relationLinks {
-		relationFormatMap[detail.Key] = relationFormatToName[int32(detail.Format)]
+	propertyFormatMap := map[string]string{}
+	for _, detail := range propertyLinks {
+		propertyFormatMap[detail.Key] = propertyFormatToName[int32(detail.Format)]
 	}
 
-	return relationFormatMap
+	return propertyFormatMap
 }
 
 // TODO: remove once bug of select option not being returned in details is fixed
