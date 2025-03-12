@@ -527,7 +527,7 @@ func (s *ObjectService) getProperties(resp *pb.RpcObjectShowResponse) []Property
 	linkedProperties := resp.ObjectView.RelationLinks
 	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
 
-	var properties []Property
+	properties := make([]Property, 0, len(linkedProperties))
 	for _, r := range linkedProperties {
 		key := r.Key
 		if _, isExcluded := excludedSystemProperties[key]; isExcluded {
