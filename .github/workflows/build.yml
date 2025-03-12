@@ -53,7 +53,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-tags: true
+           fetch-depth: 0
 
       - name: Install brew and node deps
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
