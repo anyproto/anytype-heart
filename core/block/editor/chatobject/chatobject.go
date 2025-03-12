@@ -288,8 +288,7 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, before
 	}
 
 	// mark the whole tree as seen from the current message
-	s.storeSource.MarkSeenHeads(msgs)
-	return nil
+	return s.storeSource.MarkSeenHeads(ctx, msgs)
 }
 
 func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string) error {
@@ -328,7 +327,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 
 	var seenHeads []string
 	err = s.Tree().Storage().GetAfterOrder(ctx, "", func(ctx context.Context, change objecttree.StorageChange) (shouldContinue bool, err error) {
-		if change.OrderId > afterOrderId {
+		if change.OrderId >= afterOrderId {
 			return false, nil
 		}
 
@@ -347,6 +346,10 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	err = s.storeSource.InitDiffManager(ctx, seenHeads)
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
+	}
+	err = s.storeSource.StoreSeenHeads(txn.Context())
+	if err != nil {
+		return fmt.Errorf("store seen heads: %w", err)
 	}
 
 	return txn.Commit()
