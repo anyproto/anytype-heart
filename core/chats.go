@@ -155,3 +155,15 @@ func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChat
 		},
 	}
 }
+
+func (mw *Middleware) ChatUnreadMessages(cctx context.Context, request *pb.RpcChatUnreadRequest) *pb.RpcChatUnreadResponse {
+	chatService := mustService[chats.Service](mw)
+	err := chatService.UnreadMessages(cctx, request.ChatObjectId, request.AfterOrderId)
+	code := mapErrorCode[pb.RpcChatUnreadResponseErrorCode](err)
+	return &pb.RpcChatUnreadResponse{
+		Error: &pb.RpcChatUnreadResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

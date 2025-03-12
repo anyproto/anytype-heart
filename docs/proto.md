@@ -576,6 +576,10 @@
     - [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request)
     - [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error)
+    - [Rpc.Chat.Unread](#anytype-Rpc-Chat-Unread)
+    - [Rpc.Chat.Unread.Request](#anytype-Rpc-Chat-Unread-Request)
+    - [Rpc.Chat.Unread.Response](#anytype-Rpc-Chat-Unread-Response)
+    - [Rpc.Chat.Unread.Response.Error](#anytype-Rpc-Chat-Unread-Response-Error)
     - [Rpc.Chat.Unsubscribe](#anytype-Rpc-Chat-Unsubscribe)
     - [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request)
     - [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response)
@@ -1433,6 +1437,7 @@
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
+    - [Rpc.Chat.Unread.Response.Error.Code](#anytype-Rpc-Chat-Unread-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
@@ -2318,6 +2323,7 @@
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
 | ChatReadMessages | [Rpc.Chat.Read.Request](#anytype-Rpc-Chat-Read-Request) | [Rpc.Chat.Read.Response](#anytype-Rpc-Chat-Read-Response) |  |
+| ChatUnreadMessages | [Rpc.Chat.Unread.Request](#anytype-Rpc-Chat-Unread-Request) | [Rpc.Chat.Unread.Response](#anytype-Rpc-Chat-Unread-Response) |  |
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 
@@ -10665,6 +10671,64 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unread"></a>
+
+### Rpc.Chat.Unread
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unread-Request"></a>
+
+### Rpc.Chat.Unread.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  | id of the chat object |
+| afterOrderId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unread-Response"></a>
+
+### Rpc.Chat.Unread.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.Unread.Response.Error](#anytype-Rpc-Chat-Unread-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unread-Response-Error"></a>
+
+### Rpc.Chat.Unread.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.Unread.Response.Error.Code](#anytype-Rpc-Chat-Unread-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22939,6 +23003,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-Unread-Response-Error-Code"></a>
+
+### Rpc.Chat.Unread.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

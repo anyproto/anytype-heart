@@ -1,9 +1,11 @@
 package chatobject
 
 import (
+	"os"
 	"slices"
 	"time"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/zap"
 
@@ -89,6 +91,12 @@ func (s *subscription) flush() {
 			SubIds: slices.Clone(s.ids),
 		}}))
 		s.chatStateUpdated = false
+	}
+
+	// TODO Debug code
+	for _, ev := range events {
+		m := &jsonpb.Marshaler{}
+		m.Marshal(os.Stdout, ev)
 	}
 
 	ev := &pb.Event{
