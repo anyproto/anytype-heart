@@ -36,19 +36,19 @@ jobs:
             exit 1
           fi
 
-      - name: Install Go
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.23.2
-          check-latest: true
+      # - name: Install Go
+      #   if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
+      #   uses: actions/setup-go@v4
+      #   with:
+      #     go-version: 1.23.2
+      #     check-latest: true
 
-      - name: Setup GO
-        run: |
-          go version
-          echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
-          echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
-          echo $(go env GOPATH)/bin >> $GITHUB_PATH
+      # - name: Setup GO
+      #   run: |
+      #     go version
+      #     echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
+      #     echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
+      #     echo $(go env GOPATH)/bin >> $GITHUB_PATH
 
       - name: Checkout
         uses: actions/checkout@v3
@@ -57,10 +57,10 @@ jobs:
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         run: make install-brew-and-node-deps
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1.6.0
-        with:
-          xcode-version: '16.2'
+      # - name: Setup Xcode
+      #   uses: maxim-lobanov/setup-xcode@v1.6.0
+      #   with:
+      #     xcode-version: '16.2'
 
       - name: Set env vars
         env:
@@ -86,68 +86,117 @@ jobs:
           echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
 
-      - name: Go mod download
+      # - name: Go mod download
+      #   run: |
+      #     go mod download
+
+      # - name: install protoc
+      #   run: |
+      #     make setup-protoc
+
+      # - name: setup go
+      #   run: |
+      #     make setup-go
+      #     make setup-gomobile
+      #     which gomobile
+
+      # - name: Cross-compile library mac/win/linux
+      #   run: |
+      #     make cross-compile-library
+      #     ls -lha .
+
+      # - name: Make JS protos
+      #   if: github.event_name == 'push'
+      #   run: |
+      #     make protos-js
+      #     make ci-js-protos
+
+      # - name: Pack servers
+      #   if: github.event_name == 'push'
+      #   run: make pack-server
+
+      # - name: Make swift protos
+      #   run: make swift-protos
+
+      # - name: Compile ios lib
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     GITHUB_USER: ${{ github.actor }}
+      #     MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
+      #     MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
+      #     PUBLISH_GRADLE: 1
+      #   run: make compile-ios-lib
+
+      # - name: Make java protos
+      #   run: make ci-java-protos
+
+      # - name: Compile android lib
+      #   run: make compile-android-lib
+
+      # - name: Publish android lib to maven
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     GITHUB_USER: ${{ github.actor }}
+      #     MAVEN_ARTIFACT_ID: 'anytype-heart-android'
+      #     MAVEN_ARTIFACT_NAME: 'lib.aar'
+      #   run: |
+      #     gradle publish
+
+      # - name: Release
+      #   if: github.event_name == 'push'
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     prerelease: ${{ contains(github.ref, '-rc') }}
+      #     fail_on_unmatched_files: true
+      #     files: '.release/*'
+
+      - name: Clone DevOps Utils Repository
         run: |
-          go mod download
+          git clone git@github.com:anyproto/devops-utils.git ${{ github.workspace }}/devops-utils
 
-      - name: install protoc
+      - name: Create Configuration File
         run: |
-          make setup-protoc
+          mkdir -p ${{ github.workspace }}/devops-utils/release-utils
+          cat <<EOT > ${{ github.workspace }}/devops-utils/release-utils/release_config.yaml
+          linear_token: "${{ secrets.LINEAR_TOKEN }}"
+          private_key_full_path: ''
+          public_key_full_path: ''
+          repo_local_full_path: "${{ github.workspace }}/.git"
+          git_passphrase: ''
+          git_fetch: false
+          git_revision_from: "$(git describe --first-parent --tags --abbrev=0 HEAD~)"
+          git_revision_to: "$VERSION"
+          comment: "Implemented in ${VERSION}. This comment was created automatically."
+          tasks_to_run:
+            - add_comment
+          EOT
 
-      - name: setup go
+      - name: Debug
         run: |
-          make setup-go
-          make setup-gomobile
-          which gomobile
+          cat <<EOT > ${{ github.workspace }}/devops-utils/release-utils/release_config-debug.yaml
+          private_key_full_path: ''
+          public_key_full_path: ''
+          repo_local_full_path: "${{ github.workspace }}/.git"
+          git_passphrase: ''
+          git_fetch: false
+          git_revision_from: "$(git describe --first-parent --tags --abbrev=0 HEAD~)"
+          git_revision_to: "$VERSION"
+          comment: "Implemented in ${VERSION}. This comment was created automatically."
+          tasks_to_run:
+            - add_comment
+          EOT
+          cat ${{ github.workspace }}/devops-utils/release-utils/release_config-debug.yaml
 
-      - name: Cross-compile library mac/win/linux
+      - name: Set up Python environment
         run: |
-          make cross-compile-library
-          ls -lha .
+          cd ${{ github.workspace }}/devops-utils/release-utils
+          python3 -m venv linear-comment-venv
+          source linear-comment-venv/bin/activate
+          pip install -r requirements.txt
+      #     python3 release.py
 
-      - name: Make JS protos
-        if: github.event_name == 'push'
+      - name: Cleanup
         run: |
-          make protos-js
-          make ci-js-protos
-
-      - name: Pack servers
-        if: github.event_name == 'push'
-        run: make pack-server
-
-      - name: Make swift protos
-        run: make swift-protos
-
-      - name: Compile ios lib
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: ${{ github.actor }}
-          MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
-          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
-          PUBLISH_GRADLE: 1
-        run: make compile-ios-lib
-
-      - name: Make java protos
-        run: make ci-java-protos
-
-      - name: Compile android lib
-        run: make compile-android-lib
-
-      - name: Publish android lib to maven
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: ${{ github.actor }}
-          MAVEN_ARTIFACT_ID: 'anytype-heart-android'
-          MAVEN_ARTIFACT_NAME: 'lib.aar'
-        run: |
-          gradle publish
-
-      - name: Release
-        if: github.event_name == 'push'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: softprops/action-gh-release@v1
-        with:
-          prerelease: ${{ contains(github.ref, '-rc') }}
-          fail_on_unmatched_files: true
-          files: '.release/*'
+          rm -rf ${{ github.workspace }}/devops-utils
