@@ -140,5 +140,6 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 	return &anystore.Config{
 		ReadConnections:         4,
 		SQLiteConnectionOptions: opts,
+		SyncPoolElementMaxSize:  1 << 26,
 	}
 }
