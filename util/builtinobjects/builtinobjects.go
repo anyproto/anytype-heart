@@ -20,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -33,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -378,18 +378,15 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 		targets = append(targets, typeId)
 		s.Details().Set(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
 
-		objectID, e := spc.DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyPage.String()))
-		if e != nil {
-			return fmt.Errorf("failed to derive page type object id: %w", err)
-		}
 		request := &pb.RpcBlockCreateWidgetRequest{
 			ContextId:    widgetObjectID,
 			Position:     model.Block_Bottom,
 			WidgetLayout: model.BlockContentWidget_View,
+			ViewId:       editor.ObjectTypeAllViewId,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
-						TargetBlockId: objectID,
+						TargetBlockId: typeId,
 						Style:         model.BlockContentLink_Page,
 						IconSize:      model.BlockContentLink_SizeNone,
 						CardStyle:     model.BlockContentLink_Inline,
@@ -398,8 +395,8 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 				},
 			},
 		}
-		if _, e = w.CreateBlock(s, request); err != nil {
-			return fmt.Errorf("failed to make Widget block: %v", e)
+		if _, createErr := w.CreateBlock(s, request); createErr != nil {
+			return fmt.Errorf("failed to make Widget block: %v", createErr)
 		}
 		return nil
 	}); err != nil {

@@ -151,16 +151,18 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 			typeKey = bundle.TypeKeyVideo
 		case model.BlockContentFile_PDF, model.BlockContentFile_File:
 			typeKey = bundle.TypeKeyFile
-
 		default:
 
 		}
-		err := mw.doBlockService(func(bs *block.Service) (err error) {
-			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
-			return err
-		})
-		if err != nil {
-			return response(objectId, nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
+		if typeKey != "" {
+			// do not create widget if type is not detected. Shouldn't happen, but just in case
+			err := mw.doBlockService(func(bs *block.Service) (err error) {
+				err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
+				return err
+			})
+			if err != nil {
+				return response(objectId, nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
+			}
 		}
 	}
 

@@ -2,8 +2,7 @@ package editor
 
 import (
 	"context"
-
-	"golang.org/x/exp/slices"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -107,8 +106,8 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 				if err != nil {
 					return
 				}
-				replaceWidgetTarget(s, "collection", collectionTypeId, "all", model.BlockContentWidget_View)
-				replaceWidgetTarget(s, "set", setTypeId, "all", model.BlockContentWidget_View)
+				replaceWidgetTarget(s, widget.DefaultWidgetCollection, collectionTypeId, ObjectTypeAllViewId, model.BlockContentWidget_View)
+				replaceWidgetTarget(s, widget.DefaultWidgetSet, setTypeId, ObjectTypeAllViewId, model.BlockContentWidget_View)
 
 			},
 		},
