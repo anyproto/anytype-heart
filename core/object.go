@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/date"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -25,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -690,9 +690,7 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	return response(errCode, err)
 }
 
-func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
-	ctx := mw.newContext(cctx)
-
+func (mw *Middleware) ObjectImportUseCase(ctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
 	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
 		resp := &pb.RpcObjectImportUseCaseResponse{
 			Error: &pb.RpcObjectImportUseCaseResponseError{
@@ -701,14 +699,12 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 		}
 		if err != nil {
 			resp.Error.Description = getErrorDescription(err)
-		} else {
-			resp.Event = ctx.GetResponseEvent()
 		}
 		return resp
 	}
 
-	objCreator := mustService[builtinobjects.BuiltinObjects](mw)
-	return response(objCreator.CreateObjectsForUseCase(ctx, req.SpaceId, req.UseCase))
+	usecaseImporter := mustService[gallery.Service](mw)
+	return response(usecaseImporter.ImportBuiltInUseCase(ctx, req.SpaceId, req.UseCase))
 }
 
 func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {
@@ -724,8 +720,11 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 		return resp
 	}
 
-	objCreator := mustService[builtinobjects.BuiltinObjects](mw)
-	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
+	experienceImporter := mustService[gallery.Service](mw)
+	err := experienceImporter.ImportExperience(ctx, req.SpaceId, gallery.UseCaseInfo{
+		Title:        req.Title,
+		DownloadLink: req.Url,
+	}, req.IsNewSpace)
 	return response(common.GetGalleryResponseCode(err), err)
 }
 
