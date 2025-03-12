@@ -35,7 +35,7 @@ type Store interface {
 	SetPushChangeHook(onPushChange PushChangeHook)
 	SetDiffManagerOnRemoveHook(f func(removed []string))
 	MarkSeenHeads(heads []string)
-	InitDiffManager(ctx context.Context) (err error)
+	InitDiffManager(ctx context.Context, seenHeads []string) (err error)
 }
 
 type PushStoreChangeParams struct {
@@ -73,7 +73,7 @@ func (s *store) SetDiffManagerOnRemoveHook(f func(removed []string)) {
 	s.onDiffManagerRemove = f
 }
 
-func (s *store) InitDiffManager(ctx context.Context) (err error) {
+func (s *store) InitDiffManager(ctx context.Context, seenHeads []string) (err error) {
 	curTreeHeads := s.source.Tree().Heads()
 
 	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
@@ -85,7 +85,7 @@ func (s *store) InitDiffManager(ctx context.Context) (err error) {
 	onRemove := func(removed []string) {
 		s.onDiffManagerRemove(removed)
 	}
-	s.diffManager, err = objecttree.NewDiffManager(nil, curTreeHeads, buildTree, onRemove)
+	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
 	return
 }
 
@@ -127,7 +127,8 @@ func (s *store) PushChange(params PushChangeParams) (id string, err error) {
 func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState, onUpdateHook func()) (err error) {
 	s.onUpdateHook = onUpdateHook
 	s.store = storeState
-	err = s.InitDiffManager(ctx)
+	// TODO: restore seenHeads
+	err = s.InitDiffManager(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -238,6 +239,7 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 
 func (s *store) MarkSeenHeads(heads []string) {
 	s.diffManager.Remove(heads)
+	// TODO Persist seen heads
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) error {

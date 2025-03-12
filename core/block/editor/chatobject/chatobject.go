@@ -10,6 +10,8 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/util/slice"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -324,7 +326,25 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	s.subscription.updateReadStatus(msgs, false)
 	s.subscription.flush()
 
-	err = s.storeSource.InitDiffManager(ctx)
+	var seenHeads []string
+	err = s.Tree().Storage().GetAfterOrder(ctx, "", func(ctx context.Context, change objecttree.StorageChange) (shouldContinue bool, err error) {
+		if change.OrderId > afterOrderId {
+			return false, nil
+		}
+
+		seenHeads = slice.DiscardFromSlice(seenHeads, func(id string) bool {
+			return slices.Contains(change.PrevIds, id)
+		})
+		if !slices.Contains(seenHeads, change.Id) {
+			seenHeads = append(seenHeads, change.Id)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("collect seen heads: %w", err)
+	}
+
+	err = s.storeSource.InitDiffManager(ctx, seenHeads)
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
 	}
