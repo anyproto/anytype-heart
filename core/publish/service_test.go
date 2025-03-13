@@ -685,14 +685,13 @@ func prepareSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService
 	ctrl := gomock.NewController(t)
 	space.EXPECT().IsPersonal().Return(isPersonal).Maybe()
 	space.EXPECT().Id().Return(spaceId).Maybe()
-	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe()
 
 	st := mock_anystorage.NewMockClientSpaceStorage(t)
 	mockSt := mock_objecttree.NewMockStorage(ctrl)
-	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil)
-	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil)
+	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil).Maybe()
+	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil).AnyTimes()
 	space.EXPECT().Storage().Return(st).Maybe()
-	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
+	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId}).Maybe()
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	return spaceService, nil
 }
