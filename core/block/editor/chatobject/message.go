@@ -128,7 +128,7 @@ func marshalModel(arena *anyenc.Arena, msg *model.ChatMessage) *anyenc.Value {
 	root.Set(modifiedAtKey, arena.NewNumberInt(int(msg.ModifiedAt)))
 	root.Set("replyToMessageId", arena.NewString(msg.ReplyToMessageId))
 	root.Set(contentKey, content)
-	var read = arena.NewObject()
+	var read *anyenc.Value
 	if msg.Read {
 		read = arena.NewTrue()
 	} else {

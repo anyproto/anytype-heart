@@ -124,14 +124,18 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 }
 
 func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
-	if !message.Read {
-		s.updateChatState(func(state *model.ChatState) {
+
+	s.updateChatState(func(state *model.ChatState) {
+		if !message.Read {
 			if message.OrderId < state.Messages.OldestOrderId {
 				state.Messages.OldestOrderId = message.OrderId
 			}
 			state.Messages.Counter++
-		})
-	}
+		}
+		if message.AddedAt > state.DbTimestamp {
+			state.DbTimestamp = message.AddedAt
+		}
+	})
 
 	if !s.canSend() {
 		return

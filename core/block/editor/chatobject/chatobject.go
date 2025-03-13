@@ -81,6 +81,7 @@ type storeObject struct {
 	subscription       *subscription
 	crdtDb             anystore.DB
 	spaceIndex         spaceindex.Store
+	chatHandler        *ChatHandler
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -116,10 +117,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender, s.spaceIndex)
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, ChatHandler{
+	s.chatHandler = &ChatHandler{
 		subscription:    s.subscription,
 		currentIdentity: s.accountService.AccountID(),
-	})
+	}
+
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler)
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}

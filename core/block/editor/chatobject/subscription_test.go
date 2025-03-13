@@ -33,11 +33,15 @@ func TestSubscription(t *testing.T) {
 
 		messageId, err := fx.AddMessage(ctx, nil, givenComplexMessage())
 		require.NoError(t, err)
-		require.Len(t, fx.events, 1)
+		require.Len(t, fx.events, 2)
 
 		ev := fx.events[0].GetChatAdd()
 		require.NotNil(t, ev)
 		assert.Equal(t, messageId, ev.Id)
+
+		evState := fx.events[1].GetChatStateUpdate()
+		require.NotNil(t, evState)
+		assert.True(t, evState.State.DbTimestamp > 0)
 	})
 
 	t.Run("edit message", func(t *testing.T) {

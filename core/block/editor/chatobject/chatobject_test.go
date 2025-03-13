@@ -117,7 +117,7 @@ func newFixture(t *testing.T) *fixture {
 		onSeenHook(collectedHeads)
 
 		return nil
-	})
+	}).Maybe()
 
 	fx.source = source
 
@@ -133,30 +133,61 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func TestAddMessage(t *testing.T) {
-	ctx := context.Background()
-	sessionCtx := session.NewContext()
+	t.Run("add own messages", func(t *testing.T) {
+		ctx := context.Background()
+		sessionCtx := session.NewContext()
 
-	fx := newFixture(t)
-	fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
+		fx := newFixture(t)
+		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
 
-	inputMessage := givenComplexMessage()
-	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
-	require.NoError(t, err)
-	assert.NotEmpty(t, messageId)
-	assert.NotEmpty(t, sessionCtx.GetMessages())
+		inputMessage := givenComplexMessage()
+		messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
+		require.NoError(t, err)
+		assert.NotEmpty(t, messageId)
+		assert.NotEmpty(t, sessionCtx.GetMessages())
 
-	messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
-	require.NoError(t, err)
+		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
+		require.NoError(t, err)
+		require.Len(t, messagesResp.Messages, 1)
 
-	require.Len(t, messagesResp.Messages, 1)
+		want := givenComplexMessage()
+		want.Id = messageId
+		want.Creator = testCreator
+		want.Read = true
 
-	want := givenComplexMessage()
-	want.Id = messageId
-	want.Creator = testCreator
-	want.Read = true
+		got := messagesResp.Messages[0]
+		assertMessagesEqual(t, want, got)
+	})
 
-	got := messagesResp.Messages[0]
-	assertMessagesEqual(t, want, got)
+	t.Run("imitate adding other's messages", func(t *testing.T) {
+		ctx := context.Background()
+		sessionCtx := session.NewContext()
+
+		fx := newFixture(t)
+		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
+
+		// Force all messages as not read
+		fx.chatHandler.forceNotRead = true
+
+		inputMessage := givenComplexMessage()
+		messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
+		require.NoError(t, err)
+		assert.NotEmpty(t, messageId)
+		assert.NotEmpty(t, sessionCtx.GetMessages())
+
+		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
+		require.NoError(t, err)
+		require.Len(t, messagesResp.Messages, 1)
+		assert.Equal(t, messagesResp.ChatState.DbTimestamp, messagesResp.Messages[0].AddedAt)
+
+		want := givenComplexMessage()
+		want.Id = messageId
+		want.Creator = testCreator
+		want.Read = false
+
+		got := messagesResp.Messages[0]
+		assertMessagesEqual(t, want, got)
+	})
 }
 
 func TestGetMessages(t *testing.T) {
@@ -173,6 +204,10 @@ func TestGetMessages(t *testing.T) {
 
 	messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{Limit: 5})
 	require.NoError(t, err)
+
+	lastMessage := messagesResp.Messages[4]
+	assert.Equal(t, messagesResp.ChatState.DbTimestamp, lastMessage.AddedAt)
+
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
 	for i, msg := range messagesResp.Messages {
 		assert.Equal(t, wantTexts[i], msg.Message.Text)
@@ -355,6 +390,25 @@ func TestToggleReaction(t *testing.T) {
 func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)
+	fx.chatHandler.forceNotRead = true
+	const n = 10
+	for i := 0; i < n; i++ {
+		_, err := fx.AddMessage(ctx, nil, givenSimpleMessage(fmt.Sprintf("message %d", i+1)))
+		require.NoError(t, err)
+	}
+	// All messages forced as not read
+	messagesResp := fx.assertReadStatus(t, ctx, "", "", false)
+
+	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp)
+	require.NoError(t, err)
+
+	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true)
+	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false)
+}
+
+func TestMarkMessagesAsNotRead(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
 
 	const n = 10
 	for i := 0; i < n; i++ {
@@ -364,19 +418,12 @@ func TestReadMessages(t *testing.T) {
 	// All messages added by myself are read
 	fx.assertReadStatus(t, ctx, "", "", true)
 
-	// For testing purposes we need to mark messages as not read
 	fx.source.EXPECT().InitDiffManager(mock.Anything, mock.Anything).Return(nil)
 	fx.source.EXPECT().StoreSeenHeads(mock.Anything).Return(nil)
 	err := fx.MarkMessagesAsUnread(ctx, "")
 	require.NoError(t, err)
 
-	messagesResp := fx.assertReadStatus(t, ctx, "", "", false)
-
-	err = fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp)
-	require.NoError(t, err)
-
-	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true)
-	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false)
+	fx.assertReadStatus(t, ctx, "", "", false)
 }
 
 func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrderId string, beforeOrderId string, isRead bool) *GetMessagesResponse {
