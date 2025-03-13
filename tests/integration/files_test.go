@@ -21,7 +21,7 @@ func TestFiles(t *testing.T) {
 
 	t.Run("upload image", func(t *testing.T) {
 		blockService := getService[*block.Service](app)
-		objectId, details, err := blockService.UploadFile(ctx, app.personalSpaceId(), block.FileUploadRequest{
+		objectId, _, details, err := blockService.UploadFile(ctx, app.personalSpaceId(), block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: "./testdata/test_image.png",
 			},
@@ -41,7 +41,7 @@ func TestFiles(t *testing.T) {
 
 	t.Run("upload file", func(t *testing.T) {
 		blockService := getService[*block.Service](app)
-		objectId, details, err := blockService.UploadFile(ctx, app.personalSpaceId(), block.FileUploadRequest{
+		objectId, _, details, err := blockService.UploadFile(ctx, app.personalSpaceId(), block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: "./files_test.go", // Upload itself :)
 			},

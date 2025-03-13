@@ -429,9 +429,10 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
 	store := i.store.SpaceIndex(space.Id())
 	var entries []headstorage.HeadsEntry
+
 	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
 		// skipping Acl
-		if entry.CommonSnapshot != "" {
+		if entry.CommonSnapshot != "" && entry.Id != space.Storage().StateStorage().SettingsId() {
 			entries = append(entries, entry)
 		}
 		return true, nil

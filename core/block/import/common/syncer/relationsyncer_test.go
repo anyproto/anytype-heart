@@ -66,7 +66,7 @@ func TestFileRelationSyncer_Sync(t *testing.T) {
 				Url: "http://url.com",
 			},
 			ObjectOrigin: objectorigin.Import(model.Import_Pb),
-		}).Return("newFileObjectId", nil, nil)
+		}).Return("newFileObjectId", model.BlockContentFile_File, nil, nil)
 		syncer := NewFileRelationSyncer(fileUploader, nil)
 
 		// when
@@ -84,7 +84,7 @@ func TestFileRelationSyncer_Sync(t *testing.T) {
 				LocalPath: "local path",
 			},
 			ObjectOrigin: objectorigin.Import(model.Import_Pb),
-		}).Return("newFileObjectId", nil, nil)
+		}).Return("newFileObjectId", model.BlockContentFile_File, nil, nil)
 		syncer := NewFileRelationSyncer(fileUploader, nil)
 
 		// when

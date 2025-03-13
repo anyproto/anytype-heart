@@ -85,7 +85,7 @@ func uploadFile(
 		CustomEncryptionKeys: encryptionKeys,
 	}
 
-	fileObjectId, _, err := blockService.UploadFile(ctx, spaceId, dto)
+	fileObjectId, _, _, err := blockService.UploadFile(ctx, spaceId, dto)
 	if err != nil {
 		return "", err
 	}

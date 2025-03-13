@@ -58,10 +58,11 @@ import (
 )
 
 const (
-	spaceId    = "spaceId"
-	objectId   = "objectId"
-	id         = "identity"
-	objectName = "test"
+	spaceId     = "spaceId"
+	objectId    = "objectId"
+	id          = "identity"
+	objectName  = "test"
+	workspaceId = "workspaceId"
 )
 
 type mockPublishClient struct {
@@ -688,9 +689,10 @@ func prepareSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService
 
 	st := mock_anystorage.NewMockClientSpaceStorage(t)
 	mockSt := mock_objecttree.NewMockStorage(ctrl)
-	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil).Maybe()
-	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil).AnyTimes()
+	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil)
+	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil)
 	space.EXPECT().Storage().Return(st).Maybe()
+	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	return spaceService, nil
 }
@@ -712,6 +714,12 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 			bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
 			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 			bundle.RelationKeySpaceId:              domain.String(spaceId),
+		},
+		{
+			bundle.RelationKeyId:        domain.String(workspaceId),
+			bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_space)),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
 		},
 	})
 
@@ -745,8 +753,24 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	})
 	objectType.Doc = objectTypeDoc
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
+
+	workspaceTest := smarttest.New(workspaceId)
+	workspaceDoc := workspaceTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:   domain.String(workspaceId),
+		bundle.RelationKeyType: domain.String(objectTypeId),
+	}))
+	workspaceDoc.AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyId.String(),
+		Format: model.RelationFormat_longtext,
+	}, &model.RelationLink{
+		Key:    bundle.RelationKeyType.String(),
+		Format: model.RelationFormat_longtext,
+	})
+	workspaceTest.Doc = workspaceDoc
+
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
+	objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
 
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
@@ -794,6 +818,12 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 			bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
 			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 			bundle.RelationKeySpaceId:              domain.String(spaceId),
+		},
+		{
+			bundle.RelationKeyId:        domain.String(workspaceId),
+			bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_space)),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
 		},
 	})
 
@@ -843,6 +873,20 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	fileObjectMock.EXPECT().GetFile().Return(fileData, nil)
 	file := &fileObjectWrapper{SmartBlock: fileObjectSb, FileObject: fileObjectMock}
 
+	workspaceTest := smarttest.New(workspaceId)
+	workspaceDoc := workspaceTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:   domain.String(workspaceId),
+		bundle.RelationKeyType: domain.String(objectTypeId),
+	}))
+	workspaceDoc.AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyId.String(),
+		Format: model.RelationFormat_longtext,
+	}, &model.RelationLink{
+		Key:    bundle.RelationKeyType.String(),
+		Format: model.RelationFormat_longtext,
+	})
+	workspaceTest.Doc = workspaceDoc
+
 	fileDoc := file.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:     domain.String(fileId),
 		bundle.RelationKeyType:   domain.String(objectTypeId),
@@ -862,9 +906,11 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	require.NoError(t, err)
 	fileObjectSb.SetSpace(space)
 
+	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil).Times(2)
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
+	objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
 
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)

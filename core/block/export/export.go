@@ -165,6 +165,7 @@ type exportContext struct {
 	linkStateFilters *state.Filters
 	isLinkProcess    bool
 	includeBackLinks bool
+	includeSpace     bool
 	relations        map[string]struct{}
 	setOfList        map[string]struct{}
 	objectTypes      map[string]struct{}
@@ -186,6 +187,7 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		zip:              req.Zip,
 		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
 		includeBackLinks: req.IncludeBacklinks,
+		includeSpace:     req.IncludeSpace,
 		setOfList:        make(map[string]struct{}),
 		objectTypes:      make(map[string]struct{}),
 		relations:        make(map[string]struct{}),
@@ -212,6 +214,7 @@ func (e *exportContext) copy() *exportContext {
 		relations:        e.relations,
 		setOfList:        e.setOfList,
 		objectTypes:      e.objectTypes,
+		includeSpace:     e.includeSpace,
 	}
 }
 
@@ -234,7 +237,7 @@ func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) 
 			cleanupFile(wr)
 		}
 	}()
-	err = e.docsForExport()
+	err = e.docsForExport(ctx)
 	if err != nil {
 		return "", 0, err
 	}
@@ -357,19 +360,19 @@ func isAnyblockExport(format model.ExportFormat) bool {
 	return format == model.Export_Protobuf || format == model.Export_JSON
 }
 
-func (e *exportContext) docsForExport() (err error) {
+func (e *exportContext) docsForExport(ctx context.Context) (err error) {
 	isProtobuf := isAnyblockExport(e.format)
 	if len(e.reqIds) == 0 {
 		return e.getExistedObjects(isProtobuf)
 	}
 
 	if len(e.reqIds) > 0 {
-		return e.getObjectsByIDs(isProtobuf)
+		return e.getObjectsByIDs(ctx, isProtobuf)
 	}
 	return
 }
 
-func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
+func (e *exportContext) getObjectsByIDs(ctx context.Context, isProtobuf bool) error {
 	res, err := e.queryAndFilterObjectsByRelation(e.spaceId, e.reqIds, bundle.RelationKeyId)
 	if err != nil {
 		return err
@@ -377,6 +380,12 @@ func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
 	for _, object := range res {
 		id := object.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: object.Details}
+	}
+	if e.includeSpace {
+		err = e.addSpaceToDocs(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	if isProtobuf {
 		return e.processProtobuf()
@@ -416,6 +425,23 @@ func (e *exportContext) queryObjectsByRelation(spaceId string, reqIds []string, 
 			},
 		},
 	})
+}
+
+func (e *exportContext) addSpaceToDocs(ctx context.Context) error {
+	space, err := e.spaceService.Get(ctx, e.spaceId)
+	if err != nil {
+		return err
+	}
+	workspaceId := space.DerivedIDs().Workspace
+	records, err := e.objectStore.SpaceIndex(e.spaceId).QueryByIds([]string{workspaceId})
+	if err != nil {
+		return err
+	}
+	if len(records) == 0 {
+		return fmt.Errorf("no objects found for space %s", workspaceId)
+	}
+	e.docs[workspaceId] = &Doc{Details: records[0].Details, isLink: true}
+	return nil
 }
 
 func (e *exportContext) processNotProtobuf() error {
@@ -735,7 +761,7 @@ func (e *exportContext) getRelationsFromStore(relations []string) ([]database.Re
 
 func (e *exportContext) addRelation(relation database.Record) {
 	relationKey := domain.RelationKey(relation.Details.GetString(bundle.RelationKeyRelationKey))
-	if relationKey != "" && !bundle.HasRelation(relationKey) {
+	if relationKey != "" {
 		id := relation.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: relation.Details, isLink: e.isLinkProcess}
 	}

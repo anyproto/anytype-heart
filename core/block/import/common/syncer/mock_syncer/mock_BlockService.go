@@ -11,6 +11,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
 	session "github.com/anyproto/anytype-heart/core/session"
 
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -207,7 +209,7 @@ func (_c *MockBlockService_UploadBlockFile_Call) RunAndReturn(run func(session.C
 }
 
 // UploadFile provides a mock function with given fields: ctx, spaceId, req
-func (_m *MockBlockService) UploadFile(ctx context.Context, spaceId string, req block.FileUploadRequest) (string, *domain.Details, error) {
+func (_m *MockBlockService) UploadFile(ctx context.Context, spaceId string, req block.FileUploadRequest) (string, model.BlockContentFileType, *domain.Details, error) {
 	ret := _m.Called(ctx, spaceId, req)
 
 	if len(ret) == 0 {
@@ -215,9 +217,10 @@ func (_m *MockBlockService) UploadFile(ctx context.Context, spaceId string, req 
 	}
 
 	var r0 string
-	var r1 *domain.Details
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, block.FileUploadRequest) (string, *domain.Details, error)); ok {
+	var r1 model.BlockContentFileType
+	var r2 *domain.Details
+	var r3 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, block.FileUploadRequest) (string, model.BlockContentFileType, *domain.Details, error)); ok {
 		return rf(ctx, spaceId, req)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, block.FileUploadRequest) string); ok {
@@ -226,21 +229,27 @@ func (_m *MockBlockService) UploadFile(ctx context.Context, spaceId string, req 
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, block.FileUploadRequest) *domain.Details); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, block.FileUploadRequest) model.BlockContentFileType); ok {
 		r1 = rf(ctx, spaceId, req)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(*domain.Details)
+		r1 = ret.Get(1).(model.BlockContentFileType)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string, block.FileUploadRequest) *domain.Details); ok {
+		r2 = rf(ctx, spaceId, req)
+	} else {
+		if ret.Get(2) != nil {
+			r2 = ret.Get(2).(*domain.Details)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, block.FileUploadRequest) error); ok {
-		r2 = rf(ctx, spaceId, req)
+	if rf, ok := ret.Get(3).(func(context.Context, string, block.FileUploadRequest) error); ok {
+		r3 = rf(ctx, spaceId, req)
 	} else {
-		r2 = ret.Error(2)
+		r3 = ret.Error(3)
 	}
 
-	return r0, r1, r2
+	return r0, r1, r2, r3
 }
 
 // MockBlockService_UploadFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UploadFile'
@@ -263,12 +272,12 @@ func (_c *MockBlockService_UploadFile_Call) Run(run func(ctx context.Context, sp
 	return _c
 }
 
-func (_c *MockBlockService_UploadFile_Call) Return(objectId string, details *domain.Details, err error) *MockBlockService_UploadFile_Call {
-	_c.Call.Return(objectId, details, err)
+func (_c *MockBlockService_UploadFile_Call) Return(objectId string, fileType model.BlockContentFileType, details *domain.Details, err error) *MockBlockService_UploadFile_Call {
+	_c.Call.Return(objectId, fileType, details, err)
 	return _c
 }
 
-func (_c *MockBlockService_UploadFile_Call) RunAndReturn(run func(context.Context, string, block.FileUploadRequest) (string, *domain.Details, error)) *MockBlockService_UploadFile_Call {
+func (_c *MockBlockService_UploadFile_Call) RunAndReturn(run func(context.Context, string, block.FileUploadRequest) (string, model.BlockContentFileType, *domain.Details, error)) *MockBlockService_UploadFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

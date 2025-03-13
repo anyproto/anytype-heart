@@ -999,6 +999,16 @@
     "source": "derived"
   },
   {
+    "description": "Space UX type, see enum model.SpaceUxType",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceUxType",
+    "maxCount": 1,
+    "name": "Space UX type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "File path or url with original object",
     "format": "longtext",
     "hidden": true,
@@ -1538,6 +1548,16 @@
     "key": "defaultTypeId",
     "maxCount": 1,
     "name": "Default type id",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Automatically generated widget. Used to avoid creating widget if was removed by user",
+    "format": "object",
+    "hidden": true,
+    "key": "autoWidgetTargets",
+    "maxCount": 0,
+    "name": "Auto Widget targets",
     "readonly": false,
     "source": "details"
   }
