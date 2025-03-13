@@ -14,7 +14,7 @@ func TestSubscription(t *testing.T) {
 	fx := newFixture(t)
 
 	for i := 0; i < 10; i++ {
-		inputMessage := givenMessage()
+		inputMessage := givenComplexMessage()
 		inputMessage.Message.Text = fmt.Sprintf("text %d", i+1)
 		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 		require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestSubscription(t *testing.T) {
 	t.Run("add message", func(t *testing.T) {
 		fx.events = nil
 
-		messageId, err := fx.AddMessage(ctx, nil, givenMessage())
+		messageId, err := fx.AddMessage(ctx, nil, givenComplexMessage())
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 
@@ -43,7 +43,7 @@ func TestSubscription(t *testing.T) {
 	t.Run("edit message", func(t *testing.T) {
 		fx.events = nil
 
-		edited := givenMessage()
+		edited := givenComplexMessage()
 		edited.Message.Text = "edited text"
 
 		err = fx.EditMessage(ctx, messages[0].Id, edited)

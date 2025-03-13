@@ -5806,6 +5806,55 @@ func (_c *MockClientCommandsServer_ChatToggleMessageReaction_Call) RunAndReturn(
 	return _c
 }
 
+// ChatUnreadMessages provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) ChatUnreadMessages(_a0 context.Context, _a1 *pb.RpcChatUnreadRequest) *pb.RpcChatUnreadResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatUnreadMessages")
+	}
+
+	var r0 *pb.RpcChatUnreadResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatUnreadRequest) *pb.RpcChatUnreadResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatUnreadResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_ChatUnreadMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatUnreadMessages'
+type MockClientCommandsServer_ChatUnreadMessages_Call struct {
+	*mock.Call
+}
+
+// ChatUnreadMessages is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatUnreadRequest
+func (_e *MockClientCommandsServer_Expecter) ChatUnreadMessages(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_ChatUnreadMessages_Call {
+	return &MockClientCommandsServer_ChatUnreadMessages_Call{Call: _e.mock.On("ChatUnreadMessages", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_ChatUnreadMessages_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatUnreadRequest)) *MockClientCommandsServer_ChatUnreadMessages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatUnreadRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ChatUnreadMessages_Call) Return(_a0 *pb.RpcChatUnreadResponse) *MockClientCommandsServer_ChatUnreadMessages_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ChatUnreadMessages_Call) RunAndReturn(run func(context.Context, *pb.RpcChatUnreadRequest) *pb.RpcChatUnreadResponse) *MockClientCommandsServer_ChatUnreadMessages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ChatUnsubscribe provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) ChatUnsubscribe(_a0 context.Context, _a1 *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse {
 	ret := _m.Called(_a0, _a1)

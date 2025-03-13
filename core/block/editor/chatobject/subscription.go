@@ -48,6 +48,7 @@ func newSubscription(spaceId string, chatId string, eventSender event.Sender, sp
 func (s *subscription) subscribe(subId string) bool {
 	if !slices.Contains(s.ids, subId) {
 		s.ids = append(s.ids, subId)
+		s.chatStateUpdated = false
 		return true
 	}
 	return false
@@ -80,6 +81,10 @@ func (s *subscription) updateChatState(updater func(*model.ChatState)) {
 }
 
 func (s *subscription) flush() {
+	if !s.canSend() {
+		return
+	}
+
 	events := slices.Clone(s.eventsBuffer)
 	s.eventsBuffer = s.eventsBuffer[:0]
 
@@ -119,6 +124,15 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 }
 
 func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
+	if !message.Read {
+		s.updateChatState(func(state *model.ChatState) {
+			if message.OrderId < state.Messages.OldestOrderId {
+				state.Messages.OldestOrderId = message.OrderId
+			}
+			state.Messages.Counter++
+		})
+	}
+
 	if !s.canSend() {
 		return
 	}
@@ -147,16 +161,6 @@ func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
 				ev.Dependencies = append(ev.Dependencies, attachmentDetails.ToProto())
 			}
 		}
-	}
-
-	if !message.Read {
-		s.updateChatState(func(state *model.ChatState) {
-			if message.OrderId < state.Messages.OldestOrderId {
-				state.Messages.OldestOrderId = message.OrderId
-			}
-			state.Messages.Counter++
-		})
-
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
 		ChatAdd: ev,
@@ -204,10 +208,6 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 // updateReadStatus updates the read status of the messages with the given ids
 // read ids should ONLY contain ids if they were actually modified in the DB
 func (s *subscription) updateReadStatus(ids []string, read bool) {
-	if !s.canSend() {
-		return
-	}
-
 	s.updateChatState(func(state *model.ChatState) {
 		if read {
 			state.Messages.Counter -= int32(len(ids))
@@ -216,6 +216,9 @@ func (s *subscription) updateReadStatus(ids []string, read bool) {
 		}
 	})
 
+	if !s.canSend() {
+		return
+	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReadStatus{
 		ChatUpdateReadStatus: &pb.EventChatUpdateReadStatus{
 			Ids:    ids,

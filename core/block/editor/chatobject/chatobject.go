@@ -63,19 +63,24 @@ type AccountService interface {
 	AccountID() string
 }
 
+type seenHeadsCollector interface {
+	collectSeenHeads(ctx context.Context, afterOrderId string) ([]string, error)
+}
+
 type storeObject struct {
 	anystoredebug.AnystoreDebug
 	smartblock.SmartBlock
 	locker smartblock.Locker
 
-	collection     anystore.Collection
-	accountService AccountService
-	storeSource    source.Store
-	store          *storestate.StoreState
-	eventSender    event.Sender
-	subscription   *subscription
-	crdtDb         anystore.DB
-	spaceIndex     spaceindex.Store
+	seenHeadsCollector seenHeadsCollector
+	collection         anystore.Collection
+	accountService     AccountService
+	storeSource        source.Store
+	store              *storestate.StoreState
+	eventSender        event.Sender
+	subscription       *subscription
+	crdtDb             anystore.DB
+	spaceIndex         spaceindex.Store
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -135,6 +140,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)
+
+	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 
 	return nil
 }
@@ -209,7 +216,7 @@ func unreadFilter() query.Filter {
 }
 
 func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int, error) {
-	lastAddedDate := s.collection.Find(query.All{}).Sort(descAdded).Limit(1)
+	lastAddedDate := s.collection.Find(nil).Sort(descAdded).Limit(1)
 	iter, err := lastAddedDate.Iter(txn.Context())
 	if err != nil {
 		return 0, fmt.Errorf("find last added date: %w", err)
@@ -319,30 +326,22 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return fmt.Errorf("get oldest order id: %w", err)
 	}
 
+	lastAdded, err := s.getLastAddedDate(txn)
+	if err != nil {
+		return fmt.Errorf("get last added date: %w", err)
+	}
+
 	s.subscription.updateChatState(func(state *model.ChatState) {
 		state.Messages.OldestOrderId = newOldestOrderId
+		state.DbTimestamp = int64(lastAdded)
 	})
 	s.subscription.updateReadStatus(msgs, false)
 	s.subscription.flush()
 
-	var seenHeads []string
-	err = s.Tree().Storage().GetAfterOrder(ctx, "", func(ctx context.Context, change objecttree.StorageChange) (shouldContinue bool, err error) {
-		if change.OrderId >= afterOrderId {
-			return false, nil
-		}
-
-		seenHeads = slice.DiscardFromSlice(seenHeads, func(id string) bool {
-			return slices.Contains(change.PrevIds, id)
-		})
-		if !slices.Contains(seenHeads, change.Id) {
-			seenHeads = append(seenHeads, change.Id)
-		}
-		return true, nil
-	})
+	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
 	if err != nil {
-		return fmt.Errorf("collect seen heads: %w", err)
+		return fmt.Errorf("get seen heads: %w", err)
 	}
-
 	err = s.storeSource.InitDiffManager(ctx, seenHeads)
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
@@ -668,4 +667,35 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 func (s *storeObject) Close() error {
 	s.componentCtxCancel()
 	return s.SmartBlock.Close()
+}
+
+type treeSeenHeadsCollector struct {
+	tree objecttree.ObjectTree
+}
+
+func newTreeSeenHeadsCollector(tree objecttree.ObjectTree) *treeSeenHeadsCollector {
+	return &treeSeenHeadsCollector{
+		tree: tree,
+	}
+}
+
+func (c *treeSeenHeadsCollector) collectSeenHeads(ctx context.Context, afterOrderId string) ([]string, error) {
+	var seenHeads []string
+	err := c.tree.Storage().GetAfterOrder(ctx, "", func(ctx context.Context, change objecttree.StorageChange) (shouldContinue bool, err error) {
+		if change.OrderId >= afterOrderId {
+			return false, nil
+		}
+
+		seenHeads = slice.DiscardFromSlice(seenHeads, func(id string) bool {
+			return slices.Contains(change.PrevIds, id)
+		})
+		if !slices.Contains(seenHeads, change.Id) {
+			seenHeads = append(seenHeads, change.Id)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("collect seen heads: %w", err)
+	}
+	return seenHeads, err
 }
