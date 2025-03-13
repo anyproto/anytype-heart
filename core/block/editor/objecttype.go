@@ -30,6 +30,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const ObjectTypeAllViewId = "all"
+
 var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRecommendedRelations,
 	bundle.RelationKeyRecommendedFeaturedRelations,
@@ -105,6 +107,7 @@ func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migrat
 				template.WithTitle,
 				template.WithLayout(model.ObjectType_objectType),
 			}
+			templates = append(templates, ot.dataviewTemplates()...)
 
 			template.InitTemplate(s, templates...)
 		},
@@ -120,6 +123,12 @@ func (ot *ObjectType) StateMigrations() migration.Migrations {
 		{
 			Version: 3,
 			Proc:    ot.featuredRelationsMigration,
+		},
+		{
+			Version: 4,
+			Proc: func(s *state.State) {
+				template.InitTemplate(s, ot.dataviewTemplates()...)
+			},
 		},
 	})
 }
@@ -387,6 +396,30 @@ func (ot *ObjectType) queryObjectsAndTemplates() ([]database.Record, error) {
 	}
 
 	return append(records, templates...), nil
+}
+
+func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
+	details := ot.Details()
+	name := details.GetString(bundle.RelationKeyName)
+	key := details.GetString(bundle.RelationKeyUniqueKey)
+
+	dvContent := template.MakeDataviewContent(false, &model.ObjectType{
+		Url:  ot.Id(),
+		Name: name,
+		// todo: add RelationLinks, because they are not indexed at this moment :(
+		Key: key,
+	}, []*model.RelationLink{
+		{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_longtext,
+		},
+	}, ObjectTypeAllViewId)
+
+	dvContent.Dataview.TargetObjectId = ot.Id()
+	return []template.StateTransformer{
+		template.WithDataviewID(state.DataviewBlockID, dvContent, false),
+		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{ot.Id()})),
+	}
 }
 
 type layoutRelationsChanges struct {

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5f1d68864056cc07b06656ce3a87e0fd164813bab00628cd916a67ae95b7e21d"
+const RelationChecksum = "80f123f2ee35e177779a6b96b06ef6627ebca7848bb5870d315f6af7c3228916"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -107,6 +107,7 @@ const (
 	RelationKeyIconOption                   domain.RelationKey = "iconOption"
 	RelationKeySpaceAccessibility           domain.RelationKey = "spaceAccessibility"
 	RelationKeySpaceAccessType              domain.RelationKey = "spaceAccessType"
+	RelationKeySpaceUxType                  domain.RelationKey = "spaceUxType"
 	RelationKeySourceFilePath               domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus               domain.RelationKey = "fileSyncStatus"
 	RelationKeyFileBackupStatus             domain.RelationKey = "fileBackupStatus"
@@ -153,6 +154,7 @@ const (
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
+	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 )
 
 var (
@@ -274,6 +276,19 @@ var (
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAutoWidgetTargets: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Automatically generated widget. Used to avoid creating widget if was removed by user",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brautoWidgetTargets",
+			Key:              "autoWidgetTargets",
+			Name:             "Auto Widget targets",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBacklinks: {
@@ -1843,6 +1858,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space shareable status",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceUxType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Space UX type, see enum model.SpaceUxType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceUxType",
+			Key:              "spaceUxType",
+			MaxCount:         1,
+			Name:             "Space UX type",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -76,19 +78,6 @@ var (
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
 		pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
-	}
-
-	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
-	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
-		pb.RpcObjectImportUseCaseRequest_EMPTY: {
-			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
-		},
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Link, "bafyreiccjf5vbijsmr55ypsnnzltmcvl4n63g73twwxqnfkn5usoq2iqyi", "", true},
-			{model.BlockContentWidget_View, "bafyreifjgm3iy4o6o4zyf33ld3dnweo2grhvakvr7psn5twjge3xo3627m", "66f6775526909528d002c932", true},
-			{model.BlockContentWidget_View, "bafyreihrzztw2xcmxxz5uz5xodncby23xdacalcek2dtxxu77yn6wvzsq4", "6182a74fcae0300221f9f207", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecentOpen, "", false},
-		},
 	}
 )
 
@@ -374,39 +363,40 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 
 	widgetObjectID := spc.DerivedIDs().Widgets
+	typeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
+	if err != nil {
+		log.Errorf("failed to get type id: %w", err)
+		return
+	}
 
+	// todo: rewrite to use CreateTypeWidgetIfMissing in block.Service
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		for _, param := range widgetParams[useCase] {
-			objectID := param.objectID
-			if param.isObjectIDChanged {
-				objectID, err = b.getNewObjectID(spc.Id(), objectID)
-				if err != nil {
-					log.Errorf("Skipping creation of widget block as failed to get new object id using old one '%s': %v", objectID, err)
-					continue
-				}
-			}
-			request := &pb.RpcBlockCreateWidgetRequest{
-				ContextId:    widgetObjectID,
-				Position:     model.Block_Bottom,
-				WidgetLayout: param.layout,
-				Block: &model.Block{
-					Content: &model.BlockContentOfLink{
-						Link: &model.BlockContentLink{
-							TargetBlockId: objectID,
-							Style:         model.BlockContentLink_Page,
-							IconSize:      model.BlockContentLink_SizeNone,
-							CardStyle:     model.BlockContentLink_Inline,
-							Description:   model.BlockContentLink_None,
-						},
+		targets := s.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+		if slices.Contains(targets, typeId) {
+			return nil
+		}
+		targets = append(targets, typeId)
+		s.Details().Set(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
+
+		request := &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    widgetObjectID,
+			Position:     model.Block_Bottom,
+			WidgetLayout: model.BlockContentWidget_View,
+			ViewId:       editor.ObjectTypeAllViewId,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: typeId,
+						Style:         model.BlockContentLink_Page,
+						IconSize:      model.BlockContentLink_SizeNone,
+						CardStyle:     model.BlockContentLink_Inline,
+						Description:   model.BlockContentLink_None,
 					},
 				},
-			}
-			if param.viewID != "" {
-				request.ViewId = param.viewID
-			}
-			if _, err = w.CreateBlock(s, request); err != nil {
-				log.Errorf("Failed to make Widget blocks: %v", err)
-			}
+			},
+		}
+		if _, createErr := w.CreateBlock(s, request); createErr != nil {
+			return fmt.Errorf("failed to make Widget block: %v", createErr)
 		}
 		return nil
 	}); err != nil {
