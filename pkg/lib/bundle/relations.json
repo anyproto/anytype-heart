@@ -438,7 +438,6 @@
     "readonly": false,
     "source": "details",
     "objectTypes": [
-      "profile",
       "contact",
       "participant"
     ],
@@ -555,7 +554,6 @@
     "readonly": false,
     "source": "details",
     "objectTypes": [
-      "profile",
       "contact",
       "participant"
     ],
