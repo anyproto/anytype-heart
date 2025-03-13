@@ -560,10 +560,10 @@
     - [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request)
     - [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response)
     - [Rpc.Chat.GetMessagesByIds.Response.Error](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error)
-    - [Rpc.Chat.Read](#anytype-Rpc-Chat-Read)
-    - [Rpc.Chat.Read.Request](#anytype-Rpc-Chat-Read-Request)
-    - [Rpc.Chat.Read.Response](#anytype-Rpc-Chat-Read-Response)
-    - [Rpc.Chat.Read.Response.Error](#anytype-Rpc-Chat-Read-Response-Error)
+    - [Rpc.Chat.ReadMessages](#anytype-Rpc-Chat-ReadMessages)
+    - [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request)
+    - [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response)
+    - [Rpc.Chat.ReadMessages.Response.Error](#anytype-Rpc-Chat-ReadMessages-Response-Error)
     - [Rpc.Chat.SubscribeLastMessages](#anytype-Rpc-Chat-SubscribeLastMessages)
     - [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request)
     - [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response)
@@ -1432,8 +1432,8 @@
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
     - [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code)
-    - [Rpc.Chat.Read.ReadType](#anytype-Rpc-Chat-Read-ReadType)
-    - [Rpc.Chat.Read.Response.Error.Code](#anytype-Rpc-Chat-Read-Response-Error-Code)
+    - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
+    - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
@@ -2322,7 +2322,7 @@
 | ChatGetMessagesByIds | [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request) | [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response) |  |
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
-| ChatReadMessages | [Rpc.Chat.Read.Request](#anytype-Rpc-Chat-Read-Request) | [Rpc.Chat.Read.Response](#anytype-Rpc-Chat-Read-Response) |  |
+| ChatReadMessages | [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request) | [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response) |  |
 | ChatUnreadMessages | [Rpc.Chat.Unread.Request](#anytype-Rpc-Chat-Unread-Request) | [Rpc.Chat.Unread.Response](#anytype-Rpc-Chat-Unread-Response) |  |
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
@@ -10446,25 +10446,25 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype-Rpc-Chat-Read"></a>
+<a name="anytype-Rpc-Chat-ReadMessages"></a>
 
-### Rpc.Chat.Read
-
-
+### Rpc.Chat.ReadMessages
 
 
 
 
 
-<a name="anytype-Rpc-Chat-Read-Request"></a>
 
-### Rpc.Chat.Read.Request
+
+<a name="anytype-Rpc-Chat-ReadMessages-Request"></a>
+
+### Rpc.Chat.ReadMessages.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| type | [Rpc.Chat.Read.ReadType](#anytype-Rpc-Chat-Read-ReadType) |  |  |
+| type | [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType) |  |  |
 | chatObjectId | [string](#string) |  | id of the chat object |
 | afterOrderId | [string](#string) |  | read from this orderId; if empty - read from the beginning of the chat |
 | beforeOrderId | [string](#string) |  | read til this orderId |
@@ -10475,15 +10475,15 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype-Rpc-Chat-Read-Response"></a>
+<a name="anytype-Rpc-Chat-ReadMessages-Response"></a>
 
-### Rpc.Chat.Read.Response
+### Rpc.Chat.ReadMessages.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Chat.Read.Response.Error](#anytype-Rpc-Chat-Read-Response-Error) |  |  |
+| error | [Rpc.Chat.ReadMessages.Response.Error](#anytype-Rpc-Chat-ReadMessages-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
@@ -10491,15 +10491,15 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype-Rpc-Chat-Read-Response-Error"></a>
+<a name="anytype-Rpc-Chat-ReadMessages-Response-Error"></a>
 
-### Rpc.Chat.Read.Response.Error
+### Rpc.Chat.ReadMessages.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Chat.Read.Response.Error.Code](#anytype-Rpc-Chat-Read-Response-Error-Code) |  |  |
+| code | [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22941,9 +22941,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Chat-Read-ReadType"></a>
+<a name="anytype-Rpc-Chat-ReadMessages-ReadType"></a>
 
-### Rpc.Chat.Read.ReadType
+### Rpc.Chat.ReadMessages.ReadType
 
 
 | Name | Number | Description |
@@ -22953,9 +22953,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Chat-Read-Response-Error-Code"></a>
+<a name="anytype-Rpc-Chat-ReadMessages-Response-Error-Code"></a>
 
-### Rpc.Chat.Read.Response.Error.Code
+### Rpc.Chat.ReadMessages.Response.Error.Code
 
 
 | Name | Number | Description |

@@ -46,7 +46,7 @@ type StoreObject interface {
 	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
-	SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) ([]*model.ChatMessage, int, *model.ChatState, error)
+	SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) (*SubscribeLastMessagesResponse, error)
 	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string) error
 	Unsubscribe(subId string) error
@@ -608,17 +608,22 @@ func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, me
 	return false, nil
 }
 
-func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) ([]*model.ChatMessage, int, *model.ChatState, error) {
+type SubscribeLastMessagesResponse struct {
+	Messages  []*model.ChatMessage
+	ChatState *model.ChatState
+}
+
+func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) (*SubscribeLastMessagesResponse, error) {
 	txn, err := s.store.NewTx(ctx)
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("init read transaction: %w", err)
+		return nil, fmt.Errorf("init read transaction: %w", err)
 	}
 	defer txn.Commit()
 
 	query := s.collection.Find(nil).Sort(descOrder).Limit(uint(limit))
 	messages, err := s.queryMessages(txn.Context(), query)
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("query messages: %w", err)
+		return nil, fmt.Errorf("query messages: %w", err)
 	}
 	// reverse
 	sort.Slice(messages, func(i, j int) bool {
@@ -632,7 +637,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 		if len(messages) > 0 {
 			previousOrderId, err = txn.GetPrevOrderId(messages[0].OrderId)
 			if err != nil {
-				return nil, 0, nil, fmt.Errorf("get previous order id: %w", err)
+				return nil, fmt.Errorf("get previous order id: %w", err)
 			}
 		}
 		for _, message := range messages {
@@ -643,9 +648,12 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 		// Force chatState to be sent
 		s.subscription.chatStateUpdated = true
 		s.subscription.flush()
-		return nil, 0, nil, nil
+		return nil, nil
 	} else {
-		return messages, 0, s.subscription.getChatState(), nil
+		return &SubscribeLastMessagesResponse{
+			Messages:  messages,
+			ChatState: s.subscription.getChatState(),
+		}, nil
 	}
 }
 

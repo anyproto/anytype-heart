@@ -102,12 +102,12 @@ func (mw *Middleware) ChatGetMessagesByIds(cctx context.Context, req *pb.RpcChat
 func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 
-	messages, numBefore, chatState, err := chatService.SubscribeLastMessages(cctx, req.ChatObjectId, int(req.Limit), req.SubId)
+	resp, err := chatService.SubscribeLastMessages(cctx, req.ChatObjectId, int(req.Limit), req.SubId)
 	code := mapErrorCode[pb.RpcChatSubscribeLastMessagesResponseErrorCode](err)
 	return &pb.RpcChatSubscribeLastMessagesResponse{
-		Messages:          messages,
-		NumMessagesBefore: int32(numBefore),
-		ChatState:         chatState,
+		Messages:          resp.Messages,
+		NumMessagesBefore: 0,
+		ChatState:         resp.ChatState,
 		Error: &pb.RpcChatSubscribeLastMessagesResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
@@ -142,14 +142,14 @@ func (mw *Middleware) ChatSubscribeToMessagePreviews(cctx context.Context, req *
 	}
 }
 
-func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChatReadRequest) *pb.RpcChatReadResponse {
+func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 	err := chatService.ReadMessages(cctx, request.ChatObjectId, request.AfterOrderId, request.BeforeOrderId, request.LastDbTimestamp)
 	code := mapErrorCode(err,
-		errToCode(anystore.ErrDocNotFound, pb.RpcChatReadResponseError_MESSAGES_NOT_FOUND),
+		errToCode(anystore.ErrDocNotFound, pb.RpcChatReadMessagesResponseError_MESSAGES_NOT_FOUND),
 	)
-	return &pb.RpcChatReadResponse{
-		Error: &pb.RpcChatReadResponseError{
+	return &pb.RpcChatReadMessagesResponse{
+		Error: &pb.RpcChatReadMessagesResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
