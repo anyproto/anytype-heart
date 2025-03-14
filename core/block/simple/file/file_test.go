@@ -68,7 +68,7 @@ func TestFile_Diff(t *testing.T) {
 				Mime:  &pb.EventBlockSetFileMime{Value: "video/mpeg"},
 				Hash:  &pb.EventBlockSetFileHash{Value: "hash"},
 				Name:  &pb.EventBlockSetFileName{Value: "image.mpg"},
-				Size_: &pb.EventBlockSetFileSize{Value: 3},
+				Size:  &pb.EventBlockSetFileSize{Value: 3},
 			},
 		}), diff)
 	})

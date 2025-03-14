@@ -107,7 +107,7 @@ func TestLink_ToText(t *testing.T) {
 		assert.Equal(t, "target name", textModel.Text)
 		require.Len(t, textModel.Marks.Marks, 1)
 		assert.Equal(t, "targetId", textModel.Marks.Marks[0].Param)
-		assert.Equal(t, &model.Range{0, 11}, textModel.Marks.Marks[0].Range)
+		assert.Equal(t, &model.Range{From: 0, To: 11}, textModel.Marks.Marks[0].Range)
 	})
 	t.Run("with empty name", func(t *testing.T) {
 		b := NewLink(&model.Block{
@@ -120,7 +120,7 @@ func TestLink_ToText(t *testing.T) {
 		assert.Equal(t, "Untitled", textModel.Text)
 		require.Len(t, textModel.Marks.Marks, 1)
 		assert.Equal(t, "targetId", textModel.Marks.Marks[0].Param)
-		assert.Equal(t, &model.Range{0, 8}, textModel.Marks.Marks[0].Range)
+		assert.Equal(t, &model.Range{From: 0, To: 8}, textModel.Marks.Marks[0].Range)
 	})
 }
 

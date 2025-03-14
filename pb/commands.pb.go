@@ -21855,11 +21855,11 @@ type IsRpcWalletCreateSessionRequestAuth interface {
 }
 
 type RpcWalletCreateSessionRequestAuthOfMnemonic struct {
-	Mnemonic string `protobuf:"bytes,1,opt,name=mnemonic,proto3,oneof"` // cold auth
+	Mnemonic string `protobuf:"bytes,1,opt,name=mnemonic,proto3,oneof" json:"mnemonic,omitempty"` // cold auth
 }
 
 type RpcWalletCreateSessionRequestAuthOfAppKey struct {
-	AppKey string `protobuf:"bytes,2,opt,name=appKey,proto3,oneof"` // persistent app key, that can be used to restore session
+	AppKey string `protobuf:"bytes,2,opt,name=appKey,proto3,oneof" json:"appKey,omitempty"` // persistent app key, that can be used to restore session
 }
 
 func (*RpcWalletCreateSessionRequestAuthOfMnemonic) IsRpcWalletCreateSessionRequestAuth() {}
@@ -22905,7 +22905,7 @@ type IsRpcAccountCreateRequestAvatar interface {
 }
 
 type RpcAccountCreateRequestAvatarOfAvatarLocalPath struct {
-	AvatarLocalPath string `protobuf:"bytes,2,opt,name=avatarLocalPath,proto3,oneof"` // Path to an image, that will be used as an avatar of this account
+	AvatarLocalPath string `protobuf:"bytes,2,opt,name=avatarLocalPath,proto3,oneof" json:"avatarLocalPath,omitempty"` // Path to an image, that will be used as an avatar of this account
 }
 
 func (*RpcAccountCreateRequestAvatarOfAvatarLocalPath) IsRpcAccountCreateRequestAvatar() {}
@@ -38882,31 +38882,31 @@ type IsRpcObjectImportRequestParams interface {
 }
 
 type RpcObjectImportRequestParamsOfNotionParams struct {
-	NotionParams *RpcObjectImportRequestNotionParams `protobuf:"bytes,1,opt,name=notionParams,proto3,oneof"`
+	NotionParams *RpcObjectImportRequestNotionParams `protobuf:"bytes,1,opt,name=notionParams,proto3,oneof" json:"notionParams,omitempty"`
 }
 
 type RpcObjectImportRequestParamsOfBookmarksParams struct {
-	BookmarksParams *RpcObjectImportRequestBookmarksParams `protobuf:"bytes,2,opt,name=bookmarksParams,proto3,oneof"` //for internal use
+	BookmarksParams *RpcObjectImportRequestBookmarksParams `protobuf:"bytes,2,opt,name=bookmarksParams,proto3,oneof" json:"bookmarksParams,omitempty"` //for internal use
 }
 
 type RpcObjectImportRequestParamsOfMarkdownParams struct {
-	MarkdownParams *RpcObjectImportRequestMarkdownParams `protobuf:"bytes,3,opt,name=markdownParams,proto3,oneof"`
+	MarkdownParams *RpcObjectImportRequestMarkdownParams `protobuf:"bytes,3,opt,name=markdownParams,proto3,oneof" json:"markdownParams,omitempty"`
 }
 
 type RpcObjectImportRequestParamsOfHtmlParams struct {
-	HtmlParams *RpcObjectImportRequestHtmlParams `protobuf:"bytes,4,opt,name=htmlParams,proto3,oneof"`
+	HtmlParams *RpcObjectImportRequestHtmlParams `protobuf:"bytes,4,opt,name=htmlParams,proto3,oneof" json:"htmlParams,omitempty"`
 }
 
 type RpcObjectImportRequestParamsOfTxtParams struct {
-	TxtParams *RpcObjectImportRequestTxtParams `protobuf:"bytes,5,opt,name=txtParams,proto3,oneof"`
+	TxtParams *RpcObjectImportRequestTxtParams `protobuf:"bytes,5,opt,name=txtParams,proto3,oneof" json:"txtParams,omitempty"`
 }
 
 type RpcObjectImportRequestParamsOfPbParams struct {
-	PbParams *RpcObjectImportRequestPbParams `protobuf:"bytes,6,opt,name=pbParams,proto3,oneof"`
+	PbParams *RpcObjectImportRequestPbParams `protobuf:"bytes,6,opt,name=pbParams,proto3,oneof" json:"pbParams,omitempty"`
 }
 
 type RpcObjectImportRequestParamsOfCsvParams struct {
-	CsvParams *RpcObjectImportRequestCsvParams `protobuf:"bytes,7,opt,name=csvParams,proto3,oneof"`
+	CsvParams *RpcObjectImportRequestCsvParams `protobuf:"bytes,7,opt,name=csvParams,proto3,oneof" json:"csvParams,omitempty"`
 }
 
 func (*RpcObjectImportRequestParamsOfNotionParams) IsRpcObjectImportRequestParams() {}
@@ -52433,27 +52433,27 @@ type IsRpcBlockListUpdateRequestField interface {
 }
 
 type RpcBlockListUpdateRequestFieldOfText struct {
-	Text *RpcBlockListUpdateRequestText `protobuf:"bytes,3,opt,name=text,proto3,oneof"`
+	Text *RpcBlockListUpdateRequestText `protobuf:"bytes,3,opt,name=text,proto3,oneof" json:"text,omitempty"`
 }
 
 type RpcBlockListUpdateRequestFieldOfBackgroundColor struct {
-	BackgroundColor string `protobuf:"bytes,4,opt,name=backgroundColor,proto3,oneof"`
+	BackgroundColor string `protobuf:"bytes,4,opt,name=backgroundColor,proto3,oneof" json:"backgroundColor,omitempty"`
 }
 
 type RpcBlockListUpdateRequestFieldOfAlign struct {
-	Align model.BlockAlign `protobuf:"varint,5,opt,name=align,proto3,enum=anytype.model.BlockAlign,oneof"`
+	Align model.BlockAlign `protobuf:"varint,5,opt,name=align,proto3,enum=anytype.model.BlockAlign,oneof" json:"align,omitempty"`
 }
 
 type RpcBlockListUpdateRequestFieldOfFields struct {
-	Fields *structpb.Struct `protobuf:"bytes,6,opt,name=fields,proto3,oneof"`
+	Fields *structpb.Struct `protobuf:"bytes,6,opt,name=fields,proto3,oneof" json:"fields,omitempty"`
 }
 
 type RpcBlockListUpdateRequestFieldOfDivStyle struct {
-	DivStyle model.BlockContentDivStyle `protobuf:"varint,7,opt,name=divStyle,proto3,enum=anytype.model.BlockContentDivStyle,oneof"`
+	DivStyle model.BlockContentDivStyle `protobuf:"varint,7,opt,name=divStyle,proto3,enum=anytype.model.BlockContentDivStyle,oneof" json:"divStyle,omitempty"`
 }
 
 type RpcBlockListUpdateRequestFieldOfFileStyle struct {
-	FileStyle model.BlockContentFileStyle `protobuf:"varint,8,opt,name=fileStyle,proto3,enum=anytype.model.BlockContentFileStyle,oneof"`
+	FileStyle model.BlockContentFileStyle `protobuf:"varint,8,opt,name=fileStyle,proto3,enum=anytype.model.BlockContentFileStyle,oneof" json:"fileStyle,omitempty"`
 }
 
 func (*RpcBlockListUpdateRequestFieldOfText) IsRpcBlockListUpdateRequestField() {}
@@ -52549,15 +52549,15 @@ type IsRpcBlockListUpdateRequestTextField interface {
 }
 
 type RpcBlockListUpdateRequestTextFieldOfStyle struct {
-	Style model.BlockContentTextStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.model.BlockContentTextStyle,oneof"`
+	Style model.BlockContentTextStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.model.BlockContentTextStyle,oneof" json:"style,omitempty"`
 }
 
 type RpcBlockListUpdateRequestTextFieldOfColor struct {
-	Color string `protobuf:"bytes,2,opt,name=color,proto3,oneof"`
+	Color string `protobuf:"bytes,2,opt,name=color,proto3,oneof" json:"color,omitempty"`
 }
 
 type RpcBlockListUpdateRequestTextFieldOfMark struct {
-	Mark *model.BlockContentTextMark `protobuf:"bytes,3,opt,name=mark,proto3,oneof"`
+	Mark *model.BlockContentTextMark `protobuf:"bytes,3,opt,name=mark,proto3,oneof" json:"mark,omitempty"`
 }
 
 func (*RpcBlockListUpdateRequestTextFieldOfStyle) IsRpcBlockListUpdateRequestTextField() {}

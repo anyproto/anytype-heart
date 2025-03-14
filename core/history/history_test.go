@@ -50,7 +50,7 @@ func (h historyStub) Id() string { return h.objectId }
 
 func (h historyStub) Header() *treechangeproto.RawTreeChangeWithId {
 	objectChange := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType_Page}
-	objectChangeRaw, err := objectChange.Marshal()
+	objectChangeRaw, err := objectChange.MarshalVT()
 	if err != nil {
 		return nil
 	}
@@ -58,14 +58,14 @@ func (h historyStub) Header() *treechangeproto.RawTreeChangeWithId {
 		ChangePayload: objectChangeRaw,
 		ChangeType:    spacecore.ChangeType,
 	}
-	createChangeRaw, err := createChange.Marshal()
+	createChangeRaw, err := createChange.MarshalVT()
 	if err != nil {
 		return nil
 	}
 	rootChange := &treechangeproto.RawTreeChange{
 		Payload: createChangeRaw,
 	}
-	rootChangeBytes, err := rootChange.Marshal()
+	rootChangeBytes, err := rootChange.MarshalVT()
 	if err != nil {
 		return nil
 	}
@@ -79,7 +79,7 @@ func (h historyStub) UnmarshalledHeader() *objecttree.Change { return nil }
 
 func (h historyStub) ChangeInfo() *treechangeproto.TreeChangeInfo {
 	objectChangePayload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType_Page}
-	changePayload, _ := objectChangePayload.Marshal()
+	changePayload, _ := objectChangePayload.MarshalVT()
 	return &treechangeproto.TreeChangeInfo{
 		ChangePayload: changePayload,
 	}

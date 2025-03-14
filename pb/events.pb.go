@@ -1396,313 +1396,313 @@ type IsEventMessageValue interface {
 }
 
 type EventMessageValueOfAccountShow struct {
-	AccountShow *EventAccountShow `protobuf:"bytes,1,opt,name=accountShow,proto3,oneof"`
+	AccountShow *EventAccountShow `protobuf:"bytes,1,opt,name=accountShow,proto3,oneof" json:"accountShow,omitempty"`
 }
 
 type EventMessageValueOfAccountDetails struct {
-	AccountDetails *EventAccountDetails `protobuf:"bytes,201,opt,name=accountDetails,proto3,oneof"`
+	AccountDetails *EventAccountDetails `protobuf:"bytes,201,opt,name=accountDetails,proto3,oneof" json:"accountDetails,omitempty"`
 }
 
 type EventMessageValueOfAccountConfigUpdate struct {
-	AccountConfigUpdate *EventAccountConfigUpdate `protobuf:"bytes,202,opt,name=accountConfigUpdate,proto3,oneof"`
+	AccountConfigUpdate *EventAccountConfigUpdate `protobuf:"bytes,202,opt,name=accountConfigUpdate,proto3,oneof" json:"accountConfigUpdate,omitempty"`
 }
 
 type EventMessageValueOfAccountUpdate struct {
-	AccountUpdate *EventAccountUpdate `protobuf:"bytes,203,opt,name=accountUpdate,proto3,oneof"`
+	AccountUpdate *EventAccountUpdate `protobuf:"bytes,203,opt,name=accountUpdate,proto3,oneof" json:"accountUpdate,omitempty"`
 }
 
 type EventMessageValueOfAccountLinkChallenge struct {
-	AccountLinkChallenge *EventAccountLinkChallenge `protobuf:"bytes,204,opt,name=accountLinkChallenge,proto3,oneof"`
+	AccountLinkChallenge *EventAccountLinkChallenge `protobuf:"bytes,204,opt,name=accountLinkChallenge,proto3,oneof" json:"accountLinkChallenge,omitempty"`
 }
 
 type EventMessageValueOfAccountLinkChallengeHide struct {
-	AccountLinkChallengeHide *EventAccountLinkChallengeHide `protobuf:"bytes,205,opt,name=accountLinkChallengeHide,proto3,oneof"`
+	AccountLinkChallengeHide *EventAccountLinkChallengeHide `protobuf:"bytes,205,opt,name=accountLinkChallengeHide,proto3,oneof" json:"accountLinkChallengeHide,omitempty"`
 }
 
 type EventMessageValueOfObjectDetailsSet struct {
-	ObjectDetailsSet *EventObjectDetailsSet `protobuf:"bytes,16,opt,name=objectDetailsSet,proto3,oneof"`
+	ObjectDetailsSet *EventObjectDetailsSet `protobuf:"bytes,16,opt,name=objectDetailsSet,proto3,oneof" json:"objectDetailsSet,omitempty"`
 }
 
 type EventMessageValueOfObjectDetailsAmend struct {
-	ObjectDetailsAmend *EventObjectDetailsAmend `protobuf:"bytes,50,opt,name=objectDetailsAmend,proto3,oneof"`
+	ObjectDetailsAmend *EventObjectDetailsAmend `protobuf:"bytes,50,opt,name=objectDetailsAmend,proto3,oneof" json:"objectDetailsAmend,omitempty"`
 }
 
 type EventMessageValueOfObjectDetailsUnset struct {
-	ObjectDetailsUnset *EventObjectDetailsUnset `protobuf:"bytes,51,opt,name=objectDetailsUnset,proto3,oneof"`
+	ObjectDetailsUnset *EventObjectDetailsUnset `protobuf:"bytes,51,opt,name=objectDetailsUnset,proto3,oneof" json:"objectDetailsUnset,omitempty"`
 }
 
 type EventMessageValueOfObjectRelationsAmend struct {
-	ObjectRelationsAmend *EventObjectRelationsAmend `protobuf:"bytes,52,opt,name=objectRelationsAmend,proto3,oneof"`
+	ObjectRelationsAmend *EventObjectRelationsAmend `protobuf:"bytes,52,opt,name=objectRelationsAmend,proto3,oneof" json:"objectRelationsAmend,omitempty"`
 }
 
 type EventMessageValueOfObjectRelationsRemove struct {
-	ObjectRelationsRemove *EventObjectRelationsRemove `protobuf:"bytes,53,opt,name=objectRelationsRemove,proto3,oneof"`
+	ObjectRelationsRemove *EventObjectRelationsRemove `protobuf:"bytes,53,opt,name=objectRelationsRemove,proto3,oneof" json:"objectRelationsRemove,omitempty"`
 }
 
 type EventMessageValueOfObjectRemove struct {
-	ObjectRemove *EventObjectRemove `protobuf:"bytes,54,opt,name=objectRemove,proto3,oneof"`
+	ObjectRemove *EventObjectRemove `protobuf:"bytes,54,opt,name=objectRemove,proto3,oneof" json:"objectRemove,omitempty"`
 }
 
 type EventMessageValueOfObjectClose struct {
-	ObjectClose *EventObjectClose `protobuf:"bytes,65,opt,name=objectClose,proto3,oneof"`
+	ObjectClose *EventObjectClose `protobuf:"bytes,65,opt,name=objectClose,proto3,oneof" json:"objectClose,omitempty"`
 }
 
 type EventMessageValueOfObjectRestrictionsSet struct {
-	ObjectRestrictionsSet *EventObjectRestrictionsSet `protobuf:"bytes,55,opt,name=objectRestrictionsSet,proto3,oneof"`
+	ObjectRestrictionsSet *EventObjectRestrictionsSet `protobuf:"bytes,55,opt,name=objectRestrictionsSet,proto3,oneof" json:"objectRestrictionsSet,omitempty"`
 }
 
 type EventMessageValueOfSubscriptionAdd struct {
-	SubscriptionAdd *EventObjectSubscriptionAdd `protobuf:"bytes,60,opt,name=subscriptionAdd,proto3,oneof"`
+	SubscriptionAdd *EventObjectSubscriptionAdd `protobuf:"bytes,60,opt,name=subscriptionAdd,proto3,oneof" json:"subscriptionAdd,omitempty"`
 }
 
 type EventMessageValueOfSubscriptionRemove struct {
-	SubscriptionRemove *EventObjectSubscriptionRemove `protobuf:"bytes,61,opt,name=subscriptionRemove,proto3,oneof"`
+	SubscriptionRemove *EventObjectSubscriptionRemove `protobuf:"bytes,61,opt,name=subscriptionRemove,proto3,oneof" json:"subscriptionRemove,omitempty"`
 }
 
 type EventMessageValueOfSubscriptionPosition struct {
-	SubscriptionPosition *EventObjectSubscriptionPosition `protobuf:"bytes,62,opt,name=subscriptionPosition,proto3,oneof"`
+	SubscriptionPosition *EventObjectSubscriptionPosition `protobuf:"bytes,62,opt,name=subscriptionPosition,proto3,oneof" json:"subscriptionPosition,omitempty"`
 }
 
 type EventMessageValueOfSubscriptionCounters struct {
-	SubscriptionCounters *EventObjectSubscriptionCounters `protobuf:"bytes,63,opt,name=subscriptionCounters,proto3,oneof"`
+	SubscriptionCounters *EventObjectSubscriptionCounters `protobuf:"bytes,63,opt,name=subscriptionCounters,proto3,oneof" json:"subscriptionCounters,omitempty"`
 }
 
 type EventMessageValueOfSubscriptionGroups struct {
-	SubscriptionGroups *EventObjectSubscriptionGroups `protobuf:"bytes,64,opt,name=subscriptionGroups,proto3,oneof"`
+	SubscriptionGroups *EventObjectSubscriptionGroups `protobuf:"bytes,64,opt,name=subscriptionGroups,proto3,oneof" json:"subscriptionGroups,omitempty"`
 }
 
 type EventMessageValueOfBlockAdd struct {
-	BlockAdd *EventBlockAdd `protobuf:"bytes,2,opt,name=blockAdd,proto3,oneof"`
+	BlockAdd *EventBlockAdd `protobuf:"bytes,2,opt,name=blockAdd,proto3,oneof" json:"blockAdd,omitempty"`
 }
 
 type EventMessageValueOfBlockDelete struct {
-	BlockDelete *EventBlockDelete `protobuf:"bytes,3,opt,name=blockDelete,proto3,oneof"`
+	BlockDelete *EventBlockDelete `protobuf:"bytes,3,opt,name=blockDelete,proto3,oneof" json:"blockDelete,omitempty"`
 }
 
 type EventMessageValueOfFilesUpload struct {
-	FilesUpload *EventBlockFilesUpload `protobuf:"bytes,4,opt,name=filesUpload,proto3,oneof"`
+	FilesUpload *EventBlockFilesUpload `protobuf:"bytes,4,opt,name=filesUpload,proto3,oneof" json:"filesUpload,omitempty"`
 }
 
 type EventMessageValueOfMarksInfo struct {
-	MarksInfo *EventBlockMarksInfo `protobuf:"bytes,5,opt,name=marksInfo,proto3,oneof"`
+	MarksInfo *EventBlockMarksInfo `protobuf:"bytes,5,opt,name=marksInfo,proto3,oneof" json:"marksInfo,omitempty"`
 }
 
 type EventMessageValueOfBlockSetFields struct {
-	BlockSetFields *EventBlockSetFields `protobuf:"bytes,6,opt,name=blockSetFields,proto3,oneof"`
+	BlockSetFields *EventBlockSetFields `protobuf:"bytes,6,opt,name=blockSetFields,proto3,oneof" json:"blockSetFields,omitempty"`
 }
 
 type EventMessageValueOfBlockSetChildrenIds struct {
-	BlockSetChildrenIds *EventBlockSetChildrenIds `protobuf:"bytes,7,opt,name=blockSetChildrenIds,proto3,oneof"`
+	BlockSetChildrenIds *EventBlockSetChildrenIds `protobuf:"bytes,7,opt,name=blockSetChildrenIds,proto3,oneof" json:"blockSetChildrenIds,omitempty"`
 }
 
 type EventMessageValueOfBlockSetRestrictions struct {
-	BlockSetRestrictions *EventBlockSetRestrictions `protobuf:"bytes,8,opt,name=blockSetRestrictions,proto3,oneof"`
+	BlockSetRestrictions *EventBlockSetRestrictions `protobuf:"bytes,8,opt,name=blockSetRestrictions,proto3,oneof" json:"blockSetRestrictions,omitempty"`
 }
 
 type EventMessageValueOfBlockSetBackgroundColor struct {
-	BlockSetBackgroundColor *EventBlockSetBackgroundColor `protobuf:"bytes,9,opt,name=blockSetBackgroundColor,proto3,oneof"`
+	BlockSetBackgroundColor *EventBlockSetBackgroundColor `protobuf:"bytes,9,opt,name=blockSetBackgroundColor,proto3,oneof" json:"blockSetBackgroundColor,omitempty"`
 }
 
 type EventMessageValueOfBlockSetText struct {
-	BlockSetText *EventBlockSetText `protobuf:"bytes,10,opt,name=blockSetText,proto3,oneof"`
+	BlockSetText *EventBlockSetText `protobuf:"bytes,10,opt,name=blockSetText,proto3,oneof" json:"blockSetText,omitempty"`
 }
 
 type EventMessageValueOfBlockSetFile struct {
-	BlockSetFile *EventBlockSetFile `protobuf:"bytes,11,opt,name=blockSetFile,proto3,oneof"`
+	BlockSetFile *EventBlockSetFile `protobuf:"bytes,11,opt,name=blockSetFile,proto3,oneof" json:"blockSetFile,omitempty"`
 }
 
 type EventMessageValueOfBlockSetLink struct {
-	BlockSetLink *EventBlockSetLink `protobuf:"bytes,13,opt,name=blockSetLink,proto3,oneof"`
+	BlockSetLink *EventBlockSetLink `protobuf:"bytes,13,opt,name=blockSetLink,proto3,oneof" json:"blockSetLink,omitempty"`
 }
 
 type EventMessageValueOfBlockSetBookmark struct {
-	BlockSetBookmark *EventBlockSetBookmark `protobuf:"bytes,14,opt,name=blockSetBookmark,proto3,oneof"`
+	BlockSetBookmark *EventBlockSetBookmark `protobuf:"bytes,14,opt,name=blockSetBookmark,proto3,oneof" json:"blockSetBookmark,omitempty"`
 }
 
 type EventMessageValueOfBlockSetAlign struct {
-	BlockSetAlign *EventBlockSetAlign `protobuf:"bytes,15,opt,name=blockSetAlign,proto3,oneof"`
+	BlockSetAlign *EventBlockSetAlign `protobuf:"bytes,15,opt,name=blockSetAlign,proto3,oneof" json:"blockSetAlign,omitempty"`
 }
 
 type EventMessageValueOfBlockSetDiv struct {
-	BlockSetDiv *EventBlockSetDiv `protobuf:"bytes,17,opt,name=blockSetDiv,proto3,oneof"`
+	BlockSetDiv *EventBlockSetDiv `protobuf:"bytes,17,opt,name=blockSetDiv,proto3,oneof" json:"blockSetDiv,omitempty"`
 }
 
 type EventMessageValueOfBlockSetRelation struct {
-	BlockSetRelation *EventBlockSetRelation `protobuf:"bytes,21,opt,name=blockSetRelation,proto3,oneof"`
+	BlockSetRelation *EventBlockSetRelation `protobuf:"bytes,21,opt,name=blockSetRelation,proto3,oneof" json:"blockSetRelation,omitempty"`
 }
 
 type EventMessageValueOfBlockSetLatex struct {
-	BlockSetLatex *EventBlockSetLatex `protobuf:"bytes,25,opt,name=blockSetLatex,proto3,oneof"`
+	BlockSetLatex *EventBlockSetLatex `protobuf:"bytes,25,opt,name=blockSetLatex,proto3,oneof" json:"blockSetLatex,omitempty"`
 }
 
 type EventMessageValueOfBlockSetVerticalAlign struct {
-	BlockSetVerticalAlign *EventBlockSetVerticalAlign `protobuf:"bytes,36,opt,name=blockSetVerticalAlign,proto3,oneof"`
+	BlockSetVerticalAlign *EventBlockSetVerticalAlign `protobuf:"bytes,36,opt,name=blockSetVerticalAlign,proto3,oneof" json:"blockSetVerticalAlign,omitempty"`
 }
 
 type EventMessageValueOfBlockSetTableRow struct {
-	BlockSetTableRow *EventBlockSetTableRow `protobuf:"bytes,37,opt,name=blockSetTableRow,proto3,oneof"`
+	BlockSetTableRow *EventBlockSetTableRow `protobuf:"bytes,37,opt,name=blockSetTableRow,proto3,oneof" json:"blockSetTableRow,omitempty"`
 }
 
 type EventMessageValueOfBlockSetWidget struct {
-	BlockSetWidget *EventBlockSetWidget `protobuf:"bytes,40,opt,name=blockSetWidget,proto3,oneof"`
+	BlockSetWidget *EventBlockSetWidget `protobuf:"bytes,40,opt,name=blockSetWidget,proto3,oneof" json:"blockSetWidget,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewViewSet struct {
-	BlockDataviewViewSet *EventBlockDataviewViewSet `protobuf:"bytes,19,opt,name=blockDataviewViewSet,proto3,oneof"`
+	BlockDataviewViewSet *EventBlockDataviewViewSet `protobuf:"bytes,19,opt,name=blockDataviewViewSet,proto3,oneof" json:"blockDataviewViewSet,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewViewDelete struct {
-	BlockDataviewViewDelete *EventBlockDataviewViewDelete `protobuf:"bytes,20,opt,name=blockDataviewViewDelete,proto3,oneof"`
+	BlockDataviewViewDelete *EventBlockDataviewViewDelete `protobuf:"bytes,20,opt,name=blockDataviewViewDelete,proto3,oneof" json:"blockDataviewViewDelete,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewViewOrder struct {
-	BlockDataviewViewOrder *EventBlockDataviewViewOrder `protobuf:"bytes,29,opt,name=blockDataviewViewOrder,proto3,oneof"`
+	BlockDataviewViewOrder *EventBlockDataviewViewOrder `protobuf:"bytes,29,opt,name=blockDataviewViewOrder,proto3,oneof" json:"blockDataviewViewOrder,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewSourceSet struct {
-	BlockDataviewSourceSet *EventBlockDataviewSourceSet `protobuf:"bytes,35,opt,name=blockDataviewSourceSet,proto3,oneof"` // deprecated, source is no longer used
+	BlockDataviewSourceSet *EventBlockDataviewSourceSet `protobuf:"bytes,35,opt,name=blockDataviewSourceSet,proto3,oneof" json:"blockDataviewSourceSet,omitempty"` // deprecated, source is no longer used
 }
 
 type EventMessageValueOfBlockDataViewGroupOrderUpdate struct {
-	BlockDataViewGroupOrderUpdate *EventBlockDataviewGroupOrderUpdate `protobuf:"bytes,38,opt,name=blockDataViewGroupOrderUpdate,proto3,oneof"`
+	BlockDataViewGroupOrderUpdate *EventBlockDataviewGroupOrderUpdate `protobuf:"bytes,38,opt,name=blockDataViewGroupOrderUpdate,proto3,oneof" json:"blockDataViewGroupOrderUpdate,omitempty"`
 }
 
 type EventMessageValueOfBlockDataViewObjectOrderUpdate struct {
-	BlockDataViewObjectOrderUpdate *EventBlockDataviewObjectOrderUpdate `protobuf:"bytes,39,opt,name=blockDataViewObjectOrderUpdate,proto3,oneof"`
+	BlockDataViewObjectOrderUpdate *EventBlockDataviewObjectOrderUpdate `protobuf:"bytes,39,opt,name=blockDataViewObjectOrderUpdate,proto3,oneof" json:"blockDataViewObjectOrderUpdate,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewRelationDelete struct {
-	BlockDataviewRelationDelete *EventBlockDataviewRelationDelete `protobuf:"bytes,124,opt,name=blockDataviewRelationDelete,proto3,oneof"`
+	BlockDataviewRelationDelete *EventBlockDataviewRelationDelete `protobuf:"bytes,124,opt,name=blockDataviewRelationDelete,proto3,oneof" json:"blockDataviewRelationDelete,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewRelationSet struct {
-	BlockDataviewRelationSet *EventBlockDataviewRelationSet `protobuf:"bytes,123,opt,name=blockDataviewRelationSet,proto3,oneof"`
+	BlockDataviewRelationSet *EventBlockDataviewRelationSet `protobuf:"bytes,123,opt,name=blockDataviewRelationSet,proto3,oneof" json:"blockDataviewRelationSet,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewViewUpdate struct {
-	BlockDataviewViewUpdate *EventBlockDataviewViewUpdate `protobuf:"bytes,125,opt,name=blockDataviewViewUpdate,proto3,oneof"`
+	BlockDataviewViewUpdate *EventBlockDataviewViewUpdate `protobuf:"bytes,125,opt,name=blockDataviewViewUpdate,proto3,oneof" json:"blockDataviewViewUpdate,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewTargetObjectIdSet struct {
-	BlockDataviewTargetObjectIdSet *EventBlockDataviewTargetObjectIdSet `protobuf:"bytes,126,opt,name=blockDataviewTargetObjectIdSet,proto3,oneof"`
+	BlockDataviewTargetObjectIdSet *EventBlockDataviewTargetObjectIdSet `protobuf:"bytes,126,opt,name=blockDataviewTargetObjectIdSet,proto3,oneof" json:"blockDataviewTargetObjectIdSet,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewIsCollectionSet struct {
-	BlockDataviewIsCollectionSet *EventBlockDataviewIsCollectionSet `protobuf:"bytes,127,opt,name=blockDataviewIsCollectionSet,proto3,oneof"`
+	BlockDataviewIsCollectionSet *EventBlockDataviewIsCollectionSet `protobuf:"bytes,127,opt,name=blockDataviewIsCollectionSet,proto3,oneof" json:"blockDataviewIsCollectionSet,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewOldRelationDelete struct {
 	// deprecated
-	BlockDataviewOldRelationDelete *EventBlockDataviewOldRelationDelete `protobuf:"bytes,24,opt,name=blockDataviewOldRelationDelete,proto3,oneof"`
+	BlockDataviewOldRelationDelete *EventBlockDataviewOldRelationDelete `protobuf:"bytes,24,opt,name=blockDataviewOldRelationDelete,proto3,oneof" json:"blockDataviewOldRelationDelete,omitempty"`
 }
 
 type EventMessageValueOfBlockDataviewOldRelationSet struct {
 	// deprecated
-	BlockDataviewOldRelationSet *EventBlockDataviewOldRelationSet `protobuf:"bytes,23,opt,name=blockDataviewOldRelationSet,proto3,oneof"`
+	BlockDataviewOldRelationSet *EventBlockDataviewOldRelationSet `protobuf:"bytes,23,opt,name=blockDataviewOldRelationSet,proto3,oneof" json:"blockDataviewOldRelationSet,omitempty"`
 }
 
 type EventMessageValueOfUserBlockJoin struct {
-	UserBlockJoin *EventUserBlockJoin `protobuf:"bytes,31,opt,name=userBlockJoin,proto3,oneof"`
+	UserBlockJoin *EventUserBlockJoin `protobuf:"bytes,31,opt,name=userBlockJoin,proto3,oneof" json:"userBlockJoin,omitempty"`
 }
 
 type EventMessageValueOfUserBlockLeft struct {
-	UserBlockLeft *EventUserBlockLeft `protobuf:"bytes,32,opt,name=userBlockLeft,proto3,oneof"`
+	UserBlockLeft *EventUserBlockLeft `protobuf:"bytes,32,opt,name=userBlockLeft,proto3,oneof" json:"userBlockLeft,omitempty"`
 }
 
 type EventMessageValueOfUserBlockSelectRange struct {
-	UserBlockSelectRange *EventUserBlockSelectRange `protobuf:"bytes,33,opt,name=userBlockSelectRange,proto3,oneof"`
+	UserBlockSelectRange *EventUserBlockSelectRange `protobuf:"bytes,33,opt,name=userBlockSelectRange,proto3,oneof" json:"userBlockSelectRange,omitempty"`
 }
 
 type EventMessageValueOfUserBlockTextRange struct {
-	UserBlockTextRange *EventUserBlockTextRange `protobuf:"bytes,34,opt,name=userBlockTextRange,proto3,oneof"`
+	UserBlockTextRange *EventUserBlockTextRange `protobuf:"bytes,34,opt,name=userBlockTextRange,proto3,oneof" json:"userBlockTextRange,omitempty"`
 }
 
 type EventMessageValueOfPing struct {
-	Ping *EventPing `protobuf:"bytes,100,opt,name=ping,proto3,oneof"`
+	Ping *EventPing `protobuf:"bytes,100,opt,name=ping,proto3,oneof" json:"ping,omitempty"`
 }
 
 type EventMessageValueOfProcessNew struct {
-	ProcessNew *EventProcessNew `protobuf:"bytes,101,opt,name=processNew,proto3,oneof"`
+	ProcessNew *EventProcessNew `protobuf:"bytes,101,opt,name=processNew,proto3,oneof" json:"processNew,omitempty"`
 }
 
 type EventMessageValueOfProcessUpdate struct {
-	ProcessUpdate *EventProcessUpdate `protobuf:"bytes,102,opt,name=processUpdate,proto3,oneof"`
+	ProcessUpdate *EventProcessUpdate `protobuf:"bytes,102,opt,name=processUpdate,proto3,oneof" json:"processUpdate,omitempty"`
 }
 
 type EventMessageValueOfProcessDone struct {
-	ProcessDone *EventProcessDone `protobuf:"bytes,103,opt,name=processDone,proto3,oneof"`
+	ProcessDone *EventProcessDone `protobuf:"bytes,103,opt,name=processDone,proto3,oneof" json:"processDone,omitempty"`
 }
 
 type EventMessageValueOfThreadStatus struct {
-	ThreadStatus *EventStatusThread `protobuf:"bytes,110,opt,name=threadStatus,proto3,oneof"`
+	ThreadStatus *EventStatusThread `protobuf:"bytes,110,opt,name=threadStatus,proto3,oneof" json:"threadStatus,omitempty"`
 }
 
 type EventMessageValueOfFileLimitReached struct {
-	FileLimitReached *EventFileLimitReached `protobuf:"bytes,111,opt,name=fileLimitReached,proto3,oneof"`
+	FileLimitReached *EventFileLimitReached `protobuf:"bytes,111,opt,name=fileLimitReached,proto3,oneof" json:"fileLimitReached,omitempty"`
 }
 
 type EventMessageValueOfFileSpaceUsage struct {
-	FileSpaceUsage *EventFileSpaceUsage `protobuf:"bytes,112,opt,name=fileSpaceUsage,proto3,oneof"`
+	FileSpaceUsage *EventFileSpaceUsage `protobuf:"bytes,112,opt,name=fileSpaceUsage,proto3,oneof" json:"fileSpaceUsage,omitempty"`
 }
 
 type EventMessageValueOfFileLocalUsage struct {
-	FileLocalUsage *EventFileLocalUsage `protobuf:"bytes,113,opt,name=fileLocalUsage,proto3,oneof"`
+	FileLocalUsage *EventFileLocalUsage `protobuf:"bytes,113,opt,name=fileLocalUsage,proto3,oneof" json:"fileLocalUsage,omitempty"`
 }
 
 type EventMessageValueOfFileLimitUpdated struct {
-	FileLimitUpdated *EventFileLimitUpdated `protobuf:"bytes,118,opt,name=fileLimitUpdated,proto3,oneof"`
+	FileLimitUpdated *EventFileLimitUpdated `protobuf:"bytes,118,opt,name=fileLimitUpdated,proto3,oneof" json:"fileLimitUpdated,omitempty"`
 }
 
 type EventMessageValueOfNotificationSend struct {
-	NotificationSend *EventNotificationSend `protobuf:"bytes,114,opt,name=notificationSend,proto3,oneof"`
+	NotificationSend *EventNotificationSend `protobuf:"bytes,114,opt,name=notificationSend,proto3,oneof" json:"notificationSend,omitempty"`
 }
 
 type EventMessageValueOfNotificationUpdate struct {
-	NotificationUpdate *EventNotificationUpdate `protobuf:"bytes,115,opt,name=notificationUpdate,proto3,oneof"`
+	NotificationUpdate *EventNotificationUpdate `protobuf:"bytes,115,opt,name=notificationUpdate,proto3,oneof" json:"notificationUpdate,omitempty"`
 }
 
 type EventMessageValueOfPayloadBroadcast struct {
-	PayloadBroadcast *EventPayloadBroadcast `protobuf:"bytes,116,opt,name=payloadBroadcast,proto3,oneof"`
+	PayloadBroadcast *EventPayloadBroadcast `protobuf:"bytes,116,opt,name=payloadBroadcast,proto3,oneof" json:"payloadBroadcast,omitempty"`
 }
 
 type EventMessageValueOfMembershipUpdate struct {
-	MembershipUpdate *EventMembershipUpdate `protobuf:"bytes,117,opt,name=membershipUpdate,proto3,oneof"`
+	MembershipUpdate *EventMembershipUpdate `protobuf:"bytes,117,opt,name=membershipUpdate,proto3,oneof" json:"membershipUpdate,omitempty"`
 }
 
 type EventMessageValueOfSpaceSyncStatusUpdate struct {
-	SpaceSyncStatusUpdate *EventSpaceSyncStatusUpdate `protobuf:"bytes,119,opt,name=spaceSyncStatusUpdate,proto3,oneof"`
+	SpaceSyncStatusUpdate *EventSpaceSyncStatusUpdate `protobuf:"bytes,119,opt,name=spaceSyncStatusUpdate,proto3,oneof" json:"spaceSyncStatusUpdate,omitempty"`
 }
 
 type EventMessageValueOfP2PStatusUpdate struct {
-	P2PStatusUpdate *EventP2PStatusUpdate `protobuf:"bytes,120,opt,name=p2pStatusUpdate,proto3,oneof"`
+	P2PStatusUpdate *EventP2PStatusUpdate `protobuf:"bytes,120,opt,name=p2pStatusUpdate,proto3,oneof" json:"p2pStatusUpdate,omitempty"`
 }
 
 type EventMessageValueOfImportFinish struct {
-	ImportFinish *EventImportFinish `protobuf:"bytes,121,opt,name=importFinish,proto3,oneof"`
+	ImportFinish *EventImportFinish `protobuf:"bytes,121,opt,name=importFinish,proto3,oneof" json:"importFinish,omitempty"`
 }
 
 type EventMessageValueOfChatAdd struct {
-	ChatAdd *EventChatAdd `protobuf:"bytes,128,opt,name=chatAdd,proto3,oneof"`
+	ChatAdd *EventChatAdd `protobuf:"bytes,128,opt,name=chatAdd,proto3,oneof" json:"chatAdd,omitempty"`
 }
 
 type EventMessageValueOfChatUpdate struct {
-	ChatUpdate *EventChatUpdate `protobuf:"bytes,129,opt,name=chatUpdate,proto3,oneof"`
+	ChatUpdate *EventChatUpdate `protobuf:"bytes,129,opt,name=chatUpdate,proto3,oneof" json:"chatUpdate,omitempty"`
 }
 
 type EventMessageValueOfChatUpdateReactions struct {
-	ChatUpdateReactions *EventChatUpdateReactions `protobuf:"bytes,130,opt,name=chatUpdateReactions,proto3,oneof"`
+	ChatUpdateReactions *EventChatUpdateReactions `protobuf:"bytes,130,opt,name=chatUpdateReactions,proto3,oneof" json:"chatUpdateReactions,omitempty"`
 }
 
 type EventMessageValueOfChatUpdateReadStatus struct {
-	ChatUpdateReadStatus *EventChatUpdateReadStatus `protobuf:"bytes,134,opt,name=chatUpdateReadStatus,proto3,oneof"` // received to update per-message read status (if needed to highlight the unread messages in the UI)
+	ChatUpdateReadStatus *EventChatUpdateReadStatus `protobuf:"bytes,134,opt,name=chatUpdateReadStatus,proto3,oneof" json:"chatUpdateReadStatus,omitempty"` // received to update per-message read status (if needed to highlight the unread messages in the UI)
 }
 
 type EventMessageValueOfChatDelete struct {
-	ChatDelete *EventChatDelete `protobuf:"bytes,131,opt,name=chatDelete,proto3,oneof"`
+	ChatDelete *EventChatDelete `protobuf:"bytes,131,opt,name=chatDelete,proto3,oneof" json:"chatDelete,omitempty"`
 }
 
 type EventMessageValueOfChatStateUpdate struct {
-	ChatStateUpdate *EventChatUpdateState `protobuf:"bytes,133,opt,name=chatStateUpdate,proto3,oneof"` // in case new unread messages received or chat state changed (e.g. message read on another device)
+	ChatStateUpdate *EventChatUpdateState `protobuf:"bytes,133,opt,name=chatStateUpdate,proto3,oneof" json:"chatStateUpdate,omitempty"` // in case new unread messages received or chat state changed (e.g. message read on another device)
 }
 
 func (*EventMessageValueOfAccountShow) IsEventMessageValue() {}
@@ -10000,19 +10000,19 @@ type IsEventBlockDataviewViewUpdateFilterOperation interface {
 }
 
 type EventBlockDataviewViewUpdateFilterOperationOfAdd struct {
-	Add *EventBlockDataviewViewUpdateFilterAdd `protobuf:"bytes,1,opt,name=add,proto3,oneof"`
+	Add *EventBlockDataviewViewUpdateFilterAdd `protobuf:"bytes,1,opt,name=add,proto3,oneof" json:"add,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateFilterOperationOfRemove struct {
-	Remove *EventBlockDataviewViewUpdateFilterRemove `protobuf:"bytes,2,opt,name=remove,proto3,oneof"`
+	Remove *EventBlockDataviewViewUpdateFilterRemove `protobuf:"bytes,2,opt,name=remove,proto3,oneof" json:"remove,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateFilterOperationOfUpdate struct {
-	Update *EventBlockDataviewViewUpdateFilterUpdate `protobuf:"bytes,3,opt,name=update,proto3,oneof"`
+	Update *EventBlockDataviewViewUpdateFilterUpdate `protobuf:"bytes,3,opt,name=update,proto3,oneof" json:"update,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateFilterOperationOfMove struct {
-	Move *EventBlockDataviewViewUpdateFilterMove `protobuf:"bytes,4,opt,name=move,proto3,oneof"`
+	Move *EventBlockDataviewViewUpdateFilterMove `protobuf:"bytes,4,opt,name=move,proto3,oneof" json:"move,omitempty"`
 }
 
 func (*EventBlockDataviewViewUpdateFilterOperationOfAdd) IsEventBlockDataviewViewUpdateFilterOperation() {
@@ -10118,19 +10118,19 @@ type IsEventBlockDataviewViewUpdateRelationOperation interface {
 }
 
 type EventBlockDataviewViewUpdateRelationOperationOfAdd struct {
-	Add *EventBlockDataviewViewUpdateRelationAdd `protobuf:"bytes,1,opt,name=add,proto3,oneof"`
+	Add *EventBlockDataviewViewUpdateRelationAdd `protobuf:"bytes,1,opt,name=add,proto3,oneof" json:"add,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateRelationOperationOfRemove struct {
-	Remove *EventBlockDataviewViewUpdateRelationRemove `protobuf:"bytes,2,opt,name=remove,proto3,oneof"`
+	Remove *EventBlockDataviewViewUpdateRelationRemove `protobuf:"bytes,2,opt,name=remove,proto3,oneof" json:"remove,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateRelationOperationOfUpdate struct {
-	Update *EventBlockDataviewViewUpdateRelationUpdate `protobuf:"bytes,3,opt,name=update,proto3,oneof"`
+	Update *EventBlockDataviewViewUpdateRelationUpdate `protobuf:"bytes,3,opt,name=update,proto3,oneof" json:"update,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateRelationOperationOfMove struct {
-	Move *EventBlockDataviewViewUpdateRelationMove `protobuf:"bytes,4,opt,name=move,proto3,oneof"`
+	Move *EventBlockDataviewViewUpdateRelationMove `protobuf:"bytes,4,opt,name=move,proto3,oneof" json:"move,omitempty"`
 }
 
 func (*EventBlockDataviewViewUpdateRelationOperationOfAdd) IsEventBlockDataviewViewUpdateRelationOperation() {
@@ -10236,19 +10236,19 @@ type IsEventBlockDataviewViewUpdateSortOperation interface {
 }
 
 type EventBlockDataviewViewUpdateSortOperationOfAdd struct {
-	Add *EventBlockDataviewViewUpdateSortAdd `protobuf:"bytes,1,opt,name=add,proto3,oneof"`
+	Add *EventBlockDataviewViewUpdateSortAdd `protobuf:"bytes,1,opt,name=add,proto3,oneof" json:"add,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateSortOperationOfRemove struct {
-	Remove *EventBlockDataviewViewUpdateSortRemove `protobuf:"bytes,2,opt,name=remove,proto3,oneof"`
+	Remove *EventBlockDataviewViewUpdateSortRemove `protobuf:"bytes,2,opt,name=remove,proto3,oneof" json:"remove,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateSortOperationOfUpdate struct {
-	Update *EventBlockDataviewViewUpdateSortUpdate `protobuf:"bytes,3,opt,name=update,proto3,oneof"`
+	Update *EventBlockDataviewViewUpdateSortUpdate `protobuf:"bytes,3,opt,name=update,proto3,oneof" json:"update,omitempty"`
 }
 
 type EventBlockDataviewViewUpdateSortOperationOfMove struct {
-	Move *EventBlockDataviewViewUpdateSortMove `protobuf:"bytes,4,opt,name=move,proto3,oneof"`
+	Move *EventBlockDataviewViewUpdateSortMove `protobuf:"bytes,4,opt,name=move,proto3,oneof" json:"move,omitempty"`
 }
 
 func (*EventBlockDataviewViewUpdateSortOperationOfAdd) IsEventBlockDataviewViewUpdateSortOperation() {
@@ -12396,23 +12396,23 @@ type IsModelProcessMessage interface {
 }
 
 type ModelProcessMessageOfDropFiles struct {
-	DropFiles *ModelProcessDropFiles `protobuf:"bytes,6,opt,name=dropFiles,proto3,oneof"`
+	DropFiles *ModelProcessDropFiles `protobuf:"bytes,6,opt,name=dropFiles,proto3,oneof" json:"dropFiles,omitempty"`
 }
 
 type ModelProcessMessageOfImport struct {
-	Import *ModelProcessImport `protobuf:"bytes,7,opt,name=import,proto3,oneof"`
+	Import *ModelProcessImport `protobuf:"bytes,7,opt,name=import,proto3,oneof" json:"import,omitempty"`
 }
 
 type ModelProcessMessageOfExport struct {
-	Export *ModelProcessExport `protobuf:"bytes,8,opt,name=export,proto3,oneof"`
+	Export *ModelProcessExport `protobuf:"bytes,8,opt,name=export,proto3,oneof" json:"export,omitempty"`
 }
 
 type ModelProcessMessageOfSaveFile struct {
-	SaveFile *ModelProcessSaveFile `protobuf:"bytes,9,opt,name=saveFile,proto3,oneof"`
+	SaveFile *ModelProcessSaveFile `protobuf:"bytes,9,opt,name=saveFile,proto3,oneof" json:"saveFile,omitempty"`
 }
 
 type ModelProcessMessageOfMigration struct {
-	Migration *ModelProcessMigration `protobuf:"bytes,10,opt,name=migration,proto3,oneof"`
+	Migration *ModelProcessMigration `protobuf:"bytes,10,opt,name=migration,proto3,oneof" json:"migration,omitempty"`
 }
 
 func (*ModelProcessMessageOfDropFiles) IsModelProcessMessage() {}

@@ -189,7 +189,7 @@ GO_PROTOBUF_REPO := /Users/mikhailyudin/GolandProjects/protobuf-go
 PROTOC_GEN_VTPROTO := $(DEPS)/protoc-gen-go-vtproto
 
 VT_PROTOBUF_COMMIT := 57a97b786bfdef686fce425af0b32376dedac8ce
-GO_PROTOBUF_COMMIT := 3739fe9d181cb579358238ed7861202ba028de2b
+GO_PROTOBUF_COMMIT := d58efe595bddd808375cd0c4f66dafe33a11d8b0
 
 fork1:
 	@echo "Cloning vtprotobuf fork..."

@@ -257,7 +257,7 @@ func TestState_Normalize(t *testing.T) {
 		data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
 		require.NoError(t, err)
 		ev := &model.ObjectView{}
-		require.NoError(t, ev.Unmarshal(data))
+		require.NoError(t, ev.UnmarshalVT(data))
 
 		r := NewDoc(ev.RootId, nil).(*State)
 		for _, b := range ev.Blocks {
@@ -455,7 +455,7 @@ func BenchmarkNormalize(b *testing.B) {
 	data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
 	require.NoError(b, err)
 	ev := &model.ObjectView{}
-	require.NoError(b, ev.Unmarshal(data))
+	require.NoError(b, ev.UnmarshalVT(data))
 
 	r := NewDoc(ev.RootId, nil).(*State)
 	for _, b := range ev.Blocks {

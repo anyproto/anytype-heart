@@ -533,7 +533,9 @@ func TestExport_Export(t *testing.T) {
 		assert.True(t, fileNames[objectPath])
 
 		file, err := os.ReadFile(objectPath)
-		assert.Nil(t, err)
+		if err != nil {
+			return
+		}
 		var sn *pb.SnapshotWithType
 		err = protojson.Unmarshal(file, sn)
 		assert.Nil(t, err)

@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"

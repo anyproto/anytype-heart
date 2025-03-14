@@ -4084,75 +4084,75 @@ type IsBlockContent interface {
 }
 
 type BlockContentOfSmartblock struct {
-	Smartblock *BlockContentSmartblock `protobuf:"bytes,11,opt,name=smartblock,proto3,oneof"`
+	Smartblock *BlockContentSmartblock `protobuf:"bytes,11,opt,name=smartblock,proto3,oneof" json:"smartblock,omitempty"`
 }
 
 type BlockContentOfText struct {
-	Text *BlockContentText `protobuf:"bytes,14,opt,name=text,proto3,oneof"`
+	Text *BlockContentText `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
 }
 
 type BlockContentOfFile struct {
-	File *BlockContentFile `protobuf:"bytes,15,opt,name=file,proto3,oneof"`
+	File *BlockContentFile `protobuf:"bytes,15,opt,name=file,proto3,oneof" json:"file,omitempty"`
 }
 
 type BlockContentOfLayout struct {
-	Layout *BlockContentLayout `protobuf:"bytes,16,opt,name=layout,proto3,oneof"`
+	Layout *BlockContentLayout `protobuf:"bytes,16,opt,name=layout,proto3,oneof" json:"layout,omitempty"`
 }
 
 type BlockContentOfDiv struct {
-	Div *BlockContentDiv `protobuf:"bytes,17,opt,name=div,proto3,oneof"`
+	Div *BlockContentDiv `protobuf:"bytes,17,opt,name=div,proto3,oneof" json:"div,omitempty"`
 }
 
 type BlockContentOfBookmark struct {
-	Bookmark *BlockContentBookmark `protobuf:"bytes,18,opt,name=bookmark,proto3,oneof"`
+	Bookmark *BlockContentBookmark `protobuf:"bytes,18,opt,name=bookmark,proto3,oneof" json:"bookmark,omitempty"`
 }
 
 type BlockContentOfIcon struct {
-	Icon *BlockContentIcon `protobuf:"bytes,19,opt,name=icon,proto3,oneof"`
+	Icon *BlockContentIcon `protobuf:"bytes,19,opt,name=icon,proto3,oneof" json:"icon,omitempty"`
 }
 
 type BlockContentOfLink struct {
-	Link *BlockContentLink `protobuf:"bytes,20,opt,name=link,proto3,oneof"`
+	Link *BlockContentLink `protobuf:"bytes,20,opt,name=link,proto3,oneof" json:"link,omitempty"`
 }
 
 type BlockContentOfDataview struct {
-	Dataview *BlockContentDataview `protobuf:"bytes,21,opt,name=dataview,proto3,oneof"`
+	Dataview *BlockContentDataview `protobuf:"bytes,21,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
 }
 
 type BlockContentOfRelation struct {
-	Relation *BlockContentRelation `protobuf:"bytes,22,opt,name=relation,proto3,oneof"`
+	Relation *BlockContentRelation `protobuf:"bytes,22,opt,name=relation,proto3,oneof" json:"relation,omitempty"`
 }
 
 type BlockContentOfFeaturedRelations struct {
-	FeaturedRelations *BlockContentFeaturedRelations `protobuf:"bytes,23,opt,name=featuredRelations,proto3,oneof"`
+	FeaturedRelations *BlockContentFeaturedRelations `protobuf:"bytes,23,opt,name=featuredRelations,proto3,oneof" json:"featuredRelations,omitempty"`
 }
 
 type BlockContentOfLatex struct {
-	Latex *BlockContentLatex `protobuf:"bytes,24,opt,name=latex,proto3,oneof"`
+	Latex *BlockContentLatex `protobuf:"bytes,24,opt,name=latex,proto3,oneof" json:"latex,omitempty"`
 }
 
 type BlockContentOfTableOfContents struct {
-	TableOfContents *BlockContentTableOfContents `protobuf:"bytes,25,opt,name=tableOfContents,proto3,oneof"`
+	TableOfContents *BlockContentTableOfContents `protobuf:"bytes,25,opt,name=tableOfContents,proto3,oneof" json:"tableOfContents,omitempty"`
 }
 
 type BlockContentOfTable struct {
-	Table *BlockContentTable `protobuf:"bytes,26,opt,name=table,proto3,oneof"`
+	Table *BlockContentTable `protobuf:"bytes,26,opt,name=table,proto3,oneof" json:"table,omitempty"`
 }
 
 type BlockContentOfTableColumn struct {
-	TableColumn *BlockContentTableColumn `protobuf:"bytes,27,opt,name=tableColumn,proto3,oneof"`
+	TableColumn *BlockContentTableColumn `protobuf:"bytes,27,opt,name=tableColumn,proto3,oneof" json:"tableColumn,omitempty"`
 }
 
 type BlockContentOfTableRow struct {
-	TableRow *BlockContentTableRow `protobuf:"bytes,28,opt,name=tableRow,proto3,oneof"`
+	TableRow *BlockContentTableRow `protobuf:"bytes,28,opt,name=tableRow,proto3,oneof" json:"tableRow,omitempty"`
 }
 
 type BlockContentOfWidget struct {
-	Widget *BlockContentWidget `protobuf:"bytes,29,opt,name=widget,proto3,oneof"`
+	Widget *BlockContentWidget `protobuf:"bytes,29,opt,name=widget,proto3,oneof" json:"widget,omitempty"`
 }
 
 type BlockContentOfChat struct {
-	Chat *BlockContentChat `protobuf:"bytes,30,opt,name=chat,proto3,oneof"`
+	Chat *BlockContentChat `protobuf:"bytes,30,opt,name=chat,proto3,oneof" json:"chat,omitempty"`
 }
 
 func (*BlockContentOfSmartblock) IsBlockContent() {}
@@ -5443,7 +5443,7 @@ type IsMetadataPayload interface {
 }
 
 type MetadataPayloadOfIdentity struct {
-	Identity *MetadataPayloadIdentityPayload `protobuf:"bytes,1,opt,name=identity,proto3,oneof"`
+	Identity *MetadataPayloadIdentityPayload `protobuf:"bytes,1,opt,name=identity,proto3,oneof" json:"identity,omitempty"`
 }
 
 func (*MetadataPayloadOfIdentity) IsMetadataPayload() {}
@@ -5647,43 +5647,43 @@ type IsNotificationPayload interface {
 }
 
 type NotificationPayloadOfImport struct {
-	Import *NotificationImport `protobuf:"bytes,6,opt,name=import,proto3,oneof"`
+	Import *NotificationImport `protobuf:"bytes,6,opt,name=import,proto3,oneof" json:"import,omitempty"`
 }
 
 type NotificationPayloadOfExport struct {
-	Export *NotificationExport `protobuf:"bytes,8,opt,name=export,proto3,oneof"`
+	Export *NotificationExport `protobuf:"bytes,8,opt,name=export,proto3,oneof" json:"export,omitempty"`
 }
 
 type NotificationPayloadOfGalleryImport struct {
-	GalleryImport *NotificationGalleryImport `protobuf:"bytes,9,opt,name=galleryImport,proto3,oneof"`
+	GalleryImport *NotificationGalleryImport `protobuf:"bytes,9,opt,name=galleryImport,proto3,oneof" json:"galleryImport,omitempty"`
 }
 
 type NotificationPayloadOfRequestToJoin struct {
-	RequestToJoin *NotificationRequestToJoin `protobuf:"bytes,10,opt,name=requestToJoin,proto3,oneof"`
+	RequestToJoin *NotificationRequestToJoin `protobuf:"bytes,10,opt,name=requestToJoin,proto3,oneof" json:"requestToJoin,omitempty"`
 }
 
 type NotificationPayloadOfTest struct {
-	Test *NotificationTest `protobuf:"bytes,11,opt,name=test,proto3,oneof"`
+	Test *NotificationTest `protobuf:"bytes,11,opt,name=test,proto3,oneof" json:"test,omitempty"`
 }
 
 type NotificationPayloadOfParticipantRequestApproved struct {
-	ParticipantRequestApproved *NotificationParticipantRequestApproved `protobuf:"bytes,13,opt,name=participantRequestApproved,proto3,oneof"`
+	ParticipantRequestApproved *NotificationParticipantRequestApproved `protobuf:"bytes,13,opt,name=participantRequestApproved,proto3,oneof" json:"participantRequestApproved,omitempty"`
 }
 
 type NotificationPayloadOfRequestToLeave struct {
-	RequestToLeave *NotificationRequestToLeave `protobuf:"bytes,15,opt,name=requestToLeave,proto3,oneof"`
+	RequestToLeave *NotificationRequestToLeave `protobuf:"bytes,15,opt,name=requestToLeave,proto3,oneof" json:"requestToLeave,omitempty"`
 }
 
 type NotificationPayloadOfParticipantRemove struct {
-	ParticipantRemove *NotificationParticipantRemove `protobuf:"bytes,16,opt,name=participantRemove,proto3,oneof"`
+	ParticipantRemove *NotificationParticipantRemove `protobuf:"bytes,16,opt,name=participantRemove,proto3,oneof" json:"participantRemove,omitempty"`
 }
 
 type NotificationPayloadOfParticipantRequestDecline struct {
-	ParticipantRequestDecline *NotificationParticipantRequestDecline `protobuf:"bytes,17,opt,name=participantRequestDecline,proto3,oneof"`
+	ParticipantRequestDecline *NotificationParticipantRequestDecline `protobuf:"bytes,17,opt,name=participantRequestDecline,proto3,oneof" json:"participantRequestDecline,omitempty"`
 }
 
 type NotificationPayloadOfParticipantPermissionsChange struct {
-	ParticipantPermissionsChange *NotificationParticipantPermissionsChange `protobuf:"bytes,18,opt,name=participantPermissionsChange,proto3,oneof"`
+	ParticipantPermissionsChange *NotificationParticipantPermissionsChange `protobuf:"bytes,18,opt,name=participantPermissionsChange,proto3,oneof" json:"participantPermissionsChange,omitempty"`
 }
 
 func (*NotificationPayloadOfImport) IsNotificationPayload() {}
@@ -9022,19 +9022,19 @@ type IsBlockContentDataviewGroupValue interface {
 }
 
 type BlockContentDataviewGroupValueOfStatus struct {
-	Status *BlockContentDataviewStatus `protobuf:"bytes,2,opt,name=status,proto3,oneof"`
+	Status *BlockContentDataviewStatus `protobuf:"bytes,2,opt,name=status,proto3,oneof" json:"status,omitempty"`
 }
 
 type BlockContentDataviewGroupValueOfTag struct {
-	Tag *BlockContentDataviewTag `protobuf:"bytes,3,opt,name=tag,proto3,oneof"`
+	Tag *BlockContentDataviewTag `protobuf:"bytes,3,opt,name=tag,proto3,oneof" json:"tag,omitempty"`
 }
 
 type BlockContentDataviewGroupValueOfCheckbox struct {
-	Checkbox *BlockContentDataviewCheckbox `protobuf:"bytes,4,opt,name=checkbox,proto3,oneof"`
+	Checkbox *BlockContentDataviewCheckbox `protobuf:"bytes,4,opt,name=checkbox,proto3,oneof" json:"checkbox,omitempty"`
 }
 
 type BlockContentDataviewGroupValueOfDate struct {
-	Date *BlockContentDataviewDate `protobuf:"bytes,5,opt,name=date,proto3,oneof"`
+	Date *BlockContentDataviewDate `protobuf:"bytes,5,opt,name=date,proto3,oneof" json:"date,omitempty"`
 }
 
 func (*BlockContentDataviewGroupValueOfStatus) IsBlockContentDataviewGroupValue() {}

@@ -357,15 +357,15 @@ type IsStoreChangeContentChange interface {
 }
 
 type StoreChangeContentChangeOfCreate struct {
-	Create *DocumentCreate `protobuf:"bytes,1,opt,name=create,proto3,oneof"`
+	Create *DocumentCreate `protobuf:"bytes,1,opt,name=create,proto3,oneof" json:"create,omitempty"`
 }
 
 type StoreChangeContentChangeOfModify struct {
-	Modify *DocumentModify `protobuf:"bytes,2,opt,name=modify,proto3,oneof"`
+	Modify *DocumentModify `protobuf:"bytes,2,opt,name=modify,proto3,oneof" json:"modify,omitempty"`
 }
 
 type StoreChangeContentChangeOfDelete struct {
-	Delete *DocumentDelete `protobuf:"bytes,3,opt,name=delete,proto3,oneof"`
+	Delete *DocumentDelete `protobuf:"bytes,3,opt,name=delete,proto3,oneof" json:"delete,omitempty"`
 }
 
 func (*StoreChangeContentChangeOfCreate) IsStoreChangeContentChange() {}
@@ -976,83 +976,83 @@ type IsChangeContentValue interface {
 }
 
 type ChangeContentValueOfBlockCreate struct {
-	BlockCreate *ChangeBlockCreate `protobuf:"bytes,1,opt,name=blockCreate,proto3,oneof"`
+	BlockCreate *ChangeBlockCreate `protobuf:"bytes,1,opt,name=blockCreate,proto3,oneof" json:"blockCreate,omitempty"`
 }
 
 type ChangeContentValueOfBlockUpdate struct {
-	BlockUpdate *ChangeBlockUpdate `protobuf:"bytes,2,opt,name=blockUpdate,proto3,oneof"`
+	BlockUpdate *ChangeBlockUpdate `protobuf:"bytes,2,opt,name=blockUpdate,proto3,oneof" json:"blockUpdate,omitempty"`
 }
 
 type ChangeContentValueOfBlockRemove struct {
-	BlockRemove *ChangeBlockRemove `protobuf:"bytes,3,opt,name=blockRemove,proto3,oneof"`
+	BlockRemove *ChangeBlockRemove `protobuf:"bytes,3,opt,name=blockRemove,proto3,oneof" json:"blockRemove,omitempty"`
 }
 
 type ChangeContentValueOfBlockMove struct {
-	BlockMove *ChangeBlockMove `protobuf:"bytes,4,opt,name=blockMove,proto3,oneof"`
+	BlockMove *ChangeBlockMove `protobuf:"bytes,4,opt,name=blockMove,proto3,oneof" json:"blockMove,omitempty"`
 }
 
 type ChangeContentValueOfBlockDuplicate struct {
-	BlockDuplicate *ChangeBlockDuplicate `protobuf:"bytes,5,opt,name=blockDuplicate,proto3,oneof"`
+	BlockDuplicate *ChangeBlockDuplicate `protobuf:"bytes,5,opt,name=blockDuplicate,proto3,oneof" json:"blockDuplicate,omitempty"`
 }
 
 type ChangeContentValueOfRelationAdd struct {
-	RelationAdd *ChangeRelationAdd `protobuf:"bytes,50,opt,name=relationAdd,proto3,oneof"`
+	RelationAdd *ChangeRelationAdd `protobuf:"bytes,50,opt,name=relationAdd,proto3,oneof" json:"relationAdd,omitempty"`
 }
 
 type ChangeContentValueOfRelationRemove struct {
-	RelationRemove *ChangeRelationRemove `protobuf:"bytes,51,opt,name=relationRemove,proto3,oneof"`
+	RelationRemove *ChangeRelationRemove `protobuf:"bytes,51,opt,name=relationRemove,proto3,oneof" json:"relationRemove,omitempty"`
 }
 
 type ChangeContentValueOfDetailsSet struct {
-	DetailsSet *ChangeDetailsSet `protobuf:"bytes,100,opt,name=detailsSet,proto3,oneof"`
+	DetailsSet *ChangeDetailsSet `protobuf:"bytes,100,opt,name=detailsSet,proto3,oneof" json:"detailsSet,omitempty"`
 }
 
 type ChangeContentValueOfDetailsUnset struct {
-	DetailsUnset *ChangeDetailsUnset `protobuf:"bytes,101,opt,name=detailsUnset,proto3,oneof"`
+	DetailsUnset *ChangeDetailsUnset `protobuf:"bytes,101,opt,name=detailsUnset,proto3,oneof" json:"detailsUnset,omitempty"`
 }
 
 type ChangeContentValueOfObjectTypeAdd struct {
-	ObjectTypeAdd *ChangeObjectTypeAdd `protobuf:"bytes,105,opt,name=objectTypeAdd,proto3,oneof"`
+	ObjectTypeAdd *ChangeObjectTypeAdd `protobuf:"bytes,105,opt,name=objectTypeAdd,proto3,oneof" json:"objectTypeAdd,omitempty"`
 }
 
 type ChangeContentValueOfObjectTypeRemove struct {
-	ObjectTypeRemove *ChangeObjectTypeRemove `protobuf:"bytes,106,opt,name=objectTypeRemove,proto3,oneof"`
+	ObjectTypeRemove *ChangeObjectTypeRemove `protobuf:"bytes,106,opt,name=objectTypeRemove,proto3,oneof" json:"objectTypeRemove,omitempty"`
 }
 
 type ChangeContentValueOfStoreKeySet struct {
-	StoreKeySet *ChangeStoreKeySet `protobuf:"bytes,107,opt,name=storeKeySet,proto3,oneof"`
+	StoreKeySet *ChangeStoreKeySet `protobuf:"bytes,107,opt,name=storeKeySet,proto3,oneof" json:"storeKeySet,omitempty"`
 }
 
 type ChangeContentValueOfStoreKeyUnset struct {
-	StoreKeyUnset *ChangeStoreKeyUnset `protobuf:"bytes,108,opt,name=storeKeyUnset,proto3,oneof"`
+	StoreKeyUnset *ChangeStoreKeyUnset `protobuf:"bytes,108,opt,name=storeKeyUnset,proto3,oneof" json:"storeKeyUnset,omitempty"`
 }
 
 type ChangeContentValueOfStoreSliceUpdate struct {
-	StoreSliceUpdate *ChangeStoreSliceUpdate `protobuf:"bytes,109,opt,name=storeSliceUpdate,proto3,oneof"`
+	StoreSliceUpdate *ChangeStoreSliceUpdate `protobuf:"bytes,109,opt,name=storeSliceUpdate,proto3,oneof" json:"storeSliceUpdate,omitempty"`
 }
 
 type ChangeContentValueOfOriginalCreatedTimestampSet struct {
-	OriginalCreatedTimestampSet *ChangeOriginalCreatedTimestampSet `protobuf:"bytes,110,opt,name=originalCreatedTimestampSet,proto3,oneof"`
+	OriginalCreatedTimestampSet *ChangeOriginalCreatedTimestampSet `protobuf:"bytes,110,opt,name=originalCreatedTimestampSet,proto3,oneof" json:"originalCreatedTimestampSet,omitempty"`
 }
 
 type ChangeContentValueOfSetFileInfo struct {
-	SetFileInfo *ChangeSetFileInfo `protobuf:"bytes,111,opt,name=setFileInfo,proto3,oneof"`
+	SetFileInfo *ChangeSetFileInfo `protobuf:"bytes,111,opt,name=setFileInfo,proto3,oneof" json:"setFileInfo,omitempty"`
 }
 
 type ChangeContentValueOfNotificationCreate struct {
-	NotificationCreate *ChangeNotificationCreate `protobuf:"bytes,112,opt,name=notificationCreate,proto3,oneof"`
+	NotificationCreate *ChangeNotificationCreate `protobuf:"bytes,112,opt,name=notificationCreate,proto3,oneof" json:"notificationCreate,omitempty"`
 }
 
 type ChangeContentValueOfNotificationUpdate struct {
-	NotificationUpdate *ChangeNotificationUpdate `protobuf:"bytes,113,opt,name=notificationUpdate,proto3,oneof"`
+	NotificationUpdate *ChangeNotificationUpdate `protobuf:"bytes,113,opt,name=notificationUpdate,proto3,oneof" json:"notificationUpdate,omitempty"`
 }
 
 type ChangeContentValueOfDeviceAdd struct {
-	DeviceAdd *ChangeDeviceAdd `protobuf:"bytes,114,opt,name=deviceAdd,proto3,oneof"`
+	DeviceAdd *ChangeDeviceAdd `protobuf:"bytes,114,opt,name=deviceAdd,proto3,oneof" json:"deviceAdd,omitempty"`
 }
 
 type ChangeContentValueOfDeviceUpdate struct {
-	DeviceUpdate *ChangeDeviceUpdate `protobuf:"bytes,115,opt,name=deviceUpdate,proto3,oneof"`
+	DeviceUpdate *ChangeDeviceUpdate `protobuf:"bytes,115,opt,name=deviceUpdate,proto3,oneof" json:"deviceUpdate,omitempty"`
 }
 
 func (*ChangeContentValueOfBlockCreate) IsChangeContentValue() {}
@@ -1836,15 +1836,15 @@ type IsChangeStoreSliceUpdateOperation interface {
 }
 
 type ChangeStoreSliceUpdateOperationOfAdd struct {
-	Add *ChangeStoreSliceUpdateAdd `protobuf:"bytes,2,opt,name=add,proto3,oneof"`
+	Add *ChangeStoreSliceUpdateAdd `protobuf:"bytes,2,opt,name=add,proto3,oneof" json:"add,omitempty"`
 }
 
 type ChangeStoreSliceUpdateOperationOfRemove struct {
-	Remove *ChangeStoreSliceUpdateRemove `protobuf:"bytes,3,opt,name=remove,proto3,oneof"`
+	Remove *ChangeStoreSliceUpdateRemove `protobuf:"bytes,3,opt,name=remove,proto3,oneof" json:"remove,omitempty"`
 }
 
 type ChangeStoreSliceUpdateOperationOfMove struct {
-	Move *ChangeStoreSliceUpdateMove `protobuf:"bytes,4,opt,name=move,proto3,oneof"`
+	Move *ChangeStoreSliceUpdateMove `protobuf:"bytes,4,opt,name=move,proto3,oneof" json:"move,omitempty"`
 }
 
 func (*ChangeStoreSliceUpdateOperationOfAdd) IsChangeStoreSliceUpdateOperation() {}
