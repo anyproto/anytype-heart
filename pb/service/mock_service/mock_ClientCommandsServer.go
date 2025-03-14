@@ -5611,19 +5611,19 @@ func (_c *MockClientCommandsServer_ChatGetMessagesByIds_Call) RunAndReturn(run f
 }
 
 // ChatReadMessages provides a mock function with given fields: _a0, _a1
-func (_m *MockClientCommandsServer) ChatReadMessages(_a0 context.Context, _a1 *pb.RpcChatReadRequest) *pb.RpcChatReadResponse {
+func (_m *MockClientCommandsServer) ChatReadMessages(_a0 context.Context, _a1 *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ChatReadMessages")
 	}
 
-	var r0 *pb.RpcChatReadResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatReadRequest) *pb.RpcChatReadResponse); ok {
+	var r0 *pb.RpcChatReadMessagesResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*pb.RpcChatReadResponse)
+			r0 = ret.Get(0).(*pb.RpcChatReadMessagesResponse)
 		}
 	}
 
@@ -5637,24 +5637,24 @@ type MockClientCommandsServer_ChatReadMessages_Call struct {
 
 // ChatReadMessages is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *pb.RpcChatReadRequest
+//   - _a1 *pb.RpcChatReadMessagesRequest
 func (_e *MockClientCommandsServer_Expecter) ChatReadMessages(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_ChatReadMessages_Call {
 	return &MockClientCommandsServer_ChatReadMessages_Call{Call: _e.mock.On("ChatReadMessages", _a0, _a1)}
 }
 
-func (_c *MockClientCommandsServer_ChatReadMessages_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatReadRequest)) *MockClientCommandsServer_ChatReadMessages_Call {
+func (_c *MockClientCommandsServer_ChatReadMessages_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatReadMessagesRequest)) *MockClientCommandsServer_ChatReadMessages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*pb.RpcChatReadRequest))
+		run(args[0].(context.Context), args[1].(*pb.RpcChatReadMessagesRequest))
 	})
 	return _c
 }
 
-func (_c *MockClientCommandsServer_ChatReadMessages_Call) Return(_a0 *pb.RpcChatReadResponse) *MockClientCommandsServer_ChatReadMessages_Call {
+func (_c *MockClientCommandsServer_ChatReadMessages_Call) Return(_a0 *pb.RpcChatReadMessagesResponse) *MockClientCommandsServer_ChatReadMessages_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockClientCommandsServer_ChatReadMessages_Call) RunAndReturn(run func(context.Context, *pb.RpcChatReadRequest) *pb.RpcChatReadResponse) *MockClientCommandsServer_ChatReadMessages_Call {
+func (_c *MockClientCommandsServer_ChatReadMessages_Call) RunAndReturn(run func(context.Context, *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse) *MockClientCommandsServer_ChatReadMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }
