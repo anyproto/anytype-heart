@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"golang.org/x/exp/maps"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -55,6 +56,9 @@ type ObjectStore interface {
 	SpaceNameGetter
 	spaceresolverstore.Store
 	CrossSpace
+
+	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
+	GetFileKeys(fileId domain.FileId) (map[string]string, error)
 }
 
 type IndexerStore interface {
