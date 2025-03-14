@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -53,7 +54,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyLayout.String(),
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
@@ -124,10 +125,10 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		require.Len(t, spaces, 2)
 		require.Equal(t, "Another Workspace", spaces[0].Name)
 		require.Equal(t, "another-space-id", spaces[0].Id)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), spaces[0].Icon, "Icon URL does not match")
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), *spaces[0].Icon.File, "Icon URL does not match")
 		require.Equal(t, "My Workspace", spaces[1].Name)
 		require.Equal(t, "my-space-id", spaces[1].Id)
-		require.Equal(t, "🚀", spaces[1].Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🚀")}, spaces[1].Icon)
 		require.Equal(t, 2, total)
 		require.False(t, hasMore)
 	})
@@ -281,11 +282,11 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		require.Len(t, members, 2)
 		require.Equal(t, "member-1", members[0].Id)
 		require.Equal(t, "John Doe", members[0].Name)
-		require.Equal(t, "👤", members[0].Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("👤")}, members[0].Icon)
 		require.Equal(t, "john.any", members[0].GlobalName)
 		require.Equal(t, "member-2", members[1].Id)
 		require.Equal(t, "Jane Doe", members[1].Name)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), members[1].Icon, "Icon URL does not match")
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), *members[1].Icon.File, "Icon URL does not match")
 		require.Equal(t, "jane.any", members[1].GlobalName)
 		require.Equal(t, 2, total)
 		require.False(t, hasMore)
