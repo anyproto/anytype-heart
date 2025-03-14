@@ -1,6 +1,6 @@
 syntax = "proto3";
 package anytype;
-option go_package = "pb";
+option go_package = "github.com/anyproto/anytype-heart/pb";
 
 import "pkg/lib/pb/model/protos/models.proto";
 import "pb/protos/events.proto";

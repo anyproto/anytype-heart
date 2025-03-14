@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	types "google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestGet(t *testing.T) {

@@ -86,44 +86,44 @@ func TestService_ListRelationsWithValue(t *testing.T) {
 			"date object - today",
 			domain.String(dateutil.NewDateObject(now, true).Id()),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
-				{bundle.RelationKeyMentions.String(), 1},
-				{bundle.RelationKeyAddedDate.String(), 1},
-				{bundle.RelationKeyCreatedDate.String(), 2},
-				{bundle.RelationKeyLastModifiedDate.String(), 3},
-				{bundle.RelationKeyLinks.String(), 1},
-				{bundle.RelationKeyName.String(), 1},
+				{RelationKey: bundle.RelationKeyMentions.String(), Counter: 1},
+				{RelationKey: bundle.RelationKeyAddedDate.String(), Counter: 1},
+				{RelationKey: bundle.RelationKeyCreatedDate.String(), Counter: 2},
+				{RelationKey: bundle.RelationKeyLastModifiedDate.String(), Counter: 3},
+				{RelationKey: bundle.RelationKeyLinks.String(), Counter: 1},
+				{RelationKey: bundle.RelationKeyName.String(), Counter: 1},
 			},
 		},
 		{
 			"date object - yesterday",
 			domain.String(dateutil.NewDateObject(now.Add(-24*time.Hour), true).Id()),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
-				{bundle.RelationKeyMentions.String(), 1},
-				{bundle.RelationKeyAddedDate.String(), 1},
-				{bundle.RelationKeyCreatedDate.String(), 1},
+				{RelationKey: bundle.RelationKeyMentions.String(), Counter: 1},
+				{RelationKey: bundle.RelationKeyAddedDate.String(), Counter: 1},
+				{RelationKey: bundle.RelationKeyCreatedDate.String(), Counter: 1},
 			},
 		},
 		{
 			"number",
 			domain.Int64(300),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
-				{bundle.RelationKeyCoverX.String(), 2},
-				{"daysTillSummer", 1},
+				{RelationKey: bundle.RelationKeyCoverX.String(), Counter: 2},
+				{RelationKey: "daysTillSummer", Counter: 1},
 			},
 		},
 		{
 			"bool",
 			domain.Bool(true),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
-				{bundle.RelationKeyIsFavorite.String(), 2},
-				{bundle.RelationKeyIsHidden.String(), 1},
+				{RelationKey: bundle.RelationKeyIsFavorite.String(), Counter: 2},
+				{RelationKey: bundle.RelationKeyIsHidden.String(), Counter: 1},
 			},
 		},
 		{
 			"string list",
 			domain.StringList([]string{"obj2", "obj3", dateutil.NewDateObject(now.Add(-30*time.Minute), true).Id()}),
 			[]*pb.RpcRelationListWithValueResponseResponseItem{
-				{bundle.RelationKeyLinks.String(), 1},
+				{RelationKey: bundle.RelationKeyLinks.String(), Counter: 1},
 			},
 		},
 	} {

@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
+	"github.com/planetscale/vtprotobuf/types/known/structpb"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -794,7 +795,7 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 	var prev []byte
 	filtered = msgs[:0]
 	for _, e := range msgs {
-		curr, err := e.Msg.Marshal()
+		curr, err := e.Msg.MarshalVT()
 		if err != nil {
 			continue
 		}
@@ -1570,7 +1571,7 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 	pathJoined := strings.Join(path, collectionKeysRemovedSeparator)
 	if value != nil {
 		oldval := store.Fields[path[len(path)-1]]
-		changed = oldval.Compare(value) != 0
+		changed = !(*structpb.Value)(oldval).EqualVT((*structpb.Value)(value))
 		store.Fields[path[len(path)-1]] = value
 		s.setStoreChangeId(pathJoined, s.changeId)
 		// in case we have previously removed this uniqueKeyInternal
@@ -1735,7 +1736,7 @@ func (s *State) GetChangedStoreKeys(prefixPath ...string) (paths [][]string) {
 				if !pbtypes.StructEqualKeys(st, parentVal.GetStructValue()) {
 					paths = append(paths, path)
 				}
-			} else if !v.Equal(pbtypes.Get(s.parent.store, path...)) {
+			} else if !(*structpb.Value)(v).EqualVT((*structpb.Value)(pbtypes.Get(s.parent.store, path...))) {
 				paths = append(paths, path)
 			}
 		}

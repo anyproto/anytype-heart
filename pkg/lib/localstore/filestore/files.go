@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	dsCtx "github.com/ipfs/go-datastore"
 	"github.com/samber/lo"
 
@@ -162,7 +161,7 @@ func (s *dsFileStore) AddFileVariant(file *storage.FileInfo) error {
 			return localstore.ErrDuplicateKey
 		}
 
-		b, err := proto.Marshal(file)
+		b, err := file.MarshalVT()
 		if err != nil {
 			return err
 		}
@@ -193,7 +192,7 @@ func (s *dsFileStore) AddFileVariants(upsert bool, files ...*storage.FileInfo) e
 				continue
 			}
 
-			b, err := proto.Marshal(file)
+			b, err := file.MarshalVT()
 			if err != nil {
 				return err
 			}
@@ -291,7 +290,7 @@ func (s *dsFileStore) addSingleFileKeys(txn *badger.Txn, fileKeys domain.FileEnc
 func (s *dsFileStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
 	fileKeysKey := filesKeysBase.ChildString(fileId.String())
 	fileKeys, err := badgerhelper.GetValue(s.db, fileKeysKey.Bytes(), func(raw []byte) (v storage.FileKeys, err error) {
-		return v, proto.Unmarshal(raw, &v)
+		return v, v.UnmarshalVT(raw)
 	})
 	if badgerhelper.IsNotFound(err) {
 		return nil, localstore.ErrNotFound

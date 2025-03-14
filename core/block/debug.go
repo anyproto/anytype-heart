@@ -9,8 +9,8 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/go-chi/chi/v5"
-	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -167,15 +167,15 @@ func (s *Service) getDebugObject(id string) (debugObject, error) {
 	err := cache.Do(s, id, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		root := blockbuilder.BuildAST(st.Blocks())
-		marshaller := jsonpb.Marshaler{}
-		detailsRaw, err := marshaller.MarshalToString(st.CombinedDetails().ToProto())
+		marshaller := protojson.MarshalOptions{}
+		detailsRaw, err := marshaller.Marshal(st.CombinedDetails().ToProto())
 		if err != nil {
 			return fmt.Errorf("marshal details: %w", err)
 		}
 
 		var storeRaw *json.RawMessage
 		if store := st.Store(); store != nil {
-			raw, err := marshaller.MarshalToString(st.Store())
+			raw, err := marshaller.Marshal(st.Store())
 			if err != nil {
 				return fmt.Errorf("marshal store: %w", err)
 			}

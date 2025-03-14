@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -313,8 +312,8 @@ func MarshalStoreChange(change *pb.StoreChange) (result []byte, dataType string,
 		bytesPool.Put(data)
 	}()
 
-	data = slices.Grow(data, change.Size())
-	n, err := change.MarshalTo(data)
+	data = slices.Grow(data, change.SizeVT())
+	n, err := change.MarshalToVT(data)
 	if err != nil {
 		return
 	}
@@ -348,7 +347,7 @@ func UnmarshalStoreChange(treeChange *objecttree.Change, data []byte) (result an
 			}
 		}
 	}
-	if err = proto.Unmarshal(data, change); err == nil {
+	if err = change.UnmarshalVT(data); err == nil {
 		result = change
 	}
 	return

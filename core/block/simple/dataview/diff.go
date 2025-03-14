@@ -3,8 +3,6 @@ package dataview
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
@@ -232,7 +230,7 @@ func (d *Dataview) diffGroupOrders(spaceId string, other *Dataview, msgs []simpl
 		for _, order1 := range d.content.GroupOrders {
 			if order1.ViewId == order2.ViewId {
 				found = true
-				changed = !proto.Equal(order1, order2)
+				changed = !order1.EqualVT(order2)
 				break
 			}
 		}

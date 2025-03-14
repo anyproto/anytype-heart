@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -1133,7 +1133,7 @@ func TestClipboard_PasteToCodeBlock(t *testing.T) {
 	cb := newFixture(t, sb)
 	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    codeBlock.Model().Id,
-		SelectedTextRange: &model.Range{4, 5},
+		SelectedTextRange: &model.Range{From: 4, To: 5},
 		TextSlot:          "\nsome text\nhere\n",
 	}, "")
 	require.NoError(t, err)

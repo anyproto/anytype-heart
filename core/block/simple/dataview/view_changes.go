@@ -1,8 +1,6 @@
 package dataview
 
 import (
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -44,7 +42,7 @@ func getViewFilterID(f *model.BlockContentDataviewFilter) string {
 }
 
 func isViewFiltersEqual(a, b *model.BlockContentDataviewFilter) bool {
-	return proto.Equal(a, b)
+	return a.EqualVT(b)
 }
 
 // nolint:dupl
@@ -102,7 +100,7 @@ func getViewRelationID(f *model.BlockContentDataviewRelation) string {
 }
 
 func isViewRelationsEqual(a, b *model.BlockContentDataviewRelation) bool {
-	return proto.Equal(a, b)
+	return a.EqualVT(b)
 }
 
 // nolint:dupl
@@ -160,7 +158,7 @@ func getViewSortID(f *model.BlockContentDataviewSort) string {
 }
 
 func isViewSortsEqual(a, b *model.BlockContentDataviewSort) bool {
-	return proto.Equal(a, b)
+	return a.EqualVT(b)
 }
 
 // nolint:dupl

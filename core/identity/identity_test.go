@@ -15,7 +15,6 @@ import (
 	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -106,7 +105,7 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 }
 
 func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.SymKey) []byte {
-	data, err := proto.Marshal(profile)
+	data, err := profile.MarshalVT()
 	require.NoError(t, err)
 	data, err = key.Encrypt(data)
 	require.NoError(t, err)

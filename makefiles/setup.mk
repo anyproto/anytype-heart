@@ -28,8 +28,8 @@ setup-gomobile:
 
 setup-protoc-go:
 	@echo 'Setting up protobuf compiler...'
-	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofaster
-	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofast
+	go build -o deps google.golang.org/protobuf/protoc-gen-gogofaster
+	go build -o deps google.golang.org/protobuf/protoc-gen-gogofast
 	go build -o deps github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 
 setup-protoc-jsweb:

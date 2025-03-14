@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/text"

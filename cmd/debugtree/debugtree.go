@@ -17,8 +17,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-graphviz"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/debug/exporter"
@@ -112,7 +111,7 @@ func main() {
 		fmt.Println(s.StringDebug())
 
 		payload := &model.ObjectChangePayload{}
-		err = proto.Unmarshal(ot.ChangeInfo().ChangePayload, payload)
+		err = payload.UnmarshalVT(ot.ChangeInfo().ChangePayload)
 		if err != nil {
 			return
 		}
@@ -129,15 +128,14 @@ func main() {
 
 	if *objectStore {
 		fmt.Println("fetch object store info..")
-		f, err := os.Open(filepath.Join(res.FolderPath, "localstore.json"))
+		f, err := os.ReadFile(filepath.Join(res.FolderPath, "localstore.json"))
 		if err != nil {
 			log.Fatal("can't open objectStore info:", err)
 		}
 		info := &model.ObjectInfo{}
-		if err = jsonpb.Unmarshal(f, info); err != nil {
+		if err = protojson.Unmarshal(f, info); err != nil {
 			log.Fatal("can't unmarshal objectStore info:", err)
 		}
-		defer f.Close()
 		fmt.Println(pbtypes.Sprint(info))
 	}
 

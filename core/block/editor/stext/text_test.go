@@ -412,7 +412,7 @@ func TestTextImpl_SetText(t *testing.T) {
 			Marks: &model.BlockContentTextMarks{
 				Marks: []*model.BlockContentTextMark{
 					{
-						Range: &model.Range{0, 1},
+						Range: &model.Range{From: 0, To: 1},
 						Type:  model.BlockContentTextMark_Mention,
 						Param: "blockId",
 					},

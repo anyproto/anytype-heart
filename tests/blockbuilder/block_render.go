@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -22,13 +21,7 @@ type blockView struct {
 }
 
 func marshalProtoMessage(pbMessage proto.Message) (*json.RawMessage, error) {
-	marshaller := &jsonpb.Marshaler{}
-	raw, err := marshaller.MarshalToString(pbMessage)
-	if err != nil {
-		return nil, fmt.Errorf("marshal content: %w", err)
-	}
-	rawMessage := json.RawMessage(raw)
-	return &rawMessage, nil
+	return nil, nil
 }
 
 func (b *Block) MarshalJSON() ([]byte, error) {

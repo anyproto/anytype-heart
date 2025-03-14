@@ -6,14 +6,12 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	_ "net/http/pprof"
 	"os"
 
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/pb"
-
-	_ "net/http/pprof"
 )
 
 func main() {
@@ -37,15 +35,15 @@ func decodeFile(path string) (string, error) {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
 	var snapshot pb.ChangeSnapshot
-	err = proto.Unmarshal(b, &snapshot)
+	err = snapshot.UnmarshalVT(b)
 	if err != nil {
 		return "", fmt.Errorf("failed to unmarshal pb: %w", err)
 	}
-	marsh := &jsonpb.Marshaler{Indent: " "}
-	s, err := marsh.MarshalToString(&snapshot)
+	marsh := &protojson.MarshalOptions{Indent: " "}
+	s, err := marsh.Marshal(&snapshot)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal to json: %w", err)
 	}
 
-	return s, nil
+	return string(s), nil
 }

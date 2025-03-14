@@ -3,8 +3,9 @@ package anonymize
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
+	"github.com/planetscale/vtprotobuf/types/known/structpb"
 	"github.com/stretchr/testify/assert"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
@@ -117,6 +118,6 @@ func TestStruct(t *testing.T) {
 
 	out := Struct(in)
 	for k := range in.Fields {
-		assert.False(t, in.Fields[k].Equal(out.Fields[k]), in.Fields[k], out.Fields[k])
+		assert.False(t, (*structpb.Value)(in.Fields[k]).EqualVT((*structpb.Value)(out.Fields[k])), in.Fields[k], out.Fields[k])
 	}
 }

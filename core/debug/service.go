@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/go-chi/chi/v5"
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
@@ -260,7 +260,7 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 	defer zw.Close()
 
 	var wr io.Writer
-	m := jsonpb.Marshaler{Indent: " "}
+	m := protojson.MarshalOptions{Indent: " "}
 
 	err = d.store.IterateSpaceIndex(func(store spaceindex.Store) error {
 		objIds, err = store.ListIds()
@@ -284,8 +284,11 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 			if err != nil {
 				return err
 			}
-
-			err = m.Marshal(wr, doc)
+			content, err := m.Marshal(doc)
+			if err != nil {
+				return err
+			}
+			_, err = wr.Write(content)
 			if err != nil {
 				return err
 			}

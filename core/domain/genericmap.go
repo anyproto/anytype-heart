@@ -5,8 +5,8 @@ import (
 	"sort"
 
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
+	types "google.golang.org/protobuf/types/known/structpb"
 )
 
 type GenericMap[K ~string] struct {

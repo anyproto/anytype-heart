@@ -1,17 +1,16 @@
 package filesync
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
+// ignore
 func TestSpaceUsageUpdate(t *testing.T) {
 	const limit = 1024 * 1024 * 1024
 	fx := newFixture(t, limit)
@@ -94,12 +93,6 @@ func TestSpaceUsageUpdate(t *testing.T) {
 			makeLimitUpdatedEvent(limit * 10),
 		}
 
-		if !assert.Equal(t, wantEvents, fx.events) {
-			m := json.NewEncoder(os.Stdout)
-			m.SetIndent("", "  ")
-			m.Encode(wantEvents)
-			fmt.Println("---")
-			m.Encode(fx.events)
-		}
+		testutil.AssertProtosEqual(t, wantEvents, fx.events)
 	})
 }

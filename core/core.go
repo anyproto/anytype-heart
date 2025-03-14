@@ -27,6 +27,9 @@ type Middleware struct {
 	applicationService *application.Service
 }
 
+func (mw *Middleware) mustEmbedUnimplementedClientCommandsServer() {
+}
+
 func New() *Middleware {
 	mw := &Middleware{
 		applicationService: application.New(),

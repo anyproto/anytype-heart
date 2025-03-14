@@ -51,30 +51,30 @@ func Test_snapshotChance2(t *testing.T) {
 
 func TestSource_CheckChangeSize(t *testing.T) {
 	t.Run("big change", func(t *testing.T) {
-		//given
-		c := &pb.Change{Content: []*pb.ChangeContent{{&pb.ChangeContentValueOfRelationAdd{RelationAdd: &pb.ChangeRelationAdd{
+		// given
+		c := &pb.Change{Content: []*pb.ChangeContent{{Value: &pb.ChangeContentValueOfRelationAdd{RelationAdd: &pb.ChangeRelationAdd{
 			RelationLinks: []*model.RelationLink{{Key: bundle.RelationKeyName.String()}}},
 		}}}}
-		data, _ := c.Marshal()
+		data, _ := c.MarshalVT()
 
-		//when
+		// when
 		err := checkChangeSize(data, len(data)-1)
 
-		//then
+		// then
 		assert.ErrorIs(t, err, ErrBigChangeSize)
 	})
 
 	t.Run("small change", func(t *testing.T) {
-		//given
-		c := &pb.Change{Content: []*pb.ChangeContent{{&pb.ChangeContentValueOfRelationAdd{RelationAdd: &pb.ChangeRelationAdd{
+		// given
+		c := &pb.Change{Content: []*pb.ChangeContent{{Value: &pb.ChangeContentValueOfRelationAdd{RelationAdd: &pb.ChangeRelationAdd{
 			RelationLinks: []*model.RelationLink{{Key: bundle.RelationKeyId.String()}}},
 		}}}}
-		data, _ := c.Marshal()
+		data, _ := c.MarshalVT()
 
-		//when
+		// when
 		err := checkChangeSize(data, len(data)+1)
 
-		//then
+		// then
 		assert.NoError(t, err)
 	})
 }

@@ -91,7 +91,7 @@ func (f *File) SetStyle(tp model.BlockContentFileStyle) Block {
 }
 
 func (f *File) SetSize(size int64) Block {
-	f.content.Size_ = size
+	f.content.Size = size
 	return f
 }
 
@@ -112,7 +112,7 @@ func (f *File) SetModel(m *model.BlockContentFile) Block {
 	f.content.AddedAt = m.AddedAt
 	f.content.Mime = m.Mime
 	f.content.Style = m.Style
-	f.content.Size_ = m.Size_
+	f.content.Size = m.Size
 	f.content.State = m.State
 	f.content.TargetObjectId = m.TargetObjectId
 	return f
@@ -159,9 +159,9 @@ func (f *File) Diff(spaceId string, b simple.Block) (msgs []simple.EventMessage,
 		hasChanges = true
 		changes.Name = &pb.EventBlockSetFileName{Value: file.content.Name}
 	}
-	if f.content.Size_ != file.content.Size_ {
+	if f.content.Size != file.content.Size {
 		hasChanges = true
-		changes.Size_ = &pb.EventBlockSetFileSize{Value: file.content.Size_}
+		changes.Size = &pb.EventBlockSetFileSize{Value: file.content.Size}
 	}
 	if f.content.Mime != file.content.Mime {
 		hasChanges = true
@@ -208,8 +208,8 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	if e.Style != nil {
 		f.content.Style = e.Style.GetValue()
 	}
-	if e.Size_ != nil {
-		f.content.Size_ = e.Size_.GetValue()
+	if e.Size != nil {
+		f.content.Size = e.Size.GetValue()
 	}
 	if e.TargetObjectId != nil {
 		f.content.TargetObjectId = e.TargetObjectId.GetValue()

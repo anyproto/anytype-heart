@@ -1,227 +1,210 @@
 {
-  "sbType": "Page",
-  "snapshot": {
-    "data": {
-      "blocks": [
+  "sbType":  "Page",
+  "snapshot":  {
+    "data":  {
+      "blocks":  [
         {
-          "id": "bafyreigsuu2hfq2cyb7ae4fg6ogcinhqmojudvbb7ekhe5fhrp2rrsixl4",
-          "restrictions": {
-
-          },
-          "childrenIds": [
+          "id":  "bafyreigsuu2hfq2cyb7ae4fg6ogcinhqmojudvbb7ekhe5fhrp2rrsixl4",
+          "restrictions":  {},
+          "childrenIds":  [
             "header",
             "65d889564ac3df30bcfe9576",
             "65d889804ac3df30bcfe9578"
           ],
-          "smartblock": {
-
-          }
+          "smartblock":  {}
         },
         {
-          "id": "header",
-          "restrictions": {
-            "edit": true,
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "header",
+          "restrictions":  {
+            "edit":  true,
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
           },
-          "childrenIds": [
+          "childrenIds":  [
             "title",
             "featuredRelations"
           ],
-          "layout": {
-            "style": "Header"
+          "layout":  {
+            "style":  "Header"
           }
         },
         {
-          "id": "65d889564ac3df30bcfe9576",
-          "restrictions": {
-
-          },
-          "text": {
-            "marks": {
-
-            }
+          "id":  "65d889564ac3df30bcfe9576",
+          "restrictions":  {},
+          "text":  {
+            "marks":  {}
           }
         },
         {
-          "id": "65d889804ac3df30bcfe9578",
-          "restrictions": {
-
-          },
-          "file": {
-            "name": "test_image.png",
-            "type": "Image",
-            "mime": "image/png",
-            "size": "473831",
-            "addedAt": "1708689793",
-            "targetObjectId": "bafyreie5dsqow6vcoqh5cahq4epetrm3tnmue5txgbdbyjojcgpase5soy",
-            "state": "Done"
+          "id":  "65d889804ac3df30bcfe9578",
+          "restrictions":  {},
+          "file":  {
+            "name":  "test_image.png",
+            "type":  "Image",
+            "mime":  "image/png",
+            "size":  "473831",
+            "addedAt":  "1708689793",
+            "targetObjectId":  "bafyreie5dsqow6vcoqh5cahq4epetrm3tnmue5txgbdbyjojcgpase5soy",
+            "state":  "Done"
           }
         },
         {
-          "id": "title",
-          "fields": {
-              "_detailsKey": [
-                    "name",
-                    "done"
-                  ]
-            },
-          "restrictions": {
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "title",
+          "fields":  {
+            "_detailsKey":  [
+              "name",
+              "done"
+            ]
           },
-          "text": {
-            "style": "Title",
-            "marks": {
-
-            }
+          "restrictions":  {
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
+          },
+          "text":  {
+            "style":  "Title",
+            "marks":  {}
           }
         },
         {
-          "id": "featuredRelations",
-          "restrictions": {
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "featuredRelations",
+          "restrictions":  {
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
           },
-          "featuredRelations": {
-
-          }
+          "featuredRelations":  {}
         }
       ],
-      "details": {
-          "backlinks": [
-              ],
-          "createdDate": 1708689740,
-          "creator": "_participant_bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
-          "featuredRelations": [
-                "type",
-                "backlinks"
-              ],
-          "id": "bafyreigsuu2hfq2cyb7ae4fg6ogcinhqmojudvbb7ekhe5fhrp2rrsixl4",
-          "lastModifiedBy": "_participant_bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
-          "lastModifiedDate": 1708689793,
-          "lastOpenedDate": 1708689789,
-          "layout": 0,
-          "links": [
-              ],
-          "name": "Page with file block",
-          "restrictions": [
-              ],
-          "snippet": "",
-          "spaceId": "bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4.3uxcyvge8is62",
-          "type": "bafyreiemifn6w6xsd7g6lltwtcatunjuycybb5wkxrzwp3ljfoid7z6b74"
-        },
-      "objectTypes": [
+      "details":  {
+        "backlinks":  [],
+        "createdDate":  1708689740,
+        "creator":  "_participant_bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+        "featuredRelations":  [
+          "type",
+          "backlinks"
+        ],
+        "id":  "bafyreigsuu2hfq2cyb7ae4fg6ogcinhqmojudvbb7ekhe5fhrp2rrsixl4",
+        "lastModifiedBy":  "_participant_bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+        "lastModifiedDate":  1708689793,
+        "lastOpenedDate":  1708689789,
+        "layout":  0,
+        "links":  [],
+        "name":  "Page with file block",
+        "restrictions":  [],
+        "snippet":  "",
+        "spaceId":  "bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4.3uxcyvge8is62",
+        "type":  "bafyreiemifn6w6xsd7g6lltwtcatunjuycybb5wkxrzwp3ljfoid7z6b74"
+      },
+      "objectTypes":  [
         "ot-page"
       ],
-      "relationLinks": [
+      "relationLinks":  [
         {
-          "key": "id",
-          "format": "object"
+          "key":  "id",
+          "format":  "object"
         },
         {
-          "key": "name",
-          "format": "shorttext"
+          "key":  "name",
+          "format":  "shorttext"
         },
         {
-          "key": "description"
+          "key":  "description"
         },
         {
-          "key": "snippet"
+          "key":  "snippet"
         },
         {
-          "key": "iconEmoji",
-          "format": "emoji"
+          "key":  "iconEmoji",
+          "format":  "emoji"
         },
         {
-          "key": "iconImage",
-          "format": "file"
+          "key":  "iconImage",
+          "format":  "file"
         },
         {
-          "key": "type",
-          "format": "object"
+          "key":  "type",
+          "format":  "object"
         },
         {
-          "key": "layout",
-          "format": "number"
+          "key":  "layout",
+          "format":  "number"
         },
         {
-          "key": "layoutAlign",
-          "format": "number"
+          "key":  "layoutAlign",
+          "format":  "number"
         },
         {
-          "key": "coverId"
+          "key":  "coverId"
         },
         {
-          "key": "coverScale",
-          "format": "number"
+          "key":  "coverScale",
+          "format":  "number"
         },
         {
-          "key": "coverType",
-          "format": "number"
+          "key":  "coverType",
+          "format":  "number"
         },
         {
-          "key": "coverX",
-          "format": "number"
+          "key":  "coverX",
+          "format":  "number"
         },
         {
-          "key": "coverY",
-          "format": "number"
+          "key":  "coverY",
+          "format":  "number"
         },
         {
-          "key": "createdDate",
-          "format": "date"
+          "key":  "createdDate",
+          "format":  "date"
         },
         {
-          "key": "creator",
-          "format": "object"
+          "key":  "creator",
+          "format":  "object"
         },
         {
-          "key": "lastModifiedDate",
-          "format": "date"
+          "key":  "lastModifiedDate",
+          "format":  "date"
         },
         {
-          "key": "lastModifiedBy",
-          "format": "object"
+          "key":  "lastModifiedBy",
+          "format":  "object"
         },
         {
-          "key": "lastOpenedDate",
-          "format": "date"
+          "key":  "lastOpenedDate",
+          "format":  "date"
         },
         {
-          "key": "featuredRelations",
-          "format": "object"
+          "key":  "featuredRelations",
+          "format":  "object"
         },
         {
-          "key": "isFavorite",
-          "format": "checkbox"
+          "key":  "isFavorite",
+          "format":  "checkbox"
         },
         {
-          "key": "workspaceId",
-          "format": "object"
+          "key":  "workspaceId",
+          "format":  "object"
         },
         {
-          "key": "spaceId",
-          "format": "object"
+          "key":  "spaceId",
+          "format":  "object"
         },
         {
-          "key": "links",
-          "format": "object"
+          "key":  "links",
+          "format":  "object"
         },
         {
-          "key": "internalFlags",
-          "format": "number"
+          "key":  "internalFlags",
+          "format":  "number"
         },
         {
-          "key": "restrictions",
-          "format": "number"
+          "key":  "restrictions",
+          "format":  "number"
         },
         {
-          "key": "backlinks",
-          "format": "object"
+          "key":  "backlinks",
+          "format":  "object"
         }
       ]
     }
