@@ -69,7 +69,7 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
 
 		// List
-		v1.GET("/spaces/:space_id/lists/:list_id/objects", list.GetObjectsInListHandler(s.listService))
+		v1.GET("/spaces/:space_id/lists/:list_id/:view_id/objects", list.GetObjectsInListHandler(s.listService))
 		v1.POST("/spaces/:space_id/lists/:list_id/objects", list.AddObjectsToListHandler(s.listService))
 		v1.DELETE("/spaces/:space_id/lists/:list_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), list.RemoveObjectFromListHandler(s.listService))
 

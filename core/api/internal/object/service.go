@@ -82,6 +82,7 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyLayoutAlign.String():       true,
 	bundle.RelationKeyIsHiddenDiscovery.String(): true,
 	bundle.RelationKeyLayout.String():            true,
+	bundle.RelationKeyIsReadonly.String():        true,
 }
 
 type Service interface {
@@ -721,13 +722,9 @@ func (s *ObjectService) convertValue(key string, value *types.Value, format stri
 // getPropertyFormatMap returns the map of property key to property format from the ObjectShowResponse.
 func (s *ObjectService) getPropertyFormatMap(propertyLinks []*model.RelationLink) map[string]string {
 	propertyFormatToName := make(map[int32]string, len(model.RelationFormat_name))
-	for k, v := range model.RelationFormat_name {
-		propertyFormatToName[k] = v
+	for k := range model.RelationFormat_name {
+		propertyFormatToName[k] = s.mapRelationFormat(model.RelationFormat(k))
 	}
-	propertyFormatToName[int32(model.RelationFormat_longtext)] = "text"
-	propertyFormatToName[int32(model.RelationFormat_shorttext)] = "text"
-	propertyFormatToName[int32(model.RelationFormat_tag)] = "multi_select"
-	propertyFormatToName[int32(model.RelationFormat_status)] = "select"
 
 	propertyFormatMap := map[string]string{}
 	for _, detail := range propertyLinks {
@@ -792,6 +789,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 		var text *Text
 		var file *File
 		var relation *Relation
+		var dataviewMapping *Dataview
 
 		switch content := block.Content.(type) {
 		case *model.BlockContentOfText:
@@ -818,6 +816,40 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 			relation = &Relation{
 				Id: content.Relation.Key,
 			}
+		case *model.BlockContentOfDataview:
+			var viewList []View
+			for _, v := range content.Dataview.Views {
+				var filters []Filter
+				for _, f := range v.Filters {
+					filters = append(filters, Filter{
+						Id:          f.Id,
+						RelationKey: f.RelationKey,
+						Format:      s.mapRelationFormat(f.Format),
+						Condition:   strcase.ToSnake(model.BlockContentDataviewFilterCondition_name[int32(f.Condition)]),
+						Value:       f.Value.GetStringValue(),
+					})
+				}
+				var sorts []Sort
+				for _, srt := range v.Sorts {
+					sorts = append(sorts, Sort{
+						Id:          srt.Id,
+						RelationKey: srt.RelationKey,
+						Format:      s.mapRelationFormat(srt.Format),
+						SortType:    strcase.ToSnake(model.BlockContentDataviewSortType_name[int32(srt.Type)]),
+					})
+				}
+				viewList = append(viewList, View{
+					Id:      v.Id,
+					Name:    v.Name,
+					Layout:  s.mapDataviewTypeName(v.Type),
+					Filters: filters,
+					Sorts:   sorts,
+				})
+			}
+			dataviewMapping = &Dataview{
+				Views: viewList,
+			}
+
 		}
 		// TODO: other content types?
 
@@ -830,8 +862,35 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 			Text:            text,
 			File:            file,
 			Relation:        relation,
+			Dataview:        dataviewMapping,
 		})
 	}
 
 	return blocks
+}
+
+// mapRelationFormat maps the relation format to a string.
+func (s *ObjectService) mapRelationFormat(format model.RelationFormat) string {
+	switch format {
+	case model.RelationFormat_longtext:
+		return "text"
+	case model.RelationFormat_shorttext:
+		return "text"
+	case model.RelationFormat_tag:
+		return "multi_select"
+	case model.RelationFormat_status:
+		return "select"
+	default:
+		return strcase.ToSnake(model.RelationFormat_name[int32(format)])
+	}
+}
+
+// mapDataviewTypeName maps the dataview type to a string.
+func (s *ObjectService) mapDataviewTypeName(dataviewType model.BlockContentDataviewViewType) string {
+	switch dataviewType {
+	case model.BlockContentDataviewView_Table:
+		return "grid"
+	default:
+		return strcase.ToSnake(model.BlockContentDataviewViewType_name[int32(dataviewType)])
+	}
 }

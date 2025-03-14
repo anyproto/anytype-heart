@@ -49,6 +49,8 @@ components:
             type: string
           type: array
           uniqueItems: false
+        dataview:
+          $ref: '#/components/schemas/object.Dataview'
         file:
           $ref: '#/components/schemas/object.File'
         id:
@@ -99,6 +101,16 @@ components:
           example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
           type: string
       type: object
+    object.Dataview:
+      description: The dataview, applicable for list objects
+      properties:
+        views:
+          description: The list of views
+          items:
+            $ref: '#/components/schemas/object.View'
+          type: array
+          uniqueItems: false
+      type: object
     object.File:
       description: The file of the block, if applicable
       properties:
@@ -128,6 +140,29 @@ components:
           type: string
         type:
           description: The type of the file
+          type: string
+      type: object
+    object.Filter:
+      properties:
+        condition:
+          description: The filter condition
+          example: contains
+          type: string
+        format:
+          description: The format of the relation used for filtering
+          example: text
+          type: string
+        id:
+          description: The id of the filter
+          example: 67bf3f21cda9134102e2422c
+          type: string
+        relation_key:
+          description: The relation key used for filtering
+          example: name
+          type: string
+        value:
+          description: The value used for filtering
+          example: Some value...
           type: string
       type: object
     object.Object:
@@ -187,15 +222,19 @@ components:
     object.Property:
       properties:
         checkbox:
+          description: The checkbox value, if applicable
           example: true
           type: boolean
         date:
+          description: The date value, if applicable
           example: "2025-02-14T12:34:56Z"
           type: string
         email:
+          description: The email value, if applicable
           example: example@example.com
           type: string
         file:
+          description: The file references, if applicable
           example:
           - '[''fileId'']'
           items:
@@ -203,6 +242,7 @@ components:
           type: array
           uniqueItems: false
         format:
+          description: The format of the property
           enum:
           - text
           - number
@@ -218,20 +258,25 @@ components:
           example: date
           type: string
         id:
+          description: The id of the property
           example: last_modified_date
           type: string
         multi_select:
+          description: The multi-select values, if applicable
           items:
             $ref: '#/components/schemas/object.Tag'
           type: array
           uniqueItems: false
         name:
+          description: The name of the property
           example: Last modified date
           type: string
         number:
+          description: The number value, if applicable
           example: 42
           type: number
         object:
+          description: The object references, if applicable
           example:
           - '[''objectId'']'
           items:
@@ -239,24 +284,47 @@ components:
           type: array
           uniqueItems: false
         phone:
+          description: The phone number value, if applicable
           example: "+1234567890"
           type: string
         select:
           $ref: '#/components/schemas/object.Tag'
         text:
+          description: The text value, if applicable
           example: Some text...
           type: string
         url:
+          description: The url value, if applicable
           example: https://example.com
           type: string
       type: object
     object.Relation:
-      description: The relation of the block, if applicable
+      description: The relation block, if applicable
       properties:
         id:
           type: string
       type: object
+    object.Sort:
+      properties:
+        format:
+          description: The format of the relation used for sorting
+          example: text
+          type: string
+        id:
+          description: The id of the sort
+          example: 67bf3f21cda9134102e2422c
+          type: string
+        relation_key:
+          description: The relation key used for sorting
+          example: name
+          type: string
+        sort_type:
+          description: The sort direction
+          example: asc
+          type: string
+      type: object
     object.Tag:
+      description: The select value, if applicable
       properties:
         color:
           description: The color of the tag
@@ -361,6 +429,36 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/object.Type'
+      type: object
+    object.View:
+      properties:
+        filters:
+          description: The list of filters
+          items:
+            $ref: '#/components/schemas/object.Filter'
+          type: array
+          uniqueItems: false
+        id:
+          description: The id of the view
+          example: 67bf3f21cda9134102e2422c
+          type: string
+        layout:
+          description: The layout of the view
+          enum:
+          - grid
+          - table
+          example: grid
+          type: string
+        name:
+          description: The name of the view
+          example: All
+          type: string
+        sorts:
+          description: The list of sorts
+          items:
+            $ref: '#/components/schemas/object.Sort'
+          type: array
+          uniqueItems: false
       type: object
     pagination.PaginatedResponse-object_Object:
       properties:
@@ -1666,7 +1764,7 @@ paths:
       summary: Get template
       tags:
       - templates
-  /v1/spaces/{space_id}/lists/{list_id}/objects:
+  /v1/spaces/{space_id}/lists/{list_id}/{view_id}/objects:
     get:
       description: Returns a paginated list of objects that are associated with a
         specific list (or collection) within a space. This endpoint helps clients
@@ -1682,6 +1780,12 @@ paths:
       - description: List ID
         in: path
         name: list_id
+        required: true
+        schema:
+          type: string
+      - description: View ID
+        in: path
+        name: view_id
         required: true
         schema:
           type: string
@@ -1727,6 +1831,7 @@ paths:
       summary: Get objects in list
       tags:
       - lists
+  /v1/spaces/{space_id}/lists/{list_id}/objects:
     post:
       description: Enables clients to add one or more objects to a specific list by
         submitting a JSON array of object IDs. Upon success, the endpoint returns

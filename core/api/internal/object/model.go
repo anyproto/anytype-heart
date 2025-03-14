@@ -38,7 +38,8 @@ type Block struct {
 	VerticalAlign   string    `json:"vertical_align" enums:"VerticalAlignTop,VerticalAlignMiddle,VerticalAlignBottom" example:"VerticalAlignTop"` // The vertical alignment of the block
 	Text            *Text     `json:"text,omitempty"`                                                                                             // The text of the block, if applicable
 	File            *File     `json:"file,omitempty"`                                                                                             // The file of the block, if applicable
-	Relation        *Relation `json:"relation,omitempty"`                                                                                         // The relation of the block, if applicable
+	Relation        *Relation `json:"relation,omitempty"`                                                                                         // The relation block, if applicable
+	Dataview        *Dataview `json:"dataview,omitempty"`                                                                                         // The dataview, applicable for list objects
 }
 
 type Text struct {
@@ -66,21 +67,48 @@ type Relation struct {
 	Id string
 }
 
+type Dataview struct {
+	Views []View `json:"views"` // The list of views
+}
+
+type View struct {
+	Id      string   `json:"id" example:"67bf3f21cda9134102e2422c"`    // The id of the view
+	Name    string   `json:"name" example:"All"`                       // The name of the view
+	Layout  string   `json:"layout" example:"grid" enums:"grid,table"` // The layout of the view
+	Filters []Filter `json:"filters"`                                  // The list of filters
+	Sorts   []Sort   `json:"sorts"`                                    // The list of sorts
+}
+
+type Filter struct {
+	Id          string `json:"id" example:"67bf3f21cda9134102e2422c"`                                                                                                                                                  // The id of the filter
+	RelationKey string `json:"relation_key" example:"name"`                                                                                                                                                            // The relation key used for filtering
+	Format      string `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"`                                                                                 // The format of the relation used for filtering
+	Condition   string `json:"condition" example:"contains" enum:"equal,not_equal,greater,less,greater_or_equal,less_or_equal,like,not_like,in,not_in,empty,not_empty,all_in,not_all_in,exact_in,not_exact_in,exists"` // The filter condition
+	Value       string `json:"value" example:"Some value..."`                                                                                                                                                          // The value used for filtering
+}
+
+type Sort struct {
+	Id          string `json:"id" example:"67bf3f21cda9134102e2422c"`                                                                  // The id of the sort
+	RelationKey string `json:"relation_key" example:"name"`                                                                            // The relation key used for sorting
+	Format      string `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the relation used for sorting
+	SortType    string `json:"sort_type" example:"asc" enum:"asc,desc,custom"`                                                         // The sort direction
+}
+
 type Property struct {
-	Id          string   `json:"id" example:"last_modified_date"`
-	Name        string   `json:"name" example:"Last modified date"`
-	Format      string   `json:"format" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"`
-	Text        *string  `json:"text,omitempty" example:"Some text..."`
-	Number      *float64 `json:"number,omitempty" example:"42"`
-	Select      *Tag     `json:"select,omitempty"`
-	MultiSelect []Tag    `json:"multi_select,omitempty"`
-	Date        *string  `json:"date,omitempty" example:"2025-02-14T12:34:56Z"`
-	File        []string `json:"file,omitempty" example:"['fileId']"`
-	Checkbox    *bool    `json:"checkbox,omitempty" example:"true"`
-	Url         *string  `json:"url,omitempty" example:"https://example.com"`
-	Email       *string  `json:"email,omitempty" example:"example@example.com"`
-	Phone       *string  `json:"phone,omitempty" example:"+1234567890"`
-	Object      []string `json:"object,omitempty" example:"['objectId']"`
+	Id          string   `json:"id" example:"last_modified_date"`                                                                         // The id of the property
+	Name        string   `json:"name" example:"Last modified date"`                                                                       // The name of the property
+	Format      string   `json:"format" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property
+	Text        *string  `json:"text,omitempty" example:"Some text..."`                                                                   // The text value, if applicable
+	Number      *float64 `json:"number,omitempty" example:"42"`                                                                           // The number value, if applicable
+	Select      *Tag     `json:"select,omitempty"`                                                                                        // The select value, if applicable
+	MultiSelect []Tag    `json:"multi_select,omitempty"`                                                                                  // The multi-select values, if applicable
+	Date        *string  `json:"date,omitempty" example:"2025-02-14T12:34:56Z"`                                                           // The date value, if applicable
+	File        []string `json:"file,omitempty" example:"['fileId']"`                                                                     // The file references, if applicable
+	Checkbox    *bool    `json:"checkbox,omitempty" example:"true" enum:"true,false"`                                                     // The checkbox value, if applicable
+	Url         *string  `json:"url,omitempty" example:"https://example.com"`                                                             // The url value, if applicable
+	Email       *string  `json:"email,omitempty" example:"example@example.com"`                                                           // The email value, if applicable
+	Phone       *string  `json:"phone,omitempty" example:"+1234567890"`                                                                   // The phone number value, if applicable
+	Object      []string `json:"object,omitempty" example:"['objectId']"`                                                                 // The object references, if applicable
 }
 
 type Tag struct {
