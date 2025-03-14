@@ -202,6 +202,7 @@ func (s *dsObjectStore) setDefaultConfig() {
 	}
 	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
+	s.anyStoreConfig.SQLiteGlobalPageCachePreallocateSizeBytes = 1 << 26
 }
 
 func ensureDirExists(dir string) error {

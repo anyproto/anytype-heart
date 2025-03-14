@@ -138,7 +138,8 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 	}
 	opts["synchronous"] = "off"
 	return &anystore.Config{
-		ReadConnections:         4,
-		SQLiteConnectionOptions: opts,
+		ReadConnections:                           4,
+		SQLiteConnectionOptions:                   opts,
+		SQLiteGlobalPageCachePreallocateSizeBytes: 1 << 26,
 	}
 }
