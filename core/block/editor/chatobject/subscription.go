@@ -22,16 +22,16 @@ type subscription struct {
 	spaceId     string
 	chatId      string
 	eventSender event.Sender
+	spaceIndex  spaceindex.Store
 
 	sessionContext session.Context
 
-	eventsBuffer []*pb.EventMessage
-
-	spaceIndex spaceindex.Store
-
+	eventsBuffer  []*pb.EventMessage
 	identityCache *expirable.LRU[string, *domain.Details]
+	ids           []string
 
-	ids []string
+	chatState        *model.ChatState
+	chatStateUpdated bool
 }
 
 func newSubscription(spaceId string, chatId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
@@ -44,10 +44,14 @@ func newSubscription(spaceId string, chatId string, eventSender event.Sender, sp
 	}
 }
 
-func (s *subscription) subscribe(subId string) {
+// subscribe subscribes to messages. It returns true if there was no subscription with provided id
+func (s *subscription) subscribe(subId string) bool {
 	if !slices.Contains(s.ids, subId) {
 		s.ids = append(s.ids, subId)
+		s.chatStateUpdated = false
+		return true
 	}
+	return false
 }
 
 func (s *subscription) unsubscribe(subId string) {
@@ -67,21 +71,38 @@ func (s *subscription) setSessionContext(ctx session.Context) {
 	s.sessionContext = ctx
 }
 
-func (s *subscription) flush() {
-	defer func() {
-		s.eventsBuffer = s.eventsBuffer[:0]
-	}()
+func (s *subscription) getChatState() *model.ChatState {
+	return copyChatState(s.chatState)
+}
 
-	if len(s.eventsBuffer) == 0 {
+func (s *subscription) updateChatState(updater func(*model.ChatState)) {
+	updater(s.chatState)
+	s.chatStateUpdated = true
+}
+
+func (s *subscription) flush() {
+	if !s.canSend() {
 		return
+	}
+
+	events := slices.Clone(s.eventsBuffer)
+	s.eventsBuffer = s.eventsBuffer[:0]
+
+	if s.chatStateUpdated {
+		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
+			State:  s.getChatState(),
+			SubIds: slices.Clone(s.ids),
+		}}))
+		s.chatStateUpdated = false
 	}
 
 	ev := &pb.Event{
 		ContextId: s.chatId,
-		Messages:  slices.Clone(s.eventsBuffer),
+		Messages:  events,
 	}
+
 	if s.sessionContext != nil {
-		s.sessionContext.SetMessages(s.chatId, slices.Clone(s.eventsBuffer))
+		s.sessionContext.SetMessages(s.chatId, events)
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 		s.sessionContext = nil
 	} else if s.isActive() {
@@ -103,9 +124,23 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 }
 
 func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
+
+	s.updateChatState(func(state *model.ChatState) {
+		if !message.Read {
+			if message.OrderId < state.Messages.OldestOrderId {
+				state.Messages.OldestOrderId = message.OrderId
+			}
+			state.Messages.Counter++
+		}
+		if message.AddedAt > state.DbTimestamp {
+			state.DbTimestamp = message.AddedAt
+		}
+	})
+
 	if !s.canSend() {
 		return
 	}
+
 	ev := &pb.EventChatAdd{
 		Id:           message.Id,
 		Message:      message,
@@ -131,7 +166,6 @@ func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
 			}
 		}
 	}
-
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
 		ChatAdd: ev,
 	}))
@@ -175,6 +209,29 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 	}))
 }
 
+// updateReadStatus updates the read status of the messages with the given ids
+// read ids should ONLY contain ids if they were actually modified in the DB
+func (s *subscription) updateReadStatus(ids []string, read bool) {
+	s.updateChatState(func(state *model.ChatState) {
+		if read {
+			state.Messages.Counter -= int32(len(ids))
+		} else {
+			state.Messages.Counter += int32(len(ids))
+		}
+	})
+
+	if !s.canSend() {
+		return
+	}
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReadStatus{
+		ChatUpdateReadStatus: &pb.EventChatUpdateReadStatus{
+			Ids:    ids,
+			IsRead: read,
+			SubIds: slices.Clone(s.ids),
+		},
+	}))
+}
+
 func (s *subscription) canSend() bool {
 	if s.sessionContext != nil {
 		return true
@@ -183,4 +240,25 @@ func (s *subscription) canSend() bool {
 		return false
 	}
 	return true
+}
+
+func copyChatState(state *model.ChatState) *model.ChatState {
+	if state == nil {
+		return nil
+	}
+	return &model.ChatState{
+		Messages:    copyReadState(state.Messages),
+		Mentions:    copyReadState(state.Mentions),
+		DbTimestamp: state.DbTimestamp,
+	}
+}
+
+func copyReadState(state *model.ChatStateUnreadState) *model.ChatStateUnreadState {
+	if state == nil {
+		return nil
+	}
+	return &model.ChatStateUnreadState{
+		OldestOrderId: state.OldestOrderId,
+		Counter:       state.Counter,
+	}
 }
