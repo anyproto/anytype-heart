@@ -226,7 +226,9 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 		return nil, 0, false, ErrFailedListMembers
 	}
 
-	combinedRecords := append(joiningResp.Records, activeResp.Records...)
+	combinedRecords := make([]*types.Struct, 0, len(joiningResp.Records)+len(activeResp.Records))
+	combinedRecords = append(combinedRecords, joiningResp.Records...)
+	combinedRecords = append(combinedRecords, activeResp.Records...)
 
 	total = len(combinedRecords)
 	paginatedMembers, hasMore := pagination.Paginate(combinedRecords, offset, limit)
