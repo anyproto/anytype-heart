@@ -38,6 +38,11 @@ type MemberResponse struct {
 	Member Member `json:"member"` // The member
 }
 
+type UpdateMemberRequest struct {
+	Status string `json:"status" enums:"active,removed,declined" example:"active"` // Status of the member
+	Role   string `json:"role,omitempty" enums:"reader,writer" example:"reader"`   // Role to assign if approving a joining member
+}
+
 type Member struct {
 	Object     string    `json:"object" example:"member"`                                                                                                                              // The data model of the object
 	Id         string    `json:"id" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ"` // The profile object id of the member
@@ -45,5 +50,6 @@ type Member struct {
 	Icon       util.Icon `json:"icon"`                                                                                                                                                 // The icon of the member
 	Identity   string    `json:"identity" example:"AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"`                                                                                  // The identity of the member in the network
 	GlobalName string    `json:"global_name" example:"john.any"`                                                                                                                       // The global name of the member in the network
-	Role       string    `json:"role" enums:"Reader,Writer,Owner,NoPermission" example:"Owner"`                                                                                        // The role of the member
+	Status     string    `json:"status" enums:"joining,active" example:"active"`                                                                                                       // The status of the member
+	Role       string    `json:"role" enums:"reader,writer,owner,no_permission" example:"owner"`                                                                                       // The role of the member
 }
