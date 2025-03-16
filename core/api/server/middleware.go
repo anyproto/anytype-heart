@@ -99,7 +99,7 @@ func (s *Server) ensureAccountInfo(accountService account.Service) gin.HandlerFu
 // ensureMetadataHeader is a middleware that ensures the metadata header is set.
 func (s *Server) ensureMetadataHeader() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("X-API-Version", "0.0.2")
+		c.Writer.Header().Set("Anytype-Version", "2025-03-17")
 		c.Next()
 	}
 }
