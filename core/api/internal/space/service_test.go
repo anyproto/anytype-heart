@@ -245,33 +245,108 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 }
 
 func TestSpaceService_ListMembers(t *testing.T) {
+	joiningReq := &pb.RpcObjectSearchRequest{
+		SpaceId: "space-id",
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyParticipantStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
+			},
+		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: bundle.RelationKeyName.String(),
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+		},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyIconEmoji.String(),
+			bundle.RelationKeyIconImage.String(),
+			bundle.RelationKeyIdentity.String(),
+			bundle.RelationKeyGlobalName.String(),
+			bundle.RelationKeyParticipantPermissions.String(),
+			bundle.RelationKeyParticipantStatus.String(),
+		},
+	}
+
+	activeReq := &pb.RpcObjectSearchRequest{
+		SpaceId: "space-id",
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+			},
+			{
+				Operator:    model.BlockContentDataviewFilter_No,
+				RelationKey: bundle.RelationKeyParticipantStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: bundle.RelationKeyName.String(),
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+		},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyIconEmoji.String(),
+			bundle.RelationKeyIconImage.String(),
+			bundle.RelationKeyIdentity.String(),
+			bundle.RelationKeyGlobalName.String(),
+			bundle.RelationKeyParticipantPermissions.String(),
+			bundle.RelationKeyParticipantStatus.String(),
+		},
+	}
+
 	t.Run("successfully get members", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
+		fx.mwMock.On("ObjectSearch", mock.Anything, joiningReq).
 			Return(&pb.RpcObjectSearchResponse{
 				Records: []*types.Struct{
 					{
 						Fields: map[string]*types.Value{
 							bundle.RelationKeyId.String():                     pbtypes.String("member-1"),
-							bundle.RelationKeyName.String():                   pbtypes.String("John Doe"),
-							bundle.RelationKeyIconEmoji.String():              pbtypes.String("👤"),
-							bundle.RelationKeyIdentity.String():               pbtypes.String("AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"),
-							bundle.RelationKeyGlobalName.String():             pbtypes.String("john.any"),
-							bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
-							bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Owner)),
-						},
-					},
-					{
-						Fields: map[string]*types.Value{
-							bundle.RelationKeyId.String():                     pbtypes.String("member-2"),
 							bundle.RelationKeyName.String():                   pbtypes.String("Jane Doe"),
 							bundle.RelationKeyIconImage.String():              pbtypes.String(iconImage),
 							bundle.RelationKeyIdentity.String():               pbtypes.String("AAjLbEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMD4"),
 							bundle.RelationKeyGlobalName.String():             pbtypes.String("jane.any"),
 							bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
 							bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_NoPermissions)),
+						},
+					},
+				},
+				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			}).Once()
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, activeReq).
+			Return(&pb.RpcObjectSearchResponse{
+				Records: []*types.Struct{
+					{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyId.String():                     pbtypes.String("member-2"),
+							bundle.RelationKeyName.String():                   pbtypes.String("John Doe"),
+							bundle.RelationKeyIconEmoji.String():              pbtypes.String("👤"),
+							bundle.RelationKeyIdentity.String():               pbtypes.String("AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"),
+							bundle.RelationKeyGlobalName.String():             pbtypes.String("john.any"),
+							bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+							bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Owner)),
 						},
 					},
 				},
@@ -286,18 +361,18 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		require.Len(t, members, 2)
 
 		require.Equal(t, "member-1", members[0].Id)
-		require.Equal(t, "John Doe", members[0].Name)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("👤")}, members[0].Icon)
-		require.Equal(t, "john.any", members[0].GlobalName)
-		require.Equal(t, "active", members[0].Status)
-		require.Equal(t, "owner", members[0].Role)
+		require.Equal(t, "Jane Doe", members[0].Name)
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), *members[0].Icon.File, "Icon URL does not match")
+		require.Equal(t, "jane.any", members[0].GlobalName)
+		require.Equal(t, "joining", members[0].Status)
+		require.Equal(t, "no_permissions", members[0].Role)
 
 		require.Equal(t, "member-2", members[1].Id)
-		require.Equal(t, "Jane Doe", members[1].Name)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), *members[1].Icon.File, "Icon URL does not match")
-		require.Equal(t, "jane.any", members[1].GlobalName)
-		require.Equal(t, "joining", members[1].Status)
-		require.Equal(t, "no_permissions", members[1].Role)
+		require.Equal(t, "John Doe", members[1].Name)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("👤")}, members[1].Icon)
+		require.Equal(t, "john.any", members[1].GlobalName)
+		require.Equal(t, "active", members[1].Status)
+		require.Equal(t, "owner", members[1].Role)
 
 		require.Equal(t, 2, total)
 		require.False(t, hasMore)
@@ -307,7 +382,13 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		// given
 		fx := newFixture(t)
 
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
+		fx.mwMock.On("ObjectSearch", mock.Anything, activeReq).
+			Return(&pb.RpcObjectSearchResponse{
+				Records: []*types.Struct{},
+				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			}).Once()
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, joiningReq).
 			Return(&pb.RpcObjectSearchResponse{
 				Records: []*types.Struct{},
 				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
