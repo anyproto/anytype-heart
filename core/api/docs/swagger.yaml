@@ -1188,7 +1188,7 @@ paths:
         required: true
         schema:
           type: string
-      - description: Member ID
+      - description: Member ID or Identity
         in: path
         name: member_id
         required: true
