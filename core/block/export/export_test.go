@@ -745,13 +745,6 @@ func TestExport_Export(t *testing.T) {
 			bundle.RelationKeyId:   domain.String(objectID),
 			bundle.RelationKeyType: domain.String(objectTypeId),
 		}))
-		doc.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyId.String(),
-			Format: model.RelationFormat_longtext,
-		}, &model.RelationLink{
-			Key:    bundle.RelationKeyType.String(),
-			Format: model.RelationFormat_longtext,
-		})
 		smartBlockTest.Doc = doc
 
 		workspaceTest := smarttest.New(workspaceId)
@@ -759,13 +752,6 @@ func TestExport_Export(t *testing.T) {
 			bundle.RelationKeyId:   domain.String(workspaceId),
 			bundle.RelationKeyType: domain.String(objectTypeId),
 		}))
-		workspaceDoc.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyId.String(),
-			Format: model.RelationFormat_longtext,
-		}, &model.RelationLink{
-			Key:    bundle.RelationKeyType.String(),
-			Format: model.RelationFormat_longtext,
-		})
 		workspaceTest.Doc = workspaceDoc
 
 		objectType := smarttest.New(objectTypeId)
@@ -773,13 +759,6 @@ func TestExport_Export(t *testing.T) {
 			bundle.RelationKeyId:   domain.String(objectTypeId),
 			bundle.RelationKeyType: domain.String(objectTypeId),
 		}))
-		objectTypeDoc.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyId.String(),
-			Format: model.RelationFormat_longtext,
-		}, &model.RelationLink{
-			Key:    bundle.RelationKeyType.String(),
-			Format: model.RelationFormat_longtext,
-		})
 		objectType.Doc = objectTypeDoc
 		objectType.SetType(smartblock.SmartBlockTypeObjectType)
 		objectGetter.EXPECT().GetObject(context.Background(), objectID).Return(smartBlockTest, nil)
