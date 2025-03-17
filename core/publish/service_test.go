@@ -716,13 +716,6 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 		bundle.RelationKeyId:   domain.String(objectId),
 		bundle.RelationKeyType: domain.String(objectTypeId),
 	}))
-	doc.AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyId.String(),
-		Format: model.RelationFormat_longtext,
-	}, &model.RelationLink{
-		Key:    bundle.RelationKeyType.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	smartBlockTest.Doc = doc
 
 	objectType := smarttest.New(objectTypeId)
@@ -730,13 +723,6 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 		bundle.RelationKeyId:   domain.String(objectTypeId),
 		bundle.RelationKeyType: domain.String(objectTypeId),
 	}))
-	objectTypeDoc.AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyId.String(),
-		Format: model.RelationFormat_longtext,
-	}, &model.RelationLink{
-		Key:    bundle.RelationKeyType.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	objectType.Doc = objectTypeDoc
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
 
@@ -745,13 +731,6 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 		bundle.RelationKeyId:   domain.String(workspaceId),
 		bundle.RelationKeyType: domain.String(objectTypeId),
 	}))
-	workspaceDoc.AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyId.String(),
-		Format: model.RelationFormat_longtext,
-	}, &model.RelationLink{
-		Key:    bundle.RelationKeyType.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	workspaceTest.Doc = workspaceDoc
 
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
@@ -815,13 +794,6 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 		bundle.RelationKeyId:   domain.String(objectId),
 		bundle.RelationKeyType: domain.String(objectTypeId),
 	}))
-	doc.AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyId.String(),
-		Format: model.RelationFormat_longtext,
-	}, &model.RelationLink{
-		Key:    bundle.RelationKeyType.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	smartBlockTest.Doc = doc
 	smartBlockTest.AddBlock(simple.New(&model.Block{Id: objectId, ChildrenIds: []string{"fileBlock"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 	smartBlockTest.AddBlock(simple.New(&model.Block{Id: "fileBlock", Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: fileId}}}))
@@ -831,13 +803,6 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 		bundle.RelationKeyId:   domain.String(objectTypeId),
 		bundle.RelationKeyType: domain.String(objectTypeId),
 	}))
-	objectTypeDoc.AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyId.String(),
-		Format: model.RelationFormat_longtext,
-	}, &model.RelationLink{
-		Key:    bundle.RelationKeyType.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	objectType.Doc = objectTypeDoc
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
 
@@ -846,13 +811,6 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 		bundle.RelationKeyId:   domain.String(workspaceId),
 		bundle.RelationKeyType: domain.String(objectTypeId),
 	}))
-	workspaceDoc.AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyId.String(),
-		Format: model.RelationFormat_longtext,
-	}, &model.RelationLink{
-		Key:    bundle.RelationKeyType.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	workspaceTest.Doc = workspaceDoc
 
 	file := smarttest.New(fileId)
@@ -861,13 +819,6 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 		bundle.RelationKeyType:   domain.String(objectTypeId),
 		bundle.RelationKeyFileId: domain.String(fileId),
 	}))
-	fileDoc.AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyId.String(),
-		Format: model.RelationFormat_longtext,
-	}, &model.RelationLink{
-		Key:    bundle.RelationKeyType.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	file.Doc = fileDoc
 	file.SetType(smartblock.SmartBlockTypeFileObject)
 	file.SetSpaceId(spaceId)

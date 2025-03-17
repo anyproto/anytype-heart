@@ -32,7 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/anyerror"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import")
@@ -122,7 +121,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		return oc.updateWidgetObject(st)
 	}
 
-	st.ModifyLinkedFilesInDetails(func(fileId string) string {
+	st.ModifyLinkedFilesInDetails(oc.objectStore.SpaceIndex(spaceID), func(fileId string) string {
 		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin)
 		if newFileId != fileId {
 			filesToDelete = append(filesToDelete, fileId)
@@ -135,7 +134,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys, origin)
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.AllRelationKeys(), typeKeys, origin)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
@@ -205,19 +204,19 @@ func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[st
 func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	ctx context.Context,
 	spaceID string,
-	links pbtypes.RelationLinks,
+	relationKeys []domain.RelationKey,
 	objectTypeKeys []domain.TypeKey,
 	origin objectorigin.ObjectOrigin,
 ) error {
 
-	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))
-	for _, link := range links {
+	idsToCheck := make([]string, 0, len(relationKeys)+len(objectTypeKeys))
+	for _, key := range relationKeys {
 		// TODO: check if we have them in oldIDtoNew
-		if !bundle.HasRelation(domain.RelationKey(link.Key)) {
+		if !bundle.HasRelation(key) {
 			continue
 		}
 
-		idsToCheck = append(idsToCheck, addr.BundledRelationURLPrefix+link.Key)
+		idsToCheck = append(idsToCheck, key.BundledURL())
 	}
 
 	for _, typeKey := range objectTypeKeys {
@@ -542,7 +541,7 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 
 func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
 	for key, value := range st.Details().Iterate() {
-		if newKey, ok := oldIDtoNew[string(key)]; ok && newKey != string(key) {
+		if newKey, ok := oldIDtoNew[key.String()]; ok && newKey != key.String() {
 			oc.updateDetails(st, domain.RelationKey(newKey), value, key)
 		}
 	}
@@ -553,21 +552,5 @@ func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]strin
 
 func (oc *ObjectCreator) updateDetails(st *state.State, newKey domain.RelationKey, value domain.Value, key domain.RelationKey) {
 	st.SetDetail(newKey, value)
-	link := oc.findRelationLinkByKey(st, key)
-	if link != nil {
-		link.Key = string(newKey)
-		st.AddRelationLinks(link)
-	}
 	st.RemoveRelation(key)
-}
-
-func (oc *ObjectCreator) findRelationLinkByKey(st *state.State, key domain.RelationKey) *model.RelationLink {
-	relationLinks := st.GetRelationLinks()
-	var link *model.RelationLink
-	for _, link = range relationLinks {
-		if domain.RelationKey(link.Key) == key {
-			break
-		}
-	}
-	return link
 }

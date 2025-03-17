@@ -39,9 +39,8 @@ func TestSmartBlock_Init(t *testing.T) {
 
 	require.NotNil(t, initCtx)
 	require.NotNil(t, initCtx.State)
-	links := initCtx.State.GetRelationLinks()
 	for _, key := range bundle.RequiredInternalRelations {
-		assert.Truef(t, links.Has(key.String()), "missing relation %s", key)
+		assert.Truef(t, initCtx.State.HasRelation(key), "missing relation %s", key)
 	}
 	// then
 	assert.Equal(t, id, fx.RootId())

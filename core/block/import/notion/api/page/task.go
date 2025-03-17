@@ -84,7 +84,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 }
 
 func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.ConvertError) (*common.StateSnapshot, []*common.StateSnapshot) {
-	details, relationsAndOptionsSnapshots, relationLinks := pt.provideDetails(object)
+	details, relationsAndOptionsSnapshots := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
@@ -94,7 +94,7 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.Conv
 	}
 	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
 	pt.uploadFilesLocally(resp.Blocks)
-	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
+	snapshot := pt.provideSnapshot(resp.Blocks, details)
 	return snapshot, relationsAndOptionsSnapshots
 }
 
@@ -157,20 +157,19 @@ func (pt *Task) uploadIconImage(block *model.Block, wg *sync.WaitGroup) (func(),
 	}, false
 }
 
-func (pt *Task) provideDetails(object *DataObject) (*domain.Details, []*common.StateSnapshot, []*model.RelationLink) {
+func (pt *Task) provideDetails(object *DataObject) (*domain.Details, []*common.StateSnapshot) {
 	details, relationLinks := pt.prepareDetails()
 	relationsSnapshots, notionRelationLinks := pt.handlePageProperties(object, details)
 	relationLinks = append(relationLinks, notionRelationLinks...)
 	api.UploadFileRelationLocally(pt.fileDownloader, details, relationLinks)
-	return details, relationsSnapshots, relationLinks
+	return details, relationsSnapshots
 }
 
-func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details *domain.Details, relationLinks []*model.RelationLink) *common.StateSnapshot {
+func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details *domain.Details) *common.StateSnapshot {
 	snapshot := &common.StateSnapshot{
-		Blocks:        notionBlocks,
-		Details:       details,
-		ObjectTypes:   []string{bundle.TypeKeyPage.String()},
-		RelationLinks: relationLinks,
+		Blocks:      notionBlocks,
+		Details:     details,
+		ObjectTypes: []string{bundle.TypeKeyPage.String()},
 	}
 	return snapshot
 }

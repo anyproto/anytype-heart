@@ -138,7 +138,7 @@ func (ot *ObjectType) featuredRelationsMigration(s *state.State) {
 		return
 	}
 
-	if s.HasRelation(bundle.RelationKeyRecommendedFeaturedRelations.String()) {
+	if s.HasRelation(bundle.RelationKeyRecommendedFeaturedRelations) {
 		return
 	}
 

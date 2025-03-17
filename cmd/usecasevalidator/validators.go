@@ -47,25 +47,14 @@ func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err erro
 			relKeys = append(relKeys, rel.Key)
 		}
 	}
-	relLinks := pbtypes.RelationLinks(s.Snapshot.Data.GetRelationLinks())
 	for _, rk := range relKeys {
-		if !relLinks.Has(rk) {
-			if rel, errFound := bundle.GetRelation(domain.RelationKey(rk)); errFound == nil {
-				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
-					Key:    rk,
-					Format: rel.Format,
-				})
-				continue
-			}
-			if relInfo, found := info.customTypesAndRelations[rk]; found {
-				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
-					Key:    rk,
-					Format: relInfo.relationFormat,
-				})
-				continue
-			}
-			err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in relation links of object %s", rk, id))
+		if _, errFound := bundle.GetRelation(domain.RelationKey(rk)); errFound == nil {
+			continue
 		}
+		if _, found := info.customTypesAndRelations[rk]; found {
+			continue
+		}
+		err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in relation links of object %s", rk, id))
 	}
 	return err
 }
@@ -251,24 +240,6 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
 		return errSkipObject
 	}
 	return nil
-}
-
-func getRelationLinkByKey(links []*model.RelationLink, key string) *model.RelationLink {
-	for _, l := range links {
-		if l.Key == key {
-			return l
-		}
-	}
-	return nil
-}
-
-func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
-	for _, k := range s.Snapshot.FileKeys {
-		if k.Hash == hash && len(k.Keys) > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 // these relations will be overwritten on import

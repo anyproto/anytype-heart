@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -53,11 +54,13 @@ type dot struct {
 	nodes        map[string]*cgraph.Node
 	linksByNode  map[string][]linkInfo
 	sbtProvider  typeprovider.SmartBlockTypeProvider
+	objectStore  objectstore.ObjectStore
 }
 
 func NewMultiConverter(
 	format graphviz.Format,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	objectStore objectstore.ObjectStore,
 ) converter.MultiConverter {
 	ctx := context.Background()
 	g, err := graphviz.New(ctx)
@@ -77,6 +80,7 @@ func NewMultiConverter(
 		linksByNode:  map[string][]linkInfo{},
 		nodes:        map[string]*cgraph.Node{},
 		sbtProvider:  sbtProvider,
+		objectStore:  objectStore,
 	}
 }
 
@@ -123,7 +127,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, objectlink.Flags{
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, d.objectStore.SpaceIndex(space.Id()), objectlink.Flags{
 		Blocks:    true,
 		Details:   true,
 		Relations: false,
