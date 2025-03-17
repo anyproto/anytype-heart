@@ -336,7 +336,7 @@ message Block {
         }
 
         message Dataview {
-            repeated string source = 1;
+            repeated string source = 1; // can be set for detached(without TargetObjectId) inline sets
             repeated View views = 2;
             string activeView = 3; // do not generate changes for this field
             // deprecated
@@ -344,7 +344,7 @@ message Block {
             repeated GroupOrder groupOrders = 12;
             repeated ObjectOrder objectOrders = 13;
             repeated anytype.model.RelationLink relationLinks = 5;
-            string TargetObjectId = 6;
+            string TargetObjectId = 6; // empty for original set/collection objects and for detached inline sets
             bool isCollection = 14;
 
             message View {
@@ -1019,6 +1019,12 @@ enum SpaceAccessType {
     Shared = 2;
 }
 
+enum SpaceUxType {
+    Chat = 0; // chat-first UX
+    Data = 1; // objects-first UX
+    Stream = 2; // stream UX (chat with limited amount of owners)
+}
+
 message Metadata {
     oneof payload {
         Payload.IdentityPayload identity = 1;
@@ -1372,17 +1378,28 @@ message DeviceInfo {
     bool isConnected = 5;
 }
 
+message ChatState {
+    message UnreadState {
+        string oldestOrderId = 1; // oldest(in the lex sorting) unread message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest
+        int32 counter = 2; // total number of unread messages
+    }
+    UnreadState messages = 1; // unread messages
+    UnreadState mentions = 2; // unread mentions
+    int64 dbTimestamp = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
+}
+
 message ChatMessage {
     string id = 1;        // Unique message identifier
     string orderId = 2;   // Used for subscriptions
     string creator = 3;       // Identifier for the message creator
     int64 createdAt = 4;
     int64 modifiedAt = 9;
+    int64 addedAt = 11; // Message received and added to db at
     string replyToMessageId = 5;   // Identifier for the message being replied to
     MessageContent message = 6;  // Message content
     repeated Attachment attachments = 7;  // Attachments slice
     Reactions reactions = 8;  // Reactions to the message
-
+    bool read = 10; // Message read status
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part

@@ -14,71 +14,75 @@ func TestSubscription(t *testing.T) {
 	fx := newFixture(t)
 
 	for i := 0; i < 10; i++ {
-		inputMessage := givenMessage()
+		inputMessage := givenComplexMessage()
 		inputMessage.Message.Text = fmt.Sprintf("text %d", i+1)
 		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 		require.NoError(t, err)
 		assert.NotEmpty(t, messageId)
 	}
 
-	messages, _, err := fx.SubscribeLastMessages(ctx, 5)
+	resp, err := fx.SubscribeLastMessages(ctx, "subId", 5, false)
 	require.NoError(t, err)
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
-	for i, msg := range messages {
+	for i, msg := range resp.Messages {
 		assert.Equal(t, wantTexts[i], msg.Message.Text)
 	}
 
 	t.Run("add message", func(t *testing.T) {
-		messageId, err := fx.AddMessage(ctx, nil, givenMessage())
+		fx.events = nil
+
+		messageId, err := fx.AddMessage(ctx, nil, givenComplexMessage())
 		require.NoError(t, err)
-		require.Len(t, fx.events, 1)
+		require.Len(t, fx.events, 2)
 
 		ev := fx.events[0].GetChatAdd()
 		require.NotNil(t, ev)
 		assert.Equal(t, messageId, ev.Id)
 
-		fx.events = nil
+		evState := fx.events[1].GetChatStateUpdate()
+		require.NotNil(t, evState)
+		assert.True(t, evState.State.DbTimestamp > 0)
 	})
 
 	t.Run("edit message", func(t *testing.T) {
-		edited := givenMessage()
+		fx.events = nil
+
+		edited := givenComplexMessage()
 		edited.Message.Text = "edited text"
 
-		err = fx.EditMessage(ctx, messages[0].Id, edited)
+		err = fx.EditMessage(ctx, resp.Messages[0].Id, edited)
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 
 		ev := fx.events[0].GetChatUpdate()
 		require.NotNil(t, ev)
-		assert.Equal(t, messages[0].Id, ev.Id)
+		assert.Equal(t, resp.Messages[0].Id, ev.Id)
 		assert.Equal(t, edited.Message.Text, ev.Message.Message.Text)
-
-		fx.events = nil
 	})
 
 	t.Run("toggle message reaction", func(t *testing.T) {
-		err = fx.ToggleMessageReaction(ctx, messages[0].Id, "👍")
+		fx.events = nil
+
+		err = fx.ToggleMessageReaction(ctx, resp.Messages[0].Id, "👍")
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 
 		ev := fx.events[0].GetChatUpdateReactions()
 		require.NotNil(t, ev)
-		assert.Equal(t, messages[0].Id, ev.Id)
+		assert.Equal(t, resp.Messages[0].Id, ev.Id)
 		_, ok := ev.Reactions.Reactions["👍"]
 		assert.True(t, ok)
-
-		fx.events = nil
 	})
 
 	t.Run("delete message", func(t *testing.T) {
-		err = fx.DeleteMessage(ctx, messages[0].Id)
+		fx.events = nil
+
+		err = fx.DeleteMessage(ctx, resp.Messages[0].Id)
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 
 		ev := fx.events[0].GetChatDelete()
 		require.NotNil(t, ev)
-		assert.Equal(t, messages[0].Id, ev.Id)
-
-		fx.events = nil
+		assert.Equal(t, resp.Messages[0].Id, ev.Id)
 	})
 }

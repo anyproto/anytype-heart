@@ -393,5 +393,8 @@ service ClientCommands {
     rpc ChatGetMessagesByIds (anytype.Rpc.Chat.GetMessagesByIds.Request) returns (anytype.Rpc.Chat.GetMessagesByIds.Response);
     rpc ChatSubscribeLastMessages (anytype.Rpc.Chat.SubscribeLastMessages.Request) returns (anytype.Rpc.Chat.SubscribeLastMessages.Response);
     rpc ChatUnsubscribe (anytype.Rpc.Chat.Unsubscribe.Request) returns (anytype.Rpc.Chat.Unsubscribe.Response);
+    rpc ChatReadMessages (anytype.Rpc.Chat.ReadMessages.Request) returns (anytype.Rpc.Chat.ReadMessages.Response);
+    rpc ChatUnreadMessages (anytype.Rpc.Chat.Unread.Request) returns (anytype.Rpc.Chat.Unread.Response);
+    rpc ChatSubscribeToMessagePreviews (anytype.Rpc.Chat.SubscribeToMessagePreviews.Request) returns (anytype.Rpc.Chat.SubscribeToMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 }

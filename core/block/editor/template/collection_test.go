@@ -92,7 +92,7 @@ func TestMakeDataviewContent(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			block := MakeDataviewContent(tc.isCollection, tc.ot, tc.relLinks)
+			block := MakeDataviewContent(tc.isCollection, tc.ot, tc.relLinks, "")
 			assertDataviewBlock(t, block, tc.isCollection, tc.expectedRelations, tc.isVisible)
 		})
 	}

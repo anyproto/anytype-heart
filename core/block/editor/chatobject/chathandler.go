@@ -12,17 +12,21 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/timeid"
 )
 
 type ChatHandler struct {
-	subscription *subscription
+	subscription    *subscription
+	currentIdentity string
+	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
+	forceNotRead bool
 }
 
-func (d ChatHandler) CollectionName() string {
+func (d *ChatHandler) CollectionName() string {
 	return collectionName
 }
 
-func (d ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err error) {
+func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err error) {
 	coll, err := s.Collection(ctx, collectionName)
 	if err != nil {
 		return err
@@ -36,23 +40,33 @@ func (d ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err er
 	return
 }
 
-func (d ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
+func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
 	msg := newMessageWrapper(ch.Arena, ch.Value)
 	msg.setCreatedAt(ch.Change.Timestamp)
 	msg.setCreator(ch.Change.Creator)
+	if d.forceNotRead {
+		msg.setRead(false)
+	} else {
+		if ch.Change.Creator == d.currentIdentity {
+			msg.setRead(true)
+		} else {
+			msg.setRead(false)
+		}
+	}
 
+	msg.setAddedAt(timeid.NewNano())
 	model := msg.toModel()
 	model.OrderId = ch.Change.Order
-	d.subscription.add(model)
+	d.subscription.add(ch.Change.PrevOrderId, model)
 
 	return
 }
 
-func (d ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
+func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
 	return storestate.ModifyModeUpsert, nil
 }
 
-func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (mode storestate.DeleteMode, err error) {
+func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (mode storestate.DeleteMode, err error) {
 	coll, err := ch.State.Collection(ctx, collectionName)
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("get collection: %w", err)
@@ -74,7 +88,7 @@ func (d ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (
 	return storestate.DeleteModeDelete, nil
 }
 
-func (d ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModify, mod query.Modifier) query.Modifier {
+func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModify, mod query.Modifier) query.Modifier {
 	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
 		if len(key.KeyPath) == 0 {
 			return nil, false, fmt.Errorf("no key path")

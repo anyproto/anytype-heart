@@ -29,6 +29,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -705,6 +708,142 @@ func TestExport_Export(t *testing.T) {
 		objectPath := filepath.Join(objectsDirectory, link1+".pb.json")
 		assert.False(t, fileNames[objectPath])
 	})
+	t.Run("export with space", func(t *testing.T) {
+		// given
+		storeFixture := objectstore.NewStoreFixture(t)
+		objectTypeId := "customObjectType"
+		objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
+		assert.Nil(t, err)
+
+		objectID := "id"
+		workspaceId := "workspaceId"
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:      domain.String(objectID),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:             domain.String(workspaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_space)),
+			},
+			{
+				bundle.RelationKeyId:                   domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
+				bundle.RelationKeySpaceId:              domain.String(spaceId),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+
+		smartBlockTest := smarttest.New(objectID)
+		doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectID),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		doc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		smartBlockTest.Doc = doc
+
+		workspaceTest := smarttest.New(workspaceId)
+		workspaceDoc := workspaceTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(workspaceId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		workspaceDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		workspaceTest.Doc = workspaceDoc
+
+		objectType := smarttest.New(objectTypeId)
+		objectTypeDoc := objectType.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(objectTypeId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		objectTypeDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		objectType.Doc = objectTypeDoc
+		objectType.SetType(smartblock.SmartBlockTypeObjectType)
+		objectGetter.EXPECT().GetObject(context.Background(), objectID).Return(smartBlockTest, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
+		objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+		service := process.New()
+		err = service.Init(a)
+		assert.Nil(t, err)
+
+		notifications := mock_notifications.NewMockNotifications(t)
+		notificationSend := make(chan struct{})
+		notifications.EXPECT().CreateAndSend(mock.Anything).RunAndReturn(func(notification *model.Notification) error {
+			close(notificationSend)
+			return nil
+		})
+
+		spaceService := mock_space.NewMockService(t)
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
+		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
+
+		e := &export{
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			processService:      service,
+			notificationService: notifications,
+			spaceService:        spaceService,
+		}
+
+		// when
+		path, success, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
+			Path:          t.TempDir(),
+			ObjectIds:     []string{objectID},
+			Format:        model.Export_Protobuf,
+			Zip:           true,
+			IncludeNested: true,
+			IncludeFiles:  true,
+			IsJson:        true,
+			IncludeSpace:  true,
+		})
+
+		// then
+		<-notificationSend
+		assert.Nil(t, err)
+		assert.Equal(t, 3, success)
+
+		reader, err := zip.OpenReader(path)
+		assert.Nil(t, err)
+
+		assert.Len(t, reader.File, 3)
+		fileNames := make(map[string]bool, 3)
+		for _, file := range reader.File {
+			fileNames[file.Name] = true
+		}
+
+		objectPath := filepath.Join(objectsDirectory, workspaceId+".pb.json")
+		assert.True(t, fileNames[objectPath])
+	})
 }
 
 func Test_docsForExport(t *testing.T) {
@@ -761,7 +900,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err := expCtx.docsForExport()
+		err := expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -809,7 +948,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err := expCtx.docsForExport()
+		err := expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -861,7 +1000,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -923,7 +1062,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -986,7 +1125,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1059,7 +1198,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1193,7 +1332,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1253,7 +1392,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1319,7 +1458,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1424,11 +1563,11 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 3, len(expCtx.docs))
+		assert.Equal(t, 4, len(expCtx.docs))
 	})
 	t.Run("objects without file", func(t *testing.T) {
 		// given
@@ -1487,7 +1626,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1541,7 +1680,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1654,7 +1793,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 		// then
 		assert.Nil(t, err)
 		assert.Equal(t, 5, len(expCtx.docs))
@@ -1735,7 +1874,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -1869,7 +2008,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -2003,7 +2142,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -2085,7 +2224,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)
@@ -2167,7 +2306,7 @@ func Test_docsForExport(t *testing.T) {
 		})
 
 		// when
-		err = expCtx.docsForExport()
+		err = expCtx.docsForExport(nil)
 
 		// then
 		assert.Nil(t, err)

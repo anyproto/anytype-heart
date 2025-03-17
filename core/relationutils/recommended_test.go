@@ -70,7 +70,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			})
 
 			// when
-			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details, bundle.TypeKeyNote)
 
 			// then
 			assert.NoError(t, err)
@@ -78,7 +78,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			assert.Equal(t, tc.expected, details.GetStringList(bundle.RelationKeyRecommendedRelations))
 			assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
 			assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
-			assert.Len(t, keys, len(tc.expected)+3+8) // 3 featured and 8 hidden
+			assert.Len(t, keys, len(tc.expected)+3+4) // 3 featured and 4 hidden
 		})
 	}
 
@@ -91,7 +91,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 		})
 
 		// when
-		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details, bundle.TypeKeyPage)
 
 		// then
 		assert.NoError(t, err)
@@ -130,7 +130,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			})
 
 			// when
-			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
+			keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details, bundle.TypeKeyTask)
 
 			// then
 			assert.NoError(t, err)
@@ -138,7 +138,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 			assert.Equal(t, tc.expected, details.GetStringList(bundle.RelationKeyRecommendedRelations))
 			assert.Equal(t, defaultRecFeatRelIds, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
 			assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
-			assert.Len(t, keys, len(tc.expected)+3+8) // 3 featured and 8 hidden
+			assert.Len(t, keys, len(tc.expected)+3+4) // 3 featured and 4 hidden
 		})
 	}
 
@@ -146,7 +146,6 @@ func TestFillRecommendedRelations(t *testing.T) {
 		// given
 		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
-				bundle.RelationKeyOrigin.BundledURL(),
 				bundle.RelationKeyFileExt.BundledURL(),
 				bundle.RelationKeyAddedDate.BundledURL(),
 				bundle.RelationKeyCameraIso.BundledURL(),
@@ -156,7 +155,7 @@ func TestFillRecommendedRelations(t *testing.T) {
 		})
 
 		// when
-		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details)
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details, bundle.TypeKeyProject)
 
 		// then
 		assert.NoError(t, err)
@@ -169,7 +168,30 @@ func TestFillRecommendedRelations(t *testing.T) {
 			bundle.RelationKeyCameraIso.URL(),
 			bundle.RelationKeyAperture.URL(),
 		}, details.GetStringList(bundle.RelationKeyRecommendedFileRelations))
-		assert.Len(t, keys, 17)
+		assert.Len(t, keys, 13)
+	})
+
+	t.Run("recommendedRelations relations of Set", func(t *testing.T) {
+		// given
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
+				bundle.RelationKeySetOf.BundledURL(),
+				bundle.RelationKeyType.BundledURL(),
+				bundle.RelationKeyTag.BundledURL(),
+				bundle.RelationKeyCreatedDate.BundledURL(),
+			}),
+		})
+
+		// when
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details, bundle.TypeKeySet)
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, isAlreadyFilled)
+		assert.Equal(t, buildRelationIds(defaultRecommendedRelationKeys), details.GetStringList(bundle.RelationKeyRecommendedRelations))
+		assert.Equal(t, buildRelationIds(defaultSetFeaturedRelationKeys), details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+		assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
+		assert.Len(t, keys, 4+3+4) // 4 featured + 3 sidebar + 4 hidden
 	})
 }
 
