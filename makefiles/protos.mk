@@ -4,17 +4,15 @@ comma:=,
 
 export DEPS=${ROOT}/deps
 
-PROTOC = $(DEPS)/protoc
-PROTOC_GEN_GO = $(DEPS)/protoc-gen-go
-PROTOC_GEN_DRPC = $(DEPS)/protoc-gen-go-drpc
-PROTOC_GEN_VTPROTO = $(DEPS)/protoc-gen-go-vtproto
-PROTOC_INCLUDE := $(DEPS)/include
+PROTOC=$(shell which protoc)
+PROTOC_GEN_GO=$(shell which protoc-gen-go)
+PROTOC_GEN_DRPC=$(shell which protoc-gen-go-drpc)
+PROTOC_GEN_VTPROTO=$(shell which protoc-gen-go-vtproto)
 
 define generate_proto
 	@echo "Generating Protobuf for directory: $(1)"
 	$(PROTOC) \
 		--proto_path=. \
-		--proto_path=$(PROTOC_INCLUDE) \
 		--go_out=:. --plugin protoc-gen-go="$(PROTOC_GEN_GO)" \
 		--go-vtproto_out=. --plugin protoc-gen-go-vtproto="$(PROTOC_GEN_VTPROTO)" \
 		--go-vtproto_opt=features=marshal+unmarshal+size+equal \
@@ -28,7 +26,6 @@ define generate_proto_drpc2
 	@echo "Generating Protobuf for directory: $(1)"
 	$(PROTOC) \
 		--proto_path=. \
-		--proto_path=$(PROTOC_INCLUDE) \
 		--plugin protoc-gen-go-drpc="$(PROTOC_GEN_DRPC)" \
 		--go_out=:. --plugin protoc-gen-go="$(PROTOC_GEN_GO)" \
 		--go-vtproto_out=. --plugin protoc-gen-go-vtproto="$(PROTOC_GEN_VTPROTO)" \
@@ -55,7 +52,6 @@ define generate_proto_grpc
 	@echo "Generating Protobuf for directory: $(1)"
 	$(PROTOC) \
 		--proto_path=. \
-		--proto_path=$(PROTOC_INCLUDE) \
 		--go_out=:. --plugin protoc-gen-go="$(PROTOC_GEN_GO)" \
 		--go-vtproto_out=. --plugin protoc-gen-go-vtproto="$(PROTOC_GEN_VTPROTO)" \
 		--go-vtproto_opt=features=grpc+marshal+unmarshal+size+equal \
@@ -69,7 +65,6 @@ define generate_proto_mobile
 	@echo "Generating Protobuf for directory: $(1)"
 	$(PROTOC) \
 		--proto_path=. \
-		--proto_path=$(PROTOC_INCLUDE) \
 		--go_out=. --plugin protoc-gen-go="$(PROTOC_GEN_GO)" \
 		--go-vtproto_out=:. --plugin protoc-gen-go-vtproto="$(PROTOC_GEN_VTPROTO)" \
 		--go-vtproto_opt=features=gomobile \
