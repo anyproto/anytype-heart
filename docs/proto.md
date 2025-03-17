@@ -560,6 +560,10 @@
     - [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request)
     - [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response)
     - [Rpc.Chat.GetMessagesByIds.Response.Error](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error)
+    - [Rpc.Chat.ReadMessages](#anytype-Rpc-Chat-ReadMessages)
+    - [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request)
+    - [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response)
+    - [Rpc.Chat.ReadMessages.Response.Error](#anytype-Rpc-Chat-ReadMessages-Response-Error)
     - [Rpc.Chat.SubscribeLastMessages](#anytype-Rpc-Chat-SubscribeLastMessages)
     - [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request)
     - [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response)
@@ -572,6 +576,10 @@
     - [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request)
     - [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error)
+    - [Rpc.Chat.Unread](#anytype-Rpc-Chat-Unread)
+    - [Rpc.Chat.Unread.Request](#anytype-Rpc-Chat-Unread-Request)
+    - [Rpc.Chat.Unread.Response](#anytype-Rpc-Chat-Unread-Response)
+    - [Rpc.Chat.Unread.Response.Error](#anytype-Rpc-Chat-Unread-Response-Error)
     - [Rpc.Chat.Unsubscribe](#anytype-Rpc-Chat-Unsubscribe)
     - [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request)
     - [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response)
@@ -1424,9 +1432,12 @@
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
     - [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code)
+    - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
+    - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
+    - [Rpc.Chat.Unread.Response.Error.Code](#anytype-Rpc-Chat-Unread-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
@@ -1753,6 +1764,8 @@
     - [Event.Chat.Delete](#anytype-Event-Chat-Delete)
     - [Event.Chat.Update](#anytype-Event-Chat-Update)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
+    - [Event.Chat.UpdateReadStatus](#anytype-Event-Chat-UpdateReadStatus)
+    - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
@@ -1890,6 +1903,8 @@
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
     - [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList)
     - [ChatMessage.Reactions.ReactionsEntry](#anytype-model-ChatMessage-Reactions-ReactionsEntry)
+    - [ChatState](#anytype-model-ChatState)
+    - [ChatState.UnreadState](#anytype-model-ChatState-UnreadState)
     - [Detail](#anytype-model-Detail)
     - [DeviceInfo](#anytype-model-DeviceInfo)
     - [Export](#anytype-model-Export)
@@ -2002,6 +2017,7 @@
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
     - [SpaceStatus](#anytype-model-SpaceStatus)
+    - [SpaceUxType](#anytype-model-SpaceUxType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -2307,6 +2323,8 @@
 | ChatGetMessagesByIds | [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request) | [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response) |  |
 | ChatSubscribeLastMessages | [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request) | [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response) |  |
 | ChatUnsubscribe | [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request) | [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response) |  |
+| ChatReadMessages | [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request) | [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response) |  |
+| ChatUnreadMessages | [Rpc.Chat.Unread.Request](#anytype-Rpc-Chat-Unread-Request) | [Rpc.Chat.Unread.Response](#anytype-Rpc-Chat-Unread-Response) |  |
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 
@@ -10331,6 +10349,7 @@ Get marks list in the selected range in text block.
 | afterOrderId | [string](#string) |  | OrderId of the message after which to get messages |
 | beforeOrderId | [string](#string) |  | OrderId of the message before which to get messages |
 | limit | [int32](#int32) |  |  |
+| includeBoundary | [bool](#bool) |  | If true, include a message at the boundary (afterOrderId or beforeOrderId) |
 
 
 
@@ -10347,6 +10366,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Chat.GetMessages.Response.Error](#anytype-Rpc-Chat-GetMessages-Response-Error) |  |  |
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
+| chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
 
 
 
@@ -10427,6 +10447,67 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-ReadMessages"></a>
+
+### Rpc.Chat.ReadMessages
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadMessages-Request"></a>
+
+### Rpc.Chat.ReadMessages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType) |  |  |
+| chatObjectId | [string](#string) |  | id of the chat object |
+| afterOrderId | [string](#string) |  | read from this orderId; if empty - read from the beginning of the chat |
+| beforeOrderId | [string](#string) |  | read til this orderId |
+| lastDbTimestamp | [int64](#int64) |  | dbTimestamp from the last processed ChatState event(or GetMessages). Used to prevent race conditions |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadMessages-Response"></a>
+
+### Rpc.Chat.ReadMessages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.ReadMessages.Response.Error](#anytype-Rpc-Chat-ReadMessages-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadMessages-Response-Error"></a>
+
+### Rpc.Chat.ReadMessages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Chat-SubscribeLastMessages"></a>
 
 ### Rpc.Chat.SubscribeLastMessages
@@ -10465,6 +10546,7 @@ Get marks list in the selected range in text block.
 | error | [Rpc.Chat.SubscribeLastMessages.Response.Error](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error) |  |  |
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated | List of messages |
 | numMessagesBefore | [int32](#int32) |  | Number of messages before the returned messages |
+| chatState | [model.ChatState](#anytype-model-ChatState) |  | Chat state |
 
 
 
@@ -10590,6 +10672,64 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unread"></a>
+
+### Rpc.Chat.Unread
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unread-Request"></a>
+
+### Rpc.Chat.Unread.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  | id of the chat object |
+| afterOrderId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unread-Response"></a>
+
+### Rpc.Chat.Unread.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.Unread.Response.Error](#anytype-Rpc-Chat-Unread-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Unread-Response-Error"></a>
+
+### Rpc.Chat.Unread.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.Unread.Response.Error.Code](#anytype-Rpc-Chat-Unread-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12225,6 +12365,7 @@ Get marks list in the selected range in text block.
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
+| createTypeWidgetIfMissing | [bool](#bool) |  | experimental flag to auto-create type widget if missing |
 
 
 
@@ -14311,6 +14452,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
+| createTypeWidgetIfMissing | [bool](#bool) |  | experimental flag to auto-create type widget if missing |
 
 
 
@@ -22803,6 +22945,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-ReadMessages-ReadType"></a>
+
+### Rpc.Chat.ReadMessages.ReadType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| messages | 0 |  |
+| replies | 1 |  |
+
+
+
+<a name="anytype-Rpc-Chat-ReadMessages-Response-Error-Code"></a>
+
+### Rpc.Chat.ReadMessages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| MESSAGES_NOT_FOUND | 100 | chat is empty or invalid beforeOrderId/lastDbState |
+
+
+
 <a name="anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code"></a>
 
 ### Rpc.Chat.SubscribeLastMessages.Response.Error.Code
@@ -22839,6 +23007,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-Unread-Response-Error-Code"></a>
+
+### Rpc.Chat.Unread.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -27618,6 +27799,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | subIds | [string](#string) | repeated |  |
+| state | [model.ChatState](#anytype-model-ChatState) |  | Chat state. dbState should be persisted after rendered |
 
 
 
@@ -27651,6 +27833,39 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | reactions | [model.ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  |  |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Chat-UpdateReadStatus"></a>
+
+### Event.Chat.UpdateReadStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+| isRead | [bool](#bool) |  |  |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Chat-UpdateState"></a>
+
+### Event.Chat.UpdateState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [model.ChatState](#anytype-model-ChatState) |  |  |
 | subIds | [string](#string) | repeated |  |
 
 
@@ -27865,7 +28080,9 @@ Precondition: user A opened a block
 | chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
 | chatUpdate | [Event.Chat.Update](#anytype-Event-Chat-Update) |  |  |
 | chatUpdateReactions | [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions) |  |  |
+| chatUpdateReadStatus | [Event.Chat.UpdateReadStatus](#anytype-Event-Chat-UpdateReadStatus) |  | received to update per-message read status (if needed to highlight the unread messages in the UI) |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
+| chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed (e.g. message read on another device) |
 
 
 
@@ -29201,14 +29418,14 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| source | [string](#string) | repeated |  |
+| source | [string](#string) | repeated | can be set for detached(without TargetObjectId) inline sets |
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
 | activeView | [string](#string) |  | do not generate changes for this field |
 | relations | [Relation](#anytype-model-Relation) | repeated | deprecated |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 | objectOrders | [Block.Content.Dataview.ObjectOrder](#anytype-model-Block-Content-Dataview-ObjectOrder) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
-| TargetObjectId | [string](#string) |  |  |
+| TargetObjectId | [string](#string) |  | empty for original set/collection objects and for detached inline sets |
 | isCollection | [bool](#bool) |  |  |
 
 
@@ -29742,10 +29959,12 @@ Used to decode block meta only, without the content itself
 | creator | [string](#string) |  | Identifier for the message creator |
 | createdAt | [int64](#int64) |  |  |
 | modifiedAt | [int64](#int64) |  |  |
+| addedAt | [int64](#int64) |  | Message received and added to db at |
 | replyToMessageId | [string](#string) |  | Identifier for the message being replied to |
 | message | [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent) |  | Message content |
 | attachments | [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment) | repeated | Attachments slice |
 | reactions | [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  | Reactions to the message |
+| read | [bool](#bool) |  | Message read status |
 
 
 
@@ -29825,6 +30044,39 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatState"></a>
+
+### ChatState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messages | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread messages |
+| mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
+| dbTimestamp | [int64](#int64) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
+
+
+
+
+
+
+<a name="anytype-model-ChatState-UnreadState"></a>
+
+### ChatState.UnreadState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| oldestOrderId | [string](#string) |  | oldest(in the lex sorting) unread message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest |
+| counter | [int32](#int32) |  | total number of unread messages |
 
 
 
@@ -31738,6 +31990,19 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SpaceActive | 8 | SpaceActive - the space is active in the network |
 | SpaceJoining | 9 | SpaceJoining - the account is joining the space |
 | SpaceRemoving | 10 | SpaceRemoving - the account is removing from space or the space is removed from network |
+
+
+
+<a name="anytype-model-SpaceUxType"></a>
+
+### SpaceUxType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Chat | 0 | chat-first UX |
+| Data | 1 | objects-first UX |
+| Stream | 2 | stream UX (chat with limited amount of owners) |
 
 
  

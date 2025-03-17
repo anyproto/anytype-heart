@@ -193,7 +193,6 @@ func (ss *StoreState) applyCreate(ctx context.Context, ch Change) (err error) {
 	}
 	value := ss.arena.NewFromFastJson(jsonValue)
 	value.Set("id", ss.arena.NewString(create.DocumentId))
-
 	// call handler
 	if err = handler.BeforeCreate(ctx, ss.changeOp(ch, value)); err != nil {
 		return

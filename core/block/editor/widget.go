@@ -1,6 +1,9 @@
 package editor
 
 import (
+	"context"
+	"slices"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -8,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -49,7 +53,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 
 func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithEmpty,
@@ -61,8 +65,54 @@ func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migra
 	}
 }
 
+func replaceWidgetTarget(st *state.State, targetFrom string, targetTo string, viewId string, layout model.BlockContentWidgetLayout) {
+	st.Iterate(func(b simple.Block) (isContinue bool) {
+		if wc, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
+			// get child
+			if len(b.Model().GetChildrenIds()) > 0 {
+				child := st.Get(b.Model().GetChildrenIds()[0])
+				childBlock := st.Get(child.Model().Id)
+				if linkBlock, ok := childBlock.Model().Content.(*model.BlockContentOfLink); ok {
+					if linkBlock.Link.TargetBlockId == targetFrom {
+						targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+						if slices.Contains(targets, targetTo) {
+							return false
+						}
+						targets = append(targets, targetTo)
+						st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
+
+						linkBlock.Link.TargetBlockId = targetTo
+						wc.Widget.ViewId = viewId
+						wc.Widget.Layout = layout
+						return false
+					}
+				}
+			}
+		}
+		return true
+	})
+}
 func (w *WidgetObject) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 2,
+			Proc: func(s *state.State) {
+				spc := w.Space()
+				setTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeySet)
+				if err != nil {
+					return
+				}
+				collectionTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyCollection)
+				if err != nil {
+					return
+				}
+				replaceWidgetTarget(s, widget.DefaultWidgetCollection, collectionTypeId, ObjectTypeAllViewId, model.BlockContentWidget_View)
+				replaceWidgetTarget(s, widget.DefaultWidgetSet, setTypeId, ObjectTypeAllViewId, model.BlockContentWidget_View)
+
+			},
+		},
+	},
+	)
 }
 
 func (w *WidgetObject) Unlink(ctx session.Context, ids ...string) (err error) {

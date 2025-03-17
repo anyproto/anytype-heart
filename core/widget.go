@@ -20,6 +20,9 @@ func (mw *Middleware) BlockCreateWidget(cctx context.Context, req *pb.RpcBlockCr
 	}
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		if req.Block != nil {
+			req.Block.Id = ""
+		}
 		id, err = bs.CreateWidgetBlock(ctx, req)
 		return err
 	})
