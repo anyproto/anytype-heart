@@ -326,6 +326,7 @@ func TestService_resolveValidTemplateId(t *testing.T) {
 		{"requested template is invalid", spaceId, "invalid", templateId1},
 		{"requested template is deleted", spaceId, templateId3, templateId1},
 		{"requested template is empty", spaceId, "", templateId1},
+		{"requested template is blank", spaceId, BlankTemplateId, BlankTemplateId},
 		{"no valid template exists", otherSpaceId, "templateId", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

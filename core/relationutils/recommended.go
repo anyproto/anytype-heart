@@ -42,7 +42,6 @@ var (
 		bundle.RelationKeyLastModifiedDate,
 		bundle.RelationKeyLastModifiedBy,
 		bundle.RelationKeyLastOpenedDate,
-		bundle.RelationKeyAddedDate,
 	}
 
 	fileSpecificRelationKeysMap = map[domain.RelationKey]struct{}{
