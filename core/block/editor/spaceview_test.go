@@ -278,7 +278,7 @@ func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.
 	changePayload := &model.ObjectChangePayload{
 		Key: targetSpaceId,
 	}
-	marshaled, err := changePayload.Marshal()
+	marshaled, err := changePayload.MarshalVT()
 	require.NoError(t, err)
 	changeInfo := &treechangeproto.TreeChangeInfo{
 		ChangePayload: marshaled,

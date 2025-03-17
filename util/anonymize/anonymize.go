@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"unicode"
 
-	"github.com/gogo/protobuf/types"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -16,9 +16,9 @@ import (
 )
 
 func Change(ch *pb.Change) (res *pb.Change) {
-	resB, _ := ch.Marshal()
+	resB, _ := ch.MarshalVT()
 	res = &pb.Change{}
-	res.Unmarshal(resB)
+	res.UnmarshalVT(resB)
 	if sh := res.Snapshot; sh != nil {
 		sh.Data.Details = Struct(sh.Data.Details)
 		for _, b := range sh.Data.Blocks {
@@ -45,9 +45,9 @@ func Change(ch *pb.Change) (res *pb.Change) {
 }
 
 func ChangeContent(chc *pb.ChangeContent) (res *pb.ChangeContent) {
-	resB, _ := chc.Marshal()
+	resB, _ := chc.MarshalVT()
 	res = &pb.ChangeContent{}
-	res.Unmarshal(resB)
+	res.UnmarshalVT(resB)
 
 	switch v := res.Value.(type) {
 	case *pb.ChangeContentValueOfBlockCreate:
@@ -94,8 +94,8 @@ func Events(e []*pb.EventMessage) (res []*pb.EventMessage) {
 
 func Event(e *pb.EventMessage) (res *pb.EventMessage) {
 	res = &pb.EventMessage{}
-	resB, _ := e.Marshal()
-	res.Unmarshal(resB)
+	resB, _ := e.MarshalVT()
+	res.UnmarshalVT(resB)
 	switch v := res.Value.(type) {
 	case *pb.EventMessageValueOfObjectDetailsSet:
 		v.ObjectDetailsSet.Details = Struct(v.ObjectDetailsSet.Details)

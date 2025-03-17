@@ -470,9 +470,9 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			continue
 		}
 		if i > 0 {
-			if msg.Msg.Size() == msgs[i-1].Msg.Size() {
-				b1, _ = msg.Msg.Marshal()
-				b2, _ = msgs[i-1].Msg.Marshal()
+			if msg.Msg.SizeVT() == msgs[i-1].Msg.SizeVT() {
+				b1, _ = msg.Msg.MarshalVT()
+				b2, _ = msgs[i-1].Msg.MarshalVT()
 				if bytes.Equal(b1, b2) {
 					log.With("objectID", s.rootId).Errorf("duplicate change: %T", msg.Msg.GetValue())
 				}

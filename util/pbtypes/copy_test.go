@@ -3,8 +3,8 @@ package pbtypes
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	types "google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestCopyStruct(t *testing.T) {

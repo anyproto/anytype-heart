@@ -335,7 +335,7 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 	data, err := io.ReadAll(rd)
 
 	profile := &pb.Profile{}
-	if err = profile.Unmarshal(data); err != nil {
+	if err = profile.UnmarshalVT(data); err != nil {
 		return "", err
 	}
 	return profile.SpaceDashboardId, nil

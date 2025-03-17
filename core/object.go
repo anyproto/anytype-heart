@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"

@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"go.uber.org/zap"
-
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"

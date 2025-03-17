@@ -1,275 +1,266 @@
 {
-  "sbType": "STType",
-  "snapshot": {
-    "data": {
-      "blocks": [
+  "sbType":  "STType",
+  "snapshot":  {
+    "data":  {
+      "blocks":  [
         {
-          "id": "bafyreiemifn6w6xsd7g6lltwtcatunjuycybb5wkxrzwp3ljfoid7z6b74",
-          "childrenIds": [
+          "id":  "bafyreiemifn6w6xsd7g6lltwtcatunjuycybb5wkxrzwp3ljfoid7z6b74",
+          "childrenIds":  [
             "header"
           ],
-          "smartblock": {
-
-          }
+          "smartblock":  {}
         },
         {
-          "id": "header",
-          "restrictions": {
-            "edit": true,
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "header",
+          "restrictions":  {
+            "edit":  true,
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
           },
-          "childrenIds": [
+          "childrenIds":  [
             "title",
             "featuredRelations"
           ],
-          "layout": {
-            "style": "Header"
+          "layout":  {
+            "style":  "Header"
           }
         },
         {
-          "id": "title",
-          "fields": {
-              "_detailsKey": [
-                    "name",
-                    "done"
-                  ]
-            },
-          "restrictions": {
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "title",
+          "fields":  {
+            "_detailsKey":  [
+              "name",
+              "done"
+            ]
           },
-          "text": {
-            "style": "Title",
-            "marks": {
-
-            }
+          "restrictions":  {
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
+          },
+          "text":  {
+            "style":  "Title",
+            "marks":  {}
           }
         },
         {
-          "id": "featuredRelations",
-          "restrictions": {
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "featuredRelations",
+          "restrictions":  {
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
           },
-          "featuredRelations": {
-
-          }
+          "featuredRelations":  {}
         }
       ],
-      "details": {
-          "backlinks": [
-              ],
-          "createdDate": 1708681936,
-          "creator": "_anytype_profile",
-          "description": "Blank canvas with Title",
-          "featuredRelations": [
-                "backlinks",
-                "type"
-              ],
-          "iconEmoji": "📄",
-          "id": "bafyreiemifn6w6xsd7g6lltwtcatunjuycybb5wkxrzwp3ljfoid7z6b74",
-          "internalFlags": [
-              ],
-          "isArchived": false,
-          "isHidden": false,
-          "isReadonly": true,
-          "lastModifiedBy": "_participant_bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
-          "lastModifiedDate": 1708681937,
-          "lastUsedDate": 1708689740,
-          "layout": 4,
-          "links": [
-              ],
-          "name": "Page",
-          "origin": 7,
-          "recommendedLayout": 0,
-          "recommendedRelations": [
-                "bafyreictzawc6xtanufurxgn2ttmqmshzqzz2ve235tzovkh4swbztae3a",
-                "bafyreiawn7wlwt6hzgkdpnaf6ap6q5s35xnnqpuvyo7fa6eatv6yptx4uy"
-              ],
-          "restrictions": [
-                3,
-                6,
-                5,
-                7,
-                4,
-                1
-              ],
-          "revision": 0,
-          "smartblockTypes": [
-                16
-              ],
-          "snippet": "",
-          "sourceObject": "_otpage",
-          "spaceId": "bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4.3uxcyvge8is62",
-          "type": "bafyreibb45igjiprvuhe7j35hgfunh72oggyqhnoyxknmm5ebqfyvrwulq",
-          "uniqueKey": "ot-page"
-        },
-      "objectTypes": [
+      "details":  {
+        "backlinks":  [],
+        "createdDate":  1708681936,
+        "creator":  "_anytype_profile",
+        "description":  "Blank canvas with Title",
+        "featuredRelations":  [
+          "backlinks",
+          "type"
+        ],
+        "iconEmoji":  "📄",
+        "id":  "bafyreiemifn6w6xsd7g6lltwtcatunjuycybb5wkxrzwp3ljfoid7z6b74",
+        "internalFlags":  [],
+        "isArchived":  false,
+        "isHidden":  false,
+        "isReadonly":  true,
+        "lastModifiedBy":  "_participant_bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+        "lastModifiedDate":  1708681937,
+        "lastUsedDate":  1708689740,
+        "layout":  4,
+        "links":  [],
+        "name":  "Page",
+        "origin":  7,
+        "recommendedLayout":  0,
+        "recommendedRelations":  [
+          "bafyreictzawc6xtanufurxgn2ttmqmshzqzz2ve235tzovkh4swbztae3a",
+          "bafyreiawn7wlwt6hzgkdpnaf6ap6q5s35xnnqpuvyo7fa6eatv6yptx4uy"
+        ],
+        "restrictions":  [
+          3,
+          6,
+          5,
+          7,
+          4,
+          1
+        ],
+        "revision":  0,
+        "smartblockTypes":  [
+          16
+        ],
+        "snippet":  "",
+        "sourceObject":  "_otpage",
+        "spaceId":  "bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4.3uxcyvge8is62",
+        "type":  "bafyreibb45igjiprvuhe7j35hgfunh72oggyqhnoyxknmm5ebqfyvrwulq",
+        "uniqueKey":  "ot-page"
+      },
+      "objectTypes":  [
         "ot-objectType"
       ],
-      "relationLinks": [
+      "relationLinks":  [
         {
-          "key": "spaceId",
-          "format": "object"
+          "key":  "spaceId",
+          "format":  "object"
         },
         {
-          "key": "description"
+          "key":  "description"
         },
         {
-          "key": "recommendedLayout",
-          "format": "number"
+          "key":  "recommendedLayout",
+          "format":  "number"
         },
         {
-          "key": "recommendedRelations",
-          "format": "object"
+          "key":  "recommendedRelations",
+          "format":  "object"
         },
         {
-          "key": "layout",
-          "format": "number"
+          "key":  "layout",
+          "format":  "number"
         },
         {
-          "key": "featuredRelations",
-          "format": "object"
+          "key":  "featuredRelations",
+          "format":  "object"
         },
         {
-          "key": "isHidden",
-          "format": "checkbox"
+          "key":  "isHidden",
+          "format":  "checkbox"
         },
         {
-          "key": "revision",
-          "format": "number"
+          "key":  "revision",
+          "format":  "number"
         },
         {
-          "key": "origin",
-          "format": "number"
+          "key":  "origin",
+          "format":  "number"
         },
         {
-          "key": "iconEmoji",
-          "format": "emoji"
+          "key":  "iconEmoji",
+          "format":  "emoji"
         },
         {
-          "key": "name",
-          "format": "shorttext"
+          "key":  "name",
+          "format":  "shorttext"
         },
         {
-          "key": "smartblockTypes",
-          "format": "number"
+          "key":  "smartblockTypes",
+          "format":  "number"
         },
         {
-          "key": "sourceObject",
-          "format": "object"
+          "key":  "sourceObject",
+          "format":  "object"
         },
         {
-          "key": "internalFlags",
-          "format": "number"
+          "key":  "internalFlags",
+          "format":  "number"
         },
         {
-          "key": "id",
-          "format": "object"
+          "key":  "id",
+          "format":  "object"
         },
         {
-          "key": "uniqueKey"
+          "key":  "uniqueKey"
         },
         {
-          "key": "isReadonly",
-          "format": "checkbox"
+          "key":  "isReadonly",
+          "format":  "checkbox"
         },
         {
-          "key": "snippet"
+          "key":  "snippet"
         },
         {
-          "key": "backlinks",
-          "format": "object"
+          "key":  "backlinks",
+          "format":  "object"
         },
         {
-          "key": "iconImage",
-          "format": "file"
+          "key":  "iconImage",
+          "format":  "file"
         },
         {
-          "key": "type",
-          "format": "object"
+          "key":  "type",
+          "format":  "object"
         },
         {
-          "key": "layoutAlign",
-          "format": "number"
+          "key":  "layoutAlign",
+          "format":  "number"
         },
         {
-          "key": "coverId"
+          "key":  "coverId"
         },
         {
-          "key": "coverScale",
-          "format": "number"
+          "key":  "coverScale",
+          "format":  "number"
         },
         {
-          "key": "coverType",
-          "format": "number"
+          "key":  "coverType",
+          "format":  "number"
         },
         {
-          "key": "coverX",
-          "format": "number"
+          "key":  "coverX",
+          "format":  "number"
         },
         {
-          "key": "coverY",
-          "format": "number"
+          "key":  "coverY",
+          "format":  "number"
         },
         {
-          "key": "createdDate",
-          "format": "date"
+          "key":  "createdDate",
+          "format":  "date"
         },
         {
-          "key": "creator",
-          "format": "object"
+          "key":  "creator",
+          "format":  "object"
         },
         {
-          "key": "lastModifiedDate",
-          "format": "date"
+          "key":  "lastModifiedDate",
+          "format":  "date"
         },
         {
-          "key": "lastModifiedBy",
-          "format": "object"
+          "key":  "lastModifiedBy",
+          "format":  "object"
         },
         {
-          "key": "lastOpenedDate",
-          "format": "date"
+          "key":  "lastOpenedDate",
+          "format":  "date"
         },
         {
-          "key": "isFavorite",
-          "format": "checkbox"
+          "key":  "isFavorite",
+          "format":  "checkbox"
         },
         {
-          "key": "workspaceId",
-          "format": "object"
+          "key":  "workspaceId",
+          "format":  "object"
         },
         {
-          "key": "links",
-          "format": "object"
+          "key":  "links",
+          "format":  "object"
         },
         {
-          "key": "restrictions",
-          "format": "number"
+          "key":  "restrictions",
+          "format":  "number"
         },
         {
-          "key": "fileId",
-          "format": "shorttext"
+          "key":  "fileId",
+          "format":  "shorttext"
         },
         {
-          "key": "sizeInBytes",
-          "format": "number"
+          "key":  "sizeInBytes",
+          "format":  "number"
         },
         {
-          "key": "lastUsedDate",
-          "format": "date"
+          "key":  "lastUsedDate",
+          "format":  "date"
         },
         {
-          "key": "isArchived",
-          "format": "checkbox"
+          "key":  "isArchived",
+          "format":  "checkbox"
         }
       ],
-      "key": "page"
+      "key":  "page"
     }
   }
 }

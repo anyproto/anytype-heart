@@ -24,6 +24,6 @@ func (c *changeDataConverter) Marshall(model any) (data []byte, dataType string,
 	if c.anonymize {
 		ch = anonymize.Change(ch)
 	}
-	data, err = ch.Marshal()
+	data, err = ch.MarshalVT()
 	return
 }

@@ -133,7 +133,7 @@ func (ur UploadResult) ToBlock() file.Block {
 				Name:           ur.Name,
 				Type:           ur.Type,
 				Mime:           ur.MIME,
-				Size_:          ur.Size,
+				Size:           ur.Size,
 				AddedAt:        time.Now().Unix(),
 				State:          state,
 			},

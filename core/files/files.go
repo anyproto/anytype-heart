@@ -14,7 +14,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/gogo/protobuf/proto"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -167,7 +166,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 	return &AddResult{
 		FileId:         fileId,
 		EncryptionKeys: &fileKeys,
-		Size:           addNodeResult.variant.Size_,
+		Size:           addNodeResult.variant.Size,
 		MIME:           opts.Media,
 		lock:           addLock,
 	}, nil
@@ -190,7 +189,7 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) 
 	for _, v := range variants {
 		if variant == nil {
 			variant = v
-		} else if variant.Size_ < v.Size_ {
+		} else if variant.Size < v.Size {
 			variant = v
 		}
 	}
@@ -200,7 +199,7 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId) 
 		FileId:         fileId,
 		EncryptionKeys: keys,
 		MIME:           variant.GetMedia(),
-		Size:           variant.GetSize_(),
+		Size:           variant.Size,
 		lock:           lock,
 	}, nil
 
@@ -288,7 +287,7 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 
 				continue
 			}
-			err = proto.Unmarshal(b, &file)
+			err = file.UnmarshalVT(b)
 			if err != nil || file.Hash == "" {
 				if i == len(modes)-1 {
 					return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
@@ -304,7 +303,7 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 		if err != nil {
 			return nil, err
 		}
-		err = proto.Unmarshal(b, &file)
+		err = file.UnmarshalVT(b)
 		if err != nil || file.Hash == "" {
 			return nil, fmt.Errorf("failed to unmarshal not-encrypted file info: %w", err)
 		}
@@ -434,7 +433,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		LastModifiedDate: conf.LastModifiedDate,
 		Added:            time.Now().Unix(),
 		Meta:             pbtypes.ToStruct(res.Meta),
-		Size_:            int64(readerWithCounter.Count()),
+		Size:             int64(readerWithCounter.Count()),
 	}
 
 	key, err := getOrGenerateSymmetricKey(linkName, conf)
@@ -457,7 +456,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 
 	fileInfo.Hash = contentNode.Cid().String()
-	rawMeta, err := proto.Marshal(fileInfo)
+	rawMeta, err := fileInfo.MarshalVT()
 	if err != nil {
 		return nil, err
 	}

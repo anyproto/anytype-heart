@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/anyproto/anytype-heart/clientlibrary/service"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -24,7 +22,7 @@ func SetEventHandler(pf C.proxyFunc, ctx unsafe.Pointer) {
 		if len(event.Messages) == 0 {
 			return
 		}
-		b, err := proto.Marshal(event)
+		b, err := event.MarshalVT()
 		if err != nil {
 			fmt.Printf("failed to encode event: %s\n", err.Error())
 			return

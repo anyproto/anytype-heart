@@ -118,7 +118,7 @@ func (f *file) Meta() *FileMeta {
 	return &FileMeta{
 		Media:            f.info.Media,
 		Name:             f.info.Name,
-		Size:             f.info.Size_,
+		Size:             f.info.Size,
 		LastModifiedDate: f.info.LastModifiedDate,
 		Added:            time.Unix(f.info.Added, 0),
 	}

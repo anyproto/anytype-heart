@@ -3,7 +3,7 @@ package pbtypes
 import (
 	"sync"
 
-	"github.com/gogo/protobuf/types"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -19,13 +19,13 @@ var bytesPool = &sync.Pool{
 
 func CopyBlock(in *model.Block) (out *model.Block) {
 	buf := bytesPool.Get().([]byte)
-	size := in.Size()
+	size := in.SizeVT()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size*2)
 	}
-	size, _ = in.MarshalToSizedBuffer(buf[:size])
+	size, _ = in.MarshalToSizedBufferVT(buf[:size])
 	out = &model.Block{}
-	_ = out.Unmarshal(buf[:size])
+	_ = out.UnmarshalVT(buf[:size])
 	bytesPool.Put(buf)
 	return
 }
@@ -123,13 +123,13 @@ func CopyRelation(in *model.Relation) (out *model.Relation) {
 		return nil
 	}
 	buf := bytesPool.Get().([]byte)
-	size := in.Size()
+	size := in.SizeVT()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size*2)
 	}
-	size, _ = in.MarshalToSizedBuffer(buf[:size])
+	size, _ = in.MarshalToSizedBufferVT(buf[:size])
 	out = &model.Relation{}
-	_ = out.Unmarshal(buf[:size])
+	_ = out.UnmarshalVT(buf[:size])
 
 	bytesPool.Put(buf)
 	return out
@@ -145,13 +145,13 @@ func CopyObjectType(in *model.ObjectType) (out *model.ObjectType) {
 	}
 
 	buf := bytesPool.Get().([]byte)
-	size := in.Size()
+	size := in.SizeVT()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size*2)
 	}
-	size, _ = in.MarshalToSizedBuffer(buf[:size])
+	size, _ = in.MarshalToSizedBufferVT(buf[:size])
 	out = &model.ObjectType{}
-	_ = out.Unmarshal(buf[:size])
+	_ = out.UnmarshalVT(buf[:size])
 
 	bytesPool.Put(buf)
 	return out
@@ -163,13 +163,13 @@ func CopyRelations(in []*model.Relation) (out []*model.Relation) {
 	}
 	buf := bytesPool.Get().([]byte)
 	inWrapped := model.Relations{Relations: in}
-	size := inWrapped.Size()
+	size := inWrapped.SizeVT()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size*2)
 	}
-	size, _ = inWrapped.MarshalToSizedBuffer(buf[:size])
+	size, _ = inWrapped.MarshalToSizedBufferVT(buf[:size])
 	outWrapped := &model.Relations{}
-	_ = outWrapped.Unmarshal(buf[:size])
+	_ = outWrapped.UnmarshalVT(buf[:size])
 
 	bytesPool.Put(buf)
 	return outWrapped.Relations
@@ -177,13 +177,13 @@ func CopyRelations(in []*model.Relation) (out []*model.Relation) {
 
 func CopyFilter(in *model.BlockContentDataviewFilter) (out *model.BlockContentDataviewFilter) {
 	buf := bytesPool.Get().([]byte)
-	size := in.Size()
+	size := in.SizeVT()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size*2)
 	}
-	size, _ = in.MarshalToSizedBuffer(buf[:size])
+	size, _ = in.MarshalToSizedBufferVT(buf[:size])
 	out = &model.BlockContentDataviewFilter{}
-	_ = out.Unmarshal(buf[:size])
+	_ = out.UnmarshalVT(buf[:size])
 	bytesPool.Put(buf)
 	return
 }
@@ -191,17 +191,17 @@ func CopyFilter(in *model.BlockContentDataviewFilter) (out *model.BlockContentDa
 func CopyNotification(in *model.Notification) (out *model.Notification) {
 	var err error
 	buf := bytesPool.Get().([]byte)
-	size := in.Size()
+	size := in.SizeVT()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size)
 	}
 	// nolint:errcheck
-	size, err = in.MarshalToSizedBuffer(buf[:size])
+	size, err = in.MarshalToSizedBufferVT(buf[:size])
 	if err != nil {
 		log.Debugf("failed to marshal size buffer: %s", err)
 	}
 	out = &model.Notification{}
-	err = out.Unmarshal(buf[:size])
+	err = out.UnmarshalVT(buf[:size])
 	if err != nil {
 		log.Debugf("failed to unmarshal notification: %s", err)
 	}
@@ -212,17 +212,17 @@ func CopyNotification(in *model.Notification) (out *model.Notification) {
 func CopyDevice(in *model.DeviceInfo) (out *model.DeviceInfo) {
 	var err error
 	buf := bytesPool.Get().([]byte)
-	size := in.Size()
+	size := in.SizeVT()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size)
 	}
 	// nolint:errcheck
-	size, err = in.MarshalToSizedBuffer(buf[:size])
+	size, err = in.MarshalToSizedBufferVT(buf[:size])
 	if err != nil {
 		log.Debugf("failed to marshal size buffer: %s", err)
 	}
 	out = &model.DeviceInfo{}
-	err = out.Unmarshal(buf[:size])
+	err = out.UnmarshalVT(buf[:size])
 	if err != nil {
 		log.Debugf("failed to unmarshal deviceInfo: %s", err)
 	}

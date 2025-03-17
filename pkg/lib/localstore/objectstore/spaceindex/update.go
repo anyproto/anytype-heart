@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -242,7 +241,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
 	return badgerhelper.GetValueTxn(txn, key, func(raw []byte) (*model.ObjectDetails, error) {
 		var res model.ObjectDetails
-		err := proto.Unmarshal(raw, &res)
+		err := res.UnmarshalVT(raw)
 		return &res, err
 	})
 }

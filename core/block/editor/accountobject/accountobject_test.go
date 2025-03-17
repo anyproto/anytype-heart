@@ -117,7 +117,7 @@ func makeStoreContent(m map[string]any) source.PushChangeParams {
 	changes := make([]*pb.ChangeContent, 0, len(m))
 	for k, v := range m {
 		changes = append(changes, &pb.ChangeContent{
-			&pb.ChangeContentValueOfDetailsSet{DetailsSet: &pb.ChangeDetailsSet{
+			Value: &pb.ChangeContentValueOfDetailsSet{DetailsSet: &pb.ChangeDetailsSet{
 				Key:   k,
 				Value: pbtypes.InterfaceToValue(v),
 			},

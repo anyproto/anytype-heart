@@ -9,8 +9,6 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -73,7 +71,7 @@ func SetEventHandlerMobile(eh MessageHandler) {
 		if len(event.Messages) == 0 {
 			return
 		}
-		b, err := proto.Marshal(event)
+		b, err := event.MarshalVT()
 		if err != nil {
 			log.Errorf("eventHandler failed to marshal error: %s", err.Error())
 		}

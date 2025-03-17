@@ -60,7 +60,7 @@ jobs:
           INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
           GIT_SUMMARY=$(git describe --tags --always)
-          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY} -X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" >> $GITHUB_ENV
           VERSION=$(git rev-parse --short HEAD)
           if [ -z "$VERSION" ]; then
             VERSION=${GITHUB_REF##*/}
@@ -77,15 +77,9 @@ jobs:
         run: |
           go mod download
 
-      - name: install protoc
-        run: |
-          make setup-protoc
-
       - name: setup go
         run: |
           make setup-go
-          make setup-gomobile
-          which gomobile
 
       - name: Cross-compile library mac/win/linux
         run: |

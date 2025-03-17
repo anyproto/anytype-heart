@@ -106,7 +106,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	return &AddResult{
 		FileId:         fileId,
 		MIME:           entry.fileInfo.Media,
-		Size:           entry.fileInfo.Size_,
+		Size:           entry.fileInfo.Size,
 		EncryptionKeys: &fileKeys,
 		lock:           addLock,
 	}, nil

@@ -158,7 +158,7 @@ func (s *service) Init(a *app.App) (err error) {
 		return
 	}
 	s.accountMetadataSymKey = metadataSymKey
-	s.accountMetadataPayload, err = accountMetadata.Marshal()
+	s.accountMetadataPayload, err = accountMetadata.MarshalVT()
 	if err != nil {
 		return fmt.Errorf("marshal account metadata: %w", err)
 	}

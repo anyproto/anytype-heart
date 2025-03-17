@@ -5,8 +5,8 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"google.golang.org/grpc/metadata"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"

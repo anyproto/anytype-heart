@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
@@ -61,5 +60,5 @@ func (n *notificationStore) GetNotificationById(notificationId string) (*model.N
 
 func unmarshalNotification(raw []byte) (*model.Notification, error) {
 	v := &model.Notification{}
-	return v, proto.Unmarshal(raw, v)
+	return v, v.UnmarshalVT(raw)
 }

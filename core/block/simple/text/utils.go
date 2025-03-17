@@ -57,8 +57,5 @@ func markEq(m1, m2 *model.BlockContentTextMark) bool {
 	if m1.Param != m2.Param {
 		return false
 	}
-	if *m1.Range != *m2.Range {
-		return false
-	}
-	return true
+	return m1.EqualVT(m2)
 }

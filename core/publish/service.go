@@ -15,11 +15,10 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/anytype-publish-server/publishclient"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/encoding/protojson"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/identity"
@@ -34,7 +33,7 @@ import (
 )
 
 var (
-	jsonM = jsonpb.Marshaler{Indent: "  "}
+	jsonM = protojson.MarshalOptions{Indent: "  "}
 )
 
 const CName = "common.core.publishservice"
@@ -72,7 +71,7 @@ type Version struct {
 type PublishingUberSnapshot struct {
 	Meta PublishingUberSnapshotMeta `json:"meta,omitempty"`
 
-	// A map of "dir/filename.pb -> jsonpb snapshot"
+	// A map of "dir/filename.pb -> protojson snapshot"
 	PbFiles map[string]string `json:"pbFiles,omitempty"`
 }
 
@@ -294,7 +293,7 @@ func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEnt
 	}
 
 	snapshot := pb.SnapshotWithType{}
-	if err := proto.Unmarshal(snapshotData, &snapshot); err != nil {
+	if err := snapshot.UnmarshalVT(snapshotData); err != nil {
 		return err
 	}
 
@@ -303,12 +302,12 @@ func (s *service) processSnapshotFile(exportPath, dirName string, file fs.DirEnt
 		source = filepath.ToSlash(source)
 		details.Fields[bundle.RelationKeySource.String()] = pbtypes.String(source)
 	}
-	jsonData, err := jsonM.MarshalToString(&snapshot)
+	jsonData, err := jsonM.Marshal(&snapshot)
 	if err != nil {
 		return err
 	}
 	fileNameKey := fmt.Sprintf("%s/%s", dirName, file.Name())
-	uberSnapshot.PbFiles[fileNameKey] = jsonData
+	uberSnapshot.PbFiles[fileNameKey] = string(jsonData)
 	return nil
 }
 
@@ -455,7 +454,7 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 			Status:    pb.RpcPublishingPublishStatus(publish.Status),
 			Version:   publish.Version,
 			Timestamp: publish.Timestamp,
-			Size_:     publish.Size_,
+			Size:      publish.Size_,
 			JoinSpace: version.JoinSpace,
 			Details:   details,
 		})
@@ -499,7 +498,7 @@ func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishing
 		Status:    pb.RpcPublishingPublishStatus(publish.Status),
 		Version:   publish.Version,
 		Timestamp: publish.Timestamp,
-		Size_:     publish.Size_,
+		Size:      publish.Size_,
 		JoinSpace: version.JoinSpace,
 	}, nil
 }
@@ -517,7 +516,7 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 		Status:    pb.RpcPublishingPublishStatus(status.Status),
 		Version:   status.Version,
 		Timestamp: status.Timestamp,
-		Size_:     status.Size_,
+		Size:      status.Size_,
 		JoinSpace: version.JoinSpace,
 	}, nil
 }

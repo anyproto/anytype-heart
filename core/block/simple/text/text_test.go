@@ -48,7 +48,7 @@ func TestText_Diff(t *testing.T) {
 		b2.SetText("text", &model.BlockContentTextMarks{
 			Marks: []*model.BlockContentTextMark{
 				{
-					Range: &model.Range{1, 2},
+					Range: &model.Range{From: 1, To: 2},
 					Type:  model.BlockContentTextMark_Italic,
 				},
 			},
@@ -109,10 +109,10 @@ func TestText_Split(t *testing.T) {
 		assert.Equal(t, "67890", b.content.Text)
 		require.Len(t, b.content.Marks.Marks, 2)
 		require.Len(t, nb.content.Marks.Marks, 2)
-		assert.Equal(t, model.Range{0, 5}, *nb.content.Marks.Marks[0].Range)
-		assert.Equal(t, model.Range{3, 4}, *nb.content.Marks.Marks[1].Range)
-		assert.Equal(t, model.Range{0, 5}, *b.content.Marks.Marks[0].Range)
-		assert.Equal(t, model.Range{1, 5}, *b.content.Marks.Marks[1].Range)
+		assert.Equal(t, model.Range{From: 0, To: 5}, *nb.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 3, To: 4}, *nb.content.Marks.Marks[1].Range)
+		assert.Equal(t, model.Range{From: 0, To: 5}, *b.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 1, To: 5}, *b.content.Marks.Marks[1].Range)
 	})
 	t.Run("out of range", func(t *testing.T) {
 		b := testBlock()
@@ -160,7 +160,7 @@ func TestText_RangeSplit(t *testing.T) {
 		assert.Equal(t, "1", b.content.Text)
 		require.Len(t, b.content.Marks.Marks, 0)
 		require.Len(t, nb.content.Marks.Marks, 1)
-		assert.Equal(t, model.Range{0, 3}, *nb.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 0, To: 3}, *nb.content.Marks.Marks[0].Range)
 	})
 	t.Run("split by range with marked and unmarked letters at the start of marked zone", func(t *testing.T) {
 		b := testBlock()
@@ -171,7 +171,7 @@ func TestText_RangeSplit(t *testing.T) {
 		assert.Equal(t, "1", b.content.Text)
 		require.Len(t, b.content.Marks.Marks, 0)
 		require.Len(t, nb.content.Marks.Marks, 1)
-		assert.Equal(t, model.Range{0, 5}, *nb.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 0, To: 5}, *nb.content.Marks.Marks[0].Range)
 	})
 	t.Run("split by range with marked letters at the start of marked zone", func(t *testing.T) {
 		b := testBlock()
@@ -182,7 +182,7 @@ func TestText_RangeSplit(t *testing.T) {
 		assert.Equal(t, "12", b.content.Text)
 		require.Len(t, b.content.Marks.Marks, 0)
 		require.Len(t, nb.content.Marks.Marks, 1)
-		assert.Equal(t, model.Range{0, 5}, *nb.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 0, To: 5}, *nb.content.Marks.Marks[0].Range)
 	})
 	t.Run("split by range with marked and unmarked letters at the end of marked zone", func(t *testing.T) {
 		b := testBlock()
@@ -192,7 +192,7 @@ func TestText_RangeSplit(t *testing.T) {
 		assert.Equal(t, "90", nb.content.Text)
 		assert.Equal(t, "1234567", b.content.Text)
 		require.Len(t, b.content.Marks.Marks, 1)
-		assert.Equal(t, model.Range{2, 7}, *b.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 2, To: 7}, *b.content.Marks.Marks[0].Range)
 	})
 	t.Run("out of range", func(t *testing.T) {
 		b := testBlock()

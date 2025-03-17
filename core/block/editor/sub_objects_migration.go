@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 

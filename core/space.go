@@ -58,7 +58,7 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 			},
 		}
 	}
-	return &pb.RpcSpaceMakeShareableResponse{&pb.RpcSpaceMakeShareableResponseError{}}
+	return &pb.RpcSpaceMakeShareableResponse{Error: &pb.RpcSpaceMakeShareableResponseError{}}
 }
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {

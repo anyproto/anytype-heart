@@ -1,7 +1,7 @@
 package pbjson
 
 import (
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
@@ -38,8 +38,8 @@ func (p *pbj) Convert(sbType model.SmartBlockType) []byte {
 		SbType:   sbType,
 		Snapshot: snapshot,
 	}
-	m := jsonpb.Marshaler{Indent: " "}
-	result, err := m.MarshalToString(mo)
+	m := protojson.MarshalOptions{Indent: " "}
+	result, err := m.Marshal(mo)
 	if err != nil {
 		log.Errorf("failed to convert object to json: %s", err)
 	}

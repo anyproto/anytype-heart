@@ -4,7 +4,8 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
+	"github.com/planetscale/vtprotobuf/types/known/structpb"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -331,7 +332,7 @@ func shortenDetailsToLimit(objectID string, details map[string]*types.Value) {
 }
 
 func shortenValueToLimit(objectID, key string, value *types.Value) *types.Value {
-	size := value.Size()
+	size := (*structpb.Value)(value).SizeVT()
 	if size > detailSizeLimit {
 		log.With("objectID", objectID).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortening it",
 			key, size, detailSizeLimit)

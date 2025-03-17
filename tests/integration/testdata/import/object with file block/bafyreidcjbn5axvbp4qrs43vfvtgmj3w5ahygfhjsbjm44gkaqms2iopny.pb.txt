@@ -1,285 +1,276 @@
 {
-  "sbType": "STType",
-  "snapshot": {
-    "data": {
-      "blocks": [
+  "sbType":  "STType",
+  "snapshot":  {
+    "data":  {
+      "blocks":  [
         {
-          "id": "bafyreidcjbn5axvbp4qrs43vfvtgmj3w5ahygfhjsbjm44gkaqms2iopny",
-          "childrenIds": [
+          "id":  "bafyreidcjbn5axvbp4qrs43vfvtgmj3w5ahygfhjsbjm44gkaqms2iopny",
+          "childrenIds":  [
             "header"
           ],
-          "smartblock": {
-
-          }
+          "smartblock":  {}
         },
         {
-          "id": "header",
-          "restrictions": {
-            "edit": true,
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "header",
+          "restrictions":  {
+            "edit":  true,
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
           },
-          "childrenIds": [
+          "childrenIds":  [
             "title",
             "featuredRelations"
           ],
-          "layout": {
-            "style": "Header"
+          "layout":  {
+            "style":  "Header"
           }
         },
         {
-          "id": "title",
-          "fields": {
-              "_detailsKey": [
-                    "name",
-                    "done"
-                  ]
-            },
-          "restrictions": {
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "title",
+          "fields":  {
+            "_detailsKey":  [
+              "name",
+              "done"
+            ]
           },
-          "text": {
-            "style": "Title",
-            "marks": {
-
-            }
+          "restrictions":  {
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
+          },
+          "text":  {
+            "style":  "Title",
+            "marks":  {}
           }
         },
         {
-          "id": "featuredRelations",
-          "restrictions": {
-            "remove": true,
-            "drag": true,
-            "dropOn": true
+          "id":  "featuredRelations",
+          "restrictions":  {
+            "remove":  true,
+            "drag":  true,
+            "dropOn":  true
           },
-          "featuredRelations": {
-
-          }
+          "featuredRelations":  {}
         }
       ],
-      "details": {
-          "backlinks": [
-              ],
-          "createdDate": 1708681936,
-          "creator": "_anytype_profile",
-          "description": "Auto-generated object from .jpg \u0026 .png files added to Anytype. A representation of the external form of a person or thing in art",
-          "featuredRelations": [
-                "backlinks",
-                "type"
-              ],
-          "iconEmoji": "🏞",
-          "id": "bafyreidcjbn5axvbp4qrs43vfvtgmj3w5ahygfhjsbjm44gkaqms2iopny",
-          "internalFlags": [
-              ],
-          "isArchived": false,
-          "isHidden": false,
-          "isReadonly": true,
-          "lastModifiedBy": "_participant_bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
-          "lastModifiedDate": 1708681937,
-          "lastUsedDate": 1708679837,
-          "layout": 4,
-          "links": [
-              ],
-          "name": "Image",
-          "origin": 7,
-          "recommendedLayout": 8,
-          "recommendedRelations": [
-                "bafyreiexomkqsmiquooblaiivjekszpxtktc4vwzpot7eagl4sm4xgvxsm",
-                "bafyreigpg65ux5iiouypryze4xe3zybzvzgjkukqhwt6ywceo2xyrbyzcq",
-                "bafyreifigx3ej4ryeolhg2z3kejvvqyoesc6oqay7fr5yqhb6c3qs42wwa",
-                "bafyreihzahmws7ikdemquxesbr33pjfjrefaqidjrpo3i4rt3uu4s6btra",
-                "bafyreif3deijdgfbsd6n3kmxqgsb2tnkt7n4jnngqm2icrpfyi37c7v47q",
-                "bafyreifpt7wvp72aax7c2bjd4fkoimimvqj4xofxlhayg5qklocuyxeucy",
-                "bafyreic7cas7aiytfos6gh7445glrygw7bbpgbjnhifmtjaly3axes4bue",
-                "bafyreigdgqsyw5qhov4n5prhbtbw3hszi3bbiunni456naw5sidvvqauc4",
-                "bafyreickzet3mkznzh4akug2p6qrnmhxzjjzctrt42qfl7gfpwap5a2dp4",
-                "bafyreihocceydestrxj42pplz2lv5moumaezgdgajcdhdhxr2xjt6fkn7q",
-                "bafyreibtadmiwpuj7ylqjtliukqpv6z6uqcspr5v4xerrsgeqjoeq5m7o4",
-                "bafyreiawn7wlwt6hzgkdpnaf6ap6q5s35xnnqpuvyo7fa6eatv6yptx4uy"
-              ],
-          "restrictions": [
-                3,
-                6,
-                5,
-                7,
-                4,
-                1
-              ],
-          "revision": 0,
-          "smartblockTypes": [
-                256
-              ],
-          "snippet": "",
-          "sourceObject": "_otimage",
-          "spaceId": "bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4.3uxcyvge8is62",
-          "type": "bafyreibb45igjiprvuhe7j35hgfunh72oggyqhnoyxknmm5ebqfyvrwulq",
-          "uniqueKey": "ot-image"
-        },
-      "objectTypes": [
+      "details":  {
+        "backlinks":  [],
+        "createdDate":  1708681936,
+        "creator":  "_anytype_profile",
+        "description":  "Auto-generated object from .jpg & .png files added to Anytype. A representation of the external form of a person or thing in art",
+        "featuredRelations":  [
+          "backlinks",
+          "type"
+        ],
+        "iconEmoji":  "🏞",
+        "id":  "bafyreidcjbn5axvbp4qrs43vfvtgmj3w5ahygfhjsbjm44gkaqms2iopny",
+        "internalFlags":  [],
+        "isArchived":  false,
+        "isHidden":  false,
+        "isReadonly":  true,
+        "lastModifiedBy":  "_participant_bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4_3uxcyvge8is62_A6LrAEcm6LMpygR5LZ2yJ4izsNmzKrzGBJmYWKExtiJZbi7h",
+        "lastModifiedDate":  1708681937,
+        "lastUsedDate":  1708679837,
+        "layout":  4,
+        "links":  [],
+        "name":  "Image",
+        "origin":  7,
+        "recommendedLayout":  8,
+        "recommendedRelations":  [
+          "bafyreiexomkqsmiquooblaiivjekszpxtktc4vwzpot7eagl4sm4xgvxsm",
+          "bafyreigpg65ux5iiouypryze4xe3zybzvzgjkukqhwt6ywceo2xyrbyzcq",
+          "bafyreifigx3ej4ryeolhg2z3kejvvqyoesc6oqay7fr5yqhb6c3qs42wwa",
+          "bafyreihzahmws7ikdemquxesbr33pjfjrefaqidjrpo3i4rt3uu4s6btra",
+          "bafyreif3deijdgfbsd6n3kmxqgsb2tnkt7n4jnngqm2icrpfyi37c7v47q",
+          "bafyreifpt7wvp72aax7c2bjd4fkoimimvqj4xofxlhayg5qklocuyxeucy",
+          "bafyreic7cas7aiytfos6gh7445glrygw7bbpgbjnhifmtjaly3axes4bue",
+          "bafyreigdgqsyw5qhov4n5prhbtbw3hszi3bbiunni456naw5sidvvqauc4",
+          "bafyreickzet3mkznzh4akug2p6qrnmhxzjjzctrt42qfl7gfpwap5a2dp4",
+          "bafyreihocceydestrxj42pplz2lv5moumaezgdgajcdhdhxr2xjt6fkn7q",
+          "bafyreibtadmiwpuj7ylqjtliukqpv6z6uqcspr5v4xerrsgeqjoeq5m7o4",
+          "bafyreiawn7wlwt6hzgkdpnaf6ap6q5s35xnnqpuvyo7fa6eatv6yptx4uy"
+        ],
+        "restrictions":  [
+          3,
+          6,
+          5,
+          7,
+          4,
+          1
+        ],
+        "revision":  0,
+        "smartblockTypes":  [
+          256
+        ],
+        "snippet":  "",
+        "sourceObject":  "_otimage",
+        "spaceId":  "bafyreieo7b7uqpcyrl5djfeezwhrycrexqv2l2giugf67drbg536naiav4.3uxcyvge8is62",
+        "type":  "bafyreibb45igjiprvuhe7j35hgfunh72oggyqhnoyxknmm5ebqfyvrwulq",
+        "uniqueKey":  "ot-image"
+      },
+      "objectTypes":  [
         "ot-objectType"
       ],
-      "relationLinks": [
+      "relationLinks":  [
         {
-          "key": "spaceId",
-          "format": "object"
+          "key":  "spaceId",
+          "format":  "object"
         },
         {
-          "key": "description"
+          "key":  "description"
         },
         {
-          "key": "recommendedRelations",
-          "format": "object"
+          "key":  "recommendedRelations",
+          "format":  "object"
         },
         {
-          "key": "internalFlags",
-          "format": "number"
+          "key":  "internalFlags",
+          "format":  "number"
         },
         {
-          "key": "name",
-          "format": "shorttext"
+          "key":  "name",
+          "format":  "shorttext"
         },
         {
-          "key": "revision",
-          "format": "number"
+          "key":  "revision",
+          "format":  "number"
         },
         {
-          "key": "origin",
-          "format": "number"
+          "key":  "origin",
+          "format":  "number"
         },
         {
-          "key": "recommendedLayout",
-          "format": "number"
+          "key":  "recommendedLayout",
+          "format":  "number"
         },
         {
-          "key": "sourceObject",
-          "format": "object"
+          "key":  "sourceObject",
+          "format":  "object"
         },
         {
-          "key": "featuredRelations",
-          "format": "object"
+          "key":  "featuredRelations",
+          "format":  "object"
         },
         {
-          "key": "isHidden",
-          "format": "checkbox"
+          "key":  "isHidden",
+          "format":  "checkbox"
         },
         {
-          "key": "smartblockTypes",
-          "format": "number"
+          "key":  "smartblockTypes",
+          "format":  "number"
         },
         {
-          "key": "layout",
-          "format": "number"
+          "key":  "layout",
+          "format":  "number"
         },
         {
-          "key": "iconEmoji",
-          "format": "emoji"
+          "key":  "iconEmoji",
+          "format":  "emoji"
         },
         {
-          "key": "id",
-          "format": "object"
+          "key":  "id",
+          "format":  "object"
         },
         {
-          "key": "uniqueKey"
+          "key":  "uniqueKey"
         },
         {
-          "key": "isReadonly",
-          "format": "checkbox"
+          "key":  "isReadonly",
+          "format":  "checkbox"
         },
         {
-          "key": "snippet"
+          "key":  "snippet"
         },
         {
-          "key": "backlinks",
-          "format": "object"
+          "key":  "backlinks",
+          "format":  "object"
         },
         {
-          "key": "iconImage",
-          "format": "file"
+          "key":  "iconImage",
+          "format":  "file"
         },
         {
-          "key": "type",
-          "format": "object"
+          "key":  "type",
+          "format":  "object"
         },
         {
-          "key": "layoutAlign",
-          "format": "number"
+          "key":  "layoutAlign",
+          "format":  "number"
         },
         {
-          "key": "coverId"
+          "key":  "coverId"
         },
         {
-          "key": "coverScale",
-          "format": "number"
+          "key":  "coverScale",
+          "format":  "number"
         },
         {
-          "key": "coverType",
-          "format": "number"
+          "key":  "coverType",
+          "format":  "number"
         },
         {
-          "key": "coverX",
-          "format": "number"
+          "key":  "coverX",
+          "format":  "number"
         },
         {
-          "key": "coverY",
-          "format": "number"
+          "key":  "coverY",
+          "format":  "number"
         },
         {
-          "key": "createdDate",
-          "format": "date"
+          "key":  "createdDate",
+          "format":  "date"
         },
         {
-          "key": "creator",
-          "format": "object"
+          "key":  "creator",
+          "format":  "object"
         },
         {
-          "key": "lastModifiedDate",
-          "format": "date"
+          "key":  "lastModifiedDate",
+          "format":  "date"
         },
         {
-          "key": "lastModifiedBy",
-          "format": "object"
+          "key":  "lastModifiedBy",
+          "format":  "object"
         },
         {
-          "key": "lastOpenedDate",
-          "format": "date"
+          "key":  "lastOpenedDate",
+          "format":  "date"
         },
         {
-          "key": "isFavorite",
-          "format": "checkbox"
+          "key":  "isFavorite",
+          "format":  "checkbox"
         },
         {
-          "key": "workspaceId",
-          "format": "object"
+          "key":  "workspaceId",
+          "format":  "object"
         },
         {
-          "key": "links",
-          "format": "object"
+          "key":  "links",
+          "format":  "object"
         },
         {
-          "key": "restrictions",
-          "format": "number"
+          "key":  "restrictions",
+          "format":  "number"
         },
         {
-          "key": "fileId",
-          "format": "shorttext"
+          "key":  "fileId",
+          "format":  "shorttext"
         },
         {
-          "key": "sizeInBytes",
-          "format": "number"
+          "key":  "sizeInBytes",
+          "format":  "number"
         },
         {
-          "key": "lastUsedDate",
-          "format": "date"
+          "key":  "lastUsedDate",
+          "format":  "date"
         },
         {
-          "key": "isArchived",
-          "format": "checkbox"
+          "key":  "isArchived",
+          "format":  "checkbox"
         }
       ],
-      "key": "image"
+      "key":  "image"
     }
   }
 }

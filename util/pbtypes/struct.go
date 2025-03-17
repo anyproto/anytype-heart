@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	st "github.com/gogo/protobuf/types"
+	st "google.golang.org/protobuf/types/known/structpb"
 )
 
 func StructDeleteEmptyFields(v *st.Struct) {

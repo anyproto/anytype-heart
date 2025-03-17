@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
+	types "google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestStructMerge(t *testing.T) {

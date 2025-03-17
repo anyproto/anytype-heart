@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -134,7 +133,7 @@ func (fx *fixtureRealStore) waitEvents(t *testing.T, ev ...pb.IsEventMessageValu
 		select {
 		case <-timeout.C:
 			fx.eventsLock.Lock()
-			assert.Equal(t, ev, fx.events)
+			testutil.AssertProtosEqual(t, ev, fx.events)
 			fx.eventsLock.Unlock()
 			return
 		case <-ticker.C:

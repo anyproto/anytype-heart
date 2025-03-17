@@ -197,7 +197,7 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 		details.SetString(bundle.RelationKeyName, strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
 		details.SetString(bundle.RelationKeyFileExt, strings.TrimPrefix(filepath.Ext(largest.Name), "."))
 		details.SetString(bundle.RelationKeyFileMimeType, largest.Media)
-		details.SetFloat64(bundle.RelationKeySizeInBytes, float64(largest.Size_))
+		details.SetFloat64(bundle.RelationKeySizeInBytes, float64(largest.Size))
 		details.SetFloat64(bundle.RelationKeyAddedDate, float64(largest.Added))
 	}
 

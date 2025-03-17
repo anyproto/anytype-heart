@@ -91,34 +91,34 @@ func TestMD_Convert(t *testing.T) {
 					Marks: &model.BlockContentTextMarks{
 						Marks: []*model.BlockContentTextMark{
 							{
-								Range: &model.Range{0, 4},
+								Range: &model.Range{From: 0, To: 4},
 								Type:  model.BlockContentTextMark_Bold,
 							},
 							{
-								Range: &model.Range{0, 4},
+								Range: &model.Range{From: 0, To: 4},
 								Type:  model.BlockContentTextMark_Italic,
 							},
 							{
-								Range: &model.Range{0, 4},
+								Range: &model.Range{From: 0, To: 4},
 								Type:  model.BlockContentTextMark_Link,
 								Param: "http://golang.org",
 							},
 							{
-								Range: &model.Range{5, 6},
+								Range: &model.Range{From: 5, To: 6},
 								Type:  model.BlockContentTextMark_Link,
 								Param: "http://golang.org",
 							},
 							{
-								Range: &model.Range{6, 7},
+								Range: &model.Range{From: 6, To: 7},
 								Type:  model.BlockContentTextMark_Link,
 								Param: "http://golang.org",
 							},
 							{
-								Range: &model.Range{10, 16},
+								Range: &model.Range{From: 10, To: 16},
 								Type:  model.BlockContentTextMark_Bold,
 							},
 							{
-								Range: &model.Range{12, 18},
+								Range: &model.Range{From: 12, To: 18},
 								Type:  model.BlockContentTextMark_Strikethrough,
 							},
 						},
@@ -157,7 +157,7 @@ func TestMD_Convert(t *testing.T) {
 					Marks: &model.BlockContentTextMarks{
 						Marks: []*model.BlockContentTextMark{
 							{
-								Range: &model.Range{6, 7},
+								Range: &model.Range{From: 6, To: 7},
 								Type:  model.BlockContentTextMark_Emoji,
 							},
 						},

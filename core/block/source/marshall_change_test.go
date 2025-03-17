@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -234,7 +234,7 @@ func benchmarkUnmarshallChange(c *objecttree.Change, data []byte, b *testing.B) 
 func changeWithCreateBigBlock() *pb.Change {
 	return &pb.Change{
 		Content: []*pb.ChangeContent{{
-			&pb.ChangeContentValueOfBlockCreate{BlockCreate: &pb.ChangeBlockCreate{
+			Value: &pb.ChangeContentValueOfBlockCreate{BlockCreate: &pb.ChangeBlockCreate{
 				TargetId: "bafyreibl7ni6vvsxorr4xd62p5hjntq2243wda6hkqnppcq7splxkguf12d",
 				Position: 3,
 				Blocks: []*model.Block{{
@@ -251,7 +251,7 @@ func changeWithCreateBigBlock() *pb.Change {
 func changeWithSetBigDetail(length int) *pb.Change {
 	return &pb.Change{
 		Content: []*pb.ChangeContent{{
-			&pb.ChangeContentValueOfDetailsSet{DetailsSet: &pb.ChangeDetailsSet{
+			Value: &pb.ChangeContentValueOfDetailsSet{DetailsSet: &pb.ChangeDetailsSet{
 				Key:   bundle.RelationKeyDescription.String(),
 				Value: pbtypes.String(randStr(text[:length])),
 			}},
@@ -262,7 +262,7 @@ func changeWithSetBigDetail(length int) *pb.Change {
 func changeWithSetSmallDetail() *pb.Change {
 	return &pb.Change{
 		Content: []*pb.ChangeContent{{
-			&pb.ChangeContentValueOfDetailsSet{DetailsSet: &pb.ChangeDetailsSet{
+			Value: &pb.ChangeContentValueOfDetailsSet{DetailsSet: &pb.ChangeDetailsSet{
 				Key: bundle.RelationKeyDescription.String(),
 				Value: pbtypes.Struct(&types.Struct{
 					Fields: map[string]*types.Value{

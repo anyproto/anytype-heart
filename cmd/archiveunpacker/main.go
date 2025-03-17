@@ -11,15 +11,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/constant"
 )
 
 var (
-	jsonM = jsonpb.Marshaler{Indent: "  "}
+	jsonM = protojson.MarshalOptions{Indent: "  "}
 )
 
 func main() {
@@ -75,14 +75,14 @@ func processFile(file File, outputFile string) {
 
 	if strings.HasSuffix(file.Name, ".json") {
 
-		if err := jsonpb.UnmarshalString(string(content), snapshot); err != nil {
-			log.Fatalf("Failed to parse jsonpb message: %v", err)
+		if err := protojson.Unmarshal(content, snapshot); err != nil {
+			log.Fatalf("Failed to parse protojson message: %v", err)
 		}
 
 		// convert to pb and write to outputFile
 		pbData, err := proto.Marshal(snapshot)
 		if err != nil {
-			log.Fatalf("Failed to marshal jsonpb message to protobuf: %v", err)
+			log.Fatalf("Failed to marshal protojson message to protobuf: %v", err)
 		}
 
 		outputFile = strings.TrimSuffix(outputFile, filepath.Ext(outputFile)) + ".pb"
@@ -100,8 +100,8 @@ func processFile(file File, outputFile string) {
 			}
 		}
 
-		// convert to jsonpb and write to outputFile
-		jsonData, err := jsonM.MarshalToString(snapshot)
+		// convert to protojson and write to outputFile
+		jsonData, err := jsonM.Marshal(snapshot)
 		if err != nil {
 			log.Fatalf("Failed to marshal protobuf message to json: %v", err)
 		}
@@ -187,10 +187,10 @@ func createZipFromDirectory(input, output string) {
 				snapshot = &pb.Profile{}
 			}
 
-			err = jsonpb.UnmarshalString(string(data), snapshot)
+			err = protojson.Unmarshal(data, snapshot)
 			if err != nil {
 				snapshot = &pb.SnapshotWithType{}
-				if err = jsonpb.UnmarshalString(string(data), snapshot); err != nil {
+				if err = protojson.Unmarshal(data, snapshot); err != nil {
 					return err
 				}
 			}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/gogo/protobuf/types"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 )

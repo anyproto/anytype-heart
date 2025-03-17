@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/gogo/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -59,14 +59,14 @@ func (e *debugEntrySet) perSubscriptionString() string {
 }
 
 func (e *debugEntrySet) describe(w io.Writer) error {
-	marshaller := &jsonpb.Marshaler{}
+	marshaller := &protojson.MarshalOptions{}
 	keys := make([]string, 0, len(e.ObjectDetailsSet.Details.GetFields()))
 	for k := range e.ObjectDetailsSet.Details.GetFields() {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		value, err := marshaller.MarshalToString(e.ObjectDetailsSet.Details.GetFields()[k])
+		value, err := marshaller.Marshal(e.ObjectDetailsSet.Details.GetFields()[k])
 		if err != nil {
 			return err
 		}
@@ -119,17 +119,17 @@ func (e *debugEntryAmend) perSubscriptionString() string {
 }
 
 func (e *debugEntryAmend) describe(w io.Writer) error {
-	marshaller := &jsonpb.Marshaler{}
+	marshaller := &protojson.MarshalOptions{}
 
 	converted := make([]keyValue, 0, len(e.ObjectDetailsAmend.Details))
 	for _, det := range e.ObjectDetailsAmend.Details {
-		value, err := marshaller.MarshalToString(det.Value)
+		value, err := marshaller.Marshal(det.Value)
 		if err != nil {
 			return err
 		}
 		converted = append(converted, keyValue{
 			key:   det.Key,
-			value: value,
+			value: string(value),
 		})
 	}
 	sort.Slice(converted, func(i, j int) bool {

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/constraints"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )

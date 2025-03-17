@@ -93,7 +93,7 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	defer rd.Close()
 	data, err := io.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
-	if err = snapshot.Unmarshal(data); err != nil {
+	if err = snapshot.UnmarshalVT(data); err != nil {
 		return
 	}
 	var id string

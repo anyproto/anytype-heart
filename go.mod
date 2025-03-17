@@ -8,13 +8,12 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.11
-	github.com/anyproto/any-sync v0.6.4
+	github.com/anyproto/any-sync v0.6.6-0.20250314130352-260525b23318
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.0
 	github.com/anyproto/lexid v0.0.4
-	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
 	github.com/anyproto/tantivy-go v1.0.1
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
@@ -35,11 +34,10 @@ require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-shiori/go-readability v0.0.0-20241012063810-92284fa8a71f
 	github.com/goccy/go-graphviz v0.2.9
-	github.com/gogo/protobuf v1.3.2
-	github.com/gogo/status v1.1.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/golang/snappy v1.0.0
+	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.15.0
 	github.com/grokify/html-strip-tags-go v0.1.0
@@ -82,6 +80,7 @@ require (
 	github.com/otiai10/copy v1.14.1
 	github.com/otiai10/opengraph/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
+	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
 	github.com/prometheus/client_golang v1.21.1
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
@@ -112,12 +111,15 @@ require (
 	golang.org/x/sys v0.31.0
 	golang.org/x/text v0.23.0
 	google.golang.org/grpc v1.71.0
+	google.golang.org/protobuf v1.36.5
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.34
 	zombiezen.com/go/sqlite v1.4.0
 )
+
+require gopkg.in/ini.v1 v1.67.0 // indirect
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -181,7 +183,7 @@ require (
 	github.com/go-xmlfmt/xmlfmt v0.0.0-20191208150333-d5b6f63a941b // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
-	github.com/gogo/googleapis v1.3.1 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
@@ -287,8 +289,6 @@ require (
 	golang.org/x/tools v0.31.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
-	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.4.0 // indirect
 	modernc.org/libc v1.61.13 // indirect
@@ -314,10 +314,10 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 
 replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr v0.8.1-0.20250307125826-51ba58e2ebc7
 
-replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38
-
 replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38
 
 replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
 
 replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
+
+replace zombiezen.com/go/sqlite => github.com/anyproto/go-sqlite v0.0.0-20250226111550-9b81a8e3cff4

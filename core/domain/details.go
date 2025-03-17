@@ -5,8 +5,8 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
+	types "google.golang.org/protobuf/types/known/structpb"
 )
 
 var log = logger.NewNamed("core.domain")
