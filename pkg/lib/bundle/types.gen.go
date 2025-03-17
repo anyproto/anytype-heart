@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "0d2b4f839dd21d6e7abce40021cda9dbc2ed6caef0cff7bbff21c7c5b815b716"
+const TypeChecksum = "c822736d7d1bbafe9ce41974a9153086a21f0f771271489a3bd329d4a4aed133"
 const (
 	TypePrefix = "_ot"
 )
@@ -138,7 +138,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Company",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIndustry), MustGetRelationLink(RelationKeySize), MustGetRelationLink(RelationKeyLocation), MustGetRelationLink(RelationKeyFoundingYear)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "company",
 		},
@@ -201,7 +201,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Event",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyLocation), MustGetRelationLink(RelationKeyStartDate), MustGetRelationLink(RelationKeyEventType), MustGetRelationLink(RelationKeyDuration)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDuration)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "event",
 		},

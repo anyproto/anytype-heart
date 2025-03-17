@@ -1519,66 +1519,6 @@
     "source": "details"
   },
   {
-    "description": "Some event start date",
-    "format": "date",
-    "hidden": false,
-    "key": "startDate",
-    "maxCount": 1,
-    "name": "Start date",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "Some event or place location",
-    "format": "longtext",
-    "hidden": false,
-    "key": "location",
-    "maxCount": 1,
-    "name": "Location",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "Event type",
-    "format": "longtext",
-    "hidden": false,
-    "key": "eventType",
-    "maxCount": 1,
-    "name": "Event type",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "Company or organization industry",
-    "format": "longtext",
-    "hidden": false,
-    "key": "industry",
-    "maxCount": 1,
-    "name": "Industry",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "Size of something in a text format with a custom measurement, e.g '10-20 people'",
-    "format": "longtext",
-    "hidden": false,
-    "key": "size",
-    "maxCount": 1,
-    "name": "Size",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "The year when the organisation was founded",
-    "format": "number",
-    "hidden": false,
-    "key": "foundingYear",
-    "maxCount": 1,
-    "name": "Founding year",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Total cooking time in text format",
     "format": "longtext",
     "hidden": false,
@@ -1629,7 +1569,7 @@
     "source": "details"
   },
   {
-   "description": "Automatically generated widget targets. Used to avoid creating widget if was removed by user",
+    "description": "Automatically generated widget targets. Used to avoid creating widget if was removed by user",
     "format": "object",
     "hidden": true,
     "key": "autoWidgetTargets",

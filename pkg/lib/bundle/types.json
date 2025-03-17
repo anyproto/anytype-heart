@@ -545,11 +545,7 @@
     "hidden": false,
     "layout": "basic",
     "relations": [
-      "tag",
-      "industry",
-      "size",
-      "location",
-      "foundingYear"
+      "tag"
     ],
     "description": "Entity that engages in business activities",
     "revision": 0
@@ -566,9 +562,6 @@
     "layout": "basic",
     "relations": [
       "tag",
-      "location",
-      "startDate",
-      "eventType",
       "duration"
     ],
     "description": "Entity that engages in business activities",

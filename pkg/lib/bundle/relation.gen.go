@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "48ffab72b0d704d056aa32005ec6e8e086141ea5b9d83096cd9945827e43d462"
+const RelationChecksum = "ff6f6773f87ae2eb87d9a731afa6f75fa08b1c078f7c5a7cdda011a9ae719ed8"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
@@ -158,12 +158,6 @@ const (
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
-	RelationKeyStartDate                    domain.RelationKey = "startDate"
-	RelationKeyLocation                     domain.RelationKey = "location"
-	RelationKeyEventType                    domain.RelationKey = "eventType"
-	RelationKeyIndustry                     domain.RelationKey = "industry"
-	RelationKeySize                         domain.RelationKey = "size"
-	RelationKeyFoundingYear                 domain.RelationKey = "foundingYear"
 	RelationKeyCookingTime                  domain.RelationKey = "cookingTime"
 	RelationKeyServings                     domain.RelationKey = "servings"
 	RelationKeyCuisine                      domain.RelationKey = "cuisine"
@@ -643,19 +637,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyEventType: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Event type",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_breventType",
-			Key:              "eventType",
-			MaxCount:         1,
-			Name:             "Event type",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyExposure: {
 
 			DataSource:       model.Relation_details,
@@ -774,19 +755,6 @@ var (
 			Key:              "focalRatio",
 			MaxCount:         1,
 			Name:             "Focal ratio",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyFoundingYear: {
-
-			DataSource:       model.Relation_details,
-			Description:      "The year when the organisation was founded",
-			Format:           model.RelationFormat_number,
-			Id:               "_brfoundingYear",
-			Key:              "foundingYear",
-			MaxCount:         1,
-			Name:             "Founding year",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -982,19 +950,6 @@ var (
 			MaxCount:         1,
 			Name:             "Import Type",
 			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyIndustry: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Company or organization industry",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brindustry",
-			Key:              "industry",
-			MaxCount:         1,
-			Name:             "Industry",
-			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1300,19 +1255,6 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         3,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyLocation: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Some event or place location",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brlocation",
-			Key:              "location",
-			MaxCount:         1,
-			Name:             "Location",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyMediaArtistName: {
@@ -1785,19 +1727,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeySize: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Size of something in a text format with a custom measurement, e.g '10-20 people'",
-			Format:           model.RelationFormat_longtext,
-			Id:               "_brsize",
-			Key:              "size",
-			MaxCount:         1,
-			Name:             "Size",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeySizeInBytes: {
 
 			DataSource:       model.Relation_details,
@@ -2084,19 +2013,6 @@ var (
 			Key:              "starred",
 			MaxCount:         1,
 			Name:             "Starred",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyStartDate: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Some event start date",
-			Format:           model.RelationFormat_date,
-			Id:               "_brstartDate",
-			Key:              "startDate",
-			MaxCount:         1,
-			Name:             "Start date",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
