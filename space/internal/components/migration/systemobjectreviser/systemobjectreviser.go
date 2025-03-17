@@ -187,15 +187,16 @@ func buildDiffDetails(origin, current *domain.Details, isSystem bool) *domain.De
 	diff, _ := domain.StructDiff(current, origin)
 	diff = diff.CopyOnlyKeys(filterKeys...)
 
-	if cannotApplyPluralName(isSystem, diff) {
+	if cannotApplyPluralName(isSystem, current, origin) {
 		diff.Delete(bundle.RelationKeyName)
 		diff.Delete(bundle.RelationKeyPluralName)
 	}
 	return diff
 }
 
-func cannotApplyPluralName(isSystem bool, diff *domain.Details) bool {
-	return !isSystem && diff.Has(bundle.RelationKeyName)
+func cannotApplyPluralName(isSystem bool, current, origin *domain.Details) bool {
+	// we cannot set plural name to custom types with custom name
+	return !isSystem && current.GetString(bundle.RelationKeyName) != origin.GetString(bundle.RelationKeyName)
 }
 
 func checkRelationFormatObjectTypes(

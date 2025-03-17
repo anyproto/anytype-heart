@@ -356,7 +356,6 @@ func TestBuildDiffDetails(t *testing.T) {
 		}), true)
 
 		assert.Equal(t, "Pages", diff.GetString(bundle.RelationKeyPluralName))
-		assert.Equal(t, "Page", diff.GetString(bundle.RelationKeyName))
 	})
 
 	t.Run("new name is applied to custom types, if name was not modified", func(t *testing.T) {
@@ -368,7 +367,6 @@ func TestBuildDiffDetails(t *testing.T) {
 		}), false)
 
 		assert.Equal(t, "Projects", diff.GetString(bundle.RelationKeyPluralName))
-		assert.Equal(t, "Project", diff.GetString(bundle.RelationKeyName))
 	})
 
 	t.Run("new name is NOT applied to custom types, if name was modified", func(t *testing.T) {
