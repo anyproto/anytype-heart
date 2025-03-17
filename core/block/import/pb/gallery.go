@@ -27,7 +27,7 @@ func NewGalleryImport(service *collection.Service) *GalleryImport {
 }
 
 func (g *GalleryImport) ProvideCollection(
-	snapshots *snapshotSet,
+	snapshots *common.SnapshotList,
 	_ map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
 	isNewSpace bool,
@@ -36,32 +36,30 @@ func (g *GalleryImport) ProvideCollection(
 		return nil, nil
 	}
 	var widgetObjects []string
-	if snapshots != nil && snapshots.Widget != nil {
-		widgetObjects = g.getObjectsFromWidgets(snapshots.Widget)
+	if widget := snapshots.GetWidget(); widget != nil {
+		widgetObjects = g.getObjectsFromWidgets(widget)
 	}
 	var (
 		icon       string
 		fileKeys   []*pb.ChangeFileKeys
 		objectsIds []string
 	)
-	if snapshots != nil && snapshots.Workspace != nil { // we use space icon for import collection
-		icon = snapshots.Workspace.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
-		fileKeys = lo.Filter(snapshots.Workspace.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
+	if workspace := snapshots.GetWorkspace(); workspace != nil { // we use space icon for import collection
+		icon = workspace.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
+		fileKeys = lo.Filter(workspace.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
 	}
 	collectionName := params.GetCollectionTitle() // collection name should be the name of experience
 	if collectionName == "" {
 		collectionName = rootCollectionName
 	}
 	rootCollection := common.NewImportCollection(g.service)
-	if len(widgetObjects) > 0 && snapshots != nil {
-		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, snapshots.Widget, collectionsSnapshots)
+	if len(widgetObjects) > 0 {
+		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, snapshots.GetWidget(), collectionsSnapshots)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if snapshots != nil {
-		objectsIds = g.getObjectsIDs(snapshots.List)
-	}
+	objectsIds = g.getObjectsIDs(snapshots.List())
 	settings := common.MakeImportCollectionSetting(collectionName, objectsIds, icon, fileKeys, false, true, true)
 	objectsCollection, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {

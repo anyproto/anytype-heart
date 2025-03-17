@@ -75,9 +75,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().Add(allSnapshot...)
 
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -165,9 +166,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -254,9 +256,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -358,10 +361,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot},
-			map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, false)
+		collection, err := p.ProvideCollection(snapshotList, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, false)
 
 		// then
 		assert.Nil(t, err)

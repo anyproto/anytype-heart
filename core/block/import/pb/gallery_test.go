@@ -129,9 +129,10 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -200,9 +201,10 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{List: allSnapshot, Widget: widgetSnapshot}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -235,9 +237,10 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{Widget: widgetSnapshot}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -273,8 +276,10 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().SetWorkspace(workspace)
+
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{Workspace: workspace}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -298,8 +303,10 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().SetWorkspace(workspace)
+
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{Workspace: workspace}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -343,9 +350,10 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotList().SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(&snapshotSet{Widget: widgetSnapshot}, nil, params, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)

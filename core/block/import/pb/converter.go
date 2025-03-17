@@ -76,8 +76,8 @@ func (p *Pb) GetSnapshots(_ context.Context, req *pb.RpcObjectImportRequest, pro
 		}
 		return nil, p.errors
 	}
-	oldToNewID := p.updateLinksToObjects(snapshots.List)
-	p.updateDetails(snapshots.List)
+	oldToNewID := p.updateLinksToObjects(snapshots.List())
+	p.updateDetails(snapshots.List())
 	if p.errors.ShouldAbortImport(len(p.params.GetPath()), req.Type) {
 		return nil, p.errors
 	}
@@ -91,11 +91,11 @@ func (p *Pb) GetSnapshots(_ context.Context, req *pb.RpcObjectImportRequest, pro
 		}
 	}
 	if len(rootCollections) > 0 {
-		snapshots.List = append(snapshots.List, rootCollections...)
+		snapshots.Add(rootCollections...)
 		rootCollectionID = rootCollections[0].Id
 	}
-	progress.SetTotalPreservingRatio(int64(len(snapshots.List)))
-	return &common.Response{Snapshots: snapshots.List, RootCollectionID: rootCollectionID}, p.errors.ErrorOrNil()
+	progress.SetTotalPreservingRatio(int64(snapshots.Len()))
+	return &common.Response{Snapshots: snapshots.List(), RootCollectionID: rootCollectionID}, p.errors.ErrorOrNil()
 }
 
 func (p *Pb) Name() string {
@@ -122,10 +122,8 @@ func (p *Pb) getParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectI
 	return nil, fmt.Errorf("PB: getParams wrong parameters format")
 }
 
-func (p *Pb) getSnapshots() (allSnapshots *snapshotSet) {
-	allSnapshots = &snapshotSet{
-		List: []*common.Snapshot{},
-	}
+func (p *Pb) getSnapshots() (allSnapshots *common.SnapshotList) {
+	allSnapshots = common.NewSnapshotList()
 	for _, path := range p.params.GetPath() {
 		if err := p.progress.TryStep(1); err != nil {
 			p.errors.Add(common.ErrCancel)
@@ -135,18 +133,12 @@ func (p *Pb) getSnapshots() (allSnapshots *snapshotSet) {
 		if p.errors.ShouldAbortImport(len(p.params.GetPath()), model.Import_Pb) {
 			return nil
 		}
-		allSnapshots.List = append(allSnapshots.List, snapshots.List...)
-		if snapshots.Widget != nil {
-			allSnapshots.Widget = snapshots.Widget
-		}
-		if snapshots.Workspace != nil {
-			allSnapshots.Workspace = snapshots.Workspace
-		}
+		allSnapshots.Merge(snapshots)
 	}
 	return allSnapshots
 }
 
-func (p *Pb) handleImportPath(path string) *snapshotSet {
+func (p *Pb) handleImportPath(path string) *common.SnapshotList {
 	importSource := source.GetSource(path)
 	defer importSource.Close()
 	err := p.extractFiles(path, importSource)
@@ -226,10 +218,8 @@ func (p *Pb) needToImportWidgets(address, accountID string) bool {
 	return address == accountID
 }
 
-func (p *Pb) getSnapshotsFromProvidedFiles(pbFiles source.Source, path, profileID string) (snapshots *snapshotSet) {
-	snapshots = &snapshotSet{
-		List: []*common.Snapshot{},
-	}
+func (p *Pb) getSnapshotsFromProvidedFiles(pbFiles source.Source, path, profileID string) (snapshots *common.SnapshotList) {
+	snapshots = common.NewSnapshotList()
 	if iterateErr := pbFiles.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		// skip files from "files" directory
 		if filepath.Dir(fileName) == fileDir {
@@ -244,13 +234,13 @@ func (p *Pb) getSnapshotsFromProvidedFiles(pbFiles source.Source, path, profileI
 		}
 		if snapshot != nil {
 			if p.shouldImportSnapshot(snapshot) {
-				snapshots.List = append(snapshots.List, snapshot)
+				snapshots.Add(snapshot)
 			}
-			if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeWidget {
-				snapshots.Widget = snapshot
-			}
-			if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeWorkspace {
-				snapshots.Workspace = snapshot
+			switch snapshot.Snapshot.SbType {
+			case smartblock.SmartBlockTypeWidget:
+				snapshots.SetWidget(snapshot)
+			case smartblock.SmartBlockTypeWorkspace:
+				snapshots.SetWorkspace(snapshot)
 			}
 		}
 		return true
