@@ -39,11 +39,6 @@ const (
 
 var ErrNotAnyBlockExtension = errors.New("not JSON or PB extension")
 
-type snapshotSet struct {
-	List              []*common.Snapshot
-	Widget, Workspace *common.Snapshot
-}
-
 type Pb struct {
 	service         *collection.Service
 	accountService  account.Service
