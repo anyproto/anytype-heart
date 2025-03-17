@@ -48,6 +48,7 @@ var objectTypeWhiteList = append(slices.Clone(derivedObjectsWhiteList),
 	bundle.RelationKeyLayoutAlign.String(),
 	bundle.RelationKeyIconName.String(),
 	bundle.RelationKeyIconOption.String(),
+	bundle.RelationKeyIconImage.String(),
 )
 
 var fileRelationsWhiteList = append(
