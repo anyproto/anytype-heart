@@ -273,12 +273,12 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 
 func TestService_resolveValidTemplateId(t *testing.T) {
 	var (
-		spaceId      = "cosmos"
-		otherSpaceId = "other"
-		templateId1  = "template1"
-		templateId2  = "template2"
-		templateId3  = "template3"
-		now          = time.Now().Unix()
+		spaceId     = "cosmos"
+		templateId1 = "template1"
+		templateId2 = "template2"
+		templateId3 = "template3"
+		templateIdP = "projectTemplate"
+		now         = time.Now().Unix()
 	)
 
 	store := objectstore.NewStoreFixture(t)
@@ -302,6 +302,15 @@ func TestService_resolveValidTemplateId(t *testing.T) {
 			bundle.RelationKeyLastModifiedDate: domain.Int64(now - 120),
 			bundle.RelationKeyIsDeleted:        domain.Bool(true),
 		},
+		{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyDefaultTemplateId: domain.String(templateId2),
+		},
+		{
+			bundle.RelationKeyId:               domain.String(templateIdP),
+			bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
+			bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyProject.URL()),
+		},
 	})
 
 	spaceService := mock_space.NewMockService(t)
@@ -318,20 +327,23 @@ func TestService_resolveValidTemplateId(t *testing.T) {
 
 	for _, tc := range []struct {
 		name                string
-		spaceId             string
+		typeKey             domain.TypeKey
 		requestedTemplateId string
 		expectedTemplateId  string
 	}{
-		{"requested template is valid", spaceId, templateId2, templateId2},
-		{"requested template is invalid", spaceId, "invalid", templateId1},
-		{"requested template is deleted", spaceId, templateId3, templateId1},
-		{"requested template is empty", spaceId, "", templateId1},
-		{"requested template is blank", spaceId, BlankTemplateId, BlankTemplateId},
-		{"no valid template exists", otherSpaceId, "templateId", ""},
+		{"requested template is valid", bundle.TypeKeyTask, templateId2, templateId2},
+		{"requested template is invalid", bundle.TypeKeyTask, "invalid", templateId2},
+		{"requested template is deleted", bundle.TypeKeyTask, templateId3, templateId2},
+		{"requested template is default", bundle.TypeKeyTask, DefaultTemplateId, templateId2},
+		{"requested template is lastEdited", bundle.TypeKeyTask, LastEditedTemplateId, templateId1},
+		{"requested template is empty", bundle.TypeKeyTask, "", templateId2},
+		{"fallback to lastEdited if no default", bundle.TypeKeyProject, "", templateIdP},
+		{"requested template is blank", bundle.TypeKeyTask, BlankTemplateId, BlankTemplateId},
+		{"no valid template exists", bundle.TypeKeyBook, "templateId", BlankTemplateId},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// when
-			templateId, err := s.resolveValidTemplateId(tc.spaceId, tc.requestedTemplateId, bundle.TypeKeyTask.URL())
+			templateId, err := s.resolveValidTemplateId(spaceId, tc.requestedTemplateId, tc.typeKey.URL())
 
 			// then
 			assert.NoError(t, err)
