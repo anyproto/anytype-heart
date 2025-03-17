@@ -665,7 +665,7 @@ func (s *ObjectService) getProperty(key string, resp *pb.RpcObjectShowResponse) 
 
 	// Fallback to resolving the property name
 	spaceId := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
-	if name, err2 := util.ResolveRelationKeyToRelationName(s.mw, spaceId, key); err2 == nil {
+	if name, err2 := util.ResolveRelationKeyToPropertyName(s.mw, spaceId, key); err2 == nil {
 		return key, name
 	}
 	return key, key
@@ -788,7 +788,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	for _, block := range resp.ObjectView.Blocks {
 		var text *Text
 		var file *File
-		var relation *Relation
+		var property *Property
 		var dataviewMapping *Dataview
 
 		switch content := block.Content.(type) {
@@ -813,7 +813,8 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 				Style:          model.BlockContentFileStyle_name[int32(content.File.Style)],
 			}
 		case *model.BlockContentOfRelation:
-			relation = &Relation{
+			property = &Property{
+				// TODO: is it sufficient to return the id only?
 				Id: content.Relation.Key,
 			}
 		case *model.BlockContentOfDataview:
@@ -823,7 +824,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 				for _, f := range v.Filters {
 					filters = append(filters, Filter{
 						Id:          f.Id,
-						RelationKey: f.RelationKey,
+						PropertyKey: f.RelationKey,
 						Format:      s.mapRelationFormat(f.Format),
 						Condition:   strcase.ToSnake(model.BlockContentDataviewFilterCondition_name[int32(f.Condition)]),
 						Value:       f.Value.GetStringValue(),
@@ -833,7 +834,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 				for _, srt := range v.Sorts {
 					sorts = append(sorts, Sort{
 						Id:          srt.Id,
-						RelationKey: srt.RelationKey,
+						PropertyKey: srt.RelationKey,
 						Format:      s.mapRelationFormat(srt.Format),
 						SortType:    strcase.ToSnake(model.BlockContentDataviewSortType_name[int32(srt.Type)]),
 					})
@@ -861,7 +862,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 			VerticalAlign:   model.BlockVerticalAlign_name[int32(block.VerticalAlign)],
 			Text:            text,
 			File:            file,
-			Relation:        relation,
+			Property:        property,
 			Dataview:        dataviewMapping,
 		})
 	}

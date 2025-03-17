@@ -57,8 +57,8 @@ components:
           description: The id of the block
           example: 64394517de52ad5acb89c66c
           type: string
-        relation:
-          $ref: '#/components/schemas/object.Relation'
+        property:
+          $ref: '#/components/schemas/object.Property'
         text:
           $ref: '#/components/schemas/object.Text'
         vertical_align:
@@ -149,15 +149,15 @@ components:
           example: contains
           type: string
         format:
-          description: The format of the relation used for filtering
+          description: The format of the property used for filtering
           example: text
           type: string
         id:
           description: The id of the filter
           example: 67bf3f21cda9134102e2422c
           type: string
-        relation_key:
-          description: The relation key used for filtering
+        property_key:
+          description: The property key used for filtering
           example: name
           type: string
         value:
@@ -220,6 +220,7 @@ components:
           $ref: '#/components/schemas/object.Object'
       type: object
     object.Property:
+      description: The property block, if applicable
       properties:
         checkbox:
           description: The checkbox value, if applicable
@@ -298,24 +299,18 @@ components:
           example: https://example.com
           type: string
       type: object
-    object.Relation:
-      description: The relation block, if applicable
-      properties:
-        id:
-          type: string
-      type: object
     object.Sort:
       properties:
         format:
-          description: The format of the relation used for sorting
+          description: The format of the property used for sorting
           example: text
           type: string
         id:
           description: The id of the sort
           example: 67bf3f21cda9134102e2422c
           type: string
-        relation_key:
-          description: The relation key used for sorting
+        property_key:
+          description: The property key used for sorting
           example: name
           type: string
         sort_type:
@@ -1346,7 +1341,7 @@ paths:
         key details such as the object name, icon, description, body content (which
         may support Markdown), source URL (required for bookmark objects), template
         identifier, and the unique key for the object type. Post-creation, additional
-        operations (like setting featured relations or fetching bookmark metadata)
+        operations (like setting featured properties or fetching bookmark metadata)
         may occur. The endpoint then returns the full object data, ready for further
         interactions.
       parameters:
@@ -1465,9 +1460,9 @@ paths:
       description: Fetches the full details of a single object identified by the object
         ID within the specified space. The response includes not only basic metadata
         (ID, name, icon, type) but also the complete set of blocks (which may include
-        text, files, and relations) and extra details (such as timestamps and linked
-        member information). This endpoint is essential when a client needs to render
-        or edit the full object view.
+        text, files, properties and dataviews) and extra details (such as timestamps
+        and linked member information). This endpoint is essential when a client needs
+        to render or edit the full object view.
       parameters:
       - description: Space ID
         in: path

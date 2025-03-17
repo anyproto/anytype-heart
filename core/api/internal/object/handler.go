@@ -49,7 +49,7 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 // GetObjectHandler retrieves an object in a space
 //
 //	@Summary		Get object
-//	@Description	Fetches the full details of a single object identified by the object ID within the specified space. The response includes not only basic metadata (ID, name, icon, type) but also the complete set of blocks (which may include text, files, and relations) and extra details (such as timestamps and linked member information). This endpoint is essential when a client needs to render or edit the full object view.
+//	@Description	Fetches the full details of a single object identified by the object ID within the specified space. The response includes not only basic metadata (ID, name, icon, type) but also the complete set of blocks (which may include text, files, properties and dataviews) and extra details (such as timestamps and linked member information). This endpoint is essential when a client needs to render or edit the full object view.
 //	@Tags			objects
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space ID"
@@ -122,7 +122,7 @@ func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 // CreateObjectHandler creates a new object in a space
 //
 //	@Summary		Create object
-//	@Description	Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the unique key for the object type. Post-creation, additional operations (like setting featured relations or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
+//	@Description	Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the unique key for the object type. Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
 //	@Tags			objects
 //	@Accept			json
 //	@Produce		json

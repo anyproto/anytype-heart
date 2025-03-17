@@ -15,8 +15,8 @@ import (
 var (
 	ErrFailedSearchType     = errors.New("failed to search for type")
 	ErrorTypeNotFound       = errors.New("type not found")
-	ErrFailedSearchRelation = errors.New("failed to search for relation")
-	ErrorRelationNotFound   = errors.New("relation not found")
+	ErrFailedSearchProperty = errors.New("failed to search for property")
+	ErrorPropertyNotFound   = errors.New("property not found")
 )
 
 var iconOptionToColor = map[float64]string{
@@ -97,8 +97,8 @@ func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, u
 	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
 }
 
-// ResolveRelationKeyToRelationName resolves the relation key to the relation's name
-func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId string, relationKey string) (relation string, err error) {
+// ResolveRelationKeyToPropertyName resolves the property key to the property's name
+func ResolveRelationKeyToPropertyName(mw service.ClientCommandsServer, spaceId string, relationKey string) (property string, err error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -117,11 +117,11 @@ func ResolveRelationKeyToRelationName(mw service.ClientCommandsServer, spaceId s
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return "", ErrFailedSearchRelation
+		return "", ErrFailedSearchProperty
 	}
 
 	if len(resp.Records) == 0 {
-		return "", ErrorRelationNotFound
+		return "", ErrorPropertyNotFound
 	}
 
 	return resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(), nil

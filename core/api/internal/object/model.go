@@ -38,7 +38,7 @@ type Block struct {
 	VerticalAlign   string    `json:"vertical_align" enums:"VerticalAlignTop,VerticalAlignMiddle,VerticalAlignBottom" example:"VerticalAlignTop"` // The vertical alignment of the block
 	Text            *Text     `json:"text,omitempty"`                                                                                             // The text of the block, if applicable
 	File            *File     `json:"file,omitempty"`                                                                                             // The file of the block, if applicable
-	Relation        *Relation `json:"relation,omitempty"`                                                                                         // The relation block, if applicable
+	Property        *Property `json:"property,omitempty"`                                                                                         // The property block, if applicable
 	Dataview        *Dataview `json:"dataview,omitempty"`                                                                                         // The dataview, applicable for list objects
 }
 
@@ -62,11 +62,6 @@ type File struct {
 	Style          string `json:"style"`            // The style of the file
 }
 
-// TODO: fill in the relation struct
-type Relation struct {
-	Id string
-}
-
 type Dataview struct {
 	Views []View `json:"views"` // The list of views
 }
@@ -81,16 +76,16 @@ type View struct {
 
 type Filter struct {
 	Id          string `json:"id" example:"67bf3f21cda9134102e2422c"`                                                                                                                                                  // The id of the filter
-	RelationKey string `json:"relation_key" example:"name"`                                                                                                                                                            // The relation key used for filtering
-	Format      string `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"`                                                                                 // The format of the relation used for filtering
+	PropertyKey string `json:"property_key" example:"name"`                                                                                                                                                            // The property key used for filtering
+	Format      string `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"`                                                                                 // The format of the property used for filtering
 	Condition   string `json:"condition" example:"contains" enum:"equal,not_equal,greater,less,greater_or_equal,less_or_equal,like,not_like,in,not_in,empty,not_empty,all_in,not_all_in,exact_in,not_exact_in,exists"` // The filter condition
 	Value       string `json:"value" example:"Some value..."`                                                                                                                                                          // The value used for filtering
 }
 
 type Sort struct {
 	Id          string `json:"id" example:"67bf3f21cda9134102e2422c"`                                                                  // The id of the sort
-	RelationKey string `json:"relation_key" example:"name"`                                                                            // The relation key used for sorting
-	Format      string `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the relation used for sorting
+	PropertyKey string `json:"property_key" example:"name"`                                                                            // The property key used for sorting
+	Format      string `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property used for sorting
 	SortType    string `json:"sort_type" example:"asc" enum:"asc,desc,custom"`                                                         // The sort direction
 }
 
