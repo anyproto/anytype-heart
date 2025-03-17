@@ -32,7 +32,7 @@ type Params struct {
 func New(app *app.App, params Params) Remover {
 	child := app.ChildApp()
 	child.Register(aclindexcleaner.New()).
-		Register(builder.New()).
+		Register(builder.New(nil)).
 		Register(spaceloader.New(params.StopIfMandatoryFail, true)).
 		Register(migration.New())
 	return &remover{

@@ -151,3 +151,30 @@ func GetFileNameFromURLAndContentType(u *url.URL, contentType string) string {
 	}
 	return res.String()
 }
+
+func ParseInviteUrl(inviteUrl string) (inviteId string, inviteKey string, spaceId string, networkId string, err error) {
+	// e.g. anytype://invite/?cid=ba&key=AbCd
+	if inviteUrl == "" {
+		return "", "", "", "", nil
+	}
+	u, err := url.Parse(inviteUrl)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	if u.Scheme == "anytype" {
+		inviteId = u.Query().Get("cid")
+		inviteKey = u.Query().Get("key")
+		spaceId = u.Query().Get("spaceId")
+		networkId = u.Query().Get("networkId")
+		return inviteId, inviteKey, spaceId, networkId, nil
+	}
+
+	if u.Scheme == "" {
+		return "", "", "", "", fmt.Errorf("invalid invite url: %s", inviteUrl)
+	}
+
+	u.Fragment = strings.TrimPrefix(u.Fragment, "#")
+	inviteId = u.Path
+
+	return inviteId, u.Fragment, "", "", nil
+}

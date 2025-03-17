@@ -5,7 +5,15 @@ type InviteView struct {
 	SpaceName    string
 	SpaceIconCid string
 	CreatorName  string
-	InviteKey    []byte
+	AclKey       []byte
+	GuestKey     []byte
+}
+
+func (i InviteView) IsGuestUserInvite() bool {
+	if len(i.GuestKey) > 0 {
+		return true
+	}
+	return false
 }
 
 type InviteInfo struct {
@@ -17,4 +25,7 @@ type InviteObject interface {
 	SetInviteFileInfo(fileCid string, fileKey string) (err error)
 	GetExistingInviteInfo() (fileCid string, fileKey string)
 	RemoveExistingInviteInfo() (fileCid string, err error)
+
+	SetGuestInviteFileInfo(fileCid string, fileKey string) (err error)
+	GetExistingGuestInviteInfo() (fileCid string, fileKey string)
 }

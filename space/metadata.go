@@ -12,9 +12,9 @@ import (
 
 const anytypeMetadataPath = "m/SLIP-0021/anytype/account/metadata"
 
-var deriveMetadata = deriveAccountMetadata
+var deriveMetadata = DeriveAccountMetadata
 
-func deriveAccountMetadata(acc crypto.PrivKey) (*model.Metadata, crypto.SymKey, error) {
+func DeriveAccountMetadata(acc crypto.PrivKey) (*model.Metadata, crypto.SymKey, error) {
 	symKey, err := deriveAccountEncKey(acc)
 	if err != nil {
 		return nil, nil, err

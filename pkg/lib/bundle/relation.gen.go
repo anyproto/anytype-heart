@@ -9,9 +9,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5409ec2592a6b2b4497cca69d4528c33828c8dae60f7cc5d2acb049b16270f34"
+const RelationChecksum = "ff6f6773f87ae2eb87d9a731afa6f75fa08b1c078f7c5a7cdda011a9ae719ed8"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
+	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
 	RelationKeyCamera                       domain.RelationKey = "camera"
 	RelationKeyHeightInPixels               domain.RelationKey = "heightInPixels"
 	RelationKeyCreatedDate                  domain.RelationKey = "createdDate"
@@ -56,6 +57,7 @@ const (
 	RelationKeyAuthor                       domain.RelationKey = "author"
 	RelationKeyArtist                       domain.RelationKey = "artist"
 	RelationKeyDueDate                      domain.RelationKey = "dueDate"
+	RelationKeyDuration                     domain.RelationKey = "duration"
 	RelationKeyIconEmoji                    domain.RelationKey = "iconEmoji"
 	RelationKeyCoverType                    domain.RelationKey = "coverType"
 	RelationKeyCoverY                       domain.RelationKey = "coverY"
@@ -126,6 +128,8 @@ const (
 	RelationKeySpaceAccountStatus           domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid           domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey           domain.RelationKey = "spaceInviteFileKey"
+	RelationKeySpaceInviteGuestFileCid      domain.RelationKey = "spaceInviteGuestFileCid"
+	RelationKeySpaceInviteGuestFileKey      domain.RelationKey = "spaceInviteGuestFileKey"
 	RelationKeyParticipantPermissions       domain.RelationKey = "participantPermissions"
 	RelationKeyIdentity                     domain.RelationKey = "identity"
 	RelationKeyParticipantStatus            domain.RelationKey = "participantStatus"
@@ -154,6 +158,11 @@ const (
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
+	RelationKeyCookingTime                  domain.RelationKey = "cookingTime"
+	RelationKeyServings                     domain.RelationKey = "servings"
+	RelationKeyCuisine                      domain.RelationKey = "cuisine"
+	RelationKeyCourseType                   domain.RelationKey = "courseType"
+	RelationKeyDifficulty                   domain.RelationKey = "difficulty"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 )
 
@@ -281,7 +290,7 @@ var (
 		RelationKeyAutoWidgetTargets: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Automatically generated widget. Used to avoid creating widget if was removed by user",
+			Description:      "Automatically generated widget targets. Used to avoid creating widget if was removed by user",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,
 			Id:               "_brautoWidgetTargets",
@@ -366,6 +375,32 @@ var (
 			Key:              "company",
 			MaxCount:         1,
 			Name:             "Company",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCookingTime: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Total cooking time in text format",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcookingTime",
+			Key:              "cookingTime",
+			MaxCount:         1,
+			Name:             "Cooking Time",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCourseType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Course type (e.g., appetizer, main course, dessert)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcourseType",
+			Key:              "courseType",
+			MaxCount:         1,
+			Name:             "Course Type",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -468,6 +503,19 @@ var (
 			Revision:         2,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyCuisine: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Cuisine type associated with the recipe (e.g., Italian, Chinese)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcuisine",
+			Key:              "cuisine",
+			MaxCount:         1,
+			Name:             "Cuisine",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyDefaultTemplateId: {
 
 			DataSource:       model.Relation_details,
@@ -523,6 +571,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyDifficulty: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Difficulty level of the recipe (e.g., easy, medium, hard)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brdifficulty",
+			Key:              "difficulty",
+			MaxCount:         1,
+			Name:             "Difficulty",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyDone: {
 
 			DataSource:       model.Relation_details,
@@ -546,6 +607,19 @@ var (
 			Key:              "dueDate",
 			MaxCount:         1,
 			Name:             "Due date",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDuration: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brduration",
+			Key:              "duration",
+			MaxCount:         1,
+			Name:             "Duration",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -710,6 +784,20 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyGuestKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "guest key to read public space",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brguestKey",
+			Key:              "guestKey",
+			MaxCount:         1,
+			Name:             "Guest key",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyHasChat: {
@@ -1597,6 +1685,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyServings: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Number of servings the recipe yields",
+			Format:           model.RelationFormat_number,
+			Id:               "_brservings",
+			Key:              "servings",
+			MaxCount:         1,
+			Name:             "Servings",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySetOf: {
 
 			DataSource:       model.Relation_details,
@@ -1801,6 +1902,34 @@ var (
 			Key:              "spaceInviteFileKey",
 			MaxCount:         1,
 			Name:             "Encoded encryption key of invite file for current space",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteGuestFileCid: {
+
+			DataSource:       model.Relation_details,
+			Description:      "CID of invite file for  for guest user in the current space. It's stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteGuestFileCid",
+			Key:              "spaceInviteGuestFileCid",
+			MaxCount:         1,
+			Name:             "Guest user invite file CID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteGuestFileKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Encoded encryption key of invite file for guest user in the current space. It's stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteGuestFileKey",
+			Key:              "spaceInviteGuestFileKey",
+			MaxCount:         1,
+			Name:             "Guest user invite file key",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

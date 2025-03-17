@@ -12,7 +12,11 @@
     "relations": [
       "tag",
       "ingredients",
-      "time"
+      "cookingTime",
+      "servings",
+      "cuisine",
+      "courseType",
+      "difficulty"
     ],
     "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
     "revision": 1
@@ -529,5 +533,38 @@
     ],
     "description": "A chat derived object",
     "revision": 2
+  },
+  {
+    "id": "company",
+    "name": "Company",
+    "types": [
+      "Page"
+    ],
+    "iconName": "business",
+    "iconColor": 4,
+    "hidden": false,
+    "layout": "basic",
+    "relations": [
+      "tag"
+    ],
+    "description": "Entity that engages in business activities",
+    "revision": 0
+  },
+  {
+    "id": "event",
+    "name": "Event",
+    "types": [
+      "Page"
+    ],
+    "iconName": "calendar-number",
+    "iconColor": 4,
+    "hidden": false,
+    "layout": "basic",
+    "relations": [
+      "tag",
+      "duration"
+    ],
+    "description": "Entity that engages in business activities",
+    "revision": 0
   }
 ]

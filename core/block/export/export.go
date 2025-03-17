@@ -69,6 +69,8 @@ var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
 	Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
+	ExportInMemory(ctx context.Context, spaceId string, objectIds []string, format model.ExportFormat, includeRelations bool) (res map[string][]byte, err error)
+
 	app.Component
 }
 
@@ -114,8 +116,31 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	if err = queue.Start(); err != nil {
 		return
 	}
-	exportCtx := newExportContext(e, req)
+	exportCtx := NewExportContext(e, req)
 	return exportCtx.exportObjects(ctx, queue)
+}
+
+func (e *export) ExportInMemory(ctx context.Context, spaceId string, objectIds []string, format model.ExportFormat, includeRelations bool) (res map[string][]byte, err error) {
+	req := pb.RpcObjectListExportRequest{
+		SpaceId:                          spaceId,
+		ObjectIds:                        objectIds,
+		IncludeFiles:                     false,
+		Format:                           format,
+		IncludeNested:                    true,
+		IncludeRelationsHeaderInMarkdown: includeRelations,
+	}
+
+	res = make(map[string][]byte)
+	exportCtx := NewExportContext(e, req)
+	for _, objectId := range objectIds {
+		b, err := exportCtx.exportObject(ctx, objectId)
+		if err != nil {
+			return nil, err
+		}
+		res[objectId] = b
+	}
+
+	return res, nil
 }
 
 func (e *export) finishWithNotification(spaceId string, exportFormat model.ExportFormat, queue process.Queue, err error) {
@@ -151,15 +176,17 @@ func (d Docs) transformToDetailsMap() map[string]*domain.Details {
 }
 
 type exportContext struct {
-	spaceId          string
-	docs             Docs
-	includeArchive   bool
-	includeNested    bool
-	includeFiles     bool
-	format           model.ExportFormat
-	isJson           bool
-	reqIds           []string
-	zip              bool
+	spaceId                          string
+	docs                             Docs
+	includeArchive                   bool
+	includeNested                    bool
+	includeFiles                     bool
+	format                           model.ExportFormat
+	isJson                           bool
+	includeRelationsHeaderInMarkdown bool
+	reqIds                           []string
+	zip                              bool
+
 	path             string
 	linkStateFilters *state.Filters
 	isLinkProcess    bool
@@ -172,7 +199,7 @@ type exportContext struct {
 	*export
 }
 
-func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
+func NewExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
 	ec := &exportContext{
 		path:             req.Path,
 		spaceId:          req.SpaceId,
@@ -222,6 +249,26 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 		return e.linkStateFilters
 	}
 	return nil
+}
+
+func (e *exportContext) exportObject(ctx context.Context, objectId string) ([]byte, error) {
+	e.reqIds = []string{objectId}
+	err := e.docsForExport(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	fakeWriter := &FakeWriter{}
+	err = e.writeDoc(ctx, fakeWriter, objectId, e.docs.transformToDetailsMap())
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range fakeWriter.data {
+		return v, nil
+	}
+
+	return nil, fmt.Errorf("failed to find data in writer")
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {
@@ -453,6 +500,13 @@ func (e *exportContext) processNotProtobuf() error {
 		ids = append(ids, fileObjectsIds...)
 	}
 	if e.includeNested {
+		if e.includeRelationsHeaderInMarkdown {
+			err := e.addDerivedObjects()
+			if err != nil {
+				return err
+			}
+		}
+
 		for _, id := range ids {
 			e.addNestedObject(id, map[string]*Doc{})
 		}
@@ -1081,7 +1135,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		var conv converter.Converter
 		switch e.format {
 		case model.Export_Markdown:
-			conv = md.NewMDConverter(st, wr.Namer())
+			conv = md.NewMDConverter(st, wr.Namer(), e.includeRelationsHeaderInMarkdown)
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
 		case model.Export_JSON:

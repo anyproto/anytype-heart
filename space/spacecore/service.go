@@ -45,6 +45,14 @@ const (
 
 var log = logger.NewNamed(CName)
 
+type ctxKey int
+
+const OptsKey ctxKey = iota
+
+type Opts struct {
+	SignKey crypto.PrivKey
+}
+
 func New() SpaceCoreService {
 	return &service{}
 }
@@ -221,10 +229,24 @@ func (s *service) Delete(ctx context.Context, spaceId string) (err error) {
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
 	statusService := objectsyncstatus.NewSyncStatusService()
-	cc, err := s.commonSpace.NewSpace(ctx, id, commonspace.Deps{
+	deps := commonspace.Deps{
 		TreeSyncer: treesyncer.NewTreeSyncer(id),
 		SyncStatus: statusService,
-	})
+	}
+	if res, ok := ctx.Value(OptsKey).(Opts); ok && res.SignKey != nil {
+		// TODO: [stream] replace with real peer id
+		pk, _, err := crypto.GenerateRandomEd25519KeyPair()
+		if err != nil {
+			return nil, err
+		}
+		acc := &accountdata.AccountKeys{
+			PeerKey: pk,
+			SignKey: res.SignKey,
+			PeerId:  pk.GetPublic().PeerId(),
+		}
+		deps.AccountService = &customAccountService{acc}
+	}
+	cc, err := s.commonSpace.NewSpace(ctx, id, deps)
 	if err != nil {
 		return
 	}
@@ -234,9 +256,6 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	}
 	if err = ns.Init(ctx); err != nil {
 		return
-	}
-	if err != nil {
-		return nil, fmt.Errorf("store mapping for space: %w", err)
 	}
 	return ns, nil
 }

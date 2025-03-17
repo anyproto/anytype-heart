@@ -14,9 +14,9 @@ func TestSpace_deriveAccountMetadata(t *testing.T) {
 	require.NoError(t, err)
 	symKeyProto, err := symKey.Marshall()
 	require.NoError(t, err)
-	metadata1, _, err := deriveAccountMetadata(randKeys.SignKey)
+	metadata1, _, err := DeriveAccountMetadata(randKeys.SignKey)
 	require.NoError(t, err)
-	metadata2, _, err := deriveAccountMetadata(randKeys.SignKey)
+	metadata2, _, err := DeriveAccountMetadata(randKeys.SignKey)
 	require.NoError(t, err)
 	require.Equal(t, metadata1, metadata2)
 

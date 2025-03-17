@@ -60,6 +60,7 @@ type Service interface {
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
+	AddStreamable(ctx context.Context, id string, guestKey crypto.PrivKey) (err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
 	PersonalSpaceId() string

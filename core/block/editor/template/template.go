@@ -504,7 +504,6 @@ var WithLinkFieldsMigration = func(s *state.State) {
 
 var bookmarkRelationKeys = []string{
 	bundle.RelationKeySource.String(),
-	bundle.RelationKeyTag.String(),
 }
 
 var oldBookmarkRelationBlocks = []string{

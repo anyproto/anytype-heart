@@ -230,3 +230,81 @@ func TestGetFileNameFromURLWithContentTypeAndMime(t *testing.T) {
 		})
 	}
 }
+
+func TestParseInviteUrl(t *testing.T) {
+	tests := []struct {
+		name      string
+		inviteUrl string
+		inviteId  string
+		inviteKey string
+		spaceId   string
+		networkId string
+		expectErr bool
+	}{
+		{
+			name:      "Empty URL",
+			inviteUrl: "",
+			inviteId:  "",
+			inviteKey: "",
+			spaceId:   "",
+			networkId: "",
+		},
+		{
+			name:      "Valid anytype scheme with cid and key",
+			inviteUrl: "anytype://invite/?cid=123&key=abc",
+			inviteId:  "123",
+			inviteKey: "abc",
+			spaceId:   "",
+			networkId: "",
+		},
+		{
+			name:      "Valid anytype scheme with all params",
+			inviteUrl: "anytype://invite/?cid=123&key=abc&spaceId=space1&networkId=net1",
+			inviteId:  "123",
+			inviteKey: "abc",
+			spaceId:   "space1",
+			networkId: "net1",
+		},
+		{
+			name:      "Invalid URL with no scheme",
+			inviteUrl: "invite/?cid=123&key=abc",
+			expectErr: true,
+		},
+		{
+			name:      "Malformed URL",
+			inviteUrl: "::://invalid-url",
+			expectErr: true,
+		},
+		{
+			name:      "Non-anytype scheme with path and fragment",
+			inviteUrl: "https://example.com/inviteId#inviteKey",
+			inviteId:  "/inviteId",
+			inviteKey: "inviteKey",
+			spaceId:   "",
+			networkId: "",
+		},
+		{
+			name:      "Non-anytype scheme with path and no fragment",
+			inviteUrl: "https://example.com/inviteId",
+			inviteId:  "/inviteId",
+			inviteKey: "",
+			spaceId:   "",
+			networkId: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inviteId, inviteKey, spaceId, networkId, err := ParseInviteUrl(tt.inviteUrl)
+			if (err != nil) != tt.expectErr {
+				t.Errorf("Expected error: %v, got: %v", tt.expectErr, err)
+				return
+			}
+			if inviteId != tt.inviteId || inviteKey != tt.inviteKey || spaceId != tt.spaceId || networkId != tt.networkId {
+				t.Errorf("Got inviteId=%q, inviteKey=%q, spaceId=%q, networkId=%q; want inviteId=%q, inviteKey=%q, spaceId=%q, networkId=%q",
+					inviteId, inviteKey, spaceId, networkId,
+					tt.inviteId, tt.inviteKey, tt.spaceId, tt.networkId)
+			}
+		})
+	}
+}

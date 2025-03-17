@@ -54,6 +54,9 @@ enum SmartBlockType {
     ChatObject = 0x219; // Container for any-store based chats
     ChatDerivedObject = 0x220; // Any-store based object for chat
     AccountObject = 0x221; // Container for account data in tech space
+
+    EphemeralVirtualObject = 0x222; // used to show virtual objects, like AI response generated on the fly
+
 }
 
 message Search {
@@ -1194,11 +1197,18 @@ message Invite {
 message InvitePayload {
     string creatorIdentity = 1;
     string creatorName = 2;
-    bytes inviteKey = 3;
+    bytes aclKey = 3;
     string spaceId = 4;
     string spaceName = 5;
     string spaceIconCid = 6;
     repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
+
+    InviteType inviteType = 8;
+    bytes guestKey = 9;
+    enum InviteType {
+        JoinAsMember = 0; // aclKey contains the key to sign the ACL record
+        JoinAsGuest = 1; // guestKey contains the privateKey of the guest user
+    }
 }
 
 message IdentityProfile {
