@@ -3075,6 +3075,7 @@ message Rpc {
                     NONE = 0;
                     GET_STARTED = 1;
                     EMPTY = 2;
+                    GUIDE_ONLY = 3; // only the guide without other tables
                 }
             }
 
