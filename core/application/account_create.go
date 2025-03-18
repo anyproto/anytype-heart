@@ -46,7 +46,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		return nil, err
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(true, req.JoinStreamUrl)
 	if req.DisableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
@@ -85,14 +85,6 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	if err = s.setAccountAndProfileDetails(ctx, req, newAcc); err != nil {
 		return newAcc, err
-	}
-	if req.JoinStreamUrl != "" {
-		go func() {
-			err = s.joinStreamInvite(req.JoinStreamUrl)
-			if err != nil {
-				log.Warnf("failed to join stream: %v", err)
-			}
-		}()
 	}
 
 	return newAcc, nil

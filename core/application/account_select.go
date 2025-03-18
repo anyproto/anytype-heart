@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,9 +12,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
-	"github.com/ipfs/go-cid"
 
-	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
@@ -24,8 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/encode"
-	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 // we cannot check the constant error from badger because they hardcoded it there
@@ -132,7 +127,7 @@ func (s *Service) start(
 			os.RemoveAll(filepath.Join(s.rootPath, id))
 		}
 	}()
-	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(false, joinStreamUrl)
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
@@ -190,46 +185,6 @@ func (s *Service) start(
 	}
 
 	acc := &model.Account{Id: id}
-	if joinStreamUrl != "" {
-		go func() {
-			if err := s.joinStreamInvite(joinStreamUrl); err != nil {
-				log.Errorf("failed to join stream invite: %v", err)
-			}
-		}()
-	}
 	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
 	return acc, err
-}
-
-func (s *Service) joinStreamInvite(inviteUrl string) error {
-	if inviteUrl == "" {
-		return nil
-	}
-
-	aclService := app.MustComponent[acl.AclService](s.app)
-	inviteId, inviteKey, spaceId, networkId, err := uri.ParseInviteUrl(inviteUrl)
-	if err != nil {
-		return err
-	}
-	if spaceId == "" {
-		return fmt.Errorf("spaceId is empty")
-	}
-	inviteCid, err := cid.Parse(inviteId)
-	if err != nil {
-		return err
-	}
-	inviteSymKey, err := encode.DecodeKeyFromBase58(inviteKey)
-	if err != nil {
-		return err
-	}
-
-	sp := app.MustComponent[space.Service](s.app)
-	techSpace := sp.TechSpace()
-	if exists, err := techSpace.SpaceViewExists(context.Background(), spaceId); err != nil {
-		return err
-	} else if exists {
-		// do not try to join stream if space already joined or removed
-		return nil
-	}
-	return aclService.Join(context.Background(), spaceId, networkId, inviteCid, inviteSymKey)
 }

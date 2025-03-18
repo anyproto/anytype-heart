@@ -24746,6 +24746,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
 | EMPTY | 2 |  |
+| GUIDE_ONLY | 3 | only the guide without other tables |
 
 
 
