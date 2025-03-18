@@ -93,7 +93,7 @@
   {
     "id": "task",
     "name": "Task",
-    "pluralName": "Task",
+    "pluralName": "Tasks",
     "types": [
       "Page"
     ],
