@@ -404,7 +404,8 @@ func (f *ftSearchTantivy) buildObjectQuery(qb *tantivy.QueryBuilder, query strin
 	qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
 		Query(tantivy.Should, fieldId, bundle.RelationKeyName.String(), tantivy.TermQuery, 1.0).
 		// snippets are indexed only for notes which don't have a name, we should do a prefix search there as well
-		Query(tantivy.Should, fieldId, bundle.RelationKeySnippet.String(), tantivy.TermQuery, 1.0),
+		Query(tantivy.Should, fieldId, bundle.RelationKeySnippet.String(), tantivy.TermQuery, 1.0).
+		Query(tantivy.Should, fieldId, bundle.RelationKeyPluralName.String(), tantivy.TermQuery, 1.0),
 		1.0,
 	)
 
