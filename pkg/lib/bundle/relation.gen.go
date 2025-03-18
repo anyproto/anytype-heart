@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "80f123f2ee35e177779a6b96b06ef6627ebca7848bb5870d315f6af7c3228916"
+const RelationChecksum = "568b42375a5bb71c81898dff0c1dd441599542464430566839be86a4f2cde105"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -155,6 +155,7 @@ const (
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
+	RelationKeyPluralName                   domain.RelationKey = "pluralName"
 )
 
 var (
@@ -1315,6 +1316,20 @@ var (
 			MaxCount:         1,
 			Name:             "Picture",
 			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyPluralName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Name of Object type in plural form",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brpluralName",
+			Key:              "pluralName",
+			MaxCount:         1,
+			Name:             "Plural name",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
