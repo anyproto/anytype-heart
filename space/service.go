@@ -151,7 +151,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.aclJoiner = app.MustComponent[AclJoiner](a)
 	s.newAccount = s.config.IsNewAccount()
 	s.autoJoinStreamSpace = s.config.AutoJoinStream
-
+	
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.notificationService = app.MustComponent[NotificationSender](a)
@@ -516,9 +516,13 @@ func (s *service) tryToJoinSpaceStream() {
 	}()
 }
 
-func joinSpaceStream(ctx context.Context, spaceService Service, aclJoiner AclJoiner, inviteUrl string) error {
+func joinSpaceStream(ctx context.Context, spaceService *service, aclJoiner AclJoiner, inviteUrl string) error {
 	if inviteUrl == "" {
 		return nil
+	}
+
+	if aclJoiner == nil {
+		return fmt.Errorf("aclJoiner is nil")
 	}
 
 	inviteId, inviteKey, spaceId, networkId, err := uri.ParseInviteUrl(inviteUrl)
@@ -537,12 +541,17 @@ func joinSpaceStream(ctx context.Context, spaceService Service, aclJoiner AclJoi
 		return err
 	}
 
-	techSpace := spaceService.TechSpace()
+	techSpace, err := spaceService.getTechSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("get tech space: %w", err)
+	}
+
 	if exists, err := techSpace.SpaceViewExists(ctx, spaceId); err != nil {
 		return err
 	} else if exists {
 		// do not try to join stream if space already joined or removed
 		return nil
 	}
+
 	return aclJoiner.Join(ctx, spaceId, networkId, inviteCid, inviteSymKey)
 }
