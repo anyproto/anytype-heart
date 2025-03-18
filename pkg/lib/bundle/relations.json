@@ -438,7 +438,6 @@
     "readonly": false,
     "source": "details",
     "objectTypes": [
-      "profile",
       "contact",
       "participant"
     ],
@@ -555,7 +554,6 @@
     "readonly": false,
     "source": "details",
     "objectTypes": [
-      "profile",
       "contact",
       "participant"
     ],
@@ -1486,6 +1484,16 @@
     "key": "autoWidgetTargets",
     "maxCount": 0,
     "name": "Auto Widget targets",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Name of Object type in plural form",
+    "format": "longtext",
+    "hidden": true,
+    "key": "pluralName",
+    "maxCount": 1,
+    "name": "Plural name",
     "readonly": false,
     "source": "details"
   }

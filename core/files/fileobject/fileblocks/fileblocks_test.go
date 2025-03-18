@@ -31,7 +31,7 @@ func TestAddFileBlocks(t *testing.T) {
 				bundle.RelationKeyHeightInPixels: domain.Int64(600),
 				bundle.RelationKeyAddedDate:      domain.Int64(time.Now().Unix()),
 			}),
-			[]domain.RelationKey{bundle.RelationKeyFileExt, bundle.RelationKeyWidthInPixels, bundle.RelationKeyHeightInPixels, bundle.RelationKeyAddedDate},
+			[]domain.RelationKey{bundle.RelationKeyDescription, bundle.RelationKeyFileExt, bundle.RelationKeyWidthInPixels, bundle.RelationKeyHeightInPixels, bundle.RelationKeyAddedDate},
 		},
 		{
 			"plain file",
@@ -41,7 +41,7 @@ func TestAddFileBlocks(t *testing.T) {
 				bundle.RelationKeyOrigin:      domain.Int64(int64(model.ObjectOrigin_dragAndDrop)),
 				bundle.RelationKeyAddedDate:   domain.Int64(time.Now().Unix()),
 			}),
-			[]domain.RelationKey{bundle.RelationKeyFileExt, bundle.RelationKeySizeInBytes, bundle.RelationKeyOrigin, bundle.RelationKeyAddedDate},
+			[]domain.RelationKey{bundle.RelationKeyDescription, bundle.RelationKeyFileExt, bundle.RelationKeySizeInBytes, bundle.RelationKeyOrigin, bundle.RelationKeyAddedDate},
 		},
 		{
 			"audio",
@@ -54,7 +54,7 @@ func TestAddFileBlocks(t *testing.T) {
 				bundle.RelationKeyOrigin:                domain.Int64(int64(model.ObjectOrigin_clipboard)),
 				bundle.RelationKeyImportType:            domain.Int64(2),
 			}),
-			[]domain.RelationKey{bundle.RelationKeyFileExt, bundle.RelationKeySizeInBytes, bundle.RelationKeyAudioAlbum, bundle.RelationKeyAudioAlbumTrackNumber, bundle.RelationKeyOrigin, bundle.RelationKeyImportType},
+			[]domain.RelationKey{bundle.RelationKeyDescription, bundle.RelationKeyFileExt, bundle.RelationKeySizeInBytes, bundle.RelationKeyAudioAlbum, bundle.RelationKeyAudioAlbumTrackNumber, bundle.RelationKeyOrigin, bundle.RelationKeyImportType},
 		},
 	} {
 		t.Run(fmt.Sprintf("add file blocks: %s", tc.name), func(t *testing.T) {
