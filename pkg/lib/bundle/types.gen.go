@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "5cbb79515a631309e2b33496298fd9f9b604abaae3ed830ecee9141a0b2b0537"
+const TypeChecksum = "e09bc6c55e2f2e69455b0b708bae2ad04d170547e69f1a75524e0299436ca0ca"
 const (
 	TypePrefix = "_ot"
 )
@@ -305,6 +305,7 @@ var (
 		TypeKeyProfile: {
 
 			Description:   "Homo sapiens",
+			Hidden:        true,
 			IconColor:     3,
 			IconName:      "man",
 			Layout:        model.ObjectType_profile,
