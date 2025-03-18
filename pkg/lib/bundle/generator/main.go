@@ -64,6 +64,7 @@ type ObjectType struct {
 	RestrictObjectCreation bool     `json:"restrictObjectCreation"`
 	IconColor              int      `json:"iconColor"`
 	IconName               string   `json:"iconName"`
+	PluralName             string   `json:"pluralName"`
 }
 
 type Layout struct {
@@ -313,6 +314,10 @@ func generateTypes() error {
 
 			if ot.IconName != "" {
 				dictS[Id("IconName")] = Lit(ot.IconName)
+			}
+
+			if ot.PluralName != "" {
+				dictS[Id("PluralName")] = Lit(ot.PluralName)
 			}
 
 			dict[Id(typeConst(ot.ID))] = Block(dictS)
