@@ -606,8 +606,8 @@ components:
         role:
           description: The role of the member
           enum:
-          - reader
-          - writer
+          - viewer
+          - editor
           - owner
           - no_permission
           example: owner
@@ -617,6 +617,10 @@ components:
           enum:
           - joining
           - active
+          - removed
+          - declined
+          - removing
+          - canceled
           example: active
           type: string
       type: object
@@ -714,9 +718,9 @@ components:
         role:
           description: Role to assign if approving a joining member
           enum:
-          - reader
-          - writer
-          example: reader
+          - viewer
+          - editor
+          example: viewer
           type: string
         status:
           description: Status of the member
@@ -1122,9 +1126,10 @@ paths:
     get:
       description: Returns a paginated list of members belonging to the specified
         space. Each member record includes the member’s profile ID, name, icon (which
-        may be derived from an emoji or image), network identity, global name, and
-        role (e.g. Reader, Writer, Owner). This endpoint supports collaborative features
-        by allowing clients to show who is in a space and manage access rights.
+        may be derived from an emoji or image), network identity, global name, status
+        (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint
+        supports collaborative features by allowing clients to show who is in a space
+        and manage access rights.
       parameters:
       - description: Space ID
         in: path

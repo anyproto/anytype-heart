@@ -245,7 +245,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 			Identity:   record.Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 			GlobalName: record.Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 			Status:     strcase.ToSnake(model.ParticipantStatus_name[int32(record.Fields[bundle.RelationKeyParticipantStatus.String()].GetNumberValue())]),
-			Role:       strcase.ToSnake(model.ParticipantPermissions_name[int32(record.Fields[bundle.RelationKeyParticipantPermissions.String()].GetNumberValue())]),
+			Role:       s.mapMemberPermissions(model.ParticipantPermissions(record.Fields[bundle.RelationKeyParticipantPermissions.String()].GetNumberValue())),
 		}
 
 		members = append(members, member)
@@ -293,7 +293,7 @@ func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId s
 		Identity:   resp.Records[0].Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 		GlobalName: resp.Records[0].Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 		Status:     strcase.ToSnake(model.ParticipantStatus_name[int32(resp.Records[0].Fields[bundle.RelationKeyParticipantStatus.String()].GetNumberValue())]),
-		Role:       strcase.ToSnake(model.ParticipantPermissions_name[int32(resp.Records[0].Fields[bundle.RelationKeyParticipantPermissions.String()].GetNumberValue())]),
+		Role:       s.mapMemberPermissions(model.ParticipantPermissions(resp.Records[0].Fields[bundle.RelationKeyParticipantPermissions.String()].GetNumberValue())),
 	}, nil
 }
 
@@ -310,7 +310,7 @@ func (s *SpaceService) UpdateMember(ctx context.Context, spaceId string, memberI
 
 	switch request.Status {
 	case "active":
-		if request.Role != "reader" && request.Role != "writer" {
+		if request.Role != "viewer" && request.Role != "editor" {
 			return Member{}, ErrInvalidApproveMemberRole
 		}
 
@@ -398,12 +398,24 @@ func (s *SpaceService) getWorkspaceInfo(spaceId string, name string, icon util.I
 	}, nil
 }
 
+// mapMemberPermissions maps participant permissions to a role
+func (s *SpaceService) mapMemberPermissions(permissions model.ParticipantPermissions) string {
+	switch permissions {
+	case model.ParticipantPermissions_Reader:
+		return "viewer"
+	case model.ParticipantPermissions_Writer:
+		return "editor"
+	default:
+		return strcase.ToSnake(model.ParticipantPermissions_name[int32(permissions)])
+	}
+}
+
 // mapMemberPermissions maps a role to participant permissions
-func (s *SpaceService) mapMemberRole(permission string) model.ParticipantPermissions {
-	switch permission {
-	case "reader":
+func (s *SpaceService) mapMemberRole(role string) model.ParticipantPermissions {
+	switch role {
+	case "viewer":
 		return model.ParticipantPermissions_Reader
-	case "writer":
+	case "editor":
 		return model.ParticipantPermissions_Writer
 	default:
 		return model.ParticipantPermissions_Reader

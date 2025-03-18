@@ -118,7 +118,7 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 // GetMembersHandler retrieves a list of members in a space
 //
 //	@Summary		List members
-//	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, and role (e.g. Reader, Writer, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
+//	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
 //	@Tags			members
 //	@Produce		json
 //	@Param			space_id	path		string									true	"Space ID"
@@ -153,7 +153,7 @@ func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
 // GetMemberHandler retrieves a member in a space
 //
 //	@Summary		Get member
-//	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, and role. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
+//	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
 //	@Tags			members
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space ID"
