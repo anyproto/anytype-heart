@@ -37,10 +37,10 @@ type ContentFuture func() *bookmark.ObjectContent
 
 type Service interface {
 	CreateObjectAndFetch(
-		ctx context.Context, spaceId, templateId string, details *domain.Details,
+		ctx context.Context, spaceId, templateId string, details *domain.Details, noFallbackTemplate bool,
 	) (objectID string, newDetails *domain.Details, err error)
 	CreateBookmarkObject(
-		ctx context.Context, spaceId, templateId string, details *domain.Details, getContent ContentFuture,
+		ctx context.Context, spaceId, templateId string, details *domain.Details, getContent ContentFuture, noFallbackTemplate bool,
 	) (objectId string, newDetails *domain.Details, err error)
 
 	UpdateObject(objectId string, getContent *bookmark.ObjectContent) error
@@ -96,7 +96,7 @@ func (s *service) Name() (name string) {
 var log = logging.Logger("anytype-mw-bookmark")
 
 func (s *service) CreateObjectAndFetch(
-	ctx context.Context, spaceId, templateId string, details *domain.Details,
+	ctx context.Context, spaceId, templateId string, details *domain.Details, noFallbackTemplate bool,
 ) (objectID string, newDetails *domain.Details, err error) {
 	source := details.GetString(bundle.RelationKeySource)
 	var res ContentFuture
@@ -111,11 +111,11 @@ func (s *service) CreateObjectAndFetch(
 			return nil
 		}
 	}
-	return s.CreateBookmarkObject(ctx, spaceId, templateId, details, res)
+	return s.CreateBookmarkObject(ctx, spaceId, templateId, details, res, noFallbackTemplate)
 }
 
 func (s *service) CreateBookmarkObject(
-	ctx context.Context, spaceId, templateId string, details *domain.Details, getContent ContentFuture,
+	ctx context.Context, spaceId, templateId string, details *domain.Details, getContent ContentFuture, noFallbackTemplate bool,
 ) (objectId string, objectDetails *domain.Details, err error) {
 	if details == nil {
 		return "", nil, fmt.Errorf("empty details")
@@ -167,7 +167,7 @@ func (s *service) CreateBookmarkObject(
 			TypeId:                 typeId,
 			Layout:                 model.ObjectType_bookmark,
 			Details:                details,
-			WithTemplateValidation: true,
+			WithTemplateValidation: !noFallbackTemplate,
 		})
 		if err != nil {
 			log.Errorf("failed to build state for bookmark: %v", err)

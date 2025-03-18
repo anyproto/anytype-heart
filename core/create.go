@@ -29,9 +29,10 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 
 	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
-		Details:       domain.NewDetailsFromProto(req.Details),
-		InternalFlags: req.InternalFlags,
-		TemplateId:    req.TemplateId,
+		Details:            domain.NewDetailsFromProto(req.Details),
+		InternalFlags:      req.InternalFlags,
+		TemplateId:         req.TemplateId,
+		NoFallbackTemplate: req.NoFallbackTemplate,
 	}
 	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
 	if err != nil {
@@ -89,9 +90,10 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 
 	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeySet,
-		InternalFlags: req.InternalFlags,
-		Details:       details,
+		ObjectTypeKey:      bundle.TypeKeySet,
+		InternalFlags:      req.InternalFlags,
+		Details:            details,
+		NoFallbackTemplate: req.NoFallbackTemplate,
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
@@ -117,9 +119,10 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 
 	creator := mustService[objectcreator.Service](mw)
 	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details:       domain.NewDetailsFromProto(req.Details),
-		TemplateId:    req.TemplateId,
+		ObjectTypeKey:      bundle.TypeKeyBookmark,
+		Details:            domain.NewDetailsFromProto(req.Details),
+		TemplateId:         req.TemplateId,
+		NoFallbackTemplate: req.NoFallbackTemplate,
 	}
 	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {

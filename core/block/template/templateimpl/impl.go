@@ -36,14 +36,12 @@ import (
 )
 
 const (
-	CName                = "template"
-	BlankTemplateId      = "blank"
-	DefaultTemplateId    = "default"
-	LastEditedTemplateId = "lastEdited"
+	CName           = "template"
+	BlankTemplateId = "blank"
 )
 
 var (
-	log = logging.Logger(CName)
+	log = logging.Logger("template")
 
 	templateIsPreferableRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyLayout,
@@ -112,93 +110,18 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 }
 
 func (s *service) resolveValidTemplateId(spaceId, templateId, typeId string) (string, error) {
-	switch templateId {
-	case BlankTemplateId:
-		return BlankTemplateId, nil
-	case DefaultTemplateId:
-		return s.getDefaultTemplateId(spaceId, typeId)
-	case LastEditedTemplateId:
-		return s.getLastEditedTemplateId(spaceId, typeId)
-	case "":
-		defaultTemplateId, err := s.getDefaultTemplateId(spaceId, typeId)
-		if err == nil && defaultTemplateId != "" {
-			return defaultTemplateId, nil
-		}
-		lastEditedTemplateId, err := s.getLastEditedTemplateId(spaceId, typeId)
-		if err == nil && lastEditedTemplateId != "" {
-			return lastEditedTemplateId, nil
-		}
-		return BlankTemplateId, nil
-	}
-
-	records, err := s.queryTemplatesByType(spaceId, typeId)
-	if err != nil {
-		return "", fmt.Errorf("failed to query templates: %w", err)
-	}
-
-	if len(records) == 0 {
-		// if no templates presented, we should create new object with blank template
-		return BlankTemplateId, nil
-	}
-
-	defaultTemplateId, err := s.getDefaultTemplateId(spaceId, typeId)
-	if err != nil {
-		defaultTemplateId = ""
-	}
-
-	var defaultTemplateIsValid bool
-	for _, record := range records {
-		recordId := record.Details.GetString(bundle.RelationKeyId)
-		if recordId == templateId {
-			return templateId, nil
-		}
-		if !defaultTemplateIsValid && defaultTemplateId != "" && recordId == defaultTemplateId {
-			defaultTemplateIsValid = true
-		}
-	}
-
-	// if requested templateId was not found in store, we should use default template
-	if defaultTemplateIsValid {
-		return defaultTemplateId, nil
-	}
-
-	// if default template is not set or not valid, we should use last edited template
-	return records[0].Details.GetString(bundle.RelationKeyId), nil
-}
-
-func (s *service) getDefaultTemplateId(spaceId, typeId string) (string, error) {
-	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
-	if err != nil {
-		return "", fmt.Errorf("failed to get details of type object from store: %w", err)
-	}
-	return details.GetString(bundle.RelationKeyDefaultTemplateId), nil
-}
-
-func (s *service) getLastEditedTemplateId(spaceId, typeId string) (string, error) {
-	records, err := s.queryTemplatesByType(spaceId, typeId)
-	if err != nil {
-		return "", fmt.Errorf("failed to query templates: %w", err)
-	}
-	if len(records) == 0 {
-		return "", nil
-	}
-	return records[0].Details.GetString(bundle.RelationKeyId), nil
-}
-
-// queryTemplatesByType queries templates by particular type sorted by lastModifiedDate
-func (s *service) queryTemplatesByType(spaceId, typeId string) ([]database.Record, error) {
 	var ctx = context.Background()
 
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get space: %w", err)
+		return "", fmt.Errorf("failed to get space: %w", err)
 	}
 	templateTypeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get template type id from space: %w", err)
+		return "", fmt.Errorf("failed to get template type id from space: %w", err)
 	}
 
-	return s.store.SpaceIndex(spaceId).Query(database.Query{
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyType,
@@ -216,6 +139,28 @@ func (s *service) queryTemplatesByType(spaceId, typeId string) ([]database.Recor
 			Type:        model.BlockContentDataviewSort_Desc,
 		}},
 	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to query templates: %w", err)
+	}
+
+	if len(records) == 0 {
+		// if no valid templates presented, we shell create new object with blank template
+		return "", nil
+	}
+
+	if templateId == "" {
+		return records[0].Details.GetString(bundle.RelationKeyId), nil
+	}
+
+	for _, record := range records {
+		if record.Details.GetString(bundle.RelationKeyId) == templateId {
+			return templateId, nil
+		}
+	}
+
+	// if requested templateId was not found in store, we should use last modified template
+	return records[0].Details.GetString(bundle.RelationKeyId), nil
 }
 
 // CreateTemplateStateFromSmartBlock duplicates the logic of CreateTemplateStateWithDetails but does not take the lock on smartBlock.

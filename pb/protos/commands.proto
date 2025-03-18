@@ -1665,6 +1665,7 @@ message Rpc {
                 string objectTypeUniqueKey = 5;
                 bool withChat = 6;
                 bool createTypeWidgetIfMissing = 7; // experimental flag to auto-create type widget if missing
+                bool noFallbackTemplate = 8; // when true we are trying to apply default/lastEdited/blank template if specified template could not be found
             }
 
             message Response {
@@ -1693,6 +1694,7 @@ message Rpc {
                 string spaceId = 2;
                 bool withChat = 3;
                 string templateId = 4;
+                bool noFallbackTemplate = 5; // when true we are trying to apply default/lastEdited/blank template if specified template could not be found
             }
 
             message Response {
@@ -1771,6 +1773,7 @@ message Rpc {
                 repeated anytype.model.InternalFlag internalFlags = 4;
                 string spaceId = 5;
                 bool withChat = 6;
+                bool noFallbackTemplate = 7; // when true we are trying to apply default/lastEdited/blank template if specified template could not be found
             }
 
             message Response {
@@ -1828,6 +1831,7 @@ message Rpc {
                 bool addPageContent = 5;
                 bool withChat = 6;
                 string templateId = 7;
+                bool noFallbackTemplate = 8; // when true we are trying to apply default/lastEdited/blank template if specified template could not be found
             }
 
             message Response {

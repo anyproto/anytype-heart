@@ -27,7 +27,7 @@ import (
 type (
 	bookmarkService interface {
 		CreateObjectAndFetch(
-			ctx context.Context, spaceId, templateId string, details *domain.Details,
+			ctx context.Context, spaceId, templateId string, details *domain.Details, noFallbackTemplate bool,
 		) (objectID string, newDetails *domain.Details, err error)
 	}
 
@@ -79,10 +79,11 @@ func (s *service) Name() (name string) {
 
 // TODO Add validate method
 type CreateObjectRequest struct {
-	Details       *domain.Details
-	InternalFlags []*model.InternalFlag
-	TemplateId    string
-	ObjectTypeKey domain.TypeKey
+	Details            *domain.Details
+	InternalFlags      []*model.InternalFlag
+	TemplateId         string
+	ObjectTypeKey      domain.TypeKey
+	NoFallbackTemplate bool
 }
 
 // CreateObject is high-level method for creating new objects
@@ -124,7 +125,7 @@ func (s *service) createObjectInSpace(
 
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
-		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), req.TemplateId, details)
+		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), req.TemplateId, details, req.NoFallbackTemplate)
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)
 	case bundle.TypeKeyRelation:
@@ -197,7 +198,7 @@ func (s *service) createCommonObject(
 		TypeId:                 typeId,
 		Layout:                 layout,
 		Details:                details,
-		WithTemplateValidation: true,
+		WithTemplateValidation: !req.NoFallbackTemplate,
 	})
 	if err != nil {
 		return

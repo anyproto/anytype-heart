@@ -601,9 +601,10 @@ func (s *Service) CreateObjectFromUrl(
 	details := domain.NewDetailsFromProto(req.Details)
 	details = s.enrichDetailsWithOrigin(details, model.ObjectOrigin_webclipper)
 	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: objectTypeKey,
-		Details:       details,
-		TemplateId:    req.TemplateId,
+		ObjectTypeKey:      objectTypeKey,
+		Details:            details,
+		TemplateId:         req.TemplateId,
+		NoFallbackTemplate: req.NoFallbackTemplate,
 	}
 	id, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
