@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -19,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -28,7 +30,10 @@ var (
 	ftIndexForceMinInterval = time.Second * 10
 	ftBatchLimit            = 1000
 	ftBlockMaxSize          = 1024 * 1024
+	maxErrSent              atomic.Int32
 )
+
+const maxErrorsPerSession = 100
 
 func (i *indexer) ForceFTIndex() {
 	select {
@@ -66,7 +71,10 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
 		for _, objectId := range objectIds {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
-			if err != nil && !errors.Is(err, domain.ErrObjectNotFound) && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+			if err != nil &&
+				!errors.Is(err, domain.ErrObjectNotFound) &&
+				!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) &&
+				!errors.Is(err, space.ErrSpaceNotExists) {
 				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
 				if errors.Is(err, context.Canceled) {
 					return err
@@ -98,7 +106,8 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 		}
 		return nil
 	})
-	if err != nil {
+	if err != nil && maxErrSent.Load() < maxErrorsPerSession {
+		maxErrSent.Add(1)
 		log.Errorf("list ids from full-text queue: %v", err)
 		return
 	}
@@ -243,7 +252,9 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 		return docs, nil
 	}
 	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
-	if cacheErr != nil {
+	if cacheErr != nil &&
+		!errors.Is(err, domain.ErrObjectNotFound) &&
+		!errors.Is(err, space.ErrSpaceNotExists) {
 		log.With("objectId", id).Errorf("object cache remove: %v", err)
 	}
 

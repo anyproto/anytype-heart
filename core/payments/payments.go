@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/util/periodicsync"
+	"github.com/quic-go/quic-go"
 	"go.uber.org/zap"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
@@ -397,7 +398,7 @@ func (s *service) updateStatus(ctx context.Context, status *proto.GetSubscriptio
 
 	// 3 - Update limits
 	err := s.updateLimits(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, &quic.IdleTimeoutError{}) && !errors.Is(err, context.DeadlineExceeded) {
 		// eat error
 		log.Error("update limits", zap.Error(err))
 	}

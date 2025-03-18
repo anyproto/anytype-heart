@@ -18,8 +18,7 @@ import (
 const CName = "client.components.spaceloader"
 
 var (
-	ErrSpaceDeleted   = errors.New("space is deleted")
-	ErrSpaceNotExists = errors.New("space not exists")
+	ErrSpaceDeleted = errors.New("space is deleted")
 )
 
 type SpaceLoader interface {
