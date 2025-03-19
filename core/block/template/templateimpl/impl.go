@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	log = logging.Logger("template")
+	log = logging.Logger(CName)
 
 	templateIsPreferableRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyLayout,
