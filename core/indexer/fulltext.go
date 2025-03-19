@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -73,8 +72,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 			objDocs, err := i.prepareSearchDocument(ctx, objectId)
 			if err != nil &&
 				!errors.Is(err, domain.ErrObjectNotFound) &&
-				!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) &&
-				!errors.Is(err, space.ErrSpaceNotExists) {
+				!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
 				if errors.Is(err, context.Canceled) {
 					return err
@@ -253,8 +251,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 	}
 	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
 	if cacheErr != nil &&
-		!errors.Is(err, domain.ErrObjectNotFound) &&
-		!errors.Is(err, space.ErrSpaceNotExists) {
+		!errors.Is(err, domain.ErrObjectNotFound) {
 		log.With("objectId", id).Errorf("object cache remove: %v", err)
 	}
 

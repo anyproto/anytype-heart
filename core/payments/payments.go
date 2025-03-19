@@ -398,7 +398,8 @@ func (s *service) updateStatus(ctx context.Context, status *proto.GetSubscriptio
 
 	// 3 - Update limits
 	err := s.updateLimits(ctx)
-	if err != nil && !errors.Is(err, &quic.IdleTimeoutError{}) && !errors.Is(err, context.DeadlineExceeded) {
+	var idleTimeoutErr *quic.IdleTimeoutError
+	if err != nil && !errors.As(err, &idleTimeoutErr) && !errors.Is(err, context.DeadlineExceeded) {
 		// eat error
 		log.Error("update limits", zap.Error(err))
 	}
