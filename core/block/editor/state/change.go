@@ -90,7 +90,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 
 	if s.store != nil {
 		for collName, coll := range s.store.Fields {
-			if c := coll.GetStructValue(); s != nil {
+			if c := coll.GetStructValue(); c != nil {
 				for k := range c.GetFields() {
 					s.setStoreChangeId(collName+addr.SubObjectCollectionIdSeparator+k, s.changeId)
 				}
@@ -252,8 +252,11 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	if s.details == nil {
 		s.details = det.Copy()
 	}
-	// TODO: GO-4284 Review this logic, as previously we used to delete detail in case it has nil value (nil, not Null)
-	s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
+	if set.Value != nil {
+		s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
+	} else {
+		s.details.Delete(domain.RelationKey(set.Key))
+	}
 	return nil
 }
 
@@ -277,7 +280,7 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 		}
 		if err := s.changeBlockDetailsSet(&pb.ChangeDetailsSet{
 			Key:   r.Key,
-			Value: nil,
+			Value: pbtypes.Null(),
 		}); err != nil {
 			return err
 		}
