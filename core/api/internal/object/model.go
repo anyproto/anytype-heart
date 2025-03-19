@@ -3,13 +3,13 @@ package object
 import "github.com/anyproto/anytype-heart/core/api/util"
 
 type CreateObjectRequest struct {
-	Name        string `json:"name" example:"My object"`                                                          // The name of the object
-	Icon        string `json:"icon" example:"📄"`                                                                  // The icon of the object
-	Description string `json:"description" example:"This is a description of the object."`                        // The description of the object
-	Body        string `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
-	Source      string `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
-	TemplateId  string `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
-	TypeKey     string `json:"type_key" example:"ot-page"`                                                        // The key of the type of object to create
+	Name        string    `json:"name" example:"My object"`                                                          // The name of the object
+	Icon        util.Icon `json:"icon"`                                                                              // The icon of the object
+	Description string    `json:"description" example:"This is a description of the object."`                        // The description of the object
+	Body        string    `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
+	Source      string    `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
+	TemplateId  string    `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
+	TypeKey     string    `json:"type_key" example:"ot-page"`                                                        // The key of the type of object to create
 }
 
 type ObjectResponse struct {

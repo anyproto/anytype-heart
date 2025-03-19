@@ -27,6 +27,7 @@ var (
 	ErrFailedDeleteObject        = errors.New("failed to delete object")
 	ErrFailedCreateObject        = errors.New("failed to create object")
 	ErrInputMissingSource        = errors.New("source is missing for bookmark")
+	ErrIconNameColorNotSupported = errors.New("icon name and color are not supported for object")
 	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
 	ErrFailedFetchBookmark       = errors.New("failed to fetch bookmark")
 	ErrFailedCreateBlock         = errors.New("failed to create block")
@@ -235,18 +236,30 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 		return Object{}, ErrInputMissingSource
 	}
 
-	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String():        pbtypes.String(request.Name),
-			bundle.RelationKeyIconEmoji.String():   pbtypes.String(request.Icon),
-			bundle.RelationKeyDescription.String(): pbtypes.String(request.Description),
-			bundle.RelationKeySource.String():      pbtypes.String(request.Source),
-			bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
-		},
+	// Validate icon: only allow either emoji or file, and disallow name and color fields.
+	if request.Icon.Name != nil || request.Icon.Color != nil {
+		return Object{}, ErrIconNameColorNotSupported
+	}
+
+	iconFields := map[string]*types.Value{}
+	if request.Icon.Emoji != nil {
+		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*request.Icon.Emoji)
+	} else if request.Icon.File != nil {
+		iconFields[bundle.RelationKeyIconImage.String()] = pbtypes.String(*request.Icon.File)
+	}
+
+	fields := map[string]*types.Value{
+		bundle.RelationKeyName.String():        pbtypes.String(request.Name),
+		bundle.RelationKeyDescription.String(): pbtypes.String(request.Description),
+		bundle.RelationKeySource.String():      pbtypes.String(request.Source),
+		bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
+	}
+	for k, v := range iconFields {
+		fields[k] = v
 	}
 
 	resp := s.mw.ObjectCreate(ctx, &pb.RpcObjectCreateRequest{
-		Details:             details,
+		Details:             &types.Struct{Fields: fields},
 		TemplateId:          request.TemplateId,
 		SpaceId:             spaceId,
 		ObjectTypeUniqueKey: request.TypeKey,
