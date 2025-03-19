@@ -88,10 +88,6 @@ components:
           description: The name of the object
           example: My object
           type: string
-        object_type_unique_key:
-          description: The unique key of the object type
-          example: ot-page
-          type: string
         source:
           description: The source url, only applicable for bookmarks
           example: https://bookmark-source.com
@@ -99,6 +95,10 @@ components:
         template_id:
           description: The id of the template to use
           example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
+          type: string
+        type_key:
+          description: The key of the type of object to create
+          example: ot-page
           type: string
       type: object
     object.Dataview:
@@ -400,7 +400,7 @@ components:
         icon:
           $ref: '#/components/schemas/util.Icon'
         id:
-          description: The id of the type
+          description: The id of the type (which is unique across spaces)
           example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
           type: string
         name:
@@ -415,8 +415,9 @@ components:
           description: The recommended layout of the type
           example: todo
           type: string
-        unique_key:
-          description: The unique key of the type
+        type_key:
+          description: The key of the type (can be the same across spaces for known
+            types)
           example: ot-page
           type: string
       type: object
@@ -1551,10 +1552,10 @@ paths:
         The creation process is subject to rate limiting. The payload must include
         key details such as the object name, icon, description, body content (which
         may support Markdown), source URL (required for bookmark objects), template
-        identifier, and the unique key for the object type. Post-creation, additional
-        operations (like setting featured properties or fetching bookmark metadata)
-        may occur. The endpoint then returns the full object data, ready for further
-        interactions.
+        identifier, and the type_key (which is the non-unique identifier of the type
+        of object to create). Post-creation, additional operations (like setting featured
+        properties or fetching bookmark metadata) may occur. The endpoint then returns
+        the full object data, ready for further interactions.
       parameters:
       - description: Space ID
         in: path
@@ -1847,9 +1848,11 @@ paths:
     get:
       description: This endpoint retrieves a paginated list of object types (e.g.
         'Page', 'Note', 'Task') available within the specified space. Each type’s
-        record includes its unique identifier, unique key, display name, icon, and
-        a recommended layout. Clients use this information when offering choices for
-        object creation or for filtering objects by type.
+        record includes its unique identifier, type key, display name, icon, and a
+        recommended layout. While a type's id is truly unique, a type's key can be
+        the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients
+        use this information when offering choices for object creation or for filtering
+        objects by type through search.
       parameters:
       - description: Space ID
         in: path

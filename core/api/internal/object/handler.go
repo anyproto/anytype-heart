@@ -122,7 +122,7 @@ func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 // CreateObjectHandler creates a new object in a space
 //
 //	@Summary		Create object
-//	@Description	Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the unique key for the object type. Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
+//	@Description	Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the type_key (which is the non-unique identifier of the type of object to create). Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
 //	@Tags			objects
 //	@Accept			json
 //	@Produce		json
@@ -169,7 +169,7 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 // GetTypesHandler retrieves a list of types in a space
 //
 //	@Summary		List types
-//	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, unique key, display name, icon, and a recommended layout. Clients use this information when offering choices for object creation or for filtering objects by type.
+//	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and a recommended layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
 //	@Tags			types
 //	@Produce		json
 //	@Param			space_id	path		string								true	"Space ID"

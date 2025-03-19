@@ -231,7 +231,7 @@ func (s *ObjectService) DeleteObject(ctx context.Context, spaceId string, object
 
 // CreateObject creates a new object in a specific space.
 func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error) {
-	if request.ObjectTypeUniqueKey == "ot-bookmark" && request.Source == "" {
+	if request.TypeKey == "ot-bookmark" && request.Source == "" {
 		return Object{}, ErrInputMissingSource
 	}
 
@@ -249,7 +249,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 		Details:             details,
 		TemplateId:          request.TemplateId,
 		SpaceId:             spaceId,
-		ObjectTypeUniqueKey: request.ObjectTypeUniqueKey,
+		ObjectTypeUniqueKey: request.TypeKey,
 		WithChat:            false,
 	})
 
@@ -271,7 +271,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 	}
 
 	// ObjectBookmarkFetch after creating a bookmark object
-	if request.ObjectTypeUniqueKey == "ot-bookmark" {
+	if request.TypeKey == "ot-bookmark" {
 		bookmarkResp := s.mw.ObjectBookmarkFetch(ctx, &pb.RpcObjectBookmarkFetchRequest{
 			ContextId: resp.ObjectId,
 			Url:       request.Source,
@@ -366,7 +366,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 		types = append(types, Type{
 			Object:            "type",
 			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			UniqueKey:         record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+			TypeKey:           record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:              util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
@@ -394,7 +394,7 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 	return Type{
 		Object:            "type",
 		Id:                typeId,
-		UniqueKey:         details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		TypeKey:           details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              details[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:              util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
@@ -517,7 +517,7 @@ func (s *ObjectService) getTypeFromDetails(typeId string, details []*model.Objec
 	return Type{
 		Object:            "type",
 		Id:                typeId,
-		UniqueKey:         objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		TypeKey:           objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:              util.GetIcon(s.AccountInfo, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],

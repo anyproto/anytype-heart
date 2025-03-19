@@ -3,13 +3,13 @@ package object
 import "github.com/anyproto/anytype-heart/core/api/util"
 
 type CreateObjectRequest struct {
-	Name                string `json:"name" example:"My object"`                                                          // The name of the object
-	Icon                string `json:"icon" example:"📄"`                                                                  // The icon of the object
-	Description         string `json:"description" example:"This is a description of the object."`                        // The description of the object
-	Body                string `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
-	Source              string `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
-	TemplateId          string `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
-	ObjectTypeUniqueKey string `json:"object_type_unique_key" example:"ot-page"`                                          // The unique key of the object type
+	Name        string `json:"name" example:"My object"`                                                          // The name of the object
+	Icon        string `json:"icon" example:"📄"`                                                                  // The icon of the object
+	Description string `json:"description" example:"This is a description of the object."`                        // The description of the object
+	Body        string `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
+	Source      string `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
+	TemplateId  string `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
+	TypeKey     string `json:"type_key" example:"ot-page"`                                                        // The key of the type of object to create
 }
 
 type ObjectResponse struct {
@@ -118,8 +118,8 @@ type TypeResponse struct {
 
 type Type struct {
 	Object            string    `json:"object" example:"type"`                                                    // The data model of the object
-	Id                string    `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type
-	UniqueKey         string    `json:"unique_key" example:"ot-page"`                                             // The unique key of the type
+	Id                string    `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type (which is unique across spaces)
+	TypeKey           string    `json:"type_key" example:"ot-page"`                                               // The key of the type (can be the same across spaces for known types)
 	Name              string    `json:"name" example:"Page"`                                                      // The name of the type
 	Icon              util.Icon `json:"icon"`                                                                     // The icon of the type
 	RecommendedLayout string    `json:"recommended_layout" example:"todo"`                                        // The recommended layout of the type
