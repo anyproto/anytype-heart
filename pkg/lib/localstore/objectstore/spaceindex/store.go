@@ -32,6 +32,7 @@ var (
 type Store interface {
 	SpaceId() string
 	Close() error
+	Init() error
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
@@ -102,6 +103,7 @@ type FulltextQueue interface {
 type dsObjectStore struct {
 	spaceId        string
 	db             anystore.DB
+	dbPath         string
 	objects        anystore.Collection
 	links          anystore.Collection
 	headsState     anystore.Collection
@@ -150,15 +152,24 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		fts:                deps.Fts,
 		subManager:         deps.SubManager,
 		fulltextQueue:      deps.FulltextQueue,
+		dbPath:             deps.DbPath,
 	}
-
-	var err error
-	err = s.openDatabase(componentCtx, deps.DbPath)
-	if err != nil {
-		return NewInvalidStore(err)
-	}
-
 	return s
+}
+
+func (s *dsObjectStore) Init() error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if s.db != nil {
+		return nil
+	}
+
+	err := s.openDatabase(s.componentCtx, s.dbPath)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type LinksUpdateInfo struct {

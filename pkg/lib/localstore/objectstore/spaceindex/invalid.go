@@ -30,6 +30,10 @@ func (s *invalidStore) Close() error {
 	return s.err
 }
 
+func (s *invalidStore) Init() error {
+	return s.err
+}
+
 func (s *invalidStore) Query(q database.Query) (records []database.Record, err error) {
 	return nil, s.err
 }
