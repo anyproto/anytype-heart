@@ -552,25 +552,38 @@ components:
           type: array
           uniqueItems: false
       type: object
+    search.SortDirection:
+      default: desc
+      description: The direction to sort the search results
+      enum:
+      - asc
+      - desc
+      type: string
+      x-enum-varnames:
+      - Asc
+      - Desc
     search.SortOptions:
       description: The sorting criteria and direction for the search results
       properties:
         direction:
-          default: desc
-          description: The direction to sort the search results
-          enum:
-          - asc
-          - desc
-          type: string
-        timestamp:
-          default: last_modified_date
-          description: The timestamp to sort the search results by
-          enum:
-          - created_date
-          - last_modified_date
-          - last_opened_date
-          type: string
+          $ref: '#/components/schemas/search.SortDirection'
+        property:
+          $ref: '#/components/schemas/search.SortProperty'
       type: object
+    search.SortProperty:
+      default: last_modified_date
+      description: The property to sort the search results by
+      enum:
+      - created_date
+      - last_modified_date
+      - last_opened_date
+      - name
+      type: string
+      x-enum-varnames:
+      - CreatedDate
+      - LastModifiedDate
+      - LastOpenedDate
+      - Name
     space.CreateSpaceRequest:
       properties:
         name:
@@ -1179,7 +1192,7 @@ paths:
     get:
       description: Fetches detailed information about a single member within a space.
         The endpoint returns the member’s identifier, name, icon, identity, global
-        name, and role. This is useful for user profile pages, permission management,
+        name, status and role. This is useful for user profile pages, permission management,
         and displaying member-specific information in collaborative environments.
       parameters:
       - description: Space ID
