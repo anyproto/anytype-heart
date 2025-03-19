@@ -98,27 +98,20 @@ func (s *SearchService) GlobalSearch(ctx context.Context, request SearchRequest,
 		}
 	}
 
-	if criterionToSortAfter == bundle.RelationKeyName.String() {
-		if sorts[0].Type == model.BlockContentDataviewSort_Asc {
-			sort.SliceStable(combinedRecords, func(i, j int) bool {
+	sortFunc := func(i, j int) bool {
+		if criterionToSortAfter == bundle.RelationKeyName.String() {
+			if sorts[0].Type == model.BlockContentDataviewSort_Asc {
 				return combinedRecords[i].stringSort < combinedRecords[j].stringSort
-			})
+			}
+			return combinedRecords[i].stringSort > combinedRecords[j].stringSort
 		} else {
-			sort.SliceStable(combinedRecords, func(i, j int) bool {
-				return combinedRecords[i].stringSort > combinedRecords[j].stringSort
-			})
-		}
-	} else {
-		if sorts[0].Type == model.BlockContentDataviewSort_Asc {
-			sort.SliceStable(combinedRecords, func(i, j int) bool {
+			if sorts[0].Type == model.BlockContentDataviewSort_Asc {
 				return combinedRecords[i].numericSort < combinedRecords[j].numericSort
-			})
-		} else {
-			sort.SliceStable(combinedRecords, func(i, j int) bool {
-				return combinedRecords[i].numericSort > combinedRecords[j].numericSort
-			})
+			}
+			return combinedRecords[i].numericSort > combinedRecords[j].numericSort
 		}
 	}
+	sort.SliceStable(combinedRecords, sortFunc)
 
 	total = len(combinedRecords)
 	paginatedRecords, hasMore := pagination.Paginate(combinedRecords, offset, limit)
