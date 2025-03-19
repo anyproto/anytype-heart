@@ -26,6 +26,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
+	"github.com/anyproto/anytype-heart/core/push/client"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -493,5 +494,15 @@ func (c *Config) GetPublishServer() publishclient.Config {
 				Addrs:  []string{"yamux://" + publishAddr},
 			},
 		},
+	}
+}
+
+func (c *Config) GetPushConfig() client.Config {
+	pushPeerId := "peer"
+	pushAddr := "addr"
+
+	return client.Config{
+		PeerId: pushPeerId,
+		Addr:   []string{pushAddr},
 	}
 }
