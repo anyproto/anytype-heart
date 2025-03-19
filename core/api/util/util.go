@@ -32,12 +32,20 @@ var iconOptionToColor = map[float64]string{
 	10: "lime",
 }
 
+type IconFormat string
+
+const (
+	IconFormatEmoji IconFormat = "emoji"
+	IconFormatFile  IconFormat = "file"
+	IconFormatIcon  IconFormat = "icon"
+)
+
 type Icon struct {
-	Format string  `json:"format" enums:"emoji,file,icon" example:"emoji"`                                                                    // The type of the icon
-	Emoji  *string `json:"emoji,omitempty" example:"📄"`                                                                                       // The emoji of the icon
-	File   *string `json:"file,omitempty" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
-	Name   *string `json:"name,omitempty" example:"document"`                                                                                 // The name of the icon
-	Color  *string `json:"color,omitempty" example:"red"`                                                                                     // The color of the icon
+	Format IconFormat `json:"format" enums:"emoji,file,icon" example:"emoji"`                                                                    // The type of the icon
+	Emoji  *string    `json:"emoji,omitempty" example:"📄"`                                                                                       // The emoji of the icon
+	File   *string    `json:"file,omitempty" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
+	Name   *string    `json:"name,omitempty" example:"document"`                                                                                 // The name of the icon
+	Color  *string    `json:"color,omitempty" example:"red"`                                                                                     // The color of the icon
 }
 
 // StringPtr returns a pointer to the string

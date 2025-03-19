@@ -18,25 +18,25 @@ import (
 )
 
 const (
-	offset                    = 0
-	limit                     = 100
-	mockedTechSpaceId         = "mocked-tech-space-id"
-	gatewayUrl                = "http://localhost:31006"
-	mockedSpaceId             = "mocked-space-id"
-	mockedObjectId            = "mocked-object-id"
-	mockedNewObjectId         = "mocked-new-object-id"
-	mockedObjectName          = "mocked-object-name"
-	mockedObjectSnippet       = "mocked-object-snippet"
-	mockedObjectIcon          = "🔍"
-	mockedParticipantId       = "mocked-participant-id"
-	mockedObjectTypeUniqueKey = "ot-page"
-	mockedTypeId              = "mocked-type-id"
-	mockedTypeName            = "mocked-type-name"
-	mockedTypeUniqueKey       = "mocked-type-unique-key"
-	mockedTypeIcon            = "📝"
-	mockedTemplateId          = "mocked-template-id"
-	mockedTemplateName        = "mocked-template-name"
-	mockedTemplateIcon        = "📃"
+	offset              = 0
+	limit               = 100
+	mockedTechSpaceId   = "mocked-tech-space-id"
+	gatewayUrl          = "http://localhost:31006"
+	mockedSpaceId       = "mocked-space-id"
+	mockedObjectId      = "mocked-object-id"
+	mockedNewObjectId   = "mocked-new-object-id"
+	mockedObjectName    = "mocked-object-name"
+	mockedObjectSnippet = "mocked-object-snippet"
+	mockedObjectIcon    = "🔍"
+	mockedParticipantId = "mocked-participant-id"
+	mockedTypeKey       = "ot-page"
+	mockedTypeId        = "mocked-type-id"
+	mockedTypeName      = "mocked-type-name"
+	mockedTypeUniqueKey = "mocked-type-unique-key"
+	mockedTypeIcon      = "📝"
+	mockedTemplateId    = "mocked-template-id"
+	mockedTemplateName  = "mocked-template-name"
+	mockedTemplateIcon  = "📃"
 )
 
 type fixture struct {
@@ -483,7 +483,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 			},
 			TemplateId:          mockedTemplateId,
 			SpaceId:             mockedSpaceId,
-			ObjectTypeUniqueKey: mockedObjectTypeUniqueKey,
+			ObjectTypeUniqueKey: mockedTypeKey,
 			WithChat:            false,
 		}).Return(&pb.RpcObjectCreateResponse{
 			ObjectId: mockedNewObjectId,
@@ -537,10 +537,10 @@ func TestObjectService_CreateObject(t *testing.T) {
 
 		// when
 		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
-			Name:                mockedObjectName,
-			Icon:                mockedObjectIcon,
-			TemplateId:          mockedTemplateId,
-			ObjectTypeUniqueKey: mockedObjectTypeUniqueKey,
+			Name:       mockedObjectName,
+			Icon:       util.Icon{Format: util.IconFormatEmoji, Emoji: util.StringPtr(mockedObjectIcon)},
+			TemplateId: mockedTemplateId,
+			TypeKey:    mockedTypeKey,
 		})
 
 		// then
@@ -569,7 +569,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		// when
 		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name: "Fail Object",
-			Icon: "",
+			Icon: util.Icon{},
 		})
 
 		// then
