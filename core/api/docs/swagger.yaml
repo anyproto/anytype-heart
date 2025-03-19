@@ -81,9 +81,7 @@ components:
           example: This is a description of the object.
           type: string
         icon:
-          description: The icon of the object
-          example: "\U0001F4C4"
-          type: string
+          $ref: '#/components/schemas/util.Icon'
         name:
           description: The name of the object
           example: My object
@@ -646,43 +644,15 @@ components:
     space.Space:
       description: The space
       properties:
-        account_space_id:
-          description: The id of the account space
-          example: bafyreihpd2knon5wbljhtfeg3fcqtg3i2pomhhnigui6lrjmzcjzep7gcy.23me69r569oi1
-          type: string
-        analytics_id:
-          description: The analytics id of the account
-          example: 624aecdd-4797-4611-9d61-a2ae5f53cf1c
-          type: string
-        archive_object_id:
-          description: The id of the archive object
-          example: bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri
-          type: string
-        device_id:
-          description: The id of the device
-          example: 12D3KooWGZMJ4kQVyQVXaj7gJPZr3RZ2nvd9M2Eq2pprEoPih9WF
-          type: string
         gateway_url:
           description: The gateway url to serve files and media
           example: http://127.0.0.1:31006
-          type: string
-        home_object_id:
-          description: The id of the home object
-          example: bafyreie4qcl3wczb4cw5hrfyycikhjyh6oljdis3ewqrk5boaav3sbwqya
           type: string
         icon:
           $ref: '#/components/schemas/util.Icon'
         id:
           description: The id of the space
           example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
-          type: string
-        local_storage_path:
-          description: The local storage path of the account
-          example: /Users/johndoe/Library/Application Support/Anytype/data/AAHTtt1wuQEnaYBNZ2Cyfcvs6DqPqxgn8VXDVk4avsUkMuha
-          type: string
-        marketplace_workspace_id:
-          description: The id of the marketplace workspace
-          example: _anytype_marketplace
           type: string
         name:
           description: The name of the space
@@ -695,31 +665,6 @@ components:
         object:
           description: The data model of the object
           example: space
-          type: string
-        profile_object_id:
-          description: The id of the profile object
-          example: bafyreiaxhwreshjqwndpwtdsu4mtihaqhhmlygqnyqpfyfwlqfq3rm3gw4
-          type: string
-        space_view_id:
-          description: The id of the space view
-          example: bafyreigzv3vq7qwlrsin6njoduq727ssnhwd6bgyfj6nm4hv3pxoc2rxhy
-          type: string
-        tech_space_id:
-          description: The id of tech space, where objects outside of user's actual
-            spaces are stored, e.g. spaces itself
-          example: bafyreif4xuwncrjl6jajt4zrrfnylpki476nv2w64yf42ovt7gia7oypii.23me69r569oi1
-          type: string
-        timezone:
-          description: The timezone of the account
-          example: ""
-          type: string
-        widgets_id:
-          description: The id of the widgets
-          example: bafyreialj7pceh53mifm5dixlho47ke4qjmsn2uh4wsjf7xq2pnlo5xfva
-          type: string
-        workspace_object_id:
-          description: The id of the workspace object
-          example: bafyreiapey2g6e6za4zfxvlgwdy4hbbfu676gmwrhnqvjbxvrchr7elr3y
           type: string
       type: object
     space.SpaceResponse:
@@ -770,18 +715,24 @@ components:
           example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
           type: string
         format:
-          description: The type of the icon
-          enum:
-          - emoji
-          - file
-          - icon
-          example: emoji
-          type: string
+          $ref: '#/components/schemas/util.IconFormat'
         name:
           description: The name of the icon
           example: document
           type: string
       type: object
+    util.IconFormat:
+      description: The type of the icon
+      enum:
+      - emoji
+      - file
+      - icon
+      example: emoji
+      type: string
+      x-enum-varnames:
+      - IconFormatEmoji
+      - IconFormatFile
+      - IconFormatIcon
     util.NotFoundError:
       properties:
         error:

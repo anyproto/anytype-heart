@@ -376,25 +376,12 @@ func (s *SpaceService) getWorkspaceInfo(spaceId string, name string, icon util.I
 	}
 
 	return Space{
-		Object:                 "space",
-		Id:                     spaceId,
-		Name:                   name,
-		Icon:                   icon,
-		HomeObjectId:           workspaceResponse.Info.HomeObjectId,
-		ArchiveObjectId:        workspaceResponse.Info.ArchiveObjectId,
-		ProfileObjectId:        workspaceResponse.Info.ProfileObjectId,
-		MarketplaceWorkspaceId: workspaceResponse.Info.MarketplaceWorkspaceId,
-		WorkspaceObjectId:      workspaceResponse.Info.WorkspaceObjectId,
-		DeviceId:               workspaceResponse.Info.DeviceId,
-		AccountSpaceId:         workspaceResponse.Info.AccountSpaceId,
-		WidgetsId:              workspaceResponse.Info.WidgetsId,
-		SpaceViewId:            workspaceResponse.Info.SpaceViewId,
-		TechSpaceId:            workspaceResponse.Info.TechSpaceId,
-		GatewayUrl:             workspaceResponse.Info.GatewayUrl,
-		LocalStoragePath:       workspaceResponse.Info.LocalStoragePath,
-		Timezone:               workspaceResponse.Info.TimeZone,
-		AnalyticsId:            workspaceResponse.Info.AnalyticsId,
-		NetworkId:              workspaceResponse.Info.NetworkId,
+		Object:     "space",
+		Id:         spaceId,
+		Name:       name,
+		Icon:       icon,
+		GatewayUrl: workspaceResponse.Info.GatewayUrl,
+		NetworkId:  workspaceResponse.Info.NetworkId,
 	}, nil
 }
 
