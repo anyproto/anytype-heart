@@ -1135,6 +1135,199 @@ paths:
       summary: Get space
       tags:
       - spaces
+  /spaces/{space_id}/lists/{list_id}/{view_id}/objects:
+    get:
+      description: Returns a paginated list of objects that are associated with a
+        specific list (or collection) within a space. This endpoint helps clients
+        to manage grouped objects (for example, tasks within a list) by returning
+        detailed object information for each item of the list.
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: List ID
+        in: path
+        name: list_id
+        required: true
+        schema:
+          type: string
+      - description: View ID
+        in: path
+        name: view_id
+        required: true
+        schema:
+          type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: The number of items to return
+        in: query
+        name: limit
+        schema:
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Object'
+          description: List of objects
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Get objects in list
+      tags:
+      - lists
+  /spaces/{space_id}/lists/{list_id}/objects:
+    post:
+      description: Enables clients to add one or more objects to a specific list by
+        submitting a JSON array of object IDs. Upon success, the endpoint returns
+        a confirmation message. This endpoint is vital for building user interfaces
+        that allow drag‑and‑drop or multi‑select additions to collections.
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: List ID
+        in: path
+        name: list_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              items:
+                type: string
+              type: array
+        description: List of object IDs
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Objects added successfully
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Add objects to list
+      tags:
+      - lists
+  /spaces/{space_id}/lists/{list_id}/objects/{object_id}:
+    delete:
+      description: Removes a given object from the specified list in a space. The
+        endpoint takes the space, list, and object identifiers as path parameters.
+        It's subject to rate limiting and returns a success message on completion.
+        It is used for dynamically managing collections without affecting the underlying
+        object data.
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: List ID
+        in: path
+        name: list_id
+        required: true
+        schema:
+          type: string
+      - description: Object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Objects removed successfully
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Remove object from list
+      tags:
+      - lists
   /spaces/{space_id}/members:
     get:
       description: Returns a paginated list of members belonging to the specified
@@ -1865,198 +2058,5 @@ paths:
       summary: Get template
       tags:
       - templates
-  /v1/spaces/{space_id}/lists/{list_id}/{view_id}/objects:
-    get:
-      description: Returns a paginated list of objects that are associated with a
-        specific list (or collection) within a space. This endpoint helps clients
-        to manage grouped objects (for example, tasks within a list) by returning
-        detailed object information for each item of the list.
-      parameters:
-      - description: Space ID
-        in: path
-        name: space_id
-        required: true
-        schema:
-          type: string
-      - description: List ID
-        in: path
-        name: list_id
-        required: true
-        schema:
-          type: string
-      - description: View ID
-        in: path
-        name: view_id
-        required: true
-        schema:
-          type: string
-      - description: The number of items to skip before starting to collect the result
-          set
-        in: query
-        name: offset
-        schema:
-          default: 0
-          type: integer
-      - description: The number of items to return
-        in: query
-        name: limit
-        schema:
-          type: integer
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Object'
-          description: List of objects
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
-          description: Unauthorized
-        "404":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.NotFoundError'
-          description: Not found
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ServerError'
-          description: Internal server error
-      security:
-      - bearerauth: []
-      summary: Get objects in list
-      tags:
-      - lists
-  /v1/spaces/{space_id}/lists/{list_id}/objects:
-    post:
-      description: Enables clients to add one or more objects to a specific list by
-        submitting a JSON array of object IDs. Upon success, the endpoint returns
-        a confirmation message. This endpoint is vital for building user interfaces
-        that allow drag‑and‑drop or multi‑select additions to collections.
-      parameters:
-      - description: Space ID
-        in: path
-        name: space_id
-        required: true
-        schema:
-          type: string
-      - description: List ID
-        in: path
-        name: list_id
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              items:
-                type: string
-              type: array
-        description: List of object IDs
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                type: string
-          description: Objects added successfully
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ValidationError'
-          description: Bad request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
-          description: Unauthorized
-        "404":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.NotFoundError'
-          description: Not found
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ServerError'
-          description: Internal server error
-      security:
-      - bearerauth: []
-      summary: Add objects to list
-      tags:
-      - lists
-  /v1/spaces/{space_id}/lists/{list_id}/objects/{object_id}:
-    delete:
-      description: Removes a given object from the specified list in a space. The
-        endpoint takes the space, list, and object identifiers as path parameters.
-        It's subject to rate limiting and returns a success message on completion.
-        It is used for dynamically managing collections without affecting the underlying
-        object data.
-      parameters:
-      - description: Space ID
-        in: path
-        name: space_id
-        required: true
-        schema:
-          type: string
-      - description: List ID
-        in: path
-        name: list_id
-        required: true
-        schema:
-          type: string
-      - description: Object ID
-        in: path
-        name: object_id
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                type: string
-          description: Objects removed successfully
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ValidationError'
-          description: Bad request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
-          description: Unauthorized
-        "404":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.NotFoundError'
-          description: Not found
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ServerError'
-          description: Internal server error
-      security:
-      - bearerauth: []
-      summary: Remove object from list
-      tags:
-      - lists
 servers:
 - url: http://localhost:31009/v1
