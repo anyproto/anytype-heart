@@ -644,11 +644,10 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 			s.subscription.add(previousOrderId, message)
 			previousOrderId = message.OrderId
 		}
-
-		// Force chatState to be sent
-		s.subscription.chatStateUpdated = true
 		s.subscription.flush()
-		return nil, nil
+		return &SubscribeLastMessagesResponse{
+			ChatState: s.subscription.getChatState(),
+		}, nil
 	} else {
 		return &SubscribeLastMessagesResponse{
 			Messages:  messages,

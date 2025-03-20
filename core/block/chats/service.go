@@ -40,7 +40,7 @@ type Service interface {
 	UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string) error
 	Unsubscribe(chatObjectId string, subId string) error
 
-	SubscribeToMessagePreviews(ctx context.Context) (string, error)
+	SubscribeToMessagePreviews(ctx context.Context) (*SubscribeToMessagePreviewsResponse, error)
 
 	app.ComponentRunnable
 }
@@ -81,11 +81,23 @@ const (
 	allChatsSubscriptionId = "allChatObjects"
 )
 
-func (s *service) SubscribeToMessagePreviews(ctx context.Context) (string, error) {
+type SubscribeToMessagePreviewsResponse struct {
+	SubId  string
+	States []ChatStateWithSpaceId
+}
+
+type ChatStateWithSpaceId struct {
+	SpaceId   string
+	ChatState *model.ChatState
+}
+
+func (s *service) SubscribeToMessagePreviews(ctx context.Context) (*SubscribeToMessagePreviewsResponse, error) {
 	s.lock.Lock()
 	if s.chatObjectsSubQueue != nil {
 		s.lock.Unlock()
-		return chatobject.LastMessageSubscriptionId, nil
+		return &SubscribeToMessagePreviewsResponse{
+			SubId: chatobject.LastMessageSubscriptionId,
+		}, nil
 	}
 	s.chatObjectsSubQueue = mb.New[*pb.EventMessage](0)
 	s.lock.Unlock()
@@ -93,7 +105,7 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context) (string, error
 	resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
 		SubId:             allChatsSubscriptionId,
 		InternalQueue:     s.chatObjectsSubQueue,
-		Keys:              []string{bundle.RelationKeyId.String()},
+		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String()},
 		NoDepSubscription: true,
 		Filters: []database.FilterRequest{
 			{
@@ -104,17 +116,27 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context) (string, error
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("cross-space sub: %w", err)
+		return nil, fmt.Errorf("cross-space sub: %w", err)
 	}
+
+	states := make([]ChatStateWithSpaceId, 0, len(resp.Records))
 	for _, rec := range resp.Records {
-		err := s.onChatAdded(rec.GetString(bundle.RelationKeyId))
+		resp, err := s.onChatAdded(rec.GetString(bundle.RelationKeyId))
 		if err != nil {
 			log.Error("init lastMessage subscription", zap.Error(err))
+			continue
 		}
+		states = append(states, ChatStateWithSpaceId{
+			SpaceId:   rec.GetString(bundle.RelationKeySpaceId),
+			ChatState: resp.ChatState,
+		})
 	}
 	go s.monitorChats()
 
-	return chatobject.LastMessageSubscriptionId, nil
+	return &SubscribeToMessagePreviewsResponse{
+		SubId:  chatobject.LastMessageSubscriptionId,
+		States: states,
+	}, nil
 }
 
 func (s *service) Run(ctx context.Context) error {
@@ -124,7 +146,7 @@ func (s *service) Run(ctx context.Context) error {
 func (s *service) monitorChats() {
 	matcher := subscriptionservice.EventMatcher{
 		OnAdd: func(add *pb.EventObjectSubscriptionAdd) {
-			err := s.onChatAdded(add.Id)
+			_, err := s.onChatAdded(add.Id)
 			if err != nil {
 				log.Error("init last message subscription", zap.Error(err))
 			}
@@ -149,15 +171,17 @@ func (s *service) monitorChats() {
 	}
 }
 
-func (s *service) onChatAdded(chatObjectId string) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+func (s *service) onChatAdded(chatObjectId string) (*chatobject.SubscribeLastMessagesResponse, error) {
+	var resp *chatobject.SubscribeLastMessagesResponse
+	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		_, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.LastMessageSubscriptionId, 1, true)
+		resp, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.LastMessageSubscriptionId, 1, true)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
+	return resp, err
 }
 
 func (s *service) Close(ctx context.Context) error {

@@ -572,6 +572,7 @@
     - [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error)
+    - [Rpc.Chat.SubscribeToMessagePreviews.Response.State](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-State)
     - [Rpc.Chat.ToggleMessageReaction](#anytype-Rpc-Chat-ToggleMessageReaction)
     - [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request)
     - [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response)
@@ -10599,6 +10600,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Chat.SubscribeToMessagePreviews.Response.Error](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error) |  |  |
 | subId | [string](#string) |  |  |
+| states | [Rpc.Chat.SubscribeToMessagePreviews.Response.State](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-State) | repeated |  |
 
 
 
@@ -10615,6 +10617,22 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-State"></a>
+
+### Rpc.Chat.SubscribeToMessagePreviews.Response.State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
 
 
 

@@ -131,14 +131,27 @@ func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsub
 func (mw *Middleware) ChatSubscribeToMessagePreviews(cctx context.Context, req *pb.RpcChatSubscribeToMessagePreviewsRequest) *pb.RpcChatSubscribeToMessagePreviewsResponse {
 	chatService := mustService[chats.Service](mw)
 
-	subId, err := chatService.SubscribeToMessagePreviews(cctx)
-	code := mapErrorCode[pb.RpcChatSubscribeToMessagePreviewsResponseErrorCode](err)
+	resp, err := chatService.SubscribeToMessagePreviews(cctx)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatSubscribeToMessagePreviewsResponseErrorCode](err)
+		return &pb.RpcChatSubscribeToMessagePreviewsResponse{
+			Error: &pb.RpcChatSubscribeToMessagePreviewsResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	states := make([]*pb.RpcChatSubscribeToMessagePreviewsResponseState, 0, len(resp.States))
+	for _, state := range resp.States {
+		states = append(states, &pb.RpcChatSubscribeToMessagePreviewsResponseState{
+			SpaceId:   state.SpaceId,
+			ChatState: state.ChatState,
+		})
+	}
 	return &pb.RpcChatSubscribeToMessagePreviewsResponse{
-		SubId: subId,
-		Error: &pb.RpcChatSubscribeToMessagePreviewsResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
-		},
+		SubId:  resp.SubId,
+		States: states,
 	}
 }
 
