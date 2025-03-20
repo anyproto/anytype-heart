@@ -44,6 +44,7 @@ var (
 	ErrFailedRetrieveTemplate     = errors.New("failed to retrieve template")
 	ErrFailedRetrieveTemplates    = errors.New("failed to retrieve templates")
 	ErrTemplateNotFound           = errors.New("template not found")
+	ErrTemplateDeleted            = errors.New("template deleted")
 )
 
 var excludedSystemProperties = map[string]bool{
@@ -207,11 +208,11 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		Id:         details[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:       icon,
-		Type:       s.getTypeFromDetails(details[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
+		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
-		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		Type:       s.getTypeFromDetails(details[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
 		Blocks:     s.getBlocks(resp),
 		Properties: s.getProperties(resp),
 	}
@@ -402,8 +403,8 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 			TypeKey:           record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:              util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 			Archived:          record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 		})
 	}
 	return types, total, hasMore, nil
@@ -437,8 +438,8 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 		TypeKey:           details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              details[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:              util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		RecommendedLayout: model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 		Archived:          details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		RecommendedLayout: model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 	}, nil
 }
 
@@ -478,7 +479,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 				Value:       pbtypes.String(templateTypeId),
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIsArchived.String()},
 	})
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -508,10 +509,11 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 		}
 
 		templates = append(templates, Template{
-			Object: "template",
-			Id:     templateId,
-			Name:   templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:   util.GetIcon(s.AccountInfo, templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
+			Object:   "template",
+			Id:       templateId,
+			Name:     templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Icon:     util.GetIcon(s.AccountInfo, templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
+			Archived: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		})
 	}
 
@@ -525,19 +527,26 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 		ObjectId: templateId,
 	})
 
-	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-		return Template{}, ErrTemplateNotFound
-	}
+	if resp.Error != nil {
+		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+			return Template{}, ErrTemplateNotFound
+		}
 
-	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return Template{}, ErrFailedRetrieveTemplate
+		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
+			return Template{}, ErrTemplateDeleted
+		}
+
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return Template{}, ErrFailedRetrieveTemplate
+		}
 	}
 
 	return Template{
-		Object: "template",
-		Id:     templateId,
-		Name:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:   util.GetIcon(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
+		Object:   "template",
+		Id:       templateId,
+		Name:     resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:     util.GetIcon(s.AccountInfo, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
+		Archived: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 	}, nil
 }
 

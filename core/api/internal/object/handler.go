@@ -295,6 +295,7 @@ func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Success		200			{object}	TemplateResponse		"The requested template"
 //	@Failure		401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404			{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410			{object}	util.GoneError			"Resource deleted"
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id}/templates/{template_id} [get]
@@ -307,6 +308,7 @@ func GetTemplateHandler(s *ObjectService) gin.HandlerFunc {
 		object, err := s.GetTemplate(c.Request.Context(), spaceId, typeId, templateId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrTemplateNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrTemplateDeleted, http.StatusGone),
 			util.ErrToCode(ErrFailedRetrieveTemplate, http.StatusInternalServerError),
 		)
 
