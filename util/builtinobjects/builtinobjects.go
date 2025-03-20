@@ -63,6 +63,9 @@ type widgetParameters struct {
 	isObjectIDChanged bool
 }
 
+//go:embed data/start_guide.zip
+var startGuideZip []byte
+
 //go:embed data/get_started.zip
 var getStartedZip []byte
 
@@ -77,6 +80,7 @@ var (
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
+		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:  startGuideZip,
 		pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
 	}
 )

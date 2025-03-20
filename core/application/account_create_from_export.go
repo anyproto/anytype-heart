@@ -157,7 +157,7 @@ func (s *Service) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRe
 		return nil, fmt.Errorf("failed to extract config: %w", err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(true, "")
 	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
 	return cfg, nil
 }

@@ -48,7 +48,7 @@ func (s *Service) migrate(ctx context.Context, id, lang string) error {
 		}
 		return err
 	}
-	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(false, "")
 	cfg.PeferYamuxTransport = true
 	cfg.DisableNetworkIdCheck = true
 	comps := []app.Component{

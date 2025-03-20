@@ -1187,6 +1187,36 @@
     "source": "details"
   },
   {
+    "description": "CID of invite file for  for guest user in the current space. It's stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteGuestFileCid",
+    "maxCount": 1,
+    "name": "Guest user invite file CID",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Encoded encryption key of invite file for guest user in the current space. It's stored in SpaceView",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "spaceInviteGuestFileKey",
+    "maxCount": 1,
+    "name": "Guest user invite file key",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Guest key to read public space",
+    "format": "longtext",
+    "hidden": true,
+    "key": "guestKey",
+    "maxCount": 1,
+    "name": "Space guest key",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Participant permissions. Possible values: models.ParticipantPermissions",
     "format": "number",
     "hidden": true,

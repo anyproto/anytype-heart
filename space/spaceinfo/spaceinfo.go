@@ -117,6 +117,7 @@ const (
 )
 
 type SpaceDescription struct {
-	Name      string
-	IconImage string
+	Name        string
+	IconImage   string
+	SpaceUxType model.SpaceUxType
 }

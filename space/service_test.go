@@ -13,6 +13,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/testutil/accounttest"
+	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -44,6 +46,19 @@ var ctx = context.Background()
 const (
 	testPersonalSpaceID = "personal.12345"
 )
+
+type mockAclJoiner struct {
+}
+
+func (m *mockAclJoiner) Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
+	return nil
+}
+func (m *mockAclJoiner) Init(a *app.App) error {
+	return nil
+}
+func (m *mockAclJoiner) Name() string {
+	return "aclJoiner"
+}
 
 func TestService_Init(t *testing.T) {
 	t.Run("tech space getter", func(t *testing.T) {
@@ -312,6 +327,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	fx.a.
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(fx.config).
+		Register(&mockAclJoiner{}).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.notificationSender)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.updater)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
