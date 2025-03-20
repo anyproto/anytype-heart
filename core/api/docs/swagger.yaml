@@ -200,10 +200,6 @@ components:
             $ref: '#/components/schemas/object.Property'
           type: array
           uniqueItems: false
-        root_id:
-          description: The id of the object's root
-          example: bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u
-          type: string
         snippet:
           description: The snippet of the object, especially important for notes as
             they don't have a name

@@ -211,7 +211,6 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		Snippet:    details[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
 		SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
-		RootId:     resp.ObjectView.RootId,
 		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Blocks:     s.getBlocks(resp),
 		Properties: s.getProperties(resp),

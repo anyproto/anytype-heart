@@ -28,7 +28,6 @@ const (
 	mockedObjectId      = "mocked-object-id"
 	mockedObjectName    = "mocked-object-name"
 	mockedObjectIcon    = "🌐"
-	mockedRootId        = "mocked-root-id"
 	mockedParticipantId = "mocked-participant-id"
 	mockedType          = "mocked-type"
 	mockedTagId1        = "mocked-tag-id-1"
@@ -199,10 +198,10 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			ObjectId: mockedObjectId,
 		}).Return(&pb.RpcObjectShowResponse{
 			ObjectView: &model.ObjectView{
-				RootId: mockedRootId,
+				RootId: mockedObjectId,
 				Blocks: []*model.Block{
 					{
-						Id: mockedRootId,
+						Id: mockedObjectId,
 						Restrictions: &model.BlockRestrictions{
 							Read:   false,
 							Edit:   false,
@@ -235,7 +234,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				},
 				Details: []*model.ObjectViewDetailsSet{
 					{
-						Id: mockedRootId,
+						Id: mockedObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
@@ -488,10 +487,10 @@ func TestSearchService_Search(t *testing.T) {
 			ObjectId: mockedObjectId,
 		}).Return(&pb.RpcObjectShowResponse{
 			ObjectView: &model.ObjectView{
-				RootId: mockedRootId,
+				RootId: mockedObjectId,
 				Details: []*model.ObjectViewDetailsSet{
 					{
-						Id: mockedRootId,
+						Id: mockedObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
