@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.11
-	github.com/anyproto/any-sync v0.6.4
+	github.com/anyproto/any-sync v0.6.8
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
@@ -84,6 +84,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.21.1
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
+	github.com/quic-go/quic-go v0.50.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.49.1
 	github.com/sasha-s/go-deadlock v0.3.5
@@ -247,7 +248,6 @@ require (
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/pseudomuto/protokit v0.2.1 // indirect
-	github.com/quic-go/quic-go v0.50.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rs/cors v1.11.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect

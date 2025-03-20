@@ -85,7 +85,8 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	info := spaceinfo.NewSpacePersistentInfoFromState(ctx.State)
 	newInfo := spaceinfo.NewSpacePersistentInfo(spaceId)
 	newInfo.SetAccountStatus(info.GetAccountStatus()).
-		SetAclHeadId(info.GetAclHeadId())
+		SetAclHeadId(info.GetAclHeadId()).
+		SetEncodedKey(info.EncodedKey)
 	s.setSpacePersistentInfo(ctx.State, newInfo)
 	localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
 	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
@@ -133,6 +134,13 @@ func (s *SpaceView) RemoveExistingInviteInfo() (fileCid string, err error) {
 	newState := s.NewState()
 	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
 	return fileCid, s.Apply(newState)
+}
+
+func (s *SpaceView) GetGuestUserInviteInfo() (fileCid string, fileKey string) {
+	details := s.CombinedDetails()
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteGuestFileCid)
+	fileKey = details.GetString(bundle.RelationKeySpaceInviteGuestFileKey)
+	return
 }
 
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
@@ -267,6 +275,7 @@ func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
 	details := s.CombinedDetails()
 	data.Name = details.GetString(bundle.RelationKeyName)
 	data.IconImage = details.GetString(bundle.RelationKeyIconImage)
+	data.SpaceUxType = model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType))
 	return
 }
 
