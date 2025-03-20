@@ -9,6 +9,7 @@ import (
 )
 
 type testErrorType struct {
+	payload int
 }
 
 func (t testErrorType) Error() string {
@@ -41,4 +42,14 @@ func TestErrorCodeMapping(t *testing.T) {
 	assert.Equal(t, testCode(3), mapper(wrapped2))
 	assert.Equal(t, testCode(4), mapper(err3))
 	assert.Equal(t, testCode(5), mapper(err4))
+}
+
+func TestErrorCodeMappingWithPayload(t *testing.T) {
+	errPrototype := &testErrorType{}
+
+	err := &testErrorType{payload: 42}
+	code := mapErrorCode(err, errTypeToCode(&errPrototype, testCode(123)))
+
+	assert.Equal(t, 42, errPrototype.payload)
+	assert.Equal(t, testCode(123), code)
 }
