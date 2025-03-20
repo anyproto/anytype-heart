@@ -13,20 +13,20 @@ func Test_marksEq(t *testing.T) {
 		return &model.BlockContentTextMarks{
 			Marks: []*model.BlockContentTextMark{
 				&model.BlockContentTextMark{
-					Range: &model.Range{0, 1},
+					Range: &model.Range{From: 0, To: 1},
 					Type:  model.BlockContentTextMark_Bold,
 				},
 				&model.BlockContentTextMark{
-					Range: &model.Range{2, 3},
+					Range: &model.Range{From: 2, To: 3},
 					Type:  model.BlockContentTextMark_Bold,
 				},
 				&model.BlockContentTextMark{
-					Range: &model.Range{0, 1},
+					Range: &model.Range{From: 0, To: 1},
 					Type:  model.BlockContentTextMark_TextColor,
 					Param: "red",
 				},
 				&model.BlockContentTextMark{
-					Range: &model.Range{2, 3},
+					Range: &model.Range{From: 2, To: 3},
 					Type:  model.BlockContentTextMark_TextColor,
 					Param: "green",
 				},

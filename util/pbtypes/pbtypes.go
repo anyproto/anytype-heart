@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
+	"github.com/planetscale/vtprotobuf/types/known/structpb"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -551,9 +552,9 @@ func StructEqualKeys(st1, st2 *types.Struct) bool {
 }
 
 func Sprint(p proto.Message) string {
-	m := jsonpb.Marshaler{Indent: " "}
-	result, _ := m.MarshalToString(p)
-	return result
+	m := protojson.MarshalOptions{Indent: " "}
+	result, _ := m.Marshal(p)
+	return string(result)
 }
 
 func StructCompareIgnoreKeys(st1 *types.Struct, st2 *types.Struct, ignoreKeys []string) bool {
@@ -570,7 +571,7 @@ func StructCompareIgnoreKeys(st1 *types.Struct, st2 *types.Struct, ignoreKeys []
 		if slice.FindPos(ignoreKeys, k) > -1 {
 			continue
 		}
-		if v2, ok := st2.Fields[k]; !ok || !v.Equal(v2) {
+		if v2, ok := st2.Fields[k]; !ok || !(*structpb.Value)(v).EqualVT((*structpb.Value)(v2)) {
 			return false
 		}
 	}

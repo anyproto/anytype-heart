@@ -3,8 +3,8 @@ package profilemigration
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/jsonpb"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -852,7 +852,7 @@ var (
 
 func TestProfileMigrationExtractCustomState(t *testing.T) {
 	sn := pb.SnapshotWithType{}
-	err := jsonpb.UnmarshalString(stateOriginal, &sn)
+	err := protojson.Unmarshal([]byte(stateOriginal), &sn)
 	require.NoError(t, err)
 	var identityBlockId = "identity"
 	originalState := state.NewDocFromSnapshot(stateOriginalRootId, sn.Snapshot).(*state.State)
@@ -912,7 +912,7 @@ func TestProfileMigrationExtractCustomState(t *testing.T) {
 
 func TestProfileMigrationExtractCustomStateEmpty(t *testing.T) {
 	sn := pb.SnapshotWithType{}
-	err := jsonpb.UnmarshalString(stateOriginalEmpty, &sn)
+	err := protojson.Unmarshal([]byte(stateOriginalEmpty), &sn)
 	require.NoError(t, err)
 	originalStateEmpty := state.NewDocFromSnapshot(stateOriginalEmptyRootId, sn.Snapshot).(*state.State)
 	_, err = ExtractCustomState(originalStateEmpty)

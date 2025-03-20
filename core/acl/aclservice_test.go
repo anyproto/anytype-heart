@@ -23,11 +23,11 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"

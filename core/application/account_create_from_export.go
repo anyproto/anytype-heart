@@ -52,7 +52,7 @@ func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profi
 
 	var profile pb.Profile
 
-	err = profile.Unmarshal(data)
+	err = profile.UnmarshalVT(data)
 	if err != nil {
 		return nil, err
 	}

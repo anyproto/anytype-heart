@@ -5,9 +5,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -51,7 +50,8 @@ func (s *service) Name() string { return CName }
 
 func (s *service) SetDetails(objectId string, details *types.Struct) error {
 	return s.db.Update(func(txn *badger.Txn) error {
-		val, err := proto.Marshal(&model.ObjectDetails{Details: details})
+		objectDetails := model.ObjectDetails{Details: details}
+		val, err := objectDetails.MarshalVT()
 		if err != nil {
 			return fmt.Errorf("marshal details: %w", err)
 		}
@@ -98,7 +98,7 @@ func (s *service) unmarshalDetailsFromItem(it *badger.Item) (*model.ObjectDetail
 
 func unmarshalDetails(rawValue []byte) (*model.ObjectDetails, error) {
 	result := &model.ObjectDetails{}
-	if err := proto.Unmarshal(rawValue, result); err != nil {
+	if err := result.UnmarshalVT(rawValue); err != nil {
 		return nil, err
 	}
 	if result.Details == nil {

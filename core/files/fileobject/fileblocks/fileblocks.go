@@ -56,7 +56,7 @@ func buildFileBlocks(details *domain.Details, objectId, name string, fileType mo
 				Mime:           details.GetString(bundle.RelationKeyFileMimeType),
 				TargetObjectId: objectId,
 				Type:           fileType,
-				Size_:          details.GetInt64(bundle.RelationKeySizeInBytes),
+				Size:           details.GetInt64(bundle.RelationKeySizeInBytes),
 				State:          model.BlockContentFile_Done,
 				AddedAt:        details.GetInt64(bundle.RelationKeyAddedDate),
 			},

@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -257,7 +257,7 @@ func TestState_Normalize(t *testing.T) {
 		data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
 		require.NoError(t, err)
 		ev := &model.ObjectView{}
-		require.NoError(t, ev.Unmarshal(data))
+		require.NoError(t, ev.UnmarshalVT(data))
 
 		r := NewDoc(ev.RootId, nil).(*State)
 		for _, b := range ev.Blocks {
@@ -455,7 +455,7 @@ func BenchmarkNormalize(b *testing.B) {
 	data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
 	require.NoError(b, err)
 	ev := &model.ObjectView{}
-	require.NoError(b, ev.Unmarshal(data))
+	require.NoError(b, ev.UnmarshalVT(data))
 
 	r := NewDoc(ev.RootId, nil).(*State)
 	for _, b := range ev.Blocks {

@@ -1163,7 +1163,7 @@ func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 		Avatar:           pr.IconImage,
 		ProfileId:        pr.Id,
 	}
-	data, err := profile.Marshal()
+	data, err := profile.MarshalVT()
 	if err != nil {
 		return err
 	}

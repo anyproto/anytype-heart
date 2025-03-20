@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 func TestUnpack(t *testing.T) {
-	b, _ := proto.Marshal(&pb.RpcWalletRecoverResponse{})
+	response := pb.RpcWalletRecoverResponse{}
+	b, _ := response.MarshalVT()
 
 	var msg pb.RpcWalletRecoverResponse
-	err := proto.Unmarshal(b, &msg)
+	err := msg.UnmarshalVT(b)
 	if err != nil {
 		fmt.Println(err.Error())
 	}

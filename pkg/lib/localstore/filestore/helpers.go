@@ -2,7 +2,6 @@ package filestore
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	dsCtx "github.com/ipfs/go-datastore"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
@@ -35,5 +34,5 @@ func (s *dsFileStore) setInt(key dsCtx.Key, val int) error {
 
 func unmarshalFileInfo(raw []byte) (*storage.FileInfo, error) {
 	v := &storage.FileInfo{}
-	return v, proto.Unmarshal(raw, v)
+	return v, v.UnmarshalVT(raw)
 }

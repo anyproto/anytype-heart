@@ -3,7 +3,8 @@ package base
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
+	"github.com/planetscale/vtprotobuf/types/known/structpb"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -56,7 +57,7 @@ func (s *Base) Diff(spaceId string, block simple.Block) (msgs []simple.EventMess
 	if m.Restrictions == nil {
 		m.Restrictions = &model.BlockRestrictions{}
 	}
-	if *s.Restrictions != *m.Restrictions {
+	if !s.Restrictions.EqualVT(m.Restrictions) {
 		m := event.NewMessage(spaceId, &pb.EventMessageValueOfBlockSetRestrictions{BlockSetRestrictions: &pb.EventBlockSetRestrictions{
 			Id:           s.Id,
 			Restrictions: m.Restrictions,
@@ -126,5 +127,5 @@ func fieldsEq(f1, f2 *types.Struct) bool {
 	if f2 == nil {
 		f2 = &types.Struct{}
 	}
-	return f1.Compare(f2) == 0
+	return (*structpb.Struct)(f1).EqualVT((*structpb.Struct)(f2))
 }

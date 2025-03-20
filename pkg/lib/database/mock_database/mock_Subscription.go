@@ -3,7 +3,7 @@
 package mock_database
 
 import (
-	types "github.com/gogo/protobuf/types"
+	types "google.golang.org/protobuf/types/known/structpb"
 	mock "github.com/stretchr/testify/mock"
 )
 

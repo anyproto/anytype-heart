@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -306,7 +305,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
-	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
+	hasUpdates := !ok || !prevProfile.EqualVT(profile)
 
 	observers := s.identityObservers[identityData.Identity]
 	for _, obs := range observers {
@@ -360,7 +359,7 @@ func extractProfile(identityData *identityrepoproto.DataWithIdentity, symKey cry
 				return nil, nil, fmt.Errorf("decrypt identity profile: %w", err)
 			}
 			profile = new(model.IdentityProfile)
-			err = proto.Unmarshal(rawProfile, profile)
+			err = profile.UnmarshalVT(rawProfile)
 			if err != nil {
 				return nil, nil, fmt.Errorf("unmarshal identity profile: %w", err)
 			}

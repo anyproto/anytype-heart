@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
@@ -226,7 +225,7 @@ func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, invit
 		return nil, getInviteError("get invite from store", err)
 	}
 	var invitePayload model.InvitePayload
-	err = proto.Unmarshal(invite.Payload, &invitePayload)
+	err = invitePayload.UnmarshalVT(invite.Payload)
 	if err != nil {
 		return nil, badContentError("unmarshal invite payload", err)
 	}
@@ -253,7 +252,7 @@ func (i *inviteService) buildInvite(ctx context.Context, spaceId string, inviteK
 	if err != nil {
 		return nil, fmt.Errorf("build invite payload: %w", err)
 	}
-	invitePayloadRaw, err := proto.Marshal(invitePayload)
+	invitePayloadRaw, err := invitePayload.MarshalVT()
 	if err != nil {
 		return nil, fmt.Errorf("marshal invite payload: %w", err)
 	}

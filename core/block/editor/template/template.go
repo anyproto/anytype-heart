@@ -1,8 +1,8 @@
 package template
 
 import (
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"

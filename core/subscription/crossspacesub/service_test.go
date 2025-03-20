@@ -7,10 +7,10 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	types "google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -122,7 +122,7 @@ func TestSubscribe(t *testing.T) {
 			makeAddEvent(resp.SubId, obj1.Id()),
 			makeCountersEvent(resp.SubId, 1),
 		}
-		assert.Equal(t, want, msgs)
+		testutil.AssertProtosEqual(t, want, msgs)
 
 		t.Run("update object", func(t *testing.T) {
 			obj1 = objectstore.TestObject{
@@ -146,7 +146,7 @@ func TestSubscribe(t *testing.T) {
 					},
 				}),
 			}
-			assert.Equal(t, want, msgs)
+			testutil.AssertProtosEqual(t, want, msgs)
 		})
 	})
 
@@ -187,7 +187,7 @@ func TestSubscribe(t *testing.T) {
 				makeAddEvent(resp.SubId, obj1.Id()),
 				makeCountersEvent(resp.SubId, 1),
 			}
-			assert.Equal(t, want, msgs)
+			testutil.AssertProtosEqual(t, want, msgs)
 
 			// Add another objects
 			obj2 := objectstore.TestObject{
@@ -207,7 +207,7 @@ func TestSubscribe(t *testing.T) {
 				makeAddEvent(resp.SubId, obj2.Id()),
 				makeCountersEvent(resp.SubId, 2),
 			}
-			assert.Equal(t, want, msgs)
+			testutil.AssertProtosEqual(t, want, msgs)
 		})
 
 		t.Run("add second space", func(t *testing.T) {
@@ -234,7 +234,7 @@ func TestSubscribe(t *testing.T) {
 				makeAddEvent(resp.SubId, obj1.Id()),
 				makeCountersEvent(resp.SubId, 3),
 			}
-			assert.Equal(t, want, msgs)
+			testutil.AssertProtosEqual(t, want, msgs)
 		})
 
 	})
@@ -266,7 +266,7 @@ func TestSubscribe(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
-		assert.Equal(t, []*domain.Details{obj1.Details(), obj2.Details()}, resp.Records)
+		testutil.AssertProtosEqual(t, []*domain.Details{obj1.Details(), obj2.Details()}, resp.Records)
 
 		// Remove space view by changing its status
 		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
@@ -282,7 +282,7 @@ func TestSubscribe(t *testing.T) {
 			makeRemoveEvent(resp.SubId, obj2.Id()),
 			makeCountersEvent(resp.SubId, 0),
 		}
-		assert.Equal(t, want, msgs)
+		testutil.AssertProtosEqual(t, want, msgs)
 	})
 }
 

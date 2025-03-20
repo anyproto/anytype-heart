@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -67,7 +66,7 @@ func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Ci
 		return cid.Cid{}, nil, fmt.Errorf("generate key: %w", err)
 	}
 
-	rawInvite, err := proto.Marshal(invite)
+	rawInvite, err := invite.MarshalVT()
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("marshal invite: %w", err)
 	}
@@ -117,7 +116,7 @@ func (s *service) GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) 
 	}
 
 	var invite model.Invite
-	err = proto.Unmarshal(data, &invite)
+	err = invite.UnmarshalVT(data)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal data: %w", err)
 	}
