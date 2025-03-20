@@ -101,6 +101,8 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		AnyStoreConfig: nil,
 		FulltextQueue:  &dummyFulltextQueue{},
 	})
+	err = s.Init()
+	require.NoError(t, err)
 	return &StoreFixture{
 		dsObjectStore: s.(*dsObjectStore),
 	}

@@ -256,14 +256,30 @@ func (s *dsObjectStore) preloadExistingObjectStores() error {
 	s.spaceStoreDirsCheck.Do(func() {
 		var entries []os.DirEntry
 		entries, err = os.ReadDir(s.objectStorePath)
+
+		var indexes []spaceindex.Store
 		s.Lock()
-		defer s.Unlock()
 		for _, entry := range entries {
 			if entry.IsDir() {
 				spaceId := entry.Name()
-				_ = s.getOrInitSpaceIndex(spaceId)
+				spaceIndex := s.getOrInitSpaceIndex(spaceId)
+				indexes = append(indexes, spaceIndex)
 			}
 		}
+		s.Unlock()
+
+		var wg sync.WaitGroup
+		for _, index := range indexes {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				initErr := index.Init()
+				if initErr != nil {
+					log.With("error", initErr).Error("pre-init space index")
+				}
+			}()
+		}
+		wg.Wait()
 	})
 	return err
 }
@@ -309,9 +325,13 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 		return spaceindex.NewInvalidStore(errors.New("empty spaceId"))
 	}
 	s.Lock()
-	defer s.Unlock()
-
-	return s.getOrInitSpaceIndex(spaceId)
+	spaceIndex := s.getOrInitSpaceIndex(spaceId)
+	s.Unlock()
+	err := spaceIndex.Init()
+	if err != nil {
+		return spaceindex.NewInvalidStore(err)
+	}
+	return spaceIndex
 }
 
 func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
