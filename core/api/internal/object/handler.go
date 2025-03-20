@@ -149,9 +149,12 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 		object, err := s.CreateObject(c.Request.Context(), spaceId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrInputMissingSource, http.StatusBadRequest),
+			util.ErrToCode(ErrIconNameColorNotSupported, http.StatusBadRequest),
+			util.ErrToCode(ErrFailedCreateBookmark, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedCreateObject, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedSetPropertyFeatured, http.StatusInternalServerError),
-			util.ErrToCode(ErrFailedFetchBookmark, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedCreateBlock, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedPasteBody, http.StatusInternalServerError),
 			util.ErrToCode(ErrObjectNotFound, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
