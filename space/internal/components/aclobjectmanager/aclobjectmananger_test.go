@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
@@ -59,7 +60,7 @@ func TestAclObjectManager(t *testing.T) {
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(true).Return(nil)
-		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
+		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
 		fx.run(t)
@@ -104,7 +105,7 @@ func TestAclObjectManager(t *testing.T) {
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
-		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
+		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
 		fx.run(t)
@@ -145,7 +146,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
 		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
-		fx.mockCommonSpace.EXPECT().Id().Return("spaceId")
+		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk)
 		fx.run(t)
@@ -171,12 +172,13 @@ type fixture struct {
 	mockParticipantWatcher *mock_participantwatcher.MockParticipantWatcher
 	mockAclNotification    *mock_aclnotifications.MockAclNotification
 	mockInviteMigrator     *mock_invitemigrator.MockInviteMigrator
+	mockAccountService     *mock_accountservice.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	fx := &fixture{
-		aclObjectManager:       New(nil).(*aclObjectManager),
+		aclObjectManager:       New(nil, nil).(*aclObjectManager),
 		ctrl:                   ctrl,
 		a:                      new(app.App),
 		mockStatus:             mock_spacestatus.NewMockSpaceStatus(t),
@@ -187,6 +189,7 @@ func newFixture(t *testing.T) *fixture {
 		mockParticipantWatcher: mock_participantwatcher.NewMockParticipantWatcher(t),
 		mockAclNotification:    mock_aclnotifications.NewMockAclNotification(t),
 		mockInviteMigrator:     mock_invitemigrator.NewMockInviteMigrator(t),
+		mockAccountService:     mock_accountservice.NewMockService(ctrl),
 	}
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockStatus)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteMigrator)).
@@ -194,6 +197,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockLoader)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockParticipantWatcher)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAclNotification)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
 		Register(fx)
 	return fx
 }

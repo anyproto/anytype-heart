@@ -2,11 +2,9 @@ package core
 
 import (
 	"context"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -14,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -40,29 +37,6 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 			if err != nil {
 				log.With("error", err).Warn("failed to init space level chat")
 			}
-		}
-
-		details := domain.NewDetailsFromProto(req.Details)
-		uxType := model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType))
-		if uxType == model.SpaceUxType_Chat || uxType == model.SpaceUxType_Stream {
-			// todo: move it to the service
-			aclService := mustService[acl.AclService](mw)
-			go func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-				defer cancel()
-				err = aclService.MakeShareable(ctx, spaceId)
-				if err != nil {
-					log.With("error", err).Warn("failed to make space shareable")
-					return
-				}
-				if uxType == model.SpaceUxType_Chat {
-					_, err = aclService.GenerateInvite(ctx, spaceId)
-					if err != nil {
-						log.With("error", err).Warn("failed to generate invite")
-						return
-					}
-				}
-			}()
 		}
 		return
 	})
