@@ -26,6 +26,7 @@ type Object struct {
 	Layout     string     `json:"layout" example:"basic"`                                                                       // The layout of the object
 	SpaceId    string     `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
 	RootId     string     `json:"root_id" example:"bafyreicypzj6uvu54664ucv3hmbsd5cmdy2dv4fwua26sciq74khzpyn4u"`                // The id of the object's root
+	Archived   bool       `json:"archived" example:"false"`                                                                     // Whether the object is archived
 	Blocks     []Block    `json:"blocks"`                                                                                       // The blocks of the object
 	Properties []Property `json:"properties"`                                                                                   // The properties of the object
 }
@@ -123,6 +124,7 @@ type Type struct {
 	Name              string    `json:"name" example:"Page"`                                                      // The name of the type
 	Icon              util.Icon `json:"icon"`                                                                     // The icon of the type
 	RecommendedLayout string    `json:"recommended_layout" example:"todo"`                                        // The recommended layout of the type
+	Archived          bool      `json:"archived" example:"false"`                                                 // Whether the type is archived
 }
 
 type TemplateResponse struct {

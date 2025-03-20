@@ -57,6 +57,7 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 //	@Success		200			{object}	ObjectResponse			"The requested object"
 //	@Failure		401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404			{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410			{object}	util.GoneError			"Resource deleted"
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id} [get]
@@ -68,6 +69,7 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 		object, err := s.GetObject(c.Request.Context(), spaceId, objectId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrObjectDeleted, http.StatusGone),
 			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
@@ -215,6 +217,7 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Success		200			{object}	TypeResponse			"The requested type"
 //	@Failure		401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404			{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410			{object}	util.GoneError			"Resource deleted"
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id} [get]
@@ -226,6 +229,7 @@ func GetTypeHandler(s *ObjectService) gin.HandlerFunc {
 		object, err := s.GetType(c.Request.Context(), spaceId, typeId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrTypeNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrTypeDeleted, http.StatusGone),
 			util.ErrToCode(ErrFailedRetrieveType, http.StatusInternalServerError),
 		)
 

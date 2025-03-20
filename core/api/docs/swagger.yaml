@@ -166,6 +166,10 @@ components:
     object.Object:
       description: The object
       properties:
+        archived:
+          description: Whether the object is archived
+          example: false
+          type: boolean
         blocks:
           description: The blocks of the object
           items:
@@ -395,6 +399,10 @@ components:
     object.Type:
       description: The type of the object
       properties:
+        archived:
+          description: Whether the type is archived
+          example: false
+          type: boolean
         icon:
           $ref: '#/components/schemas/util.Icon'
         id:
@@ -696,6 +704,15 @@ components:
           properties:
             message:
               example: Forbidden
+              type: string
+          type: object
+      type: object
+    util.GoneError:
+      properties:
+        error:
+          properties:
+            message:
+              example: Resource is gone
               type: string
           type: object
       type: object
@@ -1658,6 +1675,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
         "500":
           content:
             application/json:
@@ -1888,6 +1911,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
         "500":
           content:
             application/json:

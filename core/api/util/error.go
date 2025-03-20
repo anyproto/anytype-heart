@@ -33,6 +33,13 @@ type NotFoundError struct {
 	} `json:"error"`
 }
 
+// GoneError is a struct for 410 errors
+type GoneError struct {
+	Error struct {
+		Message string `json:"message" example:"Resource is gone"`
+	} `json:"error"`
+}
+
 // RateLimitError is a struct for 423 errors
 type RateLimitError struct {
 	Error struct {

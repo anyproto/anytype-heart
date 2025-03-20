@@ -22,6 +22,7 @@ import (
 var (
 	// objects
 	ErrObjectNotFound            = errors.New("object not found")
+	ErrObjectDeleted             = errors.New("object deleted")
 	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
 	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
 	ErrFailedDeleteObject        = errors.New("failed to delete object")
@@ -36,6 +37,7 @@ var (
 	// types
 	ErrFailedRetrieveTypes        = errors.New("failed to retrieve types")
 	ErrTypeNotFound               = errors.New("type not found")
+	ErrTypeDeleted                = errors.New("type deleted")
 	ErrFailedRetrieveType         = errors.New("failed to retrieve type")
 	ErrFailedRetrieveTemplateType = errors.New("failed to retrieve template type")
 	ErrTemplateTypeNotFound       = errors.New("template type not found")
@@ -183,12 +185,18 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		ObjectId: objectId,
 	})
 
-	if resp.Error != nil && resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND || resp.ObjectView != nil && resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue() {
-		return Object{}, ErrObjectNotFound
-	}
+	if resp.Error != nil {
+		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+			return Object{}, ErrObjectNotFound
+		}
 
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return Object{}, ErrFailedRetrieveObject
+		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
+			return Object{}, ErrObjectDeleted
+		}
+
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return Object{}, ErrFailedRetrieveObject
+		}
 	}
 
 	details := resp.ObjectView.Details[0].Details.Fields
@@ -204,6 +212,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
 		SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		RootId:     resp.ObjectView.RootId,
+		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Blocks:     s.getBlocks(resp),
 		Properties: s.getProperties(resp),
 	}
@@ -376,7 +385,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconName.String(), bundle.RelationKeyIconOption.String(), bundle.RelationKeyRecommendedLayout.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconName.String(), bundle.RelationKeyIconOption.String(), bundle.RelationKeyRecommendedLayout.String(), bundle.RelationKeyIsArchived.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -395,6 +404,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:              util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+			Archived:          record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		})
 	}
 	return types, total, hasMore, nil
@@ -407,12 +417,18 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 		ObjectId: typeId,
 	})
 
-	if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-		return Type{}, ErrTypeNotFound
-	}
+	if resp.Error != nil {
+		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+			return Type{}, ErrTypeNotFound
+		}
 
-	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return Type{}, ErrFailedRetrieveType
+		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
+			return Type{}, ErrTypeDeleted
+		}
+
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return Type{}, ErrFailedRetrieveType
+		}
 	}
 
 	details := resp.ObjectView.Details[0].Details.Fields
@@ -423,6 +439,7 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 		Name:              details[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:              util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+		Archived:          details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 	}, nil
 }
 
