@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "e09bc6c55e2f2e69455b0b708bae2ad04d170547e69f1a75524e0299436ca0ca"
+const TypeChecksum = "91c804ca7dd4df74fafbdaff99e50fa2ffcc6cb0fb073887a90bdf1b4a3d98d5"
 const (
 	TypePrefix = "_ot"
 )
@@ -424,7 +424,7 @@ var (
 			IconName:      "checkbox",
 			Layout:        model.ObjectType_todo,
 			Name:          "Task",
-			PluralName:    "Task",
+			PluralName:    "Tasks",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyLinkedProjects), MustGetRelationLink(RelationKeyPriority), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
 			Revision:      2,
