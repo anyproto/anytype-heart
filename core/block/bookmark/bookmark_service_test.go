@@ -91,7 +91,7 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 		})
 
 		// when
-		_, _, err := fx.s.CreateBookmarkObject(nil, spaceId, "", details, func() *bookmark.ObjectContent { return nil })
+		_, _, err := fx.s.CreateBookmarkObject(nil, spaceId, "", details, func() *bookmark.ObjectContent { return nil }, false)
 
 		// then
 		assert.NoError(t, err)
@@ -113,7 +113,7 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 		// when
 		id, _, err := fx.s.CreateBookmarkObject(nil, spaceId, "", details, func() *bookmark.ObjectContent {
 			return &bookmark.ObjectContent{BookmarkContent: &model.BlockContentBookmark{}}
-		})
+		}, false)
 
 		// then
 		assert.NoError(t, err)

@@ -14453,6 +14453,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | objectTypeUniqueKey | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
 | createTypeWidgetIfMissing | [bool](#bool) |  | experimental flag to auto-create type widget if missing |
+| noFallbackTemplate | [bool](#bool) |  | when true we are trying to apply default/lastEdited/blank template if specified template could not be found |
 
 
 
@@ -14515,6 +14516,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | spaceId | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
 | templateId | [string](#string) |  |  |
+| noFallbackTemplate | [bool](#bool) |  | when true we are trying to apply default/lastEdited/blank template if specified template could not be found |
 
 
 
@@ -14579,6 +14581,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | addPageContent | [bool](#bool) |  |  |
 | withChat | [bool](#bool) |  |  |
 | templateId | [string](#string) |  |  |
+| noFallbackTemplate | [bool](#bool) |  | when true we are trying to apply default/lastEdited/blank template if specified template could not be found |
 
 
 
@@ -14822,6 +14825,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | spaceId | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
+| noFallbackTemplate | [bool](#bool) |  | when true we are trying to apply default/lastEdited/blank template if specified template could not be found |
 
 
 

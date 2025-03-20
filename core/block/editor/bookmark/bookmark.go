@@ -43,7 +43,7 @@ type Bookmark interface {
 type BookmarkService interface {
 	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
 	CreateBookmarkObject(
-		ctx context.Context, spaceId, templateId string, details *domain.Details, getContent bookmarksvc.ContentFuture,
+		ctx context.Context, spaceId, templateId string, details *domain.Details, getContent bookmarksvc.ContentFuture, noFallbackTemplate bool,
 	) (objectId string, newDetails *domain.Details, err error)
 }
 
@@ -140,7 +140,7 @@ func (b *sbookmark) updateBlock(block bookmark.Block, templateId string, apply f
 	content := block.GetContent()
 	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), templateId, block.ToDetails(origin), func() *bookmark.ObjectContent {
 		return &bookmark.ObjectContent{BookmarkContent: content}
-	})
+	}, false)
 	if err != nil {
 		return fmt.Errorf("create bookmark object: %w", err)
 	}
