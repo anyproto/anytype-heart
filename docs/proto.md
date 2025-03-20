@@ -3575,6 +3575,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+| requiredSpace | [int64](#int64) |  |  |
 
 
 
