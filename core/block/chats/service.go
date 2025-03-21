@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
+	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
@@ -41,6 +42,7 @@ type Service interface {
 	Unsubscribe(chatObjectId string, subId string) error
 
 	SubscribeToMessagePreviews(ctx context.Context) (string, error)
+	UnsubscribeFromMessagePreviews() error
 
 	app.ComponentRunnable
 }
@@ -58,6 +60,7 @@ type service struct {
 
 	lock                sync.Mutex
 	chatObjectsSubQueue *mb.MB[*pb.EventMessage]
+	chatObjectIds       map[string]struct{}
 }
 
 func New() Service {
@@ -117,6 +120,30 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context) (string, error
 	return chatobject.LastMessageSubscriptionId, nil
 }
 
+func (s *service) UnsubscribeFromMessagePreviews() error {
+	err := s.crossSpaceSubService.Unsubscribe(allChatsSubscriptionId)
+	if err != nil {
+		return fmt.Errorf("unsubscribe from cross-space sub: %w", err)
+	}
+
+	s.lock.Lock()
+	err = s.chatObjectsSubQueue.Close()
+	if err != nil {
+		log.Error("close cross-space chat objects queue", zap.Error(err))
+	}
+	s.chatObjectsSubQueue = nil
+	chatIds := maps.Keys(s.chatObjectIds)
+	s.lock.Unlock()
+
+	for _, chatId := range chatIds {
+		err := s.Unsubscribe(chatId, chatobject.LastMessageSubscriptionId)
+		if err != nil {
+			log.Error("unsubscribe from preview sub", zap.Error(err))
+		}
+	}
+	return nil
+}
+
 func (s *service) Run(ctx context.Context) error {
 	return nil
 }
@@ -130,8 +157,8 @@ func (s *service) monitorChats() {
 			}
 		},
 		OnRemove: func(remove *pb.EventObjectSubscriptionRemove) {
-			err := s.Unsubscribe(remove.Id, chatobject.LastMessageSubscriptionId)
-			if err != nil && !errors.Is(err, domain.ErrObjectNotFound) {
+			err := s.onChatRemoved(remove.Id)
+			if err != nil {
 				log.Error("unsubscribe from the last message", zap.Error(err))
 			}
 		},
@@ -150,6 +177,9 @@ func (s *service) monitorChats() {
 }
 
 func (s *service) onChatAdded(chatObjectId string) error {
+	s.lock.Lock()
+	s.chatObjectIds[chatObjectId] = struct{}{}
+	s.lock.Unlock()
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		_, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.LastMessageSubscriptionId, 1, true)
@@ -158,6 +188,18 @@ func (s *service) onChatAdded(chatObjectId string) error {
 		}
 		return nil
 	})
+}
+
+func (s *service) onChatRemoved(chatObjectId string) error {
+	s.lock.Lock()
+	delete(s.chatObjectIds, chatObjectId)
+	s.lock.Unlock()
+
+	err := s.Unsubscribe(chatObjectId, chatobject.LastMessageSubscriptionId)
+	if err != nil && !errors.Is(err, domain.ErrObjectNotFound) {
+		return err
+	}
+	return nil
 }
 
 func (s *service) Close(ctx context.Context) error {
