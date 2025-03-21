@@ -3,9 +3,9 @@ package block
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
 func (s *Service) SetWidgetBlockTargetId(ctx session.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) error {
@@ -75,62 +76,34 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	if err != nil {
 		return err
 	}
-	widgetObjectId := space.DerivedIDs().Widgets
 	typeId, err := space.GetTypeIdByKey(ctx, key)
 	if err != nil {
 		return err
 	}
+	return s.createAutoWidgetIfMissing(space, typeId, key.String())
+}
 
-	widgetDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(widgetObjectId)
+func (s *Service) CreateAutoWidgetIfMissing(ctx context.Context, spaceId string, targetId string, widgetBlockId string) error {
+	space, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+
+	return s.createAutoWidgetIfMissing(space, targetId, widgetBlockId)
+}
+
+func (s *Service) createAutoWidgetIfMissing(space clientspace.Space, targetId string, widgetBlockId string) error {
+	widgetObjectId := space.DerivedIDs().Widgets
+	widgetDetails, err := s.objectStore.SpaceIndex(space.Id()).GetDetails(widgetObjectId)
 	if err == nil {
 		keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-		for _, k := range keys {
-			if k == typeId {
-				return nil
-			}
+		if slices.Contains(keys, targetId) {
+			// widget was created before
+			return nil
 		}
 	}
 
-	widgetBlockId := key.String()
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-		targets = append(targets, typeId)
-		st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
-		var typeBlockAlreadyExists bool
-
-		err = st.Iterate(func(b simple.Block) (isContinue bool) {
-			link := b.Model().GetLink()
-			if link == nil {
-				return true
-			}
-			if link.TargetBlockId == typeId {
-				// check by targetBlockId in case user created the same block manually
-				typeBlockAlreadyExists = true
-				return false
-			}
-			return true
-		})
-
-		if err != nil {
-			return err
-		}
-		if typeBlockAlreadyExists {
-			return nil
-		}
-
-		_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    widgetObjectId,
-			ObjectLimit:  6,
-			WidgetLayout: model.BlockContentWidget_View,
-			Position:     model.Block_Bottom,
-			ViewId:       editor.ObjectTypeAllViewId,
-			Block: &model.Block{
-				Id: widgetBlockId, // hardcode id to avoid duplicates
-				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
-					TargetBlockId: typeId,
-				}},
-			},
-		})
-		return err
+		return w.AddAutoWidget(st, targetId, widgetBlockId)
 	})
 }

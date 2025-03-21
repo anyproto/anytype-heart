@@ -2,6 +2,7 @@ package editor
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -10,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -26,7 +28,8 @@ var archiveRequiredRelations = []domain.RelationKey{}
 type Archive struct {
 	smartblock.SmartBlock
 	collection.Collection
-	objectStore spaceindex.Store
+	objectStore            spaceindex.Store
+	autoWidgetWasInstalled bool
 }
 
 func NewArchive(
@@ -77,6 +80,39 @@ func (p *Archive) Relations(_ *state.State) relationutils.Relations {
 	return nil
 }
 
+// autoInstallBinWidget installs bin widget for the existing users if it was not added/removed before and the user has archived objects
+func (p *Archive) autoInstallBinWidget() error {
+	if p.autoWidgetWasInstalled {
+		return nil
+	}
+	widgetObjectId := p.Space().DerivedIDs().Widgets
+	widgetDetails, err := p.objectStore.GetDetails(widgetObjectId)
+	if err != nil {
+		return err
+	}
+	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+	if slices.Contains(keys, widget.DefaultWidgetBin) {
+		// cache to avoid unnecessary objectstore requests
+		p.autoWidgetWasInstalled = true
+		return nil
+	}
+	err = p.Space().Do(widgetObjectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		if w, ok := sb.(widget.Widget); ok {
+			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin)
+			if err != nil {
+				return err
+			}
+		}
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return err
+	}
+	p.autoWidgetWasInstalled = true
+	return nil
+}
+
 func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	archivedIds, err := p.GetIds()
 	if err != nil {
@@ -88,6 +124,12 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 			log.Errorf("archive: can't update in store: %v", uErr)
 		}
 	}()
+	if len(archivedIds) > 0 {
+		err = p.autoInstallBinWidget()
+		if err != nil {
+			log.Errorf("archive: can't install bin widget: %v", err)
+		}
+	}
 	return nil
 }
 

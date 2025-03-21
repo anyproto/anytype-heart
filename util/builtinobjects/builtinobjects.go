@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -20,7 +19,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -373,36 +371,8 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 		return
 	}
 
-	// todo: rewrite to use CreateTypeWidgetIfMissing in block.Service
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		targets := s.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-		if slices.Contains(targets, typeId) {
-			return nil
-		}
-		targets = append(targets, typeId)
-		s.Details().Set(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
-
-		request := &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    widgetObjectID,
-			Position:     model.Block_Bottom,
-			WidgetLayout: model.BlockContentWidget_View,
-			ViewId:       editor.ObjectTypeAllViewId,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: typeId,
-						Style:         model.BlockContentLink_Page,
-						IconSize:      model.BlockContentLink_SizeNone,
-						CardStyle:     model.BlockContentLink_Inline,
-						Description:   model.BlockContentLink_None,
-					},
-				},
-			},
-		}
-		if _, createErr := w.CreateBlock(s, request); createErr != nil {
-			return fmt.Errorf("failed to make Widget block: %v", createErr)
-		}
-		return nil
+		return w.AddAutoWidget(s, typeId, bundle.TypeKeyPage.String())
 	}); err != nil {
 		log.Errorf("failed to create widget blocks for useCase '%s': %v",
 			pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)

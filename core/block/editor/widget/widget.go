@@ -2,11 +2,15 @@ package widget
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -15,11 +19,13 @@ const (
 	DefaultWidgetSet        = "set"
 	DefaultWidgetRecent     = "recent"
 	DefaultWidgetCollection = "collection"
+	DefaultWidgetBin        = "bin"
 	DefaultWidgetRecentOpen = "recentOpen"
 )
 
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
+	AddAutoWidget(s *state.State, targetId, blockId string) error
 }
 
 type widget struct {
@@ -61,6 +67,51 @@ func NewWidget(sb smartblock.SmartBlock) Widget {
 	return &widget{
 		SmartBlock: sb,
 	}
+}
+
+func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId string) error {
+	targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+	if slices.Contains(targets, targetId) {
+		return nil
+	}
+	targets = append(targets, targetId)
+	st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
+	var typeBlockAlreadyExists bool
+
+	err := st.Iterate(func(b simple.Block) (isContinue bool) {
+		link := b.Model().GetLink()
+		if link == nil {
+			return true
+		}
+		if link.TargetBlockId == targetId {
+			// check by targetBlockId in case user created the same block manually
+			typeBlockAlreadyExists = true
+			return false
+		}
+		return true
+	})
+
+	if err != nil {
+		return err
+	}
+	if typeBlockAlreadyExists {
+		return nil
+	}
+
+	_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
+		ContextId:    st.RootId(),
+		ObjectLimit:  6,
+		WidgetLayout: model.BlockContentWidget_View,
+		Position:     model.Block_Bottom,
+		ViewId:       addr.ObjectTypeAllViewId,
+		Block: &model.Block{
+			Id: widgetBlockId, // hardcode id to avoid duplicates
+			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: targetId,
+			}},
+		},
+	})
+	return err
 }
 
 func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
