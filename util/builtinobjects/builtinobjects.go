@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -372,7 +373,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		return w.AddAutoWidget(s, typeId, bundle.TypeKeyPage.String())
+		return w.AddAutoWidget(s, typeId, bundle.TypeKeyPage.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
 	}); err != nil {
 		log.Errorf("failed to create widget blocks for useCase '%s': %v",
 			pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)

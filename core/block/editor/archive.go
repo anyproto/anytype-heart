@@ -99,7 +99,7 @@ func (p *Archive) autoInstallBinWidget() error {
 	err = p.Space().Do(widgetObjectId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		if w, ok := sb.(widget.Widget); ok {
-			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin)
+			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin, "", model.BlockContentWidget_Link)
 			if err != nil {
 				return err
 			}

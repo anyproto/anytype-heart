@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
@@ -80,19 +81,10 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	if err != nil {
 		return err
 	}
-	return s.createAutoWidgetIfMissing(space, typeId, key.String())
+	return s.createAutoWidgetIfMissing(space, typeId, key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
 }
 
-func (s *Service) CreateAutoWidgetIfMissing(ctx context.Context, spaceId string, targetId string, widgetBlockId string) error {
-	space, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return err
-	}
-
-	return s.createAutoWidgetIfMissing(space, targetId, widgetBlockId)
-}
-
-func (s *Service) createAutoWidgetIfMissing(space clientspace.Space, targetId string, widgetBlockId string) error {
+func (s *Service) createAutoWidgetIfMissing(space clientspace.Space, targetId, widgetBlockId, viewId string, layout model.BlockContentWidgetLayout) error {
 	widgetObjectId := space.DerivedIDs().Widgets
 	widgetDetails, err := s.objectStore.SpaceIndex(space.Id()).GetDetails(widgetObjectId)
 	if err == nil {
@@ -104,6 +96,6 @@ func (s *Service) createAutoWidgetIfMissing(space clientspace.Space, targetId st
 	}
 
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		return w.AddAutoWidget(st, targetId, widgetBlockId)
+		return w.AddAutoWidget(st, targetId, widgetBlockId, viewId, layout)
 	})
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -25,7 +24,7 @@ const (
 
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
-	AddAutoWidget(s *state.State, targetId, blockId string) error
+	AddAutoWidget(s *state.State, targetId, blockId, viewId string, layout model.BlockContentWidgetLayout) error
 }
 
 type widget struct {
@@ -69,7 +68,7 @@ func NewWidget(sb smartblock.SmartBlock) Widget {
 	}
 }
 
-func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId string) error {
+func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId string, layout model.BlockContentWidgetLayout) error {
 	targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 	if slices.Contains(targets, targetId) {
 		return nil
@@ -101,9 +100,8 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId string) 
 	_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
 		ContextId:    st.RootId(),
 		ObjectLimit:  6,
-		WidgetLayout: model.BlockContentWidget_View,
+		WidgetLayout: layout,
 		Position:     model.Block_Bottom,
-		ViewId:       addr.ObjectTypeAllViewId,
 		Block: &model.Block{
 			Id: widgetBlockId, // hardcode id to avoid duplicates
 			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
