@@ -9,7 +9,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/pushnotifcation/client"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/space/spacecore/keystore"
+
+	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
 )
 
 const CName = "core.pushnotification.service"
@@ -30,13 +31,13 @@ func New() Service {
 type service struct {
 	pushClient    client.Client
 	wallet        wallet.Wallet
-	spaceKeyStore keystore.SpaceKeyStore
+	spaceKeyStore spacekeystore.Store
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.pushClient = client.NewClient()
 	s.wallet = app.MustComponent[wallet.Wallet](a)
-	s.spaceKeyStore = app.MustComponent[keystore.SpaceKeyStore](a)
+	s.spaceKeyStore = app.MustComponent[spacekeystore.Store](a)
 	return
 }
 

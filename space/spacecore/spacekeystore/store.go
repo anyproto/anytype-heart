@@ -1,4 +1,4 @@
-package keystore
+package spacekeystore
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ var ErrNotFound = errors.New("key not found")
 
 const (
 	CName        = "space.core.spaceKeyStore"
-	spaceKeyPath = "m/SLIP-0021/anytype/space/key"
+	spaceKeyPath = "m/99999'/1'"
 	spaceVersion = 0xB5
 )
 
@@ -42,6 +42,7 @@ type SpaceKeyStore struct {
 }
 
 func (s *SpaceKeyStore) Init(a *app.App) (err error) {
+	s.eventSender = app.MustComponent[event.Sender](a)
 	return nil
 }
 
@@ -49,13 +50,14 @@ func (s *SpaceKeyStore) Name() (name string) {
 	return CName
 }
 
-func New() app.Component {
+func New() Store {
 	return &SpaceKeyStore{
 		spaceIdToKey:            make(map[string]string),
 		spaceKeyToEncryptionKey: make(map[string]crypto.PrivKey),
 		spaceKeyToAclRecordId:   make(map[string]string),
 	}
 }
+
 func (s *SpaceKeyStore) SyncKeysFromAclState(spaceID string, aclState *list.AclState) {
 	s.Lock()
 	defer s.Unlock()

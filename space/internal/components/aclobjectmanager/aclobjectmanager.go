@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
-	"github.com/anyproto/anytype-heart/space/spacecore/keystore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -50,7 +50,7 @@ type aclObjectManager struct {
 	notificationService aclnotifications.AclNotification
 	participantWatcher  participantwatcher.ParticipantWatcher
 	inviteMigrator      invitemigrator.InviteMigrator
-	spaceKeyStore       keystore.SpaceKeyStore
+	spaceKeyStore       spacekeystore.Store
 
 	ownerMetadata []byte
 	lastIndexed   string
@@ -97,7 +97,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
-	a.spaceKeyStore = app.MustComponent[keystore.SpaceKeyStore](ap)
+	a.spaceKeyStore = app.MustComponent[spacekeystore.Store](ap)
 	return nil
 }
 

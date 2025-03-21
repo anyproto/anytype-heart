@@ -108,11 +108,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
-	"github.com/anyproto/anytype-heart/space/spacecore/keystore"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
@@ -322,7 +322,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peerstatus.New()).
 		Register(spaceview.New()).
 		Register(api.New()).
-		Register(keystore.New()).
+		Register(spacekeystore.New()).
 		Register(pushnotifcation.New())
 }
 
