@@ -20,6 +20,16 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+var skippedTypesForAutoWidget = []domain.TypeKey{
+	bundle.TypeKeyTemplate,
+	bundle.TypeKeyObjectType,
+	bundle.TypeKeyDate,
+	bundle.TypeKeyRelation,
+	bundle.TypeKeyRelationOption,
+	bundle.TypeKeyDashboard,
+	bundle.TypeKeyChatDerived,
+}
+
 func (s *Service) SetWidgetBlockTargetId(ctx session.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) error {
 	return cache.Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
@@ -73,6 +83,9 @@ func (s *Service) SetWidgetBlockViewId(ctx session.Context, req *pb.RpcBlockWidg
 }
 
 func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string, key domain.TypeKey) error {
+	if slices.Contains(skippedTypesForAutoWidget, key) {
+		return nil
+	}
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
