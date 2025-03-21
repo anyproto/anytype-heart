@@ -8,6 +8,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
+	"github.com/anyproto/anytype-heart/core/event"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
@@ -28,7 +29,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(accountService account.Service, mw service.ClientCommandsServer) *gin.Engine {
+func (s *Server) NewRouter(mw service.ClientCommandsServer, accountService account.Service, eventService event.Sender) *gin.Engine {
 	debug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
@@ -64,28 +65,28 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 	v1.Use(s.ensureAccountInfo(accountService))
 	{
 		// Export
-		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
+		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", s.ensureAnalyticsEvent("ObjectExport", eventService), export.GetObjectExportHandler(s.exportService))
 
 		// Object
-		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
-		v1.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
-		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteObjectHandler(s.objectService))
-		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), object.CreateObjectHandler(s.objectService))
+		v1.GET("/spaces/:space_id/objects", s.ensureAnalyticsEvent("ObjectList", eventService), object.GetObjectsHandler(s.objectService))
+		v1.GET("/spaces/:space_id/objects/:object_id", s.ensureAnalyticsEvent("ObjectOpen", eventService), object.GetObjectHandler(s.objectService))
+		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), s.ensureAnalyticsEvent("ObjectDelete", eventService), object.DeleteObjectHandler(s.objectService))
+		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), s.ensureAnalyticsEvent("ObjectCreate", eventService), object.CreateObjectHandler(s.objectService))
 
 		// Search
-		v1.POST("/search", search.GlobalSearchHandler(s.searchService))
-		v1.POST("/spaces/:space_id/search", search.SearchHandler(s.searchService))
+		v1.POST("/search", s.ensureAnalyticsEvent("GlobalSearch", eventService), search.GlobalSearchHandler(s.searchService))
+		v1.POST("/spaces/:space_id/search", s.ensureAnalyticsEvent("Search", eventService), search.SearchHandler(s.searchService))
 
 		// Space
-		v1.GET("/spaces", space.GetSpacesHandler(s.spaceService))
-		v1.GET("/spaces/:space_id/members", space.GetMembersHandler(s.spaceService))
-		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
+		v1.GET("/spaces", s.ensureAnalyticsEvent("SpaceOpen", eventService), space.GetSpacesHandler(s.spaceService))
+		v1.GET("/spaces/:space_id/members", s.ensureAnalyticsEvent("MemberList", eventService), space.GetMembersHandler(s.spaceService))
+		v1.POST("/spaces", s.ensureAnalyticsEvent("SpaceCreate", eventService), s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
 
 		// Type
-		v1.GET("/spaces/:space_id/types", object.GetTypesHandler(s.objectService))
-		v1.GET("/spaces/:space_id/types/:type_id", object.GetTypeHandler(s.objectService))
-		v1.GET("/spaces/:space_id/types/:type_id/templates", object.GetTemplatesHandler(s.objectService))
-		v1.GET("/spaces/:space_id/types/:type_id/templates/:template_id", object.GetTemplateHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types", s.ensureAnalyticsEvent("TypeList", eventService), object.GetTypesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types/:type_id", s.ensureAnalyticsEvent("TypeOpen", eventService), object.GetTypeHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types/:type_id/templates", s.ensureAnalyticsEvent("TemplateList", eventService), object.GetTemplatesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types/:type_id/templates/:template_id", s.ensureAnalyticsEvent("TemplateOpen", eventService), object.GetTemplateHandler(s.objectService))
 	}
 
 	return router
