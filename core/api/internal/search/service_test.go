@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -18,29 +19,23 @@ import (
 )
 
 const (
-	offset                      = 0
-	limit                       = 100
-	techSpaceId                 = "tech-space-id"
-	gatewayUrl                  = "http://localhost:31006"
-	mockedSpaceId               = "mocked-space-id"
-	mockedSearchTerm            = "mocked-search-term"
-	mockedObjectId              = "mocked-object-id"
-	mockedObjectName            = "mocked-object-name"
-	mockedRootId                = "mocked-root-id"
-	mockedParticipantId         = "mocked-participant-id"
-	mockedType                  = "mocked-type"
-	mockedTagId1                = "mocked-tag-id-1"
-	mockedTagValue1             = "mocked-tag-value-1"
-	mockedTagColor1             = "mocked-tag-color-1"
-	mockedTagId2                = "mocked-tag-id-2"
-	mockedTagValue2             = "mocked-tag-value-2"
-	mockedTagColor2             = "mocked-tag-color-2"
-	mockedObjectTypeName        = "mocked-object-type-name"
-	mockedParticipantName       = "mocked-participant-name"
-	mockedParticipantIcon       = "mocked-participant-icon"
-	mockedParticipantImage      = "mocked-participant-image"
-	mockedParticipantIdentity   = "mocked-participant-identity"
-	mockedParticipantGlobalName = "mocked-participant-global-name"
+	offset              = 0
+	limit               = 100
+	techSpaceId         = "tech-space-id"
+	gatewayUrl          = "http://localhost:31006"
+	mockedSpaceId       = "mocked-space-id"
+	mockedSearchTerm    = "mocked-search-term"
+	mockedObjectId      = "mocked-object-id"
+	mockedObjectName    = "mocked-object-name"
+	mockedObjectIcon    = "🌐"
+	mockedParticipantId = "mocked-participant-id"
+	mockedType          = "mocked-type"
+	mockedTagId1        = "mocked-tag-id-1"
+	mockedTagValue1     = "mocked-tag-value-1"
+	mockedTagColor1     = "mocked-tag-color-1"
+	mockedTagId2        = "mocked-tag-id-2"
+	mockedTagValue2     = "mocked-tag-value-2"
+	mockedTagColor2     = "mocked-tag-color-2"
 )
 
 type fixture struct {
@@ -79,7 +74,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyLayout.String(),
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
@@ -130,7 +125,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 					NestedFilters: []*model.BlockContentDataviewFilter{
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyLayout.String(),
+							RelationKey: bundle.RelationKeyResolvedLayout.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
 							Value: pbtypes.IntList([]int{
 								int(model.ObjectType_basic),
@@ -148,6 +143,12 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 							RelationKey: bundle.RelationKeyIsHidden.String(),
 							Condition:   model.BlockContentDataviewFilter_NotEqual,
 							Value:       pbtypes.Bool(true),
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: "type.uniqueKey",
+							Condition:   model.BlockContentDataviewFilter_NotEqual,
+							Value:       pbtypes.String("ot-template"),
 						},
 						{
 							Operator: model.BlockContentDataviewFilter_Or,
@@ -197,10 +198,10 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			ObjectId: mockedObjectId,
 		}).Return(&pb.RpcObjectShowResponse{
 			ObjectView: &model.ObjectView{
-				RootId: mockedRootId,
+				RootId: mockedObjectId,
 				Blocks: []*model.Block{
 					{
-						Id: mockedRootId,
+						Id: mockedObjectId,
 						Restrictions: &model.BlockRestrictions{
 							Read:   false,
 							Edit:   false,
@@ -233,13 +234,13 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				},
 				Details: []*model.ObjectViewDetailsSet{
 					{
-						Id: mockedRootId,
+						Id: mockedObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
 								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
-								bundle.RelationKeyLayout.String():           pbtypes.Int64(int64(model.ObjectType_basic)),
-								bundle.RelationKeyIconEmoji.String():        pbtypes.String("🌐"),
+								bundle.RelationKeyResolvedLayout.String():   pbtypes.Int64(int64(model.ObjectType_basic)),
+								bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
 								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String(mockedParticipantId),
 								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
@@ -276,108 +277,114 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 							},
 						},
 					},
+					{
+						Id: mockedType,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String(): pbtypes.String(mockedType),
+							},
+						},
+					},
+				},
+				RelationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyLastModifiedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyLastModifiedBy.String(),
+						Format: model.RelationFormat_object,
+					},
+					{
+						Key:    bundle.RelationKeyCreatedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyCreator.String(),
+						Format: model.RelationFormat_object,
+					},
+					{
+						Key:    bundle.RelationKeyTag.String(),
+						Format: model.RelationFormat_tag,
+					},
 				},
 			},
+
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}, nil).Once()
 
-		// Mock type resolution
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedType),
-				},
-			},
-			Keys: []string{bundle.RelationKeyName.String()},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectTypeName),
+		// Mock tag-1 open
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTagId1,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String():                pbtypes.String(mockedTagValue1),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor1),
+							},
+						},
 					},
 				},
 			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Once()
+		}, nil).Once()
 
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedParticipantId),
-				},
-			},
-			Keys: []string{bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():                     pbtypes.String(mockedParticipantId),
-						bundle.RelationKeyName.String():                   pbtypes.String(mockedParticipantName),
-						bundle.RelationKeyIconEmoji.String():              pbtypes.String(mockedParticipantIcon),
-						bundle.RelationKeyIconImage.String():              pbtypes.String(mockedParticipantImage),
-						bundle.RelationKeyIdentity.String():               pbtypes.String(mockedParticipantIdentity),
-						bundle.RelationKeyGlobalName.String():             pbtypes.String(mockedParticipantGlobalName),
-						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+		// Mock tag-2 open
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTagId2,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String():                pbtypes.String(mockedTagValue2),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor2),
+							},
+						},
 					},
 				},
 			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Twice()
+		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
+		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
-		require.Equal(t, mockedObjectTypeName, objects[0].Type)
-		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
-		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectId, objects[0].Id)
+		require.Equal(t, mockedObjectName, objects[0].Name)
+		require.Equal(t, mockedType, objects[0].Type.Id)
+		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
-		require.Equal(t, "🌐", objects[0].Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, objects[0].Icon)
 		require.Equal(t, "This is a sample text block", objects[0].Blocks[2].Text.Text)
 
 		// check details
-		for _, detail := range objects[0].Details {
-			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["created_date"])
-			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
-			} else if detail.Id == "created_by" {
-				require.Equal(t, mockedParticipantId, detail.Details["details"].(space.Member).Id)
-				require.Equal(t, mockedParticipantName, detail.Details["details"].(space.Member).Name)
-				require.Equal(t, gatewayUrl+"/image/"+mockedParticipantImage, detail.Details["details"].(space.Member).Icon)
-				require.Equal(t, mockedParticipantIdentity, detail.Details["details"].(space.Member).Identity)
-				require.Equal(t, mockedParticipantGlobalName, detail.Details["details"].(space.Member).GlobalName)
-			} else if detail.Id == "last_modified_by" {
-				require.Equal(t, mockedParticipantId, detail.Details["details"].(space.Member).Id)
+		for _, property := range objects[0].Properties {
+			if property.Id == "created_date" {
+				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
+			} else if property.Id == "last_modified_date" {
+				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
+			} else if property.Id == "created_by" {
+				require.Equal(t, []string{mockedParticipantId}, property.Object)
+			} else if property.Id == "last_modified_by" {
+				require.Equal(t, []string{mockedParticipantId}, property.Object)
 			}
 		}
 
 		// check tags
 		tags := []object.Tag{}
-		for _, detail := range objects[0].Details {
-			if tagList, ok := detail.Details["tags"].([]object.Tag); ok {
-				for _, tag := range tagList {
-					tags = append(tags, tag)
-				}
+		for _, detail := range objects[0].Properties {
+			for _, tag := range detail.MultiSelect {
+				tags = append(tags, tag)
 			}
 		}
 		require.Len(t, tags, 2)
@@ -408,7 +415,7 @@ func TestSearchService_Search(t *testing.T) {
 					NestedFilters: []*model.BlockContentDataviewFilter{
 						{
 							Operator:    model.BlockContentDataviewFilter_No,
-							RelationKey: bundle.RelationKeyLayout.String(),
+							RelationKey: bundle.RelationKeyResolvedLayout.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
 							Value: pbtypes.IntList([]int{
 								int(model.ObjectType_basic),
@@ -426,6 +433,12 @@ func TestSearchService_Search(t *testing.T) {
 							RelationKey: bundle.RelationKeyIsHidden.String(),
 							Condition:   model.BlockContentDataviewFilter_NotEqual,
 							Value:       pbtypes.Bool(true),
+						},
+						{
+							Operator:    model.BlockContentDataviewFilter_No,
+							RelationKey: "type.uniqueKey",
+							Condition:   model.BlockContentDataviewFilter_NotEqual,
+							Value:       pbtypes.String("ot-template"),
 						},
 						{
 							Operator: model.BlockContentDataviewFilter_Or,
@@ -474,17 +487,26 @@ func TestSearchService_Search(t *testing.T) {
 			ObjectId: mockedObjectId,
 		}).Return(&pb.RpcObjectShowResponse{
 			ObjectView: &model.ObjectView{
-				RootId: mockedRootId,
+				RootId: mockedObjectId,
 				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
 								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
-								bundle.RelationKeyLayout.String():           pbtypes.Int64(int64(model.ObjectType_basic)),
+								bundle.RelationKeyResolvedLayout.String():   pbtypes.Int64(int64(model.ObjectType_basic)),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
 								bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
 								bundle.RelationKeyType.String():             pbtypes.String(mockedType),
+							},
+						},
+					},
+					{
+						Id: mockedType,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String(): pbtypes.String(mockedType),
 							},
 						},
 					},
@@ -493,61 +515,15 @@ func TestSearchService_Search(t *testing.T) {
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
 
-		// Mock type resolution
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedType),
-				},
-			},
-			Keys: []string{bundle.RelationKeyName.String()},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectTypeName),
-					},
-				},
-			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Once()
-
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(""),
-				},
-			},
-			Keys: []string{bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{},
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Twice()
-
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
+		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
-		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectId, objects[0].Id)
+		require.Equal(t, mockedObjectName, objects[0].Name)
+		require.Equal(t, mockedType, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
 
@@ -559,14 +535,13 @@ func TestSearchService_Search(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
-
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
+		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -585,7 +560,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Direction: "desc", Timestamp: "last_modified_date"}}, offset, limit)
+		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.Error(t, err)
