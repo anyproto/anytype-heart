@@ -77,6 +77,10 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 	st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
 	var typeBlockAlreadyExists bool
 
+	var (
+		binBlockWrapperId string
+		binIsTheLast      bool
+	)
 	err := st.Iterate(func(b simple.Block) (isContinue bool) {
 		link := b.Model().GetLink()
 		if link == nil {
@@ -85,7 +89,16 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 		if link.TargetBlockId == targetId {
 			// check by targetBlockId in case user created the same block manually
 			typeBlockAlreadyExists = true
-			return false
+		}
+		if link.TargetBlockId == DefaultWidgetBin {
+			binBlockWrapperId = st.GetParentOf(b.Model().Id).Model().Id
+			rootBlock := st.Get(st.RootId())
+			if len(rootBlock.Model().GetChildrenIds()) == 0 {
+				return true
+			}
+			if rootBlock.Model().GetChildrenIds()[len(rootBlock.Model().GetChildrenIds())-1] == binBlockWrapperId {
+				binIsTheLast = true
+			}
 		}
 		return true
 	})
@@ -97,11 +110,25 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 		return nil
 	}
 
+	var (
+		targetBlockId string
+		position      model.BlockPosition
+	)
+	if binIsTheLast {
+		targetBlockId = binBlockWrapperId
+		position = model.Block_Top
+	} else {
+		targetBlockId = ""
+		position = model.Block_Bottom
+	}
+
 	_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
 		ContextId:    st.RootId(),
 		ObjectLimit:  6,
 		WidgetLayout: layout,
-		Position:     model.Block_Bottom,
+		Position:     position,
+		TargetId:     targetBlockId,
+		ViewId:       viewId,
 		Block: &model.Block{
 			Id: widgetBlockId, // hardcode id to avoid duplicates
 			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
