@@ -1043,6 +1043,7 @@ message Notification {
     int64 createTime = 2;
     Status status = 4;
     bool isLocal = 5;
+    bool isToast = 3; // means it should automatically hide after some time if client window is active
     oneof payload {
         Import import = 6;
         Export export = 8;
@@ -1054,6 +1055,7 @@ message Notification {
         ParticipantRemove participantRemove = 16;
         ParticipantRequestDecline participantRequestDecline = 17;
         ParticipantPermissionsChange participantPermissionsChange = 18;
+        AutoTypeWidgetAdded autoTypeWidgetAdded = 19;
     }
     string space = 7;
     string aclHeadId = 14;
@@ -1137,6 +1139,12 @@ message Notification {
 
     enum ActionType {
         CLOSE = 0;
+    }
+
+    message AutoTypeWidgetAdded {
+        string spaceId = 1;
+        string typePluralName = 2; // fallback to singular if missing
+        string widgetBlockId = 3;
     }
 }
 

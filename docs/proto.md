@@ -1930,6 +1930,7 @@
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Notification](#anytype-model-Notification)
+    - [Notification.AutoTypeWidgetAdded](#anytype-model-Notification-AutoTypeWidgetAdded)
     - [Notification.Export](#anytype-model-Notification-Export)
     - [Notification.GalleryImport](#anytype-model-Notification-GalleryImport)
     - [Notification.Import](#anytype-model-Notification-Import)
@@ -30512,6 +30513,7 @@ Used to decode block meta only, without the content itself
 | createTime | [int64](#int64) |  |  |
 | status | [Notification.Status](#anytype-model-Notification-Status) |  |  |
 | isLocal | [bool](#bool) |  |  |
+| isToast | [bool](#bool) |  | means it should automatically hide after some time if client window is active |
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
 | export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
 | galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |
@@ -30522,8 +30524,26 @@ Used to decode block meta only, without the content itself
 | participantRemove | [Notification.ParticipantRemove](#anytype-model-Notification-ParticipantRemove) |  |  |
 | participantRequestDecline | [Notification.ParticipantRequestDecline](#anytype-model-Notification-ParticipantRequestDecline) |  |  |
 | participantPermissionsChange | [Notification.ParticipantPermissionsChange](#anytype-model-Notification-ParticipantPermissionsChange) |  |  |
+| autoTypeWidgetAdded | [Notification.AutoTypeWidgetAdded](#anytype-model-Notification-AutoTypeWidgetAdded) |  |  |
 | space | [string](#string) |  |  |
 | aclHeadId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-AutoTypeWidgetAdded"></a>
+
+### Notification.AutoTypeWidgetAdded
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| typePluralName | [string](#string) |  | fallback to singular if missing |
+| widgetBlockId | [string](#string) |  |  |
 
 
 

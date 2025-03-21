@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -92,7 +94,7 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	}
 
 	widgetBlockId := key.String()
-	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
+	err = cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
 		targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 		targets = append(targets, typeId)
 		st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
@@ -131,6 +133,29 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 				}},
 			},
 		})
-		return err
+		if err != nil {
+			return err
+		}
+		objectType, err := s.objectStore.SpaceIndex(spaceId).GetObjectType(typeId)
+		if err != nil {
+			log.Errorf("failed to get object type to send the notification %s: %s", typeId, err)
+		} else {
+			err = s.notificationService.CreateAndSend(&model.Notification{
+				Id:      uuid.New().String(),
+				IsLocal: true,
+				IsToast: true,
+				Payload: &model.NotificationPayloadOfAutoTypeWidgetAdded{AutoTypeWidgetAdded: &model.NotificationAutoTypeWidgetAdded{
+					SpaceId:        spaceId,
+					TypePluralName: objectType.PluralName,
+					WidgetBlockId:  widgetBlockId,
+				}},
+			})
+			if err != nil {
+				log.Errorf("failed to send the notification %s: %s", typeId, err)
+			}
+		}
+
+		return nil
 	})
+	return err
 }
