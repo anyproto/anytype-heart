@@ -64,7 +64,9 @@ type service struct {
 }
 
 func New() Service {
-	return &service{}
+	return &service{
+		chatObjectIds: map[string]struct{}{},
+	}
 }
 
 func (s *service) Name() string {
@@ -133,6 +135,9 @@ func (s *service) UnsubscribeFromMessagePreviews() error {
 	}
 	s.chatObjectsSubQueue = nil
 	chatIds := maps.Keys(s.chatObjectIds)
+	for key := range s.chatObjectIds {
+		delete(s.chatObjectIds, key)
+	}
 	s.lock.Unlock()
 
 	for _, chatId := range chatIds {
