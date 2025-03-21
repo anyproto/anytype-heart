@@ -141,3 +141,67 @@ type Response struct {
 	Snapshots        []*Snapshot
 	RootCollectionID string
 }
+
+type SnapshotList struct {
+	snapshots         []*Snapshot
+	widget, workspace *Snapshot
+}
+
+func NewSnapshotList() *SnapshotList {
+	return &SnapshotList{
+		snapshots: []*Snapshot{},
+	}
+}
+
+func (sl *SnapshotList) List() []*Snapshot {
+	if sl == nil {
+		return nil
+	}
+	return sl.snapshots
+}
+
+func (sl *SnapshotList) Len() int {
+	if sl == nil {
+		return 0
+	}
+	return len(sl.snapshots)
+}
+
+func (sl *SnapshotList) Add(snapshots ...*Snapshot) *SnapshotList {
+	sl.snapshots = append(sl.snapshots, snapshots...)
+	return sl
+}
+
+func (sl *SnapshotList) GetWorkspace() *Snapshot {
+	if sl == nil {
+		return nil
+	}
+	return sl.workspace
+}
+
+func (sl *SnapshotList) SetWorkspace(w *Snapshot) *SnapshotList {
+	sl.workspace = w
+	return sl
+}
+
+func (sl *SnapshotList) GetWidget() *Snapshot {
+	if sl == nil {
+		return nil
+	}
+	return sl.widget
+}
+
+func (sl *SnapshotList) SetWidget(w *Snapshot) *SnapshotList {
+	sl.widget = w
+	return sl
+}
+
+func (sl *SnapshotList) Merge(sl2 *SnapshotList) {
+	sl.snapshots = append(sl.snapshots, sl2.snapshots...)
+	if sl2.widget != nil {
+		sl.widget = sl2.widget
+	}
+	if sl2.workspace != nil {
+		sl.workspace = sl2.workspace
+	}
+}
