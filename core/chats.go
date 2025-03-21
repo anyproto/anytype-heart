@@ -142,6 +142,19 @@ func (mw *Middleware) ChatSubscribeToMessagePreviews(cctx context.Context, req *
 	}
 }
 
+func (mw *Middleware) ChatUnsubscribeFromMessagePreviews(cctx context.Context, req *pb.RpcChatUnsubscribeFromMessagePreviewsRequest) *pb.RpcChatUnsubscribeFromMessagePreviewsResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.UnsubscribeFromMessagePreviews()
+	code := mapErrorCode[pb.RpcChatUnsubscribeFromMessagePreviewsResponseErrorCode](err)
+	return &pb.RpcChatUnsubscribeFromMessagePreviewsResponse{
+		Error: &pb.RpcChatUnsubscribeFromMessagePreviewsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 	err := chatService.ReadMessages(cctx, request.ChatObjectId, request.AfterOrderId, request.BeforeOrderId, request.LastDbTimestamp)
