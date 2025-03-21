@@ -8,8 +8,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
-	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
@@ -134,7 +134,7 @@ func (s *service) UnsubscribeFromMessagePreviews() error {
 		log.Error("close cross-space chat objects queue", zap.Error(err))
 	}
 	s.chatObjectsSubQueue = nil
-	chatIds := maps.Keys(s.chatObjectIds)
+	chatIds := lo.Keys(s.chatObjectIds)
 	for key := range s.chatObjectIds {
 		delete(s.chatObjectIds, key)
 	}
