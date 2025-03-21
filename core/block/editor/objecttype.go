@@ -25,12 +25,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-const ObjectTypeAllViewId = "all"
 
 var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRecommendedRelations,
@@ -414,7 +413,7 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_longtext,
 		},
-	}, ObjectTypeAllViewId)
+	}, addr.ObjectTypeAllViewId)
 
 	dvContent.Dataview.TargetObjectId = ot.Id()
 	return []template.StateTransformer{
