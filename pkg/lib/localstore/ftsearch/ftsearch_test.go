@@ -368,7 +368,7 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 
 func TestFtSearch_Close(t *testing.T) {
 	// given
-	fts := new(ftSearchTantivy)
+	fts := new(ftSearch)
 
 	// when
 	err := fts.Close(nil)

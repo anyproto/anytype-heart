@@ -8,10 +8,16 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...string) error {
+var idKey = bundle.RelationKeyId.String()
+var spaceIdKey = bundle.RelationKeySpaceId.String()
+
+func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
 	txn, err := s.fulltextQueue.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
@@ -24,7 +30,8 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...string) erro
 
 	obj := arena.NewObject()
 	for _, id := range ids {
-		obj.Set("id", arena.NewString(id))
+		obj.Set(idKey, arena.NewString(id.ObjectID))
+		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
 		err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
 		if err != nil {
 			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
@@ -33,41 +40,60 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...string) erro
 	return txn.Commit()
 }
 
-func (s *dsObjectStore) BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(ids []string) error) error {
+func (s *dsObjectStore) BatchProcessFullTextQueue(
+	ctx context.Context,
+	spaceIds func() []string,
+	limit uint,
+	processIds func(objectIds []domain.FullID,
+	) ([]string, error)) error {
 	for {
-		ids, err := s.ListIdsFromFullTextQueue(limit)
+		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
 			return fmt.Errorf("list ids from fulltext queue: %w", err)
 		}
 		if len(ids) == 0 {
 			return nil
 		}
-		err = processIds(ids)
+		toRemove, err := processIds(ids)
 		if err != nil {
 			return fmt.Errorf("process ids: %w", err)
 		}
-		err = s.RemoveIdsFromFullTextQueue(ids)
+		err = s.RemoveIdsFromFullTextQueue(toRemove)
 		if err != nil {
 			return fmt.Errorf("remove ids from fulltext queue: %w", err)
 		}
 	}
 }
 
-func (s *dsObjectStore) ListIdsFromFullTextQueue(limit int) ([]string, error) {
-	iter, err := s.fulltextQueue.Find(nil).Limit(uint(limit)).Iter(s.componentCtx)
+func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error) {
+	if len(spaceIds) == 0 {
+		return nil, fmt.Errorf("at least one space must be provided")
+	}
+
+	sourceList := make([]domain.Value, 0, len(spaceIds))
+	for _, id := range spaceIds {
+		sourceList = append(sourceList, domain.String(id))
+	}
+	filterIn := database.FilterIn{
+		Key:   bundle.RelationKeySpaceId,
+		Value: sourceList,
+	}
+
+	iter, err := s.fulltextQueue.Find(filterIn.AnystoreFilter()).Limit(limit).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("create iterator: %w", err)
 	}
 	defer iter.Close()
 
-	var ids []string
+	var ids []domain.FullID
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
 			return nil, fmt.Errorf("read doc: %w", err)
 		}
-		id := doc.Value().GetStringBytes("id")
-		ids = append(ids, string(id))
+		id := doc.Value().GetString(idKey)
+		spaceId := doc.Value().GetString(spaceIdKey)
+		ids = append(ids, domain.FullID{ObjectID: id, SpaceID: spaceId})
 	}
 	return ids, nil
 }
@@ -88,6 +114,37 @@ func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 		}
 	}
 	return txn.Commit()
+}
+
+func (s *dsObjectStore) ClearFullTextQueue(ctx context.Context) error {
+	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	for {
+		iter, err := s.fulltextQueue.Find(nil).Limit(1000).Iter(s.componentCtx)
+		if err != nil {
+			return fmt.Errorf("create iterator: %w", err)
+		}
+		defer iter.Close()
+
+		hasNext := false
+		for iter.Next() {
+			hasNext = true
+			doc, err := iter.Doc()
+			if err != nil {
+				return fmt.Errorf("read doc: %w", err)
+			}
+			id := doc.Value().GetString(idKey)
+			err = s.fulltextQueue.DeleteId(txn.Context(), id)
+			if err != nil {
+				return fmt.Errorf("del doc: %w", err)
+			}
+		}
+		if hasNext {
+			return txn.Commit()
+		}
+	}
 }
 
 func (s *dsObjectStore) GetChecksums(spaceID string) (*model.ObjectStoreChecksums, error) {

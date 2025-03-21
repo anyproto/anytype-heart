@@ -48,25 +48,25 @@ func (q *dummyFulltextQueue) RemoveIdsFromFullTextQueue(ids []string) error {
 	return nil
 }
 
-func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...string) error {
+func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 	for _, id := range ids {
-		if !lo.Contains(q.ids, id) {
-			q.ids = append(q.ids, id)
+		if !lo.Contains(q.ids, id.ObjectID) {
+			q.ids = append(q.ids, id.ObjectID)
 		}
 	}
 	return nil
 }
 
-func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(limit int) ([]string, error) {
+func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	if limit > len(q.ids) {
-		limit = len(q.ids)
+	if limit > uint(len(q.ids)) {
+		limit = uint(len(q.ids))
 	}
-	return q.ids[:limit], nil
+	return lo.Map(q.ids[:limit], func(item string, index int) domain.FullID { return domain.FullID{ObjectID: item} }), nil
 }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
