@@ -26,7 +26,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
-	"github.com/anyproto/anytype-heart/core/push/client"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -103,6 +102,11 @@ type FSConfig struct {
 type DebugAPIConfig struct {
 	debugserver.Config
 	IsEnabled bool
+}
+
+type PushConfig struct {
+	PeerId string
+	Addr   []string
 }
 
 const (
@@ -497,11 +501,11 @@ func (c *Config) GetPublishServer() publishclient.Config {
 	}
 }
 
-func (c *Config) GetPushConfig() client.Config {
+func (c *Config) GetPushConfig() PushConfig {
 	pushPeerId := "peer"
 	pushAddr := "addr"
 
-	return client.Config{
+	return PushConfig{
 		PeerId: pushPeerId,
 		Addr:   []string{pushAddr},
 	}

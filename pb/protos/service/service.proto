@@ -398,4 +398,7 @@ service ClientCommands {
     rpc ChatUnreadMessages (anytype.Rpc.Chat.Unread.Request) returns (anytype.Rpc.Chat.Unread.Response);
     rpc ChatSubscribeToMessagePreviews (anytype.Rpc.Chat.SubscribeToMessagePreviews.Request) returns (anytype.Rpc.Chat.SubscribeToMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
+
+    // Push
+    rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
 }

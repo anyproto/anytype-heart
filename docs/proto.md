@@ -1142,6 +1142,11 @@
     - [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request)
     - [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response)
     - [Rpc.Publishing.ResolveUri.Response.Error](#anytype-Rpc-Publishing-ResolveUri-Response-Error)
+    - [Rpc.PushNotification](#anytype-Rpc-PushNotification)
+    - [Rpc.PushNotification.RegisterToken](#anytype-Rpc-PushNotification-RegisterToken)
+    - [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request)
+    - [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response)
+    - [Rpc.PushNotification.RegisterToken.Response.Error](#anytype-Rpc-PushNotification-RegisterToken-Response-Error)
     - [Rpc.Relation](#anytype-Rpc-Relation)
     - [Rpc.Relation.ListRemoveOption](#anytype-Rpc-Relation-ListRemoveOption)
     - [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request)
@@ -1578,6 +1583,8 @@
     - [Rpc.Publishing.PublishStatus](#anytype-Rpc-Publishing-PublishStatus)
     - [Rpc.Publishing.Remove.Response.Error.Code](#anytype-Rpc-Publishing-Remove-Response-Error-Code)
     - [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code)
+    - [Rpc.PushNotification.RegisterToken.Platform](#anytype-Rpc-PushNotification-RegisterToken-Platform)
+    - [Rpc.PushNotification.RegisterToken.Response.Error.Code](#anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1773,6 +1780,8 @@
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Import](#anytype-Event-Import)
     - [Event.Import.Finish](#anytype-Event-Import-Finish)
+    - [Event.Key](#anytype-Event-Key)
+    - [Event.Key.Update](#anytype-Event-Key-Update)
     - [Event.Membership](#anytype-Event-Membership)
     - [Event.Membership.Update](#anytype-Event-Membership-Update)
     - [Event.Message](#anytype-Event-Message)
@@ -2327,6 +2336,7 @@
 | ChatUnreadMessages | [Rpc.Chat.Unread.Request](#anytype-Rpc-Chat-Unread-Request) | [Rpc.Chat.Unread.Response](#anytype-Rpc-Chat-Unread-Response) |  |
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| PushNotificationRegisterToken | [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request) | [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response) | Push |
 
  
 
@@ -18907,6 +18917,73 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-PushNotification"></a>
+
+### Rpc.PushNotification
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken"></a>
+
+### Rpc.PushNotification.RegisterToken
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken-Request"></a>
+
+### Rpc.PushNotification.RegisterToken.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| token | [string](#string) |  |  |
+| platform | [Rpc.PushNotification.RegisterToken.Platform](#anytype-Rpc-PushNotification-RegisterToken-Platform) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken-Response"></a>
+
+### Rpc.PushNotification.RegisterToken.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.PushNotification.RegisterToken.Response.Error](#anytype-Rpc-PushNotification-RegisterToken-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken-Response-Error"></a>
+
+### Rpc.PushNotification.RegisterToken.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.PushNotification.RegisterToken.Response.Error.Code](#anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Relation"></a>
 
 ### Rpc.Relation
@@ -24962,6 +25039,31 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-PushNotification-RegisterToken-Platform"></a>
+
+### Rpc.PushNotification.RegisterToken.Platform
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| IOS | 0 |  |
+| Android | 1 |  |
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code"></a>
+
+### Rpc.PushNotification.RegisterToken.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code"></a>
 
 ### Rpc.Relation.ListRemoveOption.Response.Error.Code
@@ -27972,6 +28074,33 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Key"></a>
+
+### Event.Key
+
+
+
+
+
+
+
+<a name="anytype-Event-Key-Update"></a>
+
+### Event.Key.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| keyId | [string](#string) |  |  |
+| aclHeadId | [string](#string) |  |  |
+| encryptionKey | [bytes](#bytes) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Membership"></a>
 
 ### Event.Membership
@@ -28083,6 +28212,7 @@ Precondition: user A opened a block
 | chatUpdateReadStatus | [Event.Chat.UpdateReadStatus](#anytype-Event-Chat-UpdateReadStatus) |  | received to update per-message read status (if needed to highlight the unread messages in the UI) |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed (e.g. message read on another device) |
+| keyUpdate | [Event.Key.Update](#anytype-Event-Key-Update) |  |  |
 
 
 
