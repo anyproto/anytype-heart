@@ -15,9 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
 func (s *Service) SetWidgetBlockTargetId(ctx session.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) error {
@@ -81,21 +81,38 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	if err != nil {
 		return err
 	}
-	return s.createAutoWidgetIfMissing(space, typeId, key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
-}
-
-func (s *Service) createAutoWidgetIfMissing(space clientspace.Space, targetId, widgetBlockId, viewId string, layout model.BlockContentWidgetLayout) error {
 	widgetObjectId := space.DerivedIDs().Widgets
 	widgetDetails, err := s.objectStore.SpaceIndex(space.Id()).GetDetails(widgetObjectId)
 	if err == nil {
 		keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-		if slices.Contains(keys, targetId) {
+		if slices.Contains(keys, typeId) {
 			// widget was created before
 			return nil
 		}
 	}
-
+	// this is not optimal, maybe it should be some cheaper way
+	records, err := s.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyType,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.String(typeId),
+		},
+		database.FilterEq{
+			Key:   bundle.RelationKeyIsHiddenDiscovery,
+			Cond:  model.BlockContentDataviewFilter_NotEqual,
+			Value: domain.Bool(true),
+		},
+		database.FilterEq{
+			Key:   bundle.RelationKeyOrigin,
+			Cond:  model.BlockContentDataviewFilter_NotEqual,
+			Value: domain.Int64(model.ObjectOrigin_usecase),
+		},
+	}}, 1, 1)
+	if len(records) > 0 {
+		// only create widget if this was the first object of this type created
+		return nil
+	}
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		return w.AddAutoWidget(st, targetId, widgetBlockId, viewId, layout)
+		return w.AddAutoWidget(st, typeId, key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
 	})
 }

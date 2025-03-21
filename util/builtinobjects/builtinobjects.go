@@ -358,6 +358,21 @@ func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id stri
 	}
 }
 
+func (b *builtinObjects) typeHasObjects(spaceId, typeId string) (bool, error) {
+	records, err := b.store.SpaceIndex(spaceId).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyType,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.String(typeId),
+		},
+	}}, 1, 0)
+	if err != nil {
+		return false, err
+	}
+
+	return len(records) > 0, nil
+}
+
 func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
@@ -366,14 +381,35 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 
 	widgetObjectID := spc.DerivedIDs().Widgets
-	typeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
+	var widgetTargetsToCreate []string
+	pageTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
 	if err != nil {
 		log.Errorf("failed to get type id: %w", err)
 		return
 	}
+	taskTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyTask)
+	if err != nil {
+		log.Errorf("failed to get type id: %w", err)
+		return
+	}
+	for _, typeId := range []string{pageTypeId, taskTypeId} {
+		if has, err := b.typeHasObjects(spaceId, typeId); err != nil {
+			log.Warnf("failed to check if type '%s' has objects: %v", pageTypeId, err)
+		} else if has {
+			widgetTargetsToCreate = append(widgetTargetsToCreate, typeId)
+		}
+	}
 
+	if len(widgetTargetsToCreate) == 0 {
+		return
+	}
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		return w.AddAutoWidget(s, typeId, bundle.TypeKeyPage.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
+		for _, targetId := range widgetTargetsToCreate {
+			if err := w.AddAutoWidget(s, targetId, "", addr.ObjectTypeAllViewId, model.BlockContentWidget_View); err != nil {
+				log.Errorf("failed to create widget block for type '%s': %v", targetId, err)
+			}
+		}
+		return nil
 	}); err != nil {
 		log.Errorf("failed to create widget blocks for useCase '%s': %v",
 			pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
