@@ -84,6 +84,7 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.1.11 h1:xoaDVF8FJEI6V37fMw/R3ptBCLHj0kYiImwWxC1Ryu8=
 github.com/anyproto/any-store v0.1.11/go.mod h1:X3UkQ2zLATYNED3gFhY2VcdfDOeJvpEQ0PmDO90A9Yo=
+github.com/anyproto/any-sync v0.6.9-0.20250321175140-e2082b9b3781/go.mod h1:P1hd0Hrc66juMNlr/k7SG55aEwOrBAsKGkh9TsLdml8=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a/go.mod h1:4fkueCZcGniSMXkrwESO8zzERrh/L7WHimRNWecfGM0=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250319134422-fd3f261ea023 h1:c7zj0NKKxFxqmK2PjNofpNB2yRCOzbA0gMLCiaEuLeY=
