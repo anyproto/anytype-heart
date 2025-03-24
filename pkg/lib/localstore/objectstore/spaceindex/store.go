@@ -47,6 +47,7 @@ type Store interface {
 	List(includeArchived bool) ([]*database.ObjectInfo, error)
 
 	ListIds() ([]string, error)
+	ListFullIds() ([]domain.FullID, error)
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
@@ -96,8 +97,9 @@ type SourceDetailsFromID interface {
 
 type FulltextQueue interface {
 	RemoveIdsFromFullTextQueue(ids []string) error
-	AddToIndexQueue(ctx context.Context, ids ...string) error
-	ListIdsFromFullTextQueue(limit int) ([]string, error)
+	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
+	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
+	ClearFullTextQueue(spaceIds []string) error
 }
 
 type dsObjectStore struct {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -25,10 +26,10 @@ import (
 )
 
 var (
-	ftIndexInterval         = 1 * time.Second
-	ftIndexForceMinInterval = time.Second * 10
-	ftBatchLimit            = 1000
-	ftBlockMaxSize          = 1024 * 1024
+	ftIndexInterval              = 1 * time.Second
+	ftIndexForceMinInterval      = time.Second * 10
+	ftBatchLimit            uint = 1000
+	ftBlockMaxSize               = 1024 * 1024
 	maxErrSent              atomic.Int32
 )
 
@@ -65,44 +66,70 @@ func (i *indexer) ftLoopRoutine() {
 	}
 }
 
+func (i *indexer) OnSpaceLoad(spaceId string) {
+	i.spacesLock.Lock()
+	defer i.spacesLock.Unlock()
+	if i.spaces == nil {
+		i.spaces = map[string]struct{}{}
+	}
+	i.spaces[spaceId] = struct{}{}
+	i.ForceFTIndex()
+}
+
+func (i *indexer) OnSpaceUnload(spaceId string) {
+	i.spacesLock.Lock()
+	defer i.spacesLock.Unlock()
+	delete(i.spaces, spaceId)
+}
+
+func (i *indexer) activeSpaces() []string {
+	i.spacesLock.RLock()
+	defer i.spacesLock.RUnlock()
+	return lo.Keys(i.spaces)
+}
+
 func (i *indexer) runFullTextIndexer(ctx context.Context) {
 	batcher := i.ftsearch.NewAutoBatcher()
-	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
+	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) ([]string, error) {
+		toRemove := make([]string, 0, len(objectIds))
 		for _, objectId := range objectIds {
-			objDocs, err := i.prepareSearchDocument(ctx, objectId)
+			objDocs, err := i.prepareSearchDocument(ctx, objectId.ObjectID)
 			if err != nil &&
 				!errors.Is(err, domain.ErrObjectNotFound) &&
 				!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
 				if errors.Is(err, context.Canceled) {
-					return err
+					return nil, err
 				}
 				continue
 			}
 
-			objDocs, objRemovedIds, err := i.filterOutNotChangedDocuments(objectId, objDocs)
+			objDocs, objRemovedIds, err := i.filterOutNotChangedDocuments(objectId.ObjectID, objDocs)
+			if err != nil {
+				log.With("id", objectId).Errorf("filter not changed error:: %s", err)
+				// try to process the other returned values.
+				continue
+			}
 			for _, removeId := range objRemovedIds {
 				err = batcher.DeleteDoc(removeId)
 				if err != nil {
-					return fmt.Errorf("batcher delete: %w", err)
+					return nil, fmt.Errorf("batcher delete: %w", err)
 				}
 			}
 
 			for _, doc := range objDocs {
-				if err != nil {
-					return fmt.Errorf("batcher delete: %w", err)
-				}
 				err = batcher.UpdateDoc(doc)
 				if err != nil {
-					return fmt.Errorf("batcher add: %w", err)
+					return nil, fmt.Errorf("batcher add: %w", err)
 				}
 			}
+			toRemove = append(toRemove, objectId.ObjectID)
 		}
 		err := batcher.Finish()
 		if err != nil {
-			return fmt.Errorf("finish batch: %w", err)
+			return nil, fmt.Errorf("finish batch: %w", err)
 		}
-		return nil
+		return toRemove, nil
 	})
 	if err != nil && maxErrSent.Load() < maxErrorsPerSession {
 		maxErrSent.Add(1)
@@ -249,6 +276,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 		// we need to avoid TryRemoveFromCache in this case
 		return docs, nil
 	}
+
 	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
 	if cacheErr != nil &&
 		!errors.Is(err, domain.ErrObjectNotFound) {
@@ -265,9 +293,14 @@ func (i *indexer) ftInit() error {
 			return err
 		}
 		if docCount == 0 {
+			// delete the remnants from the last run if any
+			err := i.store.ClearFullTextQueue(nil)
+			if err != nil {
+				return err
+			}
 			// query objects that are existing in the store
 			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
-			ids, err := i.store.ListIdsCrossSpace()
+			ids, err := i.store.ListIdsCrossSpaceWithoutTech()
 			if err != nil {
 				return err
 			}
