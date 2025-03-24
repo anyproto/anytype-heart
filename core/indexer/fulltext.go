@@ -85,7 +85,7 @@ func (i *indexer) OnSpaceUnload(spaceId string) {
 func (i *indexer) activeSpaces() []string {
 	i.spacesLock.RLock()
 	defer i.spacesLock.RUnlock()
-	return lo.MapToSlice(i.spaces, func(key string, _ struct{}) string { return key })
+	return lo.Keys(i.spaces)
 }
 
 func (i *indexer) runFullTextIndexer(ctx context.Context) {

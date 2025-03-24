@@ -131,7 +131,7 @@ func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
-	iter, err := s.fulltextQueue.Find(filterIn).Iter(s.componentCtx)
+	iter, err := s.fulltextQueue.Find(filterIn).Iter(txn.Context())
 	if err != nil {
 		return fmt.Errorf("create iterator: %w", err)
 	}
