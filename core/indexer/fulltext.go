@@ -105,6 +105,11 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 			}
 
 			objDocs, objRemovedIds, err := i.filterOutNotChangedDocuments(objectId.ObjectID, objDocs)
+			if err != nil {
+				log.With("id", objectId).Errorf("filter not changed error:: %s", err)
+				// try to process the other returned values.
+				continue
+			}
 			for _, removeId := range objRemovedIds {
 				err = batcher.DeleteDoc(removeId)
 				if err != nil {

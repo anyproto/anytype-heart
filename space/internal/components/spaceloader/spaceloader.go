@@ -93,7 +93,6 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
-	// time.Sleep(60 * time.Second)
 	s.mx.Lock()
 	defer s.mx.Unlock()
 	info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
