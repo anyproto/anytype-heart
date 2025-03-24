@@ -99,6 +99,7 @@ type FulltextQueue interface {
 	RemoveIdsFromFullTextQueue(ids []string) error
 	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
+	ClearFullTextQueue(ctx context.Context, spaceIds ...string) error
 }
 
 type dsObjectStore struct {

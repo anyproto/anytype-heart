@@ -41,6 +41,10 @@ type dummyFulltextQueue struct {
 	ids  []string
 }
 
+func (q *dummyFulltextQueue) ClearFullTextQueue(ctx context.Context, spaceIds ...string) error {
+	return nil
+}
+
 func (q *dummyFulltextQueue) RemoveIdsFromFullTextQueue(ids []string) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()

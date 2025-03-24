@@ -63,7 +63,7 @@ type IndexerStore interface {
 	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	RemoveIdsFromFullTextQueue(ids []string) error
-	ClearFullTextQueue(ctx context.Context) error
+	ClearFullTextQueue(ctx context.Context, spaceIds ...string) error
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)

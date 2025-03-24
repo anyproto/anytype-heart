@@ -140,6 +140,10 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return fmt.Errorf("remove acl: %w", err)
 	}
+	err = i.store.ClearFullTextQueue(i.runCtx, spaceId)
+	if err != nil {
+		return fmt.Errorf("remove fts: %w", err)
+	}
 	return store.DeleteDetails(i.runCtx, ids)
 }
 

@@ -70,14 +70,7 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 		return nil, fmt.Errorf("at least one space must be provided")
 	}
 
-	sourceList := make([]domain.Value, 0, len(spaceIds))
-	for _, id := range spaceIds {
-		sourceList = append(sourceList, domain.String(id))
-	}
-	filterIn := database.FilterIn{
-		Key:   bundle.RelationKeySpaceId,
-		Value: sourceList,
-	}
+	filterIn := inSpaceIds(spaceIds)
 
 	iter, err := s.fulltextQueue.Find(filterIn.AnystoreFilter()).Limit(limit).Iter(s.componentCtx)
 	if err != nil {
@@ -98,6 +91,18 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 	return ids, nil
 }
 
+func inSpaceIds(spaceIds []string) database.FilterIn {
+	sourceList := make([]domain.Value, 0, len(spaceIds))
+	for _, id := range spaceIds {
+		sourceList = append(sourceList, domain.String(id))
+	}
+	filterIn := database.FilterIn{
+		Key:   bundle.RelationKeySpaceId,
+		Value: sourceList,
+	}
+	return filterIn
+}
+
 func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
 	if err != nil {
@@ -116,13 +121,17 @@ func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 	return txn.Commit()
 }
 
-func (s *dsObjectStore) ClearFullTextQueue(ctx context.Context) error {
+func (s *dsObjectStore) ClearFullTextQueue(ctx context.Context, spaceIds ...string) error {
+	var filterIn database.FilterIn
+	if len(spaceIds) > 0 {
+		filterIn = inSpaceIds(spaceIds)
+	}
 	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
 	for {
-		iter, err := s.fulltextQueue.Find(nil).Limit(1000).Iter(s.componentCtx)
+		iter, err := s.fulltextQueue.Find(filterIn).Limit(1000).Iter(s.componentCtx)
 		if err != nil {
 			return fmt.Errorf("create iterator: %w", err)
 		}
