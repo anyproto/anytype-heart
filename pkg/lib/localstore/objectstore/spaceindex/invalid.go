@@ -22,11 +22,19 @@ func NewInvalidStore(err error) Store {
 	return &invalidStore{err: err}
 }
 
+func (s *invalidStore) ListFullIds() ([]domain.FullID, error) {
+	return nil, s.err
+}
+
 func (s *invalidStore) SpaceId() string {
 	return ""
 }
 
 func (s *invalidStore) Close() error {
+	return s.err
+}
+
+func (s *invalidStore) Init() error {
 	return s.err
 }
 

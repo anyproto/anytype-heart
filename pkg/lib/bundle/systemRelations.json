@@ -99,5 +99,6 @@
   "layoutWidth",
   "defaultViewType",
   "defaultTypeId",
-  "resolvedLayout"
+  "resolvedLayout",
+  "pluralName"
 ]

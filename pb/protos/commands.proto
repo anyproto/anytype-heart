@@ -860,6 +860,7 @@ message Rpc {
                 message Error {
                     Code code = 1;
                     string description = 2;
+                    int64 requiredSpace = 3;
 
                     enum Code {
                         NULL = 0; // No error

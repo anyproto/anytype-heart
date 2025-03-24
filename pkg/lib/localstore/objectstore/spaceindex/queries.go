@@ -572,3 +572,29 @@ func (s *dsObjectStore) ListIds() ([]string, error) {
 	}
 	return ids, nil
 }
+
+func (s *dsObjectStore) ListFullIds() ([]domain.FullID, error) {
+	var ids []domain.FullID
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("find all: %w", err)
+	}
+	defer iter.Close()
+	idKey := bundle.RelationKeyId.String()
+	spaceIdKey := bundle.RelationKeySpaceId.String()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		id := doc.Value().GetString(idKey)
+		spaceId := doc.Value().GetString(spaceIdKey)
+		ids = append(ids, domain.FullID{ObjectID: id, SpaceID: spaceId})
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, fmt.Errorf("iterate: %w", err)
+	}
+	return ids, nil
+}

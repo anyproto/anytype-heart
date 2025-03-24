@@ -51,17 +51,21 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 }
 
 func (mw *Middleware) AccountMigrate(cctx context.Context, req *pb.RpcAccountMigrateRequest) *pb.RpcAccountMigrateResponse {
+	freeSpaceErr := &migrator.NotEnoughFreeSpaceError{}
+
 	err := mw.applicationService.AccountMigrate(cctx, req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrBadInput, pb.RpcAccountMigrateResponseError_BAD_INPUT),
 		errToCode(application.ErrAccountNotFound, pb.RpcAccountMigrateResponseError_ACCOUNT_NOT_FOUND),
 		errToCode(context.Canceled, pb.RpcAccountMigrateResponseError_CANCELED),
-		errTypeToCode(&migrator.NotEnoughFreeSpaceError{}, pb.RpcAccountMigrateResponseError_NOT_ENOUGH_FREE_SPACE),
+		errTypeToCode(&freeSpaceErr, pb.RpcAccountMigrateResponseError_NOT_ENOUGH_FREE_SPACE),
 	)
+
 	return &pb.RpcAccountMigrateResponse{
 		Error: &pb.RpcAccountMigrateResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
+			Code:          code,
+			Description:   getErrorDescription(err),
+			RequiredSpace: int64(freeSpaceErr.Required),
 		},
 	}
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -112,6 +113,7 @@ type service struct {
 	accountMetadataSymKey  crypto.SymKey
 	accountMetadataPayload []byte
 	repKey                 uint64
+	spaceLoaderListener    aclobjectmanager.SpaceLoaderListener
 
 	mu        sync.Mutex
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
@@ -151,11 +153,11 @@ func (s *service) Init(a *app.App) (err error) {
 	s.aclJoiner = app.MustComponent[AclJoiner](a)
 	s.newAccount = s.config.IsNewAccount()
 	s.autoJoinStreamSpace = s.config.AutoJoinStream
-	
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.notificationService = app.MustComponent[NotificationSender](a)
 	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
+	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
@@ -221,6 +223,7 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
+	s.spaceLoaderListener.OnSpaceLoad(addr.AnytypeMarketplaceWorkspace)
 	timeoutCtx, cancel := context.WithTimeout(ctx, loadTechSpaceDeadline)
 	err = s.loadTechSpace(timeoutCtx)
 	cancel()

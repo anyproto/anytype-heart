@@ -9,10 +9,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "ff6f6773f87ae2eb87d9a731afa6f75fa08b1c078f7c5a7cdda011a9ae719ed8"
+const RelationChecksum = "ea8df49112b3b94f2c1db3af79be6b45e8a5463a55cb30ab9273d7fa05c59c15"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
-	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
 	RelationKeyCamera                       domain.RelationKey = "camera"
 	RelationKeyHeightInPixels               domain.RelationKey = "heightInPixels"
 	RelationKeyCreatedDate                  domain.RelationKey = "createdDate"
@@ -130,6 +129,7 @@ const (
 	RelationKeySpaceInviteFileKey           domain.RelationKey = "spaceInviteFileKey"
 	RelationKeySpaceInviteGuestFileCid      domain.RelationKey = "spaceInviteGuestFileCid"
 	RelationKeySpaceInviteGuestFileKey      domain.RelationKey = "spaceInviteGuestFileKey"
+	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
 	RelationKeyParticipantPermissions       domain.RelationKey = "participantPermissions"
 	RelationKeyIdentity                     domain.RelationKey = "identity"
 	RelationKeyParticipantStatus            domain.RelationKey = "participantStatus"
@@ -164,6 +164,7 @@ const (
 	RelationKeyCourseType                   domain.RelationKey = "courseType"
 	RelationKeyDifficulty                   domain.RelationKey = "difficulty"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
+	RelationKeyPluralName                   domain.RelationKey = "pluralName"
 )
 
 var (
@@ -215,7 +216,7 @@ var (
 			Id:               "_brassignee",
 			Key:              "assignee",
 			Name:             "Assignee",
-			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact", TypePrefix + "participant"},
+			ObjectTypes:      []string{TypePrefix + "contact", TypePrefix + "participant"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
@@ -281,7 +282,7 @@ var (
 			Id:               "_brauthor",
 			Key:              "author",
 			Name:             "Author",
-			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact", TypePrefix + "participant"},
+			ObjectTypes:      []string{TypePrefix + "contact", TypePrefix + "participant"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
@@ -789,13 +790,13 @@ var (
 		RelationKeyGuestKey: {
 
 			DataSource:       model.Relation_details,
-			Description:      "guest key to read public space",
+			Description:      "Guest key to read public space",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_brguestKey",
 			Key:              "guestKey",
 			MaxCount:         1,
-			Name:             "Guest key",
+			Name:             "Space guest key",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1403,6 +1404,20 @@ var (
 			MaxCount:         1,
 			Name:             "Picture",
 			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyPluralName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Name of Object type in plural form",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brpluralName",
+			Key:              "pluralName",
+			MaxCount:         1,
+			Name:             "Plural name",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

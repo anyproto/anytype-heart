@@ -17,6 +17,61 @@ func (_m *MockInviteObject) EXPECT() *MockInviteObject_Expecter {
 	return &MockInviteObject_Expecter{mock: &_m.Mock}
 }
 
+// GetExistingGuestInviteInfo provides a mock function with given fields:
+func (_m *MockInviteObject) GetExistingGuestInviteInfo() (string, string) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetExistingGuestInviteInfo")
+	}
+
+	var r0 string
+	var r1 string
+	if rf, ok := ret.Get(0).(func() (string, string)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() string); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Get(1).(string)
+	}
+
+	return r0, r1
+}
+
+// MockInviteObject_GetExistingGuestInviteInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetExistingGuestInviteInfo'
+type MockInviteObject_GetExistingGuestInviteInfo_Call struct {
+	*mock.Call
+}
+
+// GetExistingGuestInviteInfo is a helper method to define mock.On call
+func (_e *MockInviteObject_Expecter) GetExistingGuestInviteInfo() *MockInviteObject_GetExistingGuestInviteInfo_Call {
+	return &MockInviteObject_GetExistingGuestInviteInfo_Call{Call: _e.mock.On("GetExistingGuestInviteInfo")}
+}
+
+func (_c *MockInviteObject_GetExistingGuestInviteInfo_Call) Run(run func()) *MockInviteObject_GetExistingGuestInviteInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInviteObject_GetExistingGuestInviteInfo_Call) Return(fileCid string, fileKey string) *MockInviteObject_GetExistingGuestInviteInfo_Call {
+	_c.Call.Return(fileCid, fileKey)
+	return _c
+}
+
+func (_c *MockInviteObject_GetExistingGuestInviteInfo_Call) RunAndReturn(run func() (string, string)) *MockInviteObject_GetExistingGuestInviteInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetExistingInviteInfo provides a mock function with given fields:
 func (_m *MockInviteObject) GetExistingInviteInfo() (string, string) {
 	ret := _m.Called()
@@ -123,6 +178,53 @@ func (_c *MockInviteObject_RemoveExistingInviteInfo_Call) Return(fileCid string,
 }
 
 func (_c *MockInviteObject_RemoveExistingInviteInfo_Call) RunAndReturn(run func() (string, error)) *MockInviteObject_RemoveExistingInviteInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetGuestInviteFileInfo provides a mock function with given fields: fileCid, fileKey
+func (_m *MockInviteObject) SetGuestInviteFileInfo(fileCid string, fileKey string) error {
+	ret := _m.Called(fileCid, fileKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetGuestInviteFileInfo")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(fileCid, fileKey)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockInviteObject_SetGuestInviteFileInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetGuestInviteFileInfo'
+type MockInviteObject_SetGuestInviteFileInfo_Call struct {
+	*mock.Call
+}
+
+// SetGuestInviteFileInfo is a helper method to define mock.On call
+//   - fileCid string
+//   - fileKey string
+func (_e *MockInviteObject_Expecter) SetGuestInviteFileInfo(fileCid interface{}, fileKey interface{}) *MockInviteObject_SetGuestInviteFileInfo_Call {
+	return &MockInviteObject_SetGuestInviteFileInfo_Call{Call: _e.mock.On("SetGuestInviteFileInfo", fileCid, fileKey)}
+}
+
+func (_c *MockInviteObject_SetGuestInviteFileInfo_Call) Run(run func(fileCid string, fileKey string)) *MockInviteObject_SetGuestInviteFileInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockInviteObject_SetGuestInviteFileInfo_Call) Return(err error) *MockInviteObject_SetGuestInviteFileInfo_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInviteObject_SetGuestInviteFileInfo_Call) RunAndReturn(run func(string, string) error) *MockInviteObject_SetGuestInviteFileInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"golang.org/x/exp/maps"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -38,7 +39,8 @@ type CrossSpace interface {
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace() ([]string, error)
-	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
+	ListIdsCrossSpaceWithoutTech() ([]domain.FullID, error)
+	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) ([]string, error)) error
 
 	AccountStore
 	VirtualSpacesStore
@@ -58,9 +60,10 @@ type ObjectStore interface {
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(ctx context.Context, id ...string) error
-	ListIdsFromFullTextQueue(limit int) ([]string, error)
+	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
+	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	RemoveIdsFromFullTextQueue(ids []string) error
+	ClearFullTextQueue(spaceIds []string) error
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
@@ -256,14 +259,30 @@ func (s *dsObjectStore) preloadExistingObjectStores() error {
 	s.spaceStoreDirsCheck.Do(func() {
 		var entries []os.DirEntry
 		entries, err = os.ReadDir(s.objectStorePath)
+
+		var indexes []spaceindex.Store
 		s.Lock()
-		defer s.Unlock()
 		for _, entry := range entries {
 			if entry.IsDir() {
 				spaceId := entry.Name()
-				_ = s.getOrInitSpaceIndex(spaceId)
+				spaceIndex := s.getOrInitSpaceIndex(spaceId)
+				indexes = append(indexes, spaceIndex)
 			}
 		}
+		s.Unlock()
+
+		var wg sync.WaitGroup
+		for _, index := range indexes {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				initErr := index.Init()
+				if initErr != nil {
+					log.With("error", initErr).Error("pre-init space index")
+				}
+			}()
+		}
+		wg.Wait()
 	})
 	return err
 }
@@ -309,9 +328,13 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 		return spaceindex.NewInvalidStore(errors.New("empty spaceId"))
 	}
 	s.Lock()
-	defer s.Unlock()
-
-	return s.getOrInitSpaceIndex(spaceId)
+	spaceIndex := s.getOrInitSpaceIndex(spaceId)
+	s.Unlock()
+	err := spaceIndex.Init()
+	if err != nil {
+		return spaceindex.NewInvalidStore(err)
+	}
+	return spaceIndex
 }
 
 func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
@@ -398,9 +421,32 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
+func collectCrossSpaceWithoutTech[T any](s *dsObjectStore, proc func(store spaceindex.Store) ([]T, error)) ([]T, error) {
+	stores := s.listStores()
+
+	var result []T
+	for _, store := range stores {
+		if store.SpaceId() == s.techSpaceId {
+			continue
+		}
+		items, err := proc(store)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, items...)
+	}
+	return result, nil
+}
+
 func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
 	return collectCrossSpace(s, func(store spaceindex.Store) ([]string, error) {
 		return store.ListIds()
+	})
+}
+
+func (s *dsObjectStore) ListIdsCrossSpaceWithoutTech() ([]domain.FullID, error) {
+	return collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) ([]domain.FullID, error) {
+		return store.ListFullIds()
 	})
 }
 

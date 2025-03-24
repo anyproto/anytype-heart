@@ -60,7 +60,7 @@ type AclService interface {
 	Leave(ctx context.Context, spaceId string) (err error)
 	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
-	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte) error
+	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permissions list.AclPermissions) error
 	AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error)
 }
 
@@ -134,10 +134,10 @@ func (a *aclService) AddGuestAccount(ctx context.Context, spaceId string) (privK
 	if err != nil {
 		return nil, err
 	}
-	return pk, a.AddAccount(ctx, spaceId, pubKey, metadata)
+	return pk, a.AddAccount(ctx, spaceId, pubKey, metadata, list.AclPermissionsGuest)
 }
 
-func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte) error {
+func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permission list.AclPermissions) error {
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
@@ -146,7 +146,7 @@ func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey cryp
 		{
 			Identity:    pubKey,
 			Metadata:    metadata,
-			Permissions: list.AclPermissionsReader,
+			Permissions: permission,
 		},
 	}})
 	if err != nil {
