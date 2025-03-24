@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/query"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -72,7 +73,7 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 
 	filterIn := inSpaceIds(spaceIds)
 
-	iter, err := s.fulltextQueue.Find(filterIn.AnystoreFilter()).Limit(limit).Iter(s.componentCtx)
+	iter, err := s.fulltextQueue.Find(filterIn).Limit(limit).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("create iterator: %w", err)
 	}
@@ -91,7 +92,7 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 	return ids, nil
 }
 
-func inSpaceIds(spaceIds []string) database.FilterIn {
+func inSpaceIds(spaceIds []string) query.Filter {
 	sourceList := make([]domain.Value, 0, len(spaceIds))
 	for _, id := range spaceIds {
 		sourceList = append(sourceList, domain.String(id))
@@ -100,7 +101,7 @@ func inSpaceIds(spaceIds []string) database.FilterIn {
 		Key:   bundle.RelationKeySpaceId,
 		Value: sourceList,
 	}
-	return filterIn
+	return filterIn.AnystoreFilter()
 }
 
 func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
@@ -122,7 +123,7 @@ func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 }
 
 func (s *dsObjectStore) ClearFullTextQueue(ctx context.Context, spaceIds ...string) error {
-	var filterIn database.FilterIn
+	var filterIn query.Filter
 	if len(spaceIds) > 0 {
 		filterIn = inSpaceIds(spaceIds)
 	}
