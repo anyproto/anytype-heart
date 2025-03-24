@@ -294,20 +294,16 @@ func (i *indexer) ftInit() error {
 		}
 		if docCount == 0 {
 			// delete the remnants from the last run if any
-			err := i.store.ClearFullTextQueue(nil)
+			err = i.store.ClearFullTextQueue(nil)
 			if err != nil {
 				return err
 			}
 			// query objects that are existing in the store
 			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
-			ids, err := i.store.ListIdsCrossSpaceWithoutTech()
+			err = i.store.CollectIdsCrossSpaceWithoutTech(i.runCtx)
 			if err != nil {
 				return err
 			}
-			if err := i.store.AddToIndexQueue(i.runCtx, ids...); err != nil {
-				return err
-			}
-
 		}
 	}
 	return nil
