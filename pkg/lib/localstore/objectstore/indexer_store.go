@@ -122,7 +122,7 @@ func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 	return txn.Commit()
 }
 
-func (s *dsObjectStore) ClearFullTextQueue(ctx context.Context, spaceIds ...string) error {
+func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
 	var filterIn query.Filter
 	if len(spaceIds) > 0 {
 		filterIn = inSpaceIds(spaceIds)

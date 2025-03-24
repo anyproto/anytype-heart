@@ -41,7 +41,7 @@ type dummyFulltextQueue struct {
 	ids  []string
 }
 
-func (q *dummyFulltextQueue) ClearFullTextQueue(ctx context.Context, spaceIds ...string) error {
+func (q *dummyFulltextQueue) ClearFullTextQueue(spaceIds []string) error {
 	return nil
 }
 

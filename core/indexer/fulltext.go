@@ -294,7 +294,7 @@ func (i *indexer) ftInit() error {
 		}
 		if docCount == 0 {
 			// delete the remnants from the last run if any
-			err := i.store.ClearFullTextQueue(context.Background())
+			err := i.store.ClearFullTextQueue(nil)
 			if err != nil {
 				return err
 			}
