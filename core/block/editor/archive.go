@@ -99,6 +99,7 @@ func (p *Archive) autoInstallBinWidget() error {
 	err = p.Space().Do(widgetObjectId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		if w, ok := sb.(widget.Widget); ok {
+			// We rely on AddAutoWidget to check if the widget was already installed/removed before
 			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin, "", model.BlockContentWidget_Link)
 			if err != nil {
 				return err
@@ -127,7 +128,7 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	if len(archivedIds) > 0 {
 		err = p.autoInstallBinWidget()
 		if err != nil {
-			log.Errorf("archive: can't install bin widget: %v", err)
+			log.Errorf("archive: can't install auto widget: %v", err)
 		}
 	}
 	return nil

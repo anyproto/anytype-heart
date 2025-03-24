@@ -2,6 +2,7 @@ package editor
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -29,7 +31,8 @@ type Dashboard struct {
 	basic.AllOperations
 	collection.Collection
 
-	objectStore spaceindex.Store
+	objectStore            spaceindex.Store
+	autoWidgetWasInstalled bool
 }
 
 func NewDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store, layoutConverter converter.LayoutConverter) *Dashboard {
@@ -75,6 +78,40 @@ func (p *Dashboard) StateMigrations() migration.Migrations {
 	}})
 }
 
+// autoInstallBinWidget installs bin widget for the existing users if it was not added/removed before and the user has archived objects
+func (p *Dashboard) autoInstallFavoriteWidget() error {
+	if p.autoWidgetWasInstalled {
+		return nil
+	}
+	widgetObjectId := p.Space().DerivedIDs().Widgets
+	widgetDetails, err := p.objectStore.GetDetails(widgetObjectId)
+	if err != nil {
+		return err
+	}
+	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+	if slices.Contains(keys, widget.DefaultWidgetFavorite) {
+		// cache to avoid unnecessary objectstore requests
+		p.autoWidgetWasInstalled = true
+		return nil
+	}
+	err = p.Space().Do(widgetObjectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		if w, ok := sb.(widget.Widget); ok {
+			// We rely on AddAutoWidget to check if the widget was already installed/removed before
+			err = w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList)
+			if err != nil {
+				return err
+			}
+		}
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return err
+	}
+	p.autoWidgetWasInstalled = true
+	return nil
+}
+
 func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	favoritedIds, err := p.GetIds()
 	if err != nil {
@@ -87,6 +124,12 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 			log.Errorf("favorite: can't update in store: %v", uErr)
 		}
 	}()
+	if len(favoritedIds) > 0 {
+		err = p.autoInstallFavoriteWidget()
+		if err != nil {
+			log.Errorf("favorite: can't install auto widget: %v", err)
+		}
+	}
 	return nil
 }
 

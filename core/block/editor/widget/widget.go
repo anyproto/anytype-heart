@@ -20,10 +20,13 @@ const (
 	DefaultWidgetCollection = "collection"
 	DefaultWidgetBin        = "bin"
 	DefaultWidgetRecentOpen = "recentOpen"
+	wrapperBlockIdSuffix    = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
 )
 
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
+	// AddAutoWidget adds a widget block. If widget with the same targetId was installed/removed before, it will not be added again.
+	// blockId is optional and used to protect from
 	AddAutoWidget(s *state.State, targetId, blockId, viewId string, layout model.BlockContentWidgetLayout) error
 }
 
@@ -154,7 +157,13 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		return "", fmt.Errorf("validate block: %w", err)
 	}
 
+	var wrapperBlockId string
+	if b.Model().Id != "" {
+		wrapperBlockId = b.Model().Id + wrapperBlockIdSuffix
+	}
+
 	wrapper := simple.New(&model.Block{
+		Id: wrapperBlockId,
 		ChildrenIds: []string{
 			b.Model().Id,
 		},
