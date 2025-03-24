@@ -37,11 +37,11 @@ type Store interface {
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 	SetPushChangeHook(onPushChange PushChangeHook)
 	// MarkSeenHeads marks heads as seen in a diff manager. Then the diff manager will call a hook from SetDiffManagerOnRemoveHook
-	MarkSeenHeads(ctx context.Context, heads []string) error
-	SetDiffManagerOnRemoveHook(f func(removed []string))
+	MarkSeenHeads(ctx context.Context, name string, heads []string) error
+	AddDiffManager(name string, onRemoveHook func(removed []string))
 	// StoreSeenHeads persists current seen heads in any-store
-	StoreSeenHeads(ctx context.Context) error
-	InitDiffManager(ctx context.Context, seenHeads []string) error
+	StoreSeenHeads(ctx context.Context, name string) error
+	InitDiffManager(ctx context.Context, name string, seenHeads []string) error
 }
 
 type PushStoreChangeParams struct {
@@ -57,12 +57,17 @@ var (
 
 type store struct {
 	*source
-	store               *storestate.StoreState
-	onUpdateHook        func()
-	onPushChange        PushChangeHook
-	onDiffManagerRemove func(removed []string)
-	diffManager         *objecttree.DiffManager
-	sbType              smartblock.SmartBlockType
+	store        *storestate.StoreState
+	onUpdateHook func()
+	onPushChange PushChangeHook
+	sbType       smartblock.SmartBlockType
+
+	diffManagers map[string]*diffManager
+}
+
+type diffManager struct {
+	diffManager *objecttree.DiffManager
+	onRemove    func(removed []string)
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
@@ -75,11 +80,34 @@ func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
 
 // SetDiffManagerOnRemoveHook sets a hook that will be called when a change is removed from the diff manager
 // must be called only before ReadStoreDoc
-func (s *store) SetDiffManagerOnRemoveHook(f func(removed []string)) {
-	s.onDiffManagerRemove = f
+func (s *store) AddDiffManager(name string, onRemoveHook func(removed []string)) {
+	if _, ok := s.diffManagers[name]; !ok {
+		s.diffManagers[name] = &diffManager{
+			onRemove: onRemoveHook,
+		}
+	}
 }
 
-func (s *store) InitDiffManager(ctx context.Context, seenHeads []string) (err error) {
+func (s *store) initDiffManagers(ctx context.Context) error {
+	for name := range s.diffManagers {
+		seenHeads, err := s.loadSeenHeads(ctx, name)
+		if err != nil {
+			return fmt.Errorf("load seen heads: %w", err)
+		}
+		err = s.InitDiffManager(ctx, name, seenHeads)
+		if err != nil {
+			return fmt.Errorf("init diff manager: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []string) (err error) {
+	manager, ok := s.diffManagers[name]
+	if !ok {
+		return nil
+	}
+
 	curTreeHeads := s.source.Tree().Heads()
 
 	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
@@ -89,11 +117,16 @@ func (s *store) InitDiffManager(ctx context.Context, seenHeads []string) (err er
 		})
 	}
 	onRemove := func(removed []string) {
-		if s.onDiffManagerRemove != nil {
-			s.onDiffManagerRemove(removed)
+		if manager.onRemove != nil {
+			manager.onRemove(removed)
 		}
 	}
-	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
+
+	manager.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
+	if err != nil {
+		return fmt.Errorf("init diff manager: %w", err)
+	}
+
 	return
 }
 
@@ -136,11 +169,7 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	s.onUpdateHook = onUpdateHook
 	s.store = storeState
 
-	seenHeads, err := s.loadSeenHeads(ctx)
-	if err != nil {
-		return fmt.Errorf("load seen heads: %w", err)
-	}
-	err = s.InitDiffManager(ctx, seenHeads)
+	err = s.initDiffManagers(ctx)
 	if err != nil {
 		return err
 	}
@@ -221,10 +250,16 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	if err != nil {
 		return "", err
 	}
-	s.diffManager.Add(&objecttree.Change{
-		Id:          changeId,
-		PreviousIds: ch.PreviousIds,
-	})
+
+	for _, m := range s.diffManagers {
+		if m.diffManager != nil {
+			m.diffManager.Add(&objecttree.Change{
+				Id:          changeId,
+				PreviousIds: ch.PreviousIds,
+			})
+		}
+	}
+
 	return changeId, err
 }
 
@@ -242,25 +277,42 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return errors.Join(tx.Rollback(), err)
 	}
 	err = tx.Commit()
-	s.diffManager.Update(tree)
+	for _, m := range s.diffManagers {
+		if m.diffManager != nil {
+			m.diffManager.Update(tree)
+		}
+	}
 	if err == nil {
 		s.onUpdateHook()
 	}
 	return err
 }
 
-func (s *store) MarkSeenHeads(ctx context.Context, heads []string) error {
-	s.diffManager.Remove(heads)
-	return s.StoreSeenHeads(ctx)
+func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) error {
+	manager, ok := s.diffManagers[name]
+	if ok {
+		manager.diffManager.Remove(heads)
+		return s.StoreSeenHeads(ctx, name)
+	}
+	return nil
 }
 
-func (s *store) StoreSeenHeads(ctx context.Context) error {
-	coll, err := s.store.Collection(ctx, "seenHeads")
+func seenHeadsCollectionName(name string) string {
+	return "seenHeads/" + name
+}
+
+func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
+	manager, ok := s.diffManagers[name]
+	if !ok {
+		return nil
+	}
+
+	coll, err := s.store.Collection(ctx, seenHeadsCollectionName(name))
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
 
-	seenHeads := s.diffManager.SeenHeads()
+	seenHeads := manager.diffManager.SeenHeads()
 	raw, err := json.Marshal(seenHeads)
 	if err != nil {
 		return fmt.Errorf("marshal seen heads: %w", err)
@@ -273,8 +325,8 @@ func (s *store) StoreSeenHeads(ctx context.Context) error {
 	return coll.UpsertOne(ctx, doc)
 }
 
-func (s *store) loadSeenHeads(ctx context.Context) ([]string, error) {
-	coll, err := s.store.Collection(ctx, "seenHeads")
+func (s *store) loadSeenHeads(ctx context.Context, name string) ([]string, error) {
+	coll, err := s.store.Collection(ctx, seenHeadsCollectionName(name))
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}

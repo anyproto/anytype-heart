@@ -28,10 +28,11 @@ import (
 )
 
 const (
-	collectionName = "chats"
-	descOrder      = "-_o.id"
-	ascOrder       = "_o.id"
-	descAdded      = "-a"
+	collectionName      = "chats"
+	descOrder           = "-_o.id"
+	ascOrder            = "_o.id"
+	descAdded           = "-a"
+	diffManagerMessages = "messages"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -108,7 +109,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if !ok {
 		return fmt.Errorf("source is not a store")
 	}
-	storeSource.SetDiffManagerOnRemoveHook(s.markReadMessages)
+	storeSource.AddDiffManager(diffManagerMessages, s.markReadMessages)
+
 	err := s.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -298,7 +300,7 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, before
 	}
 
 	// mark the whole tree as seen from the current message
-	return s.storeSource.MarkSeenHeads(ctx, msgs)
+	return s.storeSource.MarkSeenHeads(ctx, diffManagerMessages, msgs)
 }
 
 func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string) error {
@@ -345,11 +347,11 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	if err != nil {
 		return fmt.Errorf("get seen heads: %w", err)
 	}
-	err = s.storeSource.InitDiffManager(ctx, seenHeads)
+	err = s.storeSource.InitDiffManager(ctx, diffManagerMessages, seenHeads)
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
 	}
-	err = s.storeSource.StoreSeenHeads(txn.Context())
+	err = s.storeSource.StoreSeenHeads(txn.Context(), diffManagerMessages)
 	if err != nil {
 		return fmt.Errorf("store seen heads: %w", err)
 	}
