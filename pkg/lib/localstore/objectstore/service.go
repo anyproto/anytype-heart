@@ -39,7 +39,7 @@ type CrossSpace interface {
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace() ([]string, error)
-	CollectIdsCrossSpaceWithoutTech(ctx context.Context) error
+	EnqueueAllForFulltextIndexing(ctx context.Context) error
 	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) ([]string, error)) error
 
 	AccountStore
@@ -441,7 +441,7 @@ func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
 	})
 }
 
-func (s *dsObjectStore) CollectIdsCrossSpaceWithoutTech(ctx context.Context) error {
+func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error {
 	txn, err := s.fulltextQueue.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)

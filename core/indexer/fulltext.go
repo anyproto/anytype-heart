@@ -300,7 +300,7 @@ func (i *indexer) ftInit() error {
 			}
 			// query objects that are existing in the store
 			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
-			err = i.store.CollectIdsCrossSpaceWithoutTech(i.runCtx)
+			err = i.store.EnqueueAllForFulltextIndexing(i.runCtx)
 			if err != nil {
 				return err
 			}
