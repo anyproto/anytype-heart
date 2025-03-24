@@ -130,30 +130,24 @@ func (s *dsObjectStore) ClearFullTextQueue(ctx context.Context, spaceIds ...stri
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
-	for {
-		iter, err := s.fulltextQueue.Find(filterIn).Limit(1000).Iter(s.componentCtx)
-		if err != nil {
-			return fmt.Errorf("create iterator: %w", err)
-		}
-		defer iter.Close()
+	iter, err := s.fulltextQueue.Find(filterIn).Iter(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("create iterator: %w", err)
+	}
+	defer iter.Close()
 
-		hasNext := false
-		for iter.Next() {
-			hasNext = true
-			doc, err := iter.Doc()
-			if err != nil {
-				return fmt.Errorf("read doc: %w", err)
-			}
-			id := doc.Value().GetString(idKey)
-			err = s.fulltextQueue.DeleteId(txn.Context(), id)
-			if err != nil {
-				return fmt.Errorf("del doc: %w", err)
-			}
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("read doc: %w", err)
 		}
-		if hasNext {
-			return txn.Commit()
+		id := doc.Value().GetString(idKey)
+		err = s.fulltextQueue.DeleteId(txn.Context(), id)
+		if err != nil {
+			return fmt.Errorf("del doc: %w", err)
 		}
 	}
+	return txn.Commit()
 }
 
 func (s *dsObjectStore) GetChecksums(spaceID string) (*model.ObjectStoreChecksums, error) {
