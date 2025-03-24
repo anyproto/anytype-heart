@@ -99,5 +99,6 @@
   "defaultViewType",
   "defaultTypeId",
   "resolvedLayout",
-  "pluralName"
+  "pluralName",
+  "isEnforcedLayout"
 ]

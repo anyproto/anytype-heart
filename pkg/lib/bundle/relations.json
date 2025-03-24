@@ -1526,5 +1526,15 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Layout is enforced for all objects of this type",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isEnforcedLayout",
+    "maxCount": 1,
+    "name": "Is enforced layout",
+    "readonly": false,
+    "source": "details"
   }
 ]

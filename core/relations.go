@@ -143,3 +143,17 @@ func (mw *Middleware) ObjectTypeListConflictingRelations(_ context.Context, req 
 		RelationIds: conflictingRelations,
 	}
 }
+
+func (mw *Middleware) ObjectTypeResolveLayoutConflicts(ctx context.Context, req *pb.RpcObjectTypeResolveLayoutConflictsRequest) *pb.RpcObjectTypeResolveLayoutConflictsResponse {
+	detailsService := mustService[detailservice.Service](mw)
+	err := detailsService.ObjectTypeResolveLayoutConflicts(req.TypeObjectId)
+	code := mapErrorCode(err,
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeResolveLayoutConflictsResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeResolveLayoutConflictsResponse{
+		Error: &pb.RpcObjectTypeResolveLayoutConflictsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

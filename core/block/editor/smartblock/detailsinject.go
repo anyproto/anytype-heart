@@ -225,24 +225,33 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 	return nil
 }
 
+// injectResolvedLayout adds resolvedLayout to local details of object. It analyzes details of object type
+// - if isEnforcedLayout == true, resolvedLayout must be the same as recommendedLayout of object type
+// - if isEnforcedLayout == false and object has layout detail, resolvedLayout should be the same as layout value
+// - if isEnforcedLayout == false and object has no layout detail set, resolvedLayout should be the same as recommendedLayout of object type
+// - if object is a template, isEnforcedLayout flag should be ignored and priority will be 1. layout 2. recommendedLayout of target type
+// - fallback is current resolvedLayout value. If it is not ok, then basic
 func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	if s.Details() == nil && s.LocalDetails() == nil {
-		return
-	}
-	rawValue := s.Details().Get(bundle.RelationKeyLayout)
-	if rawValue.Ok() {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
 		return
 	}
 
 	typeObjectId := s.LocalDetails().GetString(bundle.RelationKeyType)
 
 	if s.ObjectTypeKey() == bundle.TypeKeyTemplate {
+		if layoutValue := s.Details().Get(bundle.RelationKeyLayout); layoutValue.Ok() {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layoutValue)
+			return
+		}
 		// resolvedLayout for templates should be derived from target type
 		typeObjectId = s.Details().GetString(bundle.RelationKeyTargetObjectType)
 	}
 
 	if typeObjectId == "" {
+		if layoutValue := s.Details().Get(bundle.RelationKeyLayout); layoutValue.Ok() {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layoutValue)
+			return
+		}
 		if currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout); currentValue.Ok() {
 			return
 		}
@@ -252,10 +261,15 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	}
 
 	currentValue := s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
+	var (
+		valueInType      domain.Value
+		isEnforcedLayout bool
+	)
 
 	typeDetails, found := sb.lastDepDetails[typeObjectId]
 	if found {
-		rawValue = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
+		valueInType = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
+		isEnforcedLayout = typeDetails.GetBool(bundle.RelationKeyIsEnforcedLayout)
 	} else {
 		records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
 		if err != nil || len(records) != 1 {
@@ -266,10 +280,11 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 			return
 		}
-		rawValue = records[0].Details.Get(bundle.RelationKeyRecommendedLayout)
+		valueInType = records[0].Details.Get(bundle.RelationKeyRecommendedLayout)
+		isEnforcedLayout = records[0].Details.GetBool(bundle.RelationKeyIsEnforcedLayout)
 	}
 
-	if !rawValue.Ok() {
+	if !valueInType.Ok() {
 		if currentValue.Ok() {
 			return
 		}
@@ -278,7 +293,14 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 		return
 	}
 
-	s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+	if !isEnforcedLayout {
+		if layoutValue := s.Details().Get(bundle.RelationKeyLayout); layoutValue.Ok() {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layoutValue)
+			return
+		}
+	}
+
+	s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, valueInType)
 }
 
 // changeResolvedLayoutForObjects changes resolvedLayout for object of this type and deletes Layout relation

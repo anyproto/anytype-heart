@@ -2,12 +2,14 @@ package detailservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
@@ -267,4 +269,89 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 
 		return v.Equal(value)
 	}
+}
+
+func (s *service) ObjectTypeResolveLayoutConflicts(objectTypeId string) error {
+	var (
+		spaceId      string
+		layoutInType int64
+	)
+	if err := cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		spaceId = b.SpaceID()
+		layoutInType = b.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyIsEnforcedLayout, domain.Bool(true))
+		return b.Apply(st)
+	}); err != nil {
+		return fmt.Errorf("failed to set isEnforcedLayout detail to object type: %w", err)
+	}
+
+	if spaceId == "" {
+		var e error
+		spaceId, e = s.resolver.ResolveSpaceID(objectTypeId)
+		if e != nil {
+			return fmt.Errorf("failed to resolve space id: %w", e)
+		}
+	}
+
+	index := s.store.SpaceIndex(spaceId)
+	records, err := index.Query(database.Query{Filters: []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyType,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(objectTypeId),
+		},
+	}})
+	if err != nil {
+		return fmt.Errorf("failed to query objects by type: %w", err)
+	}
+
+	space, err := s.spaceService.Get(context.Background(), spaceId)
+	if err != nil {
+		return fmt.Errorf("failed to get space: %w", err)
+	}
+
+	var resultErr error
+	for _, record := range records {
+		id := record.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+
+		if record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == layoutInType {
+			// relevant layout is already set, skipping
+			continue
+		}
+
+		if err = space.DoLockedIfNotExists(id, func() error {
+			return index.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
+				if details == nil {
+					return nil, false, nil
+				}
+				details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layoutInType))
+				return details, true, nil
+			})
+		}); err == nil {
+			continue
+		}
+
+		if !errors.Is(err, ocache.ErrExists) {
+			resultErr = errors.Join(resultErr, err)
+			continue
+		}
+
+		err = space.Do(id, func(b smartblock.SmartBlock) error {
+			st := b.NewState()
+			st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layoutInType))
+			return b.Apply(st, smartblock.KeepInternalFlags, smartblock.NotPushChanges)
+		})
+		if err != nil {
+			resultErr = errors.Join(resultErr, err)
+		}
+	}
+
+	if resultErr != nil {
+		return fmt.Errorf("failed to change layout for objects: %w", resultErr)
+	}
+	return nil
 }

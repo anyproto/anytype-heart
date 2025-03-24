@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "e8392d6bf8efab6b707d68bc3922e4284a18a68370828e3ec6b18e0267b84bea"
+const RelationChecksum = "00d0cc5e237a8bf9042d15fcbe5626f586d1ef94c6b50c193b07fff7c59b843b"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -159,6 +159,7 @@ const (
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyIsEnforcedLayout             domain.RelationKey = "isEnforcedLayout"
 )
 
 var (
@@ -948,6 +949,20 @@ var (
 			MaxCount:         1,
 			Name:             "Is deleted",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsEnforcedLayout: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Layout is enforced for all objects of this type",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisEnforcedLayout",
+			Key:              "isEnforcedLayout",
+			MaxCount:         1,
+			Name:             "Is enforced layout",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
