@@ -522,6 +522,53 @@ func (_c *MockService_ObjectTypeSetRelations_Call) RunAndReturn(run func(string,
 	return _c
 }
 
+// ObjectTypeSetStrictInheritance provides a mock function with given fields: objectTypeId, strictInheritance
+func (_m *MockService) ObjectTypeSetStrictInheritance(objectTypeId string, strictInheritance bool) error {
+	ret := _m.Called(objectTypeId, strictInheritance)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectTypeSetStrictInheritance")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, bool) error); ok {
+		r0 = rf(objectTypeId, strictInheritance)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_ObjectTypeSetStrictInheritance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeSetStrictInheritance'
+type MockService_ObjectTypeSetStrictInheritance_Call struct {
+	*mock.Call
+}
+
+// ObjectTypeSetStrictInheritance is a helper method to define mock.On call
+//   - objectTypeId string
+//   - strictInheritance bool
+func (_e *MockService_Expecter) ObjectTypeSetStrictInheritance(objectTypeId interface{}, strictInheritance interface{}) *MockService_ObjectTypeSetStrictInheritance_Call {
+	return &MockService_ObjectTypeSetStrictInheritance_Call{Call: _e.mock.On("ObjectTypeSetStrictInheritance", objectTypeId, strictInheritance)}
+}
+
+func (_c *MockService_ObjectTypeSetStrictInheritance_Call) Run(run func(objectTypeId string, strictInheritance bool)) *MockService_ObjectTypeSetStrictInheritance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(bool))
+	})
+	return _c
+}
+
+func (_c *MockService_ObjectTypeSetStrictInheritance_Call) Return(_a0 error) *MockService_ObjectTypeSetStrictInheritance_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_ObjectTypeSetStrictInheritance_Call) RunAndReturn(run func(string, bool) error) *MockService_ObjectTypeSetStrictInheritance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetDetails provides a mock function with given fields: ctx, objectId, details
 func (_m *MockService) SetDetails(ctx session.Context, objectId string, details []domain.Detail) error {
 	ret := _m.Called(ctx, objectId, details)

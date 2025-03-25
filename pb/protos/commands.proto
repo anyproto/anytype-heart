@@ -3456,9 +3456,10 @@ message Rpc {
             }
         }
 
-        message ResolveLayoutConflicts {
+        message SetStrictInheritance {
             message Request {
                 string typeObjectId = 1;
+                bool strictInheritance = 2;
             }
 
             message Response {

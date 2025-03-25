@@ -271,7 +271,7 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 	}
 }
 
-func (s *service) ObjectTypeResolveLayoutConflicts(objectTypeId string) error {
+func (s *service) ObjectTypeSetStrictInheritance(objectTypeId string, strictInheritance bool) error {
 	var (
 		spaceId      string
 		layoutInType int64
@@ -280,10 +280,14 @@ func (s *service) ObjectTypeResolveLayoutConflicts(objectTypeId string) error {
 		st := b.NewState()
 		spaceId = b.SpaceID()
 		layoutInType = b.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsEnforcedLayout, domain.Bool(true))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyStrictInheritance, domain.Bool(strictInheritance))
 		return b.Apply(st)
 	}); err != nil {
 		return fmt.Errorf("failed to set isEnforcedLayout detail to object type: %w", err)
+	}
+
+	if !strictInheritance {
+		return nil
 	}
 
 	if spaceId == "" {

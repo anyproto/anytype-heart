@@ -1528,12 +1528,12 @@
     "source": "details"
   },
   {
-    "description": "Layout is enforced for all objects of this type",
+    "description": "Layout settings are strictly inherited for all objects of this type",
     "format": "checkbox",
     "hidden": true,
-    "key": "isEnforcedLayout",
+    "key": "strictInheritance",
     "maxCount": 1,
-    "name": "Is enforced layout",
+    "name": "Strict Inheritance",
     "readonly": false,
     "source": "details"
   }

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "00d0cc5e237a8bf9042d15fcbe5626f586d1ef94c6b50c193b07fff7c59b843b"
+const RelationChecksum = "3756a7331b4efb40e37b08485fca495c70f62ea529a6ea7185f298bb321d39a2"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -159,7 +159,7 @@ const (
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
-	RelationKeyIsEnforcedLayout             domain.RelationKey = "isEnforcedLayout"
+	RelationKeyStrictInheritance            domain.RelationKey = "strictInheritance"
 )
 
 var (
@@ -949,20 +949,6 @@ var (
 			MaxCount:         1,
 			Name:             "Is deleted",
 			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyIsEnforcedLayout: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Layout is enforced for all objects of this type",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brisEnforcedLayout",
-			Key:              "isEnforcedLayout",
-			MaxCount:         1,
-			Name:             "Is enforced layout",
-			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1972,6 +1958,20 @@ var (
 			Key:              "status",
 			MaxCount:         1,
 			Name:             "Status",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyStrictInheritance: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Layout settings are strictly inherited for all objects of this type",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brstrictInheritance",
+			Key:              "strictInheritance",
+			MaxCount:         1,
+			Name:             "Strict Inheritance",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
