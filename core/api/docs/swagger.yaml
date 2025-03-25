@@ -427,6 +427,11 @@ components:
           description: The id of the type (which is unique across spaces)
           example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
           type: string
+        key:
+          description: The key of the type (can be the same across spaces for known
+            types)
+          example: ot-page
+          type: string
         name:
           description: The name of the type
           example: Page
@@ -438,11 +443,6 @@ components:
         recommended_layout:
           description: The recommended layout of the type
           example: todo
-          type: string
-        type_key:
-          description: The key of the type (can be the same across spaces for known
-            types)
-          example: ot-page
           type: string
       type: object
     object.TypeResponse:
@@ -547,8 +547,7 @@ components:
         sort:
           $ref: '#/components/schemas/search.SortOptions'
         types:
-          description: The types of objects to search for, specified by unique key
-            or ID
+          description: The types of objects to search for, specified by key or ID
           example:
           - ot-page
           - ot-678043f0cda9133be777049f

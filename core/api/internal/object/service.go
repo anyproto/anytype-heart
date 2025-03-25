@@ -395,7 +395,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 		types = append(types, Type{
 			Object:            "type",
 			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			TypeKey:           record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+			Key:               record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:              util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:          record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
@@ -430,7 +430,7 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 	return Type{
 		Object:            "type",
 		Id:                typeId,
-		TypeKey:           details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Key:               details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              details[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:              util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:          details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
@@ -562,7 +562,7 @@ func (s *ObjectService) GetTypeFromDetails(typeId string, details []*model.Objec
 	return Type{
 		Object:            "type",
 		Id:                typeId,
-		TypeKey:           objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Key:               objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:              util.GetIcon(s.AccountInfo, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
