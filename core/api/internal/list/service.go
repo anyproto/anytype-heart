@@ -133,26 +133,21 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 
 	switch content := dataviewBlock.Content.(type) {
 	case *model.BlockContentOfDataview:
-		var targetView *model.BlockContentDataviewView
-		if viewId == "" && len(content.Dataview.Views) > 0 {
-			// fallback to first view when view id is empty
-			targetView = content.Dataview.Views[0]
-		} else if viewId != "" {
+		// if view not specified: return all objects without filtering and sorting
+		if viewId != "" {
+			var targetView *model.BlockContentDataviewView
 			for _, view := range content.Dataview.Views {
 				if view.Id == viewId {
 					targetView = view
 					break
 				}
 			}
+			if targetView == nil {
+				return nil, 0, false, ErrFailedGetListDataviewView
+			}
+			sorts = targetView.Sorts
+			filters = targetView.Filters
 		}
-
-		if targetView == nil {
-			return nil, 0, false, ErrFailedGetListDataviewView
-		}
-
-		// use the sorts and filters from the selected view
-		sorts = targetView.Sorts
-		filters = targetView.Filters
 	default:
 		return nil, 0, false, ErrFailedGetListDataview
 	}

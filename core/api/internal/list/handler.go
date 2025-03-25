@@ -51,7 +51,7 @@ func GetListViewsHandler(s *ListService) gin.HandlerFunc {
 // GetObjectsInListHandler
 //
 //	@Summary		Get objects in list
-//	@Description	Returns a paginated list of objects that are associated with a specific list (query or collection) within a space. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning detailed object information for each item of the list. View IDs can be obtained from the block entry with ID "dataview" when retrieving the list object.
+//	@Description	Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.
 //	@Tags			lists
 //	@Produce		json
 //	@Param			space_id	path		string										true	"Space ID"
