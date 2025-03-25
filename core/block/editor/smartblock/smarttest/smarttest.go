@@ -67,6 +67,7 @@ type SmartTest struct {
 	hooksOnce map[string]struct{}
 	sbType    coresb.SmartBlockType
 	spaceId   string
+	layout    model.ObjectTypeLayout
 }
 
 func (st *SmartTest) SpaceID() string { return st.spaceId }
@@ -160,6 +161,7 @@ func (st *SmartTest) SetVerticalAlign(ctx session.Context, align model.BlockVert
 }
 
 func (st *SmartTest) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) error {
+	st.layout = layout
 	return nil
 }
 

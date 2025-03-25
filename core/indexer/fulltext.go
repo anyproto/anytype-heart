@@ -208,7 +208,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
 				layout, _ := sb.Layout()
 				skip := bundledRel.ReadOnly || bundledRel.Hidden
-				if rel.Key == bundle.RelationKeyName.String() || rel.Key == bundle.RelationKeyPluralName.String() {
+				if isName(rel) {
 					skip = false
 				}
 				if layout == model.ObjectType_note && rel.Key == bundle.RelationKeySnippet.String() {
@@ -227,7 +227,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 				Text:    val,
 			}
 
-			if rel.Key == bundle.RelationKeyName.String() {
+			if isName(rel) {
 				layout, layoutValid := sb.Layout()
 				if layoutValid {
 					if _, contains := filesLayouts[layout]; !contains {
@@ -284,6 +284,10 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 	}
 
 	return docs, err
+}
+
+func isName(rel *model.RelationLink) bool {
+	return rel.Key == bundle.RelationKeyName.String() || rel.Key == bundle.RelationKeyPluralName.String()
 }
 
 func (i *indexer) ftInit() error {
