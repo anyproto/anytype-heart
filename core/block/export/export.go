@@ -39,6 +39,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -82,6 +83,7 @@ type export struct {
 	accountService      account.Service
 	notificationService notifications.Notifications
 	processService      process.Service
+	gatewayService      gateway.Gateway
 }
 
 func New() Export {
@@ -97,6 +99,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
 	e.notificationService = app.MustComponent[notifications.Notifications](a)
+	e.gatewayService = app.MustComponent[gateway.Gateway](a)
 	return
 }
 
@@ -115,7 +118,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	if err = queue.Start(); err != nil {
 		return
 	}
-	exportCtx := NewExportContext(e, req)
+	exportCtx := newExportContext(e, req)
 	return exportCtx.exportObjects(ctx, queue)
 }
 
@@ -129,7 +132,7 @@ func (e *export) ExportInMemory(ctx context.Context, spaceId string, objectIds [
 	}
 
 	res = make(map[string][]byte)
-	exportCtx := NewExportContext(e, req)
+	exportCtx := newExportContext(e, req)
 	for _, objectId := range objectIds {
 		b, err := exportCtx.exportObject(ctx, objectId)
 		if err != nil {
@@ -191,11 +194,11 @@ type exportContext struct {
 	relations        map[string]struct{}
 	setOfList        map[string]struct{}
 	objectTypes      map[string]struct{}
-
+	gatewayUrl       string
 	*export
 }
 
-func NewExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
+func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
 	ec := &exportContext{
 		path:             req.Path,
 		spaceId:          req.SpaceId,
@@ -213,8 +216,8 @@ func NewExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		setOfList:        make(map[string]struct{}),
 		objectTypes:      make(map[string]struct{}),
 		relations:        make(map[string]struct{}),
-
-		export: e,
+		gatewayUrl:       "http://" + e.gatewayService.Addr(),
+		export:           e,
 	}
 	return ec
 }
@@ -256,7 +259,13 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) ([]by
 		return nil, err
 	}
 
-	inMemoryWriter := &InMemoryWriter{}
+	var docNamer Namer
+	if e.format == model.Export_Markdown {
+		docNamer = &deepLinkNamer{gatewayUrl: e.gatewayUrl}
+	} else {
+		docNamer = newNamer()
+	}
+	inMemoryWriter := &InMemoryWriter{fn: docNamer}
 	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.transformToDetailsMap())
 	if err != nil {
 		return nil, err

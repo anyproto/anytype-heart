@@ -98,7 +98,7 @@ func ConvertTextToFile(filePath string) *model.BlockContentOfFile {
 		return nil
 	}
 
-	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
+	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "psd", "ico"}
 	videoFormats := []string{"mp4", "m4v", "mov"}
 	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
 	pdfFormat := "pdf"

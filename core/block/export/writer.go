@@ -4,20 +4,26 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type writer interface {
 	Path() string
-	Namer() *namer
+	Namer() Namer
 	WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error)
 	Close() (err error)
+}
+
+type Namer interface {
+	Get(path, hash, title, ext string) (name string)
 }
 
 func uniqName() string {
@@ -44,7 +50,7 @@ type dirWriter struct {
 	m    sync.Mutex
 }
 
-func (d *dirWriter) Namer() *namer {
+func (d *dirWriter) Namer() Namer {
 	d.m.Lock()
 	defer d.m.Unlock()
 	if d.fn == nil {
@@ -108,7 +114,7 @@ type zipWriter struct {
 	fn   *namer
 }
 
-func (d *zipWriter) Namer() *namer {
+func (d *zipWriter) Namer() Namer {
 	d.m.Lock()
 	defer d.m.Unlock()
 	if d.fn == nil {
@@ -152,16 +158,11 @@ func getZipName(path string) string {
 
 type InMemoryWriter struct {
 	data map[string][]byte
-	fn   *namer
+	fn   Namer
 	m    sync.Mutex
 }
 
-func (d *InMemoryWriter) Namer() *namer {
-	d.m.Lock()
-	defer d.m.Unlock()
-	if d.fn == nil {
-		d.fn = newNamer()
-	}
+func (d *InMemoryWriter) Namer() Namer {
 	return d.fn
 }
 
@@ -191,4 +192,29 @@ func (d *InMemoryWriter) GetData(id string) []byte {
 	d.m.Lock()
 	defer d.m.Unlock()
 	return d.data[id]
+}
+
+// deepLinkNamer used to render a single-object export, in md format
+type deepLinkNamer struct {
+	gatewayUrl string
+}
+
+func (fn *deepLinkNamer) Get(path, hash, title, ext string) (name string) {
+	if ext == ".md" {
+		// object links via deeplink to the app
+		return "anytype://object?objectId=" + hash
+	}
+
+	// files links via gateway
+	u, err := url.Parse(fn.gatewayUrl)
+	if err != nil {
+		return "anytype://object?objectId=" + hash
+	}
+	if mill.IsImageExt(ext) {
+		u.Path = "image/" + hash
+	} else {
+		u.Path = "file/" + hash
+	}
+
+	return u.String()
 }
