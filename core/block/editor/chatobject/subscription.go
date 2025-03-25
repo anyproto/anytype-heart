@@ -221,9 +221,9 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 	}))
 }
 
-// updateReadStatus updates the read status of the messages with the given ids
+// updateMessageRead updates the read status of the messages with the given ids
 // read ids should ONLY contain ids if they were actually modified in the DB
-func (s *subscription) updateReadStatus(ids []string, read bool) {
+func (s *subscription) updateMessageRead(ids []string, read bool) {
 	s.updateChatState(func(state *model.ChatState) {
 		if read {
 			state.Messages.Counter -= int32(len(ids))
@@ -235,8 +235,29 @@ func (s *subscription) updateReadStatus(ids []string, read bool) {
 	if !s.canSend() {
 		return
 	}
-	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReadStatus{
-		ChatUpdateReadStatus: &pb.EventChatUpdateReadStatus{
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMessageReadStatus{
+		ChatUpdateMessageReadStatus: &pb.EventChatUpdateMessageReadStatus{
+			Ids:    ids,
+			IsRead: read,
+			SubIds: slices.Clone(s.ids),
+		},
+	}))
+}
+
+func (s *subscription) updateMentionRead(ids []string, read bool) {
+	s.updateChatState(func(state *model.ChatState) {
+		if read {
+			state.Mentions.Counter -= int32(len(ids))
+		} else {
+			state.Mentions.Counter += int32(len(ids))
+		}
+	})
+
+	if !s.canSend() {
+		return
+	}
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMessageReadStatus{
+		ChatUpdateMessageReadStatus: &pb.EventChatUpdateMessageReadStatus{
 			Ids:    ids,
 			IsRead: read,
 			SubIds: slices.Clone(s.ids),

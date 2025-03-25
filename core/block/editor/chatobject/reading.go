@@ -114,7 +114,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		state.Messages.OldestOrderId = newOldestOrderId
 		state.DbTimestamp = int64(lastAdded)
 	})
-	s.subscription.updateReadStatus(msgs, false)
+	s.subscription.updateMessageRead(msgs, false)
 	s.subscription.flush()
 
 	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
@@ -190,9 +190,9 @@ func unreadMessageFilter() query.Filter {
 }
 
 func unreadMentionFilter() query.Filter {
-	// Use Not because old messages don't have read key
-	return query.Not{
-		Filter: query.Key{Path: []string{mentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)},
+	return query.And{
+		query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
+		query.Key{Path: []string{mentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)},
 	}
 }
 
@@ -332,7 +332,7 @@ func (s *storeObject) markReadMessages(changeIds []string, opts *counterOptions)
 		s.subscription.updateChatState(func(state *model.ChatState) {
 			state.Messages.OldestOrderId = newOldestOrderId
 		})
-		s.subscription.updateReadStatus(idsModified, true)
+		s.subscription.updateMessageRead(idsModified, true)
 		s.subscription.flush()
 	}
 }

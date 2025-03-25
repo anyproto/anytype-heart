@@ -14,6 +14,7 @@ const (
 	contentKey     = "content"
 	readKey        = "read"
 	mentionReadKey = "mentionRead"
+	hasMentionKey  = "hasMention"
 	addedKey       = "a"
 	orderKey       = "_o"
 )
@@ -40,6 +41,14 @@ func (m *messageWrapper) setRead(v bool) {
 		m.val.Set(readKey, m.arena.NewTrue())
 	} else {
 		m.val.Set(readKey, m.arena.NewFalse())
+	}
+}
+
+func (m *messageWrapper) setHasMention(v bool) {
+	if v {
+		m.val.Set(hasMentionKey, m.arena.NewTrue())
+	} else {
+		m.val.Del(hasMentionKey)
 	}
 }
 

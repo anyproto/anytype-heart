@@ -12,12 +12,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/timeid"
 )
 
 type ChatHandler struct {
 	subscription    *subscription
 	currentIdentity string
+	myParticipantId string
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
 }
@@ -55,9 +57,19 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	}
 
 	msg.setAddedAt(timeid.NewNano())
-	model := msg.toModel()
-	model.OrderId = ch.Change.Order
-	d.subscription.add(ch.Change.PrevOrderId, model)
+	msgModel := msg.toModel()
+
+	hasMention := false
+	for _, mark := range msgModel.Message.Marks {
+		if mark.Type == model.BlockContentTextMark_Mention && mark.Param == d.myParticipantId {
+			hasMention = true
+			break
+		}
+	}
+	msg.setHasMention(hasMention)
+
+	msgModel.OrderId = ch.Change.Order
+	d.subscription.add(ch.Change.PrevOrderId, msgModel)
 
 	return
 }
