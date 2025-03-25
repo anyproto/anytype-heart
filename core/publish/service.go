@@ -124,7 +124,7 @@ func uniqName() string {
 	return time.Now().Format("Anytype.WebPublish.20060102.150405.99")
 }
 
-func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
+func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, includeSpaceInfo bool) (dirEntries []fs.DirEntry, exportPath string, err error) {
 	tempDir := os.TempDir()
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:          spaceId,
@@ -137,7 +137,7 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 		NoProgress:       true,
 		IncludeNested:    true,
 		IncludeBacklinks: true,
-		IncludeSpace:     true,
+		IncludeSpace:     includeSpaceInfo,
 		LinksStateFilters: &pb.RpcObjectListExportStateFilters{
 			RelationsWhiteList: relationsWhiteListToPbModel(),
 			RemoveBlocks:       true,
@@ -154,8 +154,8 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 	return
 }
 
-func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (err error) {
-	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, includeSpaceInfo bool) (err error) {
+	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId, includeSpaceInfo)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	err = s.applyInviteLink(ctx, spc, &uberSnapshot, joinSpace)
+	err = s.applyInviteLink(ctx, spc, &uberSnapshot, includeSpaceInfo)
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	version, err := s.evaluateDocumentVersion(ctx, spc, pageId, joinSpace)
+	version, err := s.evaluateDocumentVersion(ctx, spc, pageId, includeSpaceInfo)
 	if err != nil {
 		return err
 	}
@@ -210,8 +210,8 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	return nil
 }
 
-func (s *service) applyInviteLink(ctx context.Context, spc clientspace.Space, snapshot *PublishingUberSnapshot, joinSpace bool) error {
-	inviteLink, err := s.extractInviteLink(ctx, spc.Id(), joinSpace, spc.IsPersonal())
+func (s *service) applyInviteLink(ctx context.Context, spc clientspace.Space, snapshot *PublishingUberSnapshot, includeSpaceInfo bool) error {
+	inviteLink, err := s.extractInviteLink(ctx, spc.Id(), includeSpaceInfo, spc.IsPersonal())
 	if err != nil {
 		return err
 	}
@@ -406,11 +406,11 @@ func (s *service) getPublishLimit(globalName string) (int64, error) {
 	return defaultLimit, nil
 }
 
-func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
+func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, includeSpaceInfo bool) (res PublishResult, err error) {
 	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
 	globalName := details.GetString(bundle.RelationKeyGlobalName)
 
-	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
+	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, includeSpaceInfo)
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
