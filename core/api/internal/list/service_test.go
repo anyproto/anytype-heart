@@ -438,6 +438,132 @@ func TestListService_GetObjectsInList(t *testing.T) {
 		require.Equal(t, "Object One", objects[0].Name)
 	})
 
+	t.Run("successful with empty viewId", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// Prepare an ObjectShow response with a dataview block containing a view (which will not be used since viewId is empty)
+		resp := &pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Id: mockedListId,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyType.String():  pbtypes.String(mockedTypeId),
+								bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{mockedSetOfTypeId}),
+							},
+						},
+					},
+					{
+						Id: mockedTypeId,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(model.ObjectType_collection)),
+							},
+						},
+					},
+				},
+				Blocks: []*model.Block{
+					{
+						Id: "dataview",
+						Content: &model.BlockContentOfDataview{
+							Dataview: &model.BlockContentDataview{
+								Views: []*model.BlockContentDataviewView{
+									{
+										Id: mockedListId,
+										Sorts: []*model.BlockContentDataviewSort{
+											{
+												Id:          "view_sort",
+												RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+												Format:      model.RelationFormat_date,
+												Type:        model.BlockContentDataviewSort_Asc,
+											},
+										},
+										Filters: []*model.BlockContentDataviewFilter{
+											{
+												Id:          "view_filter",
+												RelationKey: bundle.RelationKeyStatus.String(),
+												Format:      model.RelationFormat_longtext,
+												Condition:   model.BlockContentDataviewFilter_Equal,
+												Value:       pbtypes.String("active"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedListId,
+			}).
+			Return(resp, nil).Once()
+
+		// Since viewId is empty, sorts and filters should be nil.
+		fx.mwMock.
+			On("ObjectSearchSubscribe", mock.Anything, &pb.RpcObjectSearchSubscribeRequest{
+				SpaceId:      mockedSpaceId,
+				Limit:        int64(limit),
+				Offset:       int64(offset),
+				Keys:         []string{bundle.RelationKeyId.String()},
+				Sorts:        nil,
+				Filters:      nil,
+				CollectionId: mockedListId,
+			}).
+			Return(&pb.RpcObjectSearchSubscribeResponse{
+				Error:    &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_NULL},
+				Counters: &pb.EventObjectSubscriptionCounters{Total: 1},
+				Records: []*types.Struct{
+					{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyId.String(): pbtypes.String("object-1"),
+						},
+					},
+				},
+			}, nil).Once()
+
+		// Expect the ObjectShow call for "object-1" to return its details.
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: "object-1",
+			}).
+			Return(&pb.RpcObjectShowResponse{
+				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+				ObjectView: &model.ObjectView{
+					Details: []*model.ObjectViewDetailsSet{
+						{
+							Id: "object-1",
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyId.String():   pbtypes.String("object-1"),
+									bundle.RelationKeyName.String(): pbtypes.String("Object One"),
+								},
+							},
+						},
+					},
+				},
+			}, nil).Once()
+
+		// when
+		objects, total, hasMore, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, objects, 1)
+		require.Equal(t, 1, total)
+		require.False(t, hasMore)
+		require.Equal(t, "object-1", objects[0].Id)
+		require.Equal(t, "Object One", objects[0].Name)
+	})
+
 	t.Run("object show error", func(t *testing.T) {
 		// given
 		ctx := context.Background()
