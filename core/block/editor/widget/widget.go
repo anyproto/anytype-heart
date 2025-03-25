@@ -26,7 +26,7 @@ const (
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
 	// AddAutoWidget adds a widget block. If widget with the same targetId was installed/removed before, it will not be added again.
-	// blockId is optional and used to protect from
+	// blockId is optional and used to protect from multi-device conflicts.
 	AddAutoWidget(s *state.State, targetId, blockId, viewId string, layout model.BlockContentWidgetLayout) error
 }
 
