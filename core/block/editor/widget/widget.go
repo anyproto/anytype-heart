@@ -78,11 +78,11 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 	}
 	targets = append(targets, targetId)
 	st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
-	var typeBlockAlreadyExists bool
 
 	var (
-		binBlockWrapperId string
-		binIsTheLast      bool
+		binBlockWrapperId      string
+		binIsTheLast           bool
+		typeBlockAlreadyExists bool
 	)
 	err := st.Iterate(func(b simple.Block) (isContinue bool) {
 		link := b.Model().GetLink()
