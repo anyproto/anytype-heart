@@ -19,10 +19,11 @@ import (
 const LastMessageSubscriptionId = "lastMessage"
 
 type subscription struct {
-	spaceId     string
-	chatId      string
-	eventSender event.Sender
-	spaceIndex  spaceindex.Store
+	spaceId         string
+	chatId          string
+	eventSender     event.Sender
+	spaceIndex      spaceindex.Store
+	myParticipantId string
 
 	sessionContext session.Context
 
@@ -34,13 +35,14 @@ type subscription struct {
 	chatStateUpdated bool
 }
 
-func newSubscription(spaceId string, chatId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
+func newSubscription(spaceId string, chatId string, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
 	return &subscription{
-		spaceId:       spaceId,
-		chatId:        chatId,
-		eventSender:   eventSender,
-		spaceIndex:    spaceIndex,
-		identityCache: expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
+		spaceId:         spaceId,
+		chatId:          chatId,
+		eventSender:     eventSender,
+		spaceIndex:      spaceIndex,
+		myParticipantId: myParticipantId,
+		identityCache:   expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
 	}
 }
 
@@ -124,13 +126,23 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 }
 
 func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
-
 	s.updateChatState(func(state *model.ChatState) {
 		if !message.Read {
 			if message.OrderId < state.Messages.OldestOrderId {
 				state.Messages.OldestOrderId = message.OrderId
 			}
 			state.Messages.Counter++
+
+			for _, mark := range message.Message.Marks {
+				if mark.Type == model.BlockContentTextMark_Mention && mark.Param == s.myParticipantId {
+					state.Mentions.Counter++
+
+					if message.OrderId < state.Mentions.OldestOrderId {
+						state.Mentions.OldestOrderId = message.OrderId
+					}
+					break
+				}
+			}
 		}
 		if message.AddedAt > state.DbTimestamp {
 			state.DbTimestamp = message.AddedAt

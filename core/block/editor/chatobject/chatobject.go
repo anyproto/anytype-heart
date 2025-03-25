@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -117,7 +118,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	s.storeSource = storeSource
 
-	s.subscription = newSubscription(s.SpaceID(), s.Id(), s.eventSender, s.spaceIndex)
+	s.subscription = newSubscription(s.SpaceID(), s.Id(), domain.NewParticipantId(s.SpaceID(), s.accountService.AccountID()), s.eventSender, s.spaceIndex)
 
 	s.chatHandler = &ChatHandler{
 		subscription:    s.subscription,
@@ -183,7 +184,9 @@ func (s *storeObject) initialChatState() (*model.ChatState, error) {
 			OldestOrderId: oldestOrderId,
 			Counter:       int32(count),
 		},
-		// todo: add replies counter
+		Mentions: &model.ChatStateUnreadState{
+			// TODO: fill,
+		},
 		DbTimestamp: int64(lastAdded),
 	}, nil
 }
