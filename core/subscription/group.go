@@ -75,8 +75,8 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 		for id := range gs.set {
 			if e := ctx.getEntry(id); e != nil {
 				records = append(records, database.Record{Details: e.data})
-			} else {
-				records = append(records, database.Record{Details: gs.cache.Get(id).data})
+			} else if rec := gs.cache.Get(id); rec != nil {
+				records = append(records, database.Record{Details: rec.data})
 			}
 		}
 

@@ -50,6 +50,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockSpace.EXPECT().Id().Return("spaceId")
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
 		fx.mockStatus.EXPECT().SetOwner(acl.AclState().Identity().Account(), mock.Anything).Return(nil)
@@ -69,6 +70,7 @@ func TestAclObjectManager(t *testing.T) {
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
 		require.Equal(t, fx.aclObjectManager, acl.updater)
+		require.Equal(t, "spaceId", fx.spaceLoaderListener.space)
 	})
 	t.Run("participant", func(t *testing.T) {
 		a := list.NewAclExecutor("spaceId")
@@ -89,6 +91,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockSpace.EXPECT().Id().Return("spaceId")
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
@@ -136,6 +139,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockSpace.EXPECT().Id().Return("spaceId")
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
@@ -173,6 +177,7 @@ type fixture struct {
 	mockAclNotification    *mock_aclnotifications.MockAclNotification
 	mockInviteMigrator     *mock_invitemigrator.MockInviteMigrator
 	mockAccountService     *mock_accountservice.MockService
+	spaceLoaderListener    *testSpaceLoaderListener
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -190,6 +195,7 @@ func newFixture(t *testing.T) *fixture {
 		mockAclNotification:    mock_aclnotifications.NewMockAclNotification(t),
 		mockInviteMigrator:     mock_invitemigrator.NewMockInviteMigrator(t),
 		mockAccountService:     mock_accountservice.NewMockService(ctrl),
+		spaceLoaderListener:    &testSpaceLoaderListener{},
 	}
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockStatus)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteMigrator)).
@@ -198,6 +204,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockParticipantWatcher)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAclNotification)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
+		Register(fx.spaceLoaderListener).
 		Register(fx)
 	return fx
 }
@@ -263,3 +270,17 @@ func (s *syncAclStub) HandleResponse(ctx context.Context, peerId string, objectI
 func (s *syncAclStub) ResponseCollector() syncdeps.ResponseCollector {
 	return nil
 }
+
+type testSpaceLoaderListener struct {
+	SpaceLoaderListener
+	app.Component
+	space string
+}
+
+func (s *testSpaceLoaderListener) OnSpaceLoad(space string) {
+	s.space = space
+}
+func (s *testSpaceLoaderListener) OnSpaceUnload(_ string) {}
+
+func (s *testSpaceLoaderListener) Init(a *app.App) (err error) { return nil }
+func (s *testSpaceLoaderListener) Name() (name string)         { return "spaceLoaderListener" }
