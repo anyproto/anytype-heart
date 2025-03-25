@@ -117,8 +117,8 @@ func (p *Pb) getParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectI
 	return nil, fmt.Errorf("PB: getParams wrong parameters format")
 }
 
-func (p *Pb) getSnapshots() (allSnapshots *common.SnapshotList) {
-	allSnapshots = common.NewSnapshotList()
+func (p *Pb) getSnapshots() (allSnapshots *common.SnapshotContext) {
+	allSnapshots = common.NewSnapshotContext()
 	for _, path := range p.params.GetPath() {
 		if err := p.progress.TryStep(1); err != nil {
 			p.errors.Add(common.ErrCancel)
@@ -133,7 +133,7 @@ func (p *Pb) getSnapshots() (allSnapshots *common.SnapshotList) {
 	return allSnapshots
 }
 
-func (p *Pb) handleImportPath(path string) *common.SnapshotList {
+func (p *Pb) handleImportPath(path string) *common.SnapshotContext {
 	importSource := source.GetSource(path)
 	defer importSource.Close()
 	err := p.extractFiles(path, importSource)
@@ -213,8 +213,8 @@ func (p *Pb) needToImportWidgets(address, accountID string) bool {
 	return address == accountID
 }
 
-func (p *Pb) getSnapshotsFromProvidedFiles(pbFiles source.Source, path, profileID string) (snapshots *common.SnapshotList) {
-	snapshots = common.NewSnapshotList()
+func (p *Pb) getSnapshotsFromProvidedFiles(pbFiles source.Source, path, profileID string) (snapshots *common.SnapshotContext) {
+	snapshots = common.NewSnapshotContext()
 	if iterateErr := pbFiles.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		// skip files from "files" directory
 		if filepath.Dir(fileName) == fileDir {

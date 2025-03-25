@@ -129,7 +129,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
-		snapshotList := common.NewSnapshotList().Add(allSnapshot...).SetWidget(widgetSnapshot)
+		snapshotList := common.NewSnapshotContext().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
@@ -201,7 +201,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
-		snapshotList := common.NewSnapshotList().Add(allSnapshot...).SetWidget(widgetSnapshot)
+		snapshotList := common.NewSnapshotContext().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
@@ -237,7 +237,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
-		snapshotList := common.NewSnapshotList().SetWidget(widgetSnapshot)
+		snapshotList := common.NewSnapshotContext().SetWidget(widgetSnapshot)
 
 		// when
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
@@ -276,7 +276,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
-		snapshotList := common.NewSnapshotList().SetWorkspace(workspace)
+		snapshotList := common.NewSnapshotContext().SetWorkspace(workspace)
 
 		// when
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
@@ -303,7 +303,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
-		snapshotList := common.NewSnapshotList().SetWorkspace(workspace)
+		snapshotList := common.NewSnapshotContext().SetWorkspace(workspace)
 
 		// when
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
@@ -350,7 +350,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
-		snapshotList := common.NewSnapshotList().SetWidget(widgetSnapshot)
+		snapshotList := common.NewSnapshotContext().SetWidget(widgetSnapshot)
 
 		// when
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)

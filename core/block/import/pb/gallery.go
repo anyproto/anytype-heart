@@ -27,7 +27,7 @@ func NewGalleryImport(service *collection.Service) *GalleryImport {
 }
 
 func (g *GalleryImport) ProvideCollection(
-	snapshots *common.SnapshotList,
+	snapshots *common.SnapshotContext,
 	_ map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
 	isNewSpace bool,

@@ -8,7 +8,7 @@ import (
 
 type CollectionProvider interface {
 	ProvideCollection(
-		snapshots *common.SnapshotList,
+		snapshots *common.SnapshotContext,
 		oldToNewID map[string]string,
 		params *pb.RpcObjectImportRequestPbParams,
 		isNewSpace bool,

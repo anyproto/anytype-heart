@@ -22,7 +22,7 @@ func NewSpaceImport(service *collection.Service) *SpaceImport {
 }
 
 func (s *SpaceImport) ProvideCollection(
-	snapshots *common.SnapshotList,
+	snapshots *common.SnapshotContext,
 	oldToNewID map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
 	_ bool,
