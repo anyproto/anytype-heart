@@ -463,6 +463,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 			if err != nil {
 				return err
 			}
+			arena.Reset()
 			return nil
 		})
 		return err
