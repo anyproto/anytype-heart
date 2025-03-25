@@ -18,11 +18,14 @@ import (
 )
 
 const (
-	mockedSpaceId = "mocked-space-id"
-	mockedListId  = "mocked-list-id"
-	mockedViewId  = "view-1"
-	offset        = 0
-	limit         = 100
+	mockedSpaceId     = "mocked-space-id"
+	mockedListId      = "mocked-list-id"
+	mockedTypeId      = "mocked-type-id"
+	mockedSetOfTypeId = "mocked-set-of-type-id"
+	mockedUniueKey    = "mocked-unique-key"
+	mockedViewId      = "view-1"
+	offset            = 0
+	limit             = 100
 )
 
 type fixture struct {
@@ -74,7 +77,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			Filters: filters,
 		}
 
-		// Expect the ObjectShow call for the list to return a block with a dataview.
+		// Expect the ObjectShow call for the list to return the type in the details and dataview block.
 		fx.mwMock.
 			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
 				SpaceId:  mockedSpaceId,
@@ -83,6 +86,25 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			Return(&pb.RpcObjectShowResponse{
 				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 				ObjectView: &model.ObjectView{
+					Details: []*model.ObjectViewDetailsSet{
+						{
+							Id: mockedListId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyType.String():  pbtypes.String(mockedTypeId),
+									bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{mockedSetOfTypeId}),
+								},
+							},
+						},
+						{
+							Id: mockedTypeId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(model.ObjectType_set)),
+								},
+							},
+						},
+					},
 					Blocks: []*model.Block{
 						{
 							Id: "dataview",
@@ -96,16 +118,38 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
+		// Expect the ObjectShow to return the type's unique key.
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedSetOfTypeId,
+			}).
+			Return(&pb.RpcObjectShowResponse{
+				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+				ObjectView: &model.ObjectView{
+					Details: []*model.ObjectViewDetailsSet{
+						{
+							Id: mockedSetOfTypeId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedUniueKey),
+								},
+							},
+						},
+					},
+				},
+			}, nil).Once()
+
 		// Expect the ObjectSearchSubscribe call to return one record.
 		fx.mwMock.
 			On("ObjectSearchSubscribe", mock.Anything, &pb.RpcObjectSearchSubscribeRequest{
-				SpaceId:      mockedSpaceId,
-				Limit:        int64(limit),
-				Offset:       int64(offset),
-				Keys:         []string{bundle.RelationKeyId.String()},
-				CollectionId: mockedListId,
-				Sorts:        sorts,
-				Filters:      filters,
+				SpaceId: mockedSpaceId,
+				Limit:   int64(limit),
+				Offset:  int64(offset),
+				Keys:    []string{bundle.RelationKeyId.String()},
+				Sorts:   sorts,
+				Filters: filters,
+				Source:  []string{mockedUniueKey},
 			}).
 			Return(&pb.RpcObjectSearchSubscribeResponse{
 				Error:    &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_NULL},
@@ -295,6 +339,25 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			Return(&pb.RpcObjectShowResponse{
 				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 				ObjectView: &model.ObjectView{
+					Details: []*model.ObjectViewDetailsSet{
+						{
+							Id: mockedListId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyType.String():  pbtypes.String(mockedTypeId),
+									bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{mockedSetOfTypeId}),
+								},
+							},
+						},
+						{
+							Id: mockedTypeId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(model.ObjectType_collection)),
+								},
+							},
+						},
+					},
 					Blocks: []*model.Block{
 						{
 							Id: "dataview",
@@ -315,9 +378,9 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Limit:        int64(limit),
 				Offset:       int64(offset),
 				Keys:         []string{bundle.RelationKeyId.String()},
-				CollectionId: mockedListId,
 				Sorts:        sorts,
 				Filters:      filters,
+				CollectionId: mockedListId,
 			}).
 			Return(&pb.RpcObjectSearchSubscribeResponse{
 				Error: &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_UNKNOWN_ERROR},
@@ -351,6 +414,25 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			Return(&pb.RpcObjectShowResponse{
 				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 				ObjectView: &model.ObjectView{
+					Details: []*model.ObjectViewDetailsSet{
+						{
+							Id: mockedListId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyType.String():  pbtypes.String(mockedTypeId),
+									bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{mockedSetOfTypeId}),
+								},
+							},
+						},
+						{
+							Id: mockedTypeId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(model.ObjectType_collection)),
+								},
+							},
+						},
+					},
 					Blocks: []*model.Block{
 						{
 							Id: "dataview",
@@ -370,9 +452,9 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Limit:        int64(limit),
 				Offset:       int64(offset),
 				Keys:         []string{bundle.RelationKeyId.String()},
-				CollectionId: mockedListId,
 				Sorts:        sorts,
 				Filters:      filters,
+				CollectionId: mockedListId,
 			}).
 			Return(&pb.RpcObjectSearchSubscribeResponse{
 				Error:    &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_NULL},
