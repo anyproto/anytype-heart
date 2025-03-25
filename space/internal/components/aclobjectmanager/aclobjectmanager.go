@@ -51,6 +51,7 @@ type aclObjectManager struct {
 	statService         debugstat.StatService
 	started             bool
 	notificationService aclnotifications.AclNotification
+	spaceLoaderListener SpaceLoaderListener
 	participantWatcher  participantwatcher.ParticipantWatcher
 	inviteMigrator      invitemigrator.InviteMigrator
 	accountService      accountservice.Service
@@ -59,6 +60,11 @@ type aclObjectManager struct {
 	lastIndexed   string
 	guestKey      crypto.PrivKey
 	mx            sync.Mutex
+}
+
+type SpaceLoaderListener interface {
+	OnSpaceLoad(spaceId string)
+	OnSpaceUnload(spaceId string)
 }
 
 func (a *aclObjectManager) ProvideStat() any {
@@ -94,6 +100,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.accountService = app.MustComponent[accountservice.Service](ap)
 	a.participantWatcher = app.MustComponent[participantwatcher.ParticipantWatcher](ap)
 	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
+	a.spaceLoaderListener = app.MustComponent[SpaceLoaderListener](ap)
 	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
 	if a.statService == nil {
 		a.statService = debugstat.NewNoOp()
@@ -117,6 +124,7 @@ func (a *aclObjectManager) Run(ctx context.Context) (err error) {
 }
 
 func (a *aclObjectManager) Close(ctx context.Context) (err error) {
+	a.spaceLoaderListener.OnSpaceUnload(a.sp.Id())
 	if !a.started {
 		return
 	}
@@ -136,6 +144,7 @@ func (a *aclObjectManager) process() {
 		log.Error("load space", zap.Error(a.loadErr))
 		return
 	}
+	a.spaceLoaderListener.OnSpaceLoad(a.sp.Id())
 	err := a.inviteMigrator.MigrateExistingInvites(a.sp)
 	if err != nil {
 		log.Warn("migrate existing invites", zap.Error(err))

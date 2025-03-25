@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
@@ -39,13 +40,15 @@ func (w *spaceWaiter) waitSpace(ctx context.Context, spaceId string) (sp clients
 		return nil, fmt.Errorf("wait views: %w", err)
 	}
 	// if there is no such space view then there is no space
-	exists, err := techSpace.SpaceViewExists(ctx, spaceId)
-	if err != nil {
-		// func returns error only on derive
-		return nil, fmt.Errorf("space view derive error: %w", err)
-	}
-	if !exists {
-		return nil, ErrSpaceNotExists
+	if spaceId != addr.AnytypeMarketplaceWorkspace {
+		exists, err := techSpace.SpaceViewExists(ctx, spaceId)
+		if err != nil {
+			// func returns error only on derive
+			return nil, fmt.Errorf("space view derive error: %w", err)
+		}
+		if !exists {
+			return nil, ErrSpaceNotExists
+		}
 	}
 	// we should wait a bit until the controller is created
 	for !w.svc.checkControllerExists(spaceId) {
