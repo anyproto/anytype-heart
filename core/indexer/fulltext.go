@@ -208,7 +208,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
 				layout, _ := sb.Layout()
 				skip := bundledRel.ReadOnly || bundledRel.Hidden
-				if rel.Key == bundle.RelationKeyName.String() {
+				if rel.Key == bundle.RelationKeyName.String() || rel.Key == bundle.RelationKeyPluralName.String() {
 					skip = false
 				}
 				if layout == model.ObjectType_note && rel.Key == bundle.RelationKeySnippet.String() {

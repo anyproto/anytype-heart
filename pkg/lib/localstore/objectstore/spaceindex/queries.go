@@ -23,6 +23,11 @@ import (
 	text2 "github.com/anyproto/anytype-heart/util/text"
 )
 
+var pluralNameId = domain.ObjectPath{
+	ObjectId:    "",
+	RelationKey: bundle.RelationKeyPluralName.String(),
+}.String()
+
 const (
 	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
 	minFulltextScore = 0.02
@@ -45,7 +50,7 @@ func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey domain.Relati
 func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
 	var injectedResults []database.Record
 	id := details.GetString(bundle.RelationKeyId)
-	if path.RelationKey != bundle.RelationKeyName.String() {
+	if path.RelationKey != bundle.RelationKeyName.String() || path.RelationKey != bundle.RelationKeyName.String() {
 		// inject only in case we match the name
 		return nil
 	}
@@ -211,7 +216,10 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 			rec.Meta = res.Model()
 			if rec.Meta.Highlight == "" {
-				title := details.GetString(bundle.RelationKeyName)
+				title := details.GetString(bundle.RelationKeyPluralName)
+				if title == "" {
+					title = details.GetString(bundle.RelationKeyName)
+				}
 				index := strings.Index(strings.ToLower(title), strings.ToLower(ftsSearch))
 				titleArr := []byte(title)
 				if index != -1 {
@@ -339,7 +347,7 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 		if len(objectPerBlockResults) == 0 {
 			continue
 		}
-		objectResults = append(objectResults, objectPerBlockResults[0])
+		objectResults = append(objectResults, preferPluralNameRelation(objectPerBlockResults))
 	}
 
 	sort.Slice(objectResults, func(i, j int) bool {
@@ -377,6 +385,16 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 	}
 
 	return results, nil
+}
+
+func preferPluralNameRelation(objectPerBlockResults []*ftsearch.DocumentMatch) *ftsearch.DocumentMatch {
+	doc, found := lo.Find(objectPerBlockResults, func(item *ftsearch.DocumentMatch) bool {
+		return strings.HasSuffix(item.ID, pluralNameId)
+	})
+	if !found {
+		doc = objectPerBlockResults[0]
+	}
+	return doc
 }
 
 func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
