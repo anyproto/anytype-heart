@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/iancoleman/strcase"
+
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -24,6 +26,7 @@ var (
 )
 
 type Service interface {
+	GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error)
 	GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error)
 	AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
@@ -36,6 +39,71 @@ type ListService struct {
 
 func NewService(mw service.ClientCommandsServer, objectService *object.ObjectService) *ListService {
 	return &ListService{mw: mw, objectService: objectService}
+}
+
+// GetListViews retrieves views of a list
+func (s *ListService) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error) {
+	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: listId,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return nil, 0, false, ErrFailedGetList
+	}
+
+	var dataviewBlock *model.Block
+	for _, block := range resp.ObjectView.Blocks {
+		if block.Id == "dataview" {
+			dataviewBlock = block
+			break
+		}
+	}
+
+	if dataviewBlock == nil {
+		return nil, 0, false, ErrFailedGetListDataview
+	}
+
+	var views []View
+	switch content := dataviewBlock.Content.(type) {
+	case *model.BlockContentOfDataview:
+		for _, view := range content.Dataview.Views {
+			var filters []Filter
+			for _, f := range view.Filters {
+				filters = append(filters, Filter{
+					Id:          f.Id,
+					PropertyKey: f.RelationKey,
+					Format:      s.objectService.MapRelationFormat(f.Format),
+					Condition:   strcase.ToSnake(model.BlockContentDataviewFilterCondition_name[int32(f.Condition)]),
+					Value:       f.Value.GetStringValue(),
+				})
+			}
+			var sorts []Sort
+			for _, srt := range view.Sorts {
+				sorts = append(sorts, Sort{
+					Id:          srt.Id,
+					PropertyKey: srt.RelationKey,
+					Format:      s.objectService.MapRelationFormat(srt.Format),
+					SortType:    strcase.ToSnake(model.BlockContentDataviewSortType_name[int32(srt.Type)]),
+				})
+
+				views = append(views, View{
+					Id:      view.Id,
+					Name:    view.Name,
+					Layout:  s.mapDataviewTypeName(view.Type),
+					Filters: filters,
+					Sorts:   sorts,
+				})
+			}
+		}
+	default:
+		return nil, 0, false, ErrFailedGetListDataview
+	}
+
+	total := len(views)
+	paginatedViews, hasMore := pagination.Paginate(views, offset, limit)
+
+	return paginatedViews, total, hasMore, nil
 }
 
 // GetObjectsInList retrieves objects in a list
@@ -169,4 +237,14 @@ func (s *ListService) RemoveObjectsFromList(ctx context.Context, spaceId string,
 	}
 
 	return nil
+}
+
+// mapDataviewTypeName maps the dataview type to a string.
+func (s *ListService) mapDataviewTypeName(dataviewType model.BlockContentDataviewViewType) string {
+	switch dataviewType {
+	case model.BlockContentDataviewView_Table:
+		return "grid"
+	default:
+		return strcase.ToSnake(model.BlockContentDataviewViewType_name[int32(dataviewType)])
+	}
 }

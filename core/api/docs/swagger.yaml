@@ -26,6 +26,78 @@ components:
           example: /path/to/export
           type: string
       type: object
+    list.Filter:
+      properties:
+        condition:
+          description: The filter condition
+          example: contains
+          type: string
+        format:
+          description: The format of the property used for filtering
+          example: text
+          type: string
+        id:
+          description: The id of the filter
+          example: 67bf3f21cda9134102e2422c
+          type: string
+        property_key:
+          description: The property key used for filtering
+          example: name
+          type: string
+        value:
+          description: The value used for filtering
+          example: Some value...
+          type: string
+      type: object
+    list.Sort:
+      properties:
+        format:
+          description: The format of the property used for sorting
+          example: text
+          type: string
+        id:
+          description: The id of the sort
+          example: 67bf3f21cda9134102e2422c
+          type: string
+        property_key:
+          description: The property key used for sorting
+          example: name
+          type: string
+        sort_type:
+          description: The sort direction
+          example: asc
+          type: string
+      type: object
+    list.View:
+      properties:
+        filters:
+          description: The list of filters
+          items:
+            $ref: '#/components/schemas/list.Filter'
+          type: array
+          uniqueItems: false
+        id:
+          description: The id of the view
+          example: 67bf3f21cda9134102e2422c
+          type: string
+        layout:
+          description: The layout of the view
+          enum:
+          - grid
+          - table
+          example: grid
+          type: string
+        name:
+          description: The name of the view
+          example: All
+          type: string
+        sorts:
+          description: The list of sorts
+          items:
+            $ref: '#/components/schemas/list.Sort'
+          type: array
+          uniqueItems: false
+      type: object
     object.Block:
       properties:
         align:
@@ -49,8 +121,6 @@ components:
             type: string
           type: array
           uniqueItems: false
-        dataview:
-          $ref: '#/components/schemas/object.Dataview'
         file:
           $ref: '#/components/schemas/object.File'
         id:
@@ -99,16 +169,6 @@ components:
           example: ot-page
           type: string
       type: object
-    object.Dataview:
-      description: The dataview, applicable for list objects
-      properties:
-        views:
-          description: The list of views
-          items:
-            $ref: '#/components/schemas/object.View'
-          type: array
-          uniqueItems: false
-      type: object
     object.File:
       description: The file of the block, if applicable
       properties:
@@ -138,29 +198,6 @@ components:
           type: string
         type:
           description: The type of the file
-          type: string
-      type: object
-    object.Filter:
-      properties:
-        condition:
-          description: The filter condition
-          example: contains
-          type: string
-        format:
-          description: The format of the property used for filtering
-          example: text
-          type: string
-        id:
-          description: The id of the filter
-          example: 67bf3f21cda9134102e2422c
-          type: string
-        property_key:
-          description: The property key used for filtering
-          example: name
-          type: string
-        value:
-          description: The value used for filtering
-          example: Some value...
           type: string
       type: object
     object.Object:
@@ -297,25 +334,6 @@ components:
           example: https://example.com
           type: string
       type: object
-    object.Sort:
-      properties:
-        format:
-          description: The format of the property used for sorting
-          example: text
-          type: string
-        id:
-          description: The id of the sort
-          example: 67bf3f21cda9134102e2422c
-          type: string
-        property_key:
-          description: The property key used for sorting
-          example: name
-          type: string
-        sort_type:
-          description: The sort direction
-          example: asc
-          type: string
-      type: object
     object.Tag:
       description: The select value, if applicable
       properties:
@@ -432,35 +450,16 @@ components:
         type:
           $ref: '#/components/schemas/object.Type'
       type: object
-    object.View:
+    pagination.PaginatedResponse-list_View:
       properties:
-        filters:
-          description: The list of filters
+        data:
+          description: The list of items in the current result set
           items:
-            $ref: '#/components/schemas/object.Filter'
+            $ref: '#/components/schemas/list.View'
           type: array
           uniqueItems: false
-        id:
-          description: The id of the view
-          example: 67bf3f21cda9134102e2422c
-          type: string
-        layout:
-          description: The layout of the view
-          enum:
-          - grid
-          - table
-          example: grid
-          type: string
-        name:
-          description: The name of the view
-          example: All
-          type: string
-        sorts:
-          description: The list of sorts
-          items:
-            $ref: '#/components/schemas/object.Sort'
-          type: array
-          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
       type: object
     pagination.PaginatedResponse-object_Object:
       properties:
@@ -1174,9 +1173,9 @@ paths:
       - lists
   /spaces/{space_id}/lists/{list_id}/objects:
     post:
-      description: Enables clients to add one or more objects to a specific list by
-        submitting a JSON array of object IDs. Upon success, the endpoint returns
-        a confirmation message. This endpoint is vital for building user interfaces
+      description: Enables clients to add one or more objects to a specific list (collection
+        only) by submitting a JSON array of object IDs. Upon success, the endpoint
+        returns a confirmation message. This endpoint is vital for building user interfaces
         that allow drag‑and‑drop or multi‑select additions to collections.
       parameters:
       - description: Space ID
@@ -1238,11 +1237,11 @@ paths:
       - lists
   /spaces/{space_id}/lists/{list_id}/objects/{object_id}:
     delete:
-      description: Removes a given object from the specified list in a space. The
-        endpoint takes the space, list, and object identifiers as path parameters.
-        It's subject to rate limiting and returns a success message on completion.
-        It is used for dynamically managing collections without affecting the underlying
-        object data.
+      description: Removes a given object from the specified list (collection only)
+        in a space. The endpoint takes the space, list, and object identifiers as
+        path parameters. It's subject to rate limiting and returns a success message
+        on completion. It is used for dynamically managing collections without affecting
+        the underlying object data.
       parameters:
       - description: Space ID
         in: path
@@ -1296,6 +1295,69 @@ paths:
       security:
       - bearerauth: []
       summary: Remove object from list
+      tags:
+      - lists
+  /spaces/{space_id}/lists/{list_id}/views:
+    get:
+      description: Returns a paginated list of views defined for a specific list (query
+        or collection) within a space. Each view includes configuration details such
+        as layout, applied filters, and sorting options, enabling clients to render
+        the list according to user preferences and context. This endpoint supports
+        pagination parameters to control the number of views returned and the starting
+        point of the result set.
+      parameters:
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: List ID
+        in: path
+        name: list_id
+        required: true
+        schema:
+          type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: The number of items to return
+        in: query
+        name: limit
+        schema:
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pagination.PaginatedResponse-list_View'
+          description: List of views
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Get list views
       tags:
       - lists
   /spaces/{space_id}/members:
