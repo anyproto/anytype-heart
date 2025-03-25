@@ -12,7 +12,7 @@ import (
 // GetObjectsInListHandler
 //
 //	@Summary		Get objects in list
-//	@Description	Returns a paginated list of objects that are associated with a specific list (or collection) within a space. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning detailed object information for each item of the list.
+//	@Description	Returns a paginated list of objects that are associated with a specific list (query or collection) within a space. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning detailed object information for each item of the list. View IDs can be obtained from the block entry with ID "dataview" when retrieving the list object.
 //	@Tags			lists
 //	@Produce		json
 //	@Param			space_id	path		string										true	"Space ID"
@@ -36,7 +36,12 @@ func GetObjectsInListHandler(s *ListService) gin.HandlerFunc {
 
 		objects, total, hasMore, err := s.GetObjectsInList(c, spaceId, listId, viewId, offset, limit)
 		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrFailedGetList, http.StatusNotFound),
+			util.ErrToCode(ErrFailedGetListDataview, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedGetListDataviewView, http.StatusInternalServerError),
+			util.ErrToCode(ErrUnsupportedListType, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedGetObjectsInList, http.StatusInternalServerError),
+			util.ErrToCode(util.ErrorTypeNotFound, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

@@ -94,15 +94,31 @@ func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, u
 		Keys: []string{bundle.RelationKeyId.String()},
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return "", ErrFailedSearchType
-	}
+	if resp.Error != nil {
+		if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+			return "", ErrFailedSearchType
+		}
 
-	if len(resp.Records) == 0 {
-		return "", ErrorTypeNotFound
+		if len(resp.Records) == 0 {
+			return "", ErrorTypeNotFound
+		}
 	}
 
 	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
+}
+
+// ResolveIdtoUniqueKey resolves the type's ID to the unique key
+func ResolveIdtoUniqueKey(mw service.ClientCommandsServer, spaceId string, typeId string) (uniqueKey string, err error) {
+	resp := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: typeId,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return "", ErrorTypeNotFound
+	}
+
+	return resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), nil
 }
 
 // ResolveRelationKeyToPropertyName resolves the property key to the property's name

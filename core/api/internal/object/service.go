@@ -207,7 +207,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		Type:       s.getTypeFromDetails(details[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
+		Type:       s.GetTypeFromDetails(details[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
 		Blocks:     s.getBlocks(resp),
 		Properties: s.getProperties(resp),
 	}
@@ -545,8 +545,8 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 	}, nil
 }
 
-// getTypeFromDetails returns the type from the details of the ObjectShowResponse.
-func (s *ObjectService) getTypeFromDetails(typeId string, details []*model.ObjectViewDetailsSet) Type {
+// GetTypeFromDetails returns the type from the details of the ObjectShowResponse.
+func (s *ObjectService) GetTypeFromDetails(typeId string, details []*model.ObjectViewDetailsSet) Type {
 	var objectTypeDetail *types.Struct
 	for _, detail := range details {
 		if detail.Id == typeId {

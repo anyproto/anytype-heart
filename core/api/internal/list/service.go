@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -16,6 +17,7 @@ var (
 	ErrFailedGetList               = errors.New("failed to get list")
 	ErrFailedGetListDataview       = errors.New("failed to get list dataview")
 	ErrFailedGetListDataviewView   = errors.New("failed to get list dataview view")
+	ErrUnsupportedListType         = errors.New("unsupported list type")
 	ErrFailedGetObjectsInList      = errors.New("failed to get objects in list")
 	ErrFailedAddObjectsToList      = errors.New("failed to add objects to list")
 	ErrFailedRemoveObjectsFromList = errors.New("failed to remove objects from list")
@@ -88,14 +90,37 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 		return nil, 0, false, ErrFailedGetListDataview
 	}
 
+	var collectionId string
+	var source []string
+	listType := s.objectService.GetTypeFromDetails(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details)
+
+	if listType.RecommendedLayout == "set" {
+		// for queries, we search within the space for objects of the setOf type
+		setOfValues := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySetOf.String()].GetListValue().Values
+		for _, value := range setOfValues {
+			typeKey, err := util.ResolveIdtoUniqueKey(s.mw, spaceId, value.GetStringValue())
+			if err != nil {
+				return nil, 0, false, err
+			}
+			source = append(source, typeKey)
+		}
+	} else if listType.RecommendedLayout == "collection" {
+		// for collections, we need to search within that collection
+		collectionId = listId
+	} else {
+		return nil, 0, false, ErrUnsupportedListType
+	}
+
+	// TODO: use subscription service with internal: 'true' to not send events to clients
 	searchResp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
 		SpaceId:      spaceId,
 		Limit:        int64(limit),  // nolint: gosec
 		Offset:       int64(offset), // nolint: gosec
 		Keys:         []string{bundle.RelationKeyId.String()},
-		CollectionId: listId,
 		Sorts:        sorts,
 		Filters:      filters,
+		Source:       source,
+		CollectionId: collectionId,
 	})
 
 	// TODO: returned error from ObjectSearchSubscribe is inconsistent with other RPCs: Error is nil instead of Code being NULL
