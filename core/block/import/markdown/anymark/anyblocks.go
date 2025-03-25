@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -98,7 +99,6 @@ func ConvertTextToFile(filePath string) *model.BlockContentOfFile {
 		return nil
 	}
 
-	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "psd", "ico"}
 	videoFormats := []string{"mp4", "m4v", "mov"}
 	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
 	pdfFormat := "pdf"
@@ -107,11 +107,8 @@ func ConvertTextToFile(filePath string) *model.BlockContentOfFile {
 	fileExt := filepath.Ext(filePath)
 	if fileExt != "" {
 		fileExt = fileExt[1:]
-		for _, ext := range imageFormats {
-			if strings.EqualFold(fileExt, ext) {
-				fileType = model.BlockContentFile_Image
-				break
-			}
+		if mill.IsImageExt(fileExt) {
+			fileType = model.BlockContentFile_Image
 		}
 
 		for _, ext := range videoFormats {

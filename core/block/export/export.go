@@ -3,8 +3,10 @@ package export
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -70,7 +72,7 @@ var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
 	Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
-	ExportInMemory(ctx context.Context, spaceId string, objectIds []string, format model.ExportFormat, includeRelations bool) (res map[string][]byte, err error)
+	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
 	app.Component
 }
 
@@ -122,26 +124,18 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	return exportCtx.exportObjects(ctx, queue)
 }
 
-func (e *export) ExportInMemory(ctx context.Context, spaceId string, objectIds []string, format model.ExportFormat, includeRelations bool) (res map[string][]byte, err error) {
+func (e *export) ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error) {
 	req := pb.RpcObjectListExportRequest{
-		SpaceId:       spaceId,
-		ObjectIds:     objectIds,
-		IncludeFiles:  false,
-		Format:        format,
-		IncludeNested: true,
+		SpaceId:         spaceId,
+		ObjectIds:       []string{objectId},
+		IncludeFiles:    true,
+		Format:          format,
+		IncludeNested:   true,
+		IncludeArchived: true,
 	}
 
-	res = make(map[string][]byte)
 	exportCtx := newExportContext(e, req)
-	for _, objectId := range objectIds {
-		b, err := exportCtx.exportObject(ctx, objectId)
-		if err != nil {
-			return nil, err
-		}
-		res[objectId] = b
-	}
-
-	return res, nil
+	return exportCtx.exportObject(ctx, objectId)
 }
 
 func (e *export) finishWithNotification(spaceId string, exportFormat model.ExportFormat, queue process.Queue, err error) {
@@ -251,31 +245,38 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 }
 
 // exportObject synchronously exports a single object and return the bytes slice
-func (e *exportContext) exportObject(ctx context.Context, objectId string) ([]byte, error) {
+func (e *exportContext) exportObject(ctx context.Context, objectId string) (string, error) {
 	e.reqIds = []string{objectId}
 	e.includeArchive = true
 	err := e.docsForExport(ctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	var docNamer Namer
-	if e.format == model.Export_Markdown {
-		docNamer = &deepLinkNamer{gatewayUrl: e.gatewayUrl}
+	if e.format == model.Export_Markdown && e.gatewayUrl != "" {
+		u, err := url.Parse(e.gatewayUrl)
+		if err != nil {
+			return "", err
+		}
+		docNamer = &deepLinkNamer{gatewayUrl: *u}
 	} else {
 		docNamer = newNamer()
 	}
 	inMemoryWriter := &InMemoryWriter{fn: docNamer}
 	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.transformToDetailsMap())
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	for _, v := range inMemoryWriter.data {
-		return v, nil
+		if e.format == model.Export_Protobuf {
+			return base64.StdEncoding.EncodeToString(v), nil
+		}
+		return string(v), nil
 	}
 
-	return nil, fmt.Errorf("failed to find data in writer")
+	return "", fmt.Errorf("failed to find data in writer")
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {

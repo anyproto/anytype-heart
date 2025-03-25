@@ -196,7 +196,7 @@ func (d *InMemoryWriter) GetData(id string) []byte {
 
 // deepLinkNamer used to render a single-object export, in md format
 type deepLinkNamer struct {
-	gatewayUrl string
+	gatewayUrl url.URL
 }
 
 func (fn *deepLinkNamer) Get(path, hash, title, ext string) (name string) {
@@ -206,10 +206,10 @@ func (fn *deepLinkNamer) Get(path, hash, title, ext string) (name string) {
 	}
 
 	// files links via gateway
-	u, err := url.Parse(fn.gatewayUrl)
-	if err != nil {
+	if fn.gatewayUrl.Host == "" {
 		return "anytype://object?objectId=" + hash
 	}
+	u := fn.gatewayUrl
 	if mill.IsImageExt(ext) {
 		u.Path = "image/" + hash
 	} else {
