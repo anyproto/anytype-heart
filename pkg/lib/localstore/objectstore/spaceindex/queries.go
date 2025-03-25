@@ -50,7 +50,7 @@ func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey domain.Relati
 func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
 	var injectedResults []database.Record
 	id := details.GetString(bundle.RelationKeyId)
-	if path.RelationKey != bundle.RelationKeyName.String() || path.RelationKey != bundle.RelationKeyName.String() {
+	if path.RelationKey != bundle.RelationKeyName.String() || path.RelationKey != bundle.RelationKeyPluralName.String() {
 		// inject only in case we match the name
 		return nil
 	}
