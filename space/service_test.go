@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller/mock_spacecontroller"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -335,6 +336,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
 		Register(fx.objectStore).
+		Register(&testSpaceLoaderListener{}).
 		Register(fx.service)
 	fx.expectRun(t, expectOldAccount)
 
@@ -425,3 +427,14 @@ func makeLocalInfo(spaceId string, remoteStatus spaceinfo.RemoteStatus) spaceinf
 	info.SetRemoteStatus(remoteStatus)
 	return info
 }
+
+type testSpaceLoaderListener struct {
+	aclobjectmanager.SpaceLoaderListener
+	app.Component
+}
+
+func (s *testSpaceLoaderListener) OnSpaceLoad(_ string)   {}
+func (s *testSpaceLoaderListener) OnSpaceUnload(_ string) {}
+
+func (s *testSpaceLoaderListener) Init(a *app.App) (err error) { return nil }
+func (s *testSpaceLoaderListener) Name() (name string)         { return "spaceLoaderListener" }
