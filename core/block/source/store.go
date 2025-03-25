@@ -89,7 +89,9 @@ func (s *store) InitDiffManager(ctx context.Context, seenHeads []string) (err er
 		})
 	}
 	onRemove := func(removed []string) {
-		s.onDiffManagerRemove(removed)
+		if s.onDiffManagerRemove != nil {
+			s.onDiffManagerRemove(removed)
+		}
 	}
 	s.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
 	return
@@ -181,7 +183,7 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         s.accountKeysService.Account().SignKey,
+		Key:         s.ObjectTree.AclList().AclState().Key(),
 		IsEncrypted: true,
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),

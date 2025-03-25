@@ -120,6 +120,54 @@ func (_c *MockService_AccountMetadataSymKey_Call) RunAndReturn(run func() crypto
 	return _c
 }
 
+// AddStreamable provides a mock function with given fields: ctx, id, guestKey
+func (_m *MockService) AddStreamable(ctx context.Context, id string, guestKey crypto.PrivKey) error {
+	ret := _m.Called(ctx, id, guestKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddStreamable")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey) error); ok {
+		r0 = rf(ctx, id, guestKey)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_AddStreamable_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddStreamable'
+type MockService_AddStreamable_Call struct {
+	*mock.Call
+}
+
+// AddStreamable is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - guestKey crypto.PrivKey
+func (_e *MockService_Expecter) AddStreamable(ctx interface{}, id interface{}, guestKey interface{}) *MockService_AddStreamable_Call {
+	return &MockService_AddStreamable_Call{Call: _e.mock.On("AddStreamable", ctx, id, guestKey)}
+}
+
+func (_c *MockService_AddStreamable_Call) Run(run func(ctx context.Context, id string, guestKey crypto.PrivKey)) *MockService_AddStreamable_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(crypto.PrivKey))
+	})
+	return _c
+}
+
+func (_c *MockService_AddStreamable_Call) Return(err error) *MockService_AddStreamable_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_AddStreamable_Call) RunAndReturn(run func(context.Context, string, crypto.PrivKey) error) *MockService_AddStreamable_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CancelLeave provides a mock function with given fields: ctx, id
 func (_m *MockService) CancelLeave(ctx context.Context, id string) error {
 	ret := _m.Called(ctx, id)

@@ -53,6 +53,17 @@ func WrapInterfaces(ifaces []net.Interface) []NetInterfaceWithAddrCache {
 	return m
 }
 
+func AddrToIP(addr net.Addr) (net.IP, bool) {
+	switch ip := addr.(type) {
+	case *net.IPNet:
+		return ip.IP, true
+	case *net.IPAddr:
+		return ip.IP, true
+	default:
+		return nil, false
+	}
+}
+
 // GetAddr returns ipv4 only addresses for interface or cached one if set
 func (i NetInterfaceWithAddrCache) GetAddr() []net.Addr {
 	if i.cachedAddrs != nil {
@@ -67,8 +78,8 @@ func (i NetInterfaceWithAddrCache) GetAddr() []net.Addr {
 	}
 	// filter-out ipv6
 	i.cachedAddrs = slice.Filter(i.cachedAddrs, func(addr net.Addr) bool {
-		if ip, ok := addr.(*net.IPNet); ok {
-			if ip.IP.To4() == nil {
+		if ip, ok := AddrToIP(addr); ok {
+			if ip.To4() == nil {
 				return false
 			}
 		}

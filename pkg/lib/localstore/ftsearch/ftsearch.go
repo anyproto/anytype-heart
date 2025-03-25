@@ -39,7 +39,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "11"
+	ftsVer   = "12"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -91,7 +91,7 @@ type DocumentMatch struct {
 	Fields    map[string]any
 }
 
-type ftSearchTantivy struct {
+type ftSearch struct {
 	rootPath   string
 	ftsPath    string
 	builderId  string
@@ -103,10 +103,10 @@ type ftSearchTantivy struct {
 }
 
 func TantivyNew() FTSearch {
-	return new(ftSearchTantivy)
+	return new(ftSearch)
 }
 
-func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
+func (f *ftSearch) BatchDeleteObjects(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -130,13 +130,13 @@ func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 	return nil
 }
 
-func (f *ftSearchTantivy) DeleteObject(objectId string) error {
+func (f *ftSearch) DeleteObject(objectId string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.index.DeleteDocuments(fieldIdRaw, objectId)
 }
 
-func (f *ftSearchTantivy) Init(a *app.App) error {
+func (f *ftSearch) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	f.lang = validateLanguage(app.MustComponent[wallet.Wallet](a).FtsPrimaryLang())
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
@@ -145,7 +145,7 @@ func (f *ftSearchTantivy) Init(a *app.App) error {
 	return tantivy.LibInit(false, true, "release")
 }
 
-func (f *ftSearchTantivy) cleanUpOldIndexes() {
+func (f *ftSearch) cleanUpOldIndexes() {
 	if strings.HasSuffix(f.rootPath, ftsDir2) {
 		dirs, err := os.ReadDir(f.rootPath)
 		if err == nil {
@@ -159,11 +159,11 @@ func (f *ftSearchTantivy) cleanUpOldIndexes() {
 	}
 }
 
-func (f *ftSearchTantivy) Name() (name string) {
+func (f *ftSearch) Name() (name string) {
 	return CName
 }
 
-func (f *ftSearchTantivy) Run(context.Context) error {
+func (f *ftSearch) Run(context.Context) error {
 	builder, err := tantivy.NewSchemaBuilder()
 	if err != nil {
 		return err
@@ -274,7 +274,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	return nil
 }
 
-func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
+func (f *ftSearch) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
 	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
 	if err != nil {
 		log.Warnf("recovering from error: %v", err)
@@ -286,7 +286,7 @@ func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.Tan
 	return index, err
 }
 
-func (f *ftSearchTantivy) Index(doc SearchDoc) error {
+func (f *ftSearch) Index(doc SearchDoc) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	metrics.ObjectFTUpdatedCounter.Inc()
@@ -299,7 +299,7 @@ func (f *ftSearchTantivy) Index(doc SearchDoc) error {
 	return res
 }
 
-func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
+func (f *ftSearch) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	document := tantivy.NewDocument()
 	err := document.AddFields(doc.Id, f.index, fieldId, fieldIdRaw)
 	if err != nil {
@@ -320,7 +320,7 @@ func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	return document, nil
 }
 
-func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
+func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
 	if len(docs) == 0 {
 		return nil
 	}
@@ -354,15 +354,15 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
-func (f *ftSearchTantivy) NamePrefixSearch(spaceId, query string) ([]*DocumentMatch, error) {
+func (f *ftSearch) NamePrefixSearch(spaceId, query string) ([]*DocumentMatch, error) {
 	return f.performSearch(spaceId, query, f.buildObjectQuery)
 }
 
-func (f *ftSearchTantivy) Search(spaceId, query string) ([]*DocumentMatch, error) {
+func (f *ftSearch) Search(spaceId, query string) ([]*DocumentMatch, error) {
 	return f.performSearch(spaceId, query, f.buildDetailedQuery)
 }
 
-func (f *ftSearchTantivy) performSearch(spaceId, query string, buildQueryFunc func(*tantivy.QueryBuilder, string)) ([]*DocumentMatch, error) {
+func (f *ftSearch) performSearch(spaceId, query string, buildQueryFunc func(*tantivy.QueryBuilder, string)) ([]*DocumentMatch, error) {
 	query = prepareQuery(query)
 	if query == "" {
 		return nil, nil
@@ -400,11 +400,12 @@ func (f *ftSearchTantivy) performSearch(spaceId, query string, buildQueryFunc fu
 	)
 }
 
-func (f *ftSearchTantivy) buildObjectQuery(qb *tantivy.QueryBuilder, query string) {
+func (f *ftSearch) buildObjectQuery(qb *tantivy.QueryBuilder, query string) {
 	qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
 		Query(tantivy.Should, fieldId, bundle.RelationKeyName.String(), tantivy.TermQuery, 1.0).
 		// snippets are indexed only for notes which don't have a name, we should do a prefix search there as well
-		Query(tantivy.Should, fieldId, bundle.RelationKeySnippet.String(), tantivy.TermQuery, 1.0),
+		Query(tantivy.Should, fieldId, bundle.RelationKeySnippet.String(), tantivy.TermQuery, 1.0).
+		Query(tantivy.Should, fieldId, bundle.RelationKeyPluralName.String(), tantivy.TermQuery, 1.0),
 		1.0,
 	)
 
@@ -423,7 +424,7 @@ func (f *ftSearchTantivy) buildObjectQuery(qb *tantivy.QueryBuilder, query strin
 	}
 }
 
-func (f *ftSearchTantivy) buildDetailedQuery(qb *tantivy.QueryBuilder, query string) {
+func (f *ftSearch) buildDetailedQuery(qb *tantivy.QueryBuilder, query string) {
 	if containsChineseCharacters(query) {
 		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
 			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhrasePrefixQuery, 20.0).
@@ -522,15 +523,15 @@ func wrapError(err error) error {
 	return err
 }
 
-func (f *ftSearchTantivy) Delete(id string) error {
+func (f *ftSearch) Delete(id string) error {
 	return f.BatchDeleteObjects([]string{id})
 }
 
-func (f *ftSearchTantivy) DocCount() (uint64, error) {
+func (f *ftSearch) DocCount() (uint64, error) {
 	return f.index.NumDocs()
 }
 
-func (f *ftSearchTantivy) Close(ctx context.Context) error {
+func (f *ftSearch) Close(ctx context.Context) error {
 	if f.index != nil {
 		f.index.Free()
 		f.index = nil
@@ -538,7 +539,7 @@ func (f *ftSearchTantivy) Close(ctx context.Context) error {
 	return nil
 }
 
-func (f *ftSearchTantivy) cleanupBleve() {
+func (f *ftSearch) cleanupBleve() {
 	_ = os.RemoveAll(f.blevePath)
 }
 
