@@ -398,6 +398,7 @@ service ClientCommands {
     rpc ChatReadMessages (anytype.Rpc.Chat.ReadMessages.Request) returns (anytype.Rpc.Chat.ReadMessages.Response);
     rpc ChatUnreadMessages (anytype.Rpc.Chat.Unread.Request) returns (anytype.Rpc.Chat.Unread.Response);
     rpc ChatSubscribeToMessagePreviews (anytype.Rpc.Chat.SubscribeToMessagePreviews.Request) returns (anytype.Rpc.Chat.SubscribeToMessagePreviews.Response);
+    rpc ChatUnsubscribeFromMessagePreviews (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Request) returns (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
