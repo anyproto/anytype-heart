@@ -24,6 +24,9 @@ type counterOptions struct {
 	unreadFilter    query.Filter
 	diffManagerName string
 	readKey         string
+	messagesFilter  query.Filter
+
+	readMessages func(newOldestOrderId string, idsModified []string)
 }
 
 func (o *counterOptions) readModifier(value bool) query.Modifier {
@@ -40,7 +43,7 @@ func (o *counterOptions) readModifier(value bool) query.Modifier {
 	return query.MustParseModifier(obj)
 }
 
-func newCounterOptions(counterType CounterType) *counterOptions {
+func newCounterOptions(counterType CounterType, subscription *subscription) *counterOptions {
 	opts := &counterOptions{}
 
 	switch counterType {
@@ -48,10 +51,28 @@ func newCounterOptions(counterType CounterType) *counterOptions {
 		opts.unreadFilter = unreadMessageFilter()
 		opts.diffManagerName = diffManagerMessages
 		opts.readKey = readKey
+
+		opts.readMessages = func(newOldestOrderId string, idsModified []string) {
+			subscription.updateChatState(func(state *model.ChatState) {
+				state.Messages.OldestOrderId = newOldestOrderId
+			})
+			subscription.updateMessageRead(idsModified, true)
+		}
 	case CounterTypeMention:
 		opts.unreadFilter = unreadMentionFilter()
 		opts.diffManagerName = diffManagerMentions
 		opts.readKey = mentionReadKey
+		opts.messagesFilter = query.Key{
+			Path:   []string{hasMentionKey},
+			Filter: query.NewComp(query.CompOpEq, true),
+		}
+
+		opts.readMessages = func(newOldestOrderId string, idsModified []string) {
+			subscription.updateChatState(func(state *model.ChatState) {
+				state.Mentions.OldestOrderId = newOldestOrderId
+			})
+			subscription.updateMentionRead(idsModified, true)
+		}
 	default:
 		panic("unknown counter type")
 	}
@@ -60,7 +81,7 @@ func newCounterOptions(counterType CounterType) *counterOptions {
 }
 
 func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64, counterType CounterType) error {
-	opts := newCounterOptions(counterType)
+	opts := newCounterOptions(counterType, s.subscription)
 	// 1. select all messages with orderId < beforeOrderId and addedTime < lastDbState
 	// 2. use the last(by orderId) message id as lastHead
 	// 3. update the MarkSeenHeads
@@ -82,7 +103,8 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	}
 	defer txn.Rollback()
 
-	msgs, err := s.getReadMessagesAfter(txn, afterOrderId)
+	opts := newCounterOptions(counterType, s.subscription)
+	msgs, err := s.getReadMessagesAfter(txn, afterOrderId, opts)
 	if err != nil {
 		return fmt.Errorf("get read messages: %w", err)
 	}
@@ -90,8 +112,6 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	if len(msgs) == 0 {
 		return nil
 	}
-
-	opts := newCounterOptions(counterType)
 
 	for _, msgId := range msgs {
 		_, err := s.collection.UpdateId(txn.Context(), msgId, opts.readModifier(false))
@@ -133,11 +153,16 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	return txn.Commit()
 }
 
-func (s *storeObject) getReadMessagesAfter(txn anystore.ReadTx, afterOrderId string) ([]string, error) {
-	iter, err := s.collection.Find(query.And{
+func (s *storeObject) getReadMessagesAfter(txn anystore.ReadTx, afterOrderId string, opts *counterOptions) ([]string, error) {
+	filter := query.And{
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-		query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
-	}).Iter(txn.Context())
+		query.Key{Path: []string{opts.readKey}, Filter: query.NewComp(query.CompOpEq, true)},
+	}
+	if opts.messagesFilter != nil {
+		filter = append(filter, opts.messagesFilter)
+	}
+
+	iter, err := s.collection.Find(filter).Iter(txn.Context())
 	if err != nil {
 		return nil, fmt.Errorf("init iterator: %w", err)
 	}
@@ -226,7 +251,7 @@ func (s *storeObject) initialChatState() (*model.ChatState, error) {
 }
 
 func (s *storeObject) initialChatStateByType(txn anystore.ReadTx, counterType CounterType) (*model.ChatStateUnreadState, error) {
-	opts := newCounterOptions(counterType)
+	opts := newCounterOptions(counterType, s.subscription)
 
 	oldestOrderId, err := s.getOldestOrderId(txn, opts)
 	if err != nil {
@@ -329,10 +354,7 @@ func (s *storeObject) markReadMessages(changeIds []string, opts *counterOptions)
 			}
 		}
 
-		s.subscription.updateChatState(func(state *model.ChatState) {
-			state.Messages.OldestOrderId = newOldestOrderId
-		})
-		s.subscription.updateMessageRead(idsModified, true)
+		opts.readMessages(newOldestOrderId, idsModified)
 		s.subscription.flush()
 	}
 }

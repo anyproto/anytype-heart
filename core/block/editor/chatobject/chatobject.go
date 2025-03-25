@@ -111,8 +111,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
-	messagesOpts := newCounterOptions(CounterTypeMessage)
-	mentionsOpts := newCounterOptions(CounterTypeMention)
+	messagesOpts := newCounterOptions(CounterTypeMessage, s.subscription)
+	mentionsOpts := newCounterOptions(CounterTypeMention, s.subscription)
 	storeSource.AddDiffManager(diffManagerMessages, func(removed []string) {
 		s.markReadMessages(removed, messagesOpts)
 	})

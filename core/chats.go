@@ -157,7 +157,13 @@ func (mw *Middleware) ChatUnsubscribeFromMessagePreviews(cctx context.Context, r
 
 func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse {
 	chatService := mustService[chats.Service](mw)
-	err := chatService.ReadMessages(cctx, request.ChatObjectId, request.AfterOrderId, request.BeforeOrderId, request.LastDbTimestamp)
+	err := chatService.ReadMessages(cctx, chats.ReadMessagesRequest{
+		ChatObjectId:              request.ChatObjectId,
+		AfterOrderId:              request.AfterOrderId,
+		BeforeOrderId:             request.BeforeOrderId,
+		LastAddedMessageTimestamp: request.LastDbTimestamp,
+		CounterType:               chatobject.CounterType(request.Type),
+	})
 	code := mapErrorCode(err,
 		errToCode(anystore.ErrDocNotFound, pb.RpcChatReadMessagesResponseError_MESSAGES_NOT_FOUND),
 	)

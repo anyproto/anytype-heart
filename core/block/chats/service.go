@@ -37,7 +37,7 @@ type Service interface {
 	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatobject.SubscribeLastMessagesResponse, error)
-	ReadMessages(ctx context.Context, chatObjectId string, afterOrderId string, beforeOrderId string, lastDbState int64) error
+	ReadMessages(ctx context.Context, req ReadMessagesRequest) error
 	UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string) error
 	Unsubscribe(chatObjectId string, subId string) error
 
@@ -297,9 +297,17 @@ func (s *service) Unsubscribe(chatObjectId string, subId string) error {
 	})
 }
 
-func (s *service) ReadMessages(ctx context.Context, chatObjectId string, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkReadMessages(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp, chatobject.CounterTypeMessage)
+type ReadMessagesRequest struct {
+	ChatObjectId              string
+	AfterOrderId              string
+	BeforeOrderId             string
+	LastAddedMessageTimestamp int64
+	CounterType               chatobject.CounterType
+}
+
+func (s *service) ReadMessages(ctx context.Context, req ReadMessagesRequest) error {
+	return cache.Do(s.objectGetter, req.ChatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.MarkReadMessages(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastAddedMessageTimestamp, req.CounterType)
 	})
 }
 

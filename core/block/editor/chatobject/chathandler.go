@@ -50,7 +50,8 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		msg.setRead(false)
 	} else {
 		if ch.Change.Creator == d.currentIdentity {
-			msg.setRead(true)
+			// msg.setRead(true)
+			msg.setRead(false)
 		} else {
 			msg.setRead(false)
 		}
