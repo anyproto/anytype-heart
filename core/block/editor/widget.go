@@ -126,3 +126,28 @@ func (w *WidgetObject) Unlink(ctx session.Context, ids ...string) (err error) {
 	}
 	return w.Apply(st)
 }
+
+// autoInstallSystemWidget installs system widget like bin or favorite
+func installSystemWidget(store spaceindex.Store, spc smartblock.Space, systemKey string, layout model.BlockContentWidgetLayout) error {
+	widgetObjectId := spc.DerivedIDs().Widgets
+	widgetDetails, err := store.GetDetails(widgetObjectId)
+	if err != nil {
+		return err
+	}
+	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+	if slices.Contains(keys, systemKey) {
+		// cache to avoid unnecessary objectstore requests
+		return nil
+	}
+	return spc.Do(widgetObjectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		if w, ok := sb.(widget.Widget); ok {
+			// We rely on AddAutoWidget to check if the widget was already installed/removed before
+			err = w.AddAutoWidget(st, systemKey, systemKey, "", layout)
+			if err != nil {
+				return err
+			}
+		}
+		return sb.Apply(st)
+	})
+}
