@@ -299,12 +299,12 @@ func (s *service) Unsubscribe(chatObjectId string, subId string) error {
 
 func (s *service) ReadMessages(ctx context.Context, chatObjectId string, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkReadMessages(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp)
+		return sb.MarkReadMessages(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp, chatobject.CounterTypeMessage)
 	})
 }
 
 func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkMessagesAsUnread(ctx, afterOrderId)
+		return sb.MarkMessagesAsUnread(ctx, afterOrderId, chatobject.CounterTypeMessage)
 	})
 }

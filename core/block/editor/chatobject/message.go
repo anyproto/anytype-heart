@@ -7,14 +7,15 @@ import (
 )
 
 const (
-	creatorKey    = "creator"
-	createdAtKey  = "createdAt"
-	modifiedAtKey = "modifiedAt"
-	reactionsKey  = "reactions"
-	contentKey    = "content"
-	readKey       = "read"
-	addedKey      = "a"
-	orderKey      = "_o"
+	creatorKey     = "creator"
+	createdAtKey   = "createdAt"
+	modifiedAtKey  = "modifiedAt"
+	reactionsKey   = "reactions"
+	contentKey     = "content"
+	readKey        = "read"
+	mentionReadKey = "mentionRead"
+	addedKey       = "a"
+	orderKey       = "_o"
 )
 
 type messageWrapper struct {
@@ -39,6 +40,14 @@ func (m *messageWrapper) setRead(v bool) {
 		m.val.Set(readKey, m.arena.NewTrue())
 	} else {
 		m.val.Set(readKey, m.arena.NewFalse())
+	}
+}
+
+func (m *messageWrapper) setMentionRead(v bool) {
+	if v {
+		m.val.Set(mentionReadKey, m.arena.NewTrue())
+	} else {
+		m.val.Set(mentionReadKey, m.arena.NewFalse())
 	}
 }
 

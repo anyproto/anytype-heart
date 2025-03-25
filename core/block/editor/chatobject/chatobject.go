@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/slice"
-	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
@@ -34,6 +33,7 @@ const (
 	ascOrder            = "_o.id"
 	descAdded           = "-a"
 	diffManagerMessages = "messages"
+	diffManagerMentions = "mentions"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -49,8 +49,8 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) (*SubscribeLastMessagesResponse, error)
-	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64) error
-	MarkMessagesAsUnread(ctx context.Context, afterOrderId string) error
+	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64, counterType CounterType) error
+	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType CounterType) error
 	Unsubscribe(subId string) error
 }
 
@@ -110,7 +110,15 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if !ok {
 		return fmt.Errorf("source is not a store")
 	}
-	storeSource.AddDiffManager(diffManagerMessages, s.markReadMessages)
+
+	messagesOpts := newCounterOptions(CounterTypeMessage)
+	mentionsOpts := newCounterOptions(CounterTypeMention)
+	storeSource.AddDiffManager(diffManagerMessages, func(removed []string) {
+		s.markReadMessages(removed, messagesOpts)
+	})
+	storeSource.AddDiffManager(diffManagerMentions, func(removed []string) {
+		s.markReadMessages(removed, mentionsOpts)
+	})
 
 	err := s.SmartBlock.Init(ctx)
 	if err != nil {
@@ -154,261 +162,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 func (s *storeObject) onUpdate() {
 	s.subscription.flush()
-}
-
-// initialChatState returns the initial chat state for the chat object from the DB
-func (s *storeObject) initialChatState() (*model.ChatState, error) {
-	txn, err := s.collection.ReadTx(s.componentCtx)
-	if err != nil {
-		return nil, fmt.Errorf("start read tx: %w", err)
-	}
-	defer txn.Commit()
-
-	oldestOrderId, err := s.getOldestOrderId(txn)
-	if err != nil {
-		return nil, fmt.Errorf("get oldest order id: %w", err)
-	}
-
-	count, err := s.countUnreadMessages(txn)
-	if err != nil {
-		return nil, fmt.Errorf("update messages: %w", err)
-	}
-
-	lastAdded, err := s.getLastAddedDate(txn)
-	if err != nil {
-		return nil, fmt.Errorf("get last added date: %w", err)
-	}
-
-	return &model.ChatState{
-		Messages: &model.ChatStateUnreadState{
-			OldestOrderId: oldestOrderId,
-			Counter:       int32(count),
-		},
-		Mentions: &model.ChatStateUnreadState{
-			// TODO: fill,
-		},
-		DbTimestamp: int64(lastAdded),
-	}, nil
-}
-
-func (s *storeObject) getOldestOrderId(txn anystore.ReadTx) (string, error) {
-	unreadQuery := s.collection.Find(unreadFilter()).Sort(ascOrder)
-
-	iter, err := unreadQuery.Limit(1).Iter(txn.Context())
-	if err != nil {
-		return "", fmt.Errorf("init iter: %w", err)
-	}
-	defer iter.Close()
-
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return "", fmt.Errorf("get doc: %w", err)
-		}
-		return doc.Value().GetObject(orderKey).Get("id").GetString(), nil
-	}
-	return "", nil
-}
-
-func (s *storeObject) countUnreadMessages(txn anystore.ReadTx) (int, error) {
-	unreadQuery := s.collection.Find(unreadFilter())
-
-	return unreadQuery.Limit(1).Count(txn.Context())
-}
-
-func unreadFilter() query.Filter {
-	// Use Not because old messages don't have read key
-	return query.Not{
-		Filter: query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
-	}
-}
-
-func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int, error) {
-	lastAddedDate := s.collection.Find(nil).Sort(descAdded).Limit(1)
-	iter, err := lastAddedDate.Iter(txn.Context())
-	if err != nil {
-		return 0, fmt.Errorf("find last added date: %w", err)
-	}
-	defer iter.Close()
-
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return 0, fmt.Errorf("get doc: %w", err)
-		}
-		return doc.Value().GetInt(addedKey), nil
-	}
-	return 0, nil
-}
-
-func (s *storeObject) markReadMessages(changeIds []string) {
-	if len(changeIds) == 0 {
-		return
-	}
-
-	txn, err := s.collection.WriteTx(s.componentCtx)
-	if err != nil {
-		log.With(zap.Error(err)).Error("markReadMessages: start write tx")
-		return
-	}
-	defer txn.Commit()
-
-	var idsModified []string
-	for _, id := range changeIds {
-		if id == s.Id() {
-			// skip tree root
-			continue
-		}
-		res, err := s.collection.UpdateId(txn.Context(), id, query.MustParseModifier(`{"$set":{"`+readKey+`":true}}`))
-		// Not all changes are messages, skip them
-		if errors.Is(err, anystore.ErrDocNotFound) {
-			continue
-		}
-		if err != nil {
-			log.Error("markReadMessages: update message", zap.Error(err), zap.String("changeId", id), zap.String("chatObjectId", s.Id()))
-			continue
-		}
-		if res.Modified > 0 {
-			idsModified = append(idsModified, id)
-		}
-	}
-
-	if len(idsModified) > 0 {
-		newOldestOrderId, err := s.getOldestOrderId(txn)
-		if err != nil {
-			log.Error("markReadMessages: get oldest order id", zap.Error(err))
-			err = txn.Rollback()
-			if err != nil {
-				log.Error("markReadMessages: rollback transaction", zap.Error(err))
-			}
-		}
-
-		s.subscription.updateChatState(func(state *model.ChatState) {
-			state.Messages.OldestOrderId = newOldestOrderId
-		})
-		s.subscription.updateReadStatus(idsModified, true)
-		s.subscription.flush()
-	}
-}
-
-func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64) error {
-	// 1. select all messages with orderId < beforeOrderId and addedTime < lastDbState
-	// 2. use the last(by orderId) message id as lastHead
-	// 3. update the MarkSeenHeads
-	// 2. mark messages as read in the DB
-
-	msgs, err := s.getUnreadMessageIdsInRange(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp)
-	if err != nil {
-		return fmt.Errorf("get message: %w", err)
-	}
-
-	// mark the whole tree as seen from the current message
-	return s.storeSource.MarkSeenHeads(ctx, diffManagerMessages, msgs)
-}
-
-func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string) error {
-	txn, err := s.collection.WriteTx(ctx)
-	if err != nil {
-		return fmt.Errorf("create tx: %w", err)
-	}
-	defer txn.Rollback()
-
-	msgs, err := s.getReadMessagesAfter(txn, afterOrderId)
-	if err != nil {
-		return fmt.Errorf("get read messages: %w", err)
-	}
-
-	if len(msgs) == 0 {
-		return nil
-	}
-
-	for _, msgId := range msgs {
-		_, err := s.collection.UpdateId(txn.Context(), msgId, query.MustParseModifier(`{"$set":{"`+readKey+`":false}}`))
-		if err != nil {
-			return fmt.Errorf("update message: %w", err)
-		}
-	}
-
-	newOldestOrderId, err := s.getOldestOrderId(txn)
-	if err != nil {
-		return fmt.Errorf("get oldest order id: %w", err)
-	}
-
-	lastAdded, err := s.getLastAddedDate(txn)
-	if err != nil {
-		return fmt.Errorf("get last added date: %w", err)
-	}
-
-	s.subscription.updateChatState(func(state *model.ChatState) {
-		state.Messages.OldestOrderId = newOldestOrderId
-		state.DbTimestamp = int64(lastAdded)
-	})
-	s.subscription.updateReadStatus(msgs, false)
-	s.subscription.flush()
-
-	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
-	if err != nil {
-		return fmt.Errorf("get seen heads: %w", err)
-	}
-	err = s.storeSource.InitDiffManager(ctx, diffManagerMessages, seenHeads)
-	if err != nil {
-		return fmt.Errorf("init diff manager: %w", err)
-	}
-	err = s.storeSource.StoreSeenHeads(txn.Context(), diffManagerMessages)
-	if err != nil {
-		return fmt.Errorf("store seen heads: %w", err)
-	}
-
-	return txn.Commit()
-}
-
-func (s *storeObject) getReadMessagesAfter(txn anystore.ReadTx, afterOrderId string) ([]string, error) {
-	iter, err := s.collection.Find(query.And{
-		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-		query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
-	}).Iter(txn.Context())
-	if err != nil {
-		return nil, fmt.Errorf("init iterator: %w", err)
-	}
-	defer iter.Close()
-
-	var msgIds []string
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return nil, fmt.Errorf("get doc: %w", err)
-		}
-		msgIds = append(msgIds, doc.Value().GetString("id"))
-	}
-	return msgIds, iter.Err()
-}
-
-func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64) ([]string, error) {
-	iter, err := s.collection.Find(
-		query.And{
-			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
-			query.Or{
-				query.Not{query.Key{Path: []string{addedKey}, Filter: query.Exists{}}},
-				query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, lastAddedMessageTimestamp)},
-			},
-			unreadFilter(),
-		},
-	).Iter(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("find id: %w", err)
-	}
-	defer iter.Close()
-
-	var msgIds []string
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return nil, fmt.Errorf("get doc: %w", err)
-		}
-		msgIds = append(msgIds, doc.Value().GetString("id"))
-	}
-	return msgIds, iter.Err()
 }
 
 func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error) {
