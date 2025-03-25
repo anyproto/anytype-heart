@@ -41,7 +41,7 @@ type Store interface {
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIds(q database.Query) (ids []string, total int, err error)
 	QueryIterate(q database.Query, proc func(details *domain.Details)) error
-
+	IterateAll(proc func(doc *anyenc.Value) error) error
 	HasIds(ids []string) (exists []string, err error)
 	GetInfosByIds(ids []string) ([]*database.ObjectInfo, error)
 	List(includeArchived bool) ([]*database.ObjectInfo, error)
