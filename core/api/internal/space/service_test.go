@@ -188,6 +188,173 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 	})
 }
 
+func TestSpaceService_GetSpace(t *testing.T) {
+	t.Run("successful retrieval of space", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: techSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("space-id"),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyTargetSpaceId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyName.String():          pbtypes.String("My Workspace"),
+						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("space-id"),
+						bundle.RelationKeyIconEmoji.String():     pbtypes.String("🚀"),
+						bundle.RelationKeyIconImage.String():     pbtypes.String(""),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		fx.mwMock.On("WorkspaceOpen", mock.Anything, mock.Anything).Return(&pb.RpcWorkspaceOpenResponse{
+			Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
+			Info: &model.AccountInfo{
+				HomeObjectId:           "home-object-id",
+				ArchiveObjectId:        "archive-object-id",
+				ProfileObjectId:        "profile-object-id",
+				MarketplaceWorkspaceId: "marketplace-workspace-id",
+				WorkspaceObjectId:      "workspace-object-id",
+				DeviceId:               "device-id",
+				AccountSpaceId:         "account-space-id",
+				WidgetsId:              "widgets-id",
+				SpaceViewId:            "space-view-id",
+				TechSpaceId:            "tech-space-id",
+				GatewayUrl:             "gateway-url",
+				LocalStoragePath:       "local-storage-path",
+				TimeZone:               "time-zone",
+				AnalyticsId:            "analytics-id",
+				NetworkId:              "network-id",
+			},
+		}, nil).Once()
+
+		// when
+		space, err := fx.GetSpace(nil, "space-id")
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, "My Workspace", space.Name)
+		require.Equal(t, "space-id", space.Id)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🚀")}, space.Icon)
+		require.Equal(t, "gateway-url", space.GatewayUrl)
+		require.Equal(t, "network-id", space.NetworkId)
+	})
+
+	t.Run("workspace not found", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: techSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("space-id"),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyTargetSpaceId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		space, err := fx.GetSpace(nil, "space-id")
+
+		// then
+		require.ErrorIs(t, err, ErrWorkspaceNotFound)
+		require.Equal(t, Space{}, space)
+	})
+
+	t.Run("failed workspace open", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: techSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("space-id"),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyTargetSpaceId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyName.String():          pbtypes.String("My Workspace"),
+						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("space-id"),
+						bundle.RelationKeyIconEmoji.String():     pbtypes.String("🚀"),
+						bundle.RelationKeyIconImage.String():     pbtypes.String(""),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		fx.mwMock.On("WorkspaceOpen", mock.Anything, mock.Anything).
+			Return(&pb.RpcWorkspaceOpenResponse{
+				Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR},
+			}, nil).Once()
+
+		// when
+		space, err := fx.GetSpace(nil, "space-id")
+
+		// then
+		require.ErrorIs(t, err, ErrFailedOpenWorkspace)
+		require.Equal(t, Space{}, space)
+	})
+}
+
 func TestSpaceService_CreateSpace(t *testing.T) {
 	t.Run("successful create space", func(t *testing.T) {
 		// given
@@ -402,5 +569,205 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		require.Len(t, members, 0)
 		require.Equal(t, 0, total)
 		require.False(t, hasMore)
+	})
+}
+
+func TestSpaceService_GetMember(t *testing.T) {
+	t.Run("successful retrieval of member", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-id"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-id"),
+						bundle.RelationKeyName.String():                   pbtypes.String("John Doe"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String("👤"),
+						bundle.RelationKeyIconImage.String():              pbtypes.String("icon.png"),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-id"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("john.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Owner)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		member, err := fx.GetMember(nil, "space-id", "member-id")
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, "member-id", member.Id)
+		require.Equal(t, "John Doe", member.Name)
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/icon.png`), *member.Icon.File, "Icon URL does not match")
+		require.Equal(t, "member-id", member.Identity)
+		require.Equal(t, "john.any", member.GlobalName)
+		require.Equal(t, "active", member.Status)
+		require.Equal(t, "owner", member.Role)
+	})
+
+	t.Run("member not found", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-id")},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		member, err := fx.GetMember(nil, "space-id", "member-id")
+
+		// then
+		require.ErrorIs(t, err, ErrMemberNotFound)
+		require.Equal(t, Member{}, member)
+	})
+	t.Run("failed get member", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-id"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-id"),
+						bundle.RelationKeyName.String():                   pbtypes.String("John Doe"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():              pbtypes.String("icon.png"),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-id"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("john.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Owner)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_UNKNOWN_ERROR},
+		}).Once()
+
+		// when
+		member, err := fx.GetMember(nil, "space-id", "member-id")
+
+		// then
+		require.ErrorIs(t, err, ErrFailedGetMember)
+		require.Equal(t, Member{}, member)
+	})
+
+	t.Run("successful retrieval of member with participant id", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		participantId := "_participant123"
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(participantId),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String(participantId),
+						bundle.RelationKeyName.String():                   pbtypes.String("Alice"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String("😊"),
+						bundle.RelationKeyIconImage.String():              pbtypes.String("participant.png"),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("alice-identity"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("alice.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Writer)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		member, err := fx.GetMember(nil, "space-id", participantId)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, participantId, member.Id)
+		require.Equal(t, "Alice", member.Name)
+		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/participant.png`), *member.Icon.File, "Icon URL does not match")
+		require.Equal(t, "alice-identity", member.Identity)
+		require.Equal(t, "alice.any", member.GlobalName)
+		require.Equal(t, "active", member.Status)
+		require.Equal(t, "editor", member.Role)
 	})
 }
