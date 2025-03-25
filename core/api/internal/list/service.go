@@ -86,15 +86,14 @@ func (s *ListService) GetListViews(ctx context.Context, spaceId string, listId s
 					Format:      s.objectService.MapRelationFormat(srt.Format),
 					SortType:    strcase.ToSnake(model.BlockContentDataviewSortType_name[int32(srt.Type)]),
 				})
-
-				views = append(views, View{
-					Id:      view.Id,
-					Name:    view.Name,
-					Layout:  s.mapDataviewTypeName(view.Type),
-					Filters: filters,
-					Sorts:   sorts,
-				})
 			}
+			views = append(views, View{
+				Id:      view.Id,
+				Name:    view.Name,
+				Layout:  s.mapDataviewTypeName(view.Type),
+				Filters: filters,
+				Sorts:   sorts,
+			})
 		}
 	default:
 		return nil, 0, false, ErrFailedGetListDataview

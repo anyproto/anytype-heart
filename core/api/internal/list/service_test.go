@@ -22,7 +22,7 @@ const (
 	mockedListId      = "mocked-list-id"
 	mockedTypeId      = "mocked-type-id"
 	mockedSetOfTypeId = "mocked-set-of-type-id"
-	mockedUniueKey    = "mocked-unique-key"
+	mockedUniqueKey   = "mocked-unique-key"
 	mockedViewId      = "view-1"
 	offset            = 0
 	limit             = 100
@@ -48,6 +48,246 @@ func newFixture(t *testing.T) *fixture {
 		mwMock:        mw,
 		objectService: objSvc,
 	}
+}
+
+func TestListService_GetListViews(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("successful", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Prepare a view with one sort and one filter
+		sorts := []*model.BlockContentDataviewSort{
+			{
+				Id:          "sort-1",
+				RelationKey: "dummy-sort",
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+		}
+		filters := []*model.BlockContentDataviewFilter{
+			{
+				Id:          "filter-1",
+				RelationKey: "dummy-filter",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String("dummy-value"),
+			},
+		}
+		view := &model.BlockContentDataviewView{
+			Id:      "view-1",
+			Name:    "Test View",
+			Sorts:   sorts,
+			Filters: filters,
+			Type:    model.BlockContentDataviewView_Table,
+		}
+
+		resp := &pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Blocks: []*model.Block{
+					{
+						Id: "dataview",
+						Content: &model.BlockContentOfDataview{
+							Dataview: &model.BlockContentDataview{
+								Views: []*model.BlockContentDataviewView{view},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedListId,
+			}).
+			Return(resp, nil).Once()
+
+		views, total, hasMore, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		require.NoError(t, err)
+		require.Len(t, views, 1)
+		require.Equal(t, 1, total)
+		require.False(t, hasMore)
+
+		retView := views[0]
+		require.Equal(t, "view-1", retView.Id)
+		require.Equal(t, "Test View", retView.Name)
+		require.Len(t, retView.Filters, 1)
+		require.Len(t, retView.Sorts, 1)
+	})
+
+	t.Run("object show error", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedListId,
+			}).
+			Return(&pb.RpcObjectShowResponse{
+				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_UNKNOWN_ERROR},
+			}, nil).Once()
+
+		_, _, _, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		require.ErrorIs(t, err, ErrFailedGetList)
+	})
+
+	t.Run("no dataview block", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedListId,
+			}).
+			Return(&pb.RpcObjectShowResponse{
+				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+				ObjectView: &model.ObjectView{
+					Blocks: []*model.Block{
+						{Id: "non-dataview"},
+					},
+				},
+			}, nil).Once()
+
+		_, _, _, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		require.ErrorIs(t, err, ErrFailedGetListDataview)
+	})
+
+	t.Run("invalid dataview content", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedListId,
+			}).
+			Return(&pb.RpcObjectShowResponse{
+				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+				ObjectView: &model.ObjectView{
+					Blocks: []*model.Block{
+						{Id: "dataview", Content: nil},
+					},
+				},
+			}, nil).Once()
+
+		_, _, _, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		require.ErrorIs(t, err, ErrFailedGetListDataview)
+	})
+
+	t.Run("view with no sorts", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Create a view with filters but no sorts
+		filters := []*model.BlockContentDataviewFilter{
+			{
+				Id:          "filter-1",
+				RelationKey: "dummy-filter",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String("dummy-value"),
+			},
+		}
+		view := &model.BlockContentDataviewView{
+			Id:      "view-2",
+			Name:    "No Sort View",
+			Sorts:   []*model.BlockContentDataviewSort{},
+			Filters: filters,
+			Type:    model.BlockContentDataviewView_Table,
+		}
+
+		resp := &pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Blocks: []*model.Block{
+					{
+						Id: "dataview",
+						Content: &model.BlockContentOfDataview{
+							Dataview: &model.BlockContentDataview{
+								Views: []*model.BlockContentDataviewView{view},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedListId,
+			}).
+			Return(resp, nil).Once()
+
+		views, total, hasMore, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		require.NoError(t, err)
+		require.Len(t, views, 1)
+		require.Equal(t, 1, total)
+		require.False(t, hasMore)
+	})
+
+	t.Run("view with multiple sorts", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Create a view with 2 sorts
+		sorts := []*model.BlockContentDataviewSort{
+			{
+				Id:          "sort-1",
+				RelationKey: "dummy-sort",
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+			{
+				Id:          "sort-2",
+				RelationKey: "dummy-sort2",
+				Type:        model.BlockContentDataviewSort_Desc,
+			},
+		}
+		filters := []*model.BlockContentDataviewFilter{
+			{
+				Id:          "filter-1",
+				RelationKey: "dummy-filter",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String("dummy-value"),
+			},
+		}
+		view := &model.BlockContentDataviewView{
+			Id:      "view-3",
+			Name:    "Multi-Sort View",
+			Sorts:   sorts,
+			Filters: filters,
+			Type:    model.BlockContentDataviewView_Table,
+		}
+
+		resp := &pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Blocks: []*model.Block{
+					{
+						Id: "dataview",
+						Content: &model.BlockContentOfDataview{
+							Dataview: &model.BlockContentDataview{
+								Views: []*model.BlockContentDataviewView{view},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedListId,
+			}).
+			Return(resp, nil).Once()
+
+		views, total, hasMore, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		require.NoError(t, err)
+		require.Len(t, views, 1)
+		require.Equal(t, 1, total)
+		require.False(t, hasMore)
+
+		require.Equal(t, "view-3", views[0].Id)
+		require.Len(t, views[0].Sorts, 2)
+	})
 }
 
 func TestListService_GetObjectsInList(t *testing.T) {
@@ -132,7 +372,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 							Id: mockedSetOfTypeId,
 							Details: &types.Struct{
 								Fields: map[string]*types.Value{
-									bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedUniueKey),
+									bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedUniqueKey),
 								},
 							},
 						},
@@ -149,7 +389,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Keys:    []string{bundle.RelationKeyId.String()},
 				Sorts:   sorts,
 				Filters: filters,
-				Source:  []string{mockedUniueKey},
+				Source:  []string{mockedUniqueKey},
 			}).
 			Return(&pb.RpcObjectSearchSubscribeResponse{
 				Error:    &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_NULL},
