@@ -197,10 +197,10 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 	}
 
 	total := int(searchResp.Counters.Total)
-	paginatedRecords, hasMore := pagination.Paginate(searchResp.Records, offset, limit)
+	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
-	objects := make([]object.Object, 0, len(paginatedRecords))
-	for _, record := range paginatedRecords {
+	objects := make([]object.Object, 0, len(searchResp.Records))
+	for _, record := range searchResp.Records {
 		object, err := s.objectService.GetObject(ctx, spaceId, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
 		if err != nil {
 			return nil, 0, false, err
