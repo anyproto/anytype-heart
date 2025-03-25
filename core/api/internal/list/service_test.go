@@ -427,7 +427,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
+		objects, total, hasMore, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, mockedViewId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -627,7 +627,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		_, _, _, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
+		_, _, _, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, mockedViewId, offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetObjectsInList)
