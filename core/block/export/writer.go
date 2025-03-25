@@ -149,3 +149,46 @@ func (d *zipWriter) Close() (err error) {
 func getZipName(path string) string {
 	return filepath.Join(path, uniqName()+".zip")
 }
+
+type InMemoryWriter struct {
+	data map[string][]byte
+	fn   *namer
+	m    sync.Mutex
+}
+
+func (d *InMemoryWriter) Namer() *namer {
+	d.m.Lock()
+	defer d.m.Unlock()
+	if d.fn == nil {
+		d.fn = newNamer()
+	}
+	return d.fn
+}
+
+func (d *InMemoryWriter) Path() string {
+	return ""
+}
+
+func (d *InMemoryWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error) {
+	d.m.Lock()
+	defer d.m.Unlock()
+	if d.data == nil {
+		d.data = make(map[string][]byte)
+	}
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return
+	}
+	d.data[filename] = b
+	return
+}
+
+func (d *InMemoryWriter) Close() (err error) {
+	return nil
+}
+
+func (d *InMemoryWriter) GetData(id string) []byte {
+	d.m.Lock()
+	defer d.m.Unlock()
+	return d.data[id]
+}
