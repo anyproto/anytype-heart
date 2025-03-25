@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
@@ -214,8 +215,20 @@ func (a *aclObjectManager) processAcl() (err error) {
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
-	a.spaceKeyStore.SyncKeysFromAclState(common.Id(), aclState)
-	return
+	return a.updateSpaceKeyStore(err, aclState, common)
+}
+
+func (a *aclObjectManager) updateSpaceKeyStore(err error, aclState *list.AclState, common commonspace.Space) error {
+	firstMetadataKey, err := aclState.FirstMetadataKey()
+	if err != nil {
+		return err
+	}
+	readKey, err := aclState.CurrentReadKey()
+	if err != nil {
+		return err
+	}
+	a.spaceKeyStore.SyncKeysFromAclState(common.Id(), aclState.CurrentReadKeyId(), firstMetadataKey, readKey)
+	return nil
 }
 
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {

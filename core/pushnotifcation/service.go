@@ -2,26 +2,26 @@ package pushnotifcation
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
 
 	"github.com/anyproto/anytype-heart/core/pushnotifcation/client"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-
 	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
 )
 
 const CName = "core.pushnotification.service"
 
-const topicName = "chat"
-
 type Service interface {
 	app.Component
 	RegisterToken(ctx context.Context, req *pb.RpcPushNotificationRegisterTokenRequest) (err error)
-	SubscribeAll(ctx context.Context, spaceId string) (err error)
+	SubscribeAll(ctx context.Context, spaceId string, topics []string) (err error)
 	CreateSpace(ctx context.Context, spaceId string) (err error)
+	Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error)
 }
 
 func New() Service {
@@ -46,6 +46,9 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) RegisterToken(ctx context.Context, req *pb.RpcPushNotificationRegisterTokenRequest) (err error) {
+	if req.Token == "" {
+		return fmt.Errorf("token is empty")
+	}
 	signature, err := s.wallet.GetAccountPrivkey().Sign([]byte(req.Token))
 	if err != nil {
 		return err
@@ -55,24 +58,18 @@ func (s *service) RegisterToken(ctx context.Context, req *pb.RpcPushNotification
 		Token:     req.Token,
 		Signature: signature,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-func (s *service) SubscribeAll(ctx context.Context, spaceId string) (err error) {
-	topics, err := s.makeTopics(spaceId)
+func (s *service) SubscribeAll(ctx context.Context, spaceId string, topics []string) (err error) {
+	pushApiTopics, err := s.makeTopics(spaceId, topics)
 	if err != nil {
 		return err
 	}
 	_, err = s.pushClient.SubscribeAll(ctx, &pushapi.SubscribeAllRequest{
-		Topics: topics,
+		Topics: pushApiTopics,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
@@ -93,17 +90,52 @@ func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 		SpaceKey:         rawKey,
 		AccountSignature: signature,
 	})
+	return err
+}
+
+func (s *service) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
+	topics, err := s.makeTopics(spaceId, topic)
 	if err != nil {
 		return err
 	}
-	return nil
+	keyId, err := s.spaceKeyStore.KeyBySpaceId(spaceId)
+	if err != nil {
+		return err
+	}
+	key, err := s.spaceKeyStore.EncryptionKeyBySpaceId(spaceId)
+	if err != nil {
+		return err
+	}
+	encryptedJson, err := s.prepareEncryptedJson(key, payload)
+	if err != nil {
+		return err
+	}
+	signature, err := key.Sign(encryptedJson)
+	if err != nil {
+		return err
+	}
+	p := &pushapi.Message{
+		KeyId:     keyId,
+		Payload:   encryptedJson,
+		Signature: signature,
+	}
+	_, err = s.pushClient.Notify(ctx, &pushapi.NotifyRequest{
+		Topics:  topics,
+		Message: p,
+	})
+	return err
 }
 
-func (s *service) makeTopics(spaceId string) (*pushapi.Topics, error) {
-	signature, err := s.wallet.GetAccountPrivkey().Sign([]byte(topicName))
+func (s *service) prepareEncryptedJson(key crypto.PrivKey, payload []byte) ([]byte, error) {
+	encryptedJson, err := key.GetPublic().Encrypt(payload)
 	if err != nil {
 		return nil, err
 	}
+	return encryptedJson, nil
+}
+
+func (s *service) makeTopics(spaceId string, topics []string) (*pushapi.Topics, error) {
+	var pushApiTopics []*pushapi.Topic
 	spaceKey, err := s.spaceKeyStore.EncryptionKeyBySpaceId(spaceId)
 	if err != nil {
 		return nil, err
@@ -113,12 +145,16 @@ func (s *service) makeTopics(spaceId string) (*pushapi.Topics, error) {
 	if err != nil {
 		return nil, err
 	}
-	topics := &pushapi.Topics{Topics: []*pushapi.Topic{
-		{
+	for _, topic := range topics {
+		signature, err := spaceKey.Sign([]byte(topic))
+		if err != nil {
+			return nil, err
+		}
+		pushApiTopics = append(pushApiTopics, &pushapi.Topic{
 			SpaceKey:  rawKey,
-			Topic:     topicName,
+			Topic:     topic,
 			Signature: signature,
-		},
-	}}
-	return topics, nil
+		})
+	}
+	return &pushapi.Topics{Topics: pushApiTopics}, nil
 }

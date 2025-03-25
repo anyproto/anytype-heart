@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/strkey"
 
@@ -27,8 +26,9 @@ const (
 )
 
 type Store interface {
-	SyncKeysFromAclState(spaceID string, aclState *list.AclState)
+	SyncKeysFromAclState(spaceID string, aclRecordID string, firstMetadataKey crypto.PrivKey, readKey crypto.SymKey)
 	EncryptionKeyBySpaceId(spaceId string) (crypto.PrivKey, error)
+	KeyBySpaceId(spaceId string) (string, error)
 	app.Component
 }
 
@@ -58,41 +58,40 @@ func New() Store {
 	}
 }
 
-func (s *SpaceKeyStore) SyncKeysFromAclState(spaceID string, aclState *list.AclState) {
+func (s *SpaceKeyStore) SyncKeysFromAclState(spaceID string, aclRecordID string, firstMetadataKey crypto.PrivKey, readKey crypto.SymKey) {
 	s.Lock()
 	defer s.Unlock()
 
 	keyID, exists := s.spaceIdToKey[spaceID]
 	if !exists {
 		var err error
-		keyID, err = s.deriveAndStoreKeyId(spaceID, aclState)
+		keyID, err = s.deriveAndStoreKeyId(spaceID, firstMetadataKey)
 		if err != nil {
 			log.Errorf("Failed to derive and store key ID for space %s: %v", spaceID, err)
 			return
 		}
 	}
 
-	currentAclID := aclState.CurrentReadKeyId()
-	if storedAclID, ok := s.spaceKeyToAclRecordId[keyID]; ok && storedAclID == currentAclID {
+	if storedAclID, ok := s.spaceKeyToAclRecordId[keyID]; ok && storedAclID == aclRecordID {
 		return
 	}
 
-	privKey, err := s.deriveEncryptionKey(aclState)
+	privKey, err := s.deriveEncryptionKey(readKey)
 	if err != nil {
 		log.Errorf("Failed to derive encryption key for space %s: %v", spaceID, err)
 		return
 	}
 
 	s.spaceKeyToEncryptionKey[keyID] = privKey
-	s.spaceKeyToAclRecordId[keyID] = currentAclID
+	s.spaceKeyToAclRecordId[keyID] = aclRecordID
 
-	if err := s.broadcastKeyUpdate(spaceID, keyID, currentAclID, privKey); err != nil {
+	if err := s.broadcastKeyUpdate(spaceID, keyID, aclRecordID, privKey); err != nil {
 		log.Errorf("Failed to broadcast key update for space %s: %v", spaceID, err)
 	}
 }
 
-func (s *SpaceKeyStore) deriveAndStoreKeyId(spaceID string, aclState *list.AclState) (string, error) {
-	rawKey, err := s.deriveKey(aclState)
+func (s *SpaceKeyStore) deriveAndStoreKeyId(spaceID string, firstMetadataKey crypto.PrivKey) (string, error) {
+	rawKey, err := s.deriveKey(firstMetadataKey)
 	if err != nil {
 		return "", err
 	}
@@ -104,11 +103,7 @@ func (s *SpaceKeyStore) deriveAndStoreKeyId(spaceID string, aclState *list.AclSt
 	return encodedKey, nil
 }
 
-func (s *SpaceKeyStore) deriveKey(aclState *list.AclState) ([]byte, error) {
-	firstMetadataKey, err := aclState.FirstMetadataKey()
-	if err != nil {
-		return nil, err
-	}
+func (s *SpaceKeyStore) deriveKey(firstMetadataKey crypto.PrivKey) ([]byte, error) {
 	pk, err := privkey.DeriveFromPrivKey(spaceKeyPath, firstMetadataKey)
 	if err != nil {
 		return nil, err
@@ -120,12 +115,8 @@ func (s *SpaceKeyStore) deriveKey(aclState *list.AclState) ([]byte, error) {
 	return raw, nil
 }
 
-func (s *SpaceKeyStore) deriveEncryptionKey(aclState *list.AclState) (crypto.PrivKey, error) {
-	currReadKey, err := aclState.CurrentReadKey()
-	if err != nil {
-		return nil, err
-	}
-	seed, err := currReadKey.Raw()
+func (s *SpaceKeyStore) deriveEncryptionKey(readKey crypto.SymKey) (crypto.PrivKey, error) {
+	seed, err := readKey.Raw()
 	if err != nil {
 		return nil, err
 	}
@@ -169,4 +160,14 @@ func (s *SpaceKeyStore) EncryptionKeyBySpaceId(spaceId string) (crypto.PrivKey, 
 		return nil, ErrNotFound
 	}
 	return key, nil
+}
+
+func (s *SpaceKeyStore) KeyBySpaceId(spaceId string) (string, error) {
+	s.Lock()
+	defer s.Unlock()
+	keyId, exists := s.spaceIdToKey[spaceId]
+	if !exists {
+		return "", ErrNotFound
+	}
+	return keyId, nil
 }
