@@ -153,7 +153,7 @@ func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
 // GetMemberHandler retrieves a member in a space
 //
 //	@Summary		Get member
-//	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
+//	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
 //	@Tags			members
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space ID"
