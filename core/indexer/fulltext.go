@@ -62,7 +62,7 @@ func (i *indexer) ftLoopRoutine() {
 				if prevError != nil {
 					// we have an error in the previous run
 					// double the ticker duration, but not more than ftMaxIndexInterval
-					if tickerDuration*2 < ftMaxIndexInterval {
+					if tickerDuration*2 <= ftMaxIndexInterval {
 						tickerDuration = tickerDuration * 2
 						ticker.Reset(tickerDuration)
 					}
@@ -114,14 +114,13 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 		for _, objectId := range objectIds {
 			select {
 			case <-ctx.Done():
-				// doesn't make sense to send succeedIds, as ctx is done and probably we are not going to save it
-				return succeedIds, ctx.Err()
+				return nil, ctx.Err()
 			default:
 			}
 			objDocs, err := i.prepareSearchDocument(ctx, objectId.ObjectID)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
-					return succeedIds, err
+					return nil, err
 				}
 				if !errors.Is(err, domain.ErrObjectNotFound) &&
 					!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
