@@ -38,7 +38,7 @@ type Store interface {
 	SetPushChangeHook(onPushChange PushChangeHook)
 	// MarkSeenHeads marks heads as seen in a diff manager. Then the diff manager will call a hook from SetDiffManagerOnRemoveHook
 	MarkSeenHeads(ctx context.Context, name string, heads []string) error
-	AddDiffManager(name string, onRemoveHook func(removed []string))
+	RegisterDiffManager(name string, onRemoveHook func(removed []string))
 	// StoreSeenHeads persists current seen heads in any-store
 	StoreSeenHeads(ctx context.Context, name string) error
 	InitDiffManager(ctx context.Context, name string, seenHeads []string) error
@@ -80,7 +80,7 @@ func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
 
 // SetDiffManagerOnRemoveHook sets a hook that will be called when a change is removed from the diff manager
 // must be called only before ReadStoreDoc
-func (s *store) AddDiffManager(name string, onRemoveHook func(removed []string)) {
+func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []string)) {
 	if _, ok := s.diffManagers[name]; !ok {
 		s.diffManagers[name] = &diffManager{
 			onRemove: onRemoveHook,

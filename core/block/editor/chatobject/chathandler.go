@@ -48,12 +48,15 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	msg.setCreator(ch.Change.Creator)
 	if d.forceNotRead {
 		msg.setRead(false)
+		msg.setMentionRead(false)
 	} else {
 		if ch.Change.Creator == d.currentIdentity {
 			// msg.setRead(true)
 			msg.setRead(false)
+			msg.setMentionRead(false)
 		} else {
 			msg.setRead(false)
+			msg.setMentionRead(false)
 		}
 	}
 

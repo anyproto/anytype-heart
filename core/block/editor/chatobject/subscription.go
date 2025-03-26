@@ -128,7 +128,7 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
 	s.updateChatState(func(state *model.ChatState) {
 		if !message.Read {
-			if message.OrderId < state.Messages.OldestOrderId {
+			if message.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
 				state.Messages.OldestOrderId = message.OrderId
 			}
 			state.Messages.Counter++
@@ -137,7 +137,7 @@ func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
 				if mark.Type == model.BlockContentTextMark_Mention && mark.Param == s.myParticipantId {
 					state.Mentions.Counter++
 
-					if message.OrderId < state.Mentions.OldestOrderId {
+					if message.OrderId < state.Mentions.OldestOrderId || state.Mentions.OldestOrderId == "" {
 						state.Mentions.OldestOrderId = message.OrderId
 					}
 					break
@@ -256,8 +256,8 @@ func (s *subscription) updateMentionRead(ids []string, read bool) {
 	if !s.canSend() {
 		return
 	}
-	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMessageReadStatus{
-		ChatUpdateMessageReadStatus: &pb.EventChatUpdateMessageReadStatus{
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMentionReadStatus{
+		ChatUpdateMentionReadStatus: &pb.EventChatUpdateMessageReadStatus{
 			Ids:    ids,
 			IsRead: read,
 			SubIds: slices.Clone(s.ids),

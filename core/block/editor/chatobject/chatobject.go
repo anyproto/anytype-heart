@@ -111,12 +111,18 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
+	// Use Object and Space IDs from source, because object is not initialized yet
+	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
+	s.subscription = newSubscription(ctx.Source.Id(), ctx.Source.SpaceID(), myParticipantId, s.eventSender, s.spaceIndex)
+
 	messagesOpts := newCounterOptions(CounterTypeMessage, s.subscription)
 	mentionsOpts := newCounterOptions(CounterTypeMention, s.subscription)
-	storeSource.AddDiffManager(diffManagerMessages, func(removed []string) {
+
+	// Diff managers should be added before SmartBlock.Init, because they have to be initialized in source.ReadStoreDoc
+	storeSource.RegisterDiffManager(diffManagerMessages, func(removed []string) {
 		s.markReadMessages(removed, messagesOpts)
 	})
-	storeSource.AddDiffManager(diffManagerMentions, func(removed []string) {
+	storeSource.RegisterDiffManager(diffManagerMentions, func(removed []string) {
 		s.markReadMessages(removed, mentionsOpts)
 	})
 
@@ -126,11 +132,10 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	s.storeSource = storeSource
 
-	s.subscription = newSubscription(s.SpaceID(), s.Id(), domain.NewParticipantId(s.SpaceID(), s.accountService.AccountID()), s.eventSender, s.spaceIndex)
-
 	s.chatHandler = &ChatHandler{
 		subscription:    s.subscription,
 		currentIdentity: s.accountService.AccountID(),
+		myParticipantId: myParticipantId,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler)
@@ -140,7 +145,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.store = stateStore
 	s.collection, err = s.store.Collection(s.componentCtx, collectionName)
 	if err != nil {
-		return fmt.Errorf("get s.collection.ction: %w", err)
+		return fmt.Errorf("get collection: %w", err)
 	}
 
 	s.subscription.chatState, err = s.initialChatState()

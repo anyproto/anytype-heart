@@ -59,13 +59,13 @@ func newCounterOptions(counterType CounterType, subscription *subscription) *cou
 			subscription.updateMessageRead(idsModified, true)
 		}
 	case CounterTypeMention:
-		opts.unreadFilter = unreadMentionFilter()
+		opts.unreadFilter = query.And{
+			query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
+			query.Key{Path: []string{mentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)},
+		}
 		opts.diffManagerName = diffManagerMentions
 		opts.readKey = mentionReadKey
-		opts.messagesFilter = query.Key{
-			Path:   []string{hasMentionKey},
-			Filter: query.NewComp(query.CompOpEq, true),
-		}
+		opts.messagesFilter = query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
 
 		opts.readMessages = func(newOldestOrderId string, idsModified []string) {
 			subscription.updateChatState(func(state *model.ChatState) {
@@ -180,17 +180,16 @@ func (s *storeObject) getReadMessagesAfter(txn anystore.ReadTx, afterOrderId str
 }
 
 func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64, opts *counterOptions) ([]string, error) {
-	iter, err := s.collection.Find(
-		query.And{
-			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-			query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
-			query.Or{
-				query.Not{query.Key{Path: []string{addedKey}, Filter: query.Exists{}}},
-				query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, lastAddedMessageTimestamp)},
-			},
-			opts.unreadFilter,
+	qry := query.And{
+		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
+		query.Or{
+			query.Not{query.Key{Path: []string{addedKey}, Filter: query.Exists{}}},
+			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, lastAddedMessageTimestamp)},
 		},
-	).Iter(ctx)
+		opts.unreadFilter,
+	}
+	iter, err := s.collection.Find(qry).Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find id: %w", err)
 	}
@@ -211,13 +210,6 @@ func unreadMessageFilter() query.Filter {
 	// Use Not because old messages don't have read key
 	return query.Not{
 		Filter: query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
-	}
-}
-
-func unreadMentionFilter() query.Filter {
-	return query.And{
-		query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
-		query.Key{Path: []string{mentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)},
 	}
 }
 
