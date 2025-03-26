@@ -139,14 +139,14 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 			for _, removeId := range objRemovedIds {
 				err = batcher.DeleteDoc(removeId)
 				if err != nil {
-					return succeedIds, fmt.Errorf("batcher delete: %w", err)
+					return nil, fmt.Errorf("batcher delete: %w", err)
 				}
 			}
 
 			for _, doc := range objDocs {
 				err = batcher.UpdateDoc(doc)
 				if err != nil {
-					return succeedIds, fmt.Errorf("batcher add: %w", err)
+					return nil, fmt.Errorf("batcher add: %w", err)
 				}
 			}
 
