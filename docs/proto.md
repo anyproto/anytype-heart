@@ -306,6 +306,10 @@
     - [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request)
     - [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error)
+    - [Rpc.BlockDataview.Relation.Set](#anytype-Rpc-BlockDataview-Relation-Set)
+    - [Rpc.BlockDataview.Relation.Set.Request](#anytype-Rpc-BlockDataview-Relation-Set-Request)
+    - [Rpc.BlockDataview.Relation.Set.Response](#anytype-Rpc-BlockDataview-Relation-Set-Response)
+    - [Rpc.BlockDataview.Relation.Set.Response.Error](#anytype-Rpc-BlockDataview-Relation-Set-Response-Error)
     - [Rpc.BlockDataview.SetSource](#anytype-Rpc-BlockDataview-SetSource)
     - [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request)
     - [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response)
@@ -1402,6 +1406,7 @@
     - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
+    - [Rpc.BlockDataview.Relation.Set.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Set-Response-Error-Code)
     - [Rpc.BlockDataview.SetSource.Response.Error.Code](#anytype-Rpc-BlockDataview-SetSource-Response-Error-Code)
     - [Rpc.BlockDataview.Sort.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Sort.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Remove-Response-Error-Code)
@@ -2269,6 +2274,7 @@
 | BlockDataviewViewSetActive | [Rpc.BlockDataview.View.SetActive.Request](#anytype-Rpc-BlockDataview-View-SetActive-Request) | [Rpc.BlockDataview.View.SetActive.Response](#anytype-Rpc-BlockDataview-View-SetActive-Response) |  |
 | BlockDataviewViewSetPosition | [Rpc.BlockDataview.View.SetPosition.Request](#anytype-Rpc-BlockDataview-View-SetPosition-Request) | [Rpc.BlockDataview.View.SetPosition.Response](#anytype-Rpc-BlockDataview-View-SetPosition-Response) |  |
 | BlockDataviewSetSource | [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request) | [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response) |  |
+| BlockDataviewRelationSet | [Rpc.BlockDataview.Relation.Set.Request](#anytype-Rpc-BlockDataview-Relation-Set-Request) | [Rpc.BlockDataview.Relation.Set.Response](#anytype-Rpc-BlockDataview-Relation-Set-Response) |  |
 | BlockDataviewRelationAdd | [Rpc.BlockDataview.Relation.Add.Request](#anytype-Rpc-BlockDataview-Relation-Add-Request) | [Rpc.BlockDataview.Relation.Add.Response](#anytype-Rpc-BlockDataview-Relation-Add-Response) |  |
 | BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response) |  |
 | BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
@@ -6788,6 +6794,65 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set"></a>
+
+### Rpc.BlockDataview.Relation.Set
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set-Request"></a>
+
+### Rpc.BlockDataview.Relation.Set.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to set relation |
+| relationKeys | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set-Response"></a>
+
+### Rpc.BlockDataview.Relation.Set.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.Relation.Set.Response.Error](#anytype-Rpc-BlockDataview-Relation-Set-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set-Response-Error"></a>
+
+### Rpc.BlockDataview.Relation.Set.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.Relation.Set.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Set-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22669,6 +22734,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.Relation.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.Relation.Set.Response.Error.Code
 
 
 | Name | Number | Description |

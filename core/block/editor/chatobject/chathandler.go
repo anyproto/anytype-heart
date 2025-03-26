@@ -16,6 +16,7 @@ import (
 )
 
 type ChatHandler struct {
+	collection      anystore.Collection
 	subscription    *subscription
 	currentIdentity string
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
@@ -37,6 +38,7 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 	if iErr != nil && !errors.Is(iErr, anystore.ErrIndexExists) {
 		return iErr
 	}
+	d.collection = coll
 	return
 }
 
@@ -57,7 +59,12 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	msg.setAddedAt(timeid.NewNano())
 	model := msg.toModel()
 	model.OrderId = ch.Change.Order
-	d.subscription.add(ch.Change.PrevOrderId, model)
+
+	prevOrderId, err := getPrevOrderId(ctx, d.collection, ch.Change.Order)
+	if err != nil {
+		return fmt.Errorf("get prev order id: %w", err)
+	}
+	d.subscription.add(prevOrderId, model)
 
 	return
 }
