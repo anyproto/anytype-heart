@@ -4,6 +4,7 @@ import (
 	"context"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -14,6 +15,10 @@ import (
 
 type invalidStore struct {
 	err error
+}
+
+func (s *invalidStore) IterateAll(proc func(doc *anyenc.Value) error) error {
+	return nil
 }
 
 var _ Store = (*invalidStore)(nil)

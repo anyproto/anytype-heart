@@ -11,7 +11,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -36,10 +35,8 @@ import (
 )
 
 const (
-	CName                = "template"
-	BlankTemplateId      = "blank"
-	DefaultTemplateId    = "default"
-	LastEditedTemplateId = "lastEdited"
+	CName           = "template"
+	blankTemplateId = "blank"
 )
 
 var (
@@ -84,8 +81,7 @@ func (s *service) Init(a *app.App) error {
 }
 
 // CreateTemplateStateWithDetails creates clone of template object state with empty localDetails and updated objectTypes.
-// If withTemplateValidation=true, templateId is queried in store. If template is empty or not found, last edited template is taken.
-// Blank template is created in case template object is deleted or blank/empty templateId is provided
+// If withTemplateValidation=true, templateId is queried in store. If template is empty or not found, empty template is used
 func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateRequest) (targetState *state.State, err error) {
 	if validationErr := req.IsValid(); validationErr != nil {
 		return nil, fmt.Errorf("create template request validation error: %s", validationErr.Error())
@@ -98,7 +94,7 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 		}
 	}
 	switch req.TemplateId {
-	case "", BlankTemplateId:
+	case "", blankTemplateId:
 		targetState = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
 	default:
 		targetState, err = s.createCustomTemplateState(req.TemplateId)
@@ -112,23 +108,8 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 }
 
 func (s *service) resolveValidTemplateId(spaceId, templateId, typeId string) (string, error) {
-	switch templateId {
-	case BlankTemplateId:
-		return BlankTemplateId, nil
-	case DefaultTemplateId:
-		return s.getDefaultTemplateId(spaceId, typeId)
-	case LastEditedTemplateId:
-		return s.getLastEditedTemplateId(spaceId, typeId)
-	case "":
-		defaultTemplateId, err := s.getDefaultTemplateId(spaceId, typeId)
-		if err == nil && defaultTemplateId != "" {
-			return defaultTemplateId, nil
-		}
-		lastEditedTemplateId, err := s.getLastEditedTemplateId(spaceId, typeId)
-		if err == nil && lastEditedTemplateId != "" {
-			return lastEditedTemplateId, nil
-		}
-		return BlankTemplateId, nil
+	if templateId == "" {
+		return "", nil
 	}
 
 	records, err := s.queryTemplatesByType(spaceId, typeId)
@@ -137,52 +118,19 @@ func (s *service) resolveValidTemplateId(spaceId, templateId, typeId string) (st
 	}
 
 	if len(records) == 0 {
-		// if no templates presented, we should create new object with blank template
-		return BlankTemplateId, nil
+		// if no templates presented, we should use empty template
+		return "", nil
 	}
 
-	defaultTemplateId, err := s.getDefaultTemplateId(spaceId, typeId)
-	if err != nil {
-		defaultTemplateId = ""
-	}
-
-	var defaultTemplateIsValid bool
 	for _, record := range records {
 		recordId := record.Details.GetString(bundle.RelationKeyId)
 		if recordId == templateId {
 			return templateId, nil
 		}
-		if !defaultTemplateIsValid && defaultTemplateId != "" && recordId == defaultTemplateId {
-			defaultTemplateIsValid = true
-		}
 	}
 
-	// if requested templateId was not found in store, we should use default template
-	if defaultTemplateIsValid {
-		return defaultTemplateId, nil
-	}
-
-	// if default template is not set or not valid, we should use last edited template
-	return records[0].Details.GetString(bundle.RelationKeyId), nil
-}
-
-func (s *service) getDefaultTemplateId(spaceId, typeId string) (string, error) {
-	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
-	if err != nil {
-		return "", fmt.Errorf("failed to get details of type object from store: %w", err)
-	}
-	return details.GetString(bundle.RelationKeyDefaultTemplateId), nil
-}
-
-func (s *service) getLastEditedTemplateId(spaceId, typeId string) (string, error) {
-	records, err := s.queryTemplatesByType(spaceId, typeId)
-	if err != nil {
-		return "", fmt.Errorf("failed to query templates: %w", err)
-	}
-	if len(records) == 0 {
-		return "", nil
-	}
-	return records[0].Details.GetString(bundle.RelationKeyId), nil
+	// if requested templateId was not found in store, we should use empty template
+	return "", nil
 }
 
 // queryTemplatesByType queries templates by particular type sorted by lastModifiedDate
@@ -355,24 +303,9 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return "", fmt.Errorf("resolve spaceId: %w", err)
 	}
 
-	spc, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return "", fmt.Errorf("get space: %w", err)
-	}
-
-	templateId, _, err = s.creator.CreateSmartBlockFromStateInSpace(ctx, spc, objectTypeKeys, st)
+	templateId, _, err = s.creator.CreateSmartBlockFromState(ctx, spaceId, objectTypeKeys, st)
 	if err != nil {
 		return
-	}
-
-	typeId, err2 := spc.GetTypeIdByKey(ctx, objectTypeKeys[0])
-	if err2 != nil {
-		log.Errorf("failed to get typeId: %v", err2)
-		return
-	}
-
-	if err2 = s.SetDefaultTemplateInType(ctx, typeId, templateId); err != nil {
-		log.Errorf("failed to set defaultTemplateId to type: %v", err2)
 	}
 	return
 }
@@ -466,25 +399,8 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	return path, err
 }
 
-// SetDefaultTemplateInType sets defaultTemplateId to type object in case it is empty
-func (s *service) SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error {
-	return cache.DoContext(s.picker, ctx, typeId, func(sb smartblock.SmartBlock) error {
-		if sb.Details().GetString(bundle.RelationKeyDefaultTemplateId) != "" {
-			return nil
-		}
-		ds := sb.(basic.DetailsSettable)
-		if ds == nil {
-			return fmt.Errorf("cannot set defaultTemplateId as type object does not support DetailsSettable interface")
-		}
-		return ds.SetDetails(nil, []domain.Detail{{
-			Key:   bundle.RelationKeyDefaultTemplateId,
-			Value: domain.String(templateId),
-		}}, false)
-	})
-}
-
 func (s *service) createBlankTemplateState(typeId domain.FullID, layout model.ObjectTypeLayout) (st *state.State) {
-	st = state.NewDoc(BlankTemplateId, nil).NewState()
+	st = state.NewDoc(blankTemplateId, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithFeaturedRelationsBlock,
 		template.WithDetail(bundle.RelationKeyTag, domain.StringList(nil)),

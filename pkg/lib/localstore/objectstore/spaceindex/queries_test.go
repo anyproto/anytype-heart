@@ -181,6 +181,12 @@ func TestQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:    "id1/r/pluralName",
+			Title: "mynames",
+		})
+		require.NoError(t, err)
+
+		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "id2/b/321",
 			Title: "some important note",
 		})
@@ -212,6 +218,19 @@ func TestQuery(t *testing.T) {
 			})
 			require.NoError(t, err)
 
+			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
+			assertRecordsMatch(t, []TestObject{
+				obj1,
+			}, recs)
+		})
+
+		t.Run("fulltext by plural name relation", func(t *testing.T) {
+			recs, err := s.Query(database.Query{
+				TextQuery: "mynames",
+			})
+			require.NoError(t, err)
+
+			assert.Equal(t, "pluralName", recs[0].Meta.RelationKey)
 			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
 			assertRecordsMatch(t, []TestObject{
 				obj1,

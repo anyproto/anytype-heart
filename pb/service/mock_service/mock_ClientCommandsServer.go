@@ -73,6 +73,104 @@ func (_c *MockClientCommandsServer_AIAutofill_Call) RunAndReturn(run func(contex
 	return _c
 }
 
+// AIListSummary provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) AIListSummary(_a0 context.Context, _a1 *pb.RpcAIListSummaryRequest) *pb.RpcAIListSummaryResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AIListSummary")
+	}
+
+	var r0 *pb.RpcAIListSummaryResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcAIListSummaryRequest) *pb.RpcAIListSummaryResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcAIListSummaryResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_AIListSummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AIListSummary'
+type MockClientCommandsServer_AIListSummary_Call struct {
+	*mock.Call
+}
+
+// AIListSummary is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcAIListSummaryRequest
+func (_e *MockClientCommandsServer_Expecter) AIListSummary(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_AIListSummary_Call {
+	return &MockClientCommandsServer_AIListSummary_Call{Call: _e.mock.On("AIListSummary", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_AIListSummary_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcAIListSummaryRequest)) *MockClientCommandsServer_AIListSummary_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcAIListSummaryRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AIListSummary_Call) Return(_a0 *pb.RpcAIListSummaryResponse) *MockClientCommandsServer_AIListSummary_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AIListSummary_Call) RunAndReturn(run func(context.Context, *pb.RpcAIListSummaryRequest) *pb.RpcAIListSummaryResponse) *MockClientCommandsServer_AIListSummary_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AIObjectCreateFromUrl provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) AIObjectCreateFromUrl(_a0 context.Context, _a1 *pb.RpcAIObjectCreateFromUrlRequest) *pb.RpcAIObjectCreateFromUrlResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AIObjectCreateFromUrl")
+	}
+
+	var r0 *pb.RpcAIObjectCreateFromUrlResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcAIObjectCreateFromUrlRequest) *pb.RpcAIObjectCreateFromUrlResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcAIObjectCreateFromUrlResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_AIObjectCreateFromUrl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AIObjectCreateFromUrl'
+type MockClientCommandsServer_AIObjectCreateFromUrl_Call struct {
+	*mock.Call
+}
+
+// AIObjectCreateFromUrl is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcAIObjectCreateFromUrlRequest
+func (_e *MockClientCommandsServer_Expecter) AIObjectCreateFromUrl(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_AIObjectCreateFromUrl_Call {
+	return &MockClientCommandsServer_AIObjectCreateFromUrl_Call{Call: _e.mock.On("AIObjectCreateFromUrl", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_AIObjectCreateFromUrl_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcAIObjectCreateFromUrlRequest)) *MockClientCommandsServer_AIObjectCreateFromUrl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcAIObjectCreateFromUrlRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AIObjectCreateFromUrl_Call) Return(_a0 *pb.RpcAIObjectCreateFromUrlResponse) *MockClientCommandsServer_AIObjectCreateFromUrl_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AIObjectCreateFromUrl_Call) RunAndReturn(run func(context.Context, *pb.RpcAIObjectCreateFromUrlRequest) *pb.RpcAIObjectCreateFromUrlResponse) *MockClientCommandsServer_AIObjectCreateFromUrl_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AIWritingTools provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) AIWritingTools(_a0 context.Context, _a1 *pb.RpcAIWritingToolsRequest) *pb.RpcAIWritingToolsResponse {
 	ret := _m.Called(_a0, _a1)
@@ -510,6 +608,104 @@ func (_c *MockClientCommandsServer_AccountLocalLinkSolveChallenge_Call) Return(_
 }
 
 func (_c *MockClientCommandsServer_AccountLocalLinkSolveChallenge_Call) RunAndReturn(run func(context.Context, *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse) *MockClientCommandsServer_AccountLocalLinkSolveChallenge_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AccountMigrate provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) AccountMigrate(_a0 context.Context, _a1 *pb.RpcAccountMigrateRequest) *pb.RpcAccountMigrateResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AccountMigrate")
+	}
+
+	var r0 *pb.RpcAccountMigrateResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcAccountMigrateRequest) *pb.RpcAccountMigrateResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcAccountMigrateResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_AccountMigrate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountMigrate'
+type MockClientCommandsServer_AccountMigrate_Call struct {
+	*mock.Call
+}
+
+// AccountMigrate is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcAccountMigrateRequest
+func (_e *MockClientCommandsServer_Expecter) AccountMigrate(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_AccountMigrate_Call {
+	return &MockClientCommandsServer_AccountMigrate_Call{Call: _e.mock.On("AccountMigrate", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_AccountMigrate_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcAccountMigrateRequest)) *MockClientCommandsServer_AccountMigrate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcAccountMigrateRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AccountMigrate_Call) Return(_a0 *pb.RpcAccountMigrateResponse) *MockClientCommandsServer_AccountMigrate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AccountMigrate_Call) RunAndReturn(run func(context.Context, *pb.RpcAccountMigrateRequest) *pb.RpcAccountMigrateResponse) *MockClientCommandsServer_AccountMigrate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AccountMigrateCancel provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) AccountMigrateCancel(_a0 context.Context, _a1 *pb.RpcAccountMigrateCancelRequest) *pb.RpcAccountMigrateCancelResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AccountMigrateCancel")
+	}
+
+	var r0 *pb.RpcAccountMigrateCancelResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcAccountMigrateCancelRequest) *pb.RpcAccountMigrateCancelResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcAccountMigrateCancelResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_AccountMigrateCancel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountMigrateCancel'
+type MockClientCommandsServer_AccountMigrateCancel_Call struct {
+	*mock.Call
+}
+
+// AccountMigrateCancel is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcAccountMigrateCancelRequest
+func (_e *MockClientCommandsServer_Expecter) AccountMigrateCancel(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_AccountMigrateCancel_Call {
+	return &MockClientCommandsServer_AccountMigrateCancel_Call{Call: _e.mock.On("AccountMigrateCancel", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_AccountMigrateCancel_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcAccountMigrateCancelRequest)) *MockClientCommandsServer_AccountMigrateCancel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcAccountMigrateCancelRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AccountMigrateCancel_Call) Return(_a0 *pb.RpcAccountMigrateCancelResponse) *MockClientCommandsServer_AccountMigrateCancel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_AccountMigrateCancel_Call) RunAndReturn(run func(context.Context, *pb.RpcAccountMigrateCancelRequest) *pb.RpcAccountMigrateCancelResponse) *MockClientCommandsServer_AccountMigrateCancel_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1735,6 +1931,55 @@ func (_c *MockClientCommandsServer_BlockDataviewRelationDelete_Call) Return(_a0 
 }
 
 func (_c *MockClientCommandsServer_BlockDataviewRelationDelete_Call) RunAndReturn(run func(context.Context, *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse) *MockClientCommandsServer_BlockDataviewRelationDelete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// BlockDataviewRelationSet provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) BlockDataviewRelationSet(_a0 context.Context, _a1 *pb.RpcBlockDataviewRelationSetRequest) *pb.RpcBlockDataviewRelationSetResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BlockDataviewRelationSet")
+	}
+
+	var r0 *pb.RpcBlockDataviewRelationSetResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcBlockDataviewRelationSetRequest) *pb.RpcBlockDataviewRelationSetResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcBlockDataviewRelationSetResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_BlockDataviewRelationSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockDataviewRelationSet'
+type MockClientCommandsServer_BlockDataviewRelationSet_Call struct {
+	*mock.Call
+}
+
+// BlockDataviewRelationSet is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcBlockDataviewRelationSetRequest
+func (_e *MockClientCommandsServer_Expecter) BlockDataviewRelationSet(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_BlockDataviewRelationSet_Call {
+	return &MockClientCommandsServer_BlockDataviewRelationSet_Call{Call: _e.mock.On("BlockDataviewRelationSet", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_BlockDataviewRelationSet_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcBlockDataviewRelationSetRequest)) *MockClientCommandsServer_BlockDataviewRelationSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcBlockDataviewRelationSetRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_BlockDataviewRelationSet_Call) Return(_a0 *pb.RpcBlockDataviewRelationSetResponse) *MockClientCommandsServer_BlockDataviewRelationSet_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_BlockDataviewRelationSet_Call) RunAndReturn(run func(context.Context, *pb.RpcBlockDataviewRelationSetRequest) *pb.RpcBlockDataviewRelationSetResponse) *MockClientCommandsServer_BlockDataviewRelationSet_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5900,6 +6145,55 @@ func (_c *MockClientCommandsServer_ChatUnsubscribe_Call) Return(_a0 *pb.RpcChatU
 }
 
 func (_c *MockClientCommandsServer_ChatUnsubscribe_Call) RunAndReturn(run func(context.Context, *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse) *MockClientCommandsServer_ChatUnsubscribe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ChatUnsubscribeFromMessagePreviews provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) ChatUnsubscribeFromMessagePreviews(_a0 context.Context, _a1 *pb.RpcChatUnsubscribeFromMessagePreviewsRequest) *pb.RpcChatUnsubscribeFromMessagePreviewsResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatUnsubscribeFromMessagePreviews")
+	}
+
+	var r0 *pb.RpcChatUnsubscribeFromMessagePreviewsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatUnsubscribeFromMessagePreviewsRequest) *pb.RpcChatUnsubscribeFromMessagePreviewsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatUnsubscribeFromMessagePreviewsResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatUnsubscribeFromMessagePreviews'
+type MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call struct {
+	*mock.Call
+}
+
+// ChatUnsubscribeFromMessagePreviews is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatUnsubscribeFromMessagePreviewsRequest
+func (_e *MockClientCommandsServer_Expecter) ChatUnsubscribeFromMessagePreviews(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call {
+	return &MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call{Call: _e.mock.On("ChatUnsubscribeFromMessagePreviews", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatUnsubscribeFromMessagePreviewsRequest)) *MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatUnsubscribeFromMessagePreviewsRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call) Return(_a0 *pb.RpcChatUnsubscribeFromMessagePreviewsResponse) *MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call) RunAndReturn(run func(context.Context, *pb.RpcChatUnsubscribeFromMessagePreviewsRequest) *pb.RpcChatUnsubscribeFromMessagePreviewsResponse) *MockClientCommandsServer_ChatUnsubscribeFromMessagePreviews_Call {
 	_c.Call.Return(run)
 	return _c
 }

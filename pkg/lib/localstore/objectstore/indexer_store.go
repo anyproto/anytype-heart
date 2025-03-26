@@ -46,7 +46,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-	) ([]string, error)) error {
+	) (succeedIds []string, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -55,11 +55,16 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 		if len(ids) == 0 {
 			return nil
 		}
-		toRemove, err := processIds(ids)
+		succeedIds, err := processIds(ids)
 		if err != nil {
+			// if all failed it will return an error and we will exit here
 			return fmt.Errorf("process ids: %w", err)
 		}
-		err = s.RemoveIdsFromFullTextQueue(toRemove)
+		if len(succeedIds) == 0 {
+			// special case to prevent infinite loop
+			return fmt.Errorf("all ids failed to process")
+		}
+		err = s.RemoveIdsFromFullTextQueue(succeedIds)
 		if err != nil {
 			return fmt.Errorf("remove ids from fulltext queue: %w", err)
 		}

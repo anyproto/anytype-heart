@@ -171,11 +171,7 @@ func (s *service) createTemplate(
 	if err != nil {
 		return
 	}
-	id, resultDetails, err = s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
-	if e := s.templateService.SetDefaultTemplateInType(ctx, target, id); e != nil {
-		log.Errorf("failed to set defaultTemplateId to type: %v", e)
-	}
-	return
+	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
 }
 
 func (s *service) createCommonObject(
