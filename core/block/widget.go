@@ -121,6 +121,9 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 			Value: domain.Int64(model.ObjectOrigin_usecase),
 		},
 	}}, 1, 1)
+	if err != nil {
+		log.Warnf("failed to query records for type '%s' in space '%s': %v", key, spaceId, err)
+	}
 	if len(records) > 0 {
 		// only create widget if this was the first object of this type created
 		return nil
