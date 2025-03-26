@@ -11,19 +11,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-type fixture struct {
-	*Server
-	accountService account.Service
-	mwMock         *mock_service.MockClientCommandsServer
-}
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_service.NewMockClientCommandsServer(t)
@@ -168,9 +161,7 @@ func TestEnsureAccountInfo(t *testing.T) {
 		expectedInfo := &model.AccountInfo{
 			GatewayUrl: "http://localhost:31006",
 		}
-		fx.accountService.(*mock_account.MockService).
-			On("GetInfo", mock.Anything).
-			Return(expectedInfo, nil).Once()
+		fx.accountService.(*mock_account.MockService).On("GetInfo", mock.Anything).Return(expectedInfo, nil).Once()
 
 		// when
 		middleware := fx.ensureAccountInfo(fx.accountService)

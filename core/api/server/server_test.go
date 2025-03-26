@@ -10,18 +10,18 @@ import (
 	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 )
 
-type srvFixture struct {
+type fixture struct {
 	*Server
 	accountService account.Service
 	mwMock         *mock_service.MockClientCommandsServer
 }
 
-func newServerFixture(t *testing.T) *srvFixture {
+func newServerFixture(t *testing.T) *fixture {
 	mwMock := mock_service.NewMockClientCommandsServer(t)
 	accountService := mock_account.NewMockService(t)
 	server := NewServer(accountService, mwMock)
 
-	return &srvFixture{
+	return &fixture{
 		Server:         server,
 		accountService: accountService,
 		mwMock:         mwMock,
