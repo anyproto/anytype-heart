@@ -93,7 +93,7 @@
   {
     "id": "task",
     "name": "Task",
-    "pluralName": "Task",
+    "pluralName": "Tasks",
     "types": [
       "Page"
     ],
@@ -427,7 +427,7 @@
     ],
     "iconColor": 3,
     "iconName": "man",
-    "hidden": false,
+    "hidden": true,
     "layout": "profile",
     "relations": [
       "tag"

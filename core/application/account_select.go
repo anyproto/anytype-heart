@@ -83,7 +83,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	metrics.Service.SetWorkingDir(req.RootPath, req.Id)
 
 	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.JsonApiListenAddr,
-		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.FulltextPrimaryLanguage)
+		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.FulltextPrimaryLanguage, req.JoinStreamURL)
 }
 
 func (s *Service) start(
@@ -96,6 +96,7 @@ func (s *Service) start(
 	networkMode pb.RpcAccountNetworkMode,
 	networkConfigFilePath string,
 	lang string,
+	joinStreamUrl string,
 ) (*model.Account, error) {
 	ctx, task := trace2.NewTask(ctx, "application.start")
 	defer task.End()
@@ -126,7 +127,7 @@ func (s *Service) start(
 			os.RemoveAll(filepath.Join(s.rootPath, id))
 		}
 	}()
-	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(false, joinStreamUrl)
 	if disableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}

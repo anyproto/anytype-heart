@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "5cbb79515a631309e2b33496298fd9f9b604abaae3ed830ecee9141a0b2b0537"
+const TypeChecksum = "91c804ca7dd4df74fafbdaff99e50fa2ffcc6cb0fb073887a90bdf1b4a3d98d5"
 const (
 	TypePrefix = "_ot"
 )
@@ -305,6 +305,7 @@ var (
 		TypeKeyProfile: {
 
 			Description:   "Homo sapiens",
+			Hidden:        true,
 			IconColor:     3,
 			IconName:      "man",
 			Layout:        model.ObjectType_profile,
@@ -423,7 +424,7 @@ var (
 			IconName:      "checkbox",
 			Layout:        model.ObjectType_todo,
 			Name:          "Task",
-			PluralName:    "Task",
+			PluralName:    "Tasks",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyLinkedProjects), MustGetRelationLink(RelationKeyPriority), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
 			Revision:      2,

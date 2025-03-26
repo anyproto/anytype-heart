@@ -34,9 +34,13 @@ type InviteService interface {
 	RemoveExisting(ctx context.Context, spaceId string) error
 	Generate(ctx context.Context, spaceId string, inviteKey crypto.PrivKey, sendInvite func() error) (domain.InviteInfo, error)
 	GetCurrent(ctx context.Context, spaceId string) (domain.InviteInfo, error)
+	GetExistingGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
+	GenerateGuestUserInvite(ctx context.Context, spaceId string, guestKey crypto.PrivKey) (domain.InviteInfo, error)
 }
 
 var _ InviteService = (*inviteService)(nil)
+
+var ErrInvalidSpaceType = fmt.Errorf("invalid space type")
 
 type inviteService struct {
 	inviteStore    invitestore.Service
@@ -79,7 +83,8 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 		SpaceName:    invitePayload.SpaceName,
 		SpaceIconCid: invitePayload.SpaceIconCid,
 		CreatorName:  invitePayload.CreatorName,
-		InviteKey:    invitePayload.InviteKey,
+		AclKey:       invitePayload.AclKey,
+		GuestKey:     invitePayload.GuestKey,
 	}, nil
 }
 
@@ -162,7 +167,11 @@ func (i *inviteService) doInviteObject(ctx context.Context, spaceId string, f fu
 	})
 }
 
-func (i *inviteService) Generate(ctx context.Context, spaceId string, inviteKey crypto.PrivKey, sendInvite func() error) (result domain.InviteInfo, err error) {
+func (i *inviteService) GenerateGuestUserInvite(ctx context.Context, spaceId string, guestUserKey crypto.PrivKey) (domain.InviteInfo, error) {
+	return i.generateGuestInvite(ctx, spaceId, guestUserKey)
+}
+
+func (i *inviteService) Generate(ctx context.Context, spaceId string, aclKey crypto.PrivKey, sendInvite func() error) (result domain.InviteInfo, err error) {
 	if spaceId == i.accountService.PersonalSpaceID() {
 		return domain.InviteInfo{}, ErrPersonalSpace
 	}
@@ -180,7 +189,7 @@ func (i *inviteService) Generate(ctx context.Context, spaceId string, inviteKey 
 			InviteFileKey: fileKey,
 		}, nil
 	}
-	invite, err := i.buildInvite(ctx, spaceId, inviteKey)
+	invite, err := i.buildInvite(ctx, spaceId, aclKey, nil)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("build invite", err)
 	}
@@ -220,6 +229,43 @@ func (i *inviteService) Generate(ctx context.Context, spaceId string, inviteKey 
 	}, err
 }
 
+func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string, guestUserKey crypto.PrivKey) (result domain.InviteInfo, err error) {
+	if spaceId == i.accountService.PersonalSpaceID() {
+		return domain.InviteInfo{}, ErrPersonalSpace
+	}
+	invite, err := i.buildInvite(ctx, spaceId, nil, guestUserKey)
+	if err != nil {
+		return domain.InviteInfo{}, generateInviteError("build invite", err)
+	}
+	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, invite)
+	if err != nil {
+		return domain.InviteInfo{}, generateInviteError("store invite in ipfs", err)
+	}
+	removeInviteFile := func() {
+		err := i.inviteStore.RemoveInvite(ctx, inviteFileCid)
+		if err != nil {
+			log.Error("remove invite file", zap.Error(err))
+		}
+	}
+	inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteFileKey)
+	if err != nil {
+		removeInviteFile()
+		return domain.InviteInfo{}, generateInviteError("encode invite file key", err)
+	}
+	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
+		return obj.SetGuestInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
+	})
+	if err != nil {
+		removeInviteFile()
+		return domain.InviteInfo{}, generateInviteError("set invite file info", err)
+	}
+
+	return domain.InviteInfo{
+		InviteFileCid: inviteFileCid.String(),
+		InviteFileKey: inviteFileKeyRaw,
+	}, err
+}
+
 func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (md *model.InvitePayload, err error) {
 	invite, err := i.inviteStore.GetInvite(ctx, inviteCid, inviteFileKey)
 	if err != nil {
@@ -248,8 +294,13 @@ func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, invit
 	return &invitePayload, nil
 }
 
-func (i *inviteService) buildInvite(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) (*model.Invite, error) {
-	invitePayload, err := i.buildInvitePayload(ctx, spaceId, inviteKey)
+// buildInvite creates invite payload and signs it
+// you should provide either aclKey or guestUserKey
+func (i *inviteService) buildInvite(ctx context.Context, spaceId string, aclKey, guestUserKey crypto.PrivKey) (*model.Invite, error) {
+	if aclKey != nil && guestUserKey != nil {
+		return nil, fmt.Errorf("you should provide either acl key or guest user key")
+	}
+	invitePayload, err := i.buildInvitePayload(ctx, spaceId, aclKey, guestUserKey)
 	if err != nil {
 		return nil, fmt.Errorf("build invite payload: %w", err)
 	}
@@ -267,21 +318,34 @@ func (i *inviteService) buildInvite(ctx context.Context, spaceId string, inviteK
 	}, nil
 }
 
-func (i *inviteService) buildInvitePayload(ctx context.Context, spaceId string, inviteKey crypto.PrivKey) (*model.InvitePayload, error) {
+func (i *inviteService) buildInvitePayload(ctx context.Context, spaceId string, aclKey crypto.PrivKey, guestKey crypto.PrivKey) (*model.InvitePayload, error) {
 	profile, err := i.accountService.ProfileInfo()
 	if err != nil {
 		return nil, fmt.Errorf("get profile info: %w", err)
 	}
-	rawInviteKey, err := inviteKey.Marshall()
-	if err != nil {
-		return nil, fmt.Errorf("marshal invite priv key: %w", err)
-	}
+
 	invitePayload := &model.InvitePayload{
 		SpaceId:         spaceId,
 		CreatorIdentity: i.accountService.AccountID(),
 		CreatorName:     profile.Name,
-		InviteKey:       rawInviteKey,
 	}
+	if aclKey != nil {
+		rawAclKey, err := aclKey.Marshall()
+		if err != nil {
+			return nil, fmt.Errorf("marshal invite priv key: %w", err)
+		}
+		invitePayload.AclKey = rawAclKey
+	} else if guestKey != nil {
+		rawGuestKey, err := guestKey.Marshall()
+		if err != nil {
+			return nil, fmt.Errorf("marshal invite priv key: %w", err)
+		}
+		invitePayload.GuestKey = rawGuestKey
+		invitePayload.InviteType = model.InvitePayload_JoinAsGuest
+	} else {
+		return nil, fmt.Errorf("acl key or guest key should be provided")
+	}
+
 	var description spaceinfo.SpaceDescription
 	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
 		description = spaceView.GetSpaceDescription()
@@ -301,4 +365,33 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, spaceId string, 
 		}
 	}
 	return invitePayload, nil
+}
+
+func (i *inviteService) GetExistingGuestUserInvite(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
+	var fileCid, fileKey string
+	var spaceType model.SpaceUxType
+	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+		spaceType = spaceView.GetSpaceDescription().SpaceUxType
+		return nil
+	})
+	if err != nil {
+		return domain.InviteInfo{}, getInviteError("get space type", err)
+	}
+	if spaceType != model.SpaceUxType_Stream {
+		return domain.InviteInfo{}, ErrInvalidSpaceType
+	}
+	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
+		fileCid, fileKey = obj.GetExistingGuestInviteInfo()
+		return nil
+	})
+	if err != nil {
+		return domain.InviteInfo{}, generateInviteError("get existing invite info", err)
+	}
+	if fileCid != "" {
+		return domain.InviteInfo{
+			InviteFileCid: fileCid,
+			InviteFileKey: fileKey,
+		}, nil
+	}
+	return domain.InviteInfo{}, ErrInviteNotExists
 }

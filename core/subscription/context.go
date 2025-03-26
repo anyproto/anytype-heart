@@ -1,6 +1,8 @@
 package subscription
 
 import (
+	"sort"
+
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -195,8 +197,10 @@ func (ctx *opCtx) addDetailsEvents(prev, curr *entry, info struct {
 		active := prev.GetActive()
 		detailsSent := prev.GetFullDetailsSent()
 		subIdsToSendAmendDetails = lo.Intersect(active, detailsSent)
+		sort.Strings(subIdsToSendAmendDetails)
 
 		subIdsToSendSetDetails = slice.Difference(info.subIds, subIdsToSendAmendDetails)
+		sort.Strings(subIdsToSendSetDetails)
 		if len(subIdsToSendAmendDetails) != 0 {
 			diff, keysToUnset := domain.StructDiff(prev.data, curr.data)
 			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(ctx.spaceId, info.id, diff, info.keys, keysToUnset, subIdsToSendAmendDetails)...)
@@ -330,6 +334,7 @@ func (ctx *opCtx) collectKeys(id string, subId string, keys []domain.RelationKey
 			}
 			if slice.FindPos(kb.subIds, subId) == -1 {
 				ctx.keysBuf[i].subIds = append(kb.subIds, subId)
+				sort.Strings(ctx.keysBuf[i].subIds)
 			}
 			break
 		}

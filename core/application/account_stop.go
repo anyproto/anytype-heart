@@ -91,7 +91,7 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 	}
 
 	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, conf.JsonApiListenAddr,
-		conf.PeferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, lang)
+		conf.PeferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, lang, "")
 	return err
 }
 
