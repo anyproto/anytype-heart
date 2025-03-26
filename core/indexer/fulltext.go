@@ -63,7 +63,7 @@ func (i *indexer) ftLoopRoutine() {
 					// we have an error in the previous run
 					// double the ticker duration, but not more than ftMaxIndexInterval
 					if tickerDuration*2 <= ftMaxIndexInterval {
-						tickerDuration = tickerDuration * 2
+						tickerDuration *= 2
 						ticker.Reset(tickerDuration)
 					}
 				}
