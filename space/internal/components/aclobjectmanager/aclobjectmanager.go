@@ -124,7 +124,9 @@ func (a *aclObjectManager) Run(ctx context.Context) (err error) {
 }
 
 func (a *aclObjectManager) Close(ctx context.Context) (err error) {
-	a.spaceLoaderListener.OnSpaceUnload(a.sp.Id())
+	if a.sp != nil {
+		a.spaceLoaderListener.OnSpaceUnload(a.sp.Id())
+	}
 	if !a.started {
 		return
 	}
