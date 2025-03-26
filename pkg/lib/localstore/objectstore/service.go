@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"golang.org/x/exp/maps"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -38,7 +39,8 @@ type CrossSpace interface {
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace() ([]string, error)
-	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
+	EnqueueAllForFulltextIndexing(ctx context.Context) error
+	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) ([]string, error)) error
 
 	AccountStore
 	VirtualSpacesStore
@@ -58,9 +60,10 @@ type ObjectStore interface {
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(ctx context.Context, id ...string) error
-	ListIdsFromFullTextQueue(limit int) ([]string, error)
+	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
+	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	RemoveIdsFromFullTextQueue(ids []string) error
+	ClearFullTextQueue(spaceIds []string) error
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
@@ -418,10 +421,57 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
+func collectCrossSpaceWithoutTech(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
+	stores := s.listStores()
+	for _, store := range stores {
+		if store.SpaceId() == s.techSpaceId {
+			continue
+		}
+		err := proc(store)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
 	return collectCrossSpace(s, func(store spaceindex.Store) ([]string, error) {
 		return store.ListIds()
 	})
+}
+
+func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error {
+	txn, err := s.fulltextQueue.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	err = collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
+		err = store.IterateAll(func(doc *anyenc.Value) error {
+			id := doc.GetString(idKey)
+			spaceId := doc.GetString(spaceIdKey)
+			obj := arena.NewObject()
+			obj.Set(idKey, arena.NewString(id))
+			obj.Set(spaceIdKey, arena.NewString(spaceId))
+			err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+			if err != nil {
+				return err
+			}
+			arena.Reset()
+			return nil
+		})
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, error) {

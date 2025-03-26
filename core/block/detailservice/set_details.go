@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"go.uber.org/zap"
 
@@ -13,13 +14,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -75,7 +75,7 @@ func (s *service) SetIsFavorite(objectId string, isFavorite, createWidget bool) 
 	}
 
 	if createWidget && isFavorite {
-		err = s.createFavoriteWidget(spc.DerivedIDs().Widgets)
+		err = s.createFavoriteWidget(spc)
 		if err != nil {
 			log.Error("failed to create favorite widget", zap.Error(err))
 		}
@@ -261,41 +261,18 @@ func (s *service) modifyArchiveLinks(
 	return
 }
 
-func (s *service) createFavoriteWidget(widgetObjectId string) error {
+func (s *service) createFavoriteWidget(spc clientspace.Space) error {
+	widgetObjectId := spc.DerivedIDs().Widgets
+	widgetDetails, err := s.store.SpaceIndex(spc.Id()).GetDetails(widgetObjectId)
+	if err != nil {
+		return fmt.Errorf("get widget details: %w", err)
+	}
+	targetIds := widgetDetails.GetStringList(bundle.RelationKeyAutoWidgetTargets)
+	if slices.Contains(targetIds, widget.DefaultWidgetFavorite) {
+		return nil
+	}
+
 	return cache.DoState(s.objectGetter, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		var favoriteBlockFound bool
-		err = st.Iterate(func(b simple.Block) (isContinue bool) {
-			link := b.Model().GetLink()
-			if link == nil {
-				return true
-			}
-			if link.TargetBlockId == widget.DefaultWidgetFavorite {
-				favoriteBlockFound = true
-				return false
-			}
-			return true
-		})
-
-		if err != nil {
-			return err
-		}
-
-		if favoriteBlockFound {
-			log.Debug("favorite widget block is already presented")
-			return nil
-		}
-
-		_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    widgetObjectId,
-			ObjectLimit:  6,
-			WidgetLayout: model.BlockContentWidget_List,
-			Position:     model.Block_Bottom,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
-					TargetBlockId: widget.DefaultWidgetFavorite,
-				}},
-			},
-		})
-		return err
+		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList)
 	})
 }

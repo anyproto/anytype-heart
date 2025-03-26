@@ -38,7 +38,5 @@ type Service interface {
 
 	TemplateExportAll(ctx context.Context, path string) (string, error)
 
-	SetDefaultTemplateInType(ctx context.Context, typeId, templateId string) error
-
 	app.Component
 }
