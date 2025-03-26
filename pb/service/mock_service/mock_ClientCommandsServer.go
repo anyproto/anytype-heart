@@ -1935,6 +1935,55 @@ func (_c *MockClientCommandsServer_BlockDataviewRelationDelete_Call) RunAndRetur
 	return _c
 }
 
+// BlockDataviewRelationSet provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommandsServer) BlockDataviewRelationSet(_a0 context.Context, _a1 *pb.RpcBlockDataviewRelationSetRequest) *pb.RpcBlockDataviewRelationSetResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BlockDataviewRelationSet")
+	}
+
+	var r0 *pb.RpcBlockDataviewRelationSetResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcBlockDataviewRelationSetRequest) *pb.RpcBlockDataviewRelationSetResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcBlockDataviewRelationSetResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommandsServer_BlockDataviewRelationSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockDataviewRelationSet'
+type MockClientCommandsServer_BlockDataviewRelationSet_Call struct {
+	*mock.Call
+}
+
+// BlockDataviewRelationSet is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcBlockDataviewRelationSetRequest
+func (_e *MockClientCommandsServer_Expecter) BlockDataviewRelationSet(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_BlockDataviewRelationSet_Call {
+	return &MockClientCommandsServer_BlockDataviewRelationSet_Call{Call: _e.mock.On("BlockDataviewRelationSet", _a0, _a1)}
+}
+
+func (_c *MockClientCommandsServer_BlockDataviewRelationSet_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcBlockDataviewRelationSetRequest)) *MockClientCommandsServer_BlockDataviewRelationSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcBlockDataviewRelationSetRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommandsServer_BlockDataviewRelationSet_Call) Return(_a0 *pb.RpcBlockDataviewRelationSetResponse) *MockClientCommandsServer_BlockDataviewRelationSet_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommandsServer_BlockDataviewRelationSet_Call) RunAndReturn(run func(context.Context, *pb.RpcBlockDataviewRelationSetRequest) *pb.RpcBlockDataviewRelationSetResponse) *MockClientCommandsServer_BlockDataviewRelationSet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BlockDataviewSetSource provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) BlockDataviewSetSource(_a0 context.Context, _a1 *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse {
 	ret := _m.Called(_a0, _a1)
