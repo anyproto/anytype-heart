@@ -20,7 +20,7 @@ const (
 	DefaultWidgetCollection = "collection"
 	DefaultWidgetBin        = "bin"
 	DefaultWidgetRecentOpen = "recentOpen"
-	wrapperBlockIdSuffix    = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
+	autoWidgetBlockIdPrefix = "auto_" // in case blockId is specifically provided to avoid bad tree merges
 )
 
 type Widget interface {
@@ -159,7 +159,7 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 
 	var wrapperBlockId string
 	if b.Model().Id != "" {
-		wrapperBlockId = b.Model().Id + wrapperBlockIdSuffix
+		wrapperBlockId = autoWidgetBlockIdPrefix + b.Model().Id
 	}
 
 	wrapper := simple.New(&model.Block{
