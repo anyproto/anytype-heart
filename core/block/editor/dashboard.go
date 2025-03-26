@@ -29,8 +29,7 @@ type Dashboard struct {
 	basic.AllOperations
 	collection.Collection
 
-	objectStore            spaceindex.Store
-	autoWidgetWasInstalled bool
+	objectStore spaceindex.Store
 }
 
 func NewDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store, layoutConverter converter.LayoutConverter) *Dashboard {
