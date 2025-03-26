@@ -44,10 +44,10 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	mw := mock_service.NewMockClientCommandsServer(t)
+	mwMock := mock_service.NewMockClientCommandsServer(t)
 
-	spaceService := space.NewService(mw)
-	objectService := NewService(mw, spaceService)
+	spaceService := space.NewService(mwMock)
+	objectService := NewService(mwMock, spaceService)
 	objectService.AccountInfo = &model.AccountInfo{
 		TechSpaceId: mockedTechSpaceId,
 		GatewayUrl:  gatewayUrl,
@@ -55,7 +55,7 @@ func newFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		ObjectService: objectService,
-		mwMock:        mw,
+		mwMock:        mwMock,
 	}
 }
 

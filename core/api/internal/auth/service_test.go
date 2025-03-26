@@ -26,12 +26,12 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	mw := mock_service.NewMockClientCommandsServer(t)
-	authService := NewService(mw)
+	mwMock := mock_service.NewMockClientCommandsServer(t)
+	authService := NewService(mwMock)
 
 	return &fixture{
 		AuthService: authService,
-		mwMock:      mw,
+		mwMock:      mwMock,
 	}
 }
 
