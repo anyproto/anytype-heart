@@ -30,12 +30,12 @@ const CName = "core.block.chats"
 var log = logging.Logger(CName).Desugar()
 
 type Service interface {
-	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error)
-	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
+	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatobject.Message) (string, error)
+	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatobject.Message) error
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)
-	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
+	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatobject.Message, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatobject.SubscribeLastMessagesResponse, error)
 	ReadMessages(ctx context.Context, req ReadMessagesRequest) error
 	UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string) error
@@ -224,19 +224,19 @@ func (s *service) Close(ctx context.Context) error {
 	return err
 }
 
-func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error) {
+func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatobject.Message) (string, error) {
 	var messageId string
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		messageId, err = sb.AddMessage(ctx, sessionCtx, &chatobject.Message{ChatMessage: message})
+		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
 		return err
 	})
 	return messageId, err
 }
 
-func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error {
+func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatobject.Message) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.EditMessage(ctx, messageId, &chatobject.Message{ChatMessage: newMessage})
+		return sb.EditMessage(ctx, messageId, newMessage)
 	})
 }
 
@@ -265,8 +265,8 @@ func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chat
 	return resp, err
 }
 
-func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error) {
-	var res []*model.ChatMessage
+func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatobject.Message, error) {
+	var res []*chatobject.Message
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		msg, err := sb.GetMessagesByIds(ctx, messageIds)
 		if err != nil {

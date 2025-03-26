@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/slice"
-	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
@@ -45,7 +44,7 @@ type StoreObject interface {
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *Message) (string, error)
 	GetMessages(ctx context.Context, req GetMessagesRequest) (*GetMessagesResponse, error)
-	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error)
+	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *Message) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
@@ -170,7 +169,7 @@ func (s *storeObject) onUpdate() {
 	s.subscription.flush()
 }
 
-func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error) {
+func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error) {
 	txn, err := s.collection.ReadTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("start read tx: %w", err)
@@ -186,11 +185,11 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 		}
 		messages = append(messages, unmarshalMessage(obj.Value()))
 	}
-	return messagesToProto(messages), txn.Commit()
+	return messages, txn.Commit()
 }
 
 type GetMessagesResponse struct {
-	Messages  []*model.ChatMessage
+	Messages  []*Message
 	ChatState *model.ChatState
 }
 
@@ -221,9 +220,7 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 	})
 
 	return &GetMessagesResponse{
-		Messages: lo.Map(msgs, func(item *Message, index int) *model.ChatMessage {
-			return item.ChatMessage
-		}),
+		Messages:  msgs,
 		ChatState: s.subscription.getChatState(),
 	}, nil
 }
@@ -376,7 +373,7 @@ func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, me
 }
 
 type SubscribeLastMessagesResponse struct {
-	Messages  []*model.ChatMessage
+	Messages  []*Message
 	ChatState *model.ChatState
 }
 
@@ -418,7 +415,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 		return nil, nil
 	} else {
 		return &SubscribeLastMessagesResponse{
-			Messages:  messagesToProto(messages),
+			Messages:  messages,
 			ChatState: s.subscription.getChatState(),
 		}, nil
 	}

@@ -33,14 +33,6 @@ type messageUnmarshaller struct {
 	val *anyenc.Value
 }
 
-func messagesToProto(msgs []*Message) []*model.ChatMessage {
-	res := make([]*model.ChatMessage, 0, len(msgs))
-	for _, m := range msgs {
-		res = append(res, m.ChatMessage)
-	}
-	return res
-}
-
 func newMessageWrapper(val *anyenc.Value) *messageUnmarshaller {
 	return &messageUnmarshaller{val: val}
 }

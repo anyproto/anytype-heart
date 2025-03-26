@@ -33,11 +33,7 @@ func (o *counterOptions) readModifier(value bool) query.Modifier {
 	arena := &anyenc.Arena{}
 
 	valueModifier := arena.NewObject()
-	if value {
-		valueModifier.Set(o.readKey, arena.NewTrue())
-	} else {
-		valueModifier.Set(o.readKey, arena.NewFalse())
-	}
+	valueModifier.Set(o.readKey, arenaNewBool(arena, value))
 	obj := arena.NewObject()
 	obj.Set("$set", valueModifier)
 	return query.MustParseModifier(obj)

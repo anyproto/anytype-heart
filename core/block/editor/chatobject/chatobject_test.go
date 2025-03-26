@@ -479,51 +479,53 @@ func givenSimpleMessage(text string) *model.ChatMessage {
 	}
 }
 
-func givenComplexMessage() *model.ChatMessage {
-	return &model.ChatMessage{
-		Id:               "",
-		OrderId:          "",
-		Creator:          "",
-		Read:             false,
-		ReplyToMessageId: "replyToMessageId1",
-		Message: &model.ChatMessageMessageContent{
-			Text:  "text!",
-			Style: model.BlockContentText_Quote,
-			Marks: []*model.BlockContentTextMark{
-				{
-					Range: &model.Range{
-						From: 0,
-						To:   1,
+func givenComplexMessage() *Message {
+	return &Message{
+		ChatMessage: &model.ChatMessage{
+			Id:               "",
+			OrderId:          "",
+			Creator:          "",
+			Read:             false,
+			ReplyToMessageId: "replyToMessageId1",
+			Message: &model.ChatMessageMessageContent{
+				Text:  "text!",
+				Style: model.BlockContentText_Quote,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{
+							From: 0,
+							To:   1,
+						},
+						Type:  model.BlockContentTextMark_Link,
+						Param: "https://example.com",
 					},
-					Type:  model.BlockContentTextMark_Link,
-					Param: "https://example.com",
+					{
+						Range: &model.Range{
+							From: 2,
+							To:   3,
+						},
+						Type: model.BlockContentTextMark_Italic,
+					},
+				},
+			},
+			Attachments: []*model.ChatMessageAttachment{
+				{
+					Target: "attachmentId1",
+					Type:   model.ChatMessageAttachment_IMAGE,
 				},
 				{
-					Range: &model.Range{
-						From: 2,
-						To:   3,
+					Target: "attachmentId2",
+					Type:   model.ChatMessageAttachment_LINK,
+				},
+			},
+			Reactions: &model.ChatMessageReactions{
+				Reactions: map[string]*model.ChatMessageReactionsIdentityList{
+					"🥰": {
+						Ids: []string{"identity1", "identity2"},
 					},
-					Type: model.BlockContentTextMark_Italic,
-				},
-			},
-		},
-		Attachments: []*model.ChatMessageAttachment{
-			{
-				Target: "attachmentId1",
-				Type:   model.ChatMessageAttachment_IMAGE,
-			},
-			{
-				Target: "attachmentId2",
-				Type:   model.ChatMessageAttachment_LINK,
-			},
-		},
-		Reactions: &model.ChatMessageReactions{
-			Reactions: map[string]*model.ChatMessageReactionsIdentityList{
-				"🥰": {
-					Ids: []string{"identity1", "identity2"},
-				},
-				"🤔": {
-					Ids: []string{"identity3"},
+					"🤔": {
+						Ids: []string{"identity3"},
+					},
 				},
 			},
 		},
