@@ -27,6 +27,7 @@ import (
 
 var (
 	ftIndexInterval              = 1 * time.Second
+	ftMaxIndexInterval           = time.Second * 32
 	ftIndexForceMinInterval      = time.Second * 10
 	ftBatchLimit            uint = 1000
 	ftBlockMaxSize               = 1024 * 1024
@@ -45,10 +46,10 @@ func (i *indexer) ForceFTIndex() {
 // ftLoop runs full-text indexer
 // MUST NOT be called more than once
 func (i *indexer) ftLoopRoutine() {
-	ticker := time.NewTicker(ftIndexInterval)
+	tickerDuration := ftIndexInterval
+	ticker := time.NewTicker(tickerDuration)
 	ctx := i.runCtx
-
-	i.runFullTextIndexer(ctx)
+	prevError := i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
 	for {
@@ -56,10 +57,25 @@ func (i *indexer) ftLoopRoutine() {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			i.runFullTextIndexer(ctx)
+			err := i.runFullTextIndexer(ctx)
+			if err != nil {
+				if prevError != nil {
+					// we have an error in the previous run
+					// double the ticker duration, but not more than ftMaxIndexInterval
+					if tickerDuration*2 < ftMaxIndexInterval {
+						tickerDuration = tickerDuration * 2
+						ticker.Reset(tickerDuration)
+					}
+				}
+			} else if tickerDuration != ftIndexInterval {
+				// reset ticker to the initial value
+				tickerDuration = ftIndexInterval
+				ticker.Reset(tickerDuration)
+			}
+			prevError = err
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer(ctx)
+				prevError = i.runFullTextIndexer(ctx)
 				lastForceIndex = time.Now()
 			}
 		}
@@ -88,20 +104,31 @@ func (i *indexer) activeSpaces() []string {
 	return lo.Keys(i.spaces)
 }
 
-func (i *indexer) runFullTextIndexer(ctx context.Context) {
+func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
-	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) ([]string, error) {
-		toRemove := make([]string, 0, len(objectIds))
+	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) (succeedIds []string, err error) {
+		if len(objectIds) == 0 {
+			return nil, nil
+		}
+
 		for _, objectId := range objectIds {
+			select {
+			case <-ctx.Done():
+				// doesn't make sense to send succeedIds, as ctx is done and probably we are not going to save it
+				return succeedIds, ctx.Err()
+			default:
+			}
 			objDocs, err := i.prepareSearchDocument(ctx, objectId.ObjectID)
-			if err != nil &&
-				!errors.Is(err, domain.ErrObjectNotFound) &&
-				!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
+			if err != nil {
 				if errors.Is(err, context.Canceled) {
-					return nil, err
+					return succeedIds, err
 				}
-				continue
+				if !errors.Is(err, domain.ErrObjectNotFound) &&
+					!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+					// some error that doesn't mean object is no longer exists
+					log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
+					continue
+				}
 			}
 
 			objDocs, objRemovedIds, err := i.filterOutNotChangedDocuments(objectId.ObjectID, objDocs)
@@ -113,30 +140,33 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) {
 			for _, removeId := range objRemovedIds {
 				err = batcher.DeleteDoc(removeId)
 				if err != nil {
-					return nil, fmt.Errorf("batcher delete: %w", err)
+					return succeedIds, fmt.Errorf("batcher delete: %w", err)
 				}
 			}
 
 			for _, doc := range objDocs {
 				err = batcher.UpdateDoc(doc)
 				if err != nil {
-					return nil, fmt.Errorf("batcher add: %w", err)
+					return succeedIds, fmt.Errorf("batcher add: %w", err)
 				}
 			}
-			toRemove = append(toRemove, objectId.ObjectID)
+
+			succeedIds = append(succeedIds, objectId.ObjectID)
 		}
-		err := batcher.Finish()
+
+		err = batcher.Finish()
 		if err != nil {
-			return nil, fmt.Errorf("finish batch: %w", err)
+			return nil, fmt.Errorf("finish batch failed: %w", err)
 		}
-		return toRemove, nil
+
+		return succeedIds, nil
 	})
 	if err != nil && maxErrSent.Load() < maxErrorsPerSession {
 		maxErrSent.Add(1)
 		log.Errorf("list ids from full-text queue: %v", err)
-		return
 	}
 
+	return err
 }
 
 func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.SearchDoc) (changed []ftsearch.SearchDoc, removedIds []string, err error) {
@@ -276,14 +306,16 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 		// we need to avoid TryRemoveFromCache in this case
 		return docs, nil
 	}
-
+	if err != nil {
+		return nil, err
+	}
 	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
 	if cacheErr != nil &&
 		!errors.Is(err, domain.ErrObjectNotFound) {
 		log.With("objectId", id).Errorf("object cache remove: %v", err)
 	}
 
-	return docs, err
+	return docs, nil
 }
 
 func isName(rel *model.RelationLink) bool {
