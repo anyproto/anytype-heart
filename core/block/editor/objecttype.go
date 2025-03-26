@@ -273,37 +273,7 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 			continue
 		}
 
-		err = ot.Space().DoLockedIfNotExists(id, func() error {
-			return ot.spaceIndex.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
-				if details == nil {
-					return nil, false, nil
-				}
-				if details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
-					return nil, false, nil
-				}
-				details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(newLayout.layout))
-				return details, true, nil
-			})
-		})
-
-		if err == nil {
-			continue
-		}
-
-		if !errors.Is(err, ocache.ErrExists) {
-			resultErr = errors.Join(resultErr, err)
-			continue
-		}
-
-		if err = ot.Space().Do(id, func(b smartblock.SmartBlock) error {
-			if cr, ok := b.(source.ChangeReceiver); ok {
-				// we can do StateAppend here, so resolvedLayout will be injected automatically
-				return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
-					return d.NewState(), nil, nil
-				})
-			}
-			return nil
-		}); err != nil {
+		if err = UpdateResolvedLayoutNoCache(ot.Space(), ot.spaceIndex, id, newLayout.layout); err != nil {
 			resultErr = errors.Join(resultErr, err)
 		}
 	}
@@ -398,6 +368,39 @@ func (ot *ObjectType) queryObjectsAndTemplates() ([]database.Record, error) {
 	}
 
 	return append(records, templates...), nil
+}
+
+func UpdateResolvedLayoutNoCache(spc smartblock.Space, index spaceindex.Store, id string, layout int64) error {
+	err := spc.DoLockedIfNotExists(id, func() error {
+		return index.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
+			if details == nil {
+				return nil, false, nil
+			}
+			if details.GetInt64(bundle.RelationKeyResolvedLayout) == layout {
+				return nil, false, nil
+			}
+			details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+			return details, true, nil
+		})
+	})
+
+	if err == nil {
+		return nil
+	}
+
+	if !errors.Is(err, ocache.ErrExists) {
+		return err
+	}
+
+	return spc.Do(id, func(b smartblock.SmartBlock) error {
+		if cr, ok := b.(source.ChangeReceiver); ok {
+			// we can do StateAppend here, so resolvedLayout will be injected automatically
+			return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
+				return d.NewState(), nil, nil
+			})
+		}
+		return nil
+	})
 }
 
 func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {

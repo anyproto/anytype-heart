@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -283,7 +283,7 @@ func (s *service) ObjectTypeSetStrictInheritance(objectTypeId string, strictInhe
 		st.SetDetailAndBundledRelation(bundle.RelationKeyStrictInheritance, domain.Bool(strictInheritance))
 		return b.Apply(st)
 	}); err != nil {
-		return fmt.Errorf("failed to set isEnforcedLayout detail to object type: %w", err)
+		return fmt.Errorf("failed to set strictInheritance detail to object type: %w", err)
 	}
 
 	if !strictInheritance {
@@ -321,35 +321,7 @@ func (s *service) ObjectTypeSetStrictInheritance(objectTypeId string, strictInhe
 		if id == "" {
 			continue
 		}
-
-		if record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == layoutInType {
-			// relevant layout is already set, skipping
-			continue
-		}
-
-		if err = space.DoLockedIfNotExists(id, func() error {
-			return index.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
-				if details == nil {
-					return nil, false, nil
-				}
-				details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layoutInType))
-				return details, true, nil
-			})
-		}); err == nil {
-			continue
-		}
-
-		if !errors.Is(err, ocache.ErrExists) {
-			resultErr = errors.Join(resultErr, err)
-			continue
-		}
-
-		err = space.Do(id, func(b smartblock.SmartBlock) error {
-			st := b.NewState()
-			st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(layoutInType))
-			return b.Apply(st, smartblock.KeepInternalFlags, smartblock.NotPushChanges)
-		})
-		if err != nil {
+		if err = editor.UpdateResolvedLayoutNoCache(space, index, id, layoutInType); err != nil {
 			resultErr = errors.Join(resultErr, err)
 		}
 	}
