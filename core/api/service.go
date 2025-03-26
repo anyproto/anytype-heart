@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/api/server"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb/service"
 )
 
@@ -35,6 +36,7 @@ type apiService struct {
 	httpSrv        *http.Server
 	mw             service.ClientCommandsServer
 	accountService account.Service
+	eventService   event.Sender
 	listenAddr     string
 	lock           sync.Mutex
 }
@@ -66,6 +68,7 @@ func (s *apiService) Name() (name string) {
 func (s *apiService) Init(a *app.App) (err error) {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
 	s.accountService = a.MustComponent(account.CName).(account.Service)
+	s.eventService = a.MustComponent(event.CName).(event.Sender)
 	return nil
 }
 
@@ -86,7 +89,7 @@ func (s *apiService) runServer() {
 		return
 	}
 
-	s.srv = server.NewServer(s.accountService, s.mw)
+	s.srv = server.NewServer(s.mw, s.accountService, s.eventService)
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,
 		Handler:           s.srv.Engine(),
