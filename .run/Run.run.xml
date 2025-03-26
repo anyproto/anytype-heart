@@ -9,6 +9,7 @@
       <env name="ANYTYPE_GATEWAY_ADDR" value="127.0.0.1:31006" />
       <env name="ANYTYPE_GRPC_ADDR" value="127.0.0.1:31007" />
       <env name="ANYTYPE_GRPCWEB_ADDR" value="127.0.0.1:31008" />
+      <env name="ANYTYPE_LOCAL_PUBLISH_DIR" value="/Users/anastasiasemakinskaa/Documents/anytype-publish-renderer/test_snapshots/testdata" />
       <env name="CC" value="/usr/bin/cc" />
       <env name="CXX" value="/usr/bin/c++" />
       <env name="CGO_CFLAGS" value="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" />
