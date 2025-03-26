@@ -217,17 +217,12 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),
 	}, func(change objecttree.StorageChange) error {
-		prevOrder, err := tx.GetPrevOrderId(change.OrderId)
-		if err != nil {
-			return fmt.Errorf("get prev order id: %w", err)
-		}
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
-			Id:          change.Id,
-			PrevOrderId: prevOrder,
-			Order:       change.OrderId,
-			Changes:     params.Changes,
-			Creator:     s.accountService.AccountID(),
-			Timestamp:   params.Time.Unix(),
+			Id:        change.Id,
+			Order:     change.OrderId,
+			Changes:   params.Changes,
+			Creator:   s.accountService.AccountID(),
+			Timestamp: params.Time.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("apply change set: %w", err)

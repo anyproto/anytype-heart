@@ -8,6 +8,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
@@ -550,6 +551,30 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain
 	return
 }
 
+func (s *dsObjectStore) IterateAll(proc func(doc *anyenc.Value) error) error {
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("iterate all ids: %w", err)
+	}
+	defer iter.Close()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("get doc: %w", err)
+		}
+		err = proc(doc.Value())
+		if err != nil {
+			return err
+		}
+	}
+	err = iter.Err()
+	if err != nil {
+		return fmt.Errorf("iterate: %w", err)
+	}
+	return nil
+}
+
 func (s *dsObjectStore) ListIds() ([]string, error) {
 	var ids []string
 	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
@@ -565,6 +590,32 @@ func (s *dsObjectStore) ListIds() ([]string, error) {
 		}
 		id := doc.Value().GetStringBytes("id")
 		ids = append(ids, string(id))
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, fmt.Errorf("iterate: %w", err)
+	}
+	return ids, nil
+}
+
+func (s *dsObjectStore) ListFullIds() ([]domain.FullID, error) {
+	var ids []domain.FullID
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("find all: %w", err)
+	}
+	defer iter.Close()
+	idKey := bundle.RelationKeyId.String()
+	spaceIdKey := bundle.RelationKeySpaceId.String()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		id := doc.Value().GetString(idKey)
+		spaceId := doc.Value().GetString(spaceIdKey)
+		ids = append(ids, domain.FullID{ObjectID: id, SpaceID: spaceId})
 	}
 	err = iter.Err()
 	if err != nil {
