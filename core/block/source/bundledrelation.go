@@ -75,7 +75,9 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	s := state.NewDocWithUniqueKey(v.id, nil, uk).(*state.State)
 	d, err := v.getDetails(v.id)
 	if err != nil {
-		return nil, err
+		// it is either not found or invalid id. We return not found for both cases
+
+		return nil, domain.ErrObjectNotFound
 	}
 	for k, v := range d.Iterate() {
 		s.SetDetailAndBundledRelation(k, v)

@@ -42,6 +42,8 @@ func (v *bundledObjectType) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeBundledObjectType
 }
 
+// getDetailsForBundledObjectType returns extra relations and details for bundled object type
+// return bundle.ErrNotFound if object type not found
 func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink, p *domain.Details, err error) {
 	ot, err := bundle.GetTypeByUrl(id)
 	if err != nil {
@@ -71,7 +73,8 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 	s := state.NewDocWithUniqueKey(v.id, nil, uk).(*state.State)
 	rels, d, err := getDetailsForBundledObjectType(v.id)
 	if err != nil {
-		return nil, err
+		// it is either not found or invalid id. We return not found for both cases
+		return nil, domain.ErrObjectNotFound
 	}
 	for _, r := range rels {
 		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
