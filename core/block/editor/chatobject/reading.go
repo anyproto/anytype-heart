@@ -275,7 +275,10 @@ func (s *storeObject) getOldestOrderId(txn anystore.ReadTx, opts *counterOptions
 		if err != nil {
 			return "", fmt.Errorf("get doc: %w", err)
 		}
-		return doc.Value().GetObject(orderKey).Get("id").GetString(), nil
+		orders := doc.Value().GetObject(orderKey)
+		if orders != nil {
+			return orders.Get("id").GetString(), nil
+		}
 	}
 	return "", nil
 }

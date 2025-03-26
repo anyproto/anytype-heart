@@ -44,45 +44,46 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 	return
 }
 
-func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
-	msg := newMessageWrapper(ch.Arena, ch.Value)
-	msg.setCreatedAt(ch.Change.Timestamp)
-	msg.setCreator(ch.Change.Creator)
+func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
+	msg := unmarshalMessage(ch.Value)
+	msg.CreatedAt = ch.Change.Timestamp
+	msg.Creator = ch.Change.Creator
 	if d.forceNotRead {
-		msg.setRead(false)
-		msg.setMentionRead(false)
+		msg.Read = false
+		msg.MentionRead = false
 	} else {
 		if ch.Change.Creator == d.currentIdentity {
-			// msg.setRead(true)
-			msg.setRead(false)
-			msg.setMentionRead(false)
+			// TODO Return to true
+			msg.Read = false
+			msg.MentionRead = false
 		} else {
-			msg.setRead(false)
-			msg.setMentionRead(false)
+			msg.Read = false
+			msg.MentionRead = false
 		}
 	}
 
-	msg.setAddedAt(timeid.NewNano())
-	msgModel := msg.toModel()
+	msg.AddedAt = timeid.NewNano()
 
-	hasMention := false
-	for _, mark := range msgModel.Message.Marks {
+	msg.HasMention = false
+	for _, mark := range msg.Message.Marks {
 		if mark.Type == model.BlockContentTextMark_Mention && mark.Param == d.myParticipantId {
-			hasMention = true
+			msg.HasMention = true
 			break
 		}
 	}
-	msg.setHasMention(hasMention)
 
-	msgModel.OrderId = ch.Change.Order
+	msg.OrderId = ch.Change.Order
 
 	prevOrderId, err := getPrevOrderId(ctx, d.collection, ch.Change.Order)
 	if err != nil {
 		return fmt.Errorf("get prev order id: %w", err)
 	}
-	d.subscription.add(prevOrderId, msgModel)
 
-	return
+	d.subscription.add(prevOrderId, msg)
+
+	msg.MarshalAnyenc(ch.Value, ch.Arena)
+
+	return nil
 }
 
 func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
@@ -102,8 +103,8 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
 	}
 
-	message := newMessageWrapper(ch.Arena, doc.Value())
-	if message.getCreator() != ch.Change.Creator {
+	message := unmarshalMessage(doc.Value())
+	if message.Creator != ch.Change.Creator {
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
 
@@ -125,8 +126,7 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 		}
 
 		if modified {
-			msg := newMessageWrapper(a, result)
-			model := msg.toModel()
+			msg := unmarshalMessage(result)
 
 			switch path {
 			case reactionsKey:
@@ -137,15 +137,15 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				}
 				// TODO Count validation
 
-				d.subscription.updateReactions(model)
+				d.subscription.updateReactions(msg)
 			case contentKey:
-				creator := model.Creator
+				creator := msg.Creator
 				if creator != ch.Change.Creator {
 					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify someone else's message"))
 				}
-				result.Set(modifiedAtKey, a.NewNumberInt(int(ch.Change.Timestamp)))
-				model.ModifiedAt = ch.Change.Timestamp
-				d.subscription.updateFull(model)
+				msg.ModifiedAt = ch.Change.Timestamp
+				msg.MarshalAnyenc(result, a)
+				d.subscription.updateFull(msg)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 			}

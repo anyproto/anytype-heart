@@ -125,7 +125,7 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 	return details, nil
 }
 
-func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
+func (s *subscription) add(prevOrderId string, message *Message) {
 	s.updateChatState(func(state *model.ChatState) {
 		if !message.Read {
 			if message.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
@@ -155,7 +155,7 @@ func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
 
 	ev := &pb.EventChatAdd{
 		Id:           message.Id,
-		Message:      message,
+		Message:      message.ChatMessage,
 		OrderId:      message.OrderId,
 		AfterOrderId: prevOrderId,
 		SubIds:       slices.Clone(s.ids),
@@ -193,13 +193,13 @@ func (s *subscription) delete(messageId string) {
 	}))
 }
 
-func (s *subscription) updateFull(message *model.ChatMessage) {
+func (s *subscription) updateFull(message *Message) {
 	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatUpdate{
 		Id:      message.Id,
-		Message: message,
+		Message: message.ChatMessage,
 		SubIds:  slices.Clone(s.ids),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdate{
@@ -207,7 +207,7 @@ func (s *subscription) updateFull(message *model.ChatMessage) {
 	}))
 }
 
-func (s *subscription) updateReactions(message *model.ChatMessage) {
+func (s *subscription) updateReactions(message *Message) {
 	if !s.canSend() {
 		return
 	}

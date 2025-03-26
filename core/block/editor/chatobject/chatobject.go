@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/slice"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
@@ -42,10 +43,10 @@ type StoreObject interface {
 	smartblock.SmartBlock
 	anystoredebug.AnystoreDebug
 
-	AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error)
+	AddMessage(ctx context.Context, sessionCtx session.Context, message *Message) (string, error)
 	GetMessages(ctx context.Context, req GetMessagesRequest) (*GetMessagesResponse, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*model.ChatMessage, error)
-	EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error
+	EditMessage(ctx context.Context, messageId string, newMessage *Message) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) (*SubscribeLastMessagesResponse, error)
@@ -174,7 +175,7 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 	if err != nil {
 		return nil, fmt.Errorf("start read tx: %w", err)
 	}
-	messages := make([]*model.ChatMessage, 0, len(messageIds))
+	messages := make([]*Message, 0, len(messageIds))
 	for _, messageId := range messageIds {
 		obj, err := s.collection.FindId(txn.Context(), messageId)
 		if errors.Is(err, anystore.ErrDocNotFound) {
@@ -183,10 +184,9 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 		if err != nil {
 			return nil, errors.Join(txn.Commit(), fmt.Errorf("find id: %w", err))
 		}
-		msg := newMessageWrapper(nil, obj.Value())
-		messages = append(messages, msg.toModel())
+		messages = append(messages, unmarshalMessage(obj.Value()))
 	}
-	return messages, txn.Commit()
+	return messagesToProto(messages), txn.Commit()
 }
 
 type GetMessagesResponse struct {
@@ -221,12 +221,14 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 	})
 
 	return &GetMessagesResponse{
-		Messages:  msgs,
+		Messages: lo.Map(msgs, func(item *Message, index int) *model.ChatMessage {
+			return item.ChatMessage
+		}),
 		ChatState: s.subscription.getChatState(),
 	}, nil
 }
 
-func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*model.ChatMessage, error) {
+func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*Message, error) {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -239,27 +241,28 @@ func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) (
 	}
 	defer iter.Close()
 
-	var res []*model.ChatMessage
+	var res []*Message
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
 			return nil, fmt.Errorf("get doc: %w", err)
 		}
 
-		message := newMessageWrapper(arena, doc.Value()).toModel()
-		res = append(res, message)
+		res = append(res, unmarshalMessage(doc.Value()))
 	}
 	return res, nil
 }
 
-func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *model.ChatMessage) (string, error) {
+func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *Message) (string, error) {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
 	message.Read = true
-	obj := marshalModel(arena, message)
+
+	obj := arena.NewObject()
+	message.MarshalAnyenc(obj, arena)
 
 	builder := storestate.Builder{}
 	err := builder.Create(collectionName, storestate.IdFromChange, obj)
@@ -293,13 +296,15 @@ func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error
 	return nil
 }
 
-func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *model.ChatMessage) error {
+func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *Message) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	obj := marshalModel(arena, newMessage)
+
+	obj := arena.NewObject()
+	newMessage.MarshalAnyenc(obj, arena)
 
 	builder := storestate.Builder{}
 	err := builder.Modify(collectionName, messageId, []string{contentKey}, pb.ModifyOp_Set, obj.Get(contentKey))
@@ -361,9 +366,8 @@ func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, me
 	}
 
 	myIdentity := s.accountService.AccountID()
-	msg := newMessageWrapper(arena, doc.Value())
-	reactions := msg.reactionsToModel()
-	if v, ok := reactions.GetReactions()[emoji]; ok {
+	msg := unmarshalMessage(doc.Value())
+	if v, ok := msg.GetReactions().GetReactions()[emoji]; ok {
 		if slices.Contains(v.GetIds(), myIdentity) {
 			return true, nil
 		}
@@ -414,7 +418,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 		return nil, nil
 	} else {
 		return &SubscribeLastMessagesResponse{
-			Messages:  messages,
+			Messages:  messagesToProto(messages),
 			ChatState: s.subscription.getChatState(),
 		}, nil
 	}

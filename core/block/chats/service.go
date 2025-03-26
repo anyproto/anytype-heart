@@ -228,7 +228,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 	var messageId string
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
+		messageId, err = sb.AddMessage(ctx, sessionCtx, &chatobject.Message{ChatMessage: message})
 		return err
 	})
 	return messageId, err
@@ -236,7 +236,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 
 func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.EditMessage(ctx, messageId, newMessage)
+		return sb.EditMessage(ctx, messageId, &chatobject.Message{ChatMessage: newMessage})
 	})
 }
 
