@@ -398,6 +398,44 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
+
+	t.Run("no objects found globally", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, objects, 0)
+		require.Equal(t, 0, total)
+		require.False(t, hasMore)
+	})
+
+	t.Run("error during global search", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_UNKNOWN_ERROR},
+		}).Once()
+
+		// when
+		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+
+		// then
+		require.Error(t, err)
+		require.Empty(t, objects)
+		require.Equal(t, 0, total)
+		require.False(t, hasMore)
+	})
 }
 
 func TestSearchService_Search(t *testing.T) {
