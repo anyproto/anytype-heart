@@ -185,6 +185,26 @@ func (mw *Middleware) BlockDataviewViewSetPosition(cctx context.Context, req *pb
 	return response(pb.RpcBlockDataviewViewSetPositionResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockDataviewRelationSet(cctx context.Context, req *pb.RpcBlockDataviewRelationSetRequest) *pb.RpcBlockDataviewRelationSetResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockDataviewRelationSetResponseErrorCode, err error) *pb.RpcBlockDataviewRelationSetResponse {
+
+		m := &pb.RpcBlockDataviewRelationSetResponse{Error: &pb.RpcBlockDataviewRelationSetResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.Event = mw.getResponseEvent(ctx)
+		}
+		return m
+	}
+	err := mustService[dataviewservice.Service](mw).SetDataviewRelation(ctx, *req)
+	if err != nil {
+		return response(pb.RpcBlockDataviewRelationSetResponseError_BAD_INPUT, err)
+	}
+
+	return response(pb.RpcBlockDataviewRelationSetResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockDataviewRelationAdd(cctx context.Context, req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockDataviewRelationAddResponseErrorCode, err error) *pb.RpcBlockDataviewRelationAddResponse {

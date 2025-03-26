@@ -11,6 +11,7 @@ const (
 	SubObjectCollectionIdSeparator = "-"
 	RelationKeyToIdPrefix          = "rel-" //
 	ObjectTypeKeyToIdPrefix        = "ot-"  //
+	ObjectTypeAllViewId            = "all"
 
 	BundledRelationURLPrefix = "_br"
 

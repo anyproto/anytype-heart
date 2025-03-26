@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -106,8 +107,8 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 				if err != nil {
 					return
 				}
-				replaceWidgetTarget(s, widget.DefaultWidgetCollection, collectionTypeId, ObjectTypeAllViewId, model.BlockContentWidget_View)
-				replaceWidgetTarget(s, widget.DefaultWidgetSet, setTypeId, ObjectTypeAllViewId, model.BlockContentWidget_View)
+				replaceWidgetTarget(s, widget.DefaultWidgetCollection, collectionTypeId, addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
+				replaceWidgetTarget(s, widget.DefaultWidgetSet, setTypeId, addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
 
 			},
 		},

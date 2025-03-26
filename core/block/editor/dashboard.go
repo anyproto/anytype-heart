@@ -87,6 +87,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 			log.Errorf("favorite: can't update in store: %v", uErr)
 		}
 	}()
+
 	return nil
 }
 

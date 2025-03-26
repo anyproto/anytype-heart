@@ -8,6 +8,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
@@ -548,6 +549,30 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain
 		return
 	}
 	return
+}
+
+func (s *dsObjectStore) IterateAll(proc func(doc *anyenc.Value) error) error {
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("iterate all ids: %w", err)
+	}
+	defer iter.Close()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("get doc: %w", err)
+		}
+		err = proc(doc.Value())
+		if err != nil {
+			return err
+		}
+	}
+	err = iter.Err()
+	if err != nil {
+		return fmt.Errorf("iterate: %w", err)
+	}
+	return nil
 }
 
 func (s *dsObjectStore) ListIds() ([]string, error) {

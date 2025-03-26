@@ -39,7 +39,7 @@ type CrossSpace interface {
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace() ([]string, error)
-	ListIdsCrossSpaceWithoutTech() ([]domain.FullID, error)
+	EnqueueAllForFulltextIndexing(ctx context.Context) error
 	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) ([]string, error)) error
 
 	AccountStore
@@ -421,21 +421,18 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
-func collectCrossSpaceWithoutTech[T any](s *dsObjectStore, proc func(store spaceindex.Store) ([]T, error)) ([]T, error) {
+func collectCrossSpaceWithoutTech(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
 	stores := s.listStores()
-
-	var result []T
 	for _, store := range stores {
 		if store.SpaceId() == s.techSpaceId {
 			continue
 		}
-		items, err := proc(store)
+		err := proc(store)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		result = append(result, items...)
 	}
-	return result, nil
+	return nil
 }
 
 func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
@@ -444,10 +441,37 @@ func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
 	})
 }
 
-func (s *dsObjectStore) ListIdsCrossSpaceWithoutTech() ([]domain.FullID, error) {
-	return collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) ([]domain.FullID, error) {
-		return store.ListFullIds()
+func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error {
+	txn, err := s.fulltextQueue.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	err = collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
+		err = store.IterateAll(func(doc *anyenc.Value) error {
+			id := doc.GetString(idKey)
+			spaceId := doc.GetString(spaceIdKey)
+			obj := arena.NewObject()
+			obj.Set(idKey, arena.NewString(id))
+			obj.Set(spaceIdKey, arena.NewString(spaceId))
+			err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+			if err != nil {
+				return err
+			}
+			arena.Reset()
+			return nil
+		})
+		return err
 	})
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, error) {

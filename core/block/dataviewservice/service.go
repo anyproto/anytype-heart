@@ -51,6 +51,7 @@ type Service interface {
 	SetDataviewViewPosition(ctx session.Context, req pb.RpcBlockDataviewViewSetPositionRequest) error
 	CreateDataviewView(ctx session.Context, req pb.RpcBlockDataviewViewCreateRequest) (id string, err error)
 
+	SetDataviewRelation(ctx session.Context, req pb.RpcBlockDataviewRelationSetRequest) error
 	AddDataviewRelation(ctx session.Context, req pb.RpcBlockDataviewRelationAddRequest) error
 	DeleteDataviewRelation(ctx session.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
 	SetDataviewSource(ctx session.Context, contextId, blockId string, source []string) error
@@ -389,6 +390,12 @@ func (s *service) CreateDataviewView(
 		return nil
 	})
 	return
+}
+
+func (s *service) SetDataviewRelation(ctx session.Context, req pb.RpcBlockDataviewRelationSetRequest) error {
+	return cache.Do(s.getter, req.ContextId, func(b dataview.Dataview) error {
+		return b.SetRelations(ctx, req.BlockId, req.RelationKeys, true)
+	})
 }
 
 func (s *service) AddDataviewRelation(ctx session.Context, req pb.RpcBlockDataviewRelationAddRequest) error {

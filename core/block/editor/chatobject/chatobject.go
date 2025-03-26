@@ -635,7 +635,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 	if asyncInit {
 		var previousOrderId string
 		if len(messages) > 0 {
-			previousOrderId, err = txn.GetPrevOrderId(messages[0].OrderId)
+			previousOrderId, err = getPrevOrderId(txn.Context(), s.collection, messages[0].OrderId)
 			if err != nil {
 				return nil, fmt.Errorf("get previous order id: %w", err)
 			}
@@ -655,6 +655,28 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 			ChatState: s.subscription.getChatState(),
 		}, nil
 	}
+}
+
+func getPrevOrderId(ctx context.Context, coll anystore.Collection, orderId string) (string, error) {
+	iter, err := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, orderId)}).
+		Sort(descOrder).
+		Limit(1).
+		Iter(ctx)
+	if err != nil {
+		return "", fmt.Errorf("init iterator: %w", err)
+	}
+	defer iter.Close()
+
+	if iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return "", fmt.Errorf("read doc: %w", err)
+		}
+		prevOrderId := doc.Value().GetString(orderKey, "id")
+		return prevOrderId, nil
+	}
+
+	return "", nil
 }
 
 func (s *storeObject) Unsubscribe(subId string) error {

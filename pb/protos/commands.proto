@@ -6285,6 +6285,30 @@ message Rpc {
             }
         }
         message Relation {
+            message Set {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to set relation
+                    repeated string relationKeys = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+
             message Add {
                 message Request {
                     string contextId = 1;
@@ -8245,6 +8269,26 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string subId = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message UnsubscribeFromMessagePreviews {
+            message Request {}
+
+            message Response {
+                Error error = 1;
 
                 message Error {
                     Code code = 1;

@@ -100,7 +100,7 @@ CACHE LOGICS:
     - if we have it in cache
     -> return from cache
 
- 3. User clicks on a “Pay by card/crypto” or “Manage” button:
+ 3. User clicks on a "Pay by card/crypto" or "Manage" button:
     -> disable cache for 30 minutes (so we always get from PP node)
 
  4. User confirms his e-mail code
@@ -843,15 +843,29 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersReq
 		log.Error("can not get subscription status", zap.Error(err))
 		return nil, err
 	}
+
+	filtered := &pb.RpcMembershipGetTiersResponse{
+		Tiers: make([]*model.MembershipTierData, 0),
+	}
+
 	// if your are on 0-tier OR on Explorer -> return full list
 	if (status != nil) && (status.Data != nil) && status.Data.Tier <= uint32(proto.SubscriptionTier_TierExplorer) {
+		// if Explorer tier is current -> move it to the end of the list
+		if len(out.Tiers) > 1 && (status.Data.Tier == uint32(proto.SubscriptionTier_TierExplorer)) && (out.Tiers[0].Id == uint32(proto.SubscriptionTier_TierExplorer)) {
+			// Move Explorer tier to end of list
+			firstTier := out.Tiers[0]
+			restTiers := out.Tiers[1:]
+
+			filtered.Tiers = make([]*model.MembershipTierData, 0, len(out.Tiers))
+			filtered.Tiers = append(filtered.Tiers, restTiers...)
+			filtered.Tiers = append(filtered.Tiers, firstTier)
+			return filtered, nil
+		}
+
 		return out, nil
 	}
 
 	// If the current tier is higher than Explorer, show the list without Explorer (downgrading is not allowed)
-	filtered := &pb.RpcMembershipGetTiersResponse{
-		Tiers: make([]*model.MembershipTierData, 0),
-	}
 	for _, tier := range out.Tiers {
 		if tier.Id != uint32(proto.SubscriptionTier_TierExplorer) {
 			filtered.Tiers = append(filtered.Tiers, tier)
