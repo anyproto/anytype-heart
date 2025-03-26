@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,6 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
+)
+
+var (
+	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
+	ErrInvalidAuthorizationHeader = errors.New("invalid authorization header format")
+	ErrInvalidToken               = errors.New("invalid token")
 )
 
 // rateLimit is a middleware that limits the number of requests per second.
@@ -40,13 +47,13 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			apiErr := util.CodeToAPIError(http.StatusUnauthorized, "Missing Authorization header")
+			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
 			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			apiErr := util.CodeToAPIError(http.StatusUnauthorized, "Invalid Authorization header format")
+			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error())
 			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
@@ -61,7 +68,7 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				apiErr := util.CodeToAPIError(http.StatusUnauthorized, "Invalid token")
+				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidToken.Error())
 				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 				return
 			}
