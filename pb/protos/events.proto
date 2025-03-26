@@ -1181,8 +1181,8 @@ message Event {
 
     message Key {
         message Update {
-            string keyId = 1;
-            string aclHeadId = 2;
+            string spaceKeyId = 1;
+            string encryptionKeyId = 2;
             bytes encryptionKey = 3;
         }
     }

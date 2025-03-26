@@ -28092,8 +28092,8 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| keyId | [string](#string) |  |  |
-| aclHeadId | [string](#string) |  |  |
+| spaceKeyId | [string](#string) |  |  |
+| encryptionKeyId | [string](#string) |  |  |
 | encryptionKey | [bytes](#bytes) |  |  |
 
 

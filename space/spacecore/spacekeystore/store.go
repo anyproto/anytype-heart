@@ -138,9 +138,9 @@ func (s *SpaceKeyStore) broadcastKeyUpdate(spaceID, keyID, aclRecordID string, p
 			{
 				SpaceId: spaceID,
 				Value: &pb.EventMessageValueOfKeyUpdate{KeyUpdate: &pb.EventKeyUpdate{
-					KeyId:         keyID,
-					AclHeadId:     aclRecordID,
-					EncryptionKey: rawKey,
+					SpaceKeyId:      keyID,
+					EncryptionKeyId: aclRecordID,
+					EncryptionKey:   rawKey,
 				}},
 			},
 		},
