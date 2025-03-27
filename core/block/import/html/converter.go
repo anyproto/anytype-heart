@@ -66,7 +66,12 @@ func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest,
 		return nil, allErrors
 	}
 	rootCollection := common.NewImportCollection(h.collectionService)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, false, true, nil)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(rootCollectionName),
+		common.WithTargetObjects(targetObjects),
+		common.WithAddDate(),
+		common.WithRelations(),
+	)
 	rootCollectionSnapshot, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)

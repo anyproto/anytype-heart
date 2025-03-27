@@ -56,7 +56,12 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		return nil, allErrors
 	}
 	rootCollection := common.NewImportCollection(t.service)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, false, true, nil)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(rootCollectionName),
+		common.WithTargetObjects(targetObjects),
+		common.WithRelations(),
+		common.WithAddDate(),
+	)
 	rootCol, widget, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)

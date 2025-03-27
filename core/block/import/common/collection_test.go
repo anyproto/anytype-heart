@@ -53,16 +53,16 @@ func TestMakeImportCollection(t *testing.T) {
 				}
 			}
 
-			req := MakeImportCollectionSetting(
-				"My Collection",
-				[]string{"obj1", "obj2"},
-				"icon.png",
-				nil,
-				tt.needToAddDate,
-				tt.shouldBeFavorite,
-				tt.shouldAddRelation,
-				widget,
+			req := NewImportCollectionSetting(
+				WithCollectionName("My Collection"),
+				WithTargetObjects([]string{"obj1", "obj2"}),
+				WithIcon("icon.png"),
+				WithWidgetSnapshot(widget),
 			)
+
+			req.needToAddDate = tt.needToAddDate
+			req.shouldBeFavorite = tt.shouldBeFavorite
+			req.shouldAddRelations = tt.shouldAddRelation
 
 			root, widgetSnap, err := importer.MakeImportCollection(req)
 

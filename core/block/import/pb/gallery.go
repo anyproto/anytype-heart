@@ -59,7 +59,14 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 		}
 	}
 	objectsIDs := g.getObjectsIDs(snapshots)
-	settings := common.MakeImportCollectionSetting(collectionName, objectsIDs, icon, fileKeys, false, false, true, widgetSnapshot)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(collectionName),
+		common.WithTargetObjects(objectsIDs),
+		common.WithIcon(icon),
+		common.WithRelations(),
+		common.WithFileKeys(fileKeys),
+		common.WithWidgetSnapshot(widgetSnapshot),
+	)
 	objectsCollection, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
@@ -77,7 +84,13 @@ func (g *GalleryImport) getWidgetsCollection(
 	collectionsSnapshots []*common.Snapshot,
 ) ([]*common.Snapshot, *common.Snapshot, error) {
 	widgetCollectionName := collectionName + widgetCollectionPattern
-	settings := common.MakeImportCollectionSetting(widgetCollectionName, widgetObjects, icon, fileKeys, false, false, true, nil)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(widgetCollectionName),
+		common.WithTargetObjects(widgetObjects),
+		common.WithIcon(icon),
+		common.WithRelations(),
+		common.WithFileKeys(fileKeys),
+	)
 	widgetsCollectionSnapshot, widget, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, nil, err

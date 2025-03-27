@@ -30,23 +30,61 @@ type ImportCollectionSetting struct {
 	widgetSnapshot                                      *Snapshot
 }
 
-func MakeImportCollectionSetting(
-	collectionName string,
-	targetObjects []string,
-	icon string,
-	fileKeys []*pb.ChangeFileKeys,
-	needToAddDate, shouldBeFavorite, shouldAddRelations bool,
-	widgetSnapshot *Snapshot,
-) *ImportCollectionSetting {
-	return &ImportCollectionSetting{
-		collectionName:     collectionName,
-		targetObjects:      targetObjects,
-		icon:               icon,
-		fileKeys:           fileKeys,
-		needToAddDate:      needToAddDate,
-		shouldBeFavorite:   shouldBeFavorite,
-		shouldAddRelations: shouldAddRelations,
-		widgetSnapshot:     widgetSnapshot,
+type ImportCollectionOption func(*ImportCollectionSetting)
+
+func NewImportCollectionSetting(opts ...ImportCollectionOption) *ImportCollectionSetting {
+	s := &ImportCollectionSetting{}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+func WithCollectionName(name string) ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.collectionName = name
+	}
+}
+
+func WithTargetObjects(objs []string) ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.targetObjects = objs
+	}
+}
+
+func WithIcon(icon string) ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.icon = icon
+	}
+}
+
+func WithFileKeys(keys []*pb.ChangeFileKeys) ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.fileKeys = keys
+	}
+}
+
+func WithAddDate() ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.needToAddDate = true
+	}
+}
+
+func WithFavorite() ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.shouldBeFavorite = true
+	}
+}
+
+func WithRelations() ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.shouldAddRelations = true
+	}
+}
+
+func WithWidgetSnapshot(snapshot *Snapshot) ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.widgetSnapshot = snapshot
 	}
 }
 

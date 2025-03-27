@@ -353,7 +353,12 @@ func (ds *Service) AddObjectsToNotionCollection(
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
 	rootCollection := common.NewImportCollection(ds.collectionService)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, allObjects, "", nil, true, false, true, nil)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(rootCollectionName),
+		common.WithTargetObjects(allObjects),
+		common.WithAddDate(),
+		common.WithRelations(),
+	)
 	rootCol, widget, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, nil, err
