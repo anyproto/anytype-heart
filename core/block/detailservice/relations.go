@@ -280,7 +280,7 @@ func (s *service) ObjectTypeSetStrictInheritance(objectTypeId string, strictInhe
 		st := b.NewState()
 		spaceId = b.SpaceID()
 		layoutInType = b.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyStrictInheritance, domain.Bool(strictInheritance))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyForceLayoutFromType, domain.Bool(strictInheritance))
 		return b.Apply(st)
 	}); err != nil {
 		return fmt.Errorf("failed to set strictInheritance detail to object type: %w", err)

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "3756a7331b4efb40e37b08485fca495c70f62ea529a6ea7185f298bb321d39a2"
+const RelationChecksum = "8ff5285b8eb3aaf15625ec99bf049c8e74837a72d465d4410ca9ec8ff83ffe5f"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -159,7 +159,7 @@ const (
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
-	RelationKeyStrictInheritance            domain.RelationKey = "strictInheritance"
+	RelationKeyForceLayoutFromType          domain.RelationKey = "forceLayoutFromType"
 )
 
 var (
@@ -686,6 +686,20 @@ var (
 			Key:              "focalRatio",
 			MaxCount:         1,
 			Name:             "Focal ratio",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyForceLayoutFromType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Layout settings are strictly inherited for all objects of this type",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brforceLayoutFromType",
+			Key:              "forceLayoutFromType",
+			MaxCount:         1,
+			Name:             "Force layout from type",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1958,20 +1972,6 @@ var (
 			Key:              "status",
 			MaxCount:         1,
 			Name:             "Status",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyStrictInheritance: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Layout settings are strictly inherited for all objects of this type",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brstrictInheritance",
-			Key:              "strictInheritance",
-			MaxCount:         1,
-			Name:             "Strict Inheritance",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

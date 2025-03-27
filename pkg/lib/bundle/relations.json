@@ -1531,9 +1531,9 @@
     "description": "Layout settings are strictly inherited for all objects of this type",
     "format": "checkbox",
     "hidden": true,
-    "key": "strictInheritance",
+    "key": "forceLayoutFromType",
     "maxCount": 1,
-    "name": "Strict Inheritance",
+    "name": "Force layout from type",
     "readonly": false,
     "source": "details"
   }

@@ -249,7 +249,7 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 
 	var (
 		valueInType      = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
-		isEnforcedLayout = typeDetails.GetBool(bundle.RelationKeyStrictInheritance)
+		isEnforcedLayout = typeDetails.GetBool(bundle.RelationKeyForceLayoutFromType)
 	)
 
 	if s.ObjectTypeKey() == bundle.TypeKeyTemplate || !isEnforcedLayout {
