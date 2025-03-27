@@ -28798,7 +28798,7 @@ Precondition: user A opened a block
 | chatUpdate | [Event.Chat.Update](#anytype-Event-Chat-Update) |  |  |
 | chatUpdateReactions | [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions) |  |  |
 | chatUpdateMessageReadStatus | [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus) |  | received to update per-message read status (if needed to highlight the unread messages in the UI) |
-| chatUpdateMentionReadStatus | [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus) |  | received to update per-message mention read status (if needed to highlight the unread mentions in the UI) |
+| chatUpdateMentionReadStatus | [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus) |  | received to update per-message mention read status (if needed to highlight the unread mentions in the UI) |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed (e.g. message read on another device) |
 

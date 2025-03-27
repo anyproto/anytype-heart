@@ -257,7 +257,7 @@ func (s *subscription) updateMentionRead(ids []string, read bool) {
 		return
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMentionReadStatus{
-		ChatUpdateMentionReadStatus: &pb.EventChatUpdateMessageReadStatus{
+		ChatUpdateMentionReadStatus: &pb.EventChatUpdateMentionReadStatus{
 			Ids:    ids,
 			IsRead: read,
 			SubIds: slices.Clone(s.ids),
