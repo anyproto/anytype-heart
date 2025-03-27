@@ -39,6 +39,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
@@ -69,6 +71,7 @@ type fixture struct {
 	ctrl                  *gomock.Controller
 	mockJoiningClient     *mock_aclclient.MockAclJoiningClient
 	mockSpaceService      *mock_space.MockService
+	mockSpaceCoreService  *mock_spacecore.MockSpaceCoreService
 	mockAccountService    *mock_account.MockService
 	mockInviteService     *mock_inviteservice.MockInviteService
 	mockCoordinatorClient *mock_coordinatorclient.MockCoordinatorClient
@@ -89,6 +92,7 @@ func newFixture(t *testing.T) *fixture {
 		ctrl:                  ctrl,
 		mockJoiningClient:     mock_aclclient.NewMockAclJoiningClient(ctrl),
 		mockSpaceService:      mock_space.NewMockService(t),
+		mockSpaceCoreService:  mock_spacecore.NewMockSpaceCoreService(t),
 		mockAccountService:    mock_account.NewMockService(t),
 		mockInviteService:     mock_inviteservice.NewMockInviteService(t),
 		mockCoordinatorClient: mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
@@ -103,6 +107,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockJoiningClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockSpaceService)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.mockSpaceCoreService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCoordinatorClient)).
 		Register(fx.mockConfig).
@@ -272,9 +277,8 @@ func TestService_ApproveLeave(t *testing.T) {
 		identityC := exec.ActualAccounts()["c"].Keys.SignKey.GetPublic()
 		acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
 		mockCommonSpace.EXPECT().Acl().Return(acl)
-		aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
-		mockCommonSpace.EXPECT().AclClient().Return(aclClient)
-		aclClient.EXPECT().RemoveAccounts(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, payload list.AccountRemovePayload) error {
+		mockCommonSpace.EXPECT().AclClient().Return(fx.mockSpaceClient)
+		fx.mockSpaceClient.EXPECT().RemoveAccounts(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, payload list.AccountRemovePayload) error {
 			require.Equal(t, []crypto.PubKey{identityB, identityC}, payload.Identities)
 			return nil
 		}).Return(nil)
@@ -487,19 +491,13 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		mockSpace := mock_clientspace.NewMockSpace(t)
-		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
-		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
-		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
-		keys, err := accountdata.NewRandom()
-		require.NoError(t, err)
-		fx.mockAccountService.EXPECT().Keys().Return(keys)
-		mockSpace.EXPECT().GetAclIdentity().Return(keys.SignKey.GetPublic())
-
-		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
-		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
-		mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(nil)
-		err = fx.Leave(ctx, spaceId)
+		anySpace := &spacecore.AnySpace{}
+		anySpace.Space = fx.mockCommonSpace
+		fx.mockSpaceService.EXPECT().SpacePersistentStatus(ctx, spaceId).Return(spaceinfo.AccountStatusUnknown, nil)
+		fx.mockSpaceCoreService.EXPECT().Get(ctx, spaceId).Return(anySpace, nil)
+		fx.mockCommonSpace.EXPECT().AclClient().Return(fx.mockSpaceClient)
+		fx.mockSpaceClient.EXPECT().RequestSelfRemove(ctx).Return(nil)
+		err := fx.Leave(ctx, spaceId)
 		require.NoError(t, err)
 	})
 	t.Run("leave success if space service error is known", func(t *testing.T) {
@@ -512,7 +510,8 @@ func TestService_Leave(t *testing.T) {
 				fx := newFixture(t)
 				defer fx.finish(t)
 				spaceId := "spaceId"
-				fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(nil, err)
+				fx.mockSpaceService.EXPECT().SpacePersistentStatus(ctx, spaceId).Return(spaceinfo.AccountStatusActive, nil)
+				fx.mockSpaceCoreService.EXPECT().Get(ctx, spaceId).Return(nil, err)
 				err = fx.Leave(ctx, spaceId)
 				require.NoError(t, err)
 			})
@@ -522,7 +521,8 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(nil, fmt.Errorf("error"))
+		fx.mockSpaceService.EXPECT().SpacePersistentStatus(ctx, spaceId).Return(spaceinfo.AccountStatusActive, nil)
+		fx.mockSpaceCoreService.EXPECT().Get(ctx, spaceId).Return(nil, fmt.Errorf("error"))
 		err := fx.Leave(ctx, spaceId)
 		require.True(t, errors.Is(err, ErrInternal))
 	})
@@ -539,17 +539,12 @@ func TestService_Leave(t *testing.T) {
 				fx := newFixture(t)
 				defer fx.finish(t)
 				spaceId := "spaceId"
-				mockSpace := mock_clientspace.NewMockSpace(t)
-				mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
-				mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
-				fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
-				keys, err := accountdata.NewRandom()
-				require.NoError(t, err)
-				fx.mockAccountService.EXPECT().Keys().Return(keys)
-				mockSpace.EXPECT().GetAclIdentity().Return(keys.SignKey.GetPublic())
-				mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
-				mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
-				mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(err)
+				anySpace := &spacecore.AnySpace{}
+				anySpace.Space = fx.mockCommonSpace
+				fx.mockSpaceService.EXPECT().SpacePersistentStatus(ctx, spaceId).Return(spaceinfo.AccountStatusUnknown, nil)
+				fx.mockSpaceCoreService.EXPECT().Get(ctx, spaceId).Return(anySpace, nil)
+				fx.mockCommonSpace.EXPECT().AclClient().Return(fx.mockSpaceClient)
+				fx.mockSpaceClient.EXPECT().RequestSelfRemove(ctx).Return(err)
 				err = fx.Leave(ctx, spaceId)
 				require.NoError(t, err)
 			})
@@ -559,37 +554,13 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		mockSpace := mock_clientspace.NewMockSpace(t)
-		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
-		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
-		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
-		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
-		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
-		keys, err := accountdata.NewRandom()
-		require.NoError(t, err)
-		fx.mockAccountService.EXPECT().Keys().Return(keys)
-		mockSpace.EXPECT().GetAclIdentity().Return(keys.SignKey.GetPublic())
-		mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(fmt.Errorf("error"))
-		err = fx.Leave(ctx, spaceId)
+		anySpace := &spacecore.AnySpace{}
+		anySpace.Space = fx.mockCommonSpace
+		fx.mockSpaceService.EXPECT().SpacePersistentStatus(ctx, spaceId).Return(spaceinfo.AccountStatusUnknown, nil)
+		fx.mockSpaceCoreService.EXPECT().Get(ctx, spaceId).Return(anySpace, nil)
+		fx.mockCommonSpace.EXPECT().AclClient().Return(fx.mockSpaceClient)
+		fx.mockSpaceClient.EXPECT().RequestSelfRemove(ctx).Return(fmt.Errorf("error"))
+		err := fx.Leave(ctx, spaceId)
 		require.True(t, errors.Is(err, ErrAclRequestFailed))
-	})
-
-	t.Run("leave if acl key is not account key", func(t *testing.T) {
-		// this is a case of guest user trying to leave the space
-		fx := newFixture(t)
-		defer fx.finish(t)
-		spaceId := "spaceId"
-		mockSpace := mock_clientspace.NewMockSpace(t)
-
-		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
-		accountKeys, err := accountdata.NewRandom()
-		require.NoError(t, err)
-		aclKeys, err := accountdata.NewRandom()
-		require.NoError(t, err)
-		fx.mockAccountService.EXPECT().Keys().Return(accountKeys)
-		mockSpace.EXPECT().GetAclIdentity().Return(aclKeys.SignKey.GetPublic())
-
-		err = fx.Leave(ctx, spaceId)
-		require.NoError(t, err)
 	})
 }

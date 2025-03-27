@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	space2 "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -78,6 +79,7 @@ type aclService struct {
 	nodeConfigGetter NodeConfGetter
 	joiningClient    aclclient.AclJoiningClient
 	spaceService     space.Service
+	spaceCoreService space2.SpaceCoreService
 	inviteService    inviteservice.InviteService
 	accountService   account.Service
 	coordClient      coordinatorclient.CoordinatorClient
@@ -88,6 +90,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.nodeConfigGetter = app.MustComponent[NodeConfGetter](ap)
 	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
 	a.spaceService = app.MustComponent[space.Service](ap)
+	a.spaceCoreService = app.MustComponent[space2.SpaceCoreService](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
@@ -295,7 +298,14 @@ func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identitie
 }
 
 func (a *aclService) Leave(ctx context.Context, spaceId string) error {
-	removeSpace, err := a.spaceService.Get(ctx, spaceId)
+	status, err := a.spaceService.SpacePersistentStatus(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	if status != spaceinfo.AccountStatusActive && status != spaceinfo.AccountStatusUnknown {
+		return fmt.Errorf("space status not active or unknown")
+	}
+	removeSpace, err := a.spaceCoreService.Get(ctx, spaceId)
 	if err != nil {
 		// space storage missing can occur only in case of missing space
 		if errors.Is(err, space.ErrSpaceStorageMissig) || errors.Is(err, space.ErrSpaceDeleted) {
@@ -303,14 +313,8 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) error {
 		}
 		return convertedOrSpaceErr(err)
 	}
-	identity := a.accountService.Keys().SignKey.GetPublic()
-	if !removeSpace.GetAclIdentity().Equals(identity) {
-		// this is a streamable space
-		// we exist there under ephemeral guest identity and should not remove it
-		return nil
-	}
 
-	cl := removeSpace.CommonSpace().AclClient()
+	cl := removeSpace.AclClient()
 	err = cl.RequestSelfRemove(ctx)
 	if err != nil {
 		errs := []error{
