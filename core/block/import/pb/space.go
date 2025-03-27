@@ -56,12 +56,12 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 		})
 	}
 	rootCollection := common.NewImportCollection(s.service)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, rootObjects, "", nil, true, true, true)
-	rootCollectionSnapshot, err := rootCollection.MakeImportCollection(settings)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, rootObjects, "", nil, true, false, true, widgetSnapshot)
+	rootCollectionSnapshot, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
 	}
-	return []*common.Snapshot{rootCollectionSnapshot}, nil
+	return []*common.Snapshot{rootCollectionSnapshot, widgetSnapshot}, nil
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {

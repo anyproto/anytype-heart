@@ -56,8 +56,8 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		return nil, allErrors
 	}
 	rootCollection := common.NewImportCollection(t.service)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, true, true)
-	rootCol, err := rootCollection.MakeImportCollection(settings)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, false, true, nil)
+	rootCol, widget, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -68,6 +68,9 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	if rootCol != nil {
 		snapshots = append(snapshots, rootCol)
 		rootCollectionID = rootCol.Id
+	}
+	if widget != nil {
+		snapshots = append(snapshots, widget)
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {

@@ -66,8 +66,8 @@ func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest,
 		return nil, allErrors
 	}
 	rootCollection := common.NewImportCollection(h.collectionService)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, true, true)
-	rootCollectionSnapshot, err := rootCollection.MakeImportCollection(settings)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, false, true, nil)
+	rootCollectionSnapshot, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(path), req.Type) {
@@ -78,6 +78,9 @@ func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest,
 	if rootCollectionSnapshot != nil {
 		snapshots = append(snapshots, rootCollectionSnapshot)
 		rootCollectionID = rootCollectionSnapshot.Id
+	}
+	if widgetSnapshot != nil {
+		snapshots = append(snapshots, widgetSnapshot)
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {

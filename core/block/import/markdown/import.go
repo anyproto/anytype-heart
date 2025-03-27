@@ -102,8 +102,8 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 
 func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRootObjectsIds []string) ([]*common.Snapshot, string, error) {
 	rootCollection := common.NewImportCollection(m.service)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, allRootObjectsIds, "", nil, true, true, true)
-	rootCol, err := rootCollection.MakeImportCollection(settings)
+	settings := common.MakeImportCollectionSetting(rootCollectionName, allRootObjectsIds, "", nil, true, false, true, nil)
+	rootCol, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, "", err
 	}
@@ -112,6 +112,9 @@ func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRoot
 	if rootCol != nil {
 		allSnapshots = append(allSnapshots, rootCol)
 		rootCollectionID = rootCol.Id
+	}
+	if widgetSnapshot != nil {
+		allSnapshots = append(allSnapshots, widgetSnapshot)
 	}
 	return allSnapshots, rootCollectionID, nil
 }
@@ -424,8 +427,8 @@ func (m *Markdown) createSnapshots(
 
 func (m *Markdown) addCollectionSnapshot(fileName string, file *FileInfo, snapshots []*common.Snapshot) ([]*common.Snapshot, error) {
 	c := common.NewImportCollection(m.service)
-	settings := common.MakeImportCollectionSetting(file.Title, file.CollectionsObjectsIds, "", nil, false, false, false)
-	csvCollection, err := c.MakeImportCollection(settings)
+	settings := common.MakeImportCollectionSetting(file.Title, file.CollectionsObjectsIds, "", nil, false, false, false, nil)
+	csvCollection, _, err := c.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
 	}

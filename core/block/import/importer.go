@@ -42,6 +42,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -492,6 +493,10 @@ func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[st
 func (i *Import) addWork(res *common.Response, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
 		t := creator.NewTask(snapshot, i.oc)
+		if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeWidget {
+			pool.SetFinalizer(t)
+			continue
+		}
 		stop := pool.AddWork(t)
 		if stop {
 			break

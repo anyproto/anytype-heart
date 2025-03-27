@@ -13,6 +13,7 @@ type WorkerPool struct {
 	tasks      chan ITask
 	results    chan interface{}
 	quit       chan struct{}
+	finalizer  ITask
 }
 
 func NewPool(numWorkers int) *WorkerPool {
@@ -34,6 +35,10 @@ func (p *WorkerPool) AddWork(t ITask) bool {
 	return false
 }
 
+func (p *WorkerPool) SetFinalizer(t ITask) {
+	p.finalizer = t
+}
+
 func (p *WorkerPool) Start(data interface{}) {
 	wg := &sync.WaitGroup{}
 	for i := 0; i < p.numWorkers; i++ {
@@ -43,6 +48,7 @@ func (p *WorkerPool) Start(data interface{}) {
 		}(i)
 	}
 	wg.Wait()
+	p.finalize(data)
 	p.CloseResult()
 }
 
@@ -71,4 +77,14 @@ func (p *WorkerPool) CloseResult() {
 
 func (p *WorkerPool) CloseTask() {
 	close(p.tasks)
+}
+
+func (p *WorkerPool) finalize(data interface{}) {
+	if p.finalizer != nil {
+		select {
+		case <-p.quit:
+			return
+		case p.results <- p.finalizer.Execute(data):
+		}
+	}
 }

@@ -116,7 +116,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 
 	n.dbService.AddPagesToCollections(dbs, pages, db, notionImportContext.NotionPageIdsToAnytype, notionImportContext.NotionDatabaseIdsToAnytype)
 
-	rootCollectionSnapshot, err := n.dbService.AddObjectsToNotionCollection(notionImportContext, db, pages)
+	rootCollectionSnapshot, widgetSnapshot, err := n.dbService.AddObjectsToNotionCollection(notionImportContext, db, pages)
 	if err != nil {
 		ce.Add(err)
 		if ce.ShouldAbortImport(0, req.Type) {
@@ -131,6 +131,10 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 	allSnapshots := make([]*common.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
+
+	if widgetSnapshot != nil {
+		allSnapshots = append(allSnapshots, widgetSnapshot)
+	}
 
 	if !ce.IsEmpty() {
 		return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, ce

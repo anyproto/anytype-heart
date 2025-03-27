@@ -27,7 +27,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 1)
+		assert.Len(t, collection, 2)
 		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 0)
@@ -82,7 +82,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		assert.Len(t, collection, 1)
+		assert.Len(t, collection, 2)
 		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 3)
@@ -172,7 +172,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		assert.Len(t, collection, 1)
+		assert.Len(t, collection, 2)
 		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
@@ -261,7 +261,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		assert.Len(t, collection, 1)
+		assert.Len(t, collection, 2)
 		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
@@ -365,9 +365,26 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		assert.Len(t, collection, 1)
+		assert.Len(t, collection, 2)
 		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Equal(t, []string{"newObjectInWidget", "id1", "spaceDashboardId"}, objectsInCollection)
+	})
+	t.Run("widget with collection", func(t *testing.T) {
+		// given
+		p := SpaceImport{}
+		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+
+		// when
+		collection, err := p.ProvideCollection(nil, nil, nil, params, nil, false)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, collection, 2)
+		assert.Equal(t, smartblock2.SmartBlockTypeWidget, collection[1].Snapshot.SbType)
+		assert.Len(t, collection[1].Snapshot.Data.Blocks, 3)
+		assert.NotNil(t, collection[1].Snapshot.Data.Blocks[1].GetWidget())
+		assert.NotNil(t, collection[1].Snapshot.Data.Blocks[2].GetLink())
+		assert.Equal(t, collection[0].Id, collection[1].Snapshot.Data.Blocks[2].GetLink().GetTargetBlockId())
 	})
 }

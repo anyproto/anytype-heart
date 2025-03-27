@@ -41,7 +41,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
 
 		// then
 		assert.Nil(t, err)
@@ -83,7 +83,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
 
 		// then
 		assert.Nil(t, err)
@@ -119,7 +119,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
 
 		// then
 		assert.Nil(t, err)
@@ -166,7 +166,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, notionDB, notionPages)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, notionDB, notionPages)
 
 		// then
 		assert.Nil(t, err)
@@ -205,7 +205,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, notionDB, notionPages)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, notionDB, notionPages)
 
 		// then
 		assert.Nil(t, err)
@@ -251,7 +251,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, notionDB, notionPages)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, notionDB, notionPages)
 
 		// then
 		assert.Nil(t, err)
@@ -287,7 +287,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, notionDB, nil)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, notionDB, nil)
 
 		// then
 		assert.Nil(t, err)
@@ -329,7 +329,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
 
 		// then
 		assert.Nil(t, err)
@@ -368,7 +368,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
+		collection, _, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
 
 		// then
 		assert.Nil(t, err)
