@@ -38,7 +38,7 @@ type Service interface {
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatobject.Message, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatobject.SubscribeLastMessagesResponse, error)
 	ReadMessages(ctx context.Context, req ReadMessagesRequest) error
-	UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string) error
+	UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string, counterType chatobject.CounterType) error
 	Unsubscribe(chatObjectId string, subId string) error
 
 	SubscribeToMessagePreviews(ctx context.Context) (string, error)
@@ -311,8 +311,8 @@ func (s *service) ReadMessages(ctx context.Context, req ReadMessagesRequest) err
 	})
 }
 
-func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string) error {
+func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string, counterType chatobject.CounterType) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkMessagesAsUnread(ctx, afterOrderId, chatobject.CounterTypeMessage)
+		return sb.MarkMessagesAsUnread(ctx, afterOrderId, counterType)
 	})
 }
