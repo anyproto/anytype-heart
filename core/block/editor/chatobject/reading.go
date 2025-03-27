@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -181,7 +182,7 @@ func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrder
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
 		query.Or{
 			query.Not{query.Key{Path: []string{addedKey}, Filter: query.Exists{}}},
-			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, lastAddedMessageTimestamp)},
+			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, strconv.Itoa(int(lastAddedMessageTimestamp)))},
 		},
 		opts.unreadFilter,
 	}
@@ -298,7 +299,11 @@ func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int, error) {
 		if err != nil {
 			return 0, fmt.Errorf("get doc: %w", err)
 		}
-		return doc.Value().GetInt(addedKey), nil
+		msg, err := unmarshalMessage(doc.Value())
+		if err != nil {
+			return 0, fmt.Errorf("unmarshal message: %w", err)
+		}
+		return int(msg.AddedAt), nil
 	}
 	return 0, nil
 }

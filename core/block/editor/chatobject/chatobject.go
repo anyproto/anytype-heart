@@ -183,7 +183,11 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 		if err != nil {
 			return nil, errors.Join(txn.Commit(), fmt.Errorf("find id: %w", err))
 		}
-		messages = append(messages, unmarshalMessage(obj.Value()))
+		msg, err := unmarshalMessage(obj.Value())
+		if err != nil {
+			return nil, errors.Join(txn.Commit(), fmt.Errorf("unmarshal message: %w", err))
+		}
+		messages = append(messages, msg)
 	}
 	return messages, txn.Commit()
 }
@@ -245,7 +249,11 @@ func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) (
 			return nil, fmt.Errorf("get doc: %w", err)
 		}
 
-		res = append(res, unmarshalMessage(doc.Value()))
+		msg, err := unmarshalMessage(doc.Value())
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal message: %w", err)
+		}
+		res = append(res, msg)
 	}
 	return res, nil
 }
@@ -363,7 +371,10 @@ func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, me
 	}
 
 	myIdentity := s.accountService.AccountID()
-	msg := unmarshalMessage(doc.Value())
+	msg, err := unmarshalMessage(doc.Value())
+	if err != nil {
+		return false, fmt.Errorf("unmarshal message: %w", err)
+	}
 	if v, ok := msg.GetReactions().GetReactions()[emoji]; ok {
 		if slices.Contains(v.GetIds(), myIdentity) {
 			return true, nil

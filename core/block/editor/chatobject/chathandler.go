@@ -45,7 +45,10 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 }
 
 func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
-	msg := unmarshalMessage(ch.Value)
+	msg, err := unmarshalMessage(ch.Value)
+	if err != nil {
+		return fmt.Errorf("unmarshal message: %w", err)
+	}
 	msg.CreatedAt = ch.Change.Timestamp
 	msg.Creator = ch.Change.Creator
 	if d.forceNotRead {
@@ -103,7 +106,10 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
 	}
 
-	message := unmarshalMessage(doc.Value())
+	message, err := unmarshalMessage(doc.Value())
+	if err != nil {
+		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
+	}
 	if message.Creator != ch.Change.Creator {
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
@@ -126,7 +132,10 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 		}
 
 		if modified {
-			msg := unmarshalMessage(result)
+			msg, err := unmarshalMessage(result)
+			if err != nil {
+				return nil, false, fmt.Errorf("unmarshal message: %w", err)
+			}
 
 			switch path {
 			case reactionsKey:
