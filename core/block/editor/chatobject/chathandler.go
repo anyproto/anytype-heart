@@ -56,9 +56,8 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		msg.MentionRead = false
 	} else {
 		if ch.Change.Creator == d.currentIdentity {
-			// TODO Return to true
-			msg.Read = false
-			msg.MentionRead = false
+			msg.Read = true
+			msg.MentionRead = true
 		} else {
 			msg.Read = false
 			msg.MentionRead = false

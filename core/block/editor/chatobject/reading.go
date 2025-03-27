@@ -27,7 +27,8 @@ type counterOptions struct {
 	readKey         string
 	messagesFilter  query.Filter
 
-	readMessages func(newOldestOrderId string, idsModified []string)
+	readMessages   func(newOldestOrderId string, idsModified []string)
+	unreadMessages func(newOldestOrderId string, lastAddedAt int64, msgIds []string)
 }
 
 func (o *counterOptions) readModifier(value bool) query.Modifier {
@@ -55,6 +56,15 @@ func newCounterOptions(counterType CounterType, subscription *subscription) *cou
 			})
 			subscription.updateMessageRead(idsModified, true)
 		}
+
+		opts.unreadMessages = func(newOldestOrderId string, lastAddedAt int64, msgIds []string) {
+			subscription.updateChatState(func(state *model.ChatState) {
+				state.Messages.OldestOrderId = newOldestOrderId
+				state.DbTimestamp = int64(lastAddedAt)
+			})
+			subscription.updateMessageRead(msgIds, false)
+		}
+
 	case CounterTypeMention:
 		opts.unreadFilter = query.And{
 			query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
@@ -69,6 +79,14 @@ func newCounterOptions(counterType CounterType, subscription *subscription) *cou
 				state.Mentions.OldestOrderId = newOldestOrderId
 			})
 			subscription.updateMentionRead(idsModified, true)
+		}
+
+		opts.unreadMessages = func(newOldestOrderId string, lastAddedAt int64, msgIds []string) {
+			subscription.updateChatState(func(state *model.ChatState) {
+				state.Mentions.OldestOrderId = newOldestOrderId
+				state.DbTimestamp = int64(lastAddedAt)
+			})
+			subscription.updateMentionRead(msgIds, false)
 		}
 	default:
 		panic("unknown counter type")
@@ -127,11 +145,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return fmt.Errorf("get last added date: %w", err)
 	}
 
-	s.subscription.updateChatState(func(state *model.ChatState) {
-		state.Messages.OldestOrderId = newOldestOrderId
-		state.DbTimestamp = int64(lastAdded)
-	})
-	s.subscription.updateMessageRead(msgs, false)
+	opts.unreadMessages(newOldestOrderId, lastAdded, msgs)
 	s.subscription.flush()
 
 	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
@@ -286,7 +300,7 @@ func (s *storeObject) countUnreadMessages(txn anystore.ReadTx, opts *counterOpti
 	return unreadQuery.Limit(1).Count(txn.Context())
 }
 
-func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int, error) {
+func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int64, error) {
 	lastAddedDate := s.collection.Find(nil).Sort(descAdded).Limit(1)
 	iter, err := lastAddedDate.Iter(txn.Context())
 	if err != nil {
@@ -303,7 +317,7 @@ func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int, error) {
 		if err != nil {
 			return 0, fmt.Errorf("unmarshal message: %w", err)
 		}
-		return int(msg.AddedAt), nil
+		return msg.AddedAt, nil
 	}
 	return 0, nil
 }

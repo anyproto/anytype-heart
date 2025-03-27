@@ -18,11 +18,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+const (
+	testSpaceId = "spaceId1"
 )
 
 type accountServiceStub struct {
@@ -86,7 +91,7 @@ func newFixture(t *testing.T) *fixture {
 
 	source := mock_source.NewMockStore(t)
 	source.EXPECT().Id().Return("chatId1")
-	source.EXPECT().SpaceID().Return("space1")
+	source.EXPECT().SpaceID().Return(testSpaceId)
 	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
 
@@ -400,13 +405,32 @@ func TestReadMessages(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// All messages forced as not read
-	messagesResp := fx.assertReadStatus(t, ctx, "", "", false)
+	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
 	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp, CounterTypeMessage)
 	require.NoError(t, err)
 
-	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true)
-	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false)
+	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true, false)
+	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false, false)
+}
+
+func TestReadMentions(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	fx.chatHandler.forceNotRead = true
+	const n = 10
+	for i := 0; i < n; i++ {
+		_, err := fx.AddMessage(ctx, nil, givenMessageWithMention(fmt.Sprintf("message %d", i+1)))
+		require.NoError(t, err)
+	}
+	// All messages forced as not read
+	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
+
+	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp, CounterTypeMention)
+	require.NoError(t, err)
+
+	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, false, true)
+	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false, false)
 }
 
 func TestMarkMessagesAsNotRead(t *testing.T) {
@@ -419,15 +443,33 @@ func TestMarkMessagesAsNotRead(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// All messages added by myself are read
-	fx.assertReadStatus(t, ctx, "", "", true)
+	fx.assertReadStatus(t, ctx, "", "", true, true)
 
 	err := fx.MarkMessagesAsUnread(ctx, "", CounterTypeMessage)
 	require.NoError(t, err)
 
-	fx.assertReadStatus(t, ctx, "", "", false)
+	fx.assertReadStatus(t, ctx, "", "", false, true)
 }
 
-func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrderId string, beforeOrderId string, isRead bool) *GetMessagesResponse {
+func TestMarkMentionsAsNotRead(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+
+	const n = 10
+	for i := 0; i < n; i++ {
+		_, err := fx.AddMessage(ctx, nil, givenMessageWithMention(fmt.Sprintf("message %d", i+1)))
+		require.NoError(t, err)
+	}
+	// All messages added by myself are read
+	fx.assertReadStatus(t, ctx, "", "", true, true)
+
+	err := fx.MarkMessagesAsUnread(ctx, "", CounterTypeMention)
+	require.NoError(t, err)
+
+	fx.assertReadStatus(t, ctx, "", "", true, false)
+}
+
+func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrderId string, beforeOrderId string, isRead bool, isMentionRead bool) *GetMessagesResponse {
 	messageResp, err := fx.GetMessages(ctx, GetMessagesRequest{
 		AfterOrderId:    afterOrderId,
 		BeforeOrderId:   beforeOrderId,
@@ -438,6 +480,7 @@ func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrde
 
 	for _, m := range messageResp.Messages {
 		assert.Equal(t, isRead, m.Read)
+		assert.Equal(t, isMentionRead, m.MentionRead)
 	}
 	return messageResp
 }
@@ -478,6 +521,29 @@ func givenSimpleMessage(text string) *Message {
 			Message: &model.ChatMessageMessageContent{
 				Text:  text,
 				Style: model.BlockContentText_Paragraph,
+			},
+		},
+	}
+}
+
+func givenMessageWithMention(text string) *Message {
+	return &Message{
+		ChatMessage: &model.ChatMessage{
+			Id:          "",
+			OrderId:     "",
+			Creator:     "",
+			Read:        true,
+			MentionRead: true,
+			Message: &model.ChatMessageMessageContent{
+				Text:  text,
+				Style: model.BlockContentText_Paragraph,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Type:  model.BlockContentTextMark_Mention,
+						Param: domain.NewParticipantId(testSpaceId, testCreator),
+						Range: &model.Range{From: 0, To: 1},
+					},
+				},
 			},
 		},
 	}

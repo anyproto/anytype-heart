@@ -1476,6 +1476,7 @@
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
+    - [Rpc.Chat.Unread.ReadType](#anytype-Rpc-Chat-Unread-ReadType)
     - [Rpc.Chat.Unread.Response.Error.Code](#anytype-Rpc-Chat-Unread-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Chat.UnsubscribeFromMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response-Error-Code)
@@ -11080,7 +11081,8 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| chatObjectId | [string](#string) |  | id of the chat object |
+| type | [Rpc.Chat.Unread.ReadType](#anytype-Rpc-Chat-Unread-ReadType) |  |  |
+| chatObjectId | [string](#string) |  |  |
 | afterOrderId | [string](#string) |  |  |
 
 
@@ -23598,8 +23600,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| messages | 0 |  |
-| replies | 1 |  |
+| Messages | 0 |  |
+| Mentions | 1 |  |
 
 
 
@@ -23653,6 +23655,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-Unread-ReadType"></a>
+
+### Rpc.Chat.Unread.ReadType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Messages | 0 |  |
+| Mentions | 1 |  |
 
 
 
