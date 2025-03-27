@@ -71,11 +71,6 @@ func TestService_CreateObject(t *testing.T) {
 			st.SetDetails(req.Details)
 			return st, nil
 		})
-		f.templateService.EXPECT().SetDefaultTemplateInType(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, typeId string, templateId string) error {
-			assert.Equal(t, "test", templateId)
-			assert.Equal(t, bundle.TypeKeyTask.URL(), typeId)
-			return nil
-		})
 
 		f.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
