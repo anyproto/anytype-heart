@@ -115,8 +115,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
 	s.subscription = newSubscription(ctx.Source.Id(), ctx.Source.SpaceID(), myParticipantId, s.eventSender, s.spaceIndex)
 
-	messagesOpts := newCounterOptions(CounterTypeMessage, s.subscription)
-	mentionsOpts := newCounterOptions(CounterTypeMention, s.subscription)
+	messagesOpts := newReadHandler(CounterTypeMessage, s.subscription)
+	mentionsOpts := newReadHandler(CounterTypeMention, s.subscription)
 
 	// Diff managers should be added before SmartBlock.Init, because they have to be initialized in source.ReadStoreDoc
 	storeSource.RegisterDiffManager(diffManagerMessages, func(removed []string) {

@@ -21,94 +21,126 @@ const (
 	CounterTypeMention
 )
 
-type counterOptions struct {
-	unreadFilter    query.Filter
-	diffManagerName string
-	readKey         string
-	messagesFilter  query.Filter
+type readHandler interface {
+	getUnreadFilter() query.Filter
+	getMessagesFilter() query.Filter
+	getDiffManagerName() string
+	getReadKey() string
 
-	readMessages   func(newOldestOrderId string, idsModified []string)
-	unreadMessages func(newOldestOrderId string, lastAddedAt int64, msgIds []string)
+	readMessages(newOldestOrderId string, idsModified []string)
+	unreadMessages(newOldestOrderId string, lastAddedAt int64, msgIds []string)
 }
 
-func (o *counterOptions) readModifier(value bool) query.Modifier {
+type readMessagesHandler struct {
+	subscription *subscription
+}
+
+func (h *readMessagesHandler) getUnreadFilter() query.Filter {
+	return query.Not{
+		Filter: query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
+	}
+}
+
+func (h *readMessagesHandler) getMessagesFilter() query.Filter {
+	return nil
+}
+
+func (h *readMessagesHandler) getDiffManagerName() string {
+	return diffManagerMessages
+}
+
+func (h *readMessagesHandler) getReadKey() string {
+	return readKey
+}
+
+func (h *readMessagesHandler) readMessages(newOldestOrderId string, idsModified []string) {
+	h.subscription.updateChatState(func(state *model.ChatState) {
+		state.Messages.OldestOrderId = newOldestOrderId
+	})
+	h.subscription.updateMessageRead(idsModified, true)
+}
+
+func (h *readMessagesHandler) unreadMessages(newOldestOrderId string, lastAddedAt int64, msgIds []string) {
+	h.subscription.updateChatState(func(state *model.ChatState) {
+		state.Messages.OldestOrderId = newOldestOrderId
+		state.DbTimestamp = int64(lastAddedAt)
+	})
+	h.subscription.updateMessageRead(msgIds, false)
+}
+
+type readMentionsHandler struct {
+	subscription *subscription
+}
+
+func (h *readMentionsHandler) getUnreadFilter() query.Filter {
+	return query.And{
+		query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
+		query.Key{Path: []string{mentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)},
+	}
+}
+
+func (h *readMentionsHandler) getMessagesFilter() query.Filter {
+	return query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
+}
+
+func (h *readMentionsHandler) getDiffManagerName() string {
+	return diffManagerMentions
+}
+
+func (h *readMentionsHandler) getReadKey() string {
+	return mentionReadKey
+}
+
+func (h *readMentionsHandler) readMessages(newOldestOrderId string, idsModified []string) {
+	h.subscription.updateChatState(func(state *model.ChatState) {
+		state.Mentions.OldestOrderId = newOldestOrderId
+	})
+	h.subscription.updateMentionRead(idsModified, true)
+}
+
+func (h *readMentionsHandler) unreadMessages(newOldestOrderId string, lastAddedAt int64, msgIds []string) {
+	h.subscription.updateChatState(func(state *model.ChatState) {
+		state.Mentions.OldestOrderId = newOldestOrderId
+		state.DbTimestamp = int64(lastAddedAt)
+	})
+	h.subscription.updateMentionRead(msgIds, false)
+}
+
+func readModifier(key string, value bool) query.Modifier {
 	arena := &anyenc.Arena{}
 
 	valueModifier := arena.NewObject()
-	valueModifier.Set(o.readKey, arenaNewBool(arena, value))
+	valueModifier.Set(key, arenaNewBool(arena, value))
 	obj := arena.NewObject()
 	obj.Set("$set", valueModifier)
 	return query.MustParseModifier(obj)
 }
 
-func newCounterOptions(counterType CounterType, subscription *subscription) *counterOptions {
-	opts := &counterOptions{}
-
+func newReadHandler(counterType CounterType, subscription *subscription) readHandler {
 	switch counterType {
 	case CounterTypeMessage:
-		opts.unreadFilter = unreadMessageFilter()
-		opts.diffManagerName = diffManagerMessages
-		opts.readKey = readKey
-
-		opts.readMessages = func(newOldestOrderId string, idsModified []string) {
-			subscription.updateChatState(func(state *model.ChatState) {
-				state.Messages.OldestOrderId = newOldestOrderId
-			})
-			subscription.updateMessageRead(idsModified, true)
-		}
-
-		opts.unreadMessages = func(newOldestOrderId string, lastAddedAt int64, msgIds []string) {
-			subscription.updateChatState(func(state *model.ChatState) {
-				state.Messages.OldestOrderId = newOldestOrderId
-				state.DbTimestamp = int64(lastAddedAt)
-			})
-			subscription.updateMessageRead(msgIds, false)
-		}
-
+		return &readMessagesHandler{subscription: subscription}
 	case CounterTypeMention:
-		opts.unreadFilter = query.And{
-			query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
-			query.Key{Path: []string{mentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)},
-		}
-		opts.diffManagerName = diffManagerMentions
-		opts.readKey = mentionReadKey
-		opts.messagesFilter = query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
-
-		opts.readMessages = func(newOldestOrderId string, idsModified []string) {
-			subscription.updateChatState(func(state *model.ChatState) {
-				state.Mentions.OldestOrderId = newOldestOrderId
-			})
-			subscription.updateMentionRead(idsModified, true)
-		}
-
-		opts.unreadMessages = func(newOldestOrderId string, lastAddedAt int64, msgIds []string) {
-			subscription.updateChatState(func(state *model.ChatState) {
-				state.Mentions.OldestOrderId = newOldestOrderId
-				state.DbTimestamp = int64(lastAddedAt)
-			})
-			subscription.updateMentionRead(msgIds, false)
-		}
+		return &readMentionsHandler{subscription: subscription}
 	default:
 		panic("unknown counter type")
 	}
-
-	return opts
 }
 
 func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64, counterType CounterType) error {
-	opts := newCounterOptions(counterType, s.subscription)
+	handler := newReadHandler(counterType, s.subscription)
 	// 1. select all messages with orderId < beforeOrderId and addedTime < lastDbState
 	// 2. use the last(by orderId) message id as lastHead
 	// 3. update the MarkSeenHeads
 	// 2. mark messages as read in the DB
 
-	msgs, err := s.getUnreadMessageIdsInRange(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp, opts)
+	msgs, err := s.getUnreadMessageIdsInRange(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp, handler)
 	if err != nil {
 		return fmt.Errorf("get message: %w", err)
 	}
 
 	// mark the whole tree as seen from the current message
-	return s.storeSource.MarkSeenHeads(ctx, opts.diffManagerName, msgs)
+	return s.storeSource.MarkSeenHeads(ctx, handler.getDiffManagerName(), msgs)
 }
 
 func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType CounterType) error {
@@ -118,8 +150,8 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	}
 	defer txn.Rollback()
 
-	opts := newCounterOptions(counterType, s.subscription)
-	msgs, err := s.getReadMessagesAfter(txn, afterOrderId, opts)
+	handler := newReadHandler(counterType, s.subscription)
+	msgs, err := s.getReadMessagesAfter(txn, afterOrderId, handler)
 	if err != nil {
 		return fmt.Errorf("get read messages: %w", err)
 	}
@@ -129,13 +161,13 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	}
 
 	for _, msgId := range msgs {
-		_, err := s.collection.UpdateId(txn.Context(), msgId, opts.readModifier(false))
+		_, err := s.collection.UpdateId(txn.Context(), msgId, readModifier(handler.getReadKey(), false))
 		if err != nil {
 			return fmt.Errorf("update message: %w", err)
 		}
 	}
 
-	newOldestOrderId, err := s.getOldestOrderId(txn, opts)
+	newOldestOrderId, err := s.getOldestOrderId(txn, handler)
 	if err != nil {
 		return fmt.Errorf("get oldest order id: %w", err)
 	}
@@ -145,7 +177,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return fmt.Errorf("get last added date: %w", err)
 	}
 
-	opts.unreadMessages(newOldestOrderId, lastAdded, msgs)
+	handler.unreadMessages(newOldestOrderId, lastAdded, msgs)
 	s.subscription.flush()
 
 	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
@@ -164,13 +196,13 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	return txn.Commit()
 }
 
-func (s *storeObject) getReadMessagesAfter(txn anystore.ReadTx, afterOrderId string, opts *counterOptions) ([]string, error) {
+func (s *storeObject) getReadMessagesAfter(txn anystore.ReadTx, afterOrderId string, handler readHandler) ([]string, error) {
 	filter := query.And{
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-		query.Key{Path: []string{opts.readKey}, Filter: query.NewComp(query.CompOpEq, true)},
+		query.Key{Path: []string{handler.getReadKey()}, Filter: query.NewComp(query.CompOpEq, true)},
 	}
-	if opts.messagesFilter != nil {
-		filter = append(filter, opts.messagesFilter)
+	if handler.getMessagesFilter() != nil {
+		filter = append(filter, handler.getMessagesFilter())
 	}
 
 	iter, err := s.collection.Find(filter).Iter(txn.Context())
@@ -190,7 +222,7 @@ func (s *storeObject) getReadMessagesAfter(txn anystore.ReadTx, afterOrderId str
 	return msgIds, iter.Err()
 }
 
-func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64, opts *counterOptions) ([]string, error) {
+func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64, handler readHandler) ([]string, error) {
 	qry := query.And{
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
@@ -198,7 +230,7 @@ func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrder
 			query.Not{query.Key{Path: []string{addedKey}, Filter: query.Exists{}}},
 			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, strconv.Itoa(int(lastAddedMessageTimestamp)))},
 		},
-		opts.unreadFilter,
+		handler.getUnreadFilter(),
 	}
 	iter, err := s.collection.Find(qry).Iter(ctx)
 	if err != nil {
@@ -215,13 +247,6 @@ func (s *storeObject) getUnreadMessageIdsInRange(ctx context.Context, afterOrder
 		msgIds = append(msgIds, doc.Value().GetString("id"))
 	}
 	return msgIds, iter.Err()
-}
-
-func unreadMessageFilter() query.Filter {
-	// Use Not because old messages don't have read key
-	return query.Not{
-		Filter: query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
-	}
 }
 
 // initialChatState returns the initial chat state for the chat object from the DB
@@ -254,7 +279,7 @@ func (s *storeObject) initialChatState() (*model.ChatState, error) {
 }
 
 func (s *storeObject) initialChatStateByType(txn anystore.ReadTx, counterType CounterType) (*model.ChatStateUnreadState, error) {
-	opts := newCounterOptions(counterType, s.subscription)
+	opts := newReadHandler(counterType, s.subscription)
 
 	oldestOrderId, err := s.getOldestOrderId(txn, opts)
 	if err != nil {
@@ -272,8 +297,8 @@ func (s *storeObject) initialChatStateByType(txn anystore.ReadTx, counterType Co
 	}, nil
 }
 
-func (s *storeObject) getOldestOrderId(txn anystore.ReadTx, opts *counterOptions) (string, error) {
-	unreadQuery := s.collection.Find(opts.unreadFilter).Sort(ascOrder)
+func (s *storeObject) getOldestOrderId(txn anystore.ReadTx, handler readHandler) (string, error) {
+	unreadQuery := s.collection.Find(handler.getUnreadFilter()).Sort(ascOrder)
 
 	iter, err := unreadQuery.Limit(1).Iter(txn.Context())
 	if err != nil {
@@ -294,8 +319,8 @@ func (s *storeObject) getOldestOrderId(txn anystore.ReadTx, opts *counterOptions
 	return "", nil
 }
 
-func (s *storeObject) countUnreadMessages(txn anystore.ReadTx, opts *counterOptions) (int, error) {
-	unreadQuery := s.collection.Find(opts.unreadFilter)
+func (s *storeObject) countUnreadMessages(txn anystore.ReadTx, handler readHandler) (int, error) {
+	unreadQuery := s.collection.Find(handler.getUnreadFilter())
 
 	return unreadQuery.Limit(1).Count(txn.Context())
 }
@@ -322,7 +347,7 @@ func (s *storeObject) getLastAddedDate(txn anystore.ReadTx) (int64, error) {
 	return 0, nil
 }
 
-func (s *storeObject) markReadMessages(changeIds []string, opts *counterOptions) {
+func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) {
 	if len(changeIds) == 0 {
 		return
 	}
@@ -340,7 +365,7 @@ func (s *storeObject) markReadMessages(changeIds []string, opts *counterOptions)
 			// skip tree root
 			continue
 		}
-		res, err := s.collection.UpdateId(txn.Context(), id, opts.readModifier(true))
+		res, err := s.collection.UpdateId(txn.Context(), id, readModifier(handler.getReadKey(), true))
 		// Not all changes are messages, skip them
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			continue
@@ -355,7 +380,7 @@ func (s *storeObject) markReadMessages(changeIds []string, opts *counterOptions)
 	}
 
 	if len(idsModified) > 0 {
-		newOldestOrderId, err := s.getOldestOrderId(txn, opts)
+		newOldestOrderId, err := s.getOldestOrderId(txn, handler)
 		if err != nil {
 			log.Error("markReadMessages: get oldest order id", zap.Error(err))
 			err = txn.Rollback()
@@ -364,7 +389,7 @@ func (s *storeObject) markReadMessages(changeIds []string, opts *counterOptions)
 			}
 		}
 
-		opts.readMessages(newOldestOrderId, idsModified)
+		handler.readMessages(newOldestOrderId, idsModified)
 		s.subscription.flush()
 	}
 }
