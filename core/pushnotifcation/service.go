@@ -135,7 +135,7 @@ func (s *service) prepareEncryptedJson(key crypto.PrivKey, payload []byte) ([]by
 }
 
 func (s *service) makeTopics(spaceId string, topics []string) (*pushapi.Topics, error) {
-	var pushApiTopics []*pushapi.Topic
+	pushApiTopics := make([]*pushapi.Topic, 0, len(topics))
 	spaceKey, err := s.spaceKeyStore.EncryptionKeyBySpaceId(spaceId)
 	if err != nil {
 		return nil, err

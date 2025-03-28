@@ -16,8 +16,10 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block/chats/push"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -36,6 +38,11 @@ var sleepTime = time.Millisecond * 500
 
 type NodeConfGetter interface {
 	GetNodeConf() (conf nodeconf.Configuration)
+}
+
+type pushService interface {
+	SubscribeAll(ctx context.Context, spaceId string, topics []string) (err error)
+	CreateSpace(ctx context.Context, spaceId string) (err error)
 }
 
 type AccountPermissions struct {
@@ -82,6 +89,7 @@ type aclService struct {
 	accountService   account.Service
 	coordClient      coordinatorclient.CoordinatorClient
 	identityRepo     identityRepoClient
+	pushService      pushService
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -92,6 +100,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
+	a.pushService = app.MustComponent[pushService](ap)
 	return nil
 }
 
@@ -109,6 +118,10 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 	err = a.spaceService.TechSpace().SetLocalInfo(ctx, info)
 	if err != nil {
 		return convertedOrInternalError("set local info", err)
+	}
+	err = a.pushService.CreateSpace(context.Background(), spaceId)
+	if err != nil {
+		log.Error("create space for push message", zap.Error(err))
 	}
 	return nil
 }
@@ -439,6 +452,10 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 			SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
 	if err != nil {
 		return convertedOrInternalError("set space data", err)
+	}
+	err = a.pushService.SubscribeAll(context.Background(), spaceId, []string{push.TopicName})
+	if err != nil {
+		log.Error("subscribe to push message", zap.Error(err))
 	}
 	return nil
 }
