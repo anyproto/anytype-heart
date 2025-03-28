@@ -75,7 +75,7 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
 				es.shutdownCh <- server.Token
 			}
-			if strings.Contains(err.Error(), "rpc error: code = Unavailable desc = transport is closing") {
+			if strings.Contains(err.Error(), "transport is closing") {
 				log.Errorf("failed to send event: %v", err)
 			}
 		}
