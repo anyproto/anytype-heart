@@ -40,7 +40,7 @@ type CrossSpace interface {
 
 	ListIdsCrossSpace() ([]string, error)
 	EnqueueAllForFulltextIndexing(ctx context.Context) error
-	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) ([]string, error)) error
+	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) (succeedIds []string, err error)) error
 
 	AccountStore
 	VirtualSpacesStore
