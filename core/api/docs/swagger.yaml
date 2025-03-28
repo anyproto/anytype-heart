@@ -591,6 +591,10 @@ components:
       - Name
     space.CreateSpaceRequest:
       properties:
+        description:
+          description: The description of the space
+          example: The local-first wiki
+          type: string
         name:
           description: The name of the space
           example: New Space
@@ -650,6 +654,10 @@ components:
     space.Space:
       description: The space
       properties:
+        description:
+          description: The description of the space
+          example: The local-first wiki
+          type: string
         gateway_url:
           description: The gateway url to serve files and media
           example: http://127.0.0.1:31006

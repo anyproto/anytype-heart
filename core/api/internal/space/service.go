@@ -22,9 +22,11 @@ import (
 var (
 	ErrFailedListSpaces           = errors.New("failed to retrieve list of spaces")
 	ErrFailedOpenWorkspace        = errors.New("failed to open workspace")
+	ErrFailedOpenSpace            = errors.New("failed to open space")
 	ErrWorkspaceNotFound          = errors.New("workspace not found")
 	ErrFailedGenerateRandomIcon   = errors.New("failed to generate random icon")
 	ErrFailedCreateSpace          = errors.New("failed to create space")
+	ErrFailedSetSpaceInfo         = errors.New("failed to set space info")
 	ErrFailedListMembers          = errors.New("failed to retrieve list of members")
 	ErrFailedGetMember            = errors.New("failed to retrieve member")
 	ErrMemberNotFound             = errors.New("member not found")
@@ -77,7 +79,7 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 				EmptyPlacement: model.BlockContentDataviewSort_End,
 			},
 		},
-		Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String()},
+		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -89,10 +91,7 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 	spaces = make([]Space, 0, len(paginatedRecords))
 
 	for _, record := range paginatedRecords {
-		name := record.Fields[bundle.RelationKeyName.String()].GetStringValue()
-		icon := util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
-
-		workspace, err := s.getWorkspaceInfo(record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue(), name, icon)
+		workspace, err := s.getSpaceInfo(record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue())
 		if err != nil {
 			return nil, 0, false, err
 		}
@@ -122,7 +121,7 @@ func (s *SpaceService) GetSpace(ctx context.Context, spaceId string) (Space, err
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 			},
 		},
-		Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String()},
+		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -133,9 +132,7 @@ func (s *SpaceService) GetSpace(ctx context.Context, spaceId string) (Space, err
 		return Space{}, ErrWorkspaceNotFound
 	}
 
-	name := resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := util.GetIcon(s.AccountInfo, resp.Records[0].Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
-	return s.getWorkspaceInfo(spaceId, name, icon)
+	return s.getSpaceInfo(spaceId)
 }
 
 // CreateSpace creates a new space with the given name and returns the space info.
@@ -146,7 +143,6 @@ func (s *SpaceService) CreateSpace(ctx context.Context, request CreateSpaceReque
 		return Space{}, ErrFailedGenerateRandomIcon
 	}
 
-	// Create new workspace with a random icon and import default use case
 	resp := s.mw.WorkspaceCreate(ctx, &pb.RpcWorkspaceCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -159,11 +155,27 @@ func (s *SpaceService) CreateSpace(ctx context.Context, request CreateSpaceReque
 		WithChat: true,
 	})
 
-	if resp.Error.Code != pb.RpcWorkspaceCreateResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcWorkspaceCreateResponseError_NULL {
 		return Space{}, ErrFailedCreateSpace
 	}
 
-	return s.getWorkspaceInfo(resp.SpaceId, name, util.Icon{})
+	description := request.Description
+	if description != "" {
+		infoResp := s.mw.WorkspaceSetInfo(ctx, &pb.RpcWorkspaceSetInfoRequest{
+			SpaceId: resp.SpaceId,
+			Details: &types.Struct{
+				Fields: map[string]*types.Value{
+					bundle.RelationKeyDescription.String(): pbtypes.String(description),
+				},
+			},
+		})
+
+		if infoResp.Error != nil && infoResp.Error.Code != pb.RpcWorkspaceSetInfoResponseError_NULL {
+			return Space{}, ErrFailedSetSpaceInfo
+		}
+	}
+
+	return s.getSpaceInfo(resp.SpaceId)
 }
 
 // ListMembers returns a paginated list of members in the space with the given ID.
@@ -364,24 +376,37 @@ func (s *SpaceService) UpdateMember(ctx context.Context, spaceId string, memberI
 	return member, nil
 }
 
-// getWorkspaceInfo returns the workspace info for the space with the given ID.
-func (s *SpaceService) getWorkspaceInfo(spaceId string, name string, icon util.Icon) (space Space, err error) {
+// getSpaceInfo returns the workspace info for the space with the given ID.
+func (s *SpaceService) getSpaceInfo(spaceId string) (space Space, err error) {
 	workspaceResponse := s.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
-		SpaceId:  spaceId,
-		WithChat: true,
+		SpaceId: spaceId,
 	})
 
-	if workspaceResponse.Error.Code != pb.RpcWorkspaceOpenResponseError_NULL {
+	if workspaceResponse.Error != nil && workspaceResponse.Error.Code != pb.RpcWorkspaceOpenResponseError_NULL {
 		return Space{}, ErrFailedOpenWorkspace
 	}
 
+	spaceResp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: workspaceResponse.Info.WorkspaceObjectId,
+	})
+
+	if spaceResp.Error != nil && spaceResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return Space{}, ErrFailedOpenSpace
+	}
+
+	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
+	icon := util.GetIcon(s.AccountInfo, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
+
 	return Space{
-		Object:     "space",
-		Id:         spaceId,
-		Name:       name,
-		Icon:       icon,
-		GatewayUrl: workspaceResponse.Info.GatewayUrl,
-		NetworkId:  workspaceResponse.Info.NetworkId,
+		Object:      "space",
+		Id:          spaceId,
+		Name:        name,
+		Icon:        icon,
+		Description: description,
+		GatewayUrl:  workspaceResponse.Info.GatewayUrl,
+		NetworkId:   workspaceResponse.Info.NetworkId,
 	}, nil
 }
 

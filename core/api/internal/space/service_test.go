@@ -74,23 +74,17 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 					EmptyPlacement: model.BlockContentDataviewSort_End,
 				},
 			},
-			Keys: []string{"targetSpaceId", "name", "iconEmoji", "iconImage"},
+			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String():          pbtypes.String("Another Workspace"),
 						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("another-space-id"),
-						bundle.RelationKeyIconEmoji.String():     pbtypes.String(""),
-						bundle.RelationKeyIconImage.String():     pbtypes.String(iconImage),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String():          pbtypes.String("My Workspace"),
 						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("my-space-id"),
-						bundle.RelationKeyIconEmoji.String():     pbtypes.String("🚀"),
-						bundle.RelationKeyIconImage.String():     pbtypes.String(""),
 					},
 				},
 			},
@@ -100,23 +94,62 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		fx.mwMock.On("WorkspaceOpen", mock.Anything, mock.Anything).Return(&pb.RpcWorkspaceOpenResponse{
 			Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
 			Info: &model.AccountInfo{
-				HomeObjectId:           "home-object-id",
-				ArchiveObjectId:        "archive-object-id",
-				ProfileObjectId:        "profile-object-id",
-				MarketplaceWorkspaceId: "marketplace-workspace-id",
-				WorkspaceObjectId:      "workspace-object-id",
-				DeviceId:               "device-id",
-				AccountSpaceId:         "account-space-id",
-				WidgetsId:              "widgets-id",
-				SpaceViewId:            "space-view-id",
-				TechSpaceId:            "tech-space-id",
-				GatewayUrl:             "gateway-url",
-				LocalStoragePath:       "local-storage-path",
-				TimeZone:               "time-zone",
-				AnalyticsId:            "analytics-id",
-				NetworkId:              "network-id",
+				WorkspaceObjectId: "workspace-object-id-1",
+				GatewayUrl:        "gateway-url-1",
+				NetworkId:         "network-id-1",
 			},
-		}, nil).Twice()
+		}, nil).Once()
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  "another-space-id",
+			ObjectId: "workspace-object-id-1",
+		}).Return(&pb.RpcObjectShowResponse{
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String():        pbtypes.String("Another Workspace"),
+								bundle.RelationKeyIconEmoji.String():   pbtypes.String(""),
+								bundle.RelationKeyIconImage.String():   pbtypes.String(iconImage),
+								bundle.RelationKeyDescription.String(): pbtypes.String("desc1"),
+							},
+						},
+					},
+				},
+			},
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+		}, nil).Once()
+
+		fx.mwMock.On("WorkspaceOpen", mock.Anything, mock.Anything).Return(&pb.RpcWorkspaceOpenResponse{
+			Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
+			Info: &model.AccountInfo{
+				WorkspaceObjectId: "workspace-object-id-2",
+				GatewayUrl:        "gateway-url-2",
+				NetworkId:         "network-id-2",
+			},
+		}, nil).Once()
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  "my-space-id",
+			ObjectId: "workspace-object-id-2",
+		}).Return(&pb.RpcObjectShowResponse{
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String():        pbtypes.String("My Workspace"),
+								bundle.RelationKeyIconEmoji.String():   pbtypes.String("🚀"),
+								bundle.RelationKeyIconImage.String():   pbtypes.String(""),
+								bundle.RelationKeyDescription.String(): pbtypes.String("desc2"),
+							},
+						},
+					},
+				},
+			},
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+		}, nil).Once()
 
 		// when
 		spaces, total, hasMore, err := fx.ListSpaces(nil, offset, limit)
@@ -124,12 +157,20 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, spaces, 2)
+
 		require.Equal(t, "Another Workspace", spaces[0].Name)
 		require.Equal(t, "another-space-id", spaces[0].Id)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), *spaces[0].Icon.File, "Icon URL does not match")
+		require.Equal(t, "desc1", spaces[0].Description)
+		require.Equal(t, "gateway-url-1", spaces[0].GatewayUrl)
+		require.Equal(t, "network-id-1", spaces[0].NetworkId)
+
 		require.Equal(t, "My Workspace", spaces[1].Name)
 		require.Equal(t, "my-space-id", spaces[1].Id)
+		require.Equal(t, "desc2", spaces[1].Description)
 		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🚀")}, spaces[1].Icon)
+		require.Equal(t, "gateway-url-2", spaces[1].GatewayUrl)
+		require.Equal(t, "network-id-2", spaces[1].NetworkId)
+
 		require.Equal(t, 2, total)
 		require.False(t, hasMore)
 	})
@@ -163,10 +204,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 				Records: []*types.Struct{
 					{
 						Fields: map[string]*types.Value{
-							bundle.RelationKeyName.String():          pbtypes.String("My Workspace"),
 							bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("my-space-id"),
-							bundle.RelationKeyIconEmoji.String():     pbtypes.String("🚀"),
-							bundle.RelationKeyIconImage.String():     pbtypes.String(""),
 						},
 					},
 				},
@@ -212,18 +250,12 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyTargetSpaceId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
 			},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String():          pbtypes.String("My Workspace"),
 						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("space-id"),
-						bundle.RelationKeyIconEmoji.String():     pbtypes.String("🚀"),
-						bundle.RelationKeyIconImage.String():     pbtypes.String(""),
 					},
 				},
 			},
@@ -233,22 +265,32 @@ func TestSpaceService_GetSpace(t *testing.T) {
 		fx.mwMock.On("WorkspaceOpen", mock.Anything, mock.Anything).Return(&pb.RpcWorkspaceOpenResponse{
 			Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
 			Info: &model.AccountInfo{
-				HomeObjectId:           "home-object-id",
-				ArchiveObjectId:        "archive-object-id",
-				ProfileObjectId:        "profile-object-id",
-				MarketplaceWorkspaceId: "marketplace-workspace-id",
-				WorkspaceObjectId:      "workspace-object-id",
-				DeviceId:               "device-id",
-				AccountSpaceId:         "account-space-id",
-				WidgetsId:              "widgets-id",
-				SpaceViewId:            "space-view-id",
-				TechSpaceId:            "tech-space-id",
-				GatewayUrl:             "gateway-url",
-				LocalStoragePath:       "local-storage-path",
-				TimeZone:               "time-zone",
-				AnalyticsId:            "analytics-id",
-				NetworkId:              "network-id",
+				WorkspaceObjectId: "workspace-object-id",
+				GatewayUrl:        "gateway-url",
+				NetworkId:         "network-id",
 			},
+		}, nil).Once()
+
+		// Expect ObjectShow call to return space details.
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  "space-id",
+			ObjectId: "workspace-object-id",
+		}).Return(&pb.RpcObjectShowResponse{
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String():        pbtypes.String("My Workspace"),
+								bundle.RelationKeyIconEmoji.String():   pbtypes.String("🚀"),
+								bundle.RelationKeyIconImage.String():   pbtypes.String(""),
+								bundle.RelationKeyDescription.String(): pbtypes.String("A description"),
+							},
+						},
+					},
+				},
+			},
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}, nil).Once()
 
 		// when
@@ -283,12 +325,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 				},
 			},
-			Keys: []string{
-				bundle.RelationKeyTargetSpaceId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-			},
+			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -322,20 +359,12 @@ func TestSpaceService_GetSpace(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
 				},
 			},
-			Keys: []string{
-				bundle.RelationKeyTargetSpaceId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-			},
+			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String():          pbtypes.String("My Workspace"),
 						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("space-id"),
-						bundle.RelationKeyIconEmoji.String():     pbtypes.String("🚀"),
-						bundle.RelationKeyIconImage.String():     pbtypes.String(""),
 					},
 				},
 			},
@@ -366,33 +395,55 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 				SpaceId: "new-space-id",
 			}).Once()
 
+		fx.mwMock.On("WorkspaceSetInfo", mock.Anything, &pb.RpcWorkspaceSetInfoRequest{
+			SpaceId: "new-space-id",
+			Details: &types.Struct{
+				Fields: map[string]*types.Value{
+					bundle.RelationKeyDescription.String(): pbtypes.String("A new space"),
+				},
+			},
+		}).Return(&pb.RpcWorkspaceSetInfoResponse{
+			Error: &pb.RpcWorkspaceSetInfoResponseError{Code: pb.RpcWorkspaceSetInfoResponseError_NULL},
+		}, nil).Once()
+
 		fx.mwMock.On("WorkspaceOpen", mock.Anything, mock.Anything).Return(&pb.RpcWorkspaceOpenResponse{
 			Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
 			Info: &model.AccountInfo{
-				HomeObjectId:           "home-object-id",
-				ArchiveObjectId:        "archive-object-id",
-				ProfileObjectId:        "profile-object-id",
-				MarketplaceWorkspaceId: "marketplace-workspace-id",
-				WorkspaceObjectId:      "workspace-object-id",
-				DeviceId:               "device-id",
-				AccountSpaceId:         "account-space-id",
-				WidgetsId:              "widgets-id",
-				SpaceViewId:            "space-view-id",
-				TechSpaceId:            "tech-space-id",
-				GatewayUrl:             "gateway-url",
-				LocalStoragePath:       "local-storage-path",
-				TimeZone:               "time-zone",
-				AnalyticsId:            "analytics-id",
-				NetworkId:              "network-id",
+				WorkspaceObjectId: "workspace-object-id",
+				GatewayUrl:        "gateway-url",
+				NetworkId:         "network-id",
+			},
+		}, nil).Once()
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  "new-space-id",
+			ObjectId: "workspace-object-id",
+		}).Return(&pb.RpcObjectShowResponse{
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String():        pbtypes.String("New Space"),
+								bundle.RelationKeyIconEmoji.String():   pbtypes.String("🚀"),
+								bundle.RelationKeyIconImage.String():   pbtypes.String(""),
+								bundle.RelationKeyDescription.String(): pbtypes.String("A new space"),
+							},
+						},
+					},
+				},
 			},
 		}, nil).Once()
 
 		// when
-		space, err := fx.CreateSpace(nil, CreateSpaceRequest{Name: "New Space"})
+		space, err := fx.CreateSpace(nil, CreateSpaceRequest{Name: "New Space", Description: "A new space"})
 
 		// then
 		require.NoError(t, err)
 		require.Equal(t, "new-space-id", space.Id)
+		require.Equal(t, "New Space", space.Name)
+		require.Equal(t, "A new space", space.Description)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🚀")}, space.Icon)
 	})
 
 	t.Run("failed workspace creation", func(t *testing.T) {

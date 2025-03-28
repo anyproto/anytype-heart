@@ -31,6 +31,7 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedListSpaces, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedOpenWorkspace, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedOpenSpace, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -64,6 +65,7 @@ func GetSpaceHandler(s *SpaceService) gin.HandlerFunc {
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrWorkspaceNotFound, http.StatusNotFound),
 			util.ErrToCode(ErrFailedOpenWorkspace, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedOpenSpace, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -103,6 +105,9 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 		space, err := s.CreateSpace(c.Request.Context(), req)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedCreateSpace, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedSetSpaceInfo, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedOpenWorkspace, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedOpenSpace, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

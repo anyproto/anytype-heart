@@ -93,7 +93,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 					EmptyPlacement: model.BlockContentDataviewSort_End,
 				},
 			},
-			Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String()},
+			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
@@ -107,14 +107,31 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 
 		// Mock workspace opening
 		fx.mwMock.On("WorkspaceOpen", mock.Anything, &pb.RpcWorkspaceOpenRequest{
-			SpaceId:  mockedSpaceId,
-			WithChat: true,
+			SpaceId: mockedSpaceId,
 		}).Return(&pb.RpcWorkspaceOpenResponse{
 			Info: &model.AccountInfo{
-				TechSpaceId: mockedSpaceId,
+				WorkspaceObjectId: "workspace-object-id",
 			},
 			Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
 		}).Once()
+
+		// Mock object show of workspace
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: "workspace-object-id",
+		}).Return(&pb.RpcObjectShowResponse{
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyName.String(): pbtypes.String("Space Name"),
+							},
+						},
+					},
+				},
+			},
+		}, nil).Once()
 
 		// Mock objects in space
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
