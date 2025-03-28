@@ -21,9 +21,10 @@ components:
       type: object
     export.ObjectExportResponse:
       properties:
-        path:
-          description: The path the object was exported to
-          example: /path/to/export
+        markdown:
+          example: |-
+            # This is the title
+            ...
           type: string
       type: object
     list.Filter:
@@ -1765,15 +1766,13 @@ paths:
       summary: Get object
       tags:
       - objects
-  /spaces/{space_id}/objects/{object_id}/export/{format}:
-    post:
+  /spaces/{space_id}/objects/{object_id}/{format}:
+    get:
       description: This endpoint exports a single object from the specified space
         into a desired format. The export format is provided as a path parameter (currently
-        supporting “markdown” and “protobuf”), and clients can optionally specify
-        an export path in the request body. The endpoint calls an export service which
-        converts the object’s content into the requested format and returns the file
-        path where the exported data is stored. It is useful for data backup, sharing,
-        or further processing.
+        supporting “markdown” only). The endpoint calls the export service which converts
+        the object’s content into the requested format. It is useful for sharing,
+        or displaying the markdown representation of the objecte externally.
       parameters:
       - description: Space ID
         in: path
@@ -1794,7 +1793,6 @@ paths:
         schema:
           enum:
           - markdown
-          - protobuf
           type: string
       requestBody:
         content:

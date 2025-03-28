@@ -5,25 +5,26 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 )
 
 type fixture struct {
 	*Server
-	accountService account.Service
+	accountService mock_apicore.MockAccountService
+	exportService  mock_apicore.MockExportService
 	mwMock         *mock_apicore.MockClientCommands
 }
 
-func newServerFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-	accountService := mock_account.NewMockService(t)
-	server := NewServer(accountService, mwMock)
+	accountService := mock_apicore.NewMockAccountService(t)
+	exportService := mock_apicore.NewMockExportService(t)
+	server := NewServer(mwMock, accountService, exportService)
 
 	return &fixture{
 		Server:         server,
-		accountService: accountService,
+		accountService: *accountService,
+		exportService:  *exportService,
 		mwMock:         mwMock,
 	}
 }
@@ -31,7 +32,7 @@ func newServerFixture(t *testing.T) *fixture {
 func TestNewServer(t *testing.T) {
 	t.Run("returns valid server", func(t *testing.T) {
 		// when
-		s := newServerFixture(t)
+		s := newFixture(t)
 
 		// then
 		require.NotNil(t, s)
@@ -51,7 +52,7 @@ func TestNewServer(t *testing.T) {
 func TestServer_Engine(t *testing.T) {
 	t.Run("Engine returns same engine instance", func(t *testing.T) {
 		// given
-		s := newServerFixture(t)
+		s := newFixture(t)
 
 		// when
 		engine := s.Engine()

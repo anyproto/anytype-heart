@@ -7,8 +7,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type AccountInfo interface {
+type AccountService interface {
 	GetInfo(ctx context.Context) (*model.AccountInfo, error)
+}
+
+type ExportService interface {
+	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
 }
 
 type ClientCommands interface {

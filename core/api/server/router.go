@@ -28,7 +28,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(accountService apicore.AccountInfo, mw apicore.ClientCommands) *gin.Engine {
+func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.AccountService) *gin.Engine {
 	debug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
@@ -65,7 +65,7 @@ func (s *Server) NewRouter(accountService apicore.AccountInfo, mw apicore.Client
 	v1.Use(s.ensureAccountInfo(accountService))
 	{
 		// Export
-		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
+		v1.GET("/spaces/:space_id/objects/:object_id/:format", export.GetObjectExportHandler(s.exportService))
 
 		// List
 		v1.GET("/spaces/:space_id/lists/:list_id/views", list.GetListViewsHandler(s.listService))

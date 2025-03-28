@@ -239,6 +239,8 @@ packages:
       Service:
   github.com/anyproto/anytype-heart/core/api/apicore:
     interfaces:
+      AccountService:
+      ExportService:
       ClientCommands:
   github.com/anyproto/anytype-heart/core/block/template:
     interfaces:

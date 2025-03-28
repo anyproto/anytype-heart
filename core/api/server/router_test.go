@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -17,8 +16,8 @@ import (
 func TestRouter_Unauthenticated(t *testing.T) {
 	t.Run("GET /v1/spaces without auth returns 401", func(t *testing.T) {
 		// given
-		fx := newServerFixture(t)
-		engine := fx.NewRouter(fx.accountService, fx.mwMock)
+		fx := newFixture(t)
+		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v1/spaces", nil)
 
@@ -33,8 +32,8 @@ func TestRouter_Unauthenticated(t *testing.T) {
 func TestRouter_AuthRoute(t *testing.T) {
 	t.Run("POST /v1/auth/token is accessible without auth", func(t *testing.T) {
 		// given
-		fx := newServerFixture(t)
-		engine := fx.NewRouter(fx.accountService, fx.mwMock)
+		fx := newFixture(t)
+		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/v1/auth/token", nil)
 
@@ -49,10 +48,10 @@ func TestRouter_AuthRoute(t *testing.T) {
 func TestRouter_MetadataHeader(t *testing.T) {
 	t.Run("Response includes Anytype-Version header", func(t *testing.T) {
 		// given
-		fx := newServerFixture(t)
-		engine := fx.NewRouter(fx.accountService, fx.mwMock)
+		fx := newFixture(t)
+		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
 		fx.KeyToToken = map[string]string{"validKey": "dummyToken"}
-		fx.accountService.(*mock_account.MockService).On("GetInfo", mock.Anything).
+		fx.accountService.On("GetInfo", mock.Anything).
 			Return(&model.AccountInfo{
 				GatewayUrl: "http://localhost:31006",
 			}, nil).Once()

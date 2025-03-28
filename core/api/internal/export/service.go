@@ -5,13 +5,11 @@ import (
 	"errors"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
-	ErrFailedExportObjectAsMarkdown = errors.New("failed to export object as markdown")
-	ErrBadInput                     = errors.New("bad input")
+	ErrInvalidExportFormat = errors.New("format is not supported")
 )
 
 type Service interface {
@@ -19,33 +17,26 @@ type Service interface {
 }
 
 type ExportService struct {
-	mw apicore.ClientCommands
+	mw            apicore.ClientCommands
+	exportService apicore.ExportService
 }
 
-func NewService(mw apicore.ClientCommands) *ExportService {
-	return &ExportService{mw: mw}
+func NewService(mw apicore.ClientCommands, exportService apicore.ExportService) *ExportService {
+	return &ExportService{mw: mw, exportService: exportService}
 }
 
 // GetObjectExport retrieves an object from a space and exports it as a specific format.
-func (s *ExportService) GetObjectExport(ctx context.Context, spaceId string, objectId string, format string, path string) (string, error) {
-	resp := s.mw.ObjectListExport(ctx, &pb.RpcObjectListExportRequest{
-		SpaceId:         spaceId,
-		Path:            path,
-		ObjectIds:       []string{objectId},
-		Format:          s.mapStringToFormat(format),
-		Zip:             false,
-		IncludeNested:   false,
-		IncludeFiles:    true,
-		IsJson:          false,
-		IncludeArchived: false,
-		NoProgress:      true,
-	})
-
-	if resp.Error.Code != pb.RpcObjectListExportResponseError_NULL {
-		return "", ErrFailedExportObjectAsMarkdown
+func (s *ExportService) GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error) {
+	if format != "markdown" {
+		return "", ErrInvalidExportFormat
 	}
 
-	return resp.Path, nil
+	result, err := s.exportService.ExportSingleInMemory(ctx, spaceId, objectId, s.mapStringToFormat(format))
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
 }
 
 // mapStringToFormat maps a format string to an ExportFormat enum.

@@ -85,7 +85,7 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 }
 
 // ensureAccountInfo is a middleware that ensures the account info is available in the services.
-func (s *Server) ensureAccountInfo(accountService apicore.AccountInfo) gin.HandlerFunc {
+func (s *Server) ensureAccountInfo(accountService apicore.AccountService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accInfo, err := accountService.GetInfo(context.Background())
 		if err != nil {

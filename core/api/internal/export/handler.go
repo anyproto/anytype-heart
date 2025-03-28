@@ -11,34 +11,28 @@ import (
 // GetObjectExportHandler exports an object in specified format
 //
 //	@Summary		Export object
-//	@Description	This endpoint exports a single object from the specified space into a desired format. The export format is provided as a path parameter (currently supporting “markdown” and “protobuf”), and clients can optionally specify an export path in the request body. The endpoint calls an export service which converts the object’s content into the requested format and returns the file path where the exported data is stored. It is useful for data backup, sharing, or further processing.
+//	@Description	This endpoint exports a single object from the specified space into a desired format. The export format is provided as a path parameter (currently supporting “markdown” only). The endpoint calls the export service which converts the object’s content into the requested format. It is useful for sharing, or displaying the markdown representation of the objecte externally.
 //	@Tags			export
 //	@Accept			json
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space ID"
 //	@Param			object_id	path		string					true	"Object ID"
-//	@Param			format		path		string					true	"Export format"	Enums(markdown,protobuf)
+//	@Param			format		path		string					true	"Export format"	Enums(markdown)
 //	@Success		200			{object}	ObjectExportResponse	"Object exported successfully"
 //	@Failure		400			{object}	util.ValidationError	"Bad request"
 //	@Failure		401			{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id}/export/{format} [post]
+//	@Router			/spaces/{space_id}/objects/{object_id}/{format} [get]
 func GetObjectExportHandler(s *ExportService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
-		format := c.Query("format")
+		format := c.Param("format")
 
-		objectAsRequest := ObjectExportRequest{}
-		if err := c.ShouldBindJSON(&objectAsRequest); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, ErrBadInput.Error())
-			c.JSON(http.StatusBadRequest, apiErr)
-			return
-		}
-
-		outputPath, err := s.GetObjectExport(c.Request.Context(), spaceId, objectId, format, objectAsRequest.Path)
-		code := util.MapErrorCode(err, util.ErrToCode(ErrFailedExportObjectAsMarkdown, http.StatusInternalServerError))
+		markdown, err := s.GetObjectExport(c.Request.Context(), spaceId, objectId, format)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrInvalidExportFormat, http.StatusInternalServerError))
 
 		if code != http.StatusOK {
 			apiErr := util.CodeToAPIError(code, err.Error())
@@ -46,6 +40,6 @@ func GetObjectExportHandler(s *ExportService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, ObjectExportResponse{Path: outputPath})
+		c.JSON(http.StatusOK, ObjectExportResponse{Markdown: markdown})
 	}
 }

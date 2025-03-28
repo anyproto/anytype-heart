@@ -30,17 +30,17 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with default config and sets up the routes.
-func NewServer(accountService apicore.AccountInfo, mw apicore.ClientCommands) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, exportService apicore.ExportService) *Server {
 	s := &Server{
 		authService:   auth.NewService(mw),
-		exportService: export.NewService(mw),
+		exportService: export.NewService(mw, exportService),
 		spaceService:  space.NewService(mw),
 	}
 
 	s.objectService = object.NewService(mw, s.spaceService)
 	s.listService = list.NewService(mw, s.objectService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
-	s.engine = s.NewRouter(accountService, mw)
+	s.engine = s.NewRouter(mw, accountService)
 	s.KeyToToken = make(map[string]string)
 
 	return s

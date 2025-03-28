@@ -11,24 +11,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-func newFixture(t *testing.T) *fixture {
-	mwMock := mock_apicore.NewMockClientCommands(t)
-	accountService := mock_account.NewMockService(t)
-	server := NewServer(accountService, mwMock)
-
-	return &fixture{
-		Server:         server,
-		accountService: accountService,
-		mwMock:         mwMock,
-	}
-}
 
 func TestEnsureMetadataHeader(t *testing.T) {
 	t.Run("sets correct header", func(t *testing.T) {
@@ -161,10 +147,10 @@ func TestEnsureAccountInfo(t *testing.T) {
 		expectedInfo := &model.AccountInfo{
 			GatewayUrl: "http://localhost:31006",
 		}
-		fx.accountService.(*mock_account.MockService).On("GetInfo", mock.Anything).Return(expectedInfo, nil).Once()
+		fx.accountService.On("GetInfo", mock.Anything).Return(expectedInfo, nil).Once()
 
 		// when
-		middleware := fx.ensureAccountInfo(fx.accountService)
+		middleware := fx.ensureAccountInfo(&fx.accountService)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -181,11 +167,9 @@ func TestEnsureAccountInfo(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		expectedErr := errors.New("failed to get info")
-		fx.accountService.(*mock_account.MockService).
-			On("GetInfo", mock.Anything).
-			Return(nil, expectedErr).Once()
+		fx.accountService.On("GetInfo", mock.Anything).Return(nil, expectedErr).Once()
 
-		middleware := fx.ensureAccountInfo(fx.accountService)
+		middleware := fx.ensureAccountInfo(&fx.accountService)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		middleware(c)
