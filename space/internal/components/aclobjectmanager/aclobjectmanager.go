@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/samber/lo"
@@ -21,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -54,6 +56,7 @@ type aclObjectManager struct {
 	spaceLoaderListener SpaceLoaderListener
 	participantWatcher  participantwatcher.ParticipantWatcher
 	inviteMigrator      invitemigrator.InviteMigrator
+	spaceKeyStore       spacekeystore.Store
 	accountService      accountservice.Service
 
 	ownerMetadata []byte
@@ -109,6 +112,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
+	a.spaceKeyStore = app.MustComponent[spacekeystore.Store](ap)
 	return nil
 }
 
@@ -247,7 +251,20 @@ func (a *aclObjectManager) processAcl() (err error) {
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
-	return
+	return a.updateSpaceKeyStore(err, aclState, common)
+}
+
+func (a *aclObjectManager) updateSpaceKeyStore(err error, aclState *list.AclState, common commonspace.Space) error {
+	firstMetadataKey, err := aclState.FirstMetadataKey()
+	if err != nil {
+		return err
+	}
+	readKey, err := aclState.CurrentReadKey()
+	if err != nil {
+		return err
+	}
+	a.spaceKeyStore.SyncKeysFromAclState(common.Id(), aclState.CurrentReadKeyId(), firstMetadataKey, readKey)
+	return nil
 }
 
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {

@@ -106,6 +106,11 @@ type DebugAPIConfig struct {
 	IsEnabled bool
 }
 
+type PushConfig struct {
+	PeerId string
+	Addr   []string
+}
+
 const (
 	ConfigFileName = "config.json"
 )
@@ -501,5 +506,15 @@ func (c *Config) GetPublishServer() publishclient.Config {
 				Addrs:  []string{"yamux://" + publishAddr},
 			},
 		},
+	}
+}
+
+func (c *Config) GetPushConfig() PushConfig {
+	pushPeerId := "peer"
+	pushAddr := "addr"
+
+	return PushConfig{
+		PeerId: pushPeerId,
+		Addr:   []string{pushAddr},
 	}
 }
