@@ -181,10 +181,12 @@ type layoutState struct {
 	layout            int64
 	layoutAlign       int64
 	featuredRelations []string
+	forceLayout       bool
 
 	isLayoutSet            bool
 	isLayoutAlignSet       bool
 	isFeaturedRelationsSet bool
+	isForceLayoutSet       bool
 }
 
 func (ls layoutState) isAllSet() bool {
@@ -233,6 +235,9 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 
 	oldLayout := getLayoutStateFromParent(info.ParentState)
 
+	forceLayoutUpdate := newLayout.isForceLayoutSet && newLayout.forceLayout || // forceLayout is set to true
+		oldLayout.forceLayout && !(newLayout.isForceLayoutSet && !newLayout.forceLayout) // forceLayout was true and is not unset
+
 	records, err := ot.queryObjectsAndTemplates()
 	if err != nil {
 		return err
@@ -266,42 +271,12 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 			continue
 		}
 
-		if changes.isLayoutFound || !newLayout.isLayoutSet || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
+		if !forceLayoutUpdate && (changes.isLayoutFound || !newLayout.isLayoutSet || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout) {
 			// layout detail remains in object or recommendedLayout was not changed or relevant layout is already set, skipping
 			continue
 		}
 
-		err = ot.Space().DoLockedIfNotExists(id, func() error {
-			return ot.spaceIndex.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
-				if details == nil {
-					return nil, false, nil
-				}
-				if details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
-					return nil, false, nil
-				}
-				details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(newLayout.layout))
-				return details, true, nil
-			})
-		})
-
-		if err == nil {
-			continue
-		}
-
-		if !errors.Is(err, ocache.ErrExists) {
-			resultErr = errors.Join(resultErr, err)
-			continue
-		}
-
-		if err = ot.Space().Do(id, func(b smartblock.SmartBlock) error {
-			if cr, ok := b.(source.ChangeReceiver); ok {
-				// we can do StateAppend here, so resolvedLayout will be injected automatically
-				return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
-					return d.NewState(), nil, nil
-				})
-			}
-			return nil
-		}); err != nil {
+		if err = ot.updateResolvedLayout(id, newLayout.layout); err != nil {
 			resultErr = errors.Join(resultErr, err)
 		}
 	}
@@ -337,6 +312,9 @@ func getLayoutStateFromMessages(msgs []simple.EventMessage) layoutState {
 				case bundle.RelationKeyLayoutAlign.String():
 					ls.layoutAlign = int64(detail.Value.GetNumberValue())
 					ls.isLayoutAlignSet = true
+				case bundle.RelationKeyForceLayoutFromType.String():
+					ls.forceLayout = detail.Value.GetBoolValue()
+					ls.isForceLayoutSet = true
 				}
 			}
 			if ls.isAllSet() {
@@ -361,6 +339,11 @@ func getLayoutStateFromParent(ps *state.State) layoutState {
 	if layoutAlign, ok := ps.Details().TryInt64(bundle.RelationKeyLayoutAlign); ok {
 		ls.layoutAlign = layoutAlign
 		ls.isLayoutAlignSet = true
+	}
+
+	if forceLayout, ok := ps.Details().TryBool(bundle.RelationKeyForceLayoutFromType); ok {
+		ls.forceLayout = forceLayout
+		ls.isForceLayoutSet = true
 	}
 
 	featuredRelations, ok := ps.Details().TryStringList(bundle.RelationKeyRecommendedFeaturedRelations)
@@ -396,6 +379,40 @@ func (ot *ObjectType) queryObjectsAndTemplates() ([]database.Record, error) {
 	}
 
 	return append(records, templates...), nil
+}
+
+func (ot *ObjectType) updateResolvedLayout(id string, layout int64) error {
+	spc := ot.Space()
+	err := spc.DoLockedIfNotExists(id, func() error {
+		return ot.spaceIndex.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
+			if details == nil {
+				return nil, false, nil
+			}
+			if details.GetInt64(bundle.RelationKeyResolvedLayout) == layout {
+				return nil, false, nil
+			}
+			details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
+			return details, true, nil
+		})
+	})
+
+	if err == nil {
+		return nil
+	}
+
+	if !errors.Is(err, ocache.ErrExists) {
+		return err
+	}
+
+	return spc.Do(id, func(b smartblock.SmartBlock) error {
+		if cr, ok := b.(source.ChangeReceiver); ok {
+			// we can do StateAppend here, so resolvedLayout will be injected automatically
+			return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
+				return d.NewState(), nil, nil
+			})
+		}
+		return nil
+	})
 }
 
 func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
