@@ -5,38 +5,52 @@ import (
 	"net/http"
 )
 
-// 400
+// ValidationError is a struct for 400 errors
 type ValidationError struct {
 	Error struct {
-		Message string `json:"message"`
+		Message string `json:"message" example:"Bad request"`
 	} `json:"error"`
 }
 
-// 401
+// UnauthorizedError is a struct for 401 errors
 type UnauthorizedError struct {
 	Error struct {
-		Message string `json:"message"`
+		Message string `json:"message" example:"Unauthorized"`
 	} `json:"error"`
 }
 
-// 403
+// ForbiddenError is a struct for 403 errors
 type ForbiddenError struct {
 	Error struct {
-		Message string `json:"message"`
+		Message string `json:"message" example:"Forbidden"`
 	} `json:"error"`
 }
 
-// 404
+// NotFoundError is a struct for 404 errors
 type NotFoundError struct {
 	Error struct {
-		Message string `json:"message"`
+		Message string `json:"message" example:"Resource not found"`
 	} `json:"error"`
 }
 
-// 500
+// GoneError is a struct for 410 errors
+type GoneError struct {
+	Error struct {
+		Message string `json:"message" example:"Resource is gone"`
+	} `json:"error"`
+}
+
+// RateLimitError is a struct for 423 errors
+type RateLimitError struct {
+	Error struct {
+		Message string `json:"message" example:"Rate limit exceeded"`
+	} `json:"error"`
+}
+
+// ServerError is a struct for 500 errors
 type ServerError struct {
 	Error struct {
-		Message string `json:"message"`
+		Message string `json:"message" example:"Internal server error"`
 	} `json:"error"`
 }
 
@@ -72,10 +86,11 @@ func MapErrorCode(err error, mappings ...errCodeMapping) int {
 // for the given HTTP code, embedding the supplied message.
 func CodeToAPIError(code int, message string) any {
 	switch code {
-	case http.StatusNotFound:
-		return NotFoundError{
+
+	case http.StatusBadRequest:
+		return ValidationError{
 			Error: struct {
-				Message string `json:"message"`
+				Message string `json:"message" example:"Bad request"`
 			}{
 				Message: message,
 			},
@@ -84,16 +99,34 @@ func CodeToAPIError(code int, message string) any {
 	case http.StatusUnauthorized:
 		return UnauthorizedError{
 			Error: struct {
-				Message string `json:"message"`
+				Message string `json:"message" example:"Unauthorized"`
 			}{
 				Message: message,
 			},
 		}
 
-	case http.StatusBadRequest:
-		return ValidationError{
+	case http.StatusForbidden:
+		return ForbiddenError{
 			Error: struct {
-				Message string `json:"message"`
+				Message string `json:"message" example:"Forbidden"`
+			}{
+				Message: message,
+			},
+		}
+
+	case http.StatusNotFound:
+		return NotFoundError{
+			Error: struct {
+				Message string `json:"message" example:"Resource not found"`
+			}{
+				Message: message,
+			},
+		}
+
+	case http.StatusTooManyRequests:
+		return RateLimitError{
+			Error: struct {
+				Message string `json:"message" example:"Rate limit exceeded"`
 			}{
 				Message: message,
 			},
@@ -102,7 +135,7 @@ func CodeToAPIError(code int, message string) any {
 	default:
 		return ServerError{
 			Error: struct {
-				Message string `json:"message"`
+				Message string `json:"message" example:"Internal server error"`
 			}{
 				Message: message,
 			},

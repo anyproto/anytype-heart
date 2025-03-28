@@ -42,6 +42,14 @@ const (
 	TIFF     Format = "tiff"
 )
 
+func IsImageExt(ext string) bool {
+	switch strings.ToLower(strings.TrimPrefix(ext, ".")) {
+	case "jpg", "jpeg", "png", "gif", "ico", "webp", "heic", "heif", "bmp", "tiff", "psd":
+		return true
+	}
+	return false
+}
+
 func IsImage(mime string) bool {
 	parts := strings.SplitN(mime, "/", 2)
 	if len(parts) == 1 {
