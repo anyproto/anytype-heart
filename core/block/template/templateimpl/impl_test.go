@@ -127,7 +127,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		assert.Equal(t, st.Get(template.TitleBlockId).Model().GetText().Text, templateName)
 	})
 
-	for templateIndex, templateName := range []string{templateName, "", BlankTemplateId} {
+	for templateIndex, templateName := range []string{templateName, "", blankTemplateId} {
 		for addedDetail, expected := range map[string][]string{
 			"custom": {"custom", "custom", "custom"},
 			"":       {templateName, "", ""},
@@ -155,7 +155,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	for _, testCase := range [][]string{
 		{"templateId is empty", ""},
-		{"templateId is blank", BlankTemplateId},
+		{"templateId is blank", blankTemplateId},
 		{"target template is deleted", deletedTemplateId},
 		{"target template is archived", archivedTemplateId},
 	} {
@@ -169,7 +169,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 			// then
 			assert.NoError(t, err)
-			assert.Equal(t, BlankTemplateId, st.RootId())
+			assert.Equal(t, blankTemplateId, st.RootId())
 			assert.True(t, st.Details().Has(bundle.RelationKeyTag))
 		})
 	}
@@ -213,7 +213,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 			s := service{converter: converter.NewLayoutConverter()}
 
 			// when
-			st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: BlankTemplateId, Layout: layout})
+			st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: blankTemplateId, Layout: layout})
 
 			// then
 			assert.NoError(t, err)
@@ -253,7 +253,7 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 		st := s.CreateTemplateStateFromSmartBlock(nil, templateSvc.CreateTemplateRequest{Layout: model.ObjectType_todo})
 
 		// then
-		assert.Equal(t, BlankTemplateId, st.RootId())
+		assert.Equal(t, blankTemplateId, st.RootId())
 		assert.True(t, st.Details().Has(bundle.RelationKeyTag))
 	})
 
@@ -277,8 +277,6 @@ func TestService_resolveValidTemplateId(t *testing.T) {
 		templateId1 = "template1"
 		templateId2 = "template2"
 		templateId3 = "template3"
-		templateIdP = "projectTemplate"
-		now         = time.Now().Unix()
 	)
 
 	store := objectstore.NewStoreFixture(t)
@@ -287,29 +285,17 @@ func TestService_resolveValidTemplateId(t *testing.T) {
 			bundle.RelationKeyId:               domain.String(templateId1),
 			bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
 			bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
-			bundle.RelationKeyLastModifiedDate: domain.Int64(now),
 		},
 		{
 			bundle.RelationKeyId:               domain.String(templateId2),
 			bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
 			bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
-			bundle.RelationKeyLastModifiedDate: domain.Int64(now - 60),
 		},
 		{
 			bundle.RelationKeyId:               domain.String(templateId3),
 			bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
 			bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyTask.URL()),
-			bundle.RelationKeyLastModifiedDate: domain.Int64(now - 120),
 			bundle.RelationKeyIsDeleted:        domain.Bool(true),
-		},
-		{
-			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
-			bundle.RelationKeyDefaultTemplateId: domain.String(templateId2),
-		},
-		{
-			bundle.RelationKeyId:               domain.String(templateIdP),
-			bundle.RelationKeyType:             domain.String(bundle.TypeKeyTemplate.URL()),
-			bundle.RelationKeyTargetObjectType: domain.String(bundle.TypeKeyProject.URL()),
 		},
 	})
 
@@ -332,14 +318,10 @@ func TestService_resolveValidTemplateId(t *testing.T) {
 		expectedTemplateId  string
 	}{
 		{"requested template is valid", bundle.TypeKeyTask, templateId2, templateId2},
-		{"requested template is invalid", bundle.TypeKeyTask, "invalid", templateId2},
-		{"requested template is deleted", bundle.TypeKeyTask, templateId3, templateId2},
-		{"requested template is default", bundle.TypeKeyTask, DefaultTemplateId, templateId2},
-		{"requested template is lastEdited", bundle.TypeKeyTask, LastEditedTemplateId, templateId1},
-		{"requested template is empty", bundle.TypeKeyTask, "", templateId2},
-		{"fallback to lastEdited if no default", bundle.TypeKeyProject, "", templateIdP},
-		{"requested template is blank", bundle.TypeKeyTask, BlankTemplateId, BlankTemplateId},
-		{"no valid template exists", bundle.TypeKeyBook, "templateId", BlankTemplateId},
+		{"requested template is invalid", bundle.TypeKeyTask, "invalid", ""},
+		{"requested template is deleted", bundle.TypeKeyTask, templateId3, ""},
+		{"requested template is empty", bundle.TypeKeyTask, "", ""},
+		{"no valid template exists", bundle.TypeKeyBook, "templateId", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// when
