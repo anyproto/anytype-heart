@@ -1133,10 +1133,6 @@
     - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
     - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
     - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
-    - [Rpc.ObjectType.SetStrictInheritance](#anytype-Rpc-ObjectType-SetStrictInheritance)
-    - [Rpc.ObjectType.SetStrictInheritance.Request](#anytype-Rpc-ObjectType-SetStrictInheritance-Request)
-    - [Rpc.ObjectType.SetStrictInheritance.Response](#anytype-Rpc-ObjectType-SetStrictInheritance-Response)
-    - [Rpc.ObjectType.SetStrictInheritance.Response.Error](#anytype-Rpc-ObjectType-SetStrictInheritance-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
@@ -1613,7 +1609,6 @@
     - [Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
-    - [Rpc.ObjectType.SetStrictInheritance.Response.Error.Code](#anytype-Rpc-ObjectType-SetStrictInheritance-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Process.Subscribe.Response.Error.Code](#anytype-Rpc-Process-Subscribe-Response-Error-Code)
     - [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code)
@@ -2213,7 +2208,6 @@
 | ObjectTypeRecommendedRelationsSet | [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request) | [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response) |  |
 | ObjectTypeRecommendedFeaturedRelationsSet | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request) | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response) |  |
 | ObjectTypeListConflictingRelations | [Rpc.ObjectType.ListConflictingRelations.Request](#anytype-Rpc-ObjectType-ListConflictingRelations-Request) | [Rpc.ObjectType.ListConflictingRelations.Response](#anytype-Rpc-ObjectType-ListConflictingRelations-Response) |  |
-| ObjectTypeSetStrictInheritance | [Rpc.ObjectType.SetStrictInheritance.Request](#anytype-Rpc-ObjectType-SetStrictInheritance-Request) | [Rpc.ObjectType.SetStrictInheritance.Response](#anytype-Rpc-ObjectType-SetStrictInheritance-Response) |  |
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
@@ -18856,63 +18850,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-ObjectType-SetStrictInheritance"></a>
-
-### Rpc.ObjectType.SetStrictInheritance
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-SetStrictInheritance-Request"></a>
-
-### Rpc.ObjectType.SetStrictInheritance.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| typeObjectId | [string](#string) |  |  |
-| strictInheritance | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-SetStrictInheritance-Response"></a>
-
-### Rpc.ObjectType.SetStrictInheritance.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.SetStrictInheritance.Response.Error](#anytype-Rpc-ObjectType-SetStrictInheritance-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-SetStrictInheritance-Response-Error"></a>
-
-### Rpc.ObjectType.SetStrictInheritance.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.SetStrictInheritance.Response.Error.Code](#anytype-Rpc-ObjectType-SetStrictInheritance-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Process"></a>
 
 ### Rpc.Process
@@ -25556,20 +25493,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | READONLY_OBJECT_TYPE | 3 | ... |
-
-
-
-<a name="anytype-Rpc-ObjectType-SetStrictInheritance-Response-Error-Code"></a>
-
-### Rpc.ObjectType.SetStrictInheritance.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| READONLY_OBJECT_TYPE | 3 |  |
 
 
 

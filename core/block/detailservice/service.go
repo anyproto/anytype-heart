@@ -40,7 +40,6 @@ type Service interface {
 	ObjectTypeSetRelations(objectTypeId string, relationObjectIds []string) error
 	ObjectTypeSetFeaturedRelations(objectTypeId string, relationObjectIds []string) error
 	ObjectTypeListConflictingRelations(spaceId, typeKey string) (relationObjectIds []string, err error)
-	ObjectTypeSetStrictInheritance(objectTypeId string, strictInheritance bool) error
 
 	ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 

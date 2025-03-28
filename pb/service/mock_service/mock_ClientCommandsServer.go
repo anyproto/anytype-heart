@@ -11818,55 +11818,6 @@ func (_c *MockClientCommandsServer_ObjectTypeRelationRemove_Call) RunAndReturn(r
 	return _c
 }
 
-// ObjectTypeSetStrictInheritance provides a mock function with given fields: _a0, _a1
-func (_m *MockClientCommandsServer) ObjectTypeSetStrictInheritance(_a0 context.Context, _a1 *pb.RpcObjectTypeSetStrictInheritanceRequest) *pb.RpcObjectTypeSetStrictInheritanceResponse {
-	ret := _m.Called(_a0, _a1)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ObjectTypeSetStrictInheritance")
-	}
-
-	var r0 *pb.RpcObjectTypeSetStrictInheritanceResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectTypeSetStrictInheritanceRequest) *pb.RpcObjectTypeSetStrictInheritanceResponse); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*pb.RpcObjectTypeSetStrictInheritanceResponse)
-		}
-	}
-
-	return r0
-}
-
-// MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeSetStrictInheritance'
-type MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call struct {
-	*mock.Call
-}
-
-// ObjectTypeSetStrictInheritance is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 *pb.RpcObjectTypeSetStrictInheritanceRequest
-func (_e *MockClientCommandsServer_Expecter) ObjectTypeSetStrictInheritance(_a0 interface{}, _a1 interface{}) *MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call {
-	return &MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call{Call: _e.mock.On("ObjectTypeSetStrictInheritance", _a0, _a1)}
-}
-
-func (_c *MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectTypeSetStrictInheritanceRequest)) *MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*pb.RpcObjectTypeSetStrictInheritanceRequest))
-	})
-	return _c
-}
-
-func (_c *MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call) Return(_a0 *pb.RpcObjectTypeSetStrictInheritanceResponse) *MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectTypeSetStrictInheritanceRequest) *pb.RpcObjectTypeSetStrictInheritanceResponse) *MockClientCommandsServer_ObjectTypeSetStrictInheritance_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ObjectUndo provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommandsServer) ObjectUndo(_a0 context.Context, _a1 *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
 	ret := _m.Called(_a0, _a1)

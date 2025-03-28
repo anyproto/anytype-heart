@@ -143,17 +143,3 @@ func (mw *Middleware) ObjectTypeListConflictingRelations(_ context.Context, req 
 		RelationIds: conflictingRelations,
 	}
 }
-
-func (mw *Middleware) ObjectTypeSetStrictInheritance(ctx context.Context, req *pb.RpcObjectTypeSetStrictInheritanceRequest) *pb.RpcObjectTypeSetStrictInheritanceResponse {
-	detailsService := mustService[detailservice.Service](mw)
-	err := detailsService.ObjectTypeSetStrictInheritance(req.TypeObjectId, req.StrictInheritance)
-	code := mapErrorCode(err,
-		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeSetStrictInheritanceResponseError_READONLY_OBJECT_TYPE),
-	)
-	return &pb.RpcObjectTypeSetStrictInheritanceResponse{
-		Error: &pb.RpcObjectTypeSetStrictInheritanceResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
-		},
-	}
-}

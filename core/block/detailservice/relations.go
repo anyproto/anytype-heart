@@ -2,7 +2,6 @@ package detailservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -14,7 +13,6 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -269,65 +267,4 @@ func generateFilter(value domain.Value) func(v domain.Value) bool {
 
 		return v.Equal(value)
 	}
-}
-
-func (s *service) ObjectTypeSetStrictInheritance(objectTypeId string, strictInheritance bool) error {
-	var (
-		spaceId      string
-		layoutInType int64
-	)
-	if err := cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
-		st := b.NewState()
-		spaceId = b.SpaceID()
-		layoutInType = b.Details().GetInt64(bundle.RelationKeyRecommendedLayout)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyForceLayoutFromType, domain.Bool(strictInheritance))
-		return b.Apply(st)
-	}); err != nil {
-		return fmt.Errorf("failed to set strictInheritance detail to object type: %w", err)
-	}
-
-	if !strictInheritance {
-		return nil
-	}
-
-	if spaceId == "" {
-		var e error
-		spaceId, e = s.resolver.ResolveSpaceID(objectTypeId)
-		if e != nil {
-			return fmt.Errorf("failed to resolve space id: %w", e)
-		}
-	}
-
-	index := s.store.SpaceIndex(spaceId)
-	records, err := index.Query(database.Query{Filters: []database.FilterRequest{
-		{
-			RelationKey: bundle.RelationKeyType,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.String(objectTypeId),
-		},
-	}})
-	if err != nil {
-		return fmt.Errorf("failed to query objects by type: %w", err)
-	}
-
-	space, err := s.spaceService.Get(context.Background(), spaceId)
-	if err != nil {
-		return fmt.Errorf("failed to get space: %w", err)
-	}
-
-	var resultErr error
-	for _, record := range records {
-		id := record.Details.GetString(bundle.RelationKeyId)
-		if id == "" {
-			continue
-		}
-		if err = editor.UpdateResolvedLayoutNoCache(space, index, id, layoutInType); err != nil {
-			resultErr = errors.Join(resultErr, err)
-		}
-	}
-
-	if resultErr != nil {
-		return fmt.Errorf("failed to change layout for objects: %w", resultErr)
-	}
-	return nil
 }
