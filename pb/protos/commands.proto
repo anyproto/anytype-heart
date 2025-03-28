@@ -1497,7 +1497,7 @@ message Rpc {
                 string spaceId = 1;
                 string objectId = 2;
                 string uri = 3;
-                bool joinSpace = 4;
+                bool includeSpaceInfo = 4;
             }
             message Response {
                 Error error = 1;
