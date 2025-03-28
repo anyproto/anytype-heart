@@ -31119,7 +31119,6 @@ Used to decode block meta only, without the content itself
 | createTime | [int64](#int64) |  |  |
 | status | [Notification.Status](#anytype-model-Notification-Status) |  |  |
 | isLocal | [bool](#bool) |  |  |
-| isToast | [bool](#bool) |  | means it should automatically hide after some time if client window is active |
 | import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
 | export | [Notification.Export](#anytype-model-Notification-Export) |  |  |
 | galleryImport | [Notification.GalleryImport](#anytype-model-Notification-GalleryImport) |  |  |

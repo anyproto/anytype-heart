@@ -1044,7 +1044,6 @@ message Notification {
     int64 createTime = 2;
     Status status = 4;
     bool isLocal = 5;
-    bool isToast = 3; // means it should automatically hide after some time if client window is active
     oneof payload {
         Import import = 6;
         Export export = 8;
