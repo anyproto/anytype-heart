@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -20,7 +19,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -35,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -359,6 +358,21 @@ func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id stri
 	}
 }
 
+func (b *builtinObjects) typeHasObjects(spaceId, typeId string) (bool, error) {
+	records, err := b.store.SpaceIndex(spaceId).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyType,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.String(typeId),
+		},
+	}}, 1, 0)
+	if err != nil {
+		return false, err
+	}
+
+	return len(records) > 0, nil
+}
+
 func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
@@ -367,40 +381,33 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 
 	widgetObjectID := spc.DerivedIDs().Widgets
-	typeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
+	var widgetTargetsToCreate []string
+	pageTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
 	if err != nil {
 		log.Errorf("failed to get type id: %w", err)
 		return
 	}
+	taskTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyTask)
+	if err != nil {
+		log.Errorf("failed to get type id: %w", err)
+		return
+	}
+	for _, typeId := range []string{pageTypeId, taskTypeId} {
+		if has, err := b.typeHasObjects(spaceId, typeId); err != nil {
+			log.Warnf("failed to check if type '%s' has objects: %v", pageTypeId, err)
+		} else if has {
+			widgetTargetsToCreate = append(widgetTargetsToCreate, typeId)
+		}
+	}
 
-	// todo: rewrite to use CreateTypeWidgetIfMissing in block.Service
+	if len(widgetTargetsToCreate) == 0 {
+		return
+	}
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		targets := s.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-		if slices.Contains(targets, typeId) {
-			return nil
-		}
-		targets = append(targets, typeId)
-		s.Details().Set(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
-
-		request := &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    widgetObjectID,
-			Position:     model.Block_Bottom,
-			WidgetLayout: model.BlockContentWidget_View,
-			ViewId:       editor.ObjectTypeAllViewId,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: typeId,
-						Style:         model.BlockContentLink_Page,
-						IconSize:      model.BlockContentLink_SizeNone,
-						CardStyle:     model.BlockContentLink_Inline,
-						Description:   model.BlockContentLink_None,
-					},
-				},
-			},
-		}
-		if _, createErr := w.CreateBlock(s, request); createErr != nil {
-			return fmt.Errorf("failed to make Widget block: %v", createErr)
+		for _, targetId := range widgetTargetsToCreate {
+			if err := w.AddAutoWidget(s, targetId, "", addr.ObjectTypeAllViewId, model.BlockContentWidget_View); err != nil {
+				log.Errorf("failed to create widget block for type '%s': %v", targetId, err)
+			}
 		}
 		return nil
 	}); err != nil {

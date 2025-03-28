@@ -2,11 +2,14 @@ package widget
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -15,11 +18,16 @@ const (
 	DefaultWidgetSet        = "set"
 	DefaultWidgetRecent     = "recent"
 	DefaultWidgetCollection = "collection"
+	DefaultWidgetBin        = "bin"
 	DefaultWidgetRecentOpen = "recentOpen"
+	autoWidgetBlockIdPrefix = "auto_" // in case blockId is specifically provided to avoid bad tree merges
 )
 
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
+	// AddAutoWidget adds a widget block. If widget with the same targetId was installed/removed before, it will not be added again.
+	// blockId is optional and used to protect from multi-device conflicts.
+	AddAutoWidget(s *state.State, targetId, blockId, viewId string, layout model.BlockContentWidgetLayout) error
 }
 
 type widget struct {
@@ -63,6 +71,77 @@ func NewWidget(sb smartblock.SmartBlock) Widget {
 	}
 }
 
+func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId string, layout model.BlockContentWidgetLayout) error {
+	targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+	if slices.Contains(targets, targetId) {
+		return nil
+	}
+	targets = append(targets, targetId)
+	st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
+
+	var (
+		binBlockWrapperId      string
+		binIsTheLast           bool
+		typeBlockAlreadyExists bool
+	)
+	err := st.Iterate(func(b simple.Block) (isContinue bool) {
+		link := b.Model().GetLink()
+		if link == nil {
+			return true
+		}
+		if link.TargetBlockId == targetId {
+			// check by targetBlockId in case user created the same block manually
+			typeBlockAlreadyExists = true
+		}
+		if link.TargetBlockId == DefaultWidgetBin {
+			binBlockWrapperId = st.GetParentOf(b.Model().Id).Model().Id
+			rootBlock := st.Get(st.RootId())
+			if len(rootBlock.Model().GetChildrenIds()) == 0 {
+				return true
+			}
+			if rootBlock.Model().GetChildrenIds()[len(rootBlock.Model().GetChildrenIds())-1] == binBlockWrapperId {
+				binIsTheLast = true
+			}
+		}
+		return true
+	})
+
+	if err != nil {
+		return err
+	}
+	if typeBlockAlreadyExists {
+		return nil
+	}
+
+	var (
+		targetBlockId string
+		position      model.BlockPosition
+	)
+	if binIsTheLast {
+		targetBlockId = binBlockWrapperId
+		position = model.Block_Top
+	} else {
+		targetBlockId = ""
+		position = model.Block_Bottom
+	}
+
+	_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
+		ContextId:    st.RootId(),
+		ObjectLimit:  6,
+		WidgetLayout: layout,
+		Position:     position,
+		TargetId:     targetBlockId,
+		ViewId:       viewId,
+		Block: &model.Block{
+			Id: widgetBlockId, // hardcode id to avoid duplicates
+			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: targetId,
+			}},
+		},
+	})
+	return err
+}
+
 func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
 	if req.Block.Content == nil {
 		return "", fmt.Errorf("block has no content")
@@ -78,7 +157,13 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		return "", fmt.Errorf("validate block: %w", err)
 	}
 
+	var wrapperBlockId string
+	if b.Model().Id != "" {
+		wrapperBlockId = autoWidgetBlockIdPrefix + b.Model().Id
+	}
+
 	wrapper := simple.New(&model.Block{
+		Id: wrapperBlockId,
 		ChildrenIds: []string{
 			b.Model().Id,
 		},
