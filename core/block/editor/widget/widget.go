@@ -145,14 +145,16 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 		return err
 	}
 
-	msg := event.NewMessage(w.SpaceID(), &pb.EventMessageValueOfSpaceAutoWidgetAdded{
-		SpaceAutoWidgetAdded: &pb.EventSpaceAutoWidgetAdded{
-			TargetId:      targetId,
-			TargetName:    eventName,
-			WidgetBlockId: widgetBlockId,
-		},
-	})
-	w.SendEvent([]*pb.EventMessage{msg})
+	if eventName != "" {
+		msg := event.NewMessage(w.SpaceID(), &pb.EventMessageValueOfSpaceAutoWidgetAdded{
+			SpaceAutoWidgetAdded: &pb.EventSpaceAutoWidgetAdded{
+				TargetId:      targetId,
+				TargetName:    eventName,
+				WidgetBlockId: widgetBlockId,
+			},
+		})
+		w.SendEvent([]*pb.EventMessage{msg})
+	}
 
 	return nil
 }
