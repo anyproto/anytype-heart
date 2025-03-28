@@ -23,7 +23,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -38,7 +38,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: true}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -75,9 +75,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotContext().Add(allSnapshot...)
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, nil, nil, params, nil, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -165,9 +166,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotContext().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -254,9 +256,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotContext().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
+		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
 		assert.Nil(t, err)
@@ -358,9 +361,10 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 				},
 			},
 		}
+		snapshotList := common.NewSnapshotContext().Add(allSnapshot...).SetWidget(widgetSnapshot)
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, nil, false)
+		collection, err := p.ProvideCollection(snapshotList, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, false)
 
 		// then
 		assert.Nil(t, err)
