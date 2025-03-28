@@ -35,10 +35,10 @@ type subscription struct {
 	chatStateUpdated bool
 }
 
-func newSubscription(spaceId string, chatId string, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
+func newSubscription(fullId domain.FullID, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
 	return &subscription{
-		spaceId:         spaceId,
-		chatId:          chatId,
+		spaceId:         fullId.SpaceID,
+		chatId:          fullId.ObjectID,
 		eventSender:     eventSender,
 		spaceIndex:      spaceIndex,
 		myParticipantId: myParticipantId,

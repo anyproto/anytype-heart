@@ -113,7 +113,10 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
-	s.subscription = newSubscription(ctx.Source.Id(), ctx.Source.SpaceID(), myParticipantId, s.eventSender, s.spaceIndex)
+	s.subscription = newSubscription(
+		domain.FullID{ObjectID: ctx.Source.Id(), SpaceID: ctx.Source.SpaceID()},
+		myParticipantId, s.eventSender, s.spaceIndex,
+	)
 
 	messagesOpts := newReadHandler(CounterTypeMessage, s.subscription)
 	mentionsOpts := newReadHandler(CounterTypeMention, s.subscription)
