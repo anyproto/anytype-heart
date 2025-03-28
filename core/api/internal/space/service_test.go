@@ -1,6 +1,7 @@
 package space
 
 import (
+	"context"
 	"regexp"
 	"testing"
 
@@ -769,5 +770,632 @@ func TestSpaceService_GetMember(t *testing.T) {
 		require.Equal(t, "alice.any", member.GlobalName)
 		require.Equal(t, "active", member.Status)
 		require.Equal(t, "editor", member.Role)
+	})
+}
+
+func TestSpaceService_UpdateMember(t *testing.T) {
+	t.Run("successful approval for joining member", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// First GetMember call returns a member with status "joining"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-1"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-1"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Joining Member"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():              pbtypes.String("icon.png"),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-1"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("joining.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// Expect approval call (for a joining member, role 'viewer' maps to ParticipantPermissions_Reader)
+		fx.mwMock.On("SpaceRequestApprove", mock.Anything, &pb.RpcSpaceRequestApproveRequest{
+			SpaceId:     "space-id",
+			Identity:    "member-1",
+			Permissions: model.ParticipantPermissions_Reader,
+		}).Return(&pb.RpcSpaceRequestApproveResponse{
+			Error: &pb.RpcSpaceRequestApproveResponseError{Code: pb.RpcSpaceRequestApproveResponseError_NULL},
+		}, nil).Once()
+
+		// Second GetMember call returns the updated member with status "active"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-1"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-1"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Joining Member"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():              pbtypes.String("icon.png"),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-1"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("joining.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// when
+		member, err := fx.UpdateMember(ctx, "space-id", "member-1", UpdateMemberRequest{
+			Status: "active",
+			Role:   "viewer",
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, "active", member.Status)
+		require.Equal(t, "viewer", member.Role)
+	})
+
+	t.Run("successful role update for active member", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// First GetMember call returns a member with status "active" and role "viewer"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-2"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-2"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Active Member"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String("👤"),
+						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-2"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("active.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// Expect role update call (for an active member, updating role to 'editor' maps to ParticipantPermissions_Writer)
+		fx.mwMock.On("SpaceParticipantPermissionsChange", mock.Anything, &pb.RpcSpaceParticipantPermissionsChangeRequest{
+			SpaceId: "space-id",
+			Changes: []*model.ParticipantPermissionChange{
+				{
+					Identity: "member-2",
+					Perms:    model.ParticipantPermissions_Writer,
+				},
+			},
+		}).Return(&pb.RpcSpaceParticipantPermissionsChangeResponse{
+			Error: &pb.RpcSpaceParticipantPermissionsChangeResponseError{Code: pb.RpcSpaceParticipantPermissionsChangeResponseError_NULL},
+		}, nil).Once()
+
+		// Second GetMember call returns the updated member with role "editor"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-2"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-2"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Active Member"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String("👤"),
+						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-2"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("active.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Writer)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// when
+		member, err := fx.UpdateMember(ctx, "space-id", "member-2", UpdateMemberRequest{
+			Status: "active",
+			Role:   "editor",
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, "active", member.Status)
+		require.Equal(t, "editor", member.Role)
+	})
+
+	t.Run("successful decline of member", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// First GetMember call returns a member record
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-3"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-3"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Member To Decline"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():              pbtypes.String("icon.png"),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-3"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("decline.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// Expect decline call
+		fx.mwMock.On("SpaceRequestDecline", mock.Anything, &pb.RpcSpaceRequestDeclineRequest{
+			SpaceId:  "space-id",
+			Identity: "member-3",
+		}).Return(&pb.RpcSpaceRequestDeclineResponse{
+			Error: &pb.RpcSpaceRequestDeclineResponseError{Code: pb.RpcSpaceRequestDeclineResponseError_NULL},
+		}, nil).Once()
+
+		// Second GetMember call returns the member with status "declined"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-3"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-3"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Member To Decline"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():              pbtypes.String("icon.png"),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-3"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("decline.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Declined)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// when
+		member, err := fx.UpdateMember(ctx, "space-id", "member-3", UpdateMemberRequest{
+			Status: "declined",
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, "declined", member.Status)
+	})
+
+	t.Run("successful removal of member", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// First GetMember call returns a member with status "active"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-4"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-4"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Member To Remove"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String("👤"),
+						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-4"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("remove.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Writer)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// Expect removal call
+		fx.mwMock.On("SpaceParticipantRemove", mock.Anything, &pb.RpcSpaceParticipantRemoveRequest{
+			SpaceId:    "space-id",
+			Identities: []string{"member-4"},
+		}).Return(&pb.RpcSpaceParticipantRemoveResponse{
+			Error: &pb.RpcSpaceParticipantRemoveResponseError{Code: pb.RpcSpaceParticipantRemoveResponseError_NULL},
+		}, nil).Once()
+
+		// Second GetMember call returns the member with status "removed"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-4"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-4"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Member To Remove"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String("👤"),
+						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-4"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("remove.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Writer)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Removed)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// when
+		member, err := fx.UpdateMember(ctx, "space-id", "member-4", UpdateMemberRequest{
+			Status: "removed",
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, "removed", member.Status)
+	})
+
+	t.Run("invalid status returns error", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// First GetMember call returns a member record
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-5"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-5"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Member Invalid Status"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-5"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("invalid.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// when
+		_, err := fx.UpdateMember(ctx, "space-id", "member-5", UpdateMemberRequest{
+			Status: "invalid",
+			Role:   "viewer",
+		})
+
+		// then
+		require.ErrorIs(t, err, ErrInvalidApproveMemberStatus)
+	})
+
+	t.Run("invalid role for active update returns error", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// First GetMember call returns a member with status "joining"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-6"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-6"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Member Invalid Role"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-6"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("invalidrole.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// when
+		_, err := fx.UpdateMember(ctx, "space-id", "member-6", UpdateMemberRequest{
+			Status: "active",
+			Role:   "invalid",
+		})
+
+		// then
+		require.ErrorIs(t, err, ErrInvalidApproveMemberRole)
+	})
+
+	t.Run("failure in update operation returns error", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// First GetMember call returns a member with status "joining"
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-7"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                     pbtypes.String("member-7"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Member Approval Fail"),
+						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
+						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
+						bundle.RelationKeyIdentity.String():               pbtypes.String("member-7"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("fail.any"),
+						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
+						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// Expect approval call fails
+		fx.mwMock.On("SpaceRequestApprove", mock.Anything, &pb.RpcSpaceRequestApproveRequest{
+			SpaceId:     "space-id",
+			Identity:    "member-7",
+			Permissions: model.ParticipantPermissions_Reader,
+		}).Return(&pb.RpcSpaceRequestApproveResponse{
+			Error: &pb.RpcSpaceRequestApproveResponseError{Code: pb.RpcSpaceRequestApproveResponseError_UNKNOWN_ERROR},
+		}, nil).Once()
+
+		// when
+		_, err := fx.UpdateMember(ctx, "space-id", "member-7", UpdateMemberRequest{
+			Status: "active",
+			Role:   "viewer",
+		})
+
+		// then
+		require.ErrorIs(t, err, ErrFailedUpdateMember)
+	})
+
+	t.Run("failed to get member returns error", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "space-id",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIdentity.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("member-8"),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconImage.String(),
+				bundle.RelationKeyIdentity.String(),
+				bundle.RelationKeyGlobalName.String(),
+				bundle.RelationKeyParticipantPermissions.String(),
+				bundle.RelationKeyParticipantStatus.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}, nil).Once()
+
+		// when
+		_, err := fx.UpdateMember(ctx, "space-id", "member-8", UpdateMemberRequest{
+			Status: "active",
+			Role:   "viewer",
+		})
+
+		// then
+		require.ErrorIs(t, err, ErrMemberNotFound)
 	})
 }
