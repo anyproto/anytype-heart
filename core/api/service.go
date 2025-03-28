@@ -52,14 +52,14 @@ func (s *apiService) Name() (name string) {
 // Init initializes the API service.
 //
 //	@title							Anytype API
-//	@version						1.0
+//	@version						2025-03-17
 //	@description					This API allows interaction with Anytype resources such as spaces, objects and types.
 //	@termsOfService					https://anytype.io/terms_of_use
 //	@contact.name					Anytype Support
 //	@contact.url					https://anytype.io/contact
 //	@contact.email					support@anytype.io
 //	@license.name					Any Source Available License 1.0
-//	@license.url					https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
+//	@license.url					https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
 //	@host							http://localhost:31009
 //	@BasePath						/v1
 //	@securitydefinitions.bearerauth	BearerAuth

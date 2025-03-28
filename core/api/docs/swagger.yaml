@@ -819,10 +819,10 @@ info:
     objects and types.
   license:
     name: Any Source Available License 1.0
-    url: https://github.com/anyproto/anytype-ts/blob/main/LICENSE.md
+    url: https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
   termsOfService: https://anytype.io/terms_of_use
   title: Anytype API
-  version: "1.0"
+  version: "2025-03-17"
 openapi: 3.1.0
 paths:
   /auth/display_code:
