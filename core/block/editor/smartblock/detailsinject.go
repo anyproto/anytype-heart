@@ -283,7 +283,7 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	s.Details().SetStringList(bundle.RelationKeyFeaturedRelations, featuredRelations)
 
 	// we delete layout settings details both from parent and child state to avoid changes generation
-	if parent := s.ParentState(); parent != nil {
+	if parent := s.ParentState(); parent != nil && parent.Details() != nil {
 		parent.Details().Delete(bundle.RelationKeyLayout)
 		parent.Details().Delete(bundle.RelationKeyLayoutAlign)
 		parent.Details().SetStringList(bundle.RelationKeyFeaturedRelations, featuredRelations)
