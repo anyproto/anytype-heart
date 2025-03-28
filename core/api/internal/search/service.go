@@ -6,12 +6,12 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -28,13 +28,13 @@ type Service interface {
 }
 
 type SearchService struct {
-	mw            service.ClientCommandsServer
+	mw            apicore.ClientCommands
 	spaceService  *space.SpaceService
 	objectService *object.ObjectService
 	AccountInfo   *model.AccountInfo
 }
 
-func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceService, objectService *object.ObjectService) *SearchService {
+func NewService(mw apicore.ClientCommands, spaceService *space.SpaceService, objectService *object.ObjectService) *SearchService {
 	return &SearchService{mw: mw, spaceService: spaceService, objectService: objectService}
 }
 

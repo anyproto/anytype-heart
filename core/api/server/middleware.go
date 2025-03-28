@@ -11,10 +11,9 @@ import (
 	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
 )
 
 var (
@@ -43,7 +42,7 @@ func (s *Server) rateLimit(max float64) gin.HandlerFunc {
 }
 
 // ensureAuthenticated is a middleware that ensures the request is authenticated.
-func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.HandlerFunc {
+func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -86,7 +85,7 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 }
 
 // ensureAccountInfo is a middleware that ensures the account info is available in the services.
-func (s *Server) ensureAccountInfo(accountService account.Service) gin.HandlerFunc {
+func (s *Server) ensureAccountInfo(accountService apicore.AccountInfo) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accInfo, err := accountService.GetInfo(context.Background())
 		if err != nil {

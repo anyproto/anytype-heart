@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -40,11 +40,11 @@ const (
 
 type fixture struct {
 	*ObjectService
-	mwMock *mock_service.MockClientCommandsServer
+	mwMock *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
-	mwMock := mock_service.NewMockClientCommandsServer(t)
+	mwMock := mock_apicore.NewMockClientCommands(t)
 
 	spaceService := space.NewService(mwMock)
 	objectService := NewService(mwMock, spaceService)

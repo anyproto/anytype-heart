@@ -13,11 +13,11 @@ import (
 type fixture struct {
 	*Server
 	accountService account.Service
-	mwMock         *mock_service.MockClientCommandsServer
+	mwMock         *mock_apicore.MockClientCommands
 }
 
 func newServerFixture(t *testing.T) *fixture {
-	mwMock := mock_service.NewMockClientCommandsServer(t)
+	mwMock := mock_apicore.NewMockClientCommands(t)
 	accountService := mock_account.NewMockService(t)
 	server := NewServer(accountService, mwMock)
 

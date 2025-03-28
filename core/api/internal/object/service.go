@@ -8,12 +8,12 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/iancoleman/strcase"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -103,12 +103,12 @@ type Service interface {
 }
 
 type ObjectService struct {
-	mw           service.ClientCommandsServer
+	mw           apicore.ClientCommands
 	spaceService *space.SpaceService
 	AccountInfo  *model.AccountInfo
 }
 
-func NewService(mw service.ClientCommandsServer, spaceService *space.SpaceService) *ObjectService {
+func NewService(mw apicore.ClientCommands, spaceService *space.SpaceService) *ObjectService {
 	return &ObjectService{mw: mw, spaceService: spaceService}
 }
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -19,10 +19,10 @@ type Service interface {
 }
 
 type ExportService struct {
-	mw service.ClientCommandsServer
+	mw apicore.ClientCommands
 }
 
-func NewService(mw service.ClientCommandsServer) *ExportService {
+func NewService(mw apicore.ClientCommands) *ExportService {
 	return &ExportService{mw: mw}
 }
 

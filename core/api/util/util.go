@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -81,7 +81,7 @@ func GetIcon(accountInfo *model.AccountInfo, iconEmoji string, iconImage string,
 }
 
 // ResolveUniqueKeyToTypeId resolves the unique key to the type's ID
-func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, uniqueKey string) (typeId string, err error) {
+func ResolveUniqueKeyToTypeId(mw apicore.ClientCommands, spaceId string, uniqueKey string) (typeId string, err error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -108,7 +108,7 @@ func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, u
 }
 
 // ResolveIdtoUniqueKey resolves the type's ID to the unique key
-func ResolveIdtoUniqueKey(mw service.ClientCommandsServer, spaceId string, typeId string) (uniqueKey string, err error) {
+func ResolveIdtoUniqueKey(mw apicore.ClientCommands, spaceId string, typeId string) (uniqueKey string, err error) {
 	resp := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: typeId,
@@ -122,7 +122,7 @@ func ResolveIdtoUniqueKey(mw service.ClientCommandsServer, spaceId string, typeI
 }
 
 // ResolveRelationKeyToPropertyName resolves the property key to the property's name
-func ResolveRelationKeyToPropertyName(mw service.ClientCommandsServer, spaceId string, relationKey string) (property string, err error) {
+func ResolveRelationKeyToPropertyName(mw apicore.ClientCommands, spaceId string, relationKey string) (property string, err error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{

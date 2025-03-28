@@ -12,8 +12,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/server"
-	"github.com/anyproto/anytype-heart/pb/service"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	mwSrv service.ClientCommandsServer
+	mwSrv apicore.ClientCommands
 )
 
 type Service interface {
@@ -33,8 +33,8 @@ type Service interface {
 type apiService struct {
 	srv            *server.Server
 	httpSrv        *http.Server
-	mw             service.ClientCommandsServer
-	accountService account.Service
+	mw             apicore.ClientCommands
+	accountService apicore.AccountInfo
 	listenAddr     string
 	lock           sync.Mutex
 }
@@ -130,6 +130,6 @@ func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) (er
 	return nil
 }
 
-func SetMiddlewareParams(mw service.ClientCommandsServer) {
+func SetMiddlewareParams(mw apicore.ClientCommands) {
 	mwSrv = mw
 }

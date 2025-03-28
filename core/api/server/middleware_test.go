@@ -19,7 +19,7 @@ import (
 )
 
 func newFixture(t *testing.T) *fixture {
-	mwMock := mock_service.NewMockClientCommandsServer(t)
+	mwMock := mock_apicore.NewMockClientCommands(t)
 	accountService := mock_account.NewMockService(t)
 	server := NewServer(accountService, mwMock)
 

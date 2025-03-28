@@ -6,11 +6,11 @@ import (
 
 	"github.com/iancoleman/strcase"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -33,11 +33,11 @@ type Service interface {
 }
 
 type ListService struct {
-	mw            service.ClientCommandsServer
+	mw            apicore.ClientCommands
 	objectService *object.ObjectService
 }
 
-func NewService(mw service.ClientCommandsServer, objectService *object.ObjectService) *ListService {
+func NewService(mw apicore.ClientCommands, objectService *object.ObjectService) *ListService {
 	return &ListService{mw: mw, objectService: objectService}
 }
 

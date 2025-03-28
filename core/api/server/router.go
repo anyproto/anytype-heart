@@ -7,9 +7,9 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
 	"github.com/anyproto/anytype-heart/core/api/internal/export"
 	"github.com/anyproto/anytype-heart/core/api/internal/list"
@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
-	"github.com/anyproto/anytype-heart/pb/service"
 )
 
 const (
@@ -29,7 +28,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(accountService account.Service, mw service.ClientCommandsServer) *gin.Engine {
+func (s *Server) NewRouter(accountService apicore.AccountInfo, mw apicore.ClientCommands) *gin.Engine {
 	debug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)

@@ -5,14 +5,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
 	"github.com/anyproto/anytype-heart/core/api/internal/export"
 	"github.com/anyproto/anytype-heart/core/api/internal/list"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
-	"github.com/anyproto/anytype-heart/pb/service"
 )
 
 // Server wraps the HTTP server and service logic.
@@ -31,7 +30,7 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with default config and sets up the routes.
-func NewServer(accountService account.Service, mw service.ClientCommandsServer) *Server {
+func NewServer(accountService apicore.AccountInfo, mw apicore.ClientCommands) *Server {
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw),
