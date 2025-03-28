@@ -108,7 +108,7 @@ func (s *SpaceKeyStore) deriveKey(firstMetadataKey crypto.PrivKey) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	raw, err := pk.Raw()
+	raw, err := pk.GetPublic().Raw()
 	if err != nil {
 		return nil, err
 	}

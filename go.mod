@@ -8,7 +8,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.12
-	github.com/anyproto/any-sync v0.6.9-0.20250321175140-e2082b9b3781
+	github.com/anyproto/any-sync v0.6.10-0.20250328101049-7b02c1945e6d
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250319134422-fd3f261ea023
 	github.com/anyproto/go-chash v0.1.0
