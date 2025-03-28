@@ -102,7 +102,12 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 
 func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRootObjectsIds []string) ([]*common.Snapshot, string, error) {
 	rootCollection := common.NewImportCollection(m.service)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, allRootObjectsIds, "", nil, true, true, true)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(rootCollectionName),
+		common.WithTargetObjects(allRootObjectsIds),
+		common.WithAddDate(),
+		common.WithRelations(),
+	)
 	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, "", err
@@ -424,7 +429,10 @@ func (m *Markdown) createSnapshots(
 
 func (m *Markdown) addCollectionSnapshot(fileName string, file *FileInfo, snapshots []*common.Snapshot) ([]*common.Snapshot, error) {
 	c := common.NewImportCollection(m.service)
-	settings := common.MakeImportCollectionSetting(file.Title, file.CollectionsObjectsIds, "", nil, false, false, false)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(file.Title),
+		common.WithTargetObjects(file.CollectionsObjectsIds),
+	)
 	csvCollection, err := c.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
