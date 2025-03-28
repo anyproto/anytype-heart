@@ -18,11 +18,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+const (
+	testSpaceId = "spaceId1"
 )
 
 type accountServiceStub struct {
@@ -85,16 +90,21 @@ func newFixture(t *testing.T) *fixture {
 	}).Return().Maybe()
 
 	source := mock_source.NewMockStore(t)
+	source.EXPECT().Id().Return("chatId1")
+	source.EXPECT().SpaceID().Return(testSpaceId)
 	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
 
-	var onSeenHook func([]string)
-	source.EXPECT().SetDiffManagerOnRemoveHook(mock.Anything).Run(func(hook func([]string)) {
-		onSeenHook = hook
+	onSeenHooks := map[string]func([]string){}
+	source.EXPECT().RegisterDiffManager(mock.Anything, mock.Anything).Run(func(name string, hook func([]string)) {
+		onSeenHooks[name] = hook
 	}).Return()
 
+	source.EXPECT().InitDiffManager(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	source.EXPECT().StoreSeenHeads(mock.Anything, mock.Anything).Return(nil).Maybe()
+
 	// Imitate diff manager
-	source.EXPECT().MarkSeenHeads(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, seenHeads []string) error {
+	source.EXPECT().MarkSeenHeads(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, name string, seenHeads []string) error {
 		allMessagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{
 			AfterOrderId:    "",
 			IncludeBoundary: true,
@@ -114,7 +124,7 @@ func newFixture(t *testing.T) *fixture {
 			}
 		}
 
-		onSeenHook(collectedHeads)
+		onSeenHooks[name](collectedHeads)
 
 		return nil
 	}).Maybe()
@@ -138,7 +148,7 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
+		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return().Maybe()
 
 		inputMessage := givenComplexMessage()
 		messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
@@ -153,7 +163,6 @@ func TestAddMessage(t *testing.T) {
 		want := givenComplexMessage()
 		want.Id = messageId
 		want.Creator = testCreator
-		want.Read = true
 
 		got := messagesResp.Messages[0]
 		assertMessagesEqual(t, want, got)
@@ -184,6 +193,7 @@ func TestAddMessage(t *testing.T) {
 		want.Id = messageId
 		want.Creator = testCreator
 		want.Read = false
+		want.MentionRead = false
 
 		got := messagesResp.Messages[0]
 		assertMessagesEqual(t, want, got)
@@ -252,7 +262,6 @@ func TestGetMessagesByIds(t *testing.T) {
 	want := givenComplexMessage()
 	want.Id = messageId
 	want.Creator = testCreator
-	want.Read = true
 	got := messages[0]
 	assertMessagesEqual(t, want, got)
 }
@@ -283,7 +292,6 @@ func TestEditMessage(t *testing.T) {
 		want := editedMessage
 		want.Id = messageId
 		want.Creator = testCreator
-		want.Read = true
 
 		got := messagesResp.Messages[0]
 		assert.True(t, got.ModifiedAt > 0)
@@ -397,13 +405,32 @@ func TestReadMessages(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// All messages forced as not read
-	messagesResp := fx.assertReadStatus(t, ctx, "", "", false)
+	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp)
+	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp, CounterTypeMessage)
 	require.NoError(t, err)
 
-	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true)
-	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false)
+	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true, false)
+	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false, false)
+}
+
+func TestReadMentions(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	fx.chatHandler.forceNotRead = true
+	const n = 10
+	for i := 0; i < n; i++ {
+		_, err := fx.AddMessage(ctx, nil, givenMessageWithMention(fmt.Sprintf("message %d", i+1)))
+		require.NoError(t, err)
+	}
+	// All messages forced as not read
+	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
+
+	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp, CounterTypeMention)
+	require.NoError(t, err)
+
+	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, false, true)
+	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false, false)
 }
 
 func TestMarkMessagesAsNotRead(t *testing.T) {
@@ -416,17 +443,33 @@ func TestMarkMessagesAsNotRead(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// All messages added by myself are read
-	fx.assertReadStatus(t, ctx, "", "", true)
+	fx.assertReadStatus(t, ctx, "", "", true, true)
 
-	fx.source.EXPECT().InitDiffManager(mock.Anything, mock.Anything).Return(nil)
-	fx.source.EXPECT().StoreSeenHeads(mock.Anything).Return(nil)
-	err := fx.MarkMessagesAsUnread(ctx, "")
+	err := fx.MarkMessagesAsUnread(ctx, "", CounterTypeMessage)
 	require.NoError(t, err)
 
-	fx.assertReadStatus(t, ctx, "", "", false)
+	fx.assertReadStatus(t, ctx, "", "", false, true)
 }
 
-func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrderId string, beforeOrderId string, isRead bool) *GetMessagesResponse {
+func TestMarkMentionsAsNotRead(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+
+	const n = 10
+	for i := 0; i < n; i++ {
+		_, err := fx.AddMessage(ctx, nil, givenMessageWithMention(fmt.Sprintf("message %d", i+1)))
+		require.NoError(t, err)
+	}
+	// All messages added by myself are read
+	fx.assertReadStatus(t, ctx, "", "", true, true)
+
+	err := fx.MarkMessagesAsUnread(ctx, "", CounterTypeMention)
+	require.NoError(t, err)
+
+	fx.assertReadStatus(t, ctx, "", "", true, false)
+}
+
+func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrderId string, beforeOrderId string, isRead bool, isMentionRead bool) *GetMessagesResponse {
 	messageResp, err := fx.GetMessages(ctx, GetMessagesRequest{
 		AfterOrderId:    afterOrderId,
 		BeforeOrderId:   beforeOrderId,
@@ -437,6 +480,7 @@ func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrde
 
 	for _, m := range messageResp.Messages {
 		assert.Equal(t, isRead, m.Read)
+		assert.Equal(t, isMentionRead, m.MentionRead)
 	}
 	return messageResp
 }
@@ -466,71 +510,100 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	return changeId, nil
 }
 
-func givenSimpleMessage(text string) *model.ChatMessage {
-	return &model.ChatMessage{
-		Id:      "",
-		OrderId: "",
-		Creator: "",
-		Read:    false,
-		Message: &model.ChatMessageMessageContent{
-			Text:  text,
-			Style: model.BlockContentText_Paragraph,
+func givenSimpleMessage(text string) *Message {
+	return &Message{
+		ChatMessage: &model.ChatMessage{
+			Id:          "",
+			OrderId:     "",
+			Creator:     "",
+			Read:        true,
+			MentionRead: true,
+			Message: &model.ChatMessageMessageContent{
+				Text:  text,
+				Style: model.BlockContentText_Paragraph,
+			},
 		},
 	}
 }
 
-func givenComplexMessage() *model.ChatMessage {
-	return &model.ChatMessage{
-		Id:               "",
-		OrderId:          "",
-		Creator:          "",
-		Read:             false,
-		ReplyToMessageId: "replyToMessageId1",
-		Message: &model.ChatMessageMessageContent{
-			Text:  "text!",
-			Style: model.BlockContentText_Quote,
-			Marks: []*model.BlockContentTextMark{
-				{
-					Range: &model.Range{
-						From: 0,
-						To:   1,
+func givenMessageWithMention(text string) *Message {
+	return &Message{
+		ChatMessage: &model.ChatMessage{
+			Id:          "",
+			OrderId:     "",
+			Creator:     "",
+			Read:        true,
+			MentionRead: true,
+			Message: &model.ChatMessageMessageContent{
+				Text:  text,
+				Style: model.BlockContentText_Paragraph,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Type:  model.BlockContentTextMark_Mention,
+						Param: domain.NewParticipantId(testSpaceId, testCreator),
+						Range: &model.Range{From: 0, To: 1},
 					},
-					Type:  model.BlockContentTextMark_Link,
-					Param: "https://example.com",
-				},
-				{
-					Range: &model.Range{
-						From: 2,
-						To:   3,
-					},
-					Type: model.BlockContentTextMark_Italic,
-				},
-			},
-		},
-		Attachments: []*model.ChatMessageAttachment{
-			{
-				Target: "attachmentId1",
-				Type:   model.ChatMessageAttachment_IMAGE,
-			},
-			{
-				Target: "attachmentId2",
-				Type:   model.ChatMessageAttachment_LINK,
-			},
-		},
-		Reactions: &model.ChatMessageReactions{
-			Reactions: map[string]*model.ChatMessageReactionsIdentityList{
-				"🥰": {
-					Ids: []string{"identity1", "identity2"},
-				},
-				"🤔": {
-					Ids: []string{"identity3"},
 				},
 			},
 		},
 	}
 }
 
-func assertMessagesEqual(t *testing.T, want, got *model.ChatMessage) {
+func givenComplexMessage() *Message {
+	return &Message{
+		ChatMessage: &model.ChatMessage{
+			Id:               "",
+			OrderId:          "",
+			Creator:          "",
+			Read:             true,
+			MentionRead:      true,
+			ReplyToMessageId: "replyToMessageId1",
+			Message: &model.ChatMessageMessageContent{
+				Text:  "text!",
+				Style: model.BlockContentText_Quote,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{
+							From: 0,
+							To:   1,
+						},
+						Type:  model.BlockContentTextMark_Link,
+						Param: "https://example.com",
+					},
+					{
+						Range: &model.Range{
+							From: 2,
+							To:   3,
+						},
+						Type: model.BlockContentTextMark_Italic,
+					},
+				},
+			},
+			Attachments: []*model.ChatMessageAttachment{
+				{
+					Target: "attachmentId1",
+					Type:   model.ChatMessageAttachment_IMAGE,
+				},
+				{
+					Target: "attachmentId2",
+					Type:   model.ChatMessageAttachment_LINK,
+				},
+			},
+			Reactions: &model.ChatMessageReactions{
+				Reactions: map[string]*model.ChatMessageReactionsIdentityList{
+					"🥰": {
+						Ids: []string{"identity1", "identity2"},
+					},
+					"🤔": {
+						Ids: []string{"identity3"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func assertMessagesEqual(t *testing.T, want, got *Message) {
 	// Cleanup order id
 	assert.NotEmpty(t, got.OrderId)
 	got.OrderId = ""

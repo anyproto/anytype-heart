@@ -1,53 +1,43 @@
 package chatobject
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
-	creatorKey    = "creator"
-	createdAtKey  = "createdAt"
-	modifiedAtKey = "modifiedAt"
-	reactionsKey  = "reactions"
-	contentKey    = "content"
-	readKey       = "read"
-	addedKey      = "a"
-	orderKey      = "_o"
+	creatorKey     = "creator"
+	createdAtKey   = "createdAt"
+	modifiedAtKey  = "modifiedAt"
+	reactionsKey   = "reactions"
+	contentKey     = "content"
+	readKey        = "read"
+	mentionReadKey = "mentionRead"
+	hasMentionKey  = "hasMention"
+	addedKey       = "a"
+	orderKey       = "_o"
 )
 
-type messageWrapper struct {
-	val   *anyenc.Value
-	arena *anyenc.Arena
+type Message struct {
+	*model.ChatMessage
+
+	HasMention bool
 }
 
-func newMessageWrapper(arena *anyenc.Arena, val *anyenc.Value) *messageWrapper {
-	return &messageWrapper{arena: arena, val: val}
+func unmarshalMessage(val *anyenc.Value) (*Message, error) {
+	return newMessageWrapper(val).toModel()
 }
 
-func (m *messageWrapper) getCreator() string {
-	return string(m.val.GetStringBytes(creatorKey))
+type messageUnmarshaller struct {
+	val *anyenc.Value
 }
 
-func (m *messageWrapper) setCreator(v string) {
-	m.val.Set(creatorKey, m.arena.NewString(v))
-}
-
-func (m *messageWrapper) setRead(v bool) {
-	if v {
-		m.val.Set(readKey, m.arena.NewTrue())
-	} else {
-		m.val.Set(readKey, m.arena.NewFalse())
-	}
-}
-
-func (m *messageWrapper) setCreatedAt(v int64) {
-	m.val.Set(createdAtKey, m.arena.NewNumberInt(int(v)))
-}
-
-func (m *messageWrapper) setAddedAt(v int64) {
-	m.val.Set(addedKey, m.arena.NewNumberInt(int(v)))
+func newMessageWrapper(val *anyenc.Value) *messageUnmarshaller {
+	return &messageUnmarshaller{val: val}
 }
 
 /*
@@ -84,12 +74,12 @@ func (m *messageWrapper) setAddedAt(v int64) {
 
 */
 
-func marshalModel(arena *anyenc.Arena, msg *model.ChatMessage) *anyenc.Value {
+func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	message := arena.NewObject()
-	message.Set("text", arena.NewString(msg.Message.Text))
-	message.Set("style", arena.NewNumberInt(int(msg.Message.Style)))
+	message.Set("text", arena.NewString(m.Message.Text))
+	message.Set("style", arena.NewNumberInt(int(m.Message.Style)))
 	marks := arena.NewArray()
-	for i, inMark := range msg.Message.Marks {
+	for i, inMark := range m.Message.Marks {
 		mark := arena.NewObject()
 		mark.Set("from", arena.NewNumberInt(int(inMark.Range.From)))
 		mark.Set("to", arena.NewNumberInt(int(inMark.Range.To)))
@@ -102,7 +92,7 @@ func marshalModel(arena *anyenc.Arena, msg *model.ChatMessage) *anyenc.Value {
 	message.Set("marks", marks)
 
 	attachments := arena.NewObject()
-	for i, inAttachment := range msg.Attachments {
+	for i, inAttachment := range m.Attachments {
 		attachment := arena.NewObject()
 		attachment.Set("type", arena.NewNumberInt(int(inAttachment.Type)))
 		attachments.Set(inAttachment.Target, attachment)
@@ -114,7 +104,7 @@ func marshalModel(arena *anyenc.Arena, msg *model.ChatMessage) *anyenc.Value {
 	content.Set("attachments", attachments)
 
 	reactions := arena.NewObject()
-	for emoji, inReaction := range msg.GetReactions().GetReactions() {
+	for emoji, inReaction := range m.GetReactions().GetReactions() {
 		identities := arena.NewArray()
 		for j, identity := range inReaction.Ids {
 			identities.SetArrayItem(j, arena.NewString(identity))
@@ -122,41 +112,56 @@ func marshalModel(arena *anyenc.Arena, msg *model.ChatMessage) *anyenc.Value {
 		reactions.Set(emoji, identities)
 	}
 
-	root := arena.NewObject()
-	root.Set(creatorKey, arena.NewString(msg.Creator))
-	root.Set(createdAtKey, arena.NewNumberInt(int(msg.CreatedAt)))
-	root.Set(modifiedAtKey, arena.NewNumberInt(int(msg.ModifiedAt)))
-	root.Set("replyToMessageId", arena.NewString(msg.ReplyToMessageId))
-	root.Set(contentKey, content)
-	var read *anyenc.Value
-	if msg.Read {
-		read = arena.NewTrue()
+	marshalTo.Set("id", arena.NewString(m.Id))
+	marshalTo.Set(creatorKey, arena.NewString(m.Creator))
+	marshalTo.Set(createdAtKey, arena.NewNumberInt(int(m.CreatedAt)))
+	marshalTo.Set(modifiedAtKey, arena.NewNumberInt(int(m.ModifiedAt)))
+	marshalTo.Set("replyToMessageId", arena.NewString(m.ReplyToMessageId))
+	marshalTo.Set(contentKey, content)
+	marshalTo.Set(readKey, arenaNewBool(arena, m.Read))
+	marshalTo.Set(mentionReadKey, arenaNewBool(arena, m.MentionRead))
+	marshalTo.Set(hasMentionKey, arenaNewBool(arena, m.HasMention))
+
+	addedAt := strconv.Itoa(int(m.AddedAt))
+	marshalTo.Set(addedKey, arena.NewString(addedAt))
+	marshalTo.Set(reactionsKey, reactions)
+}
+
+func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
+	if value {
+		return a.NewTrue()
 	} else {
-		read = arena.NewFalse()
-	}
-	root.Set(readKey, read)
-
-	root.Set(reactionsKey, reactions)
-	return root
-}
-
-func (m *messageWrapper) toModel() *model.ChatMessage {
-	return &model.ChatMessage{
-		Id:               string(m.val.GetStringBytes("id")),
-		Creator:          string(m.val.GetStringBytes(creatorKey)),
-		CreatedAt:        int64(m.val.GetInt(createdAtKey)),
-		ModifiedAt:       int64(m.val.GetInt(modifiedAtKey)),
-		AddedAt:          int64(m.val.GetInt(addedKey)),
-		OrderId:          string(m.val.GetStringBytes("_o", "id")),
-		ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
-		Message:          m.contentToModel(),
-		Read:             m.val.GetBool(readKey),
-		Attachments:      m.attachmentsToModel(),
-		Reactions:        m.reactionsToModel(),
+		return a.NewFalse()
 	}
 }
 
-func (m *messageWrapper) contentToModel() *model.ChatMessageMessageContent {
+func (m *messageUnmarshaller) toModel() (*Message, error) {
+	rawAddedAt := m.val.GetString(addedKey)
+	addedAt, err := strconv.Atoi(rawAddedAt)
+	if err != nil {
+		return nil, fmt.Errorf("decode addedAt: %w", err)
+	}
+
+	return &Message{
+		ChatMessage: &model.ChatMessage{
+			Id:               string(m.val.GetStringBytes("id")),
+			Creator:          string(m.val.GetStringBytes(creatorKey)),
+			CreatedAt:        int64(m.val.GetInt(createdAtKey)),
+			ModifiedAt:       int64(m.val.GetInt(modifiedAtKey)),
+			AddedAt:          int64(addedAt),
+			OrderId:          string(m.val.GetStringBytes("_o", "id")),
+			ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
+			Message:          m.contentToModel(),
+			Read:             m.val.GetBool(readKey),
+			MentionRead:      m.val.GetBool(mentionReadKey),
+			Attachments:      m.attachmentsToModel(),
+			Reactions:        m.reactionsToModel(),
+		},
+		HasMention: m.val.GetBool(hasMentionKey),
+	}, nil
+}
+
+func (m *messageUnmarshaller) contentToModel() *model.ChatMessageMessageContent {
 	inMarks := m.val.GetArray(contentKey, "message", "marks")
 	marks := make([]*model.BlockContentTextMark, 0, len(inMarks))
 	for _, inMark := range inMarks {
@@ -177,7 +182,7 @@ func (m *messageWrapper) contentToModel() *model.ChatMessageMessageContent {
 	}
 }
 
-func (m *messageWrapper) attachmentsToModel() []*model.ChatMessageAttachment {
+func (m *messageUnmarshaller) attachmentsToModel() []*model.ChatMessageAttachment {
 	inAttachments := m.val.GetObject(contentKey, "attachments")
 	var attachments []*model.ChatMessageAttachment
 	if inAttachments != nil {
@@ -192,7 +197,7 @@ func (m *messageWrapper) attachmentsToModel() []*model.ChatMessageAttachment {
 	return attachments
 }
 
-func (m *messageWrapper) reactionsToModel() *model.ChatMessageReactions {
+func (m *messageUnmarshaller) reactionsToModel() *model.ChatMessageReactions {
 	inReactions := m.val.GetObject(reactionsKey)
 	reactions := &model.ChatMessageReactions{
 		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},

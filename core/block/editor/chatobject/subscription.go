@@ -19,10 +19,11 @@ import (
 const LastMessageSubscriptionId = "lastMessage"
 
 type subscription struct {
-	spaceId     string
-	chatId      string
-	eventSender event.Sender
-	spaceIndex  spaceindex.Store
+	spaceId         string
+	chatId          string
+	eventSender     event.Sender
+	spaceIndex      spaceindex.Store
+	myParticipantId string
 
 	sessionContext session.Context
 
@@ -34,13 +35,14 @@ type subscription struct {
 	chatStateUpdated bool
 }
 
-func newSubscription(spaceId string, chatId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
+func newSubscription(fullId domain.FullID, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
 	return &subscription{
-		spaceId:       spaceId,
-		chatId:        chatId,
-		eventSender:   eventSender,
-		spaceIndex:    spaceIndex,
-		identityCache: expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
+		spaceId:         fullId.SpaceID,
+		chatId:          fullId.ObjectID,
+		eventSender:     eventSender,
+		spaceIndex:      spaceIndex,
+		myParticipantId: myParticipantId,
+		identityCache:   expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
 	}
 }
 
@@ -123,14 +125,24 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 	return details, nil
 }
 
-func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
-
+func (s *subscription) add(prevOrderId string, message *Message) {
 	s.updateChatState(func(state *model.ChatState) {
 		if !message.Read {
-			if message.OrderId < state.Messages.OldestOrderId {
+			if message.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
 				state.Messages.OldestOrderId = message.OrderId
 			}
 			state.Messages.Counter++
+
+			for _, mark := range message.Message.Marks {
+				if mark.Type == model.BlockContentTextMark_Mention && mark.Param == s.myParticipantId {
+					state.Mentions.Counter++
+
+					if message.OrderId < state.Mentions.OldestOrderId || state.Mentions.OldestOrderId == "" {
+						state.Mentions.OldestOrderId = message.OrderId
+					}
+					break
+				}
+			}
 		}
 		if message.AddedAt > state.DbTimestamp {
 			state.DbTimestamp = message.AddedAt
@@ -143,7 +155,7 @@ func (s *subscription) add(prevOrderId string, message *model.ChatMessage) {
 
 	ev := &pb.EventChatAdd{
 		Id:           message.Id,
-		Message:      message,
+		Message:      message.ChatMessage,
 		OrderId:      message.OrderId,
 		AfterOrderId: prevOrderId,
 		SubIds:       slices.Clone(s.ids),
@@ -181,13 +193,13 @@ func (s *subscription) delete(messageId string) {
 	}))
 }
 
-func (s *subscription) updateFull(message *model.ChatMessage) {
+func (s *subscription) updateFull(message *Message) {
 	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatUpdate{
 		Id:      message.Id,
-		Message: message,
+		Message: message.ChatMessage,
 		SubIds:  slices.Clone(s.ids),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdate{
@@ -195,7 +207,7 @@ func (s *subscription) updateFull(message *model.ChatMessage) {
 	}))
 }
 
-func (s *subscription) updateReactions(message *model.ChatMessage) {
+func (s *subscription) updateReactions(message *Message) {
 	if !s.canSend() {
 		return
 	}
@@ -209,9 +221,9 @@ func (s *subscription) updateReactions(message *model.ChatMessage) {
 	}))
 }
 
-// updateReadStatus updates the read status of the messages with the given ids
+// updateMessageRead updates the read status of the messages with the given ids
 // read ids should ONLY contain ids if they were actually modified in the DB
-func (s *subscription) updateReadStatus(ids []string, read bool) {
+func (s *subscription) updateMessageRead(ids []string, read bool) {
 	s.updateChatState(func(state *model.ChatState) {
 		if read {
 			state.Messages.Counter -= int32(len(ids))
@@ -223,8 +235,29 @@ func (s *subscription) updateReadStatus(ids []string, read bool) {
 	if !s.canSend() {
 		return
 	}
-	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReadStatus{
-		ChatUpdateReadStatus: &pb.EventChatUpdateReadStatus{
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMessageReadStatus{
+		ChatUpdateMessageReadStatus: &pb.EventChatUpdateMessageReadStatus{
+			Ids:    ids,
+			IsRead: read,
+			SubIds: slices.Clone(s.ids),
+		},
+	}))
+}
+
+func (s *subscription) updateMentionRead(ids []string, read bool) {
+	s.updateChatState(func(state *model.ChatState) {
+		if read {
+			state.Mentions.Counter -= int32(len(ids))
+		} else {
+			state.Mentions.Counter += int32(len(ids))
+		}
+	})
+
+	if !s.canSend() {
+		return
+	}
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMentionReadStatus{
+		ChatUpdateMentionReadStatus: &pb.EventChatUpdateMentionReadStatus{
 			Ids:    ids,
 			IsRead: read,
 			SubIds: slices.Clone(s.ids),

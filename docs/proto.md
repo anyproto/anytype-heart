@@ -1476,6 +1476,7 @@
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
+    - [Rpc.Chat.Unread.ReadType](#anytype-Rpc-Chat-Unread-ReadType)
     - [Rpc.Chat.Unread.Response.Error.Code](#anytype-Rpc-Chat-Unread-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
     - [Rpc.Chat.UnsubscribeFromMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response-Error-Code)
@@ -1805,8 +1806,9 @@
     - [Event.Chat.Add](#anytype-Event-Chat-Add)
     - [Event.Chat.Delete](#anytype-Event-Chat-Delete)
     - [Event.Chat.Update](#anytype-Event-Chat-Update)
+    - [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus)
+    - [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
-    - [Event.Chat.UpdateReadStatus](#anytype-Event-Chat-UpdateReadStatus)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
@@ -11079,7 +11081,8 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| chatObjectId | [string](#string) |  | id of the chat object |
+| type | [Rpc.Chat.Unread.ReadType](#anytype-Rpc-Chat-Unread-ReadType) |  |  |
+| chatObjectId | [string](#string) |  |  |
 | afterOrderId | [string](#string) |  |  |
 
 
@@ -23597,8 +23600,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| messages | 0 |  |
-| replies | 1 |  |
+| Messages | 0 |  |
+| Mentions | 1 |  |
 
 
 
@@ -23652,6 +23655,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-Unread-ReadType"></a>
+
+### Rpc.Chat.Unread.ReadType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Messages | 0 |  |
+| Mentions | 1 |  |
 
 
 
@@ -28508,6 +28523,40 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Chat-UpdateMentionReadStatus"></a>
+
+### Event.Chat.UpdateMentionReadStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+| isRead | [bool](#bool) |  |  |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Chat-UpdateMessageReadStatus"></a>
+
+### Event.Chat.UpdateMessageReadStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+| isRead | [bool](#bool) |  |  |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateReactions"></a>
 
 ### Event.Chat.UpdateReactions
@@ -28518,23 +28567,6 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | reactions | [model.ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  |  |
-| subIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Event-Chat-UpdateReadStatus"></a>
-
-### Event.Chat.UpdateReadStatus
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| ids | [string](#string) | repeated |  |
-| isRead | [bool](#bool) |  |  |
 | subIds | [string](#string) | repeated |  |
 
 
@@ -28765,7 +28797,8 @@ Precondition: user A opened a block
 | chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
 | chatUpdate | [Event.Chat.Update](#anytype-Event-Chat-Update) |  |  |
 | chatUpdateReactions | [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions) |  |  |
-| chatUpdateReadStatus | [Event.Chat.UpdateReadStatus](#anytype-Event-Chat-UpdateReadStatus) |  | received to update per-message read status (if needed to highlight the unread messages in the UI) |
+| chatUpdateMessageReadStatus | [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus) |  | received to update per-message read status (if needed to highlight the unread messages in the UI) |
+| chatUpdateMentionReadStatus | [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus) |  | received to update per-message mention read status (if needed to highlight the unread mentions in the UI) |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed (e.g. message read on another device) |
 
@@ -30650,6 +30683,7 @@ Used to decode block meta only, without the content itself
 | attachments | [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment) | repeated | Attachments slice |
 | reactions | [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  | Reactions to the message |
 | read | [bool](#bool) |  | Message read status |
+| mentionRead | [bool](#bool) |  |  |
 
 
 

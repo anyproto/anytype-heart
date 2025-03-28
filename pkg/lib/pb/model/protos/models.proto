@@ -1408,6 +1408,7 @@ message ChatMessage {
     repeated Attachment attachments = 7;  // Attachments slice
     Reactions reactions = 8;  // Reactions to the message
     bool read = 10; // Message read status
+    bool mentionRead = 12;
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part

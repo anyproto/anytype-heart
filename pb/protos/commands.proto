@@ -8283,9 +8283,10 @@ message Rpc {
 
         message ReadMessages {
             enum ReadType {
-                messages = 0;
-                replies = 1;
+                Messages = 0;
+                Mentions = 1;
             }
+
             message Request {
                 ReadType type = 1;
                 string chatObjectId = 2; // id of the chat object
@@ -8314,8 +8315,14 @@ message Rpc {
         }
 
         message Unread {
+            enum ReadType {
+                Messages = 0;
+                Mentions = 1;
+            }
+
             message Request {
-                string chatObjectId = 2; // id of the chat object
+                ReadType type = 1;
+                string chatObjectId = 2;
                 string afterOrderId = 3;
             }
 
