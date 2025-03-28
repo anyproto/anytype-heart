@@ -1,8 +1,6 @@
 package pb
 
 import (
-	"github.com/samber/lo"
-
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	widgets "github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -40,12 +38,10 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	}
 	var (
 		icon           string
-		fileKeys       []*pb.ChangeFileKeys
 		widgetSnapshot *common.Snapshot
 	)
 	if workspaceSnapshot != nil { // we use space icon for import collection
 		icon = workspaceSnapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
-		fileKeys = lo.Filter(workspaceSnapshot.Snapshot.FileKeys, func(item *pb.ChangeFileKeys, index int) bool { return item.Hash == icon })
 	}
 	collectionName := params.GetCollectionTitle() // collection name should be the name of experience
 	if collectionName == "" {
@@ -53,7 +49,7 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	}
 	rootCollection := common.NewImportCollection(g.service)
 	if len(widgetObjects) > 0 {
-		resultSnapshots, widgetSnapshot, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, fileKeys, resultSnapshots)
+		resultSnapshots, widgetSnapshot, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, resultSnapshots)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +60,6 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 		common.WithTargetObjects(objectsIDs),
 		common.WithIcon(icon),
 		common.WithRelations(),
-		common.WithFileKeys(fileKeys),
 		common.WithWidgetSnapshot(widgetSnapshot),
 	)
 	objectsCollection, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
@@ -75,21 +70,13 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	return resultSnapshots, nil
 }
 
-func (g *GalleryImport) getWidgetsCollection(
-	collectionName string,
-	rootCollection *common.ImportCollection,
-	widgetObjects []string,
-	icon string,
-	fileKeys []*pb.ChangeFileKeys,
-	collectionsSnapshots []*common.Snapshot,
-) ([]*common.Snapshot, *common.Snapshot, error) {
+func (g *GalleryImport) getWidgetsCollection(collectionName string, rootCollection *common.ImportCollection, widgetObjects []string, icon string, collectionsSnapshots []*common.Snapshot) ([]*common.Snapshot, *common.Snapshot, error) {
 	widgetCollectionName := collectionName + widgetCollectionPattern
 	settings := common.NewImportCollectionSetting(
 		common.WithCollectionName(widgetCollectionName),
 		common.WithTargetObjects(widgetObjects),
 		common.WithIcon(icon),
 		common.WithRelations(),
-		common.WithFileKeys(fileKeys),
 	)
 	widgetsCollectionSnapshot, widget, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {

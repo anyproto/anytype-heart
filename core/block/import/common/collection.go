@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	simpleDataview "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -25,7 +24,6 @@ type ImportCollectionSetting struct {
 	collectionName                                      string
 	targetObjects                                       []string
 	icon                                                string
-	fileKeys                                            []*pb.ChangeFileKeys
 	needToAddDate, shouldBeFavorite, shouldAddRelations bool
 	widgetSnapshot                                      *Snapshot
 }
@@ -55,12 +53,6 @@ func WithTargetObjects(objs []string) ImportCollectionOption {
 func WithIcon(icon string) ImportCollectionOption {
 	return func(s *ImportCollectionSetting) {
 		s.icon = icon
-	}
-}
-
-func WithFileKeys(keys []*pb.ChangeFileKeys) ImportCollectionOption {
-	return func(s *ImportCollectionSetting) {
-		s.fileKeys = keys
 	}
 }
 
@@ -119,7 +111,7 @@ func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*
 	detailsStruct = st.CombinedDetails().Merge(detailsStruct)
 	st.UpdateStoreSlice(template.CollectionStoreKey, req.targetObjects)
 
-	rootCollectionSnapshot := r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct, req.fileKeys)
+	rootCollectionSnapshot := r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct)
 	widgetSnapshot := r.makeWidgetSnapshot(req, rootCollectionSnapshot)
 	return rootCollectionSnapshot, widgetSnapshot, nil
 }
@@ -206,7 +198,6 @@ func (r *ImportCollection) getRootCollectionSnapshot(
 	collectionName string,
 	st *state.State,
 	detailsStruct *domain.Details,
-	fileKeys []*pb.ChangeFileKeys,
 ) *Snapshot {
 	if detailsStruct == nil {
 		detailsStruct = domain.NewDetails()
@@ -224,7 +215,6 @@ func (r *ImportCollection) getRootCollectionSnapshot(
 				RelationLinks: st.GetRelationLinks(),
 				Collections:   st.Store(),
 			},
-			FileKeys: fileKeys,
 		},
 	}
 }
