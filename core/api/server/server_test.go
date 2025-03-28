@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
-	"github.com/anyproto/anytype-heart/pb/service/mock_service"
+	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 )
 
 type fixture struct {
