@@ -74,6 +74,10 @@ func NewWidget(sb smartblock.SmartBlock) Widget {
 }
 
 func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId string, layout model.BlockContentWidgetLayout, eventName string) error {
+	isDisabled := st.Details().Get(bundle.RelationKeyAutoWidgetDisabled).Bool()
+	if isDisabled {
+		return nil
+	}
 	targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 	if slices.Contains(targets, targetId) {
 		return nil
