@@ -11,6 +11,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"golang.org/x/exp/maps"
 
@@ -112,6 +113,7 @@ type dsObjectStore struct {
 	sourceService       spaceindex.SourceDetailsFromID
 	oldStore            oldstore.Service
 	techSpaceIdProvider TechSpaceIdProvider
+	statService         debugstat.StatService
 
 	sync.Mutex
 	spaceIndexes        map[string]spaceindex.Store
@@ -122,6 +124,19 @@ type dsObjectStore struct {
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
+}
+
+func (s *dsObjectStore) ProvideStat() any {
+	count, _ := s.ListIdsCrossSpace()
+	return len(count)
+}
+
+func (s *dsObjectStore) StatId() string {
+	return "ds_count"
+}
+
+func (s *dsObjectStore) StatType() string {
+	return CName
 }
 
 func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) error {
@@ -169,6 +184,11 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.setDefaultConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
+	s.statService, _ = app.GetComponent[debugstat.StatService](a)
+	if s.statService == nil {
+		s.statService = debugstat.NewNoOp()
+	}
+	s.statService.AddProvider(s)
 
 	return nil
 }
