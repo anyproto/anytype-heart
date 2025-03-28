@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "e8392d6bf8efab6b707d68bc3922e4284a18a68370828e3ec6b18e0267b84bea"
+const RelationChecksum = "ea8df49112b3b94f2c1db3af79be6b45e8a5463a55cb30ab9273d7fa05c59c15"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -56,6 +56,7 @@ const (
 	RelationKeyAuthor                       domain.RelationKey = "author"
 	RelationKeyArtist                       domain.RelationKey = "artist"
 	RelationKeyDueDate                      domain.RelationKey = "dueDate"
+	RelationKeyDuration                     domain.RelationKey = "duration"
 	RelationKeyIconEmoji                    domain.RelationKey = "iconEmoji"
 	RelationKeyCoverType                    domain.RelationKey = "coverType"
 	RelationKeyCoverY                       domain.RelationKey = "coverY"
@@ -157,6 +158,11 @@ const (
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
+	RelationKeyCookingTime                  domain.RelationKey = "cookingTime"
+	RelationKeyServings                     domain.RelationKey = "servings"
+	RelationKeyCuisine                      domain.RelationKey = "cuisine"
+	RelationKeyCourseType                   domain.RelationKey = "courseType"
+	RelationKeyDifficulty                   domain.RelationKey = "difficulty"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
 )
@@ -285,7 +291,7 @@ var (
 		RelationKeyAutoWidgetTargets: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Automatically generated widget. Used to avoid creating widget if was removed by user",
+			Description:      "Automatically generated widget targets. Used to avoid creating widget if was removed by user",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,
 			Id:               "_brautoWidgetTargets",
@@ -370,6 +376,32 @@ var (
 			Key:              "company",
 			MaxCount:         1,
 			Name:             "Company",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCookingTime: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Total cooking time in text format",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcookingTime",
+			Key:              "cookingTime",
+			MaxCount:         1,
+			Name:             "Cooking Time",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCourseType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Course type (e.g., appetizer, main course, dessert)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcourseType",
+			Key:              "courseType",
+			MaxCount:         1,
+			Name:             "Course Type",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -472,6 +504,19 @@ var (
 			Revision:         2,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyCuisine: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Cuisine type associated with the recipe (e.g., Italian, Chinese)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brcuisine",
+			Key:              "cuisine",
+			MaxCount:         1,
+			Name:             "Cuisine",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyDefaultTemplateId: {
 
 			DataSource:       model.Relation_details,
@@ -527,6 +572,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyDifficulty: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Difficulty level of the recipe (e.g., easy, medium, hard)",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brdifficulty",
+			Key:              "difficulty",
+			MaxCount:         1,
+			Name:             "Difficulty",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyDone: {
 
 			DataSource:       model.Relation_details,
@@ -550,6 +608,19 @@ var (
 			Key:              "dueDate",
 			MaxCount:         1,
 			Name:             "Due date",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDuration: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Id:               "_brduration",
+			Key:              "duration",
+			MaxCount:         1,
+			Name:             "Duration",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1626,6 +1697,19 @@ var (
 			MaxCount:         1,
 			Name:             "Revision",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyServings: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Number of servings the recipe yields",
+			Format:           model.RelationFormat_number,
+			Id:               "_brservings",
+			Key:              "servings",
+			MaxCount:         1,
+			Name:             "Servings",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

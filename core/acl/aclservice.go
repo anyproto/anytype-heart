@@ -546,6 +546,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 	if err != nil {
 		return
 	}
+
 	aclClient := acceptSpace.CommonSpace().AclClient()
 	res, err := aclClient.GenerateInvite()
 	if err != nil {
