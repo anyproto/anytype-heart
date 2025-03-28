@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/google/uuid"
-
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -97,6 +95,7 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 		return err
 	}
 	widgetObjectId := space.DerivedIDs().Widgets
+	spaceIndex := s.objectStore.SpaceIndex(space.Id())
 	widgetDetails, err := s.objectStore.SpaceIndex(space.Id()).GetDetails(widgetObjectId)
 	if err == nil {
 		keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
@@ -130,8 +129,17 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 		// only create widget if this was the first object of this type created
 		return nil
 	}
+
+	var targetName string
+	typeDetails, err := spaceIndex.GetDetails(typeId)
+	if err == nil {
+		targetName = typeDetails.Get(bundle.RelationKeyPluralName).String()
+		if targetName == "" {
+			targetName = typeDetails.Get(bundle.RelationKeyName).String()
+		}
+	}
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		return w.AddAutoWidget(st, typeId, key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
+		return w.AddAutoWidget(st, typeId, key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View, targetName)
 	})
 	return err
 }

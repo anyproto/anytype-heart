@@ -593,6 +593,7 @@ message Block {
             Layout layout = 1;
             int32 limit = 2;
             string viewId = 3;
+            bool autoAdded = 4;
 
             enum Layout {
                 Link = 0;
@@ -1055,7 +1056,6 @@ message Notification {
         ParticipantRemove participantRemove = 16;
         ParticipantRequestDecline participantRequestDecline = 17;
         ParticipantPermissionsChange participantPermissionsChange = 18;
-        AutoTypeWidgetAdded autoTypeWidgetAdded = 19;
     }
     string space = 7;
     string aclHeadId = 14;
@@ -1139,12 +1139,6 @@ message Notification {
 
     enum ActionType {
         CLOSE = 0;
-    }
-
-    message AutoTypeWidgetAdded {
-        string spaceId = 1;
-        string typePluralName = 2; // fallback to singular if missing
-        string widgetBlockId = 3;
     }
 }
 
