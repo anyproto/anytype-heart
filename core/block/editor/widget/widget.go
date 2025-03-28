@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -20,14 +21,15 @@ const (
 	DefaultWidgetCollection = "collection"
 	DefaultWidgetBin        = "bin"
 	DefaultWidgetRecentOpen = "recentOpen"
-	autoWidgetBlockIdPrefix = "auto_" // in case blockId is specifically provided to avoid bad tree merges
+	autoWidgetBlockSuffix   = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
 )
 
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
 	// AddAutoWidget adds a widget block. If widget with the same targetId was installed/removed before, it will not be added again.
 	// blockId is optional and used to protect from multi-device conflicts.
-	AddAutoWidget(s *state.State, targetId, blockId, viewId string, layout model.BlockContentWidgetLayout) error
+	// if eventName is empty no event is produced
+	AddAutoWidget(s *state.State, targetId, blockId, viewId string, layout model.BlockContentWidgetLayout, eventName string) error
 }
 
 type widget struct {
@@ -71,7 +73,7 @@ func NewWidget(sb smartblock.SmartBlock) Widget {
 	}
 }
 
-func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId string, layout model.BlockContentWidgetLayout) error {
+func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId string, layout model.BlockContentWidgetLayout, eventName string) error {
 	targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 	if slices.Contains(targets, targetId) {
 		return nil
@@ -125,7 +127,7 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 		position = model.Block_Bottom
 	}
 
-	_, err = w.CreateBlock(st, &pb.RpcBlockCreateWidgetRequest{
+	_, err = w.createBlock(st, &pb.RpcBlockCreateWidgetRequest{
 		ContextId:    st.RootId(),
 		ObjectLimit:  6,
 		WidgetLayout: layout,
@@ -138,11 +140,30 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 				TargetBlockId: targetId,
 			}},
 		},
-	})
-	return err
+	}, true)
+	if err != nil {
+		return err
+	}
+
+	if eventName != "" {
+		msg := event.NewMessage(w.SpaceID(), &pb.EventMessageValueOfSpaceAutoWidgetAdded{
+			SpaceAutoWidgetAdded: &pb.EventSpaceAutoWidgetAdded{
+				TargetId:      targetId,
+				TargetName:    eventName,
+				WidgetBlockId: widgetBlockId,
+			},
+		})
+		w.SendEvent([]*pb.EventMessage{msg})
+	}
+
+	return nil
 }
 
 func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
+	return w.createBlock(s, req, false)
+}
+
+func (w *widget) createBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest, isAutoAdded bool) (string, error) {
 	if req.Block.Content == nil {
 		return "", fmt.Errorf("block has no content")
 	}
@@ -158,8 +179,8 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 	}
 
 	var wrapperBlockId string
-	if b.Model().Id != "" {
-		wrapperBlockId = autoWidgetBlockIdPrefix + b.Model().Id
+	if b.Model().Id != "" && isAutoAdded {
+		wrapperBlockId = b.Model().Id + autoWidgetBlockSuffix
 	}
 
 	wrapper := simple.New(&model.Block{
@@ -169,9 +190,10 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 		},
 		Content: &model.BlockContentOfWidget{
 			Widget: &model.BlockContentWidget{
-				Layout: req.WidgetLayout,
-				Limit:  req.ObjectLimit,
-				ViewId: req.ViewId,
+				Layout:    req.WidgetLayout,
+				Limit:     req.ObjectLimit,
+				ViewId:    req.ViewId,
+				AutoAdded: isAutoAdded,
 			},
 		},
 	})

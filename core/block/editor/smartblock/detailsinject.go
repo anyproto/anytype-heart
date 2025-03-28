@@ -385,6 +385,11 @@ func (sb *smartBlock) changeResolvedLayoutForObjects(msgs []simple.EventMessage,
 	return nil
 }
 
+func (sb *smartBlock) getTypeDetails() (*domain.Details, error) {
+	typeId := sb.LocalDetails().GetString(bundle.RelationKeyType)
+	return sb.spaceIndex.GetDetails(typeId)
+}
+
 func getLayoutFromMessages(msgs []simple.EventMessage) (layout int64, found bool) {
 	for _, ev := range msgs {
 		if amend := ev.Msg.GetObjectDetailsAmend(); amend != nil {
