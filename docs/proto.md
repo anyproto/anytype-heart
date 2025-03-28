@@ -909,6 +909,10 @@
     - [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request)
     - [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response)
     - [Rpc.Object.Duplicate.Response.Error](#anytype-Rpc-Object-Duplicate-Response-Error)
+    - [Rpc.Object.Export](#anytype-Rpc-Object-Export)
+    - [Rpc.Object.Export.Request](#anytype-Rpc-Object-Export-Request)
+    - [Rpc.Object.Export.Response](#anytype-Rpc-Object-Export-Response)
+    - [Rpc.Object.Export.Response.Error](#anytype-Rpc-Object-Export-Response-Error)
     - [Rpc.Object.Graph](#anytype-Rpc-Object-Graph)
     - [Rpc.Object.Graph.Edge](#anytype-Rpc-Object-Graph-Edge)
     - [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request)
@@ -1552,6 +1556,7 @@
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
+    - [Rpc.Object.Export.Response.Error.Code](#anytype-Rpc-Object-Export-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
     - [Rpc.Object.GroupsSubscribe.Response.Error.Code](#anytype-Rpc-Object-GroupsSubscribe-Response-Error-Code)
@@ -2181,6 +2186,7 @@
 | ObjectUndo | [Rpc.Object.Undo.Request](#anytype-Rpc-Object-Undo-Request) | [Rpc.Object.Undo.Response](#anytype-Rpc-Object-Undo-Response) |  |
 | ObjectRedo | [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request) | [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response) |  |
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
+| ObjectExport | [Rpc.Object.Export.Request](#anytype-Rpc-Object-Export-Request) | [Rpc.Object.Export.Response](#anytype-Rpc-Object-Export-Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
 | ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request) | [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response) |  |
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
@@ -15532,6 +15538,66 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-Export"></a>
+
+### Rpc.Object.Export
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Export-Request"></a>
+
+### Rpc.Object.Export.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| objectId | [string](#string) |  | ids of documents for export, when empty - will export all available docs |
+| format | [model.Export.Format](#anytype-model-Export-Format) |  | export format |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Export-Response"></a>
+
+### Rpc.Object.Export.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Export.Response.Error](#anytype-Rpc-Object-Export-Response-Error) |  |  |
+| result | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Export-Response-Error"></a>
+
+### Rpc.Object.Export.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Export.Response.Error.Code](#anytype-Rpc-Object-Export-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Graph"></a>
 
 ### Rpc.Object.Graph
@@ -24721,6 +24787,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-Duplicate-Response-Error-Code"></a>
 
 ### Rpc.Object.Duplicate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-Export-Response-Error-Code"></a>
+
+### Rpc.Object.Export.Response.Error.Code
 
 
 | Name | Number | Description |
