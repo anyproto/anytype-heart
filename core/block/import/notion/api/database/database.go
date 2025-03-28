@@ -345,11 +345,9 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots []*common.Snapshot, p
 	}
 }
 
-func (ds *Service) AddObjectsToNotionCollection(
-	notionContext *api.NotionImportContext,
+func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportContext,
 	notionDB []Database,
-	notionPages []page.Page,
-) (*common.Snapshot, *common.Snapshot, error) {
+	notionPages []page.Page) (*common.Snapshot, error) {
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
 	rootCollection := common.NewImportCollection(ds.collectionService)
@@ -359,11 +357,11 @@ func (ds *Service) AddObjectsToNotionCollection(
 		common.WithAddDate(),
 		common.WithRelations(),
 	)
-	rootCol, widget, err := rootCollection.MakeImportCollection(settings)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return rootCol, widget, nil
+	return rootCol, nil
 }
 
 func (ds *Service) filterObjects(notionContext *api.NotionImportContext,

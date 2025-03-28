@@ -1,6 +1,8 @@
 package pb
 
 import (
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	widgets "github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -10,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const widgetCollectionPattern = "'s Widgets"
@@ -28,7 +31,7 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	params *pb.RpcObjectImportRequestPbParams,
 	workspaceSnapshot *common.Snapshot,
 	isNewSpace bool,
-) (resultSnapshots []*common.Snapshot, err error) {
+) (collectionsSnapshots []*common.Snapshot, err error) {
 	if isNewSpace {
 		return nil, nil
 	}
@@ -36,10 +39,7 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	if widget != nil {
 		widgetObjects = g.getObjectsFromWidgets(widget)
 	}
-	var (
-		icon           string
-		widgetSnapshot *common.Snapshot
-	)
+	var icon string
 	if workspaceSnapshot != nil { // we use space icon for import collection
 		icon = workspaceSnapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
 	}
@@ -49,7 +49,7 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	}
 	rootCollection := common.NewImportCollection(g.service)
 	if len(widgetObjects) > 0 {
-		resultSnapshots, widgetSnapshot, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, resultSnapshots)
+		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, widget, collectionsSnapshots)
 		if err != nil {
 			return nil, err
 		}
@@ -60,17 +60,22 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 		common.WithTargetObjects(objectsIDs),
 		common.WithIcon(icon),
 		common.WithRelations(),
-		common.WithWidgetSnapshot(widgetSnapshot),
 	)
-	objectsCollection, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
+	objectsCollection, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
 	}
-	resultSnapshots = append(resultSnapshots, objectsCollection, widgetSnapshot)
-	return resultSnapshots, nil
+	collectionsSnapshots = append(collectionsSnapshots, objectsCollection)
+	return collectionsSnapshots, err
 }
 
-func (g *GalleryImport) getWidgetsCollection(collectionName string, rootCollection *common.ImportCollection, widgetObjects []string, icon string, collectionsSnapshots []*common.Snapshot) ([]*common.Snapshot, *common.Snapshot, error) {
+func (g *GalleryImport) getWidgetsCollection(collectionName string,
+	rootCollection *common.ImportCollection,
+	widgetObjects []string,
+	icon string,
+	widget *common.Snapshot,
+	collectionsSnapshots []*common.Snapshot,
+) ([]*common.Snapshot, error) {
 	widgetCollectionName := collectionName + widgetCollectionPattern
 	settings := common.NewImportCollectionSetting(
 		common.WithCollectionName(widgetCollectionName),
@@ -78,14 +83,17 @@ func (g *GalleryImport) getWidgetsCollection(collectionName string, rootCollecti
 		common.WithIcon(icon),
 		common.WithRelations(),
 	)
-	widgetsCollectionSnapshot, widget, err := rootCollection.MakeImportCollection(settings)
+	widgetsCollectionSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	if widgetsCollectionSnapshot != nil && widget != nil {
+		g.addCollectionWidget(widget, widgetsCollectionSnapshot.Id)
 	}
 	if widgetsCollectionSnapshot != nil {
 		collectionsSnapshots = append(collectionsSnapshots, widgetsCollectionSnapshot)
 	}
-	return collectionsSnapshots, widget, nil
+	return collectionsSnapshots, nil
 }
 
 func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) []string {
@@ -107,6 +115,31 @@ func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) [
 		return nil
 	}
 	return objectsInWidget
+}
+
+func (g *GalleryImport) addCollectionWidget(widgetSnapshot *common.Snapshot, collectionID string) {
+	id := bson.NewObjectId().Hex()
+	// create widget for import collection
+	linkBlock := &model.Block{
+		Id: id,
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: collectionID,
+			},
+		},
+	}
+	widgetID := bson.NewObjectId().Hex()
+	widgetBlock := &model.Block{
+		Id:          widgetID,
+		ChildrenIds: []string{id},
+		Content: &model.BlockContentOfWidget{Widget: &model.BlockContentWidget{
+			Layout: model.BlockContentWidget_CompactList,
+			Limit:  0,
+			ViewId: "",
+		}},
+	}
+	// for widget object we only add import collection, other widgets should be erased
+	widgetSnapshot.Snapshot.Data.Blocks = []*model.Block{widgetBlock, linkBlock}
 }
 
 func (g *GalleryImport) getObjectsIDs(snapshots []*common.Snapshot) []string {

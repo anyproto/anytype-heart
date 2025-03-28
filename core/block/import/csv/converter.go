@@ -73,7 +73,7 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		common.WithAddDate(),
 		common.WithRelations(),
 	)
-	rootCol, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -84,9 +84,6 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	if rootCol != nil {
 		result.snapshots = append(result.snapshots, rootCol)
 		rootCollectionID = rootCol.Id
-	}
-	if widgetSnapshot != nil {
-		result.snapshots = append(result.snapshots, widgetSnapshot)
 	}
 	progress.SetTotal(int64(len(result.snapshots)))
 	if allErrors.IsEmpty() {

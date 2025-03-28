@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common/test"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 )
@@ -38,10 +37,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, sn)
-		assert.Len(t, sn.Snapshots, 4)
+		assert.Len(t, sn.Snapshots, 3)
 		var (
-			found, foundWidget bool
-			subPageId          string
+			found     bool
+			subPageId string
 		)
 		for _, snapshot := range sn.Snapshots {
 			if snapshot.FileName == filepath.Join(testDirectory, "test_database", "test.md") {
@@ -55,18 +54,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 				assert.NotEmpty(t, snapshot.Snapshot.Data.Collections.Fields["objects"])
 				assert.Len(t, snapshot.Snapshot.Data.Collections.Fields["objects"].GetListValue().GetValues(), 1)
 				assert.Equal(t, subPageId, snapshot.Snapshot.Data.Collections.Fields["objects"].GetListValue().GetValues()[0].GetStringValue())
-			}
-			if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeWidget {
-				foundWidget = true
-				assert.Len(t, snapshot.Snapshot.Data.Blocks, 3)
-				assert.NotNil(t, snapshot.Snapshot.Data.Blocks[1].GetWidget())
-				assert.NotNil(t, snapshot.Snapshot.Data.Blocks[2].GetLink())
-				assert.NotEmpty(t, snapshot.Snapshot.Data.Blocks[2].GetLink().GetTargetBlockId())
 				break
 			}
 		}
 		assert.True(t, found)
-		assert.True(t, foundWidget)
 	})
 	t.Run("no object error", func(t *testing.T) {
 		// given
@@ -107,7 +98,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, sn)
-		assert.Len(t, sn.Snapshots, 8)
+		assert.Len(t, sn.Snapshots, 7)
 
 		fileNameToObjectId := make(map[string]string, len(sn.Snapshots))
 		for _, snapshot := range sn.Snapshots {
@@ -188,7 +179,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// then
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		assert.Len(t, sn.Snapshots, 5)
+		assert.Len(t, sn.Snapshots, 4)
 		fileNameToObjectId := make(map[string]string, len(sn.Snapshots))
 		for _, snapshot := range sn.Snapshots {
 			fileNameToObjectId[snapshot.FileName] = snapshot.Id

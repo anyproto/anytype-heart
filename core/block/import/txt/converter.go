@@ -62,7 +62,7 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		common.WithRelations(),
 		common.WithAddDate(),
 	)
-	rootCol, widget, err := rootCollection.MakeImportCollection(settings)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -73,9 +73,6 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	if rootCol != nil {
 		snapshots = append(snapshots, rootCol)
 		rootCollectionID = rootCol.Id
-	}
-	if widget != nil {
-		snapshots = append(snapshots, widget)
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {

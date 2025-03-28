@@ -28,7 +28,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})
 	t.Run("CollectionTitle parameter is empty - collection with default name", func(t *testing.T) {
@@ -41,7 +41,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.Equal(t, rootCollectionName, collection[0].FileName)
 	})
 	t.Run("CollectionTitle parameter is equal 'test' - collection with name test", func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.Equal(t, "test", collection[0].FileName)
 	})
 	t.Run("widget with sets - only objects root collection as we ignore default sets and not create widgets collection", func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})
 	t.Run("default sets and objects in widget - root collection with objects from widget and object root collection are created", func(t *testing.T) {
@@ -206,7 +206,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 3)
+		assert.Len(t, collection, 2)
 		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
@@ -241,7 +241,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 
 	})
@@ -255,7 +255,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.Empty(t, collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
 	t.Run("workspace without icon - root collection without icon", func(t *testing.T) {
@@ -278,7 +278,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.Empty(t, collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
 	t.Run("workspace with icon - root collection with icon", func(t *testing.T) {
@@ -303,7 +303,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.Equal(t, "icon", collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
 	t.Run("if import in new space - not create anything", func(t *testing.T) {
@@ -349,35 +349,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
+		assert.Len(t, collection, 1)
 		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
-	})
-	t.Run("widget with collection", func(t *testing.T) {
-		// given
-		p := GalleryImport{}
-		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
-
-		// object with widget
-		widgetSnapshot := &common.Snapshot{
-			Id: "widgetID",
-			Snapshot: &common.SnapshotModel{
-				SbType: smartblock.SmartBlockTypeWidget,
-				Data: &common.StateSnapshot{
-					Blocks: []*model.Block{},
-				},
-			},
-		}
-
-		// when
-		collection, err := p.ProvideCollection(nil, widgetSnapshot, nil, params, nil, false)
-
-		// then
-		assert.Nil(t, err)
-		assert.Len(t, collection, 2)
-		assert.Equal(t, smartblock.SmartBlockTypeWidget, collection[1].Snapshot.SbType)
-		assert.Len(t, collection[1].Snapshot.Data.Blocks, 3)
-		assert.NotNil(t, collection[1].Snapshot.Data.Blocks[1].GetWidget())
-		assert.NotNil(t, collection[1].Snapshot.Data.Blocks[2].GetLink())
-		assert.Equal(t, collection[0].Id, collection[1].Snapshot.Data.Blocks[2].GetLink().GetTargetBlockId())
 	})
 }

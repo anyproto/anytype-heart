@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -18,14 +17,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const rootWidget = "rootWidget"
-
 type ImportCollectionSetting struct {
 	collectionName                                      string
 	targetObjects                                       []string
 	icon                                                string
 	needToAddDate, shouldBeFavorite, shouldAddRelations bool
-	widgetSnapshot                                      *Snapshot
 }
 
 type ImportCollectionOption func(*ImportCollectionSetting)
@@ -74,12 +70,6 @@ func WithRelations() ImportCollectionOption {
 	}
 }
 
-func WithWidgetSnapshot(snapshot *Snapshot) ImportCollectionOption {
-	return func(s *ImportCollectionSetting) {
-		s.widgetSnapshot = snapshot
-	}
-}
-
 type ImportCollection struct {
 	service *collection.Service
 }
@@ -88,7 +78,7 @@ func NewImportCollection(service *collection.Service) *ImportCollection {
 	return &ImportCollection{service: service}
 }
 
-func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*Snapshot, *Snapshot, error) {
+func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*Snapshot, error) {
 	if req.needToAddDate {
 		importDate := time.Now().Format(time.RFC3339)
 		req.collectionName = fmt.Sprintf("%s %s", req.collectionName, importDate)
@@ -98,100 +88,20 @@ func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*
 		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if req.shouldAddRelations {
 		err = r.addRelations(st)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
 	detailsStruct = st.CombinedDetails().Merge(detailsStruct)
 	st.UpdateStoreSlice(template.CollectionStoreKey, req.targetObjects)
 
-	rootCollectionSnapshot := r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct)
-	widgetSnapshot := r.makeWidgetSnapshot(req, rootCollectionSnapshot)
-	return rootCollectionSnapshot, widgetSnapshot, nil
-}
-
-func (r *ImportCollection) makeWidgetSnapshot(req *ImportCollectionSetting, rootSnapshot *Snapshot) *Snapshot {
-	if req.widgetSnapshot == nil {
-		return r.buildNewWidgetSnapshot(rootSnapshot.Id)
-	}
-	return r.enhanceExistingSnapshot(req.widgetSnapshot, rootSnapshot.Id)
-}
-
-func (r *ImportCollection) buildNewWidgetSnapshot(targetID string) *Snapshot {
-	linkBlock := r.createLinkBlock(targetID)
-	widgetBlock := r.createWidgetBlock(linkBlock.Id)
-	rootBlock := r.createSmartBlock(widgetBlock.Id)
-
-	return &Snapshot{
-		Id:       rootBlock.Id,
-		FileName: rootWidget,
-		Snapshot: &SnapshotModel{
-			SbType: sb.SmartBlockTypeWidget,
-			Data: &StateSnapshot{
-				Blocks:      []*model.Block{rootBlock, widgetBlock, linkBlock},
-				Details:     r.defaultWidgetDetails(),
-				ObjectTypes: []string{bundle.TypeKeyDashboard.String()},
-			},
-		},
-	}
-}
-
-func (r *ImportCollection) enhanceExistingSnapshot(snapshot *Snapshot, targetID string) *Snapshot {
-	linkBlock := r.createLinkBlock(targetID)
-	widgetBlock := r.createWidgetBlock(linkBlock.Id)
-
-	for _, block := range snapshot.Snapshot.Data.Blocks {
-		if block.GetSmartblock() != nil {
-			block.ChildrenIds = append(block.ChildrenIds, widgetBlock.Id)
-		}
-	}
-
-	snapshot.Snapshot.Data.Blocks = append(snapshot.Snapshot.Data.Blocks, linkBlock, widgetBlock)
-	return snapshot
-}
-
-func (r *ImportCollection) createLinkBlock(targetID string) *model.Block {
-	return &model.Block{
-		Id: bson.NewObjectId().Hex(),
-		Content: &model.BlockContentOfLink{
-			Link: &model.BlockContentLink{
-				TargetBlockId: targetID,
-			},
-		},
-	}
-}
-
-func (r *ImportCollection) createWidgetBlock(childID string) *model.Block {
-	return &model.Block{
-		Id:          bson.NewObjectId().Hex(),
-		ChildrenIds: []string{childID},
-		Content: &model.BlockContentOfWidget{
-			Widget: &model.BlockContentWidget{
-				Layout: model.BlockContentWidget_CompactList,
-			},
-		},
-	}
-}
-
-func (r *ImportCollection) createSmartBlock(childID string) *model.Block {
-	return &model.Block{
-		Id:          uuid.New().String(),
-		ChildrenIds: []string{childID},
-		Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
-	}
-}
-
-func (r *ImportCollection) defaultWidgetDetails() *domain.Details {
-	return domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyLayout:   domain.Int64(model.ObjectType_dashboard),
-		bundle.RelationKeyIsHidden: domain.Bool(true),
-	})
+	return r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct), nil
 }
 
 func (r *ImportCollection) getRootCollectionSnapshot(

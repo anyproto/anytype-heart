@@ -42,7 +42,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -71,6 +70,7 @@ type Import struct {
 
 	importCtx       context.Context
 	importCtxCancel context.CancelFunc
+	spaceService    space.Service
 }
 
 func New() Importer {
@@ -83,6 +83,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.s = app.MustComponent[*block.Service](a)
 	accountService := app.MustComponent[account.Service](a)
 	spaceService := app.MustComponent[space.Service](a)
+	i.spaceService = spaceService
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []common.Converter{
@@ -181,8 +182,31 @@ func (i *Import) importObjects(ctx context.Context, importRequest *ImportRequest
 func (i *Import) onImportFinish(res *ImportResponse, req *ImportRequest, importId string) {
 	i.finishImportProcess(res.Err, req)
 	i.sendFileEvents(res.Err)
+	if res.RootCollectionId != "" {
+		i.addRootCollectionWidget(res, req)
+	}
 	i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
 	i.sendImportFinishEventToClient(res.RootCollectionId, req.IsSync, res.ObjectsCount, req.Type)
+}
+
+func (i *Import) addRootCollectionWidget(res *ImportResponse, req *ImportRequest) {
+	spc, err := i.spaceService.Get(i.importCtx, req.SpaceId)
+	if err != nil {
+		log.Errorf("failed to create widget from root collection, error: %s", err.Error())
+	} else {
+		_, err = i.s.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    spc.DerivedIDs().Widgets,
+			WidgetLayout: model.BlockContentWidget_CompactList,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+					TargetBlockId: res.RootCollectionId,
+				}},
+			},
+		})
+		if err != nil {
+			log.Errorf("failed to create widget from root collection, error: %s", err.Error())
+		}
+	}
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -493,10 +517,6 @@ func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[st
 func (i *Import) addWork(res *common.Response, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
 		t := creator.NewTask(snapshot, i.oc)
-		if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeWidget {
-			pool.SetFinalizer(t)
-			continue
-		}
 		stop := pool.AddWork(t)
 		if stop {
 			break

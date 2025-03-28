@@ -31,7 +31,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.True(t, errors.Is(err.GetResultError(model.Import_Txt), common.ErrFileImportNoObjectsInDirectory))
 		assert.NotNil(t, sn)
-		assert.Len(t, sn.Snapshots, 3)
+		assert.Len(t, sn.Snapshots, 2)
 		assert.Contains(t, sn.Snapshots[0].FileName, "test.txt")
 		assert.Equal(t, sn.Snapshots[0].Snapshot.Data.Details.GetString("name"), "test")
 
@@ -39,10 +39,6 @@ func TestTXT_GetSnapshots(t *testing.T) {
 		assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
 		assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 
-		assert.Len(t, sn.Snapshots[2].Snapshot.Data.Blocks, 3)
-		assert.NotNil(t, sn.Snapshots[2].Snapshot.Data.Blocks[1].GetWidget())
-		assert.NotNil(t, sn.Snapshots[2].Snapshot.Data.Blocks[2].GetLink())
-		assert.Equal(t, sn.Snapshots[1].Id, sn.Snapshots[2].Snapshot.Data.Blocks[2].GetLink().GetTargetBlockId())
 		var (
 			found bool
 			text  string

@@ -108,7 +108,7 @@ func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRoot
 		common.WithAddDate(),
 		common.WithRelations(),
 	)
-	rootCol, widgetSnapshot, err := rootCollection.MakeImportCollection(settings)
+	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, "", err
 	}
@@ -117,9 +117,6 @@ func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRoot
 	if rootCol != nil {
 		allSnapshots = append(allSnapshots, rootCol)
 		rootCollectionID = rootCol.Id
-	}
-	if widgetSnapshot != nil {
-		allSnapshots = append(allSnapshots, widgetSnapshot)
 	}
 	return allSnapshots, rootCollectionID, nil
 }
@@ -436,7 +433,7 @@ func (m *Markdown) addCollectionSnapshot(fileName string, file *FileInfo, snapsh
 		common.WithCollectionName(file.Title),
 		common.WithTargetObjects(file.CollectionsObjectsIds),
 	)
-	csvCollection, _, err := c.MakeImportCollection(settings)
+	csvCollection, err := c.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
 	}

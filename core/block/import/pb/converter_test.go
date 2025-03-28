@@ -50,7 +50,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	}, process.NewNoOp())
 
 	assert.Nil(t, ce)
-	assert.Len(t, res.Snapshots, 3)
+	assert.Len(t, res.Snapshots, 2)
 
 	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
 	assert.NotEmpty(t, res.Snapshots[1].Snapshot.Data.ObjectTypes)
@@ -159,7 +159,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	assert.NotNil(t, ce)
 	assert.NotNil(t, res.Snapshots)
-	assert.Len(t, res.Snapshots, 3)
+	assert.Len(t, res.Snapshots, 2)
 	assert.False(t, ce.IsEmpty())
 }
 
@@ -215,7 +215,7 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
-	assert.Len(t, res.Snapshots, 3)
+	assert.Len(t, res.Snapshots, 2)
 
 	assert.Equal(t, res.Snapshots[0].FileName, "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
 	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
