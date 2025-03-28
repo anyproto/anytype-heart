@@ -90,6 +90,9 @@ func (p *Archive) autoInstallBinWidget() error {
 	if err != nil {
 		return err
 	}
+	if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
+		return nil
+	}
 	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 	if slices.Contains(keys, widget.DefaultWidgetBin) {
 		// cache to avoid unnecessary objectstore requests

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "e8392d6bf8efab6b707d68bc3922e4284a18a68370828e3ec6b18e0267b84bea"
+const RelationChecksum = "6388e7cd19fabdc6953ebc6d1f2cd0208054d488b3fe538b7e013b38d7311108"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -158,6 +158,7 @@ const (
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
+	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
 )
 
@@ -280,6 +281,19 @@ var (
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAutoWidgetDisabled: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_bool,
+			Hidden:           true,
+			Id:               "_brautoWidgetDisabled",
+			Key:              "autoWidgetDisabled",
+			Name:             "Auto Widget disabled",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAutoWidgetTargets: {
