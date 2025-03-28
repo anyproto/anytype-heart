@@ -25,6 +25,7 @@ import (
 	"unicode"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	tantivy "github.com/anyproto/tantivy-go"
 	"github.com/valyala/fastjson"
 
@@ -92,14 +93,28 @@ type DocumentMatch struct {
 }
 
 type ftSearch struct {
-	rootPath   string
-	ftsPath    string
-	builderId  string
-	index      *tantivy.TantivyContext
-	parserPool *fastjson.ParserPool
-	mu         sync.Mutex
-	blevePath  string
-	lang       tantivy.Language
+	rootPath    string
+	ftsPath     string
+	builderId   string
+	index       *tantivy.TantivyContext
+	parserPool  *fastjson.ParserPool
+	mu          sync.Mutex
+	blevePath   string
+	lang        tantivy.Language
+	statService debugstat.StatService
+}
+
+func (f *ftSearch) ProvideStat() any {
+	count, _ := f.DocCount()
+	return count
+}
+
+func (f *ftSearch) StatId() string {
+	return "doc_count"
+}
+
+func (f *ftSearch) StatType() string {
+	return CName
 }
 
 func TantivyNew() FTSearch {
@@ -138,6 +153,11 @@ func (f *ftSearch) DeleteObject(objectId string) error {
 
 func (f *ftSearch) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
+	f.statService, _ = app.GetComponent[debugstat.StatService](a)
+	if f.statService == nil {
+		f.statService = debugstat.NewNoOp()
+	}
+	f.statService.AddProvider(f)
 	f.lang = validateLanguage(app.MustComponent[wallet.Wallet](a).FtsPrimaryLang())
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.blevePath = filepath.Join(repoPath, ftsDir)
