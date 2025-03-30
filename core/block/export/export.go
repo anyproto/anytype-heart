@@ -63,6 +63,8 @@ const (
 
 	FilesObjects = "filesObjects"
 	Files        = "files"
+
+	defaultFileName = "untitled"
 )
 
 var log = logging.Logger("anytype-mw-export")
@@ -1258,6 +1260,9 @@ func (fn *namer) Get(path, hash, title, ext string) (name string) {
 	title = slug.Make(strings.TrimSuffix(title, ext))
 	name = text.TruncateEllipsized(title, fileLenLimit)
 	name = strings.TrimSuffix(name, text.TruncateEllipsis)
+	if name == "" {
+		name = defaultFileName
+	}
 	var (
 		i = 0
 		b = 36
