@@ -26,7 +26,7 @@ type Object struct {
 	Snippet    string     `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
 	Layout     string     `json:"layout" example:"basic"`                                                                       // The layout of the object
 	Type       Type       `json:"type"`                                                                                         // The type of the object
-	Blocks     []Block    `json:"blocks"`                                                                                       // The blocks of the object
+	Blocks     []Block    `json:"blocks"`                                                                                       // The blocks of the object. Omitted in Search endpoints, returned only in GetObject endpoint
 	Properties []Property `json:"properties"`                                                                                   // The properties of the object
 }
 
