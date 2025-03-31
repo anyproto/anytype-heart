@@ -2,12 +2,9 @@ package chatobject
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"slices"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/zap"
 
@@ -135,10 +132,6 @@ func (s *subscription) flush() {
 		Messages:  events,
 	}
 
-	fmt.Println("event")
-	m := &jsonpb.Marshaler{}
-	m.Marshal(os.Stdout, ev)
-
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, events)
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
@@ -201,7 +194,7 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 		identityDetails, err := s.getIdentityDetails(message.Creator)
 		if err != nil {
 			log.Error("get identity details", zap.Error(err))
-		} else {
+		} else if identityDetails.Len() > 0 {
 			ev.Dependencies = append(ev.Dependencies, identityDetails.ToProto())
 		}
 
@@ -209,7 +202,7 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 			attachmentDetails, err := s.spaceIndex.GetDetails(attachment.Target)
 			if err != nil {
 				log.Error("get attachment details", zap.Error(err))
-			} else {
+			} else if attachmentDetails.Len() > 0 {
 				ev.Dependencies = append(ev.Dependencies, attachmentDetails.ToProto())
 			}
 		}

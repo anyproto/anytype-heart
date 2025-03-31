@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -304,5 +307,80 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 		},
 	}
 
+	assert.Equal(t, wantEvents, fx.events)
+}
+
+func TestSubscriptionWithDeps(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+
+	_, err := fx.SubscribeLastMessages(ctx, LastMessageSubscriptionId, 10, false)
+	require.NoError(t, err)
+
+	myParticipantId := domain.NewParticipantId(testSpaceId, testCreator)
+
+	identityDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:   domain.String(myParticipantId),
+		bundle.RelationKeyName: domain.String("John Doe"),
+	})
+	err = fx.spaceIndex.UpdateObjectDetails(ctx, myParticipantId, identityDetails)
+	require.NoError(t, err)
+
+	attachmentDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:   domain.String("fileObjectId1"),
+		bundle.RelationKeyName: domain.String("file 1"),
+	})
+	err = fx.spaceIndex.UpdateObjectDetails(ctx, "fileObjectId1", attachmentDetails)
+	require.NoError(t, err)
+
+	inputMessage := givenSimpleMessage("hello!")
+	inputMessage.Attachments = []*model.ChatMessageAttachment{
+		{
+			Target: attachmentDetails.GetString(bundle.RelationKeyId),
+			Type:   model.ChatMessageAttachment_FILE,
+		},
+		{
+			Target: "unknown object id",
+			Type:   model.ChatMessageAttachment_FILE,
+		},
+	}
+
+	messageId, err := fx.AddMessage(ctx, nil, inputMessage)
+	require.NoError(t, err)
+
+	message, err := fx.GetMessageById(ctx, messageId)
+	require.NoError(t, err)
+
+	wantEvents := []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatAdd{
+				ChatAdd: &pb.EventChatAdd{
+					Id:           message.Id,
+					OrderId:      message.OrderId,
+					AfterOrderId: "",
+					Message:      message.ChatMessage,
+					SubIds:       []string{LastMessageSubscriptionId},
+					Dependencies: []*types.Struct{
+						identityDetails.ToProto(),
+						attachmentDetails.ToProto(),
+					},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages:    &model.ChatStateUnreadState{},
+						Mentions:    &model.ChatStateUnreadState{},
+						DbTimestamp: message.AddedAt,
+					},
+					SubIds: []string{LastMessageSubscriptionId},
+				},
+			},
+		},
+	}
 	assert.Equal(t, wantEvents, fx.events)
 }
