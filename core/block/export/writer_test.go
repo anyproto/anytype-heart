@@ -75,3 +75,22 @@ func TestZipWriter_WriteFile(t *testing.T) {
 	}
 	assert.True(t, found)
 }
+
+func TestZipWriter_Get(t *testing.T) {
+	t.Run("file without name", func(t *testing.T) {
+		// given
+		path, err := ioutil.TempDir("", "")
+		require.NoError(t, err)
+		defer os.RemoveAll(path)
+
+		wr, err := newZipWriter(path, uniqName()+".zip")
+		require.NoError(t, err)
+
+		// when
+		name := wr.Namer().Get(Files, "hash", "", "")
+
+		// then
+		require.NoError(t, wr.Close())
+		assert.Equal(t, filepath.Join(Files, defaultFileName), name)
+	})
+}
