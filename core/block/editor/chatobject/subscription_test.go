@@ -84,5 +84,9 @@ func TestSubscription(t *testing.T) {
 		ev := fx.events[0].GetChatDelete()
 		require.NotNil(t, ev)
 		assert.Equal(t, resp.Messages[0].Id, ev.Id)
+
+		evState := fx.events[1].GetChatStateUpdate()
+		require.NotNil(t, evState)
+		assert.True(t, evState.State.DbTimestamp > 0)
 	})
 }

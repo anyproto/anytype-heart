@@ -146,7 +146,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		subscription:    s.subscription,
 		currentIdentity: s.accountService.AccountID(),
 		myParticipantId: myParticipantId,
-		// forceNotRead:    true,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler)

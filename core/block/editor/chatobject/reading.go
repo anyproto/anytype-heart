@@ -23,6 +23,7 @@ type readHandler interface {
 	getMessagesFilter() query.Filter
 	getDiffManagerName() string
 	getReadKey() string
+	readModifier(value bool) query.Modifier
 
 	readMessages(newOldestOrderId string, idsModified []string)
 	unreadMessages(newOldestOrderId string, lastAddedAt int64, msgIds []string)
@@ -65,6 +66,17 @@ func (h *readMessagesHandler) unreadMessages(newOldestOrderId string, lastAddedA
 	h.subscription.updateMessageRead(msgIds, false)
 }
 
+func (h *readMessagesHandler) readModifier(value bool) query.Modifier {
+	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		oldValue := v.GetBool(h.getReadKey())
+		if oldValue != value {
+			v.Set(h.getReadKey(), arenaNewBool(a, value))
+			return v, true, nil
+		}
+		return v, false, nil
+	})
+}
+
 type readMentionsHandler struct {
 	subscription *subscription
 }
@@ -103,14 +115,17 @@ func (h *readMentionsHandler) unreadMessages(newOldestOrderId string, lastAddedA
 	h.subscription.updateMentionRead(msgIds, false)
 }
 
-func readModifier(key string, value bool) query.Modifier {
-	arena := &anyenc.Arena{}
-
-	valueModifier := arena.NewObject()
-	valueModifier.Set(key, arenaNewBool(arena, value))
-	obj := arena.NewObject()
-	obj.Set("$set", valueModifier)
-	return query.MustParseModifier(obj)
+func (h *readMentionsHandler) readModifier(value bool) query.Modifier {
+	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		if v.GetBool(hasMentionKey) {
+			oldValue := v.GetBool(h.getReadKey())
+			if oldValue != value {
+				v.Set(h.getReadKey(), arenaNewBool(a, value))
+				return v, true, nil
+			}
+		}
+		return v, false, nil
+	})
 }
 
 func newReadHandler(counterType CounterType, subscription *subscription) readHandler {
@@ -203,7 +218,6 @@ func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) 
 	}
 	defer txn.Commit()
 
-	// TODO Filter messages for mentions
 	idsModified := s.repository.setReadFlag(txn.Context(), s.Id(), changeIds, handler, true)
 
 	if len(idsModified) > 0 {

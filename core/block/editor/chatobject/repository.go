@@ -209,7 +209,7 @@ func (r *repository) setReadFlag(ctx context.Context, chatObjectId string, msgId
 			// skip tree root
 			continue
 		}
-		res, err := r.collection.UpdateId(ctx, id, readModifier(handler.getReadKey(), value))
+		res, err := r.collection.UpdateId(ctx, id, handler.readModifier(value))
 		// Not all changes are messages, skip them
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			continue
