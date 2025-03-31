@@ -88,7 +88,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.Acc
 		v1.GET("/spaces/:space_id", space.GetSpaceHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members", space.GetMembersHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members/:member_id", space.GetMemberHandler(s.spaceService))
-		v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond), space.UpdateMemberHandler(s.spaceService))
+		// v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond), space.UpdateMemberHandler(s.spaceService))
 		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
 
 		// Type
