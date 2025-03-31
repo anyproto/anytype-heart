@@ -10,6 +10,7 @@
   "lastModifiedDate",
   "lastModifiedBy",
   "lastOpenedDate",
+  "guestKey",
   "isFavorite",
   "isArchived",
   "workspaceId",

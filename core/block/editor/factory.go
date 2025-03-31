@@ -178,7 +178,8 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption,
-		coresb.SmartBlockTypeChatObject:
+		coresb.SmartBlockTypeChatObject,
+		coresb.SmartBlockTypeEphemeralVirtualObject:
 		return f.newPage(space.Id(), sb), nil
 	case coresb.SmartBlockTypeObjectType:
 		return f.newObjectType(space.Id(), sb), nil

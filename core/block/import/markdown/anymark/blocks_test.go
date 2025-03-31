@@ -27,7 +27,7 @@ func TestConvertBlocks(t *testing.T) {
 }
 
 func TestPreprocessBlocksEmpty(t *testing.T) {
-	blocks := preprocessBlocks([]*model.Block{})
+	blocks, _ := preprocessBlocks([]*model.Block{})
 	assert.Empty(t, blocks)
 }
 
@@ -44,8 +44,10 @@ func TestPreprocessBlocksOneCodeBlock(t *testing.T) {
 			},
 		},
 	}
-	blocks := preprocessBlocks([]*model.Block{bl})
+	blocks, rootIds := preprocessBlocks([]*model.Block{bl})
 	assert.Len(t, blocks, 1)
+	assert.Len(t, rootIds, 1)
+	assert.Equal(t, rootIds[0], bl.Id)
 	assert.Equal(t, blocks[0].Id, bl.Id)
 }
 
@@ -74,7 +76,7 @@ func TestPreprocessBlocksTwoDifferentCodeBlocks(t *testing.T) {
 			},
 		},
 	}
-	blocks := preprocessBlocks([]*model.Block{bl, bl2})
+	blocks, _ := preprocessBlocks([]*model.Block{bl, bl2})
 	assert.Len(t, blocks, 2)
 	assert.Equal(t, blocks[0].Id, bl.Id)
 	assert.Equal(t, blocks[1].Id, bl2.Id)
@@ -119,7 +121,7 @@ func TestPreprocessBlocksThreeCodeBlock(t *testing.T) {
 			},
 		},
 	}
-	blocks := preprocessBlocks([]*model.Block{bl, bl2, bl3})
+	blocks, _ := preprocessBlocks([]*model.Block{bl, bl2, bl3})
 	assert.Len(t, blocks, 2)
 
 	assert.Equal(t, blocks[0].Id, bl.Id)
