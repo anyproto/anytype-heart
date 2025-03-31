@@ -96,7 +96,7 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	}
 	widgetObjectId := space.DerivedIDs().Widgets
 	spaceIndex := s.objectStore.SpaceIndex(space.Id())
-	widgetDetails, err := s.objectStore.SpaceIndex(space.Id()).GetDetails(widgetObjectId)
+	widgetDetails, err := spaceIndex.GetDetails(widgetObjectId)
 	if err == nil {
 		keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 		if slices.Contains(keys, typeId) {
@@ -105,7 +105,7 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 		}
 	}
 	// this is not optimal, maybe it should be some cheaper way
-	records, err := s.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+	records, err := spaceIndex.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterEq{
 			Key:   bundle.RelationKeyType,
 			Cond:  model.BlockContentDataviewFilter_Equal,
@@ -141,5 +141,4 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
 		return w.AddAutoWidget(st, typeId, key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View, targetName)
 	})
-	return err
 }
