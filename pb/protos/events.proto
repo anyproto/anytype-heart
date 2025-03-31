@@ -136,7 +136,6 @@ message Event {
         message Delete {
             string id = 1;
             repeated string subIds = 2;
-            model.ChatState state = 3; // Chat state. dbState should be persisted after rendered
         }
         message Update {
             string id = 1;

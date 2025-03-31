@@ -175,6 +175,17 @@ func (s *storeObject) onUpdate() {
 	s.subscription.flush()
 }
 
+func (s *storeObject) GetMessageById(ctx context.Context, id string) (*Message, error) {
+	messages, err := s.GetMessagesByIds(ctx, []string{id})
+	if err != nil {
+		return nil, err
+	}
+	if len(messages) == 0 {
+		return nil, fmt.Errorf("message not found")
+	}
+	return messages[0], nil
+}
+
 func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error) {
 	return s.repository.getMessagesByIds(ctx, messageIds)
 }

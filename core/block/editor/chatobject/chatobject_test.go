@@ -399,6 +399,7 @@ func TestReadMessages(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)
 	fx.chatHandler.forceNotRead = true
+
 	const n = 10
 	for i := 0; i < n; i++ {
 		_, err := fx.AddMessage(ctx, nil, givenSimpleMessage(fmt.Sprintf("message %d", i+1)))

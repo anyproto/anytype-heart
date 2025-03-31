@@ -7,6 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestSubscription(t *testing.T) {
@@ -28,6 +31,8 @@ func TestSubscription(t *testing.T) {
 		assert.Equal(t, wantTexts[i], msg.Message.Text)
 	}
 
+	lastOrderId := resp.Messages[len(resp.Messages)-1].OrderId
+	var lastDatabaseTimestamp int64
 	t.Run("add message", func(t *testing.T) {
 		fx.events = nil
 
@@ -35,13 +40,40 @@ func TestSubscription(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, fx.events, 2)
 
-		ev := fx.events[0].GetChatAdd()
-		require.NotNil(t, ev)
-		assert.Equal(t, messageId, ev.Id)
+		message, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
 
-		evState := fx.events[1].GetChatStateUpdate()
-		require.NotNil(t, evState)
-		assert.True(t, evState.State.DbTimestamp > 0)
+		lastDatabaseTimestamp = message.AddedAt
+
+		wantEvents := []*pb.EventMessage{
+			{
+				SpaceId: testSpaceId,
+				Value: &pb.EventMessageValueOfChatAdd{
+					ChatAdd: &pb.EventChatAdd{
+						Id:           message.Id,
+						OrderId:      message.OrderId,
+						AfterOrderId: lastOrderId,
+						Message:      message.ChatMessage,
+						SubIds:       []string{"subId"},
+						Dependencies: nil,
+					},
+				},
+			},
+			{
+				SpaceId: testSpaceId,
+				Value: &pb.EventMessageValueOfChatStateUpdate{
+					ChatStateUpdate: &pb.EventChatUpdateState{
+						State: &model.ChatState{
+							Messages:    &model.ChatStateUnreadState{},
+							Mentions:    &model.ChatStateUnreadState{},
+							DbTimestamp: message.AddedAt,
+						},
+						SubIds: []string{"subId"},
+					},
+				},
+			},
+		}
+		assert.Equal(t, wantEvents, fx.events)
 	})
 
 	t.Run("edit message", func(t *testing.T) {
@@ -54,10 +86,22 @@ func TestSubscription(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 
-		ev := fx.events[0].GetChatUpdate()
-		require.NotNil(t, ev)
-		assert.Equal(t, resp.Messages[0].Id, ev.Id)
-		assert.Equal(t, edited.Message.Text, ev.Message.Message.Text)
+		message, err := fx.GetMessageById(ctx, resp.Messages[0].Id)
+		require.NoError(t, err)
+
+		wantEvents := []*pb.EventMessage{
+			{
+				SpaceId: testSpaceId,
+				Value: &pb.EventMessageValueOfChatUpdate{
+					ChatUpdate: &pb.EventChatUpdate{
+						Id:      resp.Messages[0].Id,
+						Message: message.ChatMessage,
+						SubIds:  []string{"subId"},
+					},
+				},
+			},
+		}
+		assert.Equal(t, wantEvents, fx.events)
 	})
 
 	t.Run("toggle message reaction", func(t *testing.T) {
@@ -67,11 +111,31 @@ func TestSubscription(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 
-		ev := fx.events[0].GetChatUpdateReactions()
-		require.NotNil(t, ev)
-		assert.Equal(t, resp.Messages[0].Id, ev.Id)
-		_, ok := ev.Reactions.Reactions["👍"]
-		assert.True(t, ok)
+		wantEvents := []*pb.EventMessage{
+			{
+				SpaceId: testSpaceId,
+				Value: &pb.EventMessageValueOfChatUpdateReactions{
+					ChatUpdateReactions: &pb.EventChatUpdateReactions{
+						Id: resp.Messages[0].Id,
+						Reactions: &model.ChatMessageReactions{
+							Reactions: map[string]*model.ChatMessageReactionsIdentityList{
+								"👍": {
+									Ids: []string{testCreator},
+								},
+								"🥰": {
+									Ids: []string{"identity1", "identity2"},
+								},
+								"🤔": {
+									Ids: []string{"identity3"},
+								},
+							},
+						},
+						SubIds: []string{"subId"},
+					},
+				},
+			},
+		}
+		assert.Equal(t, wantEvents, fx.events)
 	})
 
 	t.Run("delete message", func(t *testing.T) {
@@ -81,12 +145,164 @@ func TestSubscription(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, fx.events, 2)
 
-		ev := fx.events[0].GetChatDelete()
-		require.NotNil(t, ev)
-		assert.Equal(t, resp.Messages[0].Id, ev.Id)
-
-		evState := fx.events[1].GetChatStateUpdate()
-		require.NotNil(t, evState)
-		assert.True(t, evState.State.DbTimestamp > 0)
+		wantEvents := []*pb.EventMessage{
+			{
+				SpaceId: testSpaceId,
+				Value: &pb.EventMessageValueOfChatDelete{
+					ChatDelete: &pb.EventChatDelete{
+						Id:     resp.Messages[0].Id,
+						SubIds: []string{"subId"},
+					},
+				},
+			},
+			{
+				SpaceId: testSpaceId,
+				Value: &pb.EventMessageValueOfChatStateUpdate{
+					ChatStateUpdate: &pb.EventChatUpdateState{
+						State: &model.ChatState{
+							Messages:    &model.ChatStateUnreadState{},
+							Mentions:    &model.ChatStateUnreadState{},
+							DbTimestamp: lastDatabaseTimestamp,
+						},
+						SubIds: []string{"subId"},
+					},
+				},
+			},
+		}
+		assert.Equal(t, wantEvents, fx.events)
 	})
+}
+
+func TestSubscriptionMessageCounters(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	fx.chatHandler.forceNotRead = true
+
+	subscribeResp, err := fx.SubscribeLastMessages(ctx, "subId", 10, false)
+	require.NoError(t, err)
+
+	assert.Empty(t, subscribeResp.Messages)
+	assert.Equal(t, &model.ChatState{
+		Messages:    &model.ChatStateUnreadState{},
+		Mentions:    &model.ChatStateUnreadState{},
+		DbTimestamp: 0,
+	}, subscribeResp.ChatState)
+
+	// Add first message
+	firstMessageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("first"))
+	require.NoError(t, err)
+	firstMessage, err := fx.GetMessageById(ctx, firstMessageId)
+	require.NoError(t, err)
+
+	wantEvents := []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatAdd{
+				ChatAdd: &pb.EventChatAdd{
+					Id:           firstMessage.Id,
+					OrderId:      firstMessage.OrderId,
+					AfterOrderId: "",
+					Message:      firstMessage.ChatMessage,
+					SubIds:       []string{"subId"},
+					Dependencies: nil,
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages: &model.ChatStateUnreadState{
+							Counter:       1,
+							OldestOrderId: firstMessage.OrderId,
+						},
+						Mentions:    &model.ChatStateUnreadState{},
+						DbTimestamp: firstMessage.AddedAt,
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, wantEvents, fx.events)
+	fx.events = nil
+
+	secondMessageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("second"))
+	require.NoError(t, err)
+
+	secondMessage, err := fx.GetMessageById(ctx, secondMessageId)
+	require.NoError(t, err)
+
+	wantEvents = []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatAdd{
+				ChatAdd: &pb.EventChatAdd{
+					Id:           secondMessage.Id,
+					OrderId:      secondMessage.OrderId,
+					AfterOrderId: firstMessage.OrderId,
+					Message:      secondMessage.ChatMessage,
+					SubIds:       []string{"subId"},
+					Dependencies: nil,
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages: &model.ChatStateUnreadState{
+							Counter:       2,
+							OldestOrderId: firstMessage.OrderId,
+						},
+						Mentions:    &model.ChatStateUnreadState{},
+						DbTimestamp: secondMessage.AddedAt,
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+	}
+	assert.Equal(t, wantEvents, fx.events)
+
+	// Read first message
+
+	fx.events = nil
+
+	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.AddedAt, CounterTypeMessage)
+	require.NoError(t, err)
+
+	wantEvents = []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateMessageReadStatus{
+				ChatUpdateMessageReadStatus: &pb.EventChatUpdateMessageReadStatus{
+					SubIds: []string{"subId"},
+					Ids:    []string{firstMessageId},
+					IsRead: true,
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages: &model.ChatStateUnreadState{
+							Counter:       1,
+							OldestOrderId: secondMessage.OrderId,
+						},
+						Mentions:    &model.ChatStateUnreadState{},
+						DbTimestamp: secondMessage.AddedAt,
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, wantEvents, fx.events)
 }
