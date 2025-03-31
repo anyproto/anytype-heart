@@ -20,7 +20,7 @@ const (
 	DefaultWidgetRecent     = "recent"
 	DefaultWidgetCollection = "collection"
 	DefaultWidgetBin        = "bin"
-	DefaultWidgetAll        = "allObject"
+	DefaultWidgetAll        = "allObjects"
 	DefaultWidgetRecentOpen = "recentOpen"
 	autoWidgetBlockSuffix   = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
 )
