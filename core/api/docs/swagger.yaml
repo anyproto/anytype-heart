@@ -687,24 +687,6 @@ components:
         space:
           $ref: '#/components/schemas/space.Space'
       type: object
-    space.UpdateMemberRequest:
-      properties:
-        role:
-          description: Role to assign if approving a joining member
-          enum:
-          - viewer
-          - editor
-          example: viewer
-          type: string
-        status:
-          description: Status of the member
-          enum:
-          - active
-          - removed
-          - declined
-          example: active
-          type: string
-      type: object
     util.ForbiddenError:
       properties:
         error:
@@ -1471,69 +1453,6 @@ paths:
       security:
       - bearerauth: []
       summary: Get member
-      tags:
-      - members
-    patch:
-      description: Modifies a member's status and role in a space. Use this endpoint
-        to approve a joining member by setting the status to `active` and specifying
-        a role (`reader` or `writer`), reject a joining member by setting the status
-        to `declined`, remove a member by setting the status to `removed`, or update
-        an active member's role. This endpoint enables fine-grained control over member
-        access and permissions.
-      parameters:
-      - description: Space ID
-        in: path
-        name: space_id
-        required: true
-        schema:
-          type: string
-      - description: Member ID
-        in: path
-        name: member_id
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/space.UpdateMemberRequest'
-        description: Member to update
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/space.MemberResponse'
-          description: Member updated successfully
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ValidationError'
-          description: Bad request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
-          description: Unauthorized
-        "404":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.NotFoundError'
-          description: Member not found
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ServerError'
-          description: Internal server error
-      security:
-      - bearerauth: []
-      summary: Update member
       tags:
       - members
   /spaces/{space_id}/objects:
