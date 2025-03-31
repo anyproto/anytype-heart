@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
@@ -56,6 +57,7 @@ func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migra
 	return migration.Migration{
 		Version: 2,
 		Proc: func(st *state.State) {
+			// we purposefully do not add the ALl Objects widget here(as in migration3), because for new users we don't want to auto-create it
 			template.InitTemplate(st,
 				template.WithEmpty,
 				template.WithObjectTypes([]domain.TypeKey{bundle.TypeKeyDashboard}),
@@ -110,6 +112,28 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 				replaceWidgetTarget(s, widget.DefaultWidgetCollection, collectionTypeId, addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
 				replaceWidgetTarget(s, widget.DefaultWidgetSet, setTypeId, addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
 
+			},
+		},
+		{
+			Version: 3,
+			Proc: func(s *state.State) {
+				// add All Objects widget for existing spaces
+				_, err := w.CreateBlock(s, &pb.RpcBlockCreateWidgetRequest{
+					ContextId:    s.RootId(),
+					WidgetLayout: model.BlockContentWidget_Link,
+					Position:     model.Block_InnerFirst,
+					TargetId:     s.RootId(),
+					ViewId:       "",
+					Block: &model.Block{
+						Id: "allObjects",
+						Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+							TargetBlockId: widget.DefaultWidgetAll,
+						}},
+					},
+				})
+				if err != nil {
+					log.Warnf("all objects migration failed: %s", err.Error())
+				}
 			},
 		},
 	},
