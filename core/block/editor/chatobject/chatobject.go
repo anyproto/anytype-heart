@@ -2,14 +2,11 @@ package chatobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/slice"
 	"golang.org/x/exp/slices"
@@ -75,7 +72,6 @@ type storeObject struct {
 	locker smartblock.Locker
 
 	seenHeadsCollector seenHeadsCollector
-	collection         anystore.Collection
 	accountService     AccountService
 	storeSource        source.Store
 	store              *storestate.StoreState
@@ -112,20 +108,20 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
-	var err error
-	s.collection, err = s.crdtDb.Collection(ctx.Ctx, storeSource.Id()+collectionName)
+	collection, err := s.crdtDb.Collection(ctx.Ctx, storeSource.Id()+collectionName)
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
 
-	repo := &repository{
-		collection: s.collection,
+	s.repository = &repository{
+		collection: collection,
+		arenaPool:  s.arenaPool,
 	}
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
 	s.subscription = newSubscription(
 		domain.FullID{ObjectID: ctx.Source.Id(), SpaceID: ctx.Source.SpaceID()},
-		myParticipantId, s.eventSender, s.spaceIndex, repo,
+		myParticipantId, s.eventSender, s.spaceIndex, s.repository,
 	)
 
 	messagesOpts := newReadHandler(CounterTypeMessage, s.subscription)
@@ -146,11 +142,11 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.storeSource = storeSource
 
 	s.chatHandler = &ChatHandler{
-		repository:      repo,
+		repository:      s.repository,
 		subscription:    s.subscription,
 		currentIdentity: s.accountService.AccountID(),
 		myParticipantId: myParticipantId,
-		forceNotRead:    true,
+		// forceNotRead:    true,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler)
@@ -181,26 +177,7 @@ func (s *storeObject) onUpdate() {
 }
 
 func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error) {
-	txn, err := s.collection.ReadTx(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("start read tx: %w", err)
-	}
-	messages := make([]*Message, 0, len(messageIds))
-	for _, messageId := range messageIds {
-		obj, err := s.collection.FindId(txn.Context(), messageId)
-		if errors.Is(err, anystore.ErrDocNotFound) {
-			continue
-		}
-		if err != nil {
-			return nil, errors.Join(txn.Commit(), fmt.Errorf("find id: %w", err))
-		}
-		msg, err := unmarshalMessage(obj.Value())
-		if err != nil {
-			return nil, errors.Join(txn.Commit(), fmt.Errorf("unmarshal message: %w", err))
-		}
-		messages = append(messages, msg)
-	}
-	return messages, txn.Commit()
+	return s.repository.getMessagesByIds(ctx, messageIds)
 }
 
 type GetMessagesResponse struct {
@@ -209,64 +186,14 @@ type GetMessagesResponse struct {
 }
 
 func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (*GetMessagesResponse, error) {
-	var qry anystore.Query
-	if req.AfterOrderId != "" {
-		operator := query.CompOpGt
-		if req.IncludeBoundary {
-			operator = query.CompOpGte
-		}
-		qry = s.collection.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(operator, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
-	} else if req.BeforeOrderId != "" {
-		operator := query.CompOpLt
-		if req.IncludeBoundary {
-			operator = query.CompOpLte
-		}
-		qry = s.collection.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(operator, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
-	} else {
-		qry = s.collection.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
-	}
-
-	msgs, err := s.queryMessages(ctx, qry)
+	msgs, err := s.repository.getMessages(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("query messages: %w", err)
+		return nil, err
 	}
-	sort.Slice(msgs, func(i, j int) bool {
-		return msgs[i].OrderId < msgs[j].OrderId
-	})
-
 	return &GetMessagesResponse{
 		Messages:  msgs,
 		ChatState: s.subscription.getChatState(),
 	}, nil
-}
-
-func (s *storeObject) queryMessages(ctx context.Context, query anystore.Query) ([]*Message, error) {
-	arena := s.arenaPool.Get()
-	defer func() {
-		arena.Reset()
-		s.arenaPool.Put(arena)
-	}()
-
-	iter, err := query.Iter(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("find iter: %w", err)
-	}
-	defer iter.Close()
-
-	var res []*Message
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return nil, fmt.Errorf("get doc: %w", err)
-		}
-
-		msg, err := unmarshalMessage(doc.Value())
-		if err != nil {
-			return nil, fmt.Errorf("unmarshal message: %w", err)
-		}
-		res = append(res, msg)
-	}
-	return res, nil
 }
 
 func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *Message) (string, error) {
@@ -345,7 +272,7 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 		s.arenaPool.Put(arena)
 	}()
 
-	hasReaction, err := s.hasMyReaction(ctx, arena, messageId, emoji)
+	hasReaction, err := s.repository.hasMyReaction(ctx, s.accountService.AccountID(), messageId, emoji)
 	if err != nil {
 		return fmt.Errorf("check reaction: %w", err)
 	}
@@ -375,46 +302,22 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 	return nil
 }
 
-func (s *storeObject) hasMyReaction(ctx context.Context, arena *anyenc.Arena, messageId string, emoji string) (bool, error) {
-	doc, err := s.collection.FindId(ctx, messageId)
-	if err != nil {
-		return false, fmt.Errorf("find message: %w", err)
-	}
-
-	myIdentity := s.accountService.AccountID()
-	msg, err := unmarshalMessage(doc.Value())
-	if err != nil {
-		return false, fmt.Errorf("unmarshal message: %w", err)
-	}
-	if v, ok := msg.GetReactions().GetReactions()[emoji]; ok {
-		if slices.Contains(v.GetIds(), myIdentity) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 type SubscribeLastMessagesResponse struct {
 	Messages  []*Message
 	ChatState *model.ChatState
 }
 
 func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) (*SubscribeLastMessagesResponse, error) {
-	txn, err := s.store.NewTx(ctx)
+	txn, err := s.repository.readTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("init read transaction: %w", err)
 	}
 	defer txn.Commit()
 
-	query := s.collection.Find(nil).Sort(descOrder).Limit(uint(limit))
-	messages, err := s.queryMessages(txn.Context(), query)
+	messages, err := s.repository.getLastMessages(txn.Context(), uint(limit))
 	if err != nil {
 		return nil, fmt.Errorf("query messages: %w", err)
 	}
-	// reverse
-	sort.Slice(messages, func(i, j int) bool {
-		return messages[i].OrderId < messages[j].OrderId
-	})
 
 	s.subscription.subscribe(subId)
 

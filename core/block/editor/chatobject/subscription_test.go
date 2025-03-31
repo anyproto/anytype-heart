@@ -79,7 +79,7 @@ func TestSubscription(t *testing.T) {
 
 		err = fx.DeleteMessage(ctx, resp.Messages[0].Id)
 		require.NoError(t, err)
-		require.Len(t, fx.events, 1)
+		require.Len(t, fx.events, 2)
 
 		ev := fx.events[0].GetChatDelete()
 		require.NotNil(t, ev)
