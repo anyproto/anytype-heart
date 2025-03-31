@@ -93,15 +93,14 @@ type DocumentMatch struct {
 }
 
 type ftSearch struct {
-	rootPath    string
-	ftsPath     string
-	builderId   string
-	index       *tantivy.TantivyContext
-	parserPool  *fastjson.ParserPool
-	mu          sync.Mutex
-	blevePath   string
-	lang        tantivy.Language
-	statService debugstat.StatService
+	rootPath   string
+	ftsPath    string
+	builderId  string
+	index      *tantivy.TantivyContext
+	parserPool *fastjson.ParserPool
+	mu         sync.Mutex
+	blevePath  string
+	lang       tantivy.Language
 }
 
 func (f *ftSearch) ProvideStat() any {
@@ -153,11 +152,10 @@ func (f *ftSearch) DeleteObject(objectId string) error {
 
 func (f *ftSearch) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
-	f.statService, _ = app.GetComponent[debugstat.StatService](a)
-	if f.statService == nil {
-		f.statService = debugstat.NewNoOp()
+	statService, _ := app.GetComponent[debugstat.StatService](a)
+	if statService != nil {
+		statService.AddProvider(f)
 	}
-	f.statService.AddProvider(f)
 	f.lang = validateLanguage(app.MustComponent[wallet.Wallet](a).FtsPrimaryLang())
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.blevePath = filepath.Join(repoPath, ftsDir)

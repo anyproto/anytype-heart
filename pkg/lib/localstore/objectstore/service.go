@@ -113,7 +113,6 @@ type dsObjectStore struct {
 	sourceService       spaceindex.SourceDetailsFromID
 	oldStore            oldstore.Service
 	techSpaceIdProvider TechSpaceIdProvider
-	statService         debugstat.StatService
 
 	sync.Mutex
 	spaceIndexes        map[string]spaceindex.Store
@@ -184,11 +183,10 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.setDefaultConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
-	s.statService, _ = app.GetComponent[debugstat.StatService](a)
-	if s.statService == nil {
-		s.statService = debugstat.NewNoOp()
+	statService, _ := app.GetComponent[debugstat.StatService](a)
+	if statService != nil {
+		statService.AddProvider(s)
 	}
-	s.statService.AddProvider(s)
 
 	return nil
 }
