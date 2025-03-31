@@ -192,6 +192,30 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	assert.Equal(t, "", docs[0].Title)
 }
 
+func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
+	indexerFx := NewIndexerFixture(t)
+	smartTest := smarttest.New("objectId1")
+	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyPluralName.String(),
+		Format: model.RelationFormat_shorttext,
+	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyPluralName: domain.String("Plural title Text"),
+	}))
+	smartTest.Doc.(*state.State).SetLocalDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyResolvedLayout: domain.Int64(0),
+	}))
+	smartTest.Doc.Layout()
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	assert.NoError(t, err)
+	assert.Len(t, docs, 1)
+	assert.Equal(t, "objectId1/r/pluralName", docs[0].Id)
+	assert.Equal(t, "", docs[0].Text)
+	assert.Equal(t, "Plural title Text", docs[0].Title)
+}
+
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	indexerFx := NewIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
