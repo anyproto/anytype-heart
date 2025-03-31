@@ -267,6 +267,9 @@ func (s *service) createFavoriteWidget(spc clientspace.Space) error {
 	if err != nil {
 		return fmt.Errorf("get widget details: %w", err)
 	}
+	if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
+		return nil
+	}
 	targetIds := widgetDetails.GetStringList(bundle.RelationKeyAutoWidgetTargets)
 	if slices.Contains(targetIds, widget.DefaultWidgetFavorite) {
 		return nil

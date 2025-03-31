@@ -98,6 +98,9 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	spaceIndex := s.objectStore.SpaceIndex(space.Id())
 	widgetDetails, err := spaceIndex.GetDetails(widgetObjectId)
 	if err == nil {
+		if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
+			return nil
+		}
 		keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 		if slices.Contains(keys, typeId) {
 			// widget was created before
