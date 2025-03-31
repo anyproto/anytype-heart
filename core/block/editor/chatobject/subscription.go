@@ -1,9 +1,13 @@
 package chatobject
 
 import (
+	"context"
+	"fmt"
+	"os"
 	"slices"
 	"time"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/zap"
 
@@ -21,21 +25,25 @@ const LastMessageSubscriptionId = "lastMessage"
 type subscription struct {
 	spaceId         string
 	chatId          string
-	eventSender     event.Sender
-	spaceIndex      spaceindex.Store
 	myParticipantId string
 
 	sessionContext session.Context
+	eventsBuffer   []*pb.EventMessage
 
-	eventsBuffer  []*pb.EventMessage
 	identityCache *expirable.LRU[string, *domain.Details]
 	ids           []string
 
 	chatState        *model.ChatState
+	needReloadState  bool
 	chatStateUpdated bool
+
+	// Deps
+	spaceIndex  spaceindex.Store
+	eventSender event.Sender
+	repository  *repository
 }
 
-func newSubscription(fullId domain.FullID, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store) *subscription {
+func newSubscription(fullId domain.FullID, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store, repo *repository) *subscription {
 	return &subscription{
 		spaceId:         fullId.SpaceID,
 		chatId:          fullId.ObjectID,
@@ -43,6 +51,7 @@ func newSubscription(fullId domain.FullID, myParticipantId string, eventSender e
 		spaceIndex:      spaceIndex,
 		myParticipantId: myParticipantId,
 		identityCache:   expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
+		repository:      repo,
 	}
 }
 
@@ -73,6 +82,15 @@ func (s *subscription) setSessionContext(ctx session.Context) {
 	s.sessionContext = ctx
 }
 
+func (s *subscription) loadChatState(ctx context.Context) error {
+	state, err := s.repository.loadChatState(ctx)
+	if err != nil {
+		return err
+	}
+	s.chatState = state
+	return nil
+}
+
 func (s *subscription) getChatState() *model.ChatState {
 	return copyChatState(s.chatState)
 }
@@ -82,9 +100,23 @@ func (s *subscription) updateChatState(updater func(*model.ChatState)) {
 	s.chatStateUpdated = true
 }
 
+// flush is called after commiting changes
 func (s *subscription) flush() {
 	if !s.canSend() {
 		return
+	}
+
+	// Reload ChatState after commit
+	if s.needReloadState {
+		s.updateChatState(func(state *model.ChatState) {
+			newState, err := s.repository.loadChatState(context.TODO())
+			if err != nil {
+				log.Error("failed to reload chat state", zap.Error(err))
+				return
+			}
+			*state = *newState
+		})
+		s.needReloadState = false
 	}
 
 	events := slices.Clone(s.eventsBuffer)
@@ -102,6 +134,10 @@ func (s *subscription) flush() {
 		ContextId: s.chatId,
 		Messages:  events,
 	}
+
+	fmt.Println("event")
+	m := &jsonpb.Marshaler{}
+	m.Marshal(os.Stdout, ev)
 
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, events)
@@ -191,6 +227,9 @@ func (s *subscription) delete(messageId string) {
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatDelete{
 		ChatDelete: ev,
 	}))
+
+	// We can't reload chat state here because Delete operation hasn't been commited yet
+	s.needReloadState = true
 }
 
 func (s *subscription) updateFull(message *Message) {

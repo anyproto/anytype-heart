@@ -17,7 +17,7 @@ import (
 )
 
 type ChatHandler struct {
-	collection      anystore.Collection
+	repository      *repository
 	subscription    *subscription
 	currentIdentity string
 	myParticipantId string
@@ -40,7 +40,6 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 	if iErr != nil && !errors.Is(iErr, anystore.ErrIndexExists) {
 		return iErr
 	}
-	d.collection = coll
 	return
 }
 
@@ -76,7 +75,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	msg.OrderId = ch.Change.Order
 
-	prevOrderId, err := getPrevOrderId(ctx, d.collection, ch.Change.Order)
+	prevOrderId, err := d.repository.getPrevOrderId(ctx, ch.Change.Order)
 	if err != nil {
 		return fmt.Errorf("get prev order id: %w", err)
 	}
@@ -114,6 +113,7 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	}
 
 	d.subscription.delete(messageId)
+
 	return storestate.DeleteModeDelete, nil
 }
 

@@ -84,6 +84,7 @@ type storeObject struct {
 	crdtDb             anystore.DB
 	spaceIndex         spaceindex.Store
 	chatHandler        *ChatHandler
+	repository         *repository
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -111,11 +112,20 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
+	var err error
+	s.collection, err = s.crdtDb.Collection(ctx.Ctx, storeSource.Id()+collectionName)
+	if err != nil {
+		return fmt.Errorf("get collection: %w", err)
+	}
+
+	repo := &repository{
+		collection: s.collection,
+	}
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
 	s.subscription = newSubscription(
 		domain.FullID{ObjectID: ctx.Source.Id(), SpaceID: ctx.Source.SpaceID()},
-		myParticipantId, s.eventSender, s.spaceIndex,
+		myParticipantId, s.eventSender, s.spaceIndex, repo,
 	)
 
 	messagesOpts := newReadHandler(CounterTypeMessage, s.subscription)
@@ -129,16 +139,18 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		s.markReadMessages(removed, mentionsOpts)
 	})
 
-	err := s.SmartBlock.Init(ctx)
+	err = s.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
 	}
 	s.storeSource = storeSource
 
 	s.chatHandler = &ChatHandler{
+		repository:      repo,
 		subscription:    s.subscription,
 		currentIdentity: s.accountService.AccountID(),
 		myParticipantId: myParticipantId,
+		forceNotRead:    true,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler)
@@ -146,12 +158,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("create state store: %w", err)
 	}
 	s.store = stateStore
-	s.collection, err = s.store.Collection(s.componentCtx, collectionName)
-	if err != nil {
-		return fmt.Errorf("get collection: %w", err)
-	}
 
-	s.subscription.chatState, err = s.initialChatState()
+	err = s.subscription.loadChatState(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("init chat state: %w", err)
 	}
@@ -413,7 +421,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 	if asyncInit {
 		var previousOrderId string
 		if len(messages) > 0 {
-			previousOrderId, err = getPrevOrderId(txn.Context(), s.collection, messages[0].OrderId)
+			previousOrderId, err = s.repository.getPrevOrderId(txn.Context(), messages[0].OrderId)
 			if err != nil {
 				return nil, fmt.Errorf("get previous order id: %w", err)
 			}
@@ -433,28 +441,6 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 			ChatState: s.subscription.getChatState(),
 		}, nil
 	}
-}
-
-func getPrevOrderId(ctx context.Context, coll anystore.Collection, orderId string) (string, error) {
-	iter, err := coll.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, orderId)}).
-		Sort(descOrder).
-		Limit(1).
-		Iter(ctx)
-	if err != nil {
-		return "", fmt.Errorf("init iterator: %w", err)
-	}
-	defer iter.Close()
-
-	if iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return "", fmt.Errorf("read doc: %w", err)
-		}
-		prevOrderId := doc.Value().GetString(orderKey, "id")
-		return prevOrderId, nil
-	}
-
-	return "", nil
 }
 
 func (s *storeObject) Unsubscribe(subId string) error {
