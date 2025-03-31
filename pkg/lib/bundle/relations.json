@@ -1518,7 +1518,7 @@
     "source": "details"
   },
   {
-    "format": "bool",
+    "format": "checkbox",
     "hidden": true,
     "key": "autoWidgetDisabled",
     "maxCount": 0,
