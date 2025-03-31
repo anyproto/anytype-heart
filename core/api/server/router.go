@@ -7,16 +7,16 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
 	"github.com/anyproto/anytype-heart/core/api/internal/export"
+	"github.com/anyproto/anytype-heart/core/api/internal/list"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
-	"github.com/anyproto/anytype-heart/pb/service"
 )
 
 const (
@@ -28,7 +28,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(accountService account.Service, mw service.ClientCommandsServer) *gin.Engine {
+func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.AccountService) *gin.Engine {
 	debug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
@@ -36,6 +36,7 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(s.ensureMetadataHeader())
 
 	if debug {
 		router.Use(gin.Logger())
@@ -64,7 +65,13 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 	v1.Use(s.ensureAccountInfo(accountService))
 	{
 		// Export
-		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", export.GetObjectExportHandler(s.exportService))
+		v1.GET("/spaces/:space_id/objects/:object_id/:format", export.GetObjectExportHandler(s.exportService))
+
+		// List
+		v1.GET("/spaces/:space_id/lists/:list_id/views", list.GetListViewsHandler(s.listService))
+		v1.GET("/spaces/:space_id/lists/:list_id/:view_id/objects", list.GetObjectsInListHandler(s.listService))
+		v1.POST("/spaces/:space_id/lists/:list_id/objects", list.AddObjectsToListHandler(s.listService))
+		v1.DELETE("/spaces/:space_id/lists/:list_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), list.RemoveObjectFromListHandler(s.listService))
 
 		// Object
 		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
@@ -78,7 +85,10 @@ func (s *Server) NewRouter(accountService account.Service, mw service.ClientComm
 
 		// Space
 		v1.GET("/spaces", space.GetSpacesHandler(s.spaceService))
+		v1.GET("/spaces/:space_id", space.GetSpaceHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members", space.GetMembersHandler(s.spaceService))
+		v1.GET("/spaces/:space_id/members/:member_id", space.GetMemberHandler(s.spaceService))
+		// v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond), space.UpdateMemberHandler(s.spaceService))
 		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
 
 		// Type
