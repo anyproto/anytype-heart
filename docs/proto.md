@@ -19049,7 +19049,7 @@ Available undo/redo operations
 | spaceId | [string](#string) |  |  |
 | objectId | [string](#string) |  |  |
 | uri | [string](#string) |  |  |
-| includeSpaceInfo | [bool](#bool) |  |  |
+| joinSpace | [bool](#bool) |  |  |
 
 
 
