@@ -310,6 +310,149 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 	assert.Equal(t, wantEvents, fx.events)
 }
 
+func TestSubscriptionMentionCounters(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	fx.chatHandler.forceNotRead = true
+
+	subscribeResp, err := fx.SubscribeLastMessages(ctx, "subId", 10, false)
+	require.NoError(t, err)
+
+	assert.Empty(t, subscribeResp.Messages)
+	assert.Equal(t, &model.ChatState{
+		Messages:    &model.ChatStateUnreadState{},
+		Mentions:    &model.ChatStateUnreadState{},
+		DbTimestamp: 0,
+	}, subscribeResp.ChatState)
+
+	// Add first message
+	firstMessageId, err := fx.AddMessage(ctx, nil, givenMessageWithMention("first"))
+	require.NoError(t, err)
+	firstMessage, err := fx.GetMessageById(ctx, firstMessageId)
+	require.NoError(t, err)
+
+	wantEvents := []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatAdd{
+				ChatAdd: &pb.EventChatAdd{
+					Id:           firstMessage.Id,
+					OrderId:      firstMessage.OrderId,
+					AfterOrderId: "",
+					Message:      firstMessage.ChatMessage,
+					SubIds:       []string{"subId"},
+					Dependencies: nil,
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages: &model.ChatStateUnreadState{
+							Counter:       1,
+							OldestOrderId: firstMessage.OrderId,
+						},
+						Mentions: &model.ChatStateUnreadState{
+							Counter:       1,
+							OldestOrderId: firstMessage.OrderId,
+						},
+						DbTimestamp: firstMessage.AddedAt,
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, wantEvents, fx.events)
+	fx.events = nil
+
+	secondMessageId, err := fx.AddMessage(ctx, nil, givenMessageWithMention("second"))
+	require.NoError(t, err)
+
+	secondMessage, err := fx.GetMessageById(ctx, secondMessageId)
+	require.NoError(t, err)
+
+	wantEvents = []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatAdd{
+				ChatAdd: &pb.EventChatAdd{
+					Id:           secondMessage.Id,
+					OrderId:      secondMessage.OrderId,
+					AfterOrderId: firstMessage.OrderId,
+					Message:      secondMessage.ChatMessage,
+					SubIds:       []string{"subId"},
+					Dependencies: nil,
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages: &model.ChatStateUnreadState{
+							Counter:       2,
+							OldestOrderId: firstMessage.OrderId,
+						},
+						Mentions: &model.ChatStateUnreadState{
+							Counter:       2,
+							OldestOrderId: firstMessage.OrderId,
+						},
+						DbTimestamp: secondMessage.AddedAt,
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+	}
+	assert.Equal(t, wantEvents, fx.events)
+
+	// Read first message
+
+	fx.events = nil
+
+	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.AddedAt, CounterTypeMention)
+	require.NoError(t, err)
+
+	wantEvents = []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateMentionReadStatus{
+				ChatUpdateMentionReadStatus: &pb.EventChatUpdateMentionReadStatus{
+					SubIds: []string{"subId"},
+					Ids:    []string{firstMessageId},
+					IsRead: true,
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages: &model.ChatStateUnreadState{
+							Counter:       2,
+							OldestOrderId: firstMessage.OrderId,
+						},
+						Mentions: &model.ChatStateUnreadState{
+							Counter:       1,
+							OldestOrderId: secondMessage.OrderId,
+						},
+						DbTimestamp: secondMessage.AddedAt,
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, wantEvents, fx.events)
+}
+
 func TestSubscriptionWithDeps(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)
