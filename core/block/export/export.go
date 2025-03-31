@@ -103,7 +103,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
 	e.notificationService = app.MustComponent[notifications.Notifications](a)
-	e.gatewayService = app.MustComponent[gateway.Gateway](a)
+	e.gatewayService, _ = app.GetComponent[gateway.Gateway](a)
 	return
 }
 
@@ -212,8 +212,10 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		setOfList:        make(map[string]struct{}),
 		objectTypes:      make(map[string]struct{}),
 		relations:        make(map[string]struct{}),
-		gatewayUrl:       "http://" + e.gatewayService.Addr(),
 		export:           e,
+	}
+	if e.gatewayService != nil {
+		ec.gatewayUrl = "http://" + e.gatewayService.Addr()
 	}
 	return ec
 }
