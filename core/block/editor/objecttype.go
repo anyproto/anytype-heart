@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/anyproto/any-sync/app/ocache"
 
@@ -233,11 +234,6 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 		return nil
 	}
 
-	oldLayout := getLayoutStateFromParent(info.ParentState)
-
-	forceLayoutUpdate := newLayout.isForceLayoutSet && newLayout.forceLayout || // forceLayout is set to true
-		oldLayout.forceLayout && !(newLayout.isForceLayoutSet && !newLayout.forceLayout) // forceLayout was true and is not unset
-
 	records, err := ot.queryObjectsAndTemplates()
 	if err != nil {
 		return err
@@ -246,6 +242,12 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 	var (
 		resultErr error
 		deriver   = relationIdDeriver{space: ot.Space()}
+		oldLayout = getLayoutStateFromParent(info.ParentState)
+
+		forceLayoutUpdate = newLayout.isForceLayoutSet && newLayout.forceLayout || // forceLayout is set to true
+			oldLayout.forceLayout && !(newLayout.isForceLayoutSet && !newLayout.forceLayout) // forceLayout was true and is not unset
+
+		isConvertFromNote = oldLayout.layout == int64(model.ObjectType_note) && newLayout.layout != int64(model.ObjectType_note)
 	)
 
 	for _, record := range records {
@@ -276,7 +278,7 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 			continue
 		}
 
-		if err = ot.updateResolvedLayout(id, newLayout.layout); err != nil {
+		if err = ot.updateResolvedLayout(id, newLayout.layout, isConvertFromNote); err != nil {
 			resultErr = errors.Join(resultErr, err)
 		}
 	}
@@ -381,7 +383,7 @@ func (ot *ObjectType) queryObjectsAndTemplates() ([]database.Record, error) {
 	return append(records, templates...), nil
 }
 
-func (ot *ObjectType) updateResolvedLayout(id string, layout int64) error {
+func (ot *ObjectType) updateResolvedLayout(id string, layout int64, addName bool) error {
 	spc := ot.Space()
 	err := spc.DoLockedIfNotExists(id, func() error {
 		return ot.spaceIndex.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
@@ -390,6 +392,11 @@ func (ot *ObjectType) updateResolvedLayout(id string, layout int64) error {
 			}
 			if details.GetInt64(bundle.RelationKeyResolvedLayout) == layout {
 				return nil, false, nil
+			}
+			if addName {
+				snippet := details.GetString(bundle.RelationKeySnippet)
+				cutSnippet, _, _ := strings.Cut(snippet, "\n")
+				details.SetString(bundle.RelationKeyName, cutSnippet)
 			}
 			details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 			return details, true, nil

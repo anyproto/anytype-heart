@@ -347,6 +347,52 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		require.True(t, obj2.Details().Has(bundle.RelationKeyFeaturedRelations))
 		assert.Empty(t, obj2.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
 	})
+
+	t.Run("when switching recommended layout from note to other -> name is derived from snippet", func(t *testing.T) {
+		// given
+		fx := newFixture(t, typeId)
+		fx.sb.SetType(coresb.SmartBlockTypeObjectType)
+
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("obj1"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_note),
+				bundle.RelationKeySnippet:        domain.String("Hello\n there"),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj2"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_note),
+				bundle.RelationKeySnippet:        domain.String("Goodbye!"),
+			},
+		})
+
+		fx.space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func() error) error {
+			return f()
+		})
+
+		// when
+		err := fx.syncLayoutForObjectsAndTemplates(makeApplyInfo(typeId,
+			// recommendedLayout is changed: note -> todo
+			layoutState{isLayoutSet: true, layout: int64(model.ObjectType_note)},
+			layoutState{isLayoutSet: true, layout: int64(model.ObjectType_todo)},
+		))
+
+		// then
+		assert.NoError(t, err)
+
+		index := fx.store.SpaceIndex(spaceId)
+		det1, err := index.GetDetails("obj1")
+		require.NoError(t, err)
+		det2, err := index.GetDetails("obj2")
+		require.NoError(t, err)
+
+		assert.Equal(t, int64(model.ObjectType_todo), det1.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, int64(model.ObjectType_todo), det2.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, "Hello", det1.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "Goodbye!", det2.GetString(bundle.RelationKeyName))
+	})
 }
 
 func makeApplyInfo(typeId string, oldLS, newLS layoutState) smartblock.ApplyInfo {

@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -197,7 +198,6 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(isDeleted))
 	}
 
-	sb.injectResolvedLayout(s)
 	sb.injectLinksDetails(s)
 	sb.injectMentions(s)
 	sb.updateBackLinks(s)
@@ -220,13 +220,13 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 	return nil
 }
 
-// injectResolvedLayout adds resolvedLayout to local details of object. It analyzes details of object type
+// resolveLayout adds resolvedLayout to local details of object. It analyzes details of object type
 // - if isEnforcedLayout == true, resolvedLayout must be the same as recommendedLayout of object type
 // - if isEnforcedLayout == false and object has layout detail, resolvedLayout should be the same as layout value
 // - if isEnforcedLayout == false and object has no layout detail set, resolvedLayout should be the same as recommendedLayout of object type
 // - if object is a template, isEnforcedLayout flag should be ignored and priority will be 1. layout 2. recommendedLayout of target type
 // - fallback is current resolvedLayout value. If it is not ok, then basic
-func (sb *smartBlock) injectResolvedLayout(s *state.State) {
+func (sb *smartBlock) resolveLayout(s *state.State) {
 	if s.Details() == nil && s.LocalDetails() == nil {
 		return
 	}
@@ -234,15 +234,23 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 	var (
 		layoutValue  = s.Details().Get(bundle.RelationKeyLayout)
 		currentValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
+		newValue     domain.Value
 	)
+
+	defer func() {
+		if newValue.Ok() {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, newValue)
+		}
+		convertLayoutFromNote(s, currentValue, newValue)
+	}()
 
 	typeDetails, err := sb.getTypeDetails(s)
 	if err != nil {
 		if layoutValue.Ok() {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layoutValue)
+			newValue = layoutValue
 		} else if !currentValue.Ok() {
 			log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+			newValue = domain.Int64(int64(model.ObjectType_basic))
 		}
 		return
 	}
@@ -254,23 +262,23 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 
 	if s.ObjectTypeKey() == bundle.TypeKeyTemplate || !isEnforcedLayout {
 		if layoutValue.Ok() {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layoutValue)
+			newValue = layoutValue
 		} else if valueInType.Ok() {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, valueInType)
+			newValue = valueInType
 		} else if !currentValue.Ok() {
 			log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+			newValue = domain.Int64(int64(model.ObjectType_basic))
 		}
 		return
 	}
 
 	if valueInType.Ok() {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, valueInType)
+		newValue = valueInType
 	} else if layoutValue.Ok() {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layoutValue)
+		newValue = layoutValue
 	} else if !currentValue.Ok() {
 		log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		newValue = domain.Int64(int64(model.ObjectType_basic))
 	}
 
 	featuredRelations := make([]string, 0)
@@ -288,6 +296,22 @@ func (sb *smartBlock) injectResolvedLayout(s *state.State) {
 		parent.Details().Delete(bundle.RelationKeyLayoutAlign)
 		parent.Details().SetStringList(bundle.RelationKeyFeaturedRelations, featuredRelations)
 	}
+}
+
+func convertLayoutFromNote(st *state.State, oldLayout, newLayout domain.Value) {
+	if !newLayout.Ok() || newLayout.Int64() == int64(model.ObjectType_note) {
+		return
+	}
+	if oldLayout.Ok() && oldLayout.Int64() != int64(model.ObjectType_note) {
+		return
+	}
+	if !oldLayout.Ok() {
+		title := st.Pick(state.TitleBlockID)
+		if title != nil && st.Details().Has(bundle.RelationKeyName) {
+			return
+		}
+	}
+	template.InitTemplate(st, template.WithNameFromFirstBlock, template.WithTitle)
 }
 
 func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
