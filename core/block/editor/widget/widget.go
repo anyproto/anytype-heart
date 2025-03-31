@@ -22,6 +22,9 @@ const (
 	DefaultWidgetBin        = "bin"
 	DefaultWidgetRecentOpen = "recentOpen"
 	autoWidgetBlockSuffix   = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
+
+	DefaultWidgetFavoriteEventName = "Favorite"
+	DefaultWidgetBinEventName      = "Bin"
 )
 
 type Widget interface {

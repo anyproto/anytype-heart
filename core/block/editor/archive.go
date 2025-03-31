@@ -100,7 +100,7 @@ func (p *Archive) autoInstallBinWidget() error {
 		st := sb.NewState()
 		if w, ok := sb.(widget.Widget); ok {
 			// We rely on AddAutoWidget to check if the widget was already installed/removed before
-			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin, "", model.BlockContentWidget_Link, "Bin")
+			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin, "", model.BlockContentWidget_Link, widget.DefaultWidgetBinEventName)
 			if err != nil {
 				return err
 			}

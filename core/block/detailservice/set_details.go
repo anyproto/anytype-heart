@@ -273,6 +273,6 @@ func (s *service) createFavoriteWidget(spc clientspace.Space) error {
 	}
 
 	return cache.DoState(s.objectGetter, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList, "Favorites")
+		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList, widget.DefaultWidgetFavoriteEventName)
 	})
 }
