@@ -2878,6 +2878,10 @@ message Rpc {
                 StateFilters linksStateFilters = 12;
                 bool includeBacklinks = 13;
                 bool includeSpace = 14;
+                repeated anytype.model.Block.Content.Dataview.Filter filters = 15;
+                repeated anytype.model.Block.Content.Dataview.Sort sorts = 16;
+                repeated string relationKeys = 17;
+                bool includeSetObjects = 18;
             }
             message StateFilters {
                 repeated RelationsWhiteList relationsWhiteList = 1;

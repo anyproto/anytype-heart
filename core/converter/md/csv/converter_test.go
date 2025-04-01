@@ -26,34 +26,34 @@ func (s stubName) Get(path, hash, title, ext string) (name string) {
 func TestConverter(t *testing.T) {
 	t.Run("no dataview block", func(t *testing.T) {
 		// given
-		converter := NewConverter(objectstore.NewStoreFixture(t), nil)
+		converter := NewConverter(objectstore.NewStoreFixture(t), nil, nil, nil, nil)
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}),
 		}).(*state.State)
 
 		// when
-		result := converter.Convert(st)
+		result := converter.Convert(st, nil, nil, nil)
 
 		// then
 		assert.Nil(t, result)
 	})
 	t.Run("empty dataview", func(t *testing.T) {
 		// given
-		converter := NewConverter(objectstore.NewStoreFixture(t), nil)
+		converter := NewConverter(objectstore.NewStoreFixture(t), nil, nil, nil, nil)
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root":     simple.New(&model.Block{Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}),
 			"dataview": simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{}}}),
 		}).(*state.State)
 
 		// when
-		result := converter.Convert(st)
+		result := converter.Convert(st, nil, nil, nil)
 
 		// then
 		assert.Nil(t, result)
 	})
 	t.Run("no known docs", func(t *testing.T) {
 		// given
-		converter := NewConverter(objectstore.NewStoreFixture(t), nil)
+		converter := NewConverter(objectstore.NewStoreFixture(t), nil, nil, nil, nil)
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}),
 			"dataview": simple.New(&model.Block{ChildrenIds: []string{"dataview"}, Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
@@ -85,7 +85,7 @@ func TestConverter(t *testing.T) {
 		st.UpdateStoreSlice(template.CollectionStoreKey, []string{"test1"})
 
 		// when
-		result := converter.Convert(st)
+		result := converter.Convert(st, nil, nil, nil)
 
 		// then
 		assert.Empty(t, result)
@@ -113,7 +113,7 @@ func TestConverter(t *testing.T) {
 				bundle.RelationKeyDueDate: domain.Int64(time.Now().Unix()),
 				bundle.RelationKeyCamera:  domain.String("test"),
 			}),
-		})
+		}, nil, nil, nil)
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{ChildrenIds: []string{"dataview"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}),
 			"dataview": simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
@@ -145,7 +145,7 @@ func TestConverter(t *testing.T) {
 		st.UpdateStoreSlice(template.CollectionStoreKey, []string{"test1"})
 
 		// when
-		result := converter.Convert(st)
+		result := converter.Convert(st, nil, nil, nil)
 
 		// then
 		assert.Equal(t, "Name\nTest Name\n", string(result))

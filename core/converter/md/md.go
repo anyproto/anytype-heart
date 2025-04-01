@@ -31,12 +31,19 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(fn FileNamer, store objectstore.ObjectStore, knownDocs map[string]*domain.Details) converter.Converter {
+func NewMDConverter(
+	fn FileNamer,
+	store objectstore.ObjectStore,
+	knownDocs map[string]*domain.Details,
+	filters []*model.BlockContentDataviewFilter,
+	sorts []*model.BlockContentDataviewSort,
+	relationKey []string,
+) converter.Converter {
 	return &MD{
 		fn:              fn,
 		objectTypeFiles: csv.ObjectTypeFiles{},
 		store:           store,
-		listCsv:         csv.NewConverter(store, knownDocs),
+		listCsv:         csv.NewConverter(store, knownDocs, filters, sorts, relationKey),
 		knownDocs:       knownDocs,
 	}
 }
