@@ -298,6 +298,8 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
+replace github.com/anyproto/any-store => github.com/anyproto/any-store v0.1.13-0.20250401154155-2f84c6be7557
+
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
 
 replace github.com/dgraph-io/ristretto => github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c
