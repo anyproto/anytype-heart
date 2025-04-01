@@ -35,7 +35,7 @@ func TestSubscription(t *testing.T) {
 	}
 
 	lastOrderId := resp.Messages[len(resp.Messages)-1].OrderId
-	var lastDatabaseTimestamp int64
+	var lastDatabaseId string
 	t.Run("add message", func(t *testing.T) {
 		fx.events = nil
 
@@ -46,7 +46,7 @@ func TestSubscription(t *testing.T) {
 		message, err := fx.GetMessageById(ctx, messageId)
 		require.NoError(t, err)
 
-		lastDatabaseTimestamp = message.AddedAt
+		lastDatabaseId = message.DatabaseId
 
 		wantEvents := []*pb.EventMessage{
 			{
@@ -67,9 +67,9 @@ func TestSubscription(t *testing.T) {
 				Value: &pb.EventMessageValueOfChatStateUpdate{
 					ChatStateUpdate: &pb.EventChatUpdateState{
 						State: &model.ChatState{
-							Messages:    &model.ChatStateUnreadState{},
-							Mentions:    &model.ChatStateUnreadState{},
-							DbTimestamp: message.AddedAt,
+							Messages:       &model.ChatStateUnreadState{},
+							Mentions:       &model.ChatStateUnreadState{},
+							LastDatabaseId: message.DatabaseId,
 						},
 						SubIds: []string{"subId"},
 					},
@@ -163,9 +163,9 @@ func TestSubscription(t *testing.T) {
 				Value: &pb.EventMessageValueOfChatStateUpdate{
 					ChatStateUpdate: &pb.EventChatUpdateState{
 						State: &model.ChatState{
-							Messages:    &model.ChatStateUnreadState{},
-							Mentions:    &model.ChatStateUnreadState{},
-							DbTimestamp: lastDatabaseTimestamp,
+							Messages:       &model.ChatStateUnreadState{},
+							Mentions:       &model.ChatStateUnreadState{},
+							LastDatabaseId: lastDatabaseId,
 						},
 						SubIds: []string{"subId"},
 					},
@@ -186,9 +186,9 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 
 	assert.Empty(t, subscribeResp.Messages)
 	assert.Equal(t, &model.ChatState{
-		Messages:    &model.ChatStateUnreadState{},
-		Mentions:    &model.ChatStateUnreadState{},
-		DbTimestamp: 0,
+		Messages:       &model.ChatStateUnreadState{},
+		Mentions:       &model.ChatStateUnreadState{},
+		LastDatabaseId: "",
 	}, subscribeResp.ChatState)
 
 	// Add first message
@@ -220,8 +220,8 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 							Counter:       1,
 							OldestOrderId: firstMessage.OrderId,
 						},
-						Mentions:    &model.ChatStateUnreadState{},
-						DbTimestamp: firstMessage.AddedAt,
+						Mentions:       &model.ChatStateUnreadState{},
+						LastDatabaseId: firstMessage.DatabaseId,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -261,8 +261,8 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 							Counter:       2,
 							OldestOrderId: firstMessage.OrderId,
 						},
-						Mentions:    &model.ChatStateUnreadState{},
-						DbTimestamp: secondMessage.AddedAt,
+						Mentions:       &model.ChatStateUnreadState{},
+						LastDatabaseId: secondMessage.DatabaseId,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -275,7 +275,7 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 
 	fx.events = nil
 
-	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.AddedAt, CounterTypeMessage)
+	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.DatabaseId, CounterTypeMessage)
 	require.NoError(t, err)
 
 	wantEvents = []*pb.EventMessage{
@@ -298,8 +298,8 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 							Counter:       1,
 							OldestOrderId: secondMessage.OrderId,
 						},
-						Mentions:    &model.ChatStateUnreadState{},
-						DbTimestamp: secondMessage.AddedAt,
+						Mentions:       &model.ChatStateUnreadState{},
+						LastDatabaseId: secondMessage.DatabaseId,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -320,9 +320,9 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 
 	assert.Empty(t, subscribeResp.Messages)
 	assert.Equal(t, &model.ChatState{
-		Messages:    &model.ChatStateUnreadState{},
-		Mentions:    &model.ChatStateUnreadState{},
-		DbTimestamp: 0,
+		Messages:       &model.ChatStateUnreadState{},
+		Mentions:       &model.ChatStateUnreadState{},
+		LastDatabaseId: "",
 	}, subscribeResp.ChatState)
 
 	// Add first message
@@ -358,7 +358,7 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							Counter:       1,
 							OldestOrderId: firstMessage.OrderId,
 						},
-						DbTimestamp: firstMessage.AddedAt,
+						LastDatabaseId: firstMessage.DatabaseId,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -402,7 +402,7 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							Counter:       2,
 							OldestOrderId: firstMessage.OrderId,
 						},
-						DbTimestamp: secondMessage.AddedAt,
+						LastDatabaseId: secondMessage.DatabaseId,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -415,7 +415,7 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 
 	fx.events = nil
 
-	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.AddedAt, CounterTypeMention)
+	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.DatabaseId, CounterTypeMention)
 	require.NoError(t, err)
 
 	wantEvents = []*pb.EventMessage{
@@ -442,7 +442,7 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							Counter:       1,
 							OldestOrderId: secondMessage.OrderId,
 						},
-						DbTimestamp: secondMessage.AddedAt,
+						LastDatabaseId: secondMessage.DatabaseId,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -516,9 +516,9 @@ func TestSubscriptionWithDeps(t *testing.T) {
 			Value: &pb.EventMessageValueOfChatStateUpdate{
 				ChatStateUpdate: &pb.EventChatUpdateState{
 					State: &model.ChatState{
-						Messages:    &model.ChatStateUnreadState{},
-						Mentions:    &model.ChatStateUnreadState{},
-						DbTimestamp: message.AddedAt,
+						Messages:       &model.ChatStateUnreadState{},
+						Mentions:       &model.ChatStateUnreadState{},
+						LastDatabaseId: message.DatabaseId,
 					},
 					SubIds: []string{LastMessageSubscriptionId},
 				},

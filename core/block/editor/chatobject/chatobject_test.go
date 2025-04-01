@@ -187,7 +187,7 @@ func TestAddMessage(t *testing.T) {
 		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
-		assert.Equal(t, messagesResp.ChatState.DbTimestamp, messagesResp.Messages[0].AddedAt)
+		assert.Equal(t, messagesResp.ChatState.LastDatabaseId, messagesResp.Messages[0].DatabaseId)
 
 		want := givenComplexMessage()
 		want.Id = messageId
@@ -216,7 +216,7 @@ func TestGetMessages(t *testing.T) {
 	require.NoError(t, err)
 
 	lastMessage := messagesResp.Messages[4]
-	assert.Equal(t, messagesResp.ChatState.DbTimestamp, lastMessage.AddedAt)
+	assert.Equal(t, messagesResp.ChatState.LastDatabaseId, lastMessage.DatabaseId)
 
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
 	for i, msg := range messagesResp.Messages {
@@ -408,7 +408,7 @@ func TestReadMessages(t *testing.T) {
 	// All messages forced as not read
 	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp, CounterTypeMessage)
+	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastDatabaseId, CounterTypeMessage)
 	require.NoError(t, err)
 
 	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true, false)
@@ -427,7 +427,7 @@ func TestReadMentions(t *testing.T) {
 	// All messages forced as not read
 	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.DbTimestamp, CounterTypeMention)
+	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastDatabaseId, CounterTypeMention)
 	require.NoError(t, err)
 
 	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, false, true)
@@ -612,8 +612,8 @@ func assertMessagesEqual(t *testing.T, want, got *Message) {
 	assert.NotZero(t, got.CreatedAt)
 	got.CreatedAt = 0
 
-	assert.NotZero(t, got.AddedAt)
-	got.AddedAt = 0
+	assert.NotEmpty(t, got.DatabaseId)
+	got.DatabaseId = ""
 
 	assert.Equal(t, want, got)
 }

@@ -9,11 +9,11 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/timeid"
 )
 
 type ChatHandler struct {
@@ -63,7 +63,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		}
 	}
 
-	msg.AddedAt = timeid.NewNano()
+	msg.DatabaseId = bson.NewObjectId().Hex()
 
 	msg.HasMention = false
 	for _, mark := range msg.Message.Marks {

@@ -1393,7 +1393,7 @@ message ChatState {
     }
     UnreadState messages = 1; // unread messages
     UnreadState mentions = 2; // unread mentions
-    int64 dbTimestamp = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
+    string lastDatabaseId = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
 }
 
 message ChatMessage {
@@ -1402,7 +1402,7 @@ message ChatMessage {
     string creator = 3;       // Identifier for the message creator
     int64 createdAt = 4;
     int64 modifiedAt = 9;
-    int64 addedAt = 11; // Message received and added to db at
+    string databaseId = 11; // Ever increasing id (BSON ObjectId) for this message
     string replyToMessageId = 5;   // Identifier for the message being replied to
     MessageContent message = 6;  // Message content
     repeated Attachment attachments = 7;  // Attachments slice

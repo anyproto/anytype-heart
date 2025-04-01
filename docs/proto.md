@@ -10853,7 +10853,7 @@ Get marks list in the selected range in text block.
 | chatObjectId | [string](#string) |  | id of the chat object |
 | afterOrderId | [string](#string) |  | read from this orderId; if empty - read from the beginning of the chat |
 | beforeOrderId | [string](#string) |  | read til this orderId |
-| lastDbTimestamp | [int64](#int64) |  | dbTimestamp from the last processed ChatState event(or GetMessages). Used to prevent race conditions |
+| lastDatabaseId | [string](#string) |  | databaseId from the last processed ChatState event(or GetMessages). Used to prevent race conditions |
 
 
 
@@ -30676,7 +30676,7 @@ Used to decode block meta only, without the content itself
 | creator | [string](#string) |  | Identifier for the message creator |
 | createdAt | [int64](#int64) |  |  |
 | modifiedAt | [int64](#int64) |  |  |
-| addedAt | [int64](#int64) |  | Message received and added to db at |
+| databaseId | [string](#string) |  | Ever increasing id (BSON ObjectId) for this message |
 | replyToMessageId | [string](#string) |  | Identifier for the message being replied to |
 | message | [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent) |  | Message content |
 | attachments | [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment) | repeated | Attachments slice |
@@ -30778,7 +30778,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | messages | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread messages |
 | mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
-| dbTimestamp | [int64](#int64) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
+| lastDatabaseId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
 
 
 

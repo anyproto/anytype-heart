@@ -298,16 +298,16 @@ func (s *service) Unsubscribe(chatObjectId string, subId string) error {
 }
 
 type ReadMessagesRequest struct {
-	ChatObjectId              string
-	AfterOrderId              string
-	BeforeOrderId             string
-	LastAddedMessageTimestamp int64
-	CounterType               chatobject.CounterType
+	ChatObjectId   string
+	AfterOrderId   string
+	BeforeOrderId  string
+	LastDatabaseId string
+	CounterType    chatobject.CounterType
 }
 
 func (s *service) ReadMessages(ctx context.Context, req ReadMessagesRequest) error {
 	return cache.Do(s.objectGetter, req.ChatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkReadMessages(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastAddedMessageTimestamp, req.CounterType)
+		return sb.MarkReadMessages(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastDatabaseId, req.CounterType)
 	})
 }
 

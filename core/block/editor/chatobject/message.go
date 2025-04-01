@@ -1,9 +1,6 @@
 package chatobject
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -18,7 +15,7 @@ const (
 	readKey        = "read"
 	mentionReadKey = "mentionRead"
 	hasMentionKey  = "hasMention"
-	addedKey       = "a"
+	databaseIdKey  = "dbId"
 	orderKey       = "_o"
 )
 
@@ -121,9 +118,7 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(readKey, arenaNewBool(arena, m.Read))
 	marshalTo.Set(mentionReadKey, arenaNewBool(arena, m.MentionRead))
 	marshalTo.Set(hasMentionKey, arenaNewBool(arena, m.HasMention))
-
-	addedAt := strconv.Itoa(int(m.AddedAt))
-	marshalTo.Set(addedKey, arena.NewString(addedAt))
+	marshalTo.Set(databaseIdKey, arena.NewString(m.DatabaseId))
 	marshalTo.Set(reactionsKey, reactions)
 }
 
@@ -136,19 +131,13 @@ func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
 }
 
 func (m *messageUnmarshaller) toModel() (*Message, error) {
-	rawAddedAt := m.val.GetString(addedKey)
-	addedAt, err := strconv.Atoi(rawAddedAt)
-	if err != nil {
-		return nil, fmt.Errorf("decode addedAt: %w", err)
-	}
-
 	return &Message{
 		ChatMessage: &model.ChatMessage{
 			Id:               string(m.val.GetStringBytes("id")),
 			Creator:          string(m.val.GetStringBytes(creatorKey)),
 			CreatedAt:        int64(m.val.GetInt(createdAtKey)),
 			ModifiedAt:       int64(m.val.GetInt(modifiedAtKey)),
-			AddedAt:          int64(addedAt),
+			DatabaseId:       m.val.GetString(databaseIdKey),
 			OrderId:          string(m.val.GetStringBytes("_o", "id")),
 			ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
 			Message:          m.contentToModel(),

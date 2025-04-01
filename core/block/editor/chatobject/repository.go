@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"strconv"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -29,26 +28,26 @@ func (s *repository) readTx(ctx context.Context) (anystore.ReadTx, error) {
 	return s.collection.ReadTx(ctx)
 }
 
-func (s *repository) getLastAddedDate(ctx context.Context) (int64, error) {
-	lastAddedDate := s.collection.Find(nil).Sort(descAdded).Limit(1)
+func (s *repository) getLastDatabaseId(ctx context.Context) (string, error) {
+	lastAddedDate := s.collection.Find(nil).Sort(descDatabaseId).Limit(1)
 	iter, err := lastAddedDate.Iter(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("find last added date: %w", err)
+		return "", fmt.Errorf("find last added date: %w", err)
 	}
 	defer iter.Close()
 
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return 0, fmt.Errorf("get doc: %w", err)
+			return "", fmt.Errorf("get doc: %w", err)
 		}
 		msg, err := unmarshalMessage(doc.Value())
 		if err != nil {
-			return 0, fmt.Errorf("unmarshal message: %w", err)
+			return "", fmt.Errorf("unmarshal message: %w", err)
 		}
-		return msg.AddedAt, nil
+		return msg.DatabaseId, nil
 	}
-	return 0, nil
+	return "", nil
 }
 
 func (s *repository) getPrevOrderId(ctx context.Context, orderId string) (string, error) {
@@ -90,15 +89,15 @@ func (s *repository) loadChatState(ctx context.Context) (*model.ChatState, error
 		return nil, fmt.Errorf("get mentions state: %w", err)
 	}
 
-	lastAdded, err := s.getLastAddedDate(txn.Context())
+	lastDatabaseId, err := s.getLastDatabaseId(txn.Context())
 	if err != nil {
 		return nil, fmt.Errorf("get last added date: %w", err)
 	}
 
 	return &model.ChatState{
-		Messages:    messagesState,
-		Mentions:    mentionsState,
-		DbTimestamp: lastAdded,
+		Messages:       messagesState,
+		Mentions:       mentionsState,
+		LastDatabaseId: lastDatabaseId,
 	}, nil
 }
 
@@ -175,13 +174,13 @@ func (s *repository) getReadMessagesAfter(ctx context.Context, afterOrderId stri
 	return msgIds, iter.Err()
 }
 
-func (s *repository) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastAddedMessageTimestamp int64, handler readHandler) ([]string, error) {
+func (s *repository) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastDatabaseId string, handler readHandler) ([]string, error) {
 	qry := query.And{
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
 		query.Or{
-			query.Not{query.Key{Path: []string{addedKey}, Filter: query.Exists{}}},
-			query.Key{Path: []string{addedKey}, Filter: query.NewComp(query.CompOpLte, strconv.Itoa(int(lastAddedMessageTimestamp)))},
+			query.Not{query.Key{Path: []string{databaseIdKey}, Filter: query.Exists{}}},
+			query.Key{Path: []string{databaseIdKey}, Filter: query.NewComp(query.CompOpLte, lastDatabaseId)},
 		},
 		handler.getUnreadFilter(),
 	}
