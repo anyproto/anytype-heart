@@ -3,6 +3,7 @@ package detailservice
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/anyproto/any-sync/app"
@@ -12,11 +13,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -78,9 +81,29 @@ func (s *service) Name() string {
 }
 
 func (s *service) SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error) {
-	return cache.Do(s.objectGetter, objectId, func(b basic.DetailsSettable) error {
-		return b.SetDetails(ctx, details, true)
-	})
+	var (
+		isType     bool
+		oldDetails *domain.Details
+	)
+
+	if err = cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
+		if sb.Type() == coresb.SmartBlockTypeObjectType {
+			isType = true
+			oldDetails = sb.Details().CopyOnlyKeys(layoutDetailKeys...)
+		}
+		if ds, ok := sb.(basic.DetailsSettable); ok {
+			return ds.SetDetails(ctx, details, true)
+		}
+		return fmt.Errorf("object does not implement details settable interface")
+	}); err != nil {
+		return err
+	}
+
+	if !isType {
+		return nil
+	}
+
+	return s.syncLayoutForObjectsAndTemplates(objectId, oldDetails, details)
 }
 
 func (s *service) SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) (resultError error) {
