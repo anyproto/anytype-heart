@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -61,6 +62,9 @@ type widgetParameters struct {
 	isObjectIDChanged bool
 }
 
+//go:embed data/start_guide.zip
+var startGuideZip []byte
+
 //go:embed data/get_started.zip
 var getStartedZip []byte
 
@@ -75,20 +79,8 @@ var (
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
+		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:  startGuideZip,
 		pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
-	}
-
-	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
-	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
-		pb.RpcObjectImportUseCaseRequest_EMPTY: {
-			{model.BlockContentWidget_Link, "bafyreic75ulgm2yz426hjwdjkzqw3kafniknki7qkhufqgrspmxzdppixa", "", true},
-		},
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED: {
-			{model.BlockContentWidget_Link, "bafyreiccjf5vbijsmr55ypsnnzltmcvl4n63g73twwxqnfkn5usoq2iqyi", "", true},
-			{model.BlockContentWidget_View, "bafyreifjgm3iy4o6o4zyf33ld3dnweo2grhvakvr7psn5twjge3xo3627m", "66f6775526909528d002c932", true},
-			{model.BlockContentWidget_View, "bafyreihrzztw2xcmxxz5uz5xodncby23xdacalcek2dtxxu77yn6wvzsq4", "6182a74fcae0300221f9f207", true},
-			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecentOpen, "", false},
-		},
 	}
 )
 
@@ -366,6 +358,21 @@ func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id stri
 	}
 }
 
+func (b *builtinObjects) typeHasObjects(spaceId, typeId string) (bool, error) {
+	records, err := b.store.SpaceIndex(spaceId).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyType,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.String(typeId),
+		},
+	}}, 1, 0)
+	if err != nil {
+		return false, err
+	}
+
+	return len(records) > 0, nil
+}
+
 func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
@@ -374,38 +381,32 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 
 	widgetObjectID := spc.DerivedIDs().Widgets
+	var widgetTargetsToCreate []string
+	pageTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
+	if err != nil {
+		log.Errorf("failed to get type id: %w", err)
+		return
+	}
+	taskTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyTask)
+	if err != nil {
+		log.Errorf("failed to get type id: %w", err)
+		return
+	}
+	for _, typeId := range []string{pageTypeId, taskTypeId} {
+		if has, err := b.typeHasObjects(spaceId, typeId); err != nil {
+			log.Warnf("failed to check if type '%s' has objects: %v", pageTypeId, err)
+		} else if has {
+			widgetTargetsToCreate = append(widgetTargetsToCreate, typeId)
+		}
+	}
 
+	if len(widgetTargetsToCreate) == 0 {
+		return
+	}
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		for _, param := range widgetParams[useCase] {
-			objectID := param.objectID
-			if param.isObjectIDChanged {
-				objectID, err = b.getNewObjectID(spc.Id(), objectID)
-				if err != nil {
-					log.Errorf("Skipping creation of widget block as failed to get new object id using old one '%s': %v", objectID, err)
-					continue
-				}
-			}
-			request := &pb.RpcBlockCreateWidgetRequest{
-				ContextId:    widgetObjectID,
-				Position:     model.Block_Bottom,
-				WidgetLayout: param.layout,
-				Block: &model.Block{
-					Content: &model.BlockContentOfLink{
-						Link: &model.BlockContentLink{
-							TargetBlockId: objectID,
-							Style:         model.BlockContentLink_Page,
-							IconSize:      model.BlockContentLink_SizeNone,
-							CardStyle:     model.BlockContentLink_Inline,
-							Description:   model.BlockContentLink_None,
-						},
-					},
-				},
-			}
-			if param.viewID != "" {
-				request.ViewId = param.viewID
-			}
-			if _, err = w.CreateBlock(s, request); err != nil {
-				log.Errorf("Failed to make Widget blocks: %v", err)
+		for _, targetId := range widgetTargetsToCreate {
+			if err := w.AddAutoWidget(s, targetId, "", addr.ObjectTypeAllViewId, model.BlockContentWidget_View, ""); err != nil {
+				log.Errorf("failed to create widget block for type '%s': %v", targetId, err)
 			}
 		}
 		return nil

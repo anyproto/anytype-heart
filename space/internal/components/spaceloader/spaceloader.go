@@ -18,8 +18,7 @@ import (
 const CName = "client.components.spaceloader"
 
 var (
-	ErrSpaceDeleted   = errors.New("space is deleted")
-	ErrSpaceNotExists = errors.New("space not exists")
+	ErrSpaceDeleted = errors.New("space is deleted")
 )
 
 type SpaceLoader interface {
@@ -96,7 +95,6 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-
 	info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
 	switch {
 	case loadErr == nil:

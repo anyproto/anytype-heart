@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -22,16 +22,16 @@ const (
 
 type fixture struct {
 	*AuthService
-	mwMock *mock_service.MockClientCommandsServer
+	mwMock *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
-	mw := mock_service.NewMockClientCommandsServer(t)
-	authService := NewService(mw)
+	mwMock := mock_apicore.NewMockClientCommands(t)
+	authService := NewService(mwMock)
 
 	return &fixture{
 		AuthService: authService,
-		mwMock:      mw,
+		mwMock:      mwMock,
 	}
 }
 

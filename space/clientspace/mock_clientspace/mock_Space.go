@@ -9,6 +9,8 @@ import (
 
 	context "context"
 
+	crypto "github.com/anyproto/any-sync/util/crypto"
+
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
 	headsync "github.com/anyproto/any-sync/commonspace/headsync"
@@ -1011,6 +1013,53 @@ func (_c *MockSpace_DoLockedIfNotExists_Call) Return(_a0 error) *MockSpace_DoLoc
 }
 
 func (_c *MockSpace_DoLockedIfNotExists_Call) RunAndReturn(run func(string, func() error) error) *MockSpace_DoLockedIfNotExists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAclIdentity provides a mock function with given fields:
+func (_m *MockSpace) GetAclIdentity() crypto.PubKey {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAclIdentity")
+	}
+
+	var r0 crypto.PubKey
+	if rf, ok := ret.Get(0).(func() crypto.PubKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(crypto.PubKey)
+		}
+	}
+
+	return r0
+}
+
+// MockSpace_GetAclIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAclIdentity'
+type MockSpace_GetAclIdentity_Call struct {
+	*mock.Call
+}
+
+// GetAclIdentity is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) GetAclIdentity() *MockSpace_GetAclIdentity_Call {
+	return &MockSpace_GetAclIdentity_Call{Call: _e.mock.On("GetAclIdentity")}
+}
+
+func (_c *MockSpace_GetAclIdentity_Call) Run(run func()) *MockSpace_GetAclIdentity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_GetAclIdentity_Call) Return(_a0 crypto.PubKey) *MockSpace_GetAclIdentity_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_GetAclIdentity_Call) RunAndReturn(run func() crypto.PubKey) *MockSpace_GetAclIdentity_Call {
 	_c.Call.Return(run)
 	return _c
 }

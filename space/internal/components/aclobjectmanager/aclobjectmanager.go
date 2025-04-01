@@ -2,14 +2,17 @@ package aclobjectmanager
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -29,9 +32,10 @@ type AclObjectManager interface {
 	app.ComponentRunnable
 }
 
-func New(ownerMetadata []byte) AclObjectManager {
+func New(ownerMetadata []byte, guestKey crypto.PrivKey) AclObjectManager {
 	return &aclObjectManager{
 		ownerMetadata: ownerMetadata,
+		guestKey:      guestKey,
 	}
 }
 
@@ -47,12 +51,20 @@ type aclObjectManager struct {
 	statService         debugstat.StatService
 	started             bool
 	notificationService aclnotifications.AclNotification
+	spaceLoaderListener SpaceLoaderListener
 	participantWatcher  participantwatcher.ParticipantWatcher
 	inviteMigrator      invitemigrator.InviteMigrator
+	accountService      accountservice.Service
 
 	ownerMetadata []byte
 	lastIndexed   string
+	guestKey      crypto.PrivKey
 	mx            sync.Mutex
+}
+
+type SpaceLoaderListener interface {
+	OnSpaceLoad(spaceId string)
+	OnSpaceUnload(spaceId string)
 }
 
 func (a *aclObjectManager) ProvideStat() any {
@@ -85,8 +97,10 @@ func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.spaceLoader = app.MustComponent[spaceloader.SpaceLoader](ap)
 	a.status = app.MustComponent[spacestatus.SpaceStatus](ap)
+	a.accountService = app.MustComponent[accountservice.Service](ap)
 	a.participantWatcher = app.MustComponent[participantwatcher.ParticipantWatcher](ap)
 	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
+	a.spaceLoaderListener = app.MustComponent[SpaceLoaderListener](ap)
 	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
 	if a.statService == nil {
 		a.statService = debugstat.NewNoOp()
@@ -110,6 +124,9 @@ func (a *aclObjectManager) Run(ctx context.Context) (err error) {
 }
 
 func (a *aclObjectManager) Close(ctx context.Context) (err error) {
+	if a.sp != nil {
+		a.spaceLoaderListener.OnSpaceUnload(a.sp.Id())
+	}
 	if !a.started {
 		return
 	}
@@ -129,6 +146,7 @@ func (a *aclObjectManager) process() {
 		log.Error("load space", zap.Error(a.loadErr))
 		return
 	}
+	a.spaceLoaderListener.OnSpaceLoad(a.sp.Id())
 	err := a.inviteMigrator.MigrateExistingInvites(a.sp)
 	if err != nil {
 		log.Warn("migrate existing invites", zap.Error(err))
@@ -176,7 +194,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Unlock()
 	decrypt := func(key crypto.PubKey) ([]byte, error) {
-		if a.ownerMetadata != nil {
+		if a.ownerMetadata != nil && a.guestKey == nil {
 			return a.ownerMetadata, nil
 		}
 		return aclState.GetMetadata(key, true)
@@ -200,6 +218,24 @@ func (a *aclObjectManager) processAcl() (err error) {
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
 	upToDate = statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
+	if a.guestKey != nil {
+		el, res := lo.Find(states, func(item list.AccountState) bool {
+			return item.PubKey.Account() == a.guestKey.GetPublic().Account()
+		})
+		if !res {
+			err = fmt.Errorf("guest key not found")
+			return
+		}
+		states = append(states, list.AccountState{
+			PubKey:          a.accountService.Account().SignKey.GetPublic(),
+			Permissions:     el.Permissions,
+			Status:          el.Status,
+			RequestMetadata: a.ownerMetadata,
+		})
+		states = lo.Filter(states, func(item list.AccountState, index int) bool {
+			return item.PubKey.Account() != a.guestKey.GetPublic().Account()
+		})
+	}
 	err = a.processStates(states, upToDate, aclState.Identity())
 	if err != nil {
 		return
