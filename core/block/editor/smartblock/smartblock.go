@@ -705,6 +705,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	parent := s.ParentState()
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
+		parent = parent.Copy()
 	}
 
 	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)

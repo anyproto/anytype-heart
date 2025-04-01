@@ -412,13 +412,14 @@ func (ot *ObjectType) updateResolvedLayout(id string, layout int64, addName bool
 	}
 
 	return spc.Do(id, func(b smartblock.SmartBlock) error {
-		if cr, ok := b.(source.ChangeReceiver); ok {
+		if cr, ok := b.(source.ChangeReceiver); ok && !addName {
 			// we can do StateAppend here, so resolvedLayout will be injected automatically
 			return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
 				return d.NewState(), nil, nil
 			})
 		}
-		return nil
+		// we need to call Apply to generate and push changes on Title and Name addition
+		return b.Apply(b.NewState(), smartblock.KeepInternalFlags)
 	})
 }
 
