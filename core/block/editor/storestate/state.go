@@ -26,7 +26,7 @@ const (
 	IdFromChange = "$changeId"
 )
 
-var lexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
+var LexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 
 const (
 	collChangeOrders = "_change_orders"

@@ -53,6 +53,8 @@ type fixture struct {
 	sourceCreator      string
 	eventSender        *mock_event.MockSender
 	events             []*pb.EventMessage
+
+	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
 }
 
 const testCreator = "accountId1"
@@ -395,81 +397,6 @@ func TestToggleReaction(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
-func TestReadMessages(t *testing.T) {
-	ctx := context.Background()
-	fx := newFixture(t)
-	fx.chatHandler.forceNotRead = true
-
-	const n = 10
-	for i := 0; i < n; i++ {
-		_, err := fx.AddMessage(ctx, nil, givenSimpleMessage(fmt.Sprintf("message %d", i+1)))
-		require.NoError(t, err)
-	}
-	// All messages forced as not read
-	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
-
-	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastDatabaseId, CounterTypeMessage)
-	require.NoError(t, err)
-
-	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true, false)
-	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false, false)
-}
-
-func TestReadMentions(t *testing.T) {
-	ctx := context.Background()
-	fx := newFixture(t)
-	fx.chatHandler.forceNotRead = true
-	const n = 10
-	for i := 0; i < n; i++ {
-		_, err := fx.AddMessage(ctx, nil, givenMessageWithMention(fmt.Sprintf("message %d", i+1)))
-		require.NoError(t, err)
-	}
-	// All messages forced as not read
-	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
-
-	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastDatabaseId, CounterTypeMention)
-	require.NoError(t, err)
-
-	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, false, true)
-	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false, false)
-}
-
-func TestMarkMessagesAsNotRead(t *testing.T) {
-	ctx := context.Background()
-	fx := newFixture(t)
-
-	const n = 10
-	for i := 0; i < n; i++ {
-		_, err := fx.AddMessage(ctx, nil, givenSimpleMessage(fmt.Sprintf("message %d", i+1)))
-		require.NoError(t, err)
-	}
-	// All messages added by myself are read
-	fx.assertReadStatus(t, ctx, "", "", true, true)
-
-	err := fx.MarkMessagesAsUnread(ctx, "", CounterTypeMessage)
-	require.NoError(t, err)
-
-	fx.assertReadStatus(t, ctx, "", "", false, true)
-}
-
-func TestMarkMentionsAsNotRead(t *testing.T) {
-	ctx := context.Background()
-	fx := newFixture(t)
-
-	const n = 10
-	for i := 0; i < n; i++ {
-		_, err := fx.AddMessage(ctx, nil, givenMessageWithMention(fmt.Sprintf("message %d", i+1)))
-		require.NoError(t, err)
-	}
-	// All messages added by myself are read
-	fx.assertReadStatus(t, ctx, "", "", true, true)
-
-	err := fx.MarkMessagesAsUnread(ctx, "", CounterTypeMention)
-	require.NoError(t, err)
-
-	fx.assertReadStatus(t, ctx, "", "", true, false)
-}
-
 func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrderId string, beforeOrderId string, isRead bool, isMentionRead bool) *GetMessagesResponse {
 	messageResp, err := fx.GetMessages(ctx, GetMessagesRequest{
 		AfterOrderId:    afterOrderId,
@@ -486,13 +413,20 @@ func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrde
 	return messageResp
 }
 
+func (fx *fixture) generateOrderId(tx *storestate.StoreStateTx) string {
+	if fx.generateOrderIdFunc != nil {
+		return fx.generateOrderIdFunc(tx)
+	}
+	return tx.NextOrder(tx.GetMaxOrder())
+}
+
 func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
 	changeId := bson.NewObjectId().Hex()
 	tx, err := params.State.NewTx(ctx)
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
-	order := tx.NextOrder(tx.GetMaxOrder())
+	order := fx.generateOrderId(tx)
 	err = tx.ApplyChangeSet(storestate.ChangeSet{
 		Id:        changeId,
 		Order:     order,
