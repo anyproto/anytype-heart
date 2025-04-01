@@ -36,7 +36,8 @@
     "maxCount": 1,
     "name": "Creation date",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "includeTime": true
   },
   {
     "description": "Date when the object will be deleted from your device",
@@ -46,7 +47,8 @@
     "maxCount": 1,
     "name": "Date to delete",
     "readonly": true,
-    "source": "account"
+    "source": "account",
+    "includeTime": true
   },
   {
     "description": "Prioritized target types for the relation's value",
@@ -380,7 +382,8 @@
     "maxCount": 1,
     "name": "Last modified date",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "includeTime": true
   },
   {
     "description": "List of recommended relations",
@@ -427,7 +430,8 @@
     "maxCount": 1,
     "name": "Last opened date",
     "readonly": true,
-    "source": "account"
+    "source": "account",
+    "includeTime": true
   },
   {
     "format": "object",
@@ -460,7 +464,8 @@
     "maxCount": 1,
     "name": "Due date",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "includeTime": true
   },
   {
     "description": "1 emoji(can contains multiple UTF symbols) used as an icon",
@@ -542,7 +547,8 @@
     "maxCount": 1,
     "name": "Added date",
     "readonly": true,
-    "source": "details"
+    "source": "details",
+    "includeTime": true
   },
   {
     "description": "Person who is responsible for this task or object",
@@ -1295,7 +1301,8 @@
     "name": "Last used date",
     "readonly": true,
     "source": "local",
-    "revision": 1
+    "revision": 1,
+    "includeTime": true
   },
   {
     "description": "Revision of system object",
@@ -1356,7 +1363,8 @@
     "maxCount": 1,
     "name": "Sync date",
     "readonly": true,
-    "source": "local"
+    "source": "local",
+    "includeTime": true
   },
   {
     "description": "Object sync error",
@@ -1406,7 +1414,8 @@
     "maxCount": 1,
     "name": "Timestamp",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "includeTime": true
   },
   {
     "description": "Width of object's layout",
@@ -1535,5 +1544,15 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Should time be shown for relation values with date format",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "includeTime",
+    "maxCount": 0,
+    "name": "IncludeTime",
+    "readonly": true,
+    "source": "local"
   }
 ]

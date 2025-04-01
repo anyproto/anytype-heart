@@ -385,25 +385,13 @@ message Block {
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
                 // bool isReadOnly = 4; // deprecated
+                // bool dateIncludeTime = 5; // deprecated
+                // TimeFormat timeFormat = 6; // deprecated
+                // DateFormat dateFormat = 7; // deprecated
 
-                bool dateIncludeTime = 5;
-                TimeFormat timeFormat = 6;
-                DateFormat dateFormat = 7;
                 FormulaType formula = 8;
+
                 Block.Align align = 9;
-
-                enum DateFormat {
-                    MonthAbbrBeforeDay = 0; // Jul 30, 2020
-                    MonthAbbrAfterDay = 1; // 30 Jul 2020
-                    Short = 2; // 30/07/2020
-                    ShortUS = 3; // 07/30/2020
-                    ISO = 4; // 2020-07-30
-                }
-
-                enum TimeFormat {
-                    Format12 = 0;
-                    Format24 = 1;
-                }
 
                 enum FormulaType {
                     None				    = 0;

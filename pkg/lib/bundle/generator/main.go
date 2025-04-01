@@ -49,6 +49,7 @@ type Relation struct {
 	Source      string   `json:"source"`
 	Description string   `json:"description"`
 	Revision    int      `json:"revision"`
+	IncludeTime bool     `json:"includeTime"`
 }
 
 type ObjectType struct {
