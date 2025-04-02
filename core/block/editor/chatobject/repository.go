@@ -28,8 +28,8 @@ func (s *repository) readTx(ctx context.Context) (anystore.ReadTx, error) {
 	return s.collection.ReadTx(ctx)
 }
 
-func (s *repository) getLastDatabaseId(ctx context.Context) (string, error) {
-	lastAddedDate := s.collection.Find(nil).Sort(descDatabaseId).Limit(1)
+func (s *repository) getLastStateId(ctx context.Context) (string, error) {
+	lastAddedDate := s.collection.Find(nil).Sort(descStateId).Limit(1)
 	iter, err := lastAddedDate.Iter(ctx)
 	if err != nil {
 		return "", fmt.Errorf("find last added date: %w", err)
@@ -45,7 +45,7 @@ func (s *repository) getLastDatabaseId(ctx context.Context) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("unmarshal message: %w", err)
 		}
-		return msg.DatabaseId, nil
+		return msg.StateId, nil
 	}
 	return "", nil
 }
@@ -89,15 +89,15 @@ func (s *repository) loadChatState(ctx context.Context) (*model.ChatState, error
 		return nil, fmt.Errorf("get mentions state: %w", err)
 	}
 
-	lastDatabaseId, err := s.getLastDatabaseId(txn.Context())
+	lastStateId, err := s.getLastStateId(txn.Context())
 	if err != nil {
 		return nil, fmt.Errorf("get last added date: %w", err)
 	}
 
 	return &model.ChatState{
-		Messages:       messagesState,
-		Mentions:       mentionsState,
-		LastDatabaseId: lastDatabaseId,
+		Messages:    messagesState,
+		Mentions:    mentionsState,
+		LastStateId: lastStateId,
 	}, nil
 }
 
@@ -174,13 +174,13 @@ func (s *repository) getReadMessagesAfter(ctx context.Context, afterOrderId stri
 	return msgIds, iter.Err()
 }
 
-func (s *repository) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastDatabaseId string, handler readHandler) ([]string, error) {
+func (s *repository) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, handler readHandler) ([]string, error) {
 	qry := query.And{
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
 		query.Or{
-			query.Not{query.Key{Path: []string{databaseIdKey}, Filter: query.Exists{}}},
-			query.Key{Path: []string{databaseIdKey}, Filter: query.NewComp(query.CompOpLte, lastDatabaseId)},
+			query.Not{query.Key{Path: []string{stateIdKey}, Filter: query.Exists{}}},
+			query.Key{Path: []string{stateIdKey}, Filter: query.NewComp(query.CompOpLte, lastStateId)},
 		},
 		handler.getUnreadFilter(),
 	}

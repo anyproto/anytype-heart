@@ -173,8 +173,8 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 			}
 
 		}
-		if message.DatabaseId > state.LastDatabaseId {
-			state.LastDatabaseId = message.DatabaseId
+		if message.StateId > state.LastStateId {
+			state.LastStateId = message.StateId
 		}
 		return state
 	})
@@ -315,9 +315,9 @@ func copyChatState(state *model.ChatState) *model.ChatState {
 		return nil
 	}
 	return &model.ChatState{
-		Messages:       copyReadState(state.Messages),
-		Mentions:       copyReadState(state.Mentions),
-		LastDatabaseId: state.LastDatabaseId,
+		Messages:    copyReadState(state.Messages),
+		Mentions:    copyReadState(state.Mentions),
+		LastStateId: state.LastStateId,
 	}
 }
 

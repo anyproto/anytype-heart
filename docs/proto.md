@@ -30771,11 +30771,11 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Unique message identifier |
-| orderId | [string](#string) |  | Used for subscriptions |
+| orderId | [string](#string) |  | Lexicographical id for message in order of tree traversal |
 | creator | [string](#string) |  | Identifier for the message creator |
 | createdAt | [int64](#int64) |  |  |
 | modifiedAt | [int64](#int64) |  |  |
-| databaseId | [string](#string) |  | Ever increasing id (BSON ObjectId) for this message |
+| stateId | [string](#string) |  | stateId is ever-increasing id (BSON ObjectId) for this message. Unlike orderId, this ID is ordered by the time messages are added. For example, it&#39;s useful to prevent accidental reading of messages from the past when a ChatReadMessages request is sent: a message from the past may appear, but the client is still unaware of it |
 | replyToMessageId | [string](#string) |  | Identifier for the message being replied to |
 | message | [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent) |  | Message content |
 | attachments | [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment) | repeated | Attachments slice |
@@ -30877,7 +30877,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | messages | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread messages |
 | mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
-| lastDatabaseId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
+| lastStateId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
 
 
 

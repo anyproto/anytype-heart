@@ -62,7 +62,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		}
 	}
 
-	msg.DatabaseId = bson.NewObjectId().Hex()
+	msg.StateId = bson.NewObjectId().Hex()
 
 	msg.CurrentUserMentioned = msg.IsCurrentUserMentioned(d.myParticipantId)
 

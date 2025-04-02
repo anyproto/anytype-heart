@@ -29,7 +29,7 @@ const (
 	collectionName      = "chats"
 	descOrder           = "-_o.id"
 	ascOrder            = "_o.id"
-	descDatabaseId      = "-dbId"
+	descStateId         = "-stateId"
 	diffManagerMessages = "messages"
 	diffManagerMentions = "mentions"
 )

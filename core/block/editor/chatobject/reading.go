@@ -25,7 +25,7 @@ type readHandler interface {
 	readModifier(value bool) query.Modifier
 
 	readMessages(newOldestOrderId string, idsModified []string)
-	unreadMessages(newOldestOrderId string, lastDatabaseId string, msgIds []string)
+	unreadMessages(newOldestOrderId string, lastStateId string, msgIds []string)
 }
 
 type readMessagesHandler struct {
@@ -58,10 +58,10 @@ func (h *readMessagesHandler) readMessages(newOldestOrderId string, idsModified 
 	h.subscription.updateMessageRead(idsModified, true)
 }
 
-func (h *readMessagesHandler) unreadMessages(newOldestOrderId string, lastDatabaseId string, msgIds []string) {
+func (h *readMessagesHandler) unreadMessages(newOldestOrderId string, lastStateId string, msgIds []string) {
 	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
 		state.Messages.OldestOrderId = newOldestOrderId
-		state.LastDatabaseId = lastDatabaseId
+		state.LastStateId = lastStateId
 		return state
 	})
 	h.subscription.updateMessageRead(msgIds, false)
@@ -109,10 +109,10 @@ func (h *readMentionsHandler) readMessages(newOldestOrderId string, idsModified 
 	h.subscription.updateMentionRead(idsModified, true)
 }
 
-func (h *readMentionsHandler) unreadMessages(newOldestOrderId string, lastDatabaseId string, msgIds []string) {
+func (h *readMentionsHandler) unreadMessages(newOldestOrderId string, lastStateId string, msgIds []string) {
 	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
 		state.Mentions.OldestOrderId = newOldestOrderId
-		state.LastDatabaseId = lastDatabaseId
+		state.LastStateId = lastStateId
 		return state
 	})
 	h.subscription.updateMentionRead(msgIds, false)
@@ -142,14 +142,14 @@ func newReadHandler(counterType CounterType, subscription *subscription) readHan
 	}
 }
 
-func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastDatabaseId string, counterType CounterType) error {
+func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType CounterType) error {
 	handler := newReadHandler(counterType, s.subscription)
 	// 1. select all messages with orderId < beforeOrderId and addedTime < lastDbState
 	// 2. use the last(by orderId) message id as lastHead
 	// 3. update the MarkSeenHeads
 	// 2. mark messages as read in the DB
 
-	msgs, err := s.repository.getUnreadMessageIdsInRange(ctx, afterOrderId, beforeOrderId, lastDatabaseId, handler)
+	msgs, err := s.repository.getUnreadMessageIdsInRange(ctx, afterOrderId, beforeOrderId, lastStateId, handler)
 	if err != nil {
 		return fmt.Errorf("get message: %w", err)
 	}
@@ -185,7 +185,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return fmt.Errorf("get oldest order id: %w", err)
 	}
 
-	lastAdded, err := s.repository.getLastDatabaseId(txn.Context())
+	lastAdded, err := s.repository.getLastStateId(txn.Context())
 	if err != nil {
 		return fmt.Errorf("get last added date: %w", err)
 	}

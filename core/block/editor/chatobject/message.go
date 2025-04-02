@@ -15,7 +15,7 @@ const (
 	readKey        = "read"
 	mentionReadKey = "mentionRead"
 	hasMentionKey  = "hasMention"
-	databaseIdKey  = "dbId"
+	stateIdKey     = "stateId"
 	orderKey       = "_o"
 )
 
@@ -128,7 +128,7 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(readKey, arenaNewBool(arena, m.Read))
 	marshalTo.Set(mentionReadKey, arenaNewBool(arena, m.MentionRead))
 	marshalTo.Set(hasMentionKey, arenaNewBool(arena, m.CurrentUserMentioned))
-	marshalTo.Set(databaseIdKey, arena.NewString(m.DatabaseId))
+	marshalTo.Set(stateIdKey, arena.NewString(m.StateId))
 	marshalTo.Set(reactionsKey, reactions)
 }
 
@@ -147,7 +147,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Creator:          string(m.val.GetStringBytes(creatorKey)),
 			CreatedAt:        int64(m.val.GetInt(createdAtKey)),
 			ModifiedAt:       int64(m.val.GetInt(modifiedAtKey)),
-			DatabaseId:       m.val.GetString(databaseIdKey),
+			StateId:          m.val.GetString(stateIdKey),
 			OrderId:          string(m.val.GetStringBytes("_o", "id")),
 			ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
 			Message:          m.contentToModel(),

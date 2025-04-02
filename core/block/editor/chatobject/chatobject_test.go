@@ -189,7 +189,7 @@ func TestAddMessage(t *testing.T) {
 		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
-		assert.Equal(t, messagesResp.ChatState.LastDatabaseId, messagesResp.Messages[0].DatabaseId)
+		assert.Equal(t, messagesResp.ChatState.LastStateId, messagesResp.Messages[0].StateId)
 
 		want := givenComplexMessage()
 		want.Id = messageId
@@ -218,7 +218,7 @@ func TestGetMessages(t *testing.T) {
 	require.NoError(t, err)
 
 	lastMessage := messagesResp.Messages[4]
-	assert.Equal(t, messagesResp.ChatState.LastDatabaseId, lastMessage.DatabaseId)
+	assert.Equal(t, messagesResp.ChatState.LastStateId, lastMessage.StateId)
 
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
 	for i, msg := range messagesResp.Messages {
@@ -546,8 +546,8 @@ func assertMessagesEqual(t *testing.T, want, got *Message) {
 	assert.NotZero(t, got.CreatedAt)
 	got.CreatedAt = 0
 
-	assert.NotEmpty(t, got.DatabaseId)
-	got.DatabaseId = ""
+	assert.NotEmpty(t, got.StateId)
+	got.StateId = ""
 
 	assert.Equal(t, want, got)
 }
