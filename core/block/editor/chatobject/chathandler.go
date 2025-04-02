@@ -25,11 +25,11 @@ type ChatHandler struct {
 }
 
 func (d *ChatHandler) CollectionName() string {
-	return collectionName
+	return CollectionName
 }
 
 func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err error) {
-	coll, err := s.Collection(ctx, collectionName)
+	coll, err := s.Collection(ctx, CollectionName)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) 
 }
 
 func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (mode storestate.DeleteMode, err error) {
-	coll, err := ch.State.Collection(ctx, collectionName)
+	coll, err := ch.State.Collection(ctx, CollectionName)
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("get collection: %w", err)
 	}
