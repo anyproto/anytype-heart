@@ -110,7 +110,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 	if err != nil {
 		return err
 	}
-	signature, err := key.Sign(encryptedJson)
+	signature, err := s.wallet.GetAccountPrivkey().Sign(encryptedJson)
 	if err != nil {
 		return err
 	}
