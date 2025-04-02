@@ -22,7 +22,17 @@ const (
 type Message struct {
 	*model.ChatMessage
 
+	// CurrentUserMentioned is memoized result of IsCurrentUserMentioned
 	CurrentUserMentioned bool
+}
+
+func (m *Message) IsCurrentUserMentioned(myParticipantId string) bool {
+	for _, mark := range m.Message.Marks {
+		if mark.Type == model.BlockContentTextMark_Mention && mark.Param == myParticipantId {
+			return true
+		}
+	}
+	return false
 }
 
 func unmarshalMessage(val *anyenc.Value) (*Message, error) {

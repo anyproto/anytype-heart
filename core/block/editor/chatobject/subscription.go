@@ -165,16 +165,13 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 			}
 			state.Messages.Counter++
 
-			for _, mark := range message.Message.Marks {
-				if mark.Type == model.BlockContentTextMark_Mention && mark.Param == s.myParticipantId {
-					state.Mentions.Counter++
-
-					if message.OrderId < state.Mentions.OldestOrderId || state.Mentions.OldestOrderId == "" {
-						state.Mentions.OldestOrderId = message.OrderId
-					}
-					break
+			if message.IsCurrentUserMentioned(s.myParticipantId) {
+				state.Mentions.Counter++
+				if message.OrderId < state.Mentions.OldestOrderId || state.Mentions.OldestOrderId == "" {
+					state.Mentions.OldestOrderId = message.OrderId
 				}
 			}
+
 		}
 		if message.DatabaseId > state.LastDatabaseId {
 			state.LastDatabaseId = message.DatabaseId

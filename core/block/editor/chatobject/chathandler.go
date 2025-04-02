@@ -13,7 +13,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ChatHandler struct {
@@ -65,13 +64,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	msg.DatabaseId = bson.NewObjectId().Hex()
 
-	msg.CurrentUserMentioned = false
-	for _, mark := range msg.Message.Marks {
-		if mark.Type == model.BlockContentTextMark_Mention && mark.Param == d.myParticipantId {
-			msg.CurrentUserMentioned = true
-			break
-		}
-	}
+	msg.CurrentUserMentioned = msg.IsCurrentUserMentioned(d.myParticipantId)
 
 	msg.OrderId = ch.Change.Order
 
