@@ -307,7 +307,7 @@ func convertLayoutFromNote(st *state.State, oldLayout, newLayout domain.Value) {
 	}
 	if !oldLayout.Ok() {
 		title := st.Pick(state.TitleBlockID)
-		if title != nil && st.Details().Has(bundle.RelationKeyName) {
+		if title != nil {
 			return
 		}
 	}
