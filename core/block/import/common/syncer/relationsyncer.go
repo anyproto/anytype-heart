@@ -44,7 +44,7 @@ func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: fileId},
 			ObjectOrigin:         origin,
 		}
-		fileObjectId, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
+		fileObjectId, _, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			log.Errorf("file uploading %s", err)
 		}
@@ -64,7 +64,7 @@ func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[
 		RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: fileId},
 		ObjectOrigin:         origin,
 	}
-	fileObjectId, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
+	fileObjectId, _, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 	if err != nil {
 		log.Errorf("file uploading %s", err)
 	}

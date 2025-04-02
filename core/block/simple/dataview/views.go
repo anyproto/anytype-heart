@@ -162,7 +162,6 @@ func (l *Dataview) RemoveViewRelations(viewID string, relationKeys []string) err
 	if err != nil {
 		return err
 	}
-	l.syncViewRelationWithRelationLinks(view)
 
 	view.Relations = slice.Filter(view.Relations, func(f *model.BlockContentDataviewRelation) bool {
 		return slice.FindPos(relationKeys, f.Key) == -1
@@ -175,7 +174,6 @@ func (l *Dataview) ReplaceViewRelation(viewID string, relationKey string, relati
 	if err != nil {
 		return err
 	}
-	l.syncViewRelationWithRelationLinks(view)
 
 	idx := slice.Find(view.Relations, func(f *model.BlockContentDataviewRelation) bool {
 		return f.Key == relationKey
@@ -195,7 +193,6 @@ func (l *Dataview) ReorderViewRelations(viewID string, relationKeys []string) er
 	if err != nil {
 		return err
 	}
-	l.syncViewRelationWithRelationLinks(view)
 
 	relationsMap := make(map[string]*model.BlockContentDataviewRelation)
 	for _, r := range view.Relations {
@@ -216,35 +213,6 @@ func (l *Dataview) ReorderViewRelations(viewID string, relationKeys []string) er
 	}
 	view.Relations = newRelations
 	return nil
-}
-
-func (l *Dataview) syncViewRelationWithRelationLinks(view *model.BlockContentDataviewView) {
-	relationLinksKeys := map[string]struct{}{}
-	for _, relLink := range l.content.RelationLinks {
-		relationLinksKeys[relLink.Key] = struct{}{}
-	}
-
-	currentViewKeys := map[string]struct{}{}
-	newViewRelations := view.Relations[:0]
-	for _, rel := range view.Relations {
-		// Don't add relations that are not in relation links
-		if _, ok := relationLinksKeys[rel.Key]; ok {
-			newViewRelations = append(newViewRelations, rel)
-			currentViewKeys[rel.Key] = struct{}{}
-		}
-	}
-
-	for _, relLink := range l.content.RelationLinks {
-		_, ok := currentViewKeys[relLink.Key]
-		if !ok {
-			newViewRelations = append(newViewRelations, &model.BlockContentDataviewRelation{
-				Key:       relLink.Key,
-				Width:     DefaultViewRelationWidth,
-				IsVisible: false,
-			})
-		}
-	}
-	view.Relations = newViewRelations
 }
 
 func (l *Dataview) setRelationFormat(filter *model.BlockContentDataviewFilter) {

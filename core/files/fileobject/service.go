@@ -84,7 +84,9 @@ type service struct {
 	resolverRetryStartDelay time.Duration
 	resolverRetryMaxDelay   time.Duration
 
-	closeWg *sync.WaitGroup
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
+	closeWg            *sync.WaitGroup
 }
 
 func New(
@@ -109,6 +111,8 @@ type configProvider interface {
 var _ configProvider = (*config.Config)(nil)
 
 func (s *service) Init(a *app.App) error {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.objectCreator = app.MustComponent[objectCreatorService](a)
 	s.fileService = app.MustComponent[files.Service](a)
@@ -148,7 +152,7 @@ func (s *service) Run(_ context.Context) error {
 	go func() {
 		defer s.closeWg.Done()
 
-		err := s.deleteMigratedFilesInNonPersonalSpaces(context.Background())
+		err := s.deleteMigratedFilesInNonPersonalSpaces(s.componentCtx)
 		if err != nil {
 			log.Errorf("delete migrated files in non personal spaces: %v", err)
 		}
@@ -257,6 +261,9 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 }
 
 func (s *service) Close(ctx context.Context) error {
+	if s.componentCtxCancel != nil {
+		s.componentCtxCancel()
+	}
 	s.closeWg.Wait()
 	err := s.migrationQueue.Close()
 	return errors.Join(err, s.indexer.close())

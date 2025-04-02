@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/shareablespace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/streamablespace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
@@ -28,6 +30,8 @@ type SpaceFactory interface {
 	NewPersonalSpace(ctx context.Context, metadata []byte) (spacecontroller.SpaceController, error)
 	CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error)
 	NewShareableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)
+	CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error)
+	NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo, metadata []byte) (spacecontroller.SpaceController, error)
 	CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
@@ -207,6 +211,33 @@ func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp 
 		return nil, err
 	}
 	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
+	if err != nil {
+		return nil, err
+	}
+	err = ctrl.Start(ctx)
+	return ctrl, err
+}
+
+func (s *spaceFactory) CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error) {
+	encodedKey, err := crypto.EncodeKeyToString(privKey)
+	if err != nil {
+		return nil, err
+	}
+	info := spaceinfo.NewSpacePersistentInfo(id)
+	info.SetAccountStatus(spaceinfo.AccountStatusUnknown).
+		SetEncodedKey(encodedKey)
+	if err := s.techSpace.SpaceViewCreate(ctx, id, false, info); err != nil {
+		return nil, err
+	}
+	return s.NewStreamableSpace(ctx, id, info, metadata)
+}
+
+func (s *spaceFactory) NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo, metadata []byte) (spacecontroller.SpaceController, error) {
+	decodedSignKey, err := crypto.DecodeKeyFromString(
+		info.EncodedKey,
+		crypto.UnmarshalEd25519PrivateKey,
+		nil)
+	ctrl, err := streamablespace.NewSpaceController(ctx, id, decodedSignKey, metadata, s.app)
 	if err != nil {
 		return nil, err
 	}
