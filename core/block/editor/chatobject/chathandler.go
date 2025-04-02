@@ -65,10 +65,10 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	msg.DatabaseId = bson.NewObjectId().Hex()
 
-	msg.HasMention = false
+	msg.CurrentUserMentioned = false
 	for _, mark := range msg.Message.Marks {
 		if mark.Type == model.BlockContentTextMark_Mention && mark.Param == d.myParticipantId {
-			msg.HasMention = true
+			msg.CurrentUserMentioned = true
 			break
 		}
 	}

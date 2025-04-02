@@ -36,11 +36,17 @@ type Store interface {
 	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 	SetPushChangeHook(onPushChange PushChangeHook)
+
+	// RegisterDiffManager sets a hook that will be called when a change is removed (marked as read) from the diff manager
+	// must be called before ReadStoreDoc.
+	//
+	// If a head is marked as read in the diff manager, all earlier heads for that branch marked as read as well
+	RegisterDiffManager(name string, onRemoveHook func(removed []string))
 	// MarkSeenHeads marks heads as seen in a diff manager. Then the diff manager will call a hook from SetDiffManagerOnRemoveHook
 	MarkSeenHeads(ctx context.Context, name string, heads []string) error
-	RegisterDiffManager(name string, onRemoveHook func(removed []string))
 	// StoreSeenHeads persists current seen heads in any-store
 	StoreSeenHeads(ctx context.Context, name string) error
+	// InitDiffManager initializes a diff manager with specified seen heads
 	InitDiffManager(ctx context.Context, name string, seenHeads []string) error
 }
 
@@ -78,8 +84,6 @@ func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
 	s.onPushChange = onPushChange
 }
 
-// SetDiffManagerOnRemoveHook sets a hook that will be called when a change is removed from the diff manager
-// must be called only before ReadStoreDoc
 func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []string)) {
 	if _, ok := s.diffManagers[name]; !ok {
 		s.diffManagers[name] = &diffManager{

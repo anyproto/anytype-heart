@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -52,16 +51,18 @@ func (h *readMessagesHandler) getReadKey() string {
 }
 
 func (h *readMessagesHandler) readMessages(newOldestOrderId string, idsModified []string) {
-	h.subscription.updateChatState(func(state *model.ChatState) {
+	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
 		state.Messages.OldestOrderId = newOldestOrderId
+		return state
 	})
 	h.subscription.updateMessageRead(idsModified, true)
 }
 
 func (h *readMessagesHandler) unreadMessages(newOldestOrderId string, lastDatabaseId string, msgIds []string) {
-	h.subscription.updateChatState(func(state *model.ChatState) {
+	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
 		state.Messages.OldestOrderId = newOldestOrderId
 		state.LastDatabaseId = lastDatabaseId
+		return state
 	})
 	h.subscription.updateMessageRead(msgIds, false)
 }
@@ -101,16 +102,18 @@ func (h *readMentionsHandler) getReadKey() string {
 }
 
 func (h *readMentionsHandler) readMessages(newOldestOrderId string, idsModified []string) {
-	h.subscription.updateChatState(func(state *model.ChatState) {
+	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
 		state.Mentions.OldestOrderId = newOldestOrderId
+		return state
 	})
 	h.subscription.updateMentionRead(idsModified, true)
 }
 
 func (h *readMentionsHandler) unreadMessages(newOldestOrderId string, lastDatabaseId string, msgIds []string) {
-	h.subscription.updateChatState(func(state *model.ChatState) {
+	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
 		state.Mentions.OldestOrderId = newOldestOrderId
 		state.LastDatabaseId = lastDatabaseId
+		return state
 	})
 	h.subscription.updateMentionRead(msgIds, false)
 }
@@ -206,31 +209,32 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	return txn.Commit()
 }
 
-func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) {
+func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) error {
 	if len(changeIds) == 0 {
-		return
+		return nil
 	}
 
 	txn, err := s.repository.writeTx(s.componentCtx)
 	if err != nil {
-		log.With(zap.Error(err)).Error("markReadMessages: start write tx")
-		return
+		return fmt.Errorf("start write tx: %w", err)
 	}
-	defer txn.Commit()
+	defer txn.Rollback()
 
 	idsModified := s.repository.setReadFlag(txn.Context(), s.Id(), changeIds, handler, true)
 
 	if len(idsModified) > 0 {
 		newOldestOrderId, err := s.repository.getOldestOrderId(txn.Context(), handler)
 		if err != nil {
-			log.Error("markReadMessages: get oldest order id", zap.Error(err))
-			err = txn.Rollback()
-			if err != nil {
-				log.Error("markReadMessages: rollback transaction", zap.Error(err))
-			}
+			return fmt.Errorf("get oldest order id: %w", err)
+		}
+
+		err = txn.Commit()
+		if err != nil {
+			return fmt.Errorf("commit: %w", err)
 		}
 
 		handler.readMessages(newOldestOrderId, idsModified)
 		s.subscription.flush()
 	}
+	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/slice"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
@@ -120,6 +121,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
 	s.subscription = newSubscription(
+		s.componentCtx,
 		domain.FullID{ObjectID: ctx.Source.Id(), SpaceID: ctx.Source.SpaceID()},
 		myParticipantId, s.eventSender, s.spaceIndex, s.repository,
 	)
@@ -129,10 +131,16 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	// Diff managers should be added before SmartBlock.Init, because they have to be initialized in source.ReadStoreDoc
 	storeSource.RegisterDiffManager(diffManagerMessages, func(removed []string) {
-		s.markReadMessages(removed, messagesOpts)
+		markErr := s.markReadMessages(removed, messagesOpts)
+		if markErr != nil {
+			log.Error("mark read messages", zap.Error(markErr))
+		}
 	})
 	storeSource.RegisterDiffManager(diffManagerMentions, func(removed []string) {
-		s.markReadMessages(removed, mentionsOpts)
+		markErr := s.markReadMessages(removed, mentionsOpts)
+		if markErr != nil {
+			log.Error("mark read mentions", zap.Error(markErr))
+		}
 	})
 
 	err = s.SmartBlock.Init(ctx)

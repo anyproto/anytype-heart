@@ -74,7 +74,7 @@ func (s *repository) getPrevOrderId(ctx context.Context, orderId string) (string
 
 // initialChatState returns the initial chat state for the chat object from the DB
 func (s *repository) loadChatState(ctx context.Context) (*model.ChatState, error) {
-	txn, err := s.collection.ReadTx(ctx)
+	txn, err := s.readTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("start read tx: %w", err)
 	}
@@ -301,10 +301,12 @@ func (s *repository) hasMyReaction(ctx context.Context, myIdentity string, messa
 }
 
 func (s *repository) getMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error) {
-	txn, err := s.collection.ReadTx(ctx)
+	txn, err := s.readTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("start read tx: %w", err)
 	}
+	defer txn.Commit()
+
 	messages := make([]*Message, 0, len(messageIds))
 	for _, messageId := range messageIds {
 		obj, err := s.collection.FindId(txn.Context(), messageId)

@@ -20,6 +20,8 @@ import (
 const LastMessageSubscriptionId = "lastMessage"
 
 type subscription struct {
+	componentCtx context.Context
+
 	spaceId         string
 	chatId          string
 	myParticipantId string
@@ -40,8 +42,9 @@ type subscription struct {
 	repository  *repository
 }
 
-func newSubscription(fullId domain.FullID, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store, repo *repository) *subscription {
+func newSubscription(componentCtx context.Context, fullId domain.FullID, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store, repo *repository) *subscription {
 	return &subscription{
+		componentCtx:    componentCtx,
 		spaceId:         fullId.SpaceID,
 		chatId:          fullId.ObjectID,
 		eventSender:     eventSender,
@@ -92,8 +95,8 @@ func (s *subscription) getChatState() *model.ChatState {
 	return copyChatState(s.chatState)
 }
 
-func (s *subscription) updateChatState(updater func(*model.ChatState)) {
-	updater(s.chatState)
+func (s *subscription) updateChatState(updater func(*model.ChatState) *model.ChatState) {
+	s.chatState = updater(s.chatState)
 	s.chatStateUpdated = true
 }
 
@@ -105,13 +108,13 @@ func (s *subscription) flush() {
 
 	// Reload ChatState after commit
 	if s.needReloadState {
-		s.updateChatState(func(state *model.ChatState) {
-			newState, err := s.repository.loadChatState(context.TODO())
+		s.updateChatState(func(state *model.ChatState) *model.ChatState {
+			newState, err := s.repository.loadChatState(s.componentCtx)
 			if err != nil {
 				log.Error("failed to reload chat state", zap.Error(err))
-				return
+				return state
 			}
-			*state = *newState
+			return newState
 		})
 		s.needReloadState = false
 	}
@@ -155,7 +158,7 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 }
 
 func (s *subscription) add(prevOrderId string, message *Message) {
-	s.updateChatState(func(state *model.ChatState) {
+	s.updateChatState(func(state *model.ChatState) *model.ChatState {
 		if !message.Read {
 			if message.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
 				state.Messages.OldestOrderId = message.OrderId
@@ -176,6 +179,7 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 		if message.DatabaseId > state.LastDatabaseId {
 			state.LastDatabaseId = message.DatabaseId
 		}
+		return state
 	})
 
 	if !s.canSend() {
@@ -256,12 +260,13 @@ func (s *subscription) updateReactions(message *Message) {
 // updateMessageRead updates the read status of the messages with the given ids
 // read ids should ONLY contain ids if they were actually modified in the DB
 func (s *subscription) updateMessageRead(ids []string, read bool) {
-	s.updateChatState(func(state *model.ChatState) {
+	s.updateChatState(func(state *model.ChatState) *model.ChatState {
 		if read {
 			state.Messages.Counter -= int32(len(ids))
 		} else {
 			state.Messages.Counter += int32(len(ids))
 		}
+		return state
 	})
 
 	if !s.canSend() {
@@ -277,12 +282,13 @@ func (s *subscription) updateMessageRead(ids []string, read bool) {
 }
 
 func (s *subscription) updateMentionRead(ids []string, read bool) {
-	s.updateChatState(func(state *model.ChatState) {
+	s.updateChatState(func(state *model.ChatState) *model.ChatState {
 		if read {
 			state.Mentions.Counter -= int32(len(ids))
 		} else {
 			state.Mentions.Counter += int32(len(ids))
 		}
+		return state
 	})
 
 	if !s.canSend() {

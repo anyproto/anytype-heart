@@ -22,7 +22,7 @@ const (
 type Message struct {
 	*model.ChatMessage
 
-	HasMention bool
+	CurrentUserMentioned bool
 }
 
 func unmarshalMessage(val *anyenc.Value) (*Message, error) {
@@ -117,7 +117,7 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(contentKey, content)
 	marshalTo.Set(readKey, arenaNewBool(arena, m.Read))
 	marshalTo.Set(mentionReadKey, arenaNewBool(arena, m.MentionRead))
-	marshalTo.Set(hasMentionKey, arenaNewBool(arena, m.HasMention))
+	marshalTo.Set(hasMentionKey, arenaNewBool(arena, m.CurrentUserMentioned))
 	marshalTo.Set(databaseIdKey, arena.NewString(m.DatabaseId))
 	marshalTo.Set(reactionsKey, reactions)
 }
@@ -146,7 +146,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Attachments:      m.attachmentsToModel(),
 			Reactions:        m.reactionsToModel(),
 		},
-		HasMention: m.val.GetBool(hasMentionKey),
+		CurrentUserMentioned: m.val.GetBool(hasMentionKey),
 	}, nil
 }
 
