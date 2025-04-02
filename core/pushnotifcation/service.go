@@ -49,14 +49,9 @@ func (s *service) RegisterToken(ctx context.Context, req *pb.RpcPushNotification
 	if req.Token == "" {
 		return fmt.Errorf("token is empty")
 	}
-	signature, err := s.wallet.GetAccountPrivkey().Sign([]byte(req.Token))
-	if err != nil {
-		return err
-	}
 	_, err = s.pushClient.SetToken(ctx, &pushapi.SetTokenRequest{
-		Platform:  pushapi.Platform(req.Platform),
-		Token:     req.Token,
-		Signature: signature,
+		Platform: pushapi.Platform(req.Platform),
+		Token:    req.Token,
 	})
 	return err
 }

@@ -510,11 +510,11 @@ func (c *Config) GetPublishServer() publishclient.Config {
 }
 
 func (c *Config) GetPushConfig() PushConfig {
-	pushPeerId := "peer"
-	pushAddr := "addr"
+	pushPeerId := "12D3KooWR8Ci1XidFCCXoZppGrUmiy4D1Mjoux9xK6QoZrpbQC3J"
+	pushAddr := "stage1-anytype-push-server1.toolpad.org:4940"
 
 	return PushConfig{
 		PeerId: pushPeerId,
-		Addr:   []string{pushAddr},
+		Addr:   []string{"yamux://" + pushAddr},
 	}
 }
