@@ -237,9 +237,11 @@ packages:
   github.com/anyproto/anytype-heart/core/identity:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/pb/service:
+  github.com/anyproto/anytype-heart/core/api/apicore:
     interfaces:
-      ClientCommandsServer:
+      AccountService:
+      ExportService:
+      ClientCommands:
   github.com/anyproto/anytype-heart/core/block/template:
     interfaces:
       Service:

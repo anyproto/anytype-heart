@@ -90,6 +90,9 @@ func (p *Archive) autoInstallBinWidget() error {
 	if err != nil {
 		return err
 	}
+	if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
+		return nil
+	}
 	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
 	if slices.Contains(keys, widget.DefaultWidgetBin) {
 		// cache to avoid unnecessary objectstore requests
@@ -100,7 +103,7 @@ func (p *Archive) autoInstallBinWidget() error {
 		st := sb.NewState()
 		if w, ok := sb.(widget.Widget); ok {
 			// We rely on AddAutoWidget to check if the widget was already installed/removed before
-			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin, "", model.BlockContentWidget_Link)
+			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin, "", model.BlockContentWidget_Link, widget.DefaultWidgetBinEventName)
 			if err != nil {
 				return err
 			}

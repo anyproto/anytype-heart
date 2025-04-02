@@ -107,9 +107,7 @@
       "done",
       "dueDate",
       "linkedProjects",
-      "priority",
-      "status",
-      "tasks"
+      "status"
     ],
     "description": "A piece of work to be done or undertaken",
     "revision": 2
