@@ -430,6 +430,10 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 
 	var result []T
 	for _, store := range stores {
+		err := store.Init()
+		if err != nil {
+			return nil, fmt.Errorf("init store: %w", err)
+		}
 		items, err := proc(store)
 		if err != nil {
 			return nil, err
