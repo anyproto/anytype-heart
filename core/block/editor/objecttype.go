@@ -242,7 +242,7 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 	var (
 		resultErr error
 		deriver   = relationIdDeriver{space: ot.Space()}
-		oldLayout = getLayoutStateFromParent(info.ParentState)
+		oldLayout = getLayoutStateFromParent(info.ParentDetails)
 
 		forceLayoutUpdate = newLayout.isForceLayoutSet && newLayout.forceLayout || // forceLayout is set to true
 			oldLayout.forceLayout && !(newLayout.isForceLayoutSet && !newLayout.forceLayout) // forceLayout was true and is not unset
@@ -327,28 +327,28 @@ func getLayoutStateFromMessages(msgs []simple.EventMessage) layoutState {
 	return ls
 }
 
-func getLayoutStateFromParent(ps *state.State) layoutState {
+func getLayoutStateFromParent(details *domain.Details) layoutState {
 	ls := layoutState{}
-	if ps == nil {
+	if details == nil {
 		return ls
 	}
 
-	if layout, ok := ps.Details().TryInt64(bundle.RelationKeyRecommendedLayout); ok {
+	if layout, ok := details.TryInt64(bundle.RelationKeyRecommendedLayout); ok {
 		ls.layout = layout
 		ls.isLayoutSet = true
 	}
 
-	if layoutAlign, ok := ps.Details().TryInt64(bundle.RelationKeyLayoutAlign); ok {
+	if layoutAlign, ok := details.TryInt64(bundle.RelationKeyLayoutAlign); ok {
 		ls.layoutAlign = layoutAlign
 		ls.isLayoutAlignSet = true
 	}
 
-	if forceLayout, ok := ps.Details().TryBool(bundle.RelationKeyForceLayoutFromType); ok {
+	if forceLayout, ok := details.TryBool(bundle.RelationKeyForceLayoutFromType); ok {
 		ls.forceLayout = forceLayout
 		ls.isForceLayoutSet = true
 	}
 
-	featuredRelations, ok := ps.Details().TryStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	featuredRelations, ok := details.TryStringList(bundle.RelationKeyRecommendedFeaturedRelations)
 	// featuredRelations can present in objects as empty slice or containing only description
 	if ok && len(featuredRelations) != 0 && !slices.Equal(featuredRelations, []string{bundle.RelationKeyDescription.String()}) {
 		ls.featuredRelations = featuredRelations

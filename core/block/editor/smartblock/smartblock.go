@@ -69,10 +69,10 @@ const (
 type Hook int
 
 type ApplyInfo struct {
-	State       *state.State
-	ParentState *state.State
-	Events      []simple.EventMessage
-	Changes     []*pb.ChangeContent
+	State         *state.State
+	ParentDetails *domain.Details
+	Events        []simple.EventMessage
+	Changes       []*pb.ChangeContent
 }
 
 type HookCallback func(info ApplyInfo) (err error)
@@ -701,11 +701,15 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		removeInternalFlags(s)
 	}
 
-	migrationVersionUpdated := true
-	parent := s.ParentState()
+	var (
+		migrationVersionUpdated = true
+		parent                  = s.ParentState()
+		parentDetails           *domain.Details
+	)
+
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
-		parent = parent.Copy()
+		parentDetails = parent.Details().Copy()
 	}
 
 	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
@@ -818,10 +822,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	if hooks {
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{
-			State:       sb.Doc.(*state.State),
-			ParentState: parent,
-			Events:      msgs,
-			Changes:     changes,
+			State:         sb.Doc.(*state.State),
+			ParentDetails: parentDetails,
+			Events:        msgs,
+			Changes:       changes,
 		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
@@ -964,10 +968,10 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	}
 	sb.runIndexer(s)
 	if err = sb.execHooks(HookAfterApply, ApplyInfo{
-		State:       s,
-		ParentState: s.ParentState(),
-		Events:      msgs,
-		Changes:     changes,
+		State:         s,
+		ParentDetails: s.ParentState().Details(),
+		Events:        msgs,
+		Changes:       changes,
 	}); err != nil {
 		log.Errorf("failed to execute smartblock hooks after apply on StateAppend: %v", err)
 	}

@@ -12,7 +12,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -418,20 +417,20 @@ func makeApplyInfo(typeId string, oldLS, newLS layoutState) smartblock.ApplyInfo
 		}))
 	}
 
-	ps := state.NewDoc(typeId, nil).NewState().SetDetails(domain.NewDetails())
+	parentDetails := domain.NewDetails()
 	if oldLS.isLayoutSet {
-		ps.SetDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(oldLS.layout))
+		parentDetails.Set(bundle.RelationKeyRecommendedLayout, domain.Int64(oldLS.layout))
 	}
 	if oldLS.isLayoutAlignSet {
-		ps.SetDetail(bundle.RelationKeyLayoutAlign, domain.Int64(oldLS.layoutAlign))
+		parentDetails.Set(bundle.RelationKeyLayoutAlign, domain.Int64(oldLS.layoutAlign))
 	}
 	if oldLS.isFeaturedRelationsSet {
-		ps.SetDetail(bundle.RelationKeyRecommendedFeaturedRelations, domain.StringList(oldLS.featuredRelations))
+		parentDetails.Set(bundle.RelationKeyRecommendedFeaturedRelations, domain.StringList(oldLS.featuredRelations))
 	}
 
 	return smartblock.ApplyInfo{
-		Events:      events,
-		ParentState: ps,
+		Events:        events,
+		ParentDetails: parentDetails,
 	}
 }
 
