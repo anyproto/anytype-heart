@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -379,10 +380,12 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 
 func (s *dsObjectStore) getAnyStoreConfig() *anystore.Config {
 	return &anystore.Config{
-		Namespace:               s.anyStoreConfig.Namespace,
-		ReadConnections:         s.anyStoreConfig.ReadConnections,
-		SQLiteConnectionOptions: maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
-		SyncPoolElementMaxSize:  s.anyStoreConfig.SyncPoolElementMaxSize,
+		Namespace:                         s.anyStoreConfig.Namespace,
+		ReadConnections:                   s.anyStoreConfig.ReadConnections,
+		SQLiteConnectionOptions:           maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
+		SyncPoolElementMaxSize:            s.anyStoreConfig.SyncPoolElementMaxSize,
+		StalledConnectionsDetectorEnabled: true,
+		StalledConnectionsPanicOnClose:    time.Second * 30,
 	}
 }
 
