@@ -57,7 +57,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 
 func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 2,
+		Version: 3,
 		Proc: func(st *state.State) {
 			// we purposefully do not add the ALl Objects widget here(as in migration3), because for new users we don't want to auto-create it
 			template.InitTemplate(st,
