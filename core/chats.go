@@ -195,11 +195,11 @@ func (mw *Middleware) ChatUnsubscribeFromMessagePreviews(cctx context.Context, r
 func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 	err := chatService.ReadMessages(cctx, chats.ReadMessagesRequest{
-		ChatObjectId:   request.ChatObjectId,
-		AfterOrderId:   request.AfterOrderId,
-		BeforeOrderId:  request.BeforeOrderId,
-		LastDatabaseId: request.LastDatabaseId,
-		CounterType:    chatobject.CounterType(request.Type),
+		ChatObjectId:  request.ChatObjectId,
+		AfterOrderId:  request.AfterOrderId,
+		BeforeOrderId: request.BeforeOrderId,
+		LastStateId:   request.LastStateId,
+		CounterType:   chatobject.CounterType(request.Type),
 	})
 	if err != nil {
 		code := mapErrorCode(err,

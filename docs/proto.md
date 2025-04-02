@@ -10860,7 +10860,7 @@ Get marks list in the selected range in text block.
 | chatObjectId | [string](#string) |  | id of the chat object |
 | afterOrderId | [string](#string) |  | read from this orderId; if empty - read from the beginning of the chat |
 | beforeOrderId | [string](#string) |  | read til this orderId |
-| lastDatabaseId | [string](#string) |  | databaseId from the last processed ChatState event(or GetMessages). Used to prevent race conditions |
+| lastStateId | [string](#string) |  | stateId from the last processed ChatState event(or GetMessages). Used to prevent race conditions |
 
 
 

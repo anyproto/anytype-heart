@@ -47,7 +47,7 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) (*SubscribeLastMessagesResponse, error)
-	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastDatabaseId string, counterType CounterType) error
+	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType CounterType) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType CounterType) error
 	Unsubscribe(subId string) error
 }

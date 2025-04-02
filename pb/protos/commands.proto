@@ -8321,7 +8321,7 @@ message Rpc {
                 string chatObjectId = 2; // id of the chat object
                 string afterOrderId = 3; // read from this orderId; if empty - read from the beginning of the chat
                 string beforeOrderId = 4; // read til this orderId
-                string lastDatabaseId = 5; // databaseId from the last processed ChatState event(or GetMessages). Used to prevent race conditions
+                string lastStateId = 5; // stateId from the last processed ChatState event(or GetMessages). Used to prevent race conditions
             }
 
             message Response {
