@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "91c804ca7dd4df74fafbdaff99e50fa2ffcc6cb0fb073887a90bdf1b4a3d98d5"
+const TypeChecksum = "f2672b9f52915f228e335b78ed94ce1b6c7b195ceb1cba9a44b25a870a3b2ac0"
 const (
 	TypePrefix = "_ot"
 )
@@ -426,7 +426,7 @@ var (
 			Name:          "Task",
 			PluralName:    "Tasks",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyLinkedProjects), MustGetRelationLink(RelationKeyPriority), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyLinkedProjects), MustGetRelationLink(RelationKeyStatus)},
 			Revision:      2,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "task",
