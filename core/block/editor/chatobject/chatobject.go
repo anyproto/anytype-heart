@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	collectionName      = "chats"
+	CollectionName      = "chats"
 	descOrder           = "-_o.id"
 	ascOrder            = "_o.id"
 	descDatabaseId      = "-dbId"
@@ -108,7 +108,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
-	collection, err := s.crdtDb.Collection(ctx.Ctx, storeSource.Id()+collectionName)
+	collection, err := s.crdtDb.Collection(ctx.Ctx, storeSource.Id()+CollectionName)
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
@@ -218,7 +218,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	message.MarshalAnyenc(obj, arena)
 
 	builder := storestate.Builder{}
-	err := builder.Create(collectionName, storestate.IdFromChange, obj)
+	err := builder.Create(CollectionName, storestate.IdFromChange, obj)
 	if err != nil {
 		return "", fmt.Errorf("create chat: %w", err)
 	}
@@ -237,7 +237,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 
 func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error {
 	builder := storestate.Builder{}
-	builder.Delete(collectionName, messageId)
+	builder.Delete(CollectionName, messageId)
 	_, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   s.store,
@@ -260,7 +260,7 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 	newMessage.MarshalAnyenc(obj, arena)
 
 	builder := storestate.Builder{}
-	err := builder.Modify(collectionName, messageId, []string{contentKey}, pb.ModifyOp_Set, obj.Get(contentKey))
+	err := builder.Modify(CollectionName, messageId, []string{contentKey}, pb.ModifyOp_Set, obj.Get(contentKey))
 	if err != nil {
 		return fmt.Errorf("modify content: %w", err)
 	}
@@ -290,12 +290,12 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 	builder := storestate.Builder{}
 
 	if hasReaction {
-		err = builder.Modify(collectionName, messageId, []string{reactionsKey, emoji}, pb.ModifyOp_Pull, arena.NewString(s.accountService.AccountID()))
+		err = builder.Modify(CollectionName, messageId, []string{reactionsKey, emoji}, pb.ModifyOp_Pull, arena.NewString(s.accountService.AccountID()))
 		if err != nil {
 			return fmt.Errorf("modify content: %w", err)
 		}
 	} else {
-		err = builder.Modify(collectionName, messageId, []string{reactionsKey, emoji}, pb.ModifyOp_AddToSet, arena.NewString(s.accountService.AccountID()))
+		err = builder.Modify(CollectionName, messageId, []string{reactionsKey, emoji}, pb.ModifyOp_AddToSet, arena.NewString(s.accountService.AccountID()))
 		if err != nil {
 			return fmt.Errorf("modify content: %w", err)
 		}

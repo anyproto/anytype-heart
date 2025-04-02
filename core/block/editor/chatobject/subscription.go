@@ -2,9 +2,11 @@ package chatobject
 
 import (
 	"context"
+	"os"
 	"slices"
 	"time"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/zap"
 

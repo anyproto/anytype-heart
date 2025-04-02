@@ -30029,6 +30029,7 @@ Precondition: user A and user B opened the same block
 | marketplaceForceReindexCounter | [int32](#int32) |  |  |
 | reindexDeletedObjects | [int32](#int32) |  |  |
 | reindexParticipants | [int32](#int32) |  |  |
+| reindexChats | [int32](#int32) |  |  |
 
 
 
