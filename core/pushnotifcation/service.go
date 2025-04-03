@@ -35,7 +35,7 @@ type service struct {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.pushClient = client.NewClient()
+	s.pushClient = app.MustComponent[client.Client](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.spaceKeyStore = app.MustComponent[spacekeystore.Store](a)
 	return

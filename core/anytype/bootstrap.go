@@ -83,6 +83,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/pushnotifcation"
+	"github.com/anyproto/anytype-heart/core/pushnotifcation/client"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -323,6 +324,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peerstatus.New()).
 		Register(spaceview.New()).
 		Register(api.New()).
+		Register(client.NewPushClient()).
 		Register(spacekeystore.New()).
 		Register(pushnotifcation.New())
 }

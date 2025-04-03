@@ -33,7 +33,7 @@ type client struct {
 	peerIds     []string
 }
 
-func NewClient() Client {
+func NewPushClient() Client {
 	return &client{}
 }
 
