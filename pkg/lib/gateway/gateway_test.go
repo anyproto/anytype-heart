@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/anytype/config/mock_config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
@@ -170,4 +172,34 @@ func TestRetryReader(t *testing.T) {
 
 	assert.True(t, reader.readCalled > 1)
 	assert.True(t, reader.seekCalled > 1)
+}
+
+func TestDoubleStart(t *testing.T) {
+	cfg := mock_config.NewMockUpdater(t)
+	cfg.EXPECT().UpdatePersistentConfig(mock.Anything).Return(nil).Run(func(f func(cfgp *config.ConfigPersistent) bool) {
+		cfgp := &config.ConfigPersistent{
+			GatewayAddr: "127.0.0.1:0",
+		}
+		f(cfgp)
+	})
+
+	gw := gateway{cfg: cfg}
+	require.NoError(t, gw.startServer())
+	require.NoError(t, gw.startServer())
+}
+
+func TestStartStopStart(t *testing.T) {
+	cfg := mock_config.NewMockUpdater(t)
+	cfg.EXPECT().UpdatePersistentConfig(mock.Anything).Return(nil).Run(func(f func(cfgp *config.ConfigPersistent) bool) {
+		cfgp := &config.ConfigPersistent{
+			GatewayAddr: "127.0.0.1:0",
+		}
+		f(cfgp)
+	})
+
+	gw := gateway{cfg: cfg}
+	require.NoError(t, gw.startServer())
+	require.NoError(t, gw.stopServer())
+	require.NoError(t, gw.startServer())
+
 }

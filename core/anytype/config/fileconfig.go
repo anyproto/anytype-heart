@@ -8,8 +8,10 @@ import (
 	"reflect"
 )
 
+var ErrInvalidConfigFormat = errors.New("invalid config format")
+
 // GetFileConfig - returns data from config file, if file doesn't exist returns same cfg struct
-func GetFileConfig(configPath string, cfg interface{}) error {
+func GetFileConfig(configPath string, cfg *ConfigPersistent) error {
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
 		return fmt.Errorf("cfg param must be a pointer type")
 	}
@@ -29,7 +31,8 @@ func GetFileConfig(configPath string, cfg interface{}) error {
 		if info.Size() > 0 {
 			err = json.NewDecoder(cfgFile).Decode(cfg)
 			if err != nil {
-				return fmt.Errorf("invalid file config format: %w", err)
+				log.Warn("failed to decode config file: %s", err)
+				return ErrInvalidConfigFormat
 			}
 		}
 	}
@@ -37,23 +40,20 @@ func GetFileConfig(configPath string, cfg interface{}) error {
 	return nil
 }
 
-// WriteJsonConfig - overwrites params in file only specified params which passed in cfg
-// `json:",omitempty"` - is required tag for every field in cfg !!!
-func WriteJsonConfig(configPath string, cfg interface{}) error {
-	oldCfg := make(map[string]interface{})
-	if err := GetFileConfig(configPath, &oldCfg); err != nil {
-		return err
+// ModifyJsonFileConfig - allows to directly read and modify json config file
+// used before the bootstrap of the app
+func ModifyJsonFileConfig(configPath string, modifier func(cfg *ConfigPersistent) (isModified bool)) error {
+	var cfg ConfigPersistent
+	// do not open for write, because in most cases we don't modify the config
+	err := GetFileConfig(configPath, &cfg)
+	// tolerate damaged or invalid config file -
+	if err != nil && !errors.Is(err, ErrInvalidConfigFormat) {
+		return fmt.Errorf("failed to get old config: %w", err)
 	}
 
-	newConfig, err := toMapInterface(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal new config: %w", err)
-	}
-
-	for oldKey, oldData := range oldCfg {
-		if _, ok := newConfig[oldKey]; !ok {
-			newConfig[oldKey] = oldData
-		}
+	modified := modifier(&cfg)
+	if !modified {
+		return nil
 	}
 
 	cfgFile, err := os.OpenFile(configPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0640)
@@ -62,7 +62,7 @@ func WriteJsonConfig(configPath string, cfg interface{}) error {
 	}
 	defer cfgFile.Close()
 
-	err = json.NewEncoder(cfgFile).Encode(newConfig)
+	err = json.NewEncoder(cfgFile).Encode(&cfg)
 	if err != nil {
 		return fmt.Errorf("failed to save data to the config file: %w", err)
 	}
@@ -70,12 +70,17 @@ func WriteJsonConfig(configPath string, cfg interface{}) error {
 	return nil
 }
 
-func toMapInterface(cfg interface{}) (map[string]interface{}, error) {
-	var m map[string]interface{}
-	byteData, err := json.Marshal(cfg)
+func writeJsonConfig(configPath string, cfg *ConfigPersistent) error {
+	cfgFile, err := os.OpenFile(configPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to open cfg file for updating: %w", err)
 	}
-	err = json.Unmarshal(byteData, &m)
-	return m, err
+	defer cfgFile.Close()
+
+	err = json.NewEncoder(cfgFile).Encode(&cfg)
+	if err != nil {
+		return fmt.Errorf("failed to save data to the config file: %w", err)
+	}
+
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -52,22 +53,21 @@ var (
 	ErrNetworkFileFailedToRead = fmt.Errorf("failed to read network configuration")
 )
 
-type FileConfig interface {
-	GetFileConfig() (ConfigRequired, error)
-	WriteFileConfig(cfg ConfigRequired) (ConfigRequired, error)
+type Updater interface {
+	UpdatePersistentConfig(f func(cfg *ConfigPersistent) (updated bool)) error
 }
 
-type ConfigRequired struct {
-	HostAddr            string `json:",omitempty"`
+type ConfigPersistent struct {
+	GatewayAddr         string `json:",omitempty"`
 	CustomFileStorePath string `json:",omitempty"`
 	LegacyFileStorePath string `json:",omitempty"`
 	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
 }
 
 type Config struct {
-	ConfigRequired `json:",inline"`
-	NewAccount     bool   `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
-	AutoJoinStream string `ignored:"true"` // contains the invite of the stream space to automatically join
+	ConfigPersistent `json:",inline"`
+	NewAccount       bool   `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
+	AutoJoinStream   string `ignored:"true"` // contains the invite of the stream space to automatically join
 
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
@@ -90,7 +90,22 @@ type Config struct {
 	FS                FSConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 
-	nodeConf nodeconf.Configuration
+	nodeConf   nodeconf.Configuration
+	updateLock sync.Mutex
+}
+
+// UpdatePersistentConfig updates the persistent config and writes it to the file after
+// The function f should return true if the config was changed.
+// config changes are saved in-memory even if file write fails
+func (c *Config) UpdatePersistentConfig(f func(cfg *ConfigPersistent) (updated bool)) error {
+	c.updateLock.Lock()
+	defer c.updateLock.Unlock()
+	updated := f(&c.ConfigPersistent)
+	if !updated {
+		return nil
+	}
+
+	return writeJsonConfig(c.GetConfigPath(), &c.ConfigPersistent)
 }
 
 func (c *Config) IsLocalOnlyMode() bool {
@@ -208,69 +223,18 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 	}
 
 	if !c.DisableFileConfig {
-		var confRequired ConfigRequired
-		err := GetFileConfig(c.GetConfigPath(), &confRequired)
+		err := ModifyJsonFileConfig(c.GetConfigPath(), func(cfg *ConfigPersistent) (isModified bool) {
+			// Do not overwrite the legacy file store path from file if it's already set in memory
+			if cfg.LegacyFileStorePath == "" && c.LegacyFileStorePath != "" {
+				cfg.LegacyFileStorePath = c.LegacyFileStorePath
+				isModified = true
+			}
+			c.ConfigPersistent = *cfg
+			return
+		})
 		if err != nil {
-			return fmt.Errorf("failed to get config from file: %w", err)
+			return fmt.Errorf("failed to read and modify config from file: %w", err)
 		}
-
-		writeConfig := func() error {
-			err = WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
-			if err != nil {
-				return fmt.Errorf("failed to save required configuration to the cfg file: %w", err)
-			}
-			return nil
-		}
-
-		// Do not overwrite the legacy file store path from file if it's already set in memory
-		if confRequired.LegacyFileStorePath == "" && c.LegacyFileStorePath != "" {
-			confRequired.LegacyFileStorePath = c.LegacyFileStorePath
-			c.ConfigRequired = confRequired
-			if err := writeConfig(); err != nil {
-				return err
-			}
-		}
-		c.ConfigRequired = confRequired
-
-		saveRandomHostAddr := func() error {
-			port, err := getRandomPort()
-			if err != nil {
-				port = 4006
-				log.Errorf("failed to get random port for gateway, go with the default %d: %s", port, err)
-			}
-
-			c.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)
-			return writeConfig()
-		}
-
-		if c.HostAddr == "" {
-			err = saveRandomHostAddr()
-			if err != nil {
-				return err
-			}
-		} else {
-			parts := strings.Split(c.HostAddr, "/")
-			if len(parts) == 0 {
-				log.Errorf("failed to parse cfg.HostAddr: %s", c.HostAddr)
-			} else {
-				// lets test the existing port in config
-				addr, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+parts[len(parts)-1])
-				if err == nil {
-					l, err := net.ListenTCP("tcp4", addr)
-					if err != nil {
-						// the port from config is no longer available. It may be used by other app or blocked by the OS(e.g. port exclusion range on windows)
-						// lets find another available port and save it to config
-						err = saveRandomHostAddr()
-						if err != nil {
-							return err
-						}
-					} else {
-						_ = l.Close()
-					}
-				}
-			}
-		}
-
 	}
 
 	err := envconfig.Process("ANYTYPE", c)
@@ -294,9 +258,9 @@ func (c *Config) DSConfig() clientds.Config {
 }
 
 func (c *Config) FSConfig() (FSConfig, error) {
-	res := ConfigRequired{}
+	res := ConfigPersistent{}
 	err := GetFileConfig(c.GetConfigPath(), &res)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrInvalidConfigFormat) {
 		return FSConfig{}, err
 	}
 
@@ -464,15 +428,17 @@ func (c *Config) GetQuic() quic.Config {
 }
 
 func (c *Config) ResetStoredNetworkId() error {
-	configCopy := c.ConfigRequired
-	configCopy.NetworkId = ""
-	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+	if c.NetworkId == "" {
+		return nil
+	}
+	c.ConfigPersistent.NetworkId = ""
+	return writeJsonConfig(c.GetConfigPath(), &c.ConfigPersistent)
 }
 
 func (c *Config) PersistAccountNetworkId() error {
-	configCopy := c.ConfigRequired
+	configCopy := c.ConfigPersistent
 	configCopy.NetworkId = c.NetworkId
-	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+	return writeJsonConfig(c.GetConfigPath(), &configCopy)
 }
 
 func (c *Config) GetSpaceStorageMode() storage.SpaceStorageMode {
