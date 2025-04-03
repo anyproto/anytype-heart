@@ -259,7 +259,7 @@ func (b *builtinObjects) importArchive(
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
 			SpaceId:               spaceID,
-			UpdateExistingObjects: false,
+			UpdateExistingObjects: true,
 			Type:                  model.Import_Pb,
 			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 			NoProgress:            progress == nil,
