@@ -392,7 +392,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 		log.Errorf("failed to get type id: %w", err)
 		return
 	}
-	for _, typeId := range []string{pageTypeId, taskTypeId} {
+	for _, typeId := range []string{taskTypeId, pageTypeId} {
 		if has, err := b.typeHasObjects(spaceId, typeId); err != nil {
 			log.Warnf("failed to check if type '%s' has objects: %v", pageTypeId, err)
 		} else if has {
