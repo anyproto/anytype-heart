@@ -28,6 +28,7 @@ type WidgetObject struct {
 	basic.Unlinkable
 	basic.Updatable
 	widget.Widget
+	basic.DetailsSettable
 }
 
 func NewWidgetObject(
@@ -37,11 +38,12 @@ func NewWidgetObject(
 ) *WidgetObject {
 	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil)
 	return &WidgetObject{
-		SmartBlock: sb,
-		Movable:    bs,
-		Updatable:  bs,
-		IHistory:   basic.NewHistory(sb),
-		Widget:     widget.NewWidget(sb),
+		SmartBlock:      sb,
+		Movable:         bs,
+		Updatable:       bs,
+		DetailsSettable: bs,
+		IHistory:        basic.NewHistory(sb),
+		Widget:          widget.NewWidget(sb),
 	}
 }
 

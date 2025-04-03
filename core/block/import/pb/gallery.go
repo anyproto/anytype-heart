@@ -25,23 +25,22 @@ func NewGalleryImport(service *collection.Service) *GalleryImport {
 	return &GalleryImport{service: service}
 }
 
-func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
-	widget *common.Snapshot,
+func (g *GalleryImport) ProvideCollection(
+	snapshots *common.SnapshotContext,
 	_ map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
-	workspaceSnapshot *common.Snapshot,
 	isNewSpace bool,
 ) (collectionsSnapshots []*common.Snapshot, err error) {
 	if isNewSpace {
 		return nil, nil
 	}
 	var widgetObjects []string
-	if widget != nil {
+	if widget := snapshots.GetWidget(); widget != nil {
 		widgetObjects = g.getObjectsFromWidgets(widget)
 	}
 	var icon string
-	if workspaceSnapshot != nil { // we use space icon for import collection
-		icon = workspaceSnapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
+	if workspace := snapshots.GetWorkspace(); workspace != nil { // we use space icon for import collection
+		icon = workspace.Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage)
 	}
 	collectionName := params.GetCollectionTitle() // collection name should be the name of experience
 	if collectionName == "" {
@@ -49,12 +48,12 @@ func (g *GalleryImport) ProvideCollection(snapshots []*common.Snapshot,
 	}
 	rootCollection := common.NewImportCollection(g.service)
 	if len(widgetObjects) > 0 {
-		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, widget, collectionsSnapshots)
+		collectionsSnapshots, err = g.getWidgetsCollection(collectionName, rootCollection, widgetObjects, icon, snapshots.GetWidget(), collectionsSnapshots)
 		if err != nil {
 			return nil, err
 		}
 	}
-	objectsIDs := g.getObjectsIDs(snapshots)
+	objectsIDs := g.getObjectsIDs(snapshots.List())
 	settings := common.NewImportCollectionSetting(
 		common.WithCollectionName(collectionName),
 		common.WithTargetObjects(objectsIDs),

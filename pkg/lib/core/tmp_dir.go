@@ -77,6 +77,7 @@ func recursiveCleanup(path string, cutoff time.Time) {
 		info, err := entry.Info()
 		if err != nil {
 			log.Warnf("tmp cleanup entry: %v", err)
+			continue
 		}
 		if entry.IsDir() {
 			recursiveCleanup(fullEntryPath, cutoff)
