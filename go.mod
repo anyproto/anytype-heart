@@ -2,6 +2,8 @@ module github.com/anyproto/anytype-heart
 
 go 1.23.2
 
+toolchain go1.24.1
+
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
@@ -69,7 +71,7 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.9
 	github.com/matishsiao/goInfo v0.0.0-20240924010139-10388a85396f
-	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/mattn/go-sqlite3 v1.14.27
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/miolini/datacounter v1.0.3
