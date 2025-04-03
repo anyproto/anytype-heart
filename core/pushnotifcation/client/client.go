@@ -25,6 +25,7 @@ type Client interface {
 	SubscribeAll(ctx context.Context, req *pushapi.SubscribeAllRequest) (resp *pushapi.Ok, err error)
 	CreateSpace(ctx context.Context, req *pushapi.CreateSpaceRequest) (resp *pushapi.Ok, err error)
 	Notify(ctx context.Context, req *pushapi.NotifyRequest) (resp *pushapi.Ok, err error)
+	Subscriptions(ctx context.Context, req *pushapi.SubscriptionsRequest) (resp *pushapi.SubscriptionsResponse, err error)
 }
 
 type client struct {
@@ -73,6 +74,17 @@ func (c *client) CreateSpace(ctx context.Context, req *pushapi.CreateSpaceReques
 func (c *client) Notify(ctx context.Context, req *pushapi.NotifyRequest) (resp *pushapi.Ok, err error) {
 	err = c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
 		resp, err = c.Notify(ctx, req)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *client) Subscriptions(ctx context.Context, req *pushapi.SubscriptionsRequest) (resp *pushapi.SubscriptionsResponse, err error) {
+	err = c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
+		resp, err = c.Subscriptions(ctx, req)
 		return nil
 	})
 	if err != nil {
