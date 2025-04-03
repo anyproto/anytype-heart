@@ -30,10 +30,9 @@ import (
 )
 
 const (
-	CName             = "gateway"
-	defaultListenAddr = "127.0.0.1:47800"
-	getFileTimeout    = 1 * time.Minute
-	requestLimit      = 32
+	CName          = "gateway"
+	getFileTimeout = 1 * time.Minute
+	requestLimit   = 32
 )
 
 var log = logging.Logger("anytype-gateway")
@@ -52,7 +51,7 @@ type Gateway interface {
 type gateway struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
-	cfg               config.Updater
+	cfg               config.ConfigModifiable
 	server            *http.Server
 	listener          net.Listener
 	handler           *http.ServeMux
@@ -68,30 +67,23 @@ func (g *gateway) gatewayListener() (net.Listener, error) {
 		return net.Listen("tcp", addr)
 	}
 
-	var (
-		listener  net.Listener
-		listenErr error
-	)
-	err := g.cfg.UpdatePersistentConfig(func(cfg *config.ConfigPersistent) (updated bool) {
-		addr := cfg.GatewayAddr
-		if addr == "" {
-			addr = defaultListenAddr
-		}
-		listener, listenErr = netutil.GetTcpListener(addr)
-		if listenErr != nil {
-			// it means we are not able to run on both preferred and random port
-			return false
-		}
-		addr = listener.Addr().String()
-		if cfg.GatewayAddr != addr {
-			cfg.GatewayAddr = addr
-			updated = true
-		}
-		return updated
+	var addr string
+	g.cfg.Read(func(c *config.ConfigPersistent) {
+		addr = c.GatewayAddr
 	})
-
+	listener, err := netutil.GetTcpListener(addr)
 	if err != nil {
-		log.Errorf("failed to update persistent config: %s", err)
+		// it means we are not able to run on both preferred and random port
+		return nil, err
+	}
+	if addr != listener.Addr().String() {
+		err = g.cfg.UpdatePersistentConfig(func(cfg *config.ConfigPersistent) bool {
+			cfg.GatewayAddr = addr
+			return true
+		})
+		if err != nil {
+			log.Errorf("failed to update persistent config: %s", err)
+		}
 	}
 
 	return listener, err
@@ -100,8 +92,7 @@ func (g *gateway) gatewayListener() (net.Listener, error) {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
-	g.cfg = app.MustComponent[config.Updater](a)
-	log.Debugf("gateway.Init: %s", g.addr)
+	g.cfg = a.MustComponent(config.CName).(config.ConfigModifiable)
 	return nil
 }
 
@@ -114,7 +105,6 @@ func (g *gateway) Run(context.Context) error {
 		return fmt.Errorf("gateway already started")
 	}
 
-	log.Infof("gateway.Run: %s", g.addr)
 	g.handler = http.NewServeMux()
 	g.handler.HandleFunc("/file/", g.fileHandler)
 	g.handler.HandleFunc("/image/", g.imageHandler)

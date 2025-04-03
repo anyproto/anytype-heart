@@ -60,23 +60,20 @@ var _ fileblockstore.BlockStoreLocal = &fileStorage{}
 
 func (f *fileStorage) Init(a *app.App) (err error) {
 	cfg := app.MustComponent[*config.Config](a)
-	f.cfg = cfg
-	fileCfg, err := cfg.FSConfig()
-	if err != nil {
-		return fmt.Errorf("fail to get file config: %w", err)
-	}
 
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
 	f.eventSender = app.MustComponent[event.Sender](a)
-	if fileCfg.IPFSStorageAddr == "" {
+	if cfg.CustomFileStorePath == "" {
 		f.flatfsPath = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), FlatfsDirName)
 	} else {
-		if _, err := os.Stat(fileCfg.IPFSStorageAddr); os.IsNotExist(err) {
-			return fmt.Errorf("local storage by address: %s not found", fileCfg.IPFSStorageAddr)
+		if _, err := os.Stat(cfg.CustomFileStorePath); os.IsNotExist(err) {
+			return fmt.Errorf("local storage by path not found")
+		} else if err != nil {
+			return fmt.Errorf("local storage by path error: %w", err)
 		}
-		f.flatfsPath = fileCfg.IPFSStorageAddr
+		f.flatfsPath = cfg.CustomFileStorePath
 	}
 
 	return fileproto.DRPCRegisterFile(a.MustComponent(server.CName).(server.DRPCServer), f.handler)

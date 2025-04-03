@@ -1,9 +1,13 @@
 package config
 
+/*
+ Config component provides a way to configure the application both in-memory and on-disk(see PersistedConfig).
+ It also provides a way to set up the application with default values and to read configuration from environment variables.
+ If you access this config from other components, you should never modify the struct directly. Use method specified in the Updater interface
+*/
 import (
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -38,13 +42,15 @@ import (
 var log = logging.Logger("anytype-config")
 
 const (
-	CName = "config"
+	CName          = "config"
+	ConfigFileName = "config.json"
 )
 
 const (
-	SpaceStoreBadgerPath = "spacestore"
-	SpaceStoreSqlitePath = "spaceStore.db"
-	SpaceStoreNewPath    = "spaceStoreNew"
+	SpaceStoreBadgerPath     = "spacestore"
+	SpaceStoreSqlitePath     = "spaceStore.db"
+	SpaceStoreNewPath        = "spaceStoreNew"
+	GatewayDefaultListenAddr = "127.0.0.1:47800"
 )
 
 var (
@@ -53,53 +59,71 @@ var (
 	ErrNetworkFileFailedToRead = fmt.Errorf("failed to read network configuration")
 )
 
-type Updater interface {
+type ConfigModifiable interface {
 	UpdatePersistentConfig(f func(cfg *ConfigPersistent) (updated bool)) error
+	Read(f func(*ConfigPersistent))
 }
 
 type ConfigPersistent struct {
-	GatewayAddr         string `json:",omitempty"`
-	CustomFileStorePath string `json:",omitempty"`
-	LegacyFileStorePath string `json:",omitempty"`
-	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	GatewayAddr         string `json:",omitempty"` // http file gateway listen addr
+	CustomFileStorePath string `json:",omitempty"` // custom file store path
+	LegacyFileStorePath string `json:",omitempty"` // deprecated, used to access legacy app file store
+	NetworkId           string `json:""`           // in case this account was at least once connected to the network on this device, this field will be set to the network id
 }
 
 type Config struct {
 	ConfigPersistent `json:",inline"`
 	NewAccount       bool   `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
-	AutoJoinStream   string `ignored:"true"` // contains the invite of the stream space to automatically join
+	AutoJoinStream   string `ignored:"true"` // contains the invite of the stream space to automatically join. Set by client during Account start
 
-	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
-	PeferYamuxTransport                    bool
+	PeferYamuxTransport                    bool // set by client during Account start
 	DisableNetworkIdCheck                  bool
 	SpaceStorageMode                       storage.SpaceStorageMode
 	NetworkMode                            pb.RpcAccountNetworkMode
 	NetworkCustomConfigFilePath            string           `json:",omitempty"` // not saved to config
 	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
 	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
-	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled
+	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled; set by client during Account start
 
 	RepoPath    string
 	AnalyticsId string
 
-	DebugAddr       string
-	LocalServerAddr string
+	DebugAddr string
 
 	DS                clientds.Config
-	FS                FSConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 
-	nodeConf   nodeconf.Configuration
-	updateLock sync.Mutex
+	nodeConf nodeconf.Configuration
+	lock     sync.RWMutex
+}
+
+type DebugAPIConfig struct {
+	debugserver.Config
+	IsEnabled bool
+}
+
+var DefaultConfig = Config{
+	DS: clientds.DefaultConfig,
+	ConfigPersistent: ConfigPersistent{
+		GatewayAddr: GatewayDefaultListenAddr,
+	},
+}
+
+// Read provides get specific keys values under the lock
+// do not use this method to modify the config
+func (c *Config) Read(f func(*ConfigPersistent)) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	f(&c.ConfigPersistent)
 }
 
 // UpdatePersistentConfig updates the persistent config and writes it to the file after
 // The function f should return true if the config was changed.
 // config changes are saved in-memory even if file write fails
 func (c *Config) UpdatePersistentConfig(f func(cfg *ConfigPersistent) (updated bool)) error {
-	c.updateLock.Lock()
-	defer c.updateLock.Unlock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	updated := f(&c.ConfigPersistent)
 	if !updated {
 		return nil
@@ -110,24 +134,6 @@ func (c *Config) UpdatePersistentConfig(f func(cfg *ConfigPersistent) (updated b
 
 func (c *Config) IsLocalOnlyMode() bool {
 	return c.NetworkMode == pb.RpcAccount_LocalOnly
-}
-
-type FSConfig struct {
-	IPFSStorageAddr string
-}
-
-type DebugAPIConfig struct {
-	debugserver.Config
-	IsEnabled bool
-}
-
-const (
-	ConfigFileName = "config.json"
-)
-
-var DefaultConfig = Config{
-	LocalServerAddr: ":0",
-	DS:              clientds.DefaultConfig,
 }
 
 func WithNewAccount(isNewAccount bool) func(*Config) {
@@ -154,12 +160,6 @@ func WithDebugAddr(addr string) func(*Config) {
 func WithDisabledLocalNetworkSync() func(*Config) {
 	return func(c *Config) {
 		c.DontStartLocalNetworkSyncAutomatically = true
-	}
-}
-
-func WithLocalServer(addr string) func(*Config) {
-	return func(c *Config) {
-		c.LocalServerAddr = addr
 	}
 }
 
@@ -257,16 +257,6 @@ func (c *Config) DSConfig() clientds.Config {
 	return c.DS
 }
 
-func (c *Config) FSConfig() (FSConfig, error) {
-	res := ConfigPersistent{}
-	err := GetFileConfig(c.GetConfigPath(), &res)
-	if err != nil && !errors.Is(err, ErrInvalidConfigFormat) {
-		return FSConfig{}, err
-	}
-
-	return FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
-}
-
 func (c *Config) GetRepoPath() string {
 	return c.RepoPath
 }
@@ -300,21 +290,6 @@ func (c *Config) GetAnyStoreConfig() *anystore.Config {
 
 func (c *Config) IsNewAccount() bool {
 	return c.NewAccount
-}
-
-func getRandomPort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:0")
-	if err != nil {
-		return 0, err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
-	}
-
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
 func (c *Config) GetSpace() config.Config {
