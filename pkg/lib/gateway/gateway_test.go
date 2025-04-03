@@ -184,8 +184,10 @@ func TestDoubleStart(t *testing.T) {
 	})
 
 	gw := gateway{cfg: cfg}
+	require.False(t, gw.isServerStarted)
 	require.NoError(t, gw.startServer())
 	require.NoError(t, gw.startServer())
+	require.True(t, gw.isServerStarted)
 }
 
 func TestStartStopStart(t *testing.T) {
@@ -198,8 +200,12 @@ func TestStartStopStart(t *testing.T) {
 	})
 
 	gw := gateway{cfg: cfg}
+	require.False(t, gw.isServerStarted)
 	require.NoError(t, gw.startServer())
+	require.True(t, gw.isServerStarted)
 	require.NoError(t, gw.stopServer())
+	require.False(t, gw.isServerStarted)
 	require.NoError(t, gw.startServer())
+	require.True(t, gw.isServerStarted)
 
 }
