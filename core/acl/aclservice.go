@@ -19,7 +19,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block/chats/push"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -41,7 +40,6 @@ type NodeConfGetter interface {
 }
 
 type pushService interface {
-	SubscribeAll(ctx context.Context, spaceId string, topics []string) (err error)
 	CreateSpace(ctx context.Context, spaceId string) (err error)
 }
 
@@ -452,10 +450,6 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 			SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
 	if err != nil {
 		return convertedOrInternalError("set space data", err)
-	}
-	err = a.pushService.SubscribeAll(context.Background(), spaceId, []string{push.TopicName})
-	if err != nil {
-		log.Error("subscribe to push message", zap.Error(err))
 	}
 	return nil
 }

@@ -29,6 +29,7 @@ type Store interface {
 	SyncKeysFromAclState(spaceID string, aclRecordID string, firstMetadataKey crypto.PrivKey, readKey crypto.SymKey)
 	EncryptionKeyBySpaceId(spaceId string) (crypto.PrivKey, error)
 	KeyBySpaceId(spaceId string) (string, error)
+	EncryptionKeyByKeyId(keyId string) (crypto.PrivKey, error)
 	app.Component
 }
 
@@ -155,6 +156,16 @@ func (s *SpaceKeyStore) EncryptionKeyBySpaceId(spaceId string) (crypto.PrivKey, 
 	if !exists {
 		return nil, ErrNotFound
 	}
+	key, exists := s.spaceKeyToEncryptionKey[keyId]
+	if !exists {
+		return nil, ErrNotFound
+	}
+	return key, nil
+}
+
+func (s *SpaceKeyStore) EncryptionKeyByKeyId(keyId string) (crypto.PrivKey, error) {
+	s.Lock()
+	defer s.Unlock()
 	key, exists := s.spaceKeyToEncryptionKey[keyId]
 	if !exists {
 		return nil, ErrNotFound

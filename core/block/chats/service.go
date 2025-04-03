@@ -255,7 +255,7 @@ func (s *service) sendPushNotification(spaceId, chatObjectId string, message *mo
 	if err != nil {
 		log.Error("marshal push payload", zap.Error(err))
 	}
-	err = s.pushService.Notify(context.Background(), spaceId, []string{push.TopicName}, jsonPayload)
+	err = s.pushService.Notify(context.Background(), spaceId, []string{push.ChatsTopicName}, jsonPayload)
 	if err != nil {
 		log.Error("notify push message", zap.Error(err))
 	}

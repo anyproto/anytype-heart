@@ -3,12 +3,12 @@ package pushnotifcation
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/pushnotifcation/client"
@@ -24,20 +24,19 @@ var log = logging.Logger(CName)
 
 type newSubscription struct {
 	SpaceId string
-	Topic   string
+	Topics  []string
 }
 
 type Service interface {
 	app.ComponentRunnable
 	RegisterToken(ctx context.Context, req *pb.RpcPushNotificationRegisterTokenRequest) (err error)
-	SubscribeAll(ctx context.Context, spaceId string, topics []string) (err error)
 	CreateSpace(ctx context.Context, spaceId string) (err error)
 	Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error)
-	SubscribeToTopic(ctx context.Context, spaceId string, topic string)
+	SubscribeToTopics(ctx context.Context, spaceId string, topic []string)
 }
 
 func New() Service {
-	return &service{activeSubscriptions: make(map[string][]string)}
+	return &service{activeSubscriptions: make(map[string]map[string]struct{})}
 }
 
 type service struct {
@@ -46,14 +45,14 @@ type service struct {
 	spaceKeyStore       spacekeystore.Store
 	cfg                 *config.Config
 	started             bool
-	activeSubscriptions map[string][]string
+	activeSubscriptions map[string]map[string]struct{}
 	ctx                 context.Context
 	cancel              context.CancelFunc
 	batcher             *mb.MB[newSubscription]
 }
 
-func (s *service) SubscribeToTopic(ctx context.Context, spaceId string, topic string) {
-	err := s.batcher.Add(ctx, newSubscription{spaceId, topic})
+func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
+	err := s.batcher.Add(ctx, newSubscription{spaceId, topics})
 	if err != nil {
 		log.Errorf("add topic err: %v", err)
 	}
@@ -65,7 +64,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return nil
 	}
 	s.started = true
-	s.ctx, s.cancel = context.WithCancel(ctx)
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	go s.run()
 	return nil
 }
@@ -107,18 +106,42 @@ func (s *service) RegisterToken(ctx context.Context, req *pb.RpcPushNotification
 	return err
 }
 
-func (s *service) SubscribeAll(ctx context.Context, spaceId string, topics []string) (err error) {
+func (s *service) subscribeAll(ctx context.Context, spaceTopicsMap map[string]map[string]struct{}) error {
 	if !s.started {
 		return nil
 	}
-	pushApiTopics, err := s.makeTopics(spaceId, topics)
-	if err != nil {
-		return err
-	}
-	_, err = s.pushClient.SubscribeAll(ctx, &pushapi.SubscribeAllRequest{
-		Topics: pushApiTopics,
+	topics := s.buildPushTopics(spaceTopicsMap)
+	_, err := s.pushClient.SubscribeAll(ctx, &pushapi.SubscribeAllRequest{
+		Topics: &pushapi.Topics{Topics: topics},
 	})
 	return err
+}
+
+func (s *service) buildPushTopics(spaceTopicsMap map[string]map[string]struct{}) []*pushapi.Topic {
+	var allTopics []*pushapi.Topic
+	for spaceKey, topicsSet := range spaceTopicsMap {
+		topicNames := lo.MapToSlice(topicsSet, func(name string, _ struct{}) string {
+			return name
+		})
+		spaceTopics, err := s.createTopicsForSpace(spaceKey, topicNames)
+		if err != nil {
+			continue
+		}
+		allTopics = append(allTopics, spaceTopics...)
+	}
+	return allTopics
+}
+
+func (s *service) createTopicsForSpace(spaceKey string, topicNames []string) ([]*pushapi.Topic, error) {
+	privKey, err := s.spaceKeyStore.EncryptionKeyByKeyId(spaceKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get encryption key for space %s: %w", spaceKey, err)
+	}
+	topics, err := s.makeTopics(privKey, topicNames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make topics for space %s: %w", spaceKey, err)
+	}
+	return topics, nil
 }
 
 func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
@@ -149,7 +172,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 	if !s.started {
 		return nil
 	}
-	topics, err := s.makeTopics(spaceId, topic)
+	topics, err := s.makeTopicsBySpaceId(spaceId, topic)
 	if err != nil {
 		return err
 	}
@@ -189,8 +212,15 @@ func (s *service) fillSubscriptions(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
+	if subscriptions == nil || subscriptions.Topics == nil {
+		return nil
+	}
 	for _, topic := range subscriptions.Topics.Topics {
-		s.activeSubscriptions[string(topic.SpaceKey)] = append(s.activeSubscriptions[string(topic.SpaceKey)], topic.Topic)
+		_, ok := s.activeSubscriptions[string(topic.SpaceKey)]
+		if !ok {
+			s.activeSubscriptions[string(topic.SpaceKey)] = make(map[string]struct{})
+		}
+		s.activeSubscriptions[string(topic.SpaceKey)][topic.Topic] = struct{}{}
 	}
 	return nil
 }
@@ -203,12 +233,20 @@ func (s *service) prepareEncryptedJson(key crypto.PrivKey, payload []byte) ([]by
 	return encryptedJson, nil
 }
 
-func (s *service) makeTopics(spaceId string, topics []string) (*pushapi.Topics, error) {
-	pushApiTopics := make([]*pushapi.Topic, 0, len(topics))
+func (s *service) makeTopicsBySpaceId(spaceId string, topics []string) (*pushapi.Topics, error) {
 	spaceKey, err := s.spaceKeyStore.EncryptionKeyBySpaceId(spaceId)
 	if err != nil {
 		return nil, err
 	}
+	pushApiTopics, err := s.makeTopics(spaceKey, topics)
+	if err != nil {
+		return nil, err
+	}
+	return &pushapi.Topics{Topics: pushApiTopics}, nil
+}
+
+func (s *service) makeTopics(spaceKey crypto.PrivKey, topics []string) ([]*pushapi.Topic, error) {
+	pushApiTopics := make([]*pushapi.Topic, 0, len(topics))
 	pubKey := spaceKey.GetPublic()
 	rawKey, err := pubKey.Raw()
 	if err != nil {
@@ -225,7 +263,7 @@ func (s *service) makeTopics(spaceId string, topics []string) (*pushapi.Topics, 
 			Signature: signature,
 		})
 	}
-	return &pushapi.Topics{Topics: pushApiTopics}, nil
+	return pushApiTopics, nil
 }
 
 func (s *service) run() {
@@ -236,6 +274,7 @@ func (s *service) run() {
 	}
 	err := s.fillSubscriptions(s.ctx)
 	if err != nil {
+		log.Error("failed to fill subscriptions: ", err)
 		return
 	}
 
@@ -252,17 +291,31 @@ func (s *service) run() {
 		if len(msgs) == 0 {
 			return
 		}
+		var shouldUpdate bool
 		for _, sub := range msgs {
-			activeTopics, ok := s.activeSubscriptions[sub.SpaceId]
-			if ok && slices.Contains(activeTopics, sub.Topic) {
+			keyId, err := s.spaceKeyStore.KeyBySpaceId(sub.SpaceId)
+			if err != nil {
+				log.Errorf("failed to get space key from keystore for space %s: %v", sub.SpaceId, err)
 				continue
 			}
-			activeTopics = append(activeTopics, sub.Topic)
-			s.activeSubscriptions[sub.SpaceId] = activeTopics
-			err := s.SubscribeAll(s.ctx, sub.SpaceId, activeTopics)
-			if err != nil {
-				log.Errorf("failed to subscribe to topic %s: %v", sub.Topic, err)
+			activeTopics, ok := s.activeSubscriptions[keyId]
+			if !ok {
+				activeTopics = make(map[string]struct{})
 			}
+			for _, topic := range sub.Topics {
+				if _, ok := activeTopics[topic]; !ok {
+					activeTopics[topic] = struct{}{}
+					shouldUpdate = true
+				}
+			}
+			s.activeSubscriptions[keyId] = activeTopics
+		}
+		if !shouldUpdate {
+			continue
+		}
+		err = s.subscribeAll(s.ctx, s.activeSubscriptions)
+		if err != nil {
+			log.Errorf("failed to subscribe to topic: %v", err)
 		}
 	}
 }

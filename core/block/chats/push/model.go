@@ -2,7 +2,7 @@ package push
 
 import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
-const TopicName = "chats"
+const ChatsTopicName = "chats"
 
 type Type int
 

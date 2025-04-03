@@ -61,6 +61,7 @@ require (
 	github.com/ipfs/go-ds-flatfs v0.5.5
 	github.com/ipfs/go-ipld-format v0.6.0
 	github.com/ipfs/go-log v1.0.5
+	github.com/ipfs/go-peertaskqueue v0.8.2
 	github.com/joho/godotenv v1.5.1
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -202,6 +203,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
+	github.com/ipfs/go-ipfs-pq v0.0.3 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.3 // indirect
 	github.com/ipfs/go-ipld-legacy v0.2.1 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
