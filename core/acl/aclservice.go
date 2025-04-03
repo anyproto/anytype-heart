@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block/chats/push"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -41,6 +42,7 @@ type NodeConfGetter interface {
 
 type pushService interface {
 	CreateSpace(ctx context.Context, spaceId string) (err error)
+	SubscribeToTopics(ctx context.Context, spaceId string, topic []string)
 }
 
 type AccountPermissions struct {
@@ -117,11 +119,17 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return convertedOrInternalError("set local info", err)
 	}
+	a.subscribeToPushNotifications(err, spaceId)
+	return nil
+}
+
+func (a *aclService) subscribeToPushNotifications(err error, spaceId string) {
 	err = a.pushService.CreateSpace(context.Background(), spaceId)
 	if err != nil {
 		log.Error("create space for push message", zap.Error(err))
+	} else {
+		a.pushService.SubscribeToTopics(context.Background(), spaceId, []string{push.ChatsTopicName})
 	}
-	return nil
 }
 
 func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey) (metadata []byte, err error) {
