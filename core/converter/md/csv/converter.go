@@ -5,6 +5,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/converter/md/csv/common"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -13,34 +15,70 @@ import (
 
 var log = logging.Logger("csv-export")
 
+type ExportCtx struct {
+	filters           []*model.BlockContentDataviewFilter
+	sorts             []*model.BlockContentDataviewSort
+	relationKeys      []string
+	includeSetObjects bool
+	includeLinked     bool
+}
+
+type ExportCtxOption func(*ExportCtx)
+
+func NewExportCtx(opts ...ExportCtxOption) *ExportCtx {
+	e := &ExportCtx{}
+	for _, opt := range opts {
+		opt(e)
+	}
+	return e
+}
+
+func WithFilters(filters []*model.BlockContentDataviewFilter) ExportCtxOption {
+	return func(e *ExportCtx) {
+		e.filters = filters
+	}
+}
+
+func WithSorts(sorts []*model.BlockContentDataviewSort) ExportCtxOption {
+	return func(e *ExportCtx) {
+		e.sorts = sorts
+	}
+}
+
+func WithIncludeSetObjects(includeSetObjects bool) ExportCtxOption {
+	return func(e *ExportCtx) {
+		e.includeSetObjects = includeSetObjects
+	}
+}
+
+func WithIncludeLinked(includeLinked bool) ExportCtxOption {
+	return func(e *ExportCtx) {
+		e.includeLinked = includeLinked
+	}
+}
+
 type Converter struct {
-	knownDocs   map[string]*domain.Details
-	store       objectstore.ObjectStore
-	filters     []*model.BlockContentDataviewFilter
-	sorts       []*model.BlockContentDataviewSort
-	relationKey []string
+	knownDocs map[string]*domain.Details
+	store     objectstore.ObjectStore
+	ctx       *ExportCtx
 }
 
 func NewConverter(
+	ctx *ExportCtx,
 	store objectstore.ObjectStore,
 	knownDocs map[string]*domain.Details,
-	filters []*model.BlockContentDataviewFilter,
-	sorts []*model.BlockContentDataviewSort,
-	relationKey []string,
 ) *Converter {
 	return &Converter{
-		store:       store,
-		knownDocs:   knownDocs,
-		filters:     filters,
-		sorts:       sorts,
-		relationKey: relationKey,
+		ctx:       ctx,
+		store:     store,
+		knownDocs: knownDocs,
 	}
 }
 
 func (c *Converter) Convert(st *state.State) []byte {
-	var headers, headersName []string
+	var headers, headersName, objects []string
 	var err error
-	if len(c.relationKey) == 0 {
+	if len(c.ctx.relationKeys) == 0 {
 		block := findDataviewBlock(st)
 		if block == nil {
 			return nil
@@ -54,20 +92,59 @@ func (c *Converter) Convert(st *state.State) []byte {
 			return nil
 		}
 	} else {
-		headers, headersName, err = common.ExtractHeaders(c.store.SpaceIndex(st.SpaceID()), c.relationKey)
+		headers, headersName, err = common.ExtractHeaders(c.store.SpaceIndex(st.SpaceID()), c.ctx.relationKeys)
 		if err != nil {
 			log.Errorf("failed extracting headers for csv export: %v", err)
 			return nil
 		}
 	}
 	csvRows := [][]string{headersName}
-	if len(c.filters) > 0 || len(c.sorts) > 0 {
-		records, err := c.store.SpaceIndex(st.SpaceID()).Query(database.Query{Filters: database.FiltersFromProto(c.filters), Sorts: database.SortsFromProto(c.sorts)})
+	layout, _ := st.Layout()
+	spaceIndex := c.store.SpaceIndex(st.SpaceID())
+	if c.ctx.includeSetObjects && layout == model.ObjectType_set {
+		setOf := st.Details().GetString(bundle.RelationKeySetOf)
+		uk, err := spaceIndex.GetUniqueKeyById(setOf)
+		if err != nil {
+			return nil
+		}
+		query := database.Query{}
+		switch uk.SmartblockType() {
+		case smartblock.SmartBlockTypeRelation:
+			query.Filters = append(query.Filters, database.FilterRequest{
+				RelationKey: domain.RelationKey(uk.InternalKey()),
+				Condition:   model.BlockContentDataviewFilter_Exists,
+			})
+		case smartblock.SmartBlockTypeObjectType:
+			query.Filters = append(query.Filters, database.FilterRequest{
+				RelationKey: bundle.RelationKeyType,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(setOf),
+			})
+		}
+		if len(c.ctx.filters) > 0 {
+			proto := database.FiltersFromProto(c.ctx.filters)
+			query.Filters = append(query.Filters, proto...)
+		}
+		query.Sorts = database.SortsFromProto(c.ctx.sorts)
+		objects, _, err = spaceIndex.QueryObjectIds(query)
 		if err != nil {
 			return nil
 		}
 	}
-	objects := st.GetStoreSlice(template.CollectionStoreKey)
+	if c.ctx.includeLinked && layout == model.ObjectType_collection {
+		objects = st.GetStoreSlice(template.CollectionStoreKey)
+		if len(c.ctx.filters) > 0 || len(c.ctx.sorts) > 0 {
+			query := database.Query{}
+			query.Filters = database.FiltersFromProto(c.ctx.filters)
+			query.Sorts = database.SortsFromProto(c.ctx.sorts)
+			query.Filters = append(query.Filters, database.FilterRequest{
+				RelationKey: bundle.RelationKeyId,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.StringList(objects),
+			})
+			objects, _, err = spaceIndex.QueryObjectIds(query)
+		}
+	}
 	for _, object := range objects {
 		if objectDetail, ok := c.knownDocs[object]; ok {
 			csvRows = append(csvRows, c.getCSVRow(objectDetail, headers))

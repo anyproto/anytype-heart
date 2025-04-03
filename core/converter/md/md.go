@@ -43,7 +43,7 @@ func NewMDConverter(
 		fn:              fn,
 		objectTypeFiles: csv.ObjectTypeFiles{},
 		store:           store,
-		listCsv:         csv.NewConverter(store, knownDocs, filters, sorts, relationKey),
+		listCsv:         csv.NewConverter(&csv.ExportCtx{}, store, knownDocs),
 		knownDocs:       knownDocs,
 	}
 }
