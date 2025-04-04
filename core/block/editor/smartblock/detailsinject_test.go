@@ -282,11 +282,8 @@ func TestInjectDerivedDetails(t *testing.T) {
 	})
 }
 
-func TestInjectResolvedLayout(t *testing.T) {
-	const (
-		id      = "id"
-		spaceId = "testSpace"
-	)
+func TestResolveLayout(t *testing.T) {
+	const id = "id"
 	t.Run("resolved layout is injected from layout detail", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
@@ -295,7 +292,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_todo))
 
 		// when
-		fx.injectResolvedLayout(st)
+		fx.resolveLayout(st)
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
@@ -308,7 +305,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_set))
 
 		// when
-		fx.injectResolvedLayout(st)
+		fx.resolveLayout(st)
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_set), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
@@ -320,7 +317,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 		st := state.NewDoc("id", nil).NewState()
 
 		// when
-		fx.injectResolvedLayout(st)
+		fx.resolveLayout(st)
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
@@ -340,7 +337,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 		}
 
 		// when
-		fx.injectResolvedLayout(st)
+		fx.resolveLayout(st)
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
@@ -359,7 +356,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 		}})
 
 		// when
-		fx.injectResolvedLayout(st)
+		fx.resolveLayout(st)
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_profile), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
@@ -372,7 +369,7 @@ func TestInjectResolvedLayout(t *testing.T) {
 		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyNote.URL()))
 
 		// when
-		fx.injectResolvedLayout(st)
+		fx.resolveLayout(st)
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
@@ -396,9 +393,58 @@ func TestInjectResolvedLayout(t *testing.T) {
 		}})
 
 		// when
-		fx.injectResolvedLayout(st)
+		fx.resolveLayout(st)
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+	t.Run("conversion from note adds Title and Name", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", map[string]simple.Block{
+			"id":   simple.New(&model.Block{Id: id, ChildrenIds: []string{state.HeaderLayoutID, "text"}}),
+			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "First note block"}}}),
+		}).NewState()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
+
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
+		}})
+
+		// when
+		fx.resolveLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
+		assert.NotNil(t, st.Pick(state.TitleBlockID))
+	})
+	t.Run("conversion from note works on sb.Init", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", map[string]simple.Block{
+			"id":   simple.New(&model.Block{Id: id, ChildrenIds: []string{state.HeaderLayoutID, "text"}}),
+			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "First note block"}}}),
+		}).NewState()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
+		// ResolvedLayout is not set yet, because it is derived relation
+		// st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
+
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
+		}})
+
+		// when
+		fx.resolveLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
+		assert.NotNil(t, st.Pick(state.TitleBlockID))
 	})
 }

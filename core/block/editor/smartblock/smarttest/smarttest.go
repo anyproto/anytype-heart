@@ -112,6 +112,10 @@ func (s *stubSpace) DoLockedIfNotExists(objectID string, proc func() error) erro
 	return nil
 }
 
+func (s *stubSpace) TryRemove(objectId string) (bool, error) {
+	return true, nil
+}
+
 func (s *stubSpace) IsPersonal() bool {
 	return false
 }

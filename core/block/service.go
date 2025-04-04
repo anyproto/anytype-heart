@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
@@ -696,4 +697,27 @@ func (s *Service) enrichDetailsWithOrigin(details *domain.Details, origin model.
 	}
 	details.SetInt64(bundle.RelationKeyOrigin, int64(origin))
 	return details
+}
+
+func (s *Service) SyncObjectsWithType(typeId string) error {
+	spaceId, err := s.resolver.ResolveSpaceID(typeId)
+	if err != nil {
+		return fmt.Errorf("failed to resolve spaceId for type object: %w", err)
+	}
+
+	spc, err := s.spaceService.Get(context.Background(), spaceId)
+	if err != nil {
+		return fmt.Errorf("failed to get space: %w", err)
+	}
+
+	index := s.objectStore.SpaceIndex(spaceId)
+	details, err := index.GetDetails(typeId)
+	if err != nil {
+		return fmt.Errorf("failed to get details of type object: %w", err)
+	}
+
+	syncer := layout.NewSyncer(typeId, spc, index)
+	newLayout := layout.NewLayoutStateFromDetails(details)
+	oldLayout := newLayout.Copy()
+	return syncer.SyncLayoutWithType(oldLayout, newLayout, true, false, false)
 }
