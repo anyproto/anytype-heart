@@ -32,7 +32,7 @@ func newFixture(t *testing.T, id string) *fixture {
 	spc := smartblock.NewMockSpace(t)
 	page := &syncer{
 		typeId: id,
-		spc:    spc,
+		space:  spc,
 		index:  store.SpaceIndex(spaceId),
 	}
 
