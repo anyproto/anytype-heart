@@ -31,10 +31,10 @@ type Syncer interface {
 	SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdate, noApply, withTemplates bool) error
 }
 
-func NewSyncer(typeId string, spc smartblock.Space, index spaceindex.Store) Syncer {
+func NewSyncer(typeId string, space smartblock.Space, index spaceindex.Store) Syncer {
 	return &syncer{
 		typeId: typeId,
-		spc:    spc,
+		space:  space,
 		index:  index,
 	}
 }
@@ -109,35 +109,12 @@ func NewLayoutStateFromEvents(events []simple.EventMessage) LayoutState {
 	return ls
 }
 
-type relationIdDeriver struct {
-	space smartblock.Space
-	cache map[domain.RelationKey]string
-}
-
-func (d *relationIdDeriver) deriveId(key domain.RelationKey) (string, error) {
-	if d.cache != nil {
-		if id, found := d.cache[key]; found {
-			return id, nil
-		}
-	}
-
-	id, err := d.space.DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
-	if err != nil {
-		return "", fmt.Errorf("failed to derive relation id: %w", err)
-	}
-
-	if d.cache == nil {
-		d.cache = map[domain.RelationKey]string{}
-	}
-	d.cache[key] = id
-	return id, nil
-}
-
 type syncer struct {
-	spc   smartblock.Space
+	space smartblock.Space
 	index spaceindex.Store
 
 	typeId string
+	cache  map[domain.RelationKey]string
 }
 
 func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdate, noApply, withTemplates bool) error {
@@ -148,7 +125,6 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 
 	var (
 		resultErr         error
-		deriver           = relationIdDeriver{space: s.spc}
 		isConvertFromNote = oldLayout.layout == int64(model.ObjectType_note) && newLayout.layout != int64(model.ObjectType_note)
 	)
 
@@ -163,10 +139,10 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 			continue
 		}
 
-		changes := collectRelationsChanges(record.Details, newLayout, oldLayout, deriver, forceUpdate)
+		changes := s.collectRelationsChanges(record.Details, newLayout, oldLayout, forceUpdate)
 		if !noApply && (len(changes.relationsToRemove) > 0 || changes.isFeaturedRelationsChanged) {
 			// we should modify not local relations from object, that's why we apply changes even if object is not in cache
-			err = s.spc.Do(id, func(b smartblock.SmartBlock) error {
+			err = s.space.Do(id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
 				st.RemoveDetail(changes.relationsToRemove...)
 				if changes.isFeaturedRelationsChanged {
@@ -177,7 +153,7 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 			if err != nil {
 				resultErr = errors.Join(resultErr, err)
 			}
-			if _, err = s.spc.TryRemove(id); err != nil && !errors.Is(err, domain.ErrObjectNotFound) {
+			if _, err = s.space.TryRemove(id); err != nil && !errors.Is(err, domain.ErrObjectNotFound) {
 				log.Error("failed to remove object from cache", zap.String("id", id), zap.Error(err))
 			}
 			continue
@@ -230,7 +206,7 @@ func (s *syncer) queryObjects(withTemplates bool) ([]database.Record, error) {
 }
 
 func (s *syncer) updateResolvedLayout(id string, layout int64, addName, noApply bool) error {
-	err := s.spc.DoLockedIfNotExists(id, func() error {
+	err := s.space.DoLockedIfNotExists(id, func() error {
 		return s.index.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
 			if details == nil {
 				return nil, false, nil
@@ -248,19 +224,15 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, noApply 
 		})
 	})
 
-	if err == nil {
-		return nil
-	}
-
 	if !errors.Is(err, ocache.ErrExists) {
 		return err
 	}
 
-	if noApply {
+	if err == nil || noApply {
 		return nil
 	}
 
-	return s.spc.Do(id, func(b smartblock.SmartBlock) error {
+	return s.space.Do(id, func(b smartblock.SmartBlock) error {
 		if cr, ok := b.(source.ChangeReceiver); ok && !addName {
 			// we can do StateAppend here, so resolvedLayout will be injected automatically
 			return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
@@ -279,7 +251,7 @@ type layoutRelationsChanges struct {
 	newFeaturedRelations       []string
 }
 
-func collectRelationsChanges(details *domain.Details, newLayout, oldLayout LayoutState, deriver relationIdDeriver, forceUpdate bool) (changes layoutRelationsChanges) {
+func (s *syncer) collectRelationsChanges(details *domain.Details, newLayout, oldLayout LayoutState, forceUpdate bool) (changes layoutRelationsChanges) {
 	if forceUpdate {
 		return enforcedRelationsChanges(details)
 	}
@@ -304,7 +276,7 @@ func collectRelationsChanges(details *domain.Details, newLayout, oldLayout Layou
 
 	if newLayout.isFeaturedRelationsSet {
 		featuredRelations, found := details.TryStringList(bundle.RelationKeyFeaturedRelations)
-		if found && isFeaturedRelationsCorrespondToType(featuredRelations, newLayout, oldLayout, deriver) {
+		if found && s.isFeaturedRelationsCorrespondToType(featuredRelations, newLayout, oldLayout) {
 			changes.isFeaturedRelationsChanged = true
 			changes.newFeaturedRelations = []string{}
 			if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
@@ -341,10 +313,10 @@ func enforcedRelationsChanges(details *domain.Details) layoutRelationsChanges {
 	return changes
 }
 
-func isFeaturedRelationsCorrespondToType(fr []string, newLayout, oldLayout LayoutState, deriver relationIdDeriver) bool {
+func (s *syncer) isFeaturedRelationsCorrespondToType(fr []string, newLayout, oldLayout LayoutState) bool {
 	featuredRelationIds := make([]string, 0, len(fr))
 	for _, key := range fr {
-		id, err := deriver.deriveId(domain.RelationKey(key))
+		id, err := s.deriveId(domain.RelationKey(key))
 		if err != nil {
 			log.Error("failed to derive relation id", zap.String("key", key), zap.Error(err))
 			return true // let us fallback to false, so featuredRelations won't be changed
@@ -357,6 +329,25 @@ func isFeaturedRelationsCorrespondToType(fr []string, newLayout, oldLayout Layou
 	}
 
 	return oldLayout.isFeaturedRelationsSet && slices.Equal(featuredRelationIds, oldLayout.featuredRelations)
+}
+
+func (s *syncer) deriveId(key domain.RelationKey) (string, error) {
+	if s.cache != nil {
+		if id, found := s.cache[key]; found {
+			return id, nil
+		}
+	}
+
+	id, err := s.space.DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
+	if err != nil {
+		return "", fmt.Errorf("failed to derive relation id: %w", err)
+	}
+
+	if s.cache == nil {
+		s.cache = map[domain.RelationKey]string{}
+	}
+	s.cache[key] = id
+	return id, nil
 }
 
 func isLayoutChangeApplicable(layout int64) bool {
