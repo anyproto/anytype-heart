@@ -143,6 +143,9 @@ packages:
   github.com/anyproto/anytype-heart/space/clientspace:
     interfaces:
       Space:
+  github.com/anyproto/anytype-heart/core/anytype/config:
+    interfaces:
+      Updater:
   github.com/anyproto/anytype-heart/core/anytype/account:
     interfaces:
       Service:
