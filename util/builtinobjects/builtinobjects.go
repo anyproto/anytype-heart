@@ -259,7 +259,7 @@ func (b *builtinObjects) importArchive(
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
 			SpaceId:               spaceID,
-			UpdateExistingObjects: false,
+			UpdateExistingObjects: true,
 			Type:                  model.Import_Pb,
 			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 			NoProgress:            progress == nil,
@@ -392,7 +392,7 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 		log.Errorf("failed to get type id: %w", err)
 		return
 	}
-	for _, typeId := range []string{pageTypeId, taskTypeId} {
+	for _, typeId := range []string{taskTypeId, pageTypeId} {
 		if has, err := b.typeHasObjects(spaceId, typeId); err != nil {
 			log.Warnf("failed to check if type '%s' has objects: %v", pageTypeId, err)
 		} else if has {
@@ -400,10 +400,36 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 		}
 	}
 
+	var welcomePageId string
+	if useCase == pb.RpcObjectImportUseCaseRequest_GET_STARTED {
+		welcomePageId, err = b.getNewObjectID(spaceId, "bafyreidbxbw522cupdbxgzdpqayqb33ttvhyhlquprnbcgvpfp2p7pd4tq")
+		if err != nil {
+			log.Errorf("failed to get welcome page: %v", err)
+		}
+	}
+
 	if len(widgetTargetsToCreate) == 0 {
 		return
 	}
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+
+		if useCase == pb.RpcObjectImportUseCaseRequest_GET_STARTED && welcomePageId != "" {
+			if _, err = w.CreateBlock(s, &pb.RpcBlockCreateWidgetRequest{
+				ContextId:    s.RootId(),
+				WidgetLayout: model.BlockContentWidget_Link,
+				Position:     model.Block_InnerFirst,
+				TargetId:     s.RootId(),
+				Block: &model.Block{
+					Id: "welcome",
+					Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+						TargetBlockId: welcomePageId,
+					}},
+				},
+			}); err != nil {
+				log.Errorf("failed to add welcome page widget: %v", err)
+			}
+		}
+
 		for _, targetId := range widgetTargetsToCreate {
 			if err := w.AddAutoWidget(s, targetId, "", addr.ObjectTypeAllViewId, model.BlockContentWidget_View, ""); err != nil {
 				log.Errorf("failed to create widget block for type '%s': %v", targetId, err)
