@@ -82,6 +82,8 @@ import (
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/publish"
+	"github.com/anyproto/anytype-heart/core/pushnotifcation"
+	"github.com/anyproto/anytype-heart/core/pushnotifcation/client"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -111,6 +113,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
@@ -320,7 +323,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
 		Register(spaceview.New()).
-		Register(api.New())
+		Register(api.New()).
+		Register(client.NewPushClient()).
+		Register(spacekeystore.New()).
+		Register(pushnotifcation.New())
 }
 
 func MiddlewareVersion() string {
