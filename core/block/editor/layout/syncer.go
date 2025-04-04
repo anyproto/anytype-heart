@@ -53,10 +53,6 @@ func (ls LayoutState) isAllSet() bool {
 	return ls.isLayoutSet && ls.isLayoutAlignSet && ls.isFeaturedRelationsSet
 }
 
-func (ls LayoutState) isAnySet() bool {
-	return ls.isLayoutSet || ls.isLayoutAlignSet || ls.isFeaturedRelationsSet
-}
-
 func (ls LayoutState) Copy() LayoutState {
 	return LayoutState{
 		layout:                 ls.layout,
@@ -284,30 +280,10 @@ type layoutRelationsChanges struct {
 }
 
 func collectRelationsChanges(details *domain.Details, newLayout, oldLayout LayoutState, deriver relationIdDeriver, forceUpdate bool) (changes layoutRelationsChanges) {
-	changes.relationsToRemove = make([]domain.RelationKey, 0, 2)
-
 	if forceUpdate {
-		_, found := details.TryInt64(bundle.RelationKeyLayout)
-		if found {
-			changes.isLayoutFound = true
-			changes.relationsToRemove = append(changes.relationsToRemove, bundle.RelationKeyLayout)
-		}
-
-		_, found = details.TryInt64(bundle.RelationKeyLayoutAlign)
-		if found {
-			changes.relationsToRemove = append(changes.relationsToRemove, bundle.RelationKeyLayoutAlign)
-		}
-
-		featuredRelations, found := details.TryStringList(bundle.RelationKeyFeaturedRelations)
-		if found {
-			changes.isFeaturedRelationsChanged = true
-			changes.newFeaturedRelations = []string{}
-			if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
-				changes.newFeaturedRelations = append(changes.newFeaturedRelations, bundle.RelationKeyDescription.String())
-			}
-		}
-		return changes
+		return enforcedRelationsChanges(details)
 	}
+	changes.relationsToRemove = make([]domain.RelationKey, 0, 2)
 
 	if newLayout.isLayoutSet {
 		layout, found := details.TryInt64(bundle.RelationKeyLayout)
@@ -334,6 +310,32 @@ func collectRelationsChanges(details *domain.Details, newLayout, oldLayout Layou
 			if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
 				changes.newFeaturedRelations = append(changes.newFeaturedRelations, bundle.RelationKeyDescription.String())
 			}
+		}
+	}
+	return changes
+}
+
+func enforcedRelationsChanges(details *domain.Details) layoutRelationsChanges {
+	changes := layoutRelationsChanges{
+		relationsToRemove: make([]domain.RelationKey, 0, 2),
+	}
+	_, found := details.TryInt64(bundle.RelationKeyLayout)
+	if found {
+		changes.isLayoutFound = true
+		changes.relationsToRemove = append(changes.relationsToRemove, bundle.RelationKeyLayout)
+	}
+
+	_, found = details.TryInt64(bundle.RelationKeyLayoutAlign)
+	if found {
+		changes.relationsToRemove = append(changes.relationsToRemove, bundle.RelationKeyLayoutAlign)
+	}
+
+	featuredRelations, found := details.TryStringList(bundle.RelationKeyFeaturedRelations)
+	if found {
+		changes.isFeaturedRelationsChanged = true
+		changes.newFeaturedRelations = []string{}
+		if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
+			changes.newFeaturedRelations = append(changes.newFeaturedRelations, bundle.RelationKeyDescription.String())
 		}
 	}
 	return changes
