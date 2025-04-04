@@ -69,10 +69,11 @@ const (
 type Hook int
 
 type ApplyInfo struct {
-	State         *state.State
-	ParentDetails *domain.Details
-	Events        []simple.EventMessage
-	Changes       []*pb.ChangeContent
+	State             *state.State
+	ParentDetails     *domain.Details
+	Events            []simple.EventMessage
+	Changes           []*pb.ChangeContent
+	ApplyOtherObjects bool
 }
 
 type HookCallback func(info ApplyInfo) (err error)
@@ -136,6 +137,7 @@ type Space interface {
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
+	TryRemove(objectId string) (bool, error)
 
 	StoredIds() []string
 }
@@ -822,10 +824,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	if hooks {
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{
-			State:         sb.Doc.(*state.State),
-			ParentDetails: parentDetails,
-			Events:        msgs,
-			Changes:       changes,
+			State:             sb.Doc.(*state.State),
+			ParentDetails:     parentDetails,
+			Events:            msgs,
+			Changes:           changes,
+			ApplyOtherObjects: true,
 		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}

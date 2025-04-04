@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "3be80b3e3c4063bfd9087747f9a2561ff32fc605460843d99a4d722fb3688e71"
+const RelationChecksum = "a23583f8faef1cbfcd05ca1d2761538e67bbdd1336d1a467a0d657b5f986b313"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -160,7 +160,6 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
-	RelationKeyForceLayoutFromType          domain.RelationKey = "forceLayoutFromType"
 )
 
 var (
@@ -700,20 +699,6 @@ var (
 			Key:              "focalRatio",
 			MaxCount:         1,
 			Name:             "Focal ratio",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyForceLayoutFromType: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Layout settings are strictly inherited for all objects of this type",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brforceLayoutFromType",
-			Key:              "forceLayoutFromType",
-			MaxCount:         1,
-			Name:             "Force layout from type",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

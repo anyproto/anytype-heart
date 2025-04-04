@@ -3,7 +3,6 @@ package smartblock
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -220,12 +219,9 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 	return nil
 }
 
-// resolveLayout adds resolvedLayout to local details of object. It analyzes details of object type
-// - if isEnforcedLayout == true, resolvedLayout must be the same as recommendedLayout of object type
-// - if isEnforcedLayout == false and object has layout detail, resolvedLayout should be the same as layout value
-// - if isEnforcedLayout == false and object has no layout detail set, resolvedLayout should be the same as recommendedLayout of object type
-// - if object is a template, isEnforcedLayout flag should be ignored and priority will be 1. layout 2. recommendedLayout of target type
-// - fallback is current resolvedLayout value. If it is not ok, then basic
+// resolveLayout adds resolvedLayout to local details of object. Priority:
+// layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
+// resolveLayout also converts object from Note, i.e. adds Name and Title to state
 func (sb *smartBlock) resolveLayout(s *state.State) {
 	if s.Details() == nil && s.LocalDetails() == nil {
 		return
@@ -255,12 +251,9 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		return
 	}
 
-	var (
-		valueInType      = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
-		isEnforcedLayout = typeDetails.GetBool(bundle.RelationKeyForceLayoutFromType)
-	)
+	var valueInType = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
 
-	if s.ObjectTypeKey() == bundle.TypeKeyTemplate || !isEnforcedLayout {
+	if s.ObjectTypeKey() == bundle.TypeKeyTemplate {
 		if layoutValue.Ok() {
 			newValue = layoutValue
 		} else if valueInType.Ok() {
@@ -279,22 +272,6 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 	} else if !currentValue.Ok() {
 		log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
 		newValue = domain.Int64(int64(model.ObjectType_basic))
-	}
-
-	featuredRelations := make([]string, 0)
-	if slices.Contains(s.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyDescription.String()) {
-		featuredRelations = []string{bundle.RelationKeyDescription.String()}
-	}
-
-	s.Details().Delete(bundle.RelationKeyLayout)
-	s.Details().Delete(bundle.RelationKeyLayoutAlign)
-	s.Details().SetStringList(bundle.RelationKeyFeaturedRelations, featuredRelations)
-
-	// we delete layout settings details both from parent and child state to avoid changes generation
-	if parent := s.ParentState(); parent != nil && parent.Details() != nil {
-		parent.Details().Delete(bundle.RelationKeyLayout)
-		parent.Details().Delete(bundle.RelationKeyLayoutAlign)
-		parent.Details().SetStringList(bundle.RelationKeyFeaturedRelations, featuredRelations)
 	}
 }
 

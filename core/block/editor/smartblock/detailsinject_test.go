@@ -398,34 +398,6 @@ func TestResolveLayout(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
-	t.Run("if forceLayout is set, layout details are deleted", func(t *testing.T) {
-		// given
-		fx := newFixture(id, t)
-
-		st := state.NewDoc("id", nil).NewState()
-		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyProfile.URL()))
-		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_basic))
-		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_basic)))
-		st.SetDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignRight))
-		st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{
-			bundle.RelationKeyType.String(), bundle.RelationKeyDescription.String(), bundle.RelationKeyTag.String(),
-		}))
-
-		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-			bundle.RelationKeyId:                  domain.String(bundle.TypeKeyProfile.URL()),
-			bundle.RelationKeyRecommendedLayout:   domain.Int64(model.ObjectType_profile),
-			bundle.RelationKeyForceLayoutFromType: domain.Bool(true),
-		}})
-
-		// when
-		fx.resolveLayout(st)
-
-		// then
-		assert.Equal(t, int64(model.ObjectType_profile), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
-		assert.False(t, st.Details().Has(bundle.RelationKeyLayout))
-		assert.False(t, st.Details().Has(bundle.RelationKeyLayoutAlign))
-		assert.Equal(t, []string{bundle.RelationKeyDescription.String()}, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
-	})
 	t.Run("conversion from note adds Title and Name", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
