@@ -16179,7 +16179,6 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ImportUseCase.Response.Error](#anytype-Rpc-Object-ImportUseCase-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-| dashboardId | [string](#string) |  |  |
 
 
 
