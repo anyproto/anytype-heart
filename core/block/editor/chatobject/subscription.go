@@ -24,6 +24,7 @@ type subscription struct {
 
 	spaceId         string
 	chatId          string
+	myIdentity      string
 	myParticipantId string
 
 	sessionContext session.Context
@@ -42,16 +43,17 @@ type subscription struct {
 	repository  *repository
 }
 
-func newSubscription(componentCtx context.Context, fullId domain.FullID, myParticipantId string, eventSender event.Sender, spaceIndex spaceindex.Store, repo *repository) *subscription {
+func (s *storeObject) newSubscription(fullId domain.FullID, myIdentity string, myParticipantId string) *subscription {
 	return &subscription{
-		componentCtx:    componentCtx,
+		componentCtx:    s.componentCtx,
 		spaceId:         fullId.SpaceID,
 		chatId:          fullId.ObjectID,
-		eventSender:     eventSender,
-		spaceIndex:      spaceIndex,
+		eventSender:     s.eventSender,
+		spaceIndex:      s.spaceIndex,
+		myIdentity:      myIdentity,
 		myParticipantId: myParticipantId,
 		identityCache:   expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
-		repository:      repo,
+		repository:      s.repository,
 	}
 }
 
@@ -157,7 +159,7 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 	return details, nil
 }
 
-func (s *subscription) add(prevOrderId string, message *Message) {
+func (s *subscription) add(ctx context.Context, prevOrderId string, message *Message) {
 	s.updateChatState(func(state *model.ChatState) *model.ChatState {
 		if !message.Read {
 			if message.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
@@ -165,7 +167,11 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 			}
 			state.Messages.Counter++
 
-			if message.IsCurrentUserMentioned(s.myParticipantId) {
+			isMentioned, err := message.IsCurrentUserMentioned(ctx, s.myParticipantId, s.myIdentity, s.repository)
+			if err != nil {
+				log.Error("subscription add: check if the current user is mentioned", zap.Error(err))
+			}
+			if isMentioned {
 				state.Mentions.Counter++
 				if message.OrderId < state.Mentions.OldestOrderId || state.Mentions.OldestOrderId == "" {
 					state.Mentions.OldestOrderId = message.OrderId

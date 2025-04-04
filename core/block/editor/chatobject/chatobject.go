@@ -120,10 +120,10 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
-	s.subscription = newSubscription(
-		s.componentCtx,
+	s.subscription = s.newSubscription(
 		domain.FullID{ObjectID: ctx.Source.Id(), SpaceID: ctx.Source.SpaceID()},
-		myParticipantId, s.eventSender, s.spaceIndex, s.repository,
+		s.accountService.AccountID(),
+		myParticipantId,
 	)
 
 	messagesOpts := newReadHandler(CounterTypeMessage, s.subscription)
@@ -348,7 +348,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 			}
 		}
 		for _, message := range messages {
-			s.subscription.add(previousOrderId, message)
+			s.subscription.add(ctx, previousOrderId, message)
 			previousOrderId = message.OrderId
 		}
 

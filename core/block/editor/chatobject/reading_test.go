@@ -83,22 +83,50 @@ func TestReadMessagesLoadedInBackground(t *testing.T) {
 }
 
 func TestReadMentions(t *testing.T) {
-	ctx := context.Background()
-	fx := newFixture(t)
-	fx.chatHandler.forceNotRead = true
-	const n = 10
-	for i := 0; i < n; i++ {
-		_, err := fx.AddMessage(ctx, nil, givenMessageWithMention(fmt.Sprintf("message %d", i+1)))
+	t.Run("mentioned directly in marks", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.chatHandler.forceNotRead = true
+		const n = 10
+		for i := 0; i < n; i++ {
+			_, err := fx.AddMessage(ctx, nil, givenMessageWithMention(fmt.Sprintf("message %d", i+1)))
+			require.NoError(t, err)
+		}
+		// All messages forced as not read
+		messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
+
+		err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastStateId, CounterTypeMention)
 		require.NoError(t, err)
-	}
-	// All messages forced as not read
-	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastStateId, CounterTypeMention)
-	require.NoError(t, err)
+		fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, false, true)
+		fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false, false)
+	})
 
-	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, false, true)
-	fx.assertReadStatus(t, ctx, messagesResp.Messages[3].OrderId, "", false, false)
+	t.Run("author of replied message", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.chatHandler.forceNotRead = true
+
+		firstMessageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("message to reply to"))
+		require.NoError(t, err)
+
+		secondMessageInput := givenSimpleMessage("a reply")
+		secondMessageInput.ReplyToMessageId = firstMessageId
+
+		secondMessageId, err := fx.AddMessage(ctx, nil, secondMessageInput)
+		require.NoError(t, err)
+
+		secondMessage, err := fx.GetMessageById(ctx, secondMessageId)
+		require.NoError(t, err)
+
+		// All messages forced as not read
+		messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
+
+		err = fx.MarkReadMessages(ctx, "", secondMessage.OrderId, messagesResp.ChatState.LastStateId, CounterTypeMention)
+		require.NoError(t, err)
+
+		fx.assertReadStatus(t, ctx, secondMessage.OrderId, secondMessage.OrderId, false, true)
+	})
 }
 
 func TestMarkMessagesAsNotRead(t *testing.T) {

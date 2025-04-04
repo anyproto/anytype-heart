@@ -64,8 +64,11 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	msg.StateId = bson.NewObjectId().Hex()
 
-	msg.CurrentUserMentioned = msg.IsCurrentUserMentioned(d.myParticipantId)
-
+	isMentioned, err := msg.IsCurrentUserMentioned(ctx, d.myParticipantId, d.currentIdentity, d.repository)
+	if err != nil {
+		return fmt.Errorf("check if current user is mentioned: %w", err)
+	}
+	msg.CurrentUserMentioned = isMentioned
 	msg.OrderId = ch.Change.Order
 
 	prevOrderId, err := d.repository.getPrevOrderId(ctx, ch.Change.Order)
@@ -73,7 +76,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		return fmt.Errorf("get prev order id: %w", err)
 	}
 
-	d.subscription.add(prevOrderId, msg)
+	d.subscription.add(ctx, prevOrderId, msg)
 
 	msg.MarshalAnyenc(ch.Value, ch.Arena)
 
