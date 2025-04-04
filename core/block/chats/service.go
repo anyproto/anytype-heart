@@ -218,9 +218,10 @@ func (s *service) Close(ctx context.Context) error {
 
 	s.componentCtxCancel()
 
-	err = errors.Join(err,
-		s.crossSpaceSubService.Unsubscribe(allChatsSubscriptionId),
-	)
+	unsubErr := s.crossSpaceSubService.Unsubscribe(allChatsSubscriptionId)
+	if !errors.Is(err, crossspacesub.ErrSubscriptionNotFound) {
+		err = errors.Join(err, unsubErr)
+	}
 	return err
 }
 
