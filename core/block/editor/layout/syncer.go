@@ -187,7 +187,7 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 			continue
 		}
 
-		if !forceUpdate && (changes.isLayoutFound || !newLayout.isLayoutSet || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout) {
+		if !forceUpdate && (changes.isLayoutFound || !newLayout.isLayoutSet) || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
 			// layout detail remains in object or recommendedLayout was not changed or relevant layout is already set, skipping
 			continue
 		}
