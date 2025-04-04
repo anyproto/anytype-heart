@@ -46,6 +46,7 @@ var (
 		bundle.RelationKeyIconOption,
 		bundle.RelationKeyIconName,
 		bundle.RelationKeyPluralName,
+		bundle.RelationKeyDescription,
 	}
 )
 
