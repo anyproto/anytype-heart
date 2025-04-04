@@ -26,10 +26,10 @@ const (
 	IdFromChange = "$changeId"
 )
 
-var lexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
+var LexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 
 const (
-	collChangeOrders = "_change_orders"
+	CollChangeOrders = "_change_orders"
 )
 
 func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (state *StoreState, err error) {
@@ -104,7 +104,7 @@ type StoreState struct {
 }
 
 func (ss *StoreState) init(ctx context.Context) (err error) {
-	if ss.collChangeOrders, err = ss.Collection(ctx, collChangeOrders); err != nil {
+	if ss.collChangeOrders, err = ss.Collection(ctx, CollChangeOrders); err != nil {
 		return
 	}
 	for _, h := range ss.handlers {
