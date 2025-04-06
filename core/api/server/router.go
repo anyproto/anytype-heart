@@ -9,8 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
-	"github.com/anyproto/anytype-heart/core/event"
-
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
 	"github.com/anyproto/anytype-heart/core/api/internal/export"
 	"github.com/anyproto/anytype-heart/core/api/internal/list"
@@ -29,7 +27,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.AccountService, eventService event.Sender) *gin.Engine {
+func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService) *gin.Engine {
 	debug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)

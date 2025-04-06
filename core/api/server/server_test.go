@@ -11,6 +11,7 @@ import (
 type fixture struct {
 	*Server
 	accountService mock_apicore.MockAccountService
+	eventService   mock_apicore.MockEventService
 	exportService  mock_apicore.MockExportService
 	mwMock         *mock_apicore.MockClientCommands
 }
@@ -18,8 +19,9 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	accountService := mock_apicore.NewMockAccountService(t)
+	eventService := mock_apicore.NewMockEventService(t)
 	exportService := mock_apicore.NewMockExportService(t)
-	server := NewServer(mwMock, accountService, exportService)
+	server := NewServer(mwMock, accountService, eventService, exportService)
 
 	return &fixture{
 		Server:         server,

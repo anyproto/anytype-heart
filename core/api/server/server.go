@@ -12,8 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
-
-	"github.com/anyproto/anytype-heart/core/event"
 )
 
 type ApiSessionEntry struct {
@@ -37,7 +35,7 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService event.Sender, exportService apicore.ExportService) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, exportService apicore.ExportService) *Server {
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw, exportService),

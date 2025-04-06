@@ -37,7 +37,7 @@ type apiService struct {
 	httpSrv        *http.Server
 	mw             apicore.ClientCommands
 	accountService apicore.AccountService
-	eventService   event.Sender
+	eventService   apicore.EventService
 	exportService  apicore.ExportService
 	listenAddr     string
 	lock           sync.Mutex
@@ -70,7 +70,7 @@ func (s *apiService) Name() (name string) {
 func (s *apiService) Init(a *app.App) (err error) {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
 	s.accountService = a.MustComponent(account.CName).(account.Service)
-	s.eventService = a.MustComponent(event.CName).(event.Sender)
+	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	s.exportService = a.MustComponent(export.CName).(apicore.ExportService)
 	return nil
 }

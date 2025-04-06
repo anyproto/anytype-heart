@@ -109,7 +109,7 @@ func (s *Server) ensureAccountInfo(accountService apicore.AccountService) gin.Ha
 }
 
 // ensureAnalyticsEvent is a middleware that ensures broadcasting an analytics event after a successful request.
-func (s *Server) ensureAnalyticsEvent(code string, eventService event.Sender) gin.HandlerFunc {
+func (s *Server) ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 

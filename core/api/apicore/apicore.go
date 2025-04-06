@@ -11,6 +11,10 @@ type AccountService interface {
 	GetInfo(ctx context.Context) (*model.AccountInfo, error)
 }
 
+type EventService interface {
+	Broadcast(event *pb.Event)
+}
+
 type ExportService interface {
 	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
 }

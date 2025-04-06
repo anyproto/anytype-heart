@@ -17,7 +17,7 @@ func TestRouter_Unauthenticated(t *testing.T) {
 	t.Run("GET /v1/spaces without auth returns 401", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
+		engine := fx.NewRouter(fx.mwMock, &fx.accountService, &fx.eventService)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v1/spaces", nil)
 
@@ -33,7 +33,7 @@ func TestRouter_AuthRoute(t *testing.T) {
 	t.Run("POST /v1/auth/token is accessible without auth", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
+		engine := fx.NewRouter(fx.mwMock, &fx.accountService, &fx.eventService)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/v1/auth/token", nil)
 
@@ -49,8 +49,8 @@ func TestRouter_MetadataHeader(t *testing.T) {
 	t.Run("Response includes Anytype-Version header", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
-		fx.KeyToToken = map[string]string{"validKey": "dummyToken"}
+		engine := fx.NewRouter(fx.mwMock, &fx.accountService, &fx.eventService)
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "dummyToken", AppName: "dummyApp"}}
 		fx.accountService.On("GetInfo", mock.Anything).
 			Return(&model.AccountInfo{
 				GatewayUrl: "http://localhost:31006",
