@@ -13,7 +13,6 @@ import (
 //	@Summary		Export object
 //	@Description	This endpoint exports a single object from the specified space into a desired format. The export format is provided as a path parameter (currently supporting “markdown” only). The endpoint calls the export service which converts the object’s content into the requested format. It is useful for sharing, or displaying the markdown representation of the objecte externally.
 //	@Tags			export
-//	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			space_id		path		string					true	"Space ID"

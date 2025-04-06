@@ -1817,11 +1817,6 @@ paths:
           enum:
           - markdown
           type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
       responses:
         "200":
           content:
