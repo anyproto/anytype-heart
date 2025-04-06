@@ -15,10 +15,11 @@ import (
 //	@Tags			auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			app_name	query		string					true	"App name requesting the challenge"
-//	@Success		200			{object}	DisplayCodeResponse		"Challenge ID"
-//	@Failure		400			{object}	util.ValidationError	"Invalid input"
-//	@Failure		500			{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param			app_name		query		string					true	"App name requesting the challenge"
+//	@Success		200				{object}	DisplayCodeResponse		"Challenge ID"
+//	@Failure		400				{object}	util.ValidationError	"Invalid input"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/display_code [post]
 func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -46,6 +47,7 @@ func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 //	@Tags			auth
 //	@Accept			json
 //	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			challenge_id	query		string					true	"Challenge ID"
 //	@Param			code			query		string					true	"4-digit code retrieved from Anytype Desktop app"
 //	@Success		200				{object}	TokenResponse			"Authentication token"

@@ -818,6 +818,12 @@ paths:
         token. In essence, this endpoint “boots up” the login process and is the first
         step in a multi-phase authentication sequence.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: App name requesting the challenge
         in: query
         name: app_name
@@ -861,6 +867,12 @@ paths:
         in subsequent API requests to authorize access. This endpoint is central to
         ensuring that only properly authenticated sessions can access further resources.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Challenge ID
         in: query
         name: challenge_id
@@ -911,6 +923,12 @@ paths:
         date by default), and returns a unified, paginated list of objects that match
         the search parameters.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: The number of items to skip before starting to collect the result
           set
         in: query
@@ -963,6 +981,12 @@ paths:
         as the space ID, name, icon (derived either from an emoji or image URL), and
         additional metadata. This endpoint is key to displaying a user’s workspaces.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: The number of items to skip before starting to collect the result
           set
         in: query
@@ -1008,6 +1032,13 @@ paths:
         the workspace with default settings (for example, a default dashboard or home
         page). On success, the new space’s full metadata is returned, enabling the
         client to immediately switch context to the new space.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       requestBody:
         content:
           application/json:
@@ -1058,6 +1089,12 @@ paths:
         workspace IDs (home, archive, profile, etc.). This detailed view supports
         use cases such as displaying space-specific settings.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1103,6 +1140,12 @@ paths:
         sorting. This endpoint helps clients to manage grouped objects (for example,
         tasks within a list) by returning information for each item of the list.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1170,6 +1213,12 @@ paths:
         returns a confirmation message. This endpoint is vital for building user interfaces
         that allow drag‑and‑drop or multi‑select additions to collections.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1235,6 +1284,12 @@ paths:
         on completion. It is used for dynamically managing collections without affecting
         the underlying object data.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1298,6 +1353,12 @@ paths:
         pagination parameters to control the number of views returned and the starting
         point of the result set.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1361,6 +1422,12 @@ paths:
         supports collaborative features by allowing clients to show who is in a space
         and manage access rights.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1414,6 +1481,12 @@ paths:
         This is useful for user profile pages, permission management, and displaying
         member-specific information in collaborative environments.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1465,6 +1538,12 @@ paths:
         intended for building views where users can see all objects in a space at
         a glance.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1519,6 +1598,12 @@ paths:
         properties or fetching bookmark metadata) may occur. The endpoint then returns
         the full object data, ready for further interactions.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1576,6 +1661,12 @@ paths:
         in place for situations such as when the object isn’t found or the deletion
         cannot be performed because of permission issues.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1638,6 +1729,12 @@ paths:
         and linked member information). This endpoint is essential when a client needs
         to render or edit the full object view.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1694,6 +1791,12 @@ paths:
         the object’s content into the requested format. It is useful for sharing,
         or displaying the markdown representation of the objecte externally.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1758,6 +1861,12 @@ paths:
         a list of objects that match the query. This allows clients to implement space‑specific
         filtering without having to process extraneous results.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1819,6 +1928,12 @@ paths:
         use this information when offering choices for object creation or for filtering
         objects by type through search.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1871,6 +1986,12 @@ paths:
         and style for objects of that type and in guiding the user interface (such
         as displaying appropriate icons or layout hints).
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1927,6 +2048,12 @@ paths:
         name, and icon, so that clients can offer users a selection of templates when
         creating objects.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id
@@ -1984,6 +2111,12 @@ paths:
         icon, and any other relevant metadata. This endpoint is useful when a client
         needs to preview or apply a template to prefill object creation fields.
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
       - description: Space ID
         in: path
         name: space_id

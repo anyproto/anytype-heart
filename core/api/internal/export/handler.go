@@ -15,13 +15,14 @@ import (
 //	@Tags			export
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space ID"
-//	@Param			object_id	path		string					true	"Object ID"
-//	@Param			format		path		string					true	"Export format"	Enums(markdown)
-//	@Success		200			{object}	ObjectExportResponse	"Object exported successfully"
-//	@Failure		400			{object}	util.ValidationError	"Bad request"
-//	@Failure		401			{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		500			{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			object_id		path		string					true	"Object ID"
+//	@Param			format			path		string					true	"Export format"	Enums(markdown)
+//	@Success		200				{object}	ObjectExportResponse	"Object exported successfully"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id}/{format} [get]
 func GetObjectExportHandler(s *ExportService) gin.HandlerFunc {
