@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -50,7 +49,6 @@ func TestIndexer(t *testing.T) {
 				)))
 
 			smartTest.SetType(coresb.SmartBlockTypePage)
-			indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 			indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
 
 			// when
@@ -58,7 +56,7 @@ func TestIndexer(t *testing.T) {
 
 			// then
 			assert.NoError(t, err)
-			count, _ := indexerFx.store.ListIdsFromFullTextQueue(0)
+			count, _ := indexerFx.store.ListIdsFromFullTextQueue([]string{"spaceId1"}, 0)
 			assert.Equal(t, 0, len(count))
 		})
 
@@ -78,7 +76,6 @@ func TestIndexer(t *testing.T) {
 				)))
 
 			smartTest.SetType(coresb.SmartBlockTypePage)
-			indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 			indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "randomHash")
 
 			// when
@@ -86,7 +83,7 @@ func TestIndexer(t *testing.T) {
 
 			// then
 			assert.NoError(t, err)
-			count, _ := indexerFx.store.ListIdsFromFullTextQueue(0)
+			count, _ := indexerFx.store.ListIdsFromFullTextQueue([]string{"spaceId1"}, 0)
 			assert.Equal(t, 1, len(count))
 		})
 	}
@@ -107,7 +104,6 @@ func TestIndexer(t *testing.T) {
 			)))
 
 		smartTest.SetType(coresb.SmartBlockTypePage)
-		indexerFx.storageServiceFx.EXPECT().BindSpaceID(mock.Anything, mock.Anything).Return(nil)
 		indexerFx.store.SpaceIndex("spaceId1").SaveLastIndexedHeadsHash(ctx, "objectId1", "7f40bc2814f5297818461f889780a870ea033fe64c5a261117f2b662515a3dba")
 
 		// when
@@ -115,7 +111,7 @@ func TestIndexer(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		count, _ := indexerFx.store.ListIdsFromFullTextQueue(0)
+		count, _ := indexerFx.store.ListIdsFromFullTextQueue([]string{"spaceId1"}, 0)
 		assert.Equal(t, 1, len(count))
 	})
 }

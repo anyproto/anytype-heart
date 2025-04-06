@@ -143,9 +143,6 @@ func (m mockSyncAcl) HandleRequest(ctx context.Context, senderId string, request
 	return nil, nil
 }
 
-func (m mockSyncAcl) SetHeadUpdater(updater headupdater.HeadUpdater) {
-}
-
 func (m mockSyncAcl) SetAclUpdater(updater headupdater.AclUpdater) {
 }
 
@@ -326,7 +323,7 @@ func TestService_ViewInvite(t *testing.T) {
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
 		fx.mockAccountService.EXPECT().Keys().Return(keys)
-		aclList, err := list.NewTestDerivedAcl("spaceId", keys)
+		aclList, err := list.NewInMemoryDerivedAcl("spaceId", keys)
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
@@ -343,8 +340,8 @@ func TestService_ViewInvite(t *testing.T) {
 		symKey, err := crypto.NewRandomAES()
 		require.NoError(t, err)
 		fx.mockInviteService.EXPECT().View(ctx, realCid, symKey).Return(domain.InviteView{
-			InviteKey: protoKey,
-			SpaceId:   "spaceId",
+			AclKey:  protoKey,
+			SpaceId: "spaceId",
 		}, nil)
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, "spaceId", "").Return(recs, nil)
 		invite, err := fx.ViewInvite(ctx, realCid, symKey)
@@ -357,7 +354,7 @@ func TestService_ViewInvite(t *testing.T) {
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
 		fx.mockAccountService.EXPECT().Keys().Return(keys)
-		aclList, err := list.NewTestDerivedAcl("spaceId", keys)
+		aclList, err := list.NewInMemoryDerivedAcl("spaceId", keys)
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
@@ -381,8 +378,8 @@ func TestService_ViewInvite(t *testing.T) {
 		symKey, err := crypto.NewRandomAES()
 		require.NoError(t, err)
 		fx.mockInviteService.EXPECT().View(ctx, realCid, symKey).Return(domain.InviteView{
-			InviteKey: protoKey,
-			SpaceId:   "spaceId",
+			AclKey:  protoKey,
+			SpaceId: "spaceId",
 		}, nil)
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, "spaceId", "").Return(recs, nil)
 		_, err = fx.ViewInvite(ctx, realCid, symKey)
@@ -405,7 +402,7 @@ func TestService_Join(t *testing.T) {
 		protoKey, err := inviteKey.Marshall()
 		require.NoError(t, err)
 		fx.mockInviteService.EXPECT().GetPayload(ctx, realCid, key).Return(&model.InvitePayload{
-			InviteKey: protoKey,
+			AclKey: protoKey,
 		}, nil)
 		metadataPayload := []byte("metadata")
 		fx.mockSpaceService.EXPECT().AccountMetadataPayload().Return(metadataPayload)
@@ -433,7 +430,7 @@ func TestService_Join(t *testing.T) {
 		protoKey, err := inviteKey.Marshall()
 		require.NoError(t, err)
 		fx.mockInviteService.EXPECT().GetPayload(ctx, realCid, key).Return(&model.InvitePayload{
-			InviteKey: protoKey,
+			AclKey: protoKey,
 		}, nil)
 		metadataPayload := []byte("metadata")
 		fx.mockSpaceService.EXPECT().AccountMetadataPayload().Return(metadataPayload)
@@ -458,7 +455,7 @@ func TestService_Join(t *testing.T) {
 		protoKey, err := inviteKey.Marshall()
 		require.NoError(t, err)
 		fx.mockInviteService.EXPECT().GetPayload(ctx, realCid, key).Return(&model.InvitePayload{
-			InviteKey: protoKey,
+			AclKey: protoKey,
 		}, nil)
 		metadataPayload := []byte("metadata")
 		fx.mockSpaceService.EXPECT().AccountMetadataPayload().Return(metadataPayload)
@@ -494,10 +491,15 @@ func TestService_Leave(t *testing.T) {
 		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
 		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().Keys().Return(keys)
+		mockSpace.EXPECT().GetAclIdentity().Return(keys.SignKey.GetPublic())
+
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
 		mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(nil)
-		err := fx.Leave(ctx, spaceId)
+		err = fx.Leave(ctx, spaceId)
 		require.NoError(t, err)
 	})
 	t.Run("leave success if space service error is known", func(t *testing.T) {
@@ -541,6 +543,10 @@ func TestService_Leave(t *testing.T) {
 				mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
 				mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 				fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+				keys, err := accountdata.NewRandom()
+				require.NoError(t, err)
+				fx.mockAccountService.EXPECT().Keys().Return(keys)
+				mockSpace.EXPECT().GetAclIdentity().Return(keys.SignKey.GetPublic())
 				mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 				mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
 				mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(err)
@@ -559,8 +565,31 @@ func TestService_Leave(t *testing.T) {
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().Keys().Return(keys)
+		mockSpace.EXPECT().GetAclIdentity().Return(keys.SignKey.GetPublic())
 		mockAclClient.EXPECT().RequestSelfRemove(ctx).Return(fmt.Errorf("error"))
-		err := fx.Leave(ctx, spaceId)
+		err = fx.Leave(ctx, spaceId)
 		require.True(t, errors.Is(err, ErrAclRequestFailed))
+	})
+
+	t.Run("leave if acl key is not account key", func(t *testing.T) {
+		// this is a case of guest user trying to leave the space
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		mockSpace := mock_clientspace.NewMockSpace(t)
+
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		accountKeys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		aclKeys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().Keys().Return(accountKeys)
+		mockSpace.EXPECT().GetAclIdentity().Return(aclKeys.SignKey.GetPublic())
+
+		err = fx.Leave(ctx, spaceId)
+		require.NoError(t, err)
 	})
 }

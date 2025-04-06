@@ -108,9 +108,12 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
@@ -126,15 +129,16 @@ var (
 	WarningAfter = time.Second * 1
 )
 
-func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
+func BootstrapConfig(newAccount bool, spaceStreamAutoJoinUrl string) *config.Config {
 	return config.New(
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
+		config.WithAutoJoinStream(spaceStreamAutoJoinUrl),
 	)
 }
 
-func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) wallet.Wallet {
-	return wallet.NewWithAccountRepo(rootPath, derivationResult)
+func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult, lang string) wallet.Wallet {
+	return wallet.NewWithAccountRepo(rootPath, derivationResult, lang)
 }
 
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
@@ -191,6 +195,18 @@ func appVersion(a *app.App, clientWithVersion string) string {
 	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
+func BootstrapMigration(a *app.App, components ...app.Component) {
+	for _, c := range components {
+		a.Register(c)
+	}
+	a.Register(migratorfinisher.New()).
+		Register(clientds.New()).
+		Register(oldstorage.New()).
+		Register(storage.New()).
+		Register(process.New()).
+		Register(migrator.New())
+}
+
 func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
@@ -207,6 +223,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(backlinks.New()).
 		Register(filestore.New()).
 		// Services
+		Register(collection.New()).
+		Register(subscription.New()).
+		Register(crossspacesub.New()).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
@@ -279,9 +298,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
-		Register(collection.New()).
-		Register(subscription.New()).
-		Register(crossspacesub.New()).
 		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).

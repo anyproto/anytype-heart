@@ -43,6 +43,7 @@ const (
 const (
 	SpaceStoreBadgerPath = "spacestore"
 	SpaceStoreSqlitePath = "spaceStore.db"
+	SpaceStoreNewPath    = "spaceStoreNew"
 )
 
 var (
@@ -64,11 +65,14 @@ type ConfigRequired struct {
 }
 
 type Config struct {
-	ConfigRequired                         `json:",inline"`
-	NewAccount                             bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
+	ConfigRequired `json:",inline"`
+	NewAccount     bool   `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
+	AutoJoinStream string `ignored:"true"` // contains the invite of the stream space to automatically join
+
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
 	PeferYamuxTransport                    bool
+	DisableNetworkIdCheck                  bool
 	SpaceStorageMode                       storage.SpaceStorageMode
 	NetworkMode                            pb.RpcAccountNetworkMode
 	NetworkCustomConfigFilePath            string           `json:",omitempty"` // not saved to config
@@ -117,6 +121,12 @@ func WithNewAccount(isNewAccount bool) func(*Config) {
 		if isNewAccount {
 			c.AnalyticsId = metrics.GenerateAnalyticsId()
 		}
+	}
+}
+
+func WithAutoJoinStream(inviteUrl string) func(*Config) {
+	return func(c *Config) {
+		c.AutoJoinStream = inviteUrl
 	}
 }
 
@@ -192,7 +202,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		if len(split) == 1 {
 			return fmt.Errorf("failed to split repo path: %s", repoPath)
 		}
-		c.SqliteTempPath = filepath.Join(split[0], "cache")
+		c.SqliteTempPath = filepath.Join(split[0], "files")
 		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
 		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
 	}
@@ -293,12 +303,27 @@ func (c *Config) FSConfig() (FSConfig, error) {
 	return FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
 }
 
+func (c *Config) GetRepoPath() string {
+	return c.RepoPath
+}
+
 func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
 }
 
-func (c *Config) GetSpaceStorePath() string {
-	return filepath.Join(c.RepoPath, "spaceStore.db")
+func (c *Config) GetSqliteStorePath() string {
+	return filepath.Join(c.RepoPath, SpaceStoreSqlitePath)
+}
+
+func (c *Config) GetOldSpaceStorePath() string {
+	if c.GetSpaceStorageMode() == storage.SpaceStorageModeBadger {
+		return filepath.Join(c.RepoPath, SpaceStoreBadgerPath)
+	}
+	return c.GetSqliteStorePath()
+}
+
+func (c *Config) GetNewSpaceStorePath() string {
+	return filepath.Join(c.RepoPath, SpaceStoreNewPath)
 }
 
 func (c *Config) GetTempDirPath() string {
@@ -391,7 +416,7 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 		if err := yaml.Unmarshal(confBytes, &conf); err != nil {
 			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, err)
 		}
-		if c.NetworkId != "" && c.NetworkId != conf.NetworkId {
+		if !c.DisableNetworkIdCheck && c.NetworkId != "" && c.NetworkId != conf.NetworkId {
 			log.Warnf("Network id mismatch: %s != %s", c.NetworkId, conf.NetworkId)
 			return nodeconf.Configuration{}, errors.Join(ErrNetworkIdMismatch, fmt.Errorf("network id mismatch: %s != %s", c.NetworkId, conf.NetworkId))
 		}

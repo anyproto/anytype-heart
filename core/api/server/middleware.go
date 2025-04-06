@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,11 +11,16 @@ import (
 	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
+)
+
+var (
+	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
+	ErrInvalidAuthorizationHeader = errors.New("invalid authorization header format")
+	ErrInvalidToken               = errors.New("invalid token")
 )
 
 // rateLimit is a middleware that limits the number of requests per second.
@@ -28,7 +34,8 @@ func (s *Server) rateLimit(max float64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request)
 		if httpError != nil {
-			c.AbortWithStatusJSON(httpError.StatusCode, gin.H{"error": httpError.Message})
+			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
+			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
 			return
 		}
 		c.Next()
@@ -36,16 +43,18 @@ func (s *Server) rateLimit(max float64) gin.HandlerFunc {
 }
 
 // ensureAuthenticated is a middleware that ensures the request is authenticated.
-func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.HandlerFunc {
+func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
+			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error())
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
 		key := strings.TrimPrefix(authHeader, "Bearer ")
@@ -59,7 +68,8 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidToken.Error())
+				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 				return
 			}
 			apiSession = ApiSessionEntry{
@@ -81,15 +91,15 @@ func (s *Server) ensureAuthenticated(mw service.ClientCommandsServer) gin.Handle
 }
 
 // ensureAccountInfo is a middleware that ensures the account info is available in the services.
-func (s *Server) ensureAccountInfo(accountService account.Service) gin.HandlerFunc {
+func (s *Server) ensureAccountInfo(accountService apicore.AccountService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accInfo, err := accountService.GetInfo(context.Background())
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get account info: %v", err)})
+			apiErr := util.CodeToAPIError(http.StatusInternalServerError, fmt.Sprintf("failed to get account info: %v", err))
+			c.AbortWithStatusJSON(http.StatusInternalServerError, apiErr)
 			return
 		}
 
-		s.exportService.AccountInfo = accInfo
 		s.objectService.AccountInfo = accInfo
 		s.spaceService.AccountInfo = accInfo
 		s.searchService.AccountInfo = accInfo
@@ -113,5 +123,13 @@ func (s *Server) ensureAnalyticsEvent(code string, eventService event.Sender) gi
 				Payload: payload,
 			},
 		}))
+	}
+}
+
+// ensureMetadataHeader is a middleware that ensures the metadata header is set.
+func (s *Server) ensureMetadataHeader() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Anytype-Version", "2025-03-17")
+		c.Next()
 	}
 }

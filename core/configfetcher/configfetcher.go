@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/util/periodicsync"
 
 	"github.com/anyproto/anytype-heart/core/event"
@@ -83,13 +84,13 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 	techSpace := c.getter.TechSpace()
 	res, err := c.client.StatusCheck(ctx, techSpace.Id())
 	if errors.Is(err, coordinatorproto.ErrSpaceNotExists) {
-		header, sErr := techSpace.Storage().SpaceHeader()
+		state, sErr := techSpace.Storage().StateStorage().GetState(ctx)
 		if sErr != nil {
 			return sErr
 		}
 		payload := coordinatorclient.SpaceSignPayload{
-			SpaceId:     header.Id,
-			SpaceHeader: header.RawHeader,
+			SpaceId:     techSpace.Id(),
+			SpaceHeader: state.SpaceHeader,
 			OldAccount:  c.wallet.GetOldAccountKey(),
 			Identity:    c.wallet.GetAccountPrivkey(),
 		}
@@ -111,7 +112,7 @@ func (c *configFetcher) Refetch() {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	err := c.updateStatus(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, net.ErrUnableToConnect) && !errors.Is(err, context.DeadlineExceeded) {
 		log.Errorf("failed to update status: %s", err)
 	}
 }

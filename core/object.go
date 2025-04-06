@@ -693,7 +693,7 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
 	ctx := mw.newContext(cctx)
 
-	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
+	response := func(_ string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
 		resp := &pb.RpcObjectImportUseCaseResponse{
 			Error: &pb.RpcObjectImportUseCaseResponseError{
 				Code: code,

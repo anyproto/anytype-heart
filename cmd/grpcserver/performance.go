@@ -305,48 +305,82 @@ func getFileSizes() map[string]uint64 {
 func getTableSizes(mw *core.Middleware) (tables map[string]uint64) {
 	tables = make(map[string]uint64)
 	cfg := mw.GetApp().MustComponent(config.CName).(*config.Config)
-
-	db, err := sql.Open("sqlite3", cfg.GetSpaceStorePath())
+	sqliteDBs, err := findSQLiteFiles(cfg.GetNewSpaceStorePath())
 	if err != nil {
-		fmt.Println("Error opening database:", err)
+		fmt.Printf("sqlite find error: %v\n", err)
 		return
+	}
+
+	for _, dbPath := range sqliteDBs {
+		err := processDatabase(dbPath, tables)
+		if err != nil {
+			fmt.Printf("error handling database %s: %v", dbPath, err)
+		}
+	}
+
+	fmt.Println("Tables:")
+	for table, count := range tables {
+		fmt.Printf("%s: %d\n", table, count)
+	}
+	return
+}
+
+func processDatabase(dbPath string, tables map[string]uint64) error {
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return fmt.Errorf("dp open error: %w", err)
 	}
 	defer db.Close()
 
 	err = db.Ping()
 	if err != nil {
-		fmt.Println("Error pinging database:", err)
-		return
+		return fmt.Errorf("error ping db: %w", err)
 	}
 
 	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table';")
 	if err != nil {
-		fmt.Println("Error querying database:", err)
+		return fmt.Errorf("sql query error: %w", err)
 	}
 	defer rows.Close()
 
-	fmt.Println("Tables:")
 	for rows.Next() {
 		var tableName string
-		err := rows.Scan(&tableName)
-		if err != nil {
-			fmt.Println("Error scanning row:", err)
+		if err := rows.Scan(&tableName); err != nil {
+			fmt.Printf("table reading err: %v", err)
+			continue
 		}
 
-		var count int
+		var count uint64
 		err = db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s;", tableName)).Scan(&count)
 		if err != nil {
-			fmt.Println("Error querying row:", err)
+			fmt.Printf("table query err in %s: %v", tableName, err)
+			continue
 		}
 
-		tables[fmt.Sprintf("t_%s", tableName)] = uint64(count)
+		key := fmt.Sprintf("t_%s", tableName)
+		tables[key] += count
 
-		fmt.Printf("%s: %d\n", tableName, count)
+		fmt.Printf("DB %s -> %s: %d records\n", dbPath, tableName, count)
 	}
 	if err := rows.Err(); err != nil {
-		fmt.Println("Error iterating over rows:", err)
+		return fmt.Errorf("row traverse error: %w", err)
 	}
-	return
+
+	return nil
+}
+
+func findSQLiteFiles(root string) ([]string, error) {
+	var dbFiles []string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && filepath.Ext(path) == ".db" {
+			dbFiles = append(dbFiles, path)
+		}
+		return nil
+	})
+	return dbFiles, err
 }
 
 func init() {

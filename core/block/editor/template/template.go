@@ -405,6 +405,22 @@ var WithAllBlocksEditsRestricted = StateTransformer(func(s *state.State) {
 	})
 })
 
+var WithDataviewIDIfNotExists = func(id string, dataview *model.BlockContentOfDataview, forceViews bool) StateTransformer {
+	return func(s *state.State) {
+		WithEmpty(s)
+		if !s.Exists(id) {
+			s.Set(simple.New(&model.Block{Content: dataview, Id: id}))
+			if !s.IsParentOf(s.RootId(), id) {
+				err := s.InsertTo(s.RootId(), model.Block_Inner, id)
+				if err != nil {
+					log.Errorf("template WithDataview failed to insert: %v", err)
+				}
+			}
+		}
+
+	}
+}
+
 var WithDataviewID = func(id string, dataview *model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		WithEmpty(s)
@@ -414,10 +430,8 @@ var WithDataviewID = func(id string, dataview *model.BlockContentOfDataview, for
 			if dvBlock, ok := b.(simpleDataview.Block); !ok {
 				return true
 			} else {
-				if len(dvBlock.Model().GetDataview().Relations) == 0 ||
-					!slice.UnsortedEqual(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source) ||
+				if !slice.UnsortedEqual(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source) ||
 					len(dvBlock.Model().GetDataview().Views) == 0 ||
-					forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations) ||
 					forceViews && !pbtypes.DataviewViewsEqualSorted(dvBlock.Model().GetDataview().Views, dataview.Dataview.Views) {
 
 					/* log.With("object" s.RootId()).With("name", pbtypes.GetString(s.Details(), "name")).Warnf("dataview needs to be migrated: %v, %v, %v, %v",

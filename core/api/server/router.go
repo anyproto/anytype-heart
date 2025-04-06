@@ -7,17 +7,17 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore"
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
 	"github.com/anyproto/anytype-heart/core/event"
 
-	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
 	"github.com/anyproto/anytype-heart/core/api/internal/export"
+	"github.com/anyproto/anytype-heart/core/api/internal/list"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
-	"github.com/anyproto/anytype-heart/pb/service"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(mw service.ClientCommandsServer, accountService account.Service, eventService event.Sender) *gin.Engine {
+func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.AccountService, eventService event.Sender) *gin.Engine {
 	debug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
@@ -37,6 +37,7 @@ func (s *Server) NewRouter(mw service.ClientCommandsServer, accountService accou
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(s.ensureMetadataHeader())
 
 	if debug {
 		router.Use(gin.Logger())
@@ -65,7 +66,13 @@ func (s *Server) NewRouter(mw service.ClientCommandsServer, accountService accou
 	v1.Use(s.ensureAccountInfo(accountService))
 	{
 		// Export
-		v1.POST("/spaces/:space_id/objects/:object_id/export/:format", s.ensureAnalyticsEvent("ObjectExport", eventService), export.GetObjectExportHandler(s.exportService))
+		v1.GET("/spaces/:space_id/objects/:object_id/:format", s.ensureAnalyticsEvent("ObjectExport", eventService), export.GetObjectExportHandler(s.exportService))
+
+		// List
+		v1.GET("/spaces/:space_id/lists/:list_id/views", s.ensureAnalyticsEvent("ListGetViews", eventService), list.GetListViewsHandler(s.listService))
+		v1.GET("/spaces/:space_id/lists/:list_id/:view_id/objects", s.ensureAnalyticsEvent("ListGetObjects", eventService), list.GetObjectsInListHandler(s.listService))
+		v1.POST("/spaces/:space_id/lists/:list_id/objects", s.ensureAnalyticsEvent("ListAddObject", eventService), list.AddObjectsToListHandler(s.listService))
+		v1.DELETE("/spaces/:space_id/lists/:list_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), s.ensureAnalyticsEvent("ListRemoveObject", eventService), list.RemoveObjectFromListHandler(s.listService))
 
 		// Object
 		v1.GET("/spaces/:space_id/objects", s.ensureAnalyticsEvent("ObjectList", eventService), object.GetObjectsHandler(s.objectService))
@@ -78,9 +85,12 @@ func (s *Server) NewRouter(mw service.ClientCommandsServer, accountService accou
 		v1.POST("/spaces/:space_id/search", s.ensureAnalyticsEvent("Search", eventService), search.SearchHandler(s.searchService))
 
 		// Space
-		v1.GET("/spaces", s.ensureAnalyticsEvent("SpaceOpen", eventService), space.GetSpacesHandler(s.spaceService))
+		v1.GET("/spaces", s.ensureAnalyticsEvent("SpaceList", eventService), space.GetSpacesHandler(s.spaceService))
+		v1.GET("/spaces/:space_id", s.ensureAnalyticsEvent("SpaceOpen", eventService), space.GetSpaceHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members", s.ensureAnalyticsEvent("MemberList", eventService), space.GetMembersHandler(s.spaceService))
-		v1.POST("/spaces", s.ensureAnalyticsEvent("SpaceCreate", eventService), s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
+		v1.GET("/spaces/:space_id/members/:member_id", s.ensureAnalyticsEvent("MemberOpen", eventService), space.GetMemberHandler(s.spaceService))
+		// v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond), s.ensureAnalyticsEvent("MemberUpdate", eventService), space.UpdateMemberHandler(s.spaceService))
+		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), s.ensureAnalyticsEvent("SpaceCreate", eventService), space.CreateSpaceHandler(s.spaceService))
 
 		// Type
 		v1.GET("/spaces/:space_id/types", s.ensureAnalyticsEvent("TypeList", eventService), object.GetTypesHandler(s.objectService))

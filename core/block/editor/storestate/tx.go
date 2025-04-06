@@ -20,6 +20,10 @@ type StoreStateTx struct {
 	maxOrderChanged bool
 }
 
+func (stx *StoreStateTx) Context() context.Context {
+	return stx.ctx
+}
+
 func (stx *StoreStateTx) init() (err error) {
 	stx.maxOrder, err = stx.GetOrder(maxOrderId)
 	if err != nil && !errors.Is(err, ErrOrderNotFound) {
@@ -45,10 +49,6 @@ func (stx *StoreStateTx) GetMaxOrder() string {
 
 func (stx *StoreStateTx) NextOrder(prev string) string {
 	return lexId.Next(prev)
-}
-
-func (stx *StoreStateTx) NextBeforeOrder(prev string, before string) (string, error) {
-	return lexId.NextBefore(prev, before)
 }
 
 func (stx *StoreStateTx) SetOrder(changeId, order string) (err error) {

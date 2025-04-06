@@ -85,7 +85,7 @@ func (r *rpcHandler) SpacePull(ctx context.Context, request *spacesyncproto.Spac
 		return
 	}
 
-	spaceDesc, err := sp.Description()
+	spaceDesc, err := sp.Description(ctx)
 	if err != nil {
 		err = spacesyncproto.ErrUnexpected
 		return

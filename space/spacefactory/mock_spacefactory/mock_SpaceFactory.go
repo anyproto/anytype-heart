@@ -8,6 +8,8 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	clientspace "github.com/anyproto/anytype-heart/space/clientspace"
 
+	crypto "github.com/anyproto/any-sync/util/crypto"
+
 	mock "github.com/stretchr/testify/mock"
 
 	spacecontroller "github.com/anyproto/anytype-heart/space/internal/spacecontroller"
@@ -322,6 +324,67 @@ func (_c *MockSpaceFactory_CreateShareableSpace_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// CreateStreamableSpace provides a mock function with given fields: ctx, privKey, id, metadata
+func (_m *MockSpaceFactory) CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, privKey, id, metadata)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateStreamableSpace")
+	}
+
+	var r0 spacecontroller.SpaceController
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, crypto.PrivKey, string, []byte) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, privKey, id, metadata)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, crypto.PrivKey, string, []byte) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, privKey, id, metadata)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(spacecontroller.SpaceController)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, crypto.PrivKey, string, []byte) error); ok {
+		r1 = rf(ctx, privKey, id, metadata)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceFactory_CreateStreamableSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateStreamableSpace'
+type MockSpaceFactory_CreateStreamableSpace_Call struct {
+	*mock.Call
+}
+
+// CreateStreamableSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - privKey crypto.PrivKey
+//   - id string
+//   - metadata []byte
+func (_e *MockSpaceFactory_Expecter) CreateStreamableSpace(ctx interface{}, privKey interface{}, id interface{}, metadata interface{}) *MockSpaceFactory_CreateStreamableSpace_Call {
+	return &MockSpaceFactory_CreateStreamableSpace_Call{Call: _e.mock.On("CreateStreamableSpace", ctx, privKey, id, metadata)}
+}
+
+func (_c *MockSpaceFactory_CreateStreamableSpace_Call) Run(run func(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte)) *MockSpaceFactory_CreateStreamableSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(crypto.PrivKey), args[2].(string), args[3].([]byte))
+	})
+	return _c
+}
+
+func (_c *MockSpaceFactory_CreateStreamableSpace_Call) Return(_a0 spacecontroller.SpaceController, _a1 error) *MockSpaceFactory_CreateStreamableSpace_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSpaceFactory_CreateStreamableSpace_Call) RunAndReturn(run func(context.Context, crypto.PrivKey, string, []byte) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreateStreamableSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: a
 func (_m *MockSpaceFactory) Init(a *app.App) error {
 	ret := _m.Called(a)
@@ -586,6 +649,67 @@ func (_c *MockSpaceFactory_NewShareableSpace_Call) Return(_a0 spacecontroller.Sp
 }
 
 func (_c *MockSpaceFactory_NewShareableSpace_Call) RunAndReturn(run func(context.Context, string, spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)) *MockSpaceFactory_NewShareableSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NewStreamableSpace provides a mock function with given fields: ctx, id, info, metadata
+func (_m *MockSpaceFactory) NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo, metadata []byte) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, id, info, metadata)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NewStreamableSpace")
+	}
+
+	var r0 spacecontroller.SpaceController
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.SpacePersistentInfo, []byte) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, id, info, metadata)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, spaceinfo.SpacePersistentInfo, []byte) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, id, info, metadata)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(spacecontroller.SpaceController)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, spaceinfo.SpacePersistentInfo, []byte) error); ok {
+		r1 = rf(ctx, id, info, metadata)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceFactory_NewStreamableSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewStreamableSpace'
+type MockSpaceFactory_NewStreamableSpace_Call struct {
+	*mock.Call
+}
+
+// NewStreamableSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - info spaceinfo.SpacePersistentInfo
+//   - metadata []byte
+func (_e *MockSpaceFactory_Expecter) NewStreamableSpace(ctx interface{}, id interface{}, info interface{}, metadata interface{}) *MockSpaceFactory_NewStreamableSpace_Call {
+	return &MockSpaceFactory_NewStreamableSpace_Call{Call: _e.mock.On("NewStreamableSpace", ctx, id, info, metadata)}
+}
+
+func (_c *MockSpaceFactory_NewStreamableSpace_Call) Run(run func(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo, metadata []byte)) *MockSpaceFactory_NewStreamableSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(spaceinfo.SpacePersistentInfo), args[3].([]byte))
+	})
+	return _c
+}
+
+func (_c *MockSpaceFactory_NewStreamableSpace_Call) Return(_a0 spacecontroller.SpaceController, _a1 error) *MockSpaceFactory_NewStreamableSpace_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSpaceFactory_NewStreamableSpace_Call) RunAndReturn(run func(context.Context, string, spaceinfo.SpacePersistentInfo, []byte) (spacecontroller.SpaceController, error)) *MockSpaceFactory_NewStreamableSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -275,54 +275,6 @@ func (_c *MockService_ObjectApplyTemplate_Call) RunAndReturn(run func(string, st
 	return _c
 }
 
-// SetDefaultTemplateInType provides a mock function with given fields: ctx, typeId, templateId
-func (_m *MockService) SetDefaultTemplateInType(ctx context.Context, typeId string, templateId string) error {
-	ret := _m.Called(ctx, typeId, templateId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetDefaultTemplateInType")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
-		r0 = rf(ctx, typeId, templateId)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockService_SetDefaultTemplateInType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDefaultTemplateInType'
-type MockService_SetDefaultTemplateInType_Call struct {
-	*mock.Call
-}
-
-// SetDefaultTemplateInType is a helper method to define mock.On call
-//   - ctx context.Context
-//   - typeId string
-//   - templateId string
-func (_e *MockService_Expecter) SetDefaultTemplateInType(ctx interface{}, typeId interface{}, templateId interface{}) *MockService_SetDefaultTemplateInType_Call {
-	return &MockService_SetDefaultTemplateInType_Call{Call: _e.mock.On("SetDefaultTemplateInType", ctx, typeId, templateId)}
-}
-
-func (_c *MockService_SetDefaultTemplateInType_Call) Run(run func(ctx context.Context, typeId string, templateId string)) *MockService_SetDefaultTemplateInType_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *MockService_SetDefaultTemplateInType_Call) Return(_a0 error) *MockService_SetDefaultTemplateInType_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockService_SetDefaultTemplateInType_Call) RunAndReturn(run func(context.Context, string, string) error) *MockService_SetDefaultTemplateInType_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // TemplateClone provides a mock function with given fields: spaceId, id
 func (_m *MockService) TemplateClone(spaceId string, id string) (string, error) {
 	ret := _m.Called(spaceId, id)

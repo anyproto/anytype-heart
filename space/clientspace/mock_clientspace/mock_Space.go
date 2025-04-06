@@ -3,9 +3,13 @@
 package mock_clientspace
 
 import (
-	context "context"
+	anystorage "github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 
 	commonspace "github.com/anyproto/any-sync/commonspace"
+
+	context "context"
+
+	crypto "github.com/anyproto/any-sync/util/crypto"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
@@ -20,8 +24,6 @@ import (
 	payloadcreator "github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-
-	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 
@@ -1015,6 +1017,53 @@ func (_c *MockSpace_DoLockedIfNotExists_Call) RunAndReturn(run func(string, func
 	return _c
 }
 
+// GetAclIdentity provides a mock function with given fields:
+func (_m *MockSpace) GetAclIdentity() crypto.PubKey {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAclIdentity")
+	}
+
+	var r0 crypto.PubKey
+	if rf, ok := ret.Get(0).(func() crypto.PubKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(crypto.PubKey)
+		}
+	}
+
+	return r0
+}
+
+// MockSpace_GetAclIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAclIdentity'
+type MockSpace_GetAclIdentity_Call struct {
+	*mock.Call
+}
+
+// GetAclIdentity is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) GetAclIdentity() *MockSpace_GetAclIdentity_Call {
+	return &MockSpace_GetAclIdentity_Call{Call: _e.mock.On("GetAclIdentity")}
+}
+
+func (_c *MockSpace_GetAclIdentity_Call) Run(run func()) *MockSpace_GetAclIdentity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_GetAclIdentity_Call) Return(_a0 crypto.PubKey) *MockSpace_GetAclIdentity_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_GetAclIdentity_Call) RunAndReturn(run func() crypto.PubKey) *MockSpace_GetAclIdentity_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetObject provides a mock function with given fields: ctx, id
 func (_m *MockSpace) GetObject(ctx context.Context, id string) (smartblock.SmartBlock, error) {
 	ret := _m.Called(ctx, id)
@@ -1511,19 +1560,19 @@ func (_c *MockSpace_Remove_Call) RunAndReturn(run func(context.Context, string) 
 }
 
 // Storage provides a mock function with given fields:
-func (_m *MockSpace) Storage() spacestorage.SpaceStorage {
+func (_m *MockSpace) Storage() anystorage.ClientSpaceStorage {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Storage")
 	}
 
-	var r0 spacestorage.SpaceStorage
-	if rf, ok := ret.Get(0).(func() spacestorage.SpaceStorage); ok {
+	var r0 anystorage.ClientSpaceStorage
+	if rf, ok := ret.Get(0).(func() anystorage.ClientSpaceStorage); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(spacestorage.SpaceStorage)
+			r0 = ret.Get(0).(anystorage.ClientSpaceStorage)
 		}
 	}
 
@@ -1547,12 +1596,12 @@ func (_c *MockSpace_Storage_Call) Run(run func()) *MockSpace_Storage_Call {
 	return _c
 }
 
-func (_c *MockSpace_Storage_Call) Return(_a0 spacestorage.SpaceStorage) *MockSpace_Storage_Call {
+func (_c *MockSpace_Storage_Call) Return(_a0 anystorage.ClientSpaceStorage) *MockSpace_Storage_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSpace_Storage_Call) RunAndReturn(run func() spacestorage.SpaceStorage) *MockSpace_Storage_Call {
+func (_c *MockSpace_Storage_Call) RunAndReturn(run func() anystorage.ClientSpaceStorage) *MockSpace_Storage_Call {
 	_c.Call.Return(run)
 	return _c
 }

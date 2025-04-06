@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
@@ -29,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 )
 
 type Space interface {
@@ -40,7 +40,7 @@ type Space interface {
 	DebugAllHeads() []headsync.TreeHeads
 	DeleteTree(ctx context.Context, id string) (err error)
 	StoredIds() []string
-	Storage() spacestorage.SpaceStorage
+	Storage() anystorage.ClientSpaceStorage
 
 	DerivedIDs() threads.DerivedSmartblockIds
 
@@ -54,6 +54,7 @@ type Space interface {
 
 	IsReadOnly() bool
 	IsPersonal() bool
+	GetAclIdentity() crypto.PubKey
 
 	Close(ctx context.Context) error
 }
@@ -83,8 +84,8 @@ type space struct {
 	spaceCore       spacecore.SpaceCoreService
 	personalSpaceId string
 
-	myIdentity crypto.PubKey
-	common     commonspace.Space
+	aclIdentity crypto.PubKey
+	common      commonspace.Space
 
 	loadMandatoryObjectsCh  chan struct{}
 	loadMandatoryObjectsErr error
@@ -113,9 +114,16 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		common:                 deps.CommonSpace,
 		personalSpaceId:        deps.PersonalSpaceId,
 		spaceCore:              deps.SpaceCore,
-		myIdentity:             deps.AccountService.Account().SignKey.GetPublic(),
+		aclIdentity:            deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
+
+	if res, ok := ctx.Value(spacecore.OptsKey).(spacecore.Opts); ok && res.SignKey != nil {
+		// override acl identity with the provided key
+		sp.aclIdentity = res.SignKey.GetPublic()
+		// todo: fixme we pass the real account service in case of streamable space to the objectcache
+	}
+
 	sp.loadMissingBundledObjectsCtx, sp.loadMissingBundledObjectsCtxCancel = context.WithCancel(context.Background())
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
 	sp.ObjectProvider = objectprovider.NewObjectProvider(deps.CommonSpace.Id(), deps.PersonalSpaceId, sp.Cache)
@@ -124,12 +132,16 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 	if err != nil {
 		return nil, fmt.Errorf("derive object ids: %w", err)
 	}
-	if deps.StorageService.IsSpaceCreated(deps.CommonSpace.Id()) {
+	isSpaceCreated, err := sp.Storage().IsSpaceCreated(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("is space created: %w", err)
+	}
+	if isSpaceCreated {
 		err = sp.ObjectProvider.CreateMandatoryObjects(ctx, sp)
 		if err != nil {
 			return nil, fmt.Errorf("create mandatory objects: %w", err)
 		}
-		err = deps.StorageService.UnmarkSpaceCreated(deps.CommonSpace.Id())
+		err = sp.Storage().UnmarkSpaceCreated(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
@@ -207,8 +219,8 @@ func (s *space) StoredIds() []string {
 	return s.common.StoredIds()
 }
 
-func (s *space) Storage() spacestorage.SpaceStorage {
-	return s.common.Storage()
+func (s *space) Storage() anystorage.ClientSpaceStorage {
+	return s.common.Storage().(anystorage.ClientSpaceStorage)
 }
 
 func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
@@ -262,6 +274,10 @@ func (s *space) IsPersonal() bool {
 	return s.Id() == s.personalSpaceId
 }
 
+func (s *space) GetAclIdentity() crypto.PubKey {
+	return s.aclIdentity
+}
+
 func (s *space) Close(ctx context.Context) error {
 	if s == nil {
 		return nil
@@ -305,10 +321,7 @@ func (s *space) TryLoadBundledObjects(ctx context.Context) (missingSourceIds []s
 	if err != nil {
 		return nil, err
 	}
-	storedIds, err := s.Storage().StoredIds()
-	if err != nil {
-		return nil, err
-	}
+	storedIds := s.StoredIds()
 
 	missingIds := bundledObjectIds.Filter(func(bo domain.BundledObjectId) bool {
 		return !slices.Contains(storedIds, bo.DerivedObjectId)
@@ -318,11 +331,7 @@ func (s *space) TryLoadBundledObjects(ctx context.Context) (missingSourceIds []s
 	s.LoadObjectsIgnoreErrs(ctx, missingIds.DerivedObjectIds())
 	// todo: make LoadObjectsIgnoreErrs return list of loaded ids
 
-	storedIds, err = s.Storage().StoredIds()
-	if err != nil {
-		return nil, err
-	}
-
+	storedIds = s.StoredIds()
 	missingIds = bundledObjectIds.Filter(func(bo domain.BundledObjectId) bool {
 		return !slices.Contains(storedIds, bo.DerivedObjectId)
 	})
@@ -348,7 +357,10 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 		return err
 	}
 
-	extractedProfileExists, _ := s.Storage().HasTree(extractedProfileId)
+	extractedProfileExists, err := s.Storage().HasTree(ctx, extractedProfileId)
+	if err != nil {
+		return err
+	}
 	if extractedProfileExists {
 		return nil
 	}
@@ -388,5 +400,5 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 }
 
 func (s *space) IsReadOnly() bool {
-	return !s.CommonSpace().Acl().AclState().Permissions(s.myIdentity).CanWrite()
+	return !s.CommonSpace().Acl().AclState().Permissions(s.aclIdentity).CanWrite()
 }

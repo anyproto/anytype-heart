@@ -11,15 +11,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
-	"github.com/anyproto/any-sync/consensus/consensusproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	"golang.org/x/sys/unix"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
@@ -46,16 +48,18 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage/mock_anystorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
-	spaceId    = "spaceId"
-	objectId   = "objectId"
-	id         = "identity"
-	objectName = "test"
+	spaceId     = "spaceId"
+	objectId    = "objectId"
+	id          = "identity"
+	objectName  = "test"
+	workspaceId = "workspaceId"
 )
 
 type mockPublishClient struct {
@@ -135,7 +139,9 @@ func TestPublish(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		isPersonal := true
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		includeSpaceInfo := false
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -155,7 +161,7 @@ func TestPublish(t *testing.T) {
 		identityService := mock_identity.NewMockService(t)
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{}))
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, false)
 
 		svc := &service{
 			spaceService:         spaceService,
@@ -165,7 +171,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, false)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.NoError(t, err)
@@ -178,7 +184,9 @@ func TestPublish(t *testing.T) {
 	t.Run("success with space sharing", func(t *testing.T) {
 		// given
 		isPersonal := false
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		includeSpaceInfo := true
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -202,7 +210,7 @@ func TestPublish(t *testing.T) {
 		identityService := mock_identity.NewMockService(t)
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{}))
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, includeSpaceInfo)
 
 		inviteService := mock_inviteservice.NewMockInviteService(t)
 		inviteService.EXPECT().GetCurrent(context.Background(), "spaceId").Return(domain.InviteInfo{
@@ -219,7 +227,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.NoError(t, err)
@@ -231,7 +239,9 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("success with space sharing - invite not exists", func(t *testing.T) {
 		isPersonal := false
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		includeSpaceInfo := true
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -252,7 +262,7 @@ func TestPublish(t *testing.T) {
 		identityService := mock_identity.NewMockService(t)
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{}))
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, includeSpaceInfo)
 
 		inviteService := mock_inviteservice.NewMockInviteService(t)
 		inviteService.EXPECT().GetCurrent(context.Background(), "spaceId").Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists)
@@ -266,7 +276,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.NoError(t, err)
@@ -279,7 +289,8 @@ func TestPublish(t *testing.T) {
 	t.Run("success for member", func(t *testing.T) {
 		// given
 		isPersonal := false
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		includeSpaceInfo := true
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -307,7 +318,7 @@ func TestPublish(t *testing.T) {
 			},
 		}
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, includeSpaceInfo)
 
 		inviteService := mock_inviteservice.NewMockInviteService(t)
 		inviteService.EXPECT().GetCurrent(context.Background(), "spaceId").Return(domain.InviteInfo{
@@ -324,7 +335,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.NoError(t, err)
@@ -337,7 +348,9 @@ func TestPublish(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		// given
 		isPersonal := true
-		spaceService, err := prepaeSpaceService(t, isPersonal)
+		includeSpaceInfo := true
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -359,7 +372,7 @@ func TestPublish(t *testing.T) {
 			expectedErr: fmt.Errorf("internal error"),
 		}
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, false)
 
 		svc := &service{
 			spaceService:         spaceService,
@@ -369,7 +382,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.Error(t, err)
@@ -381,7 +394,14 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("limit error for members", func(t *testing.T) {
 		// given
+		isPersonal := false
+		includeSpaceInfo := true
+
 		spaceService := mock_space.NewMockService(t)
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
+		space.EXPECT().IsPersonal().Return(isPersonal)
+		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 
 		expectedUri := "test"
 		testFile := "test"
@@ -411,7 +431,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.Error(t, err)
@@ -420,7 +440,14 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("default limit error", func(t *testing.T) {
 		// given
+		isPersonal := false
+		includeSpaceInfo := true
+
 		spaceService := mock_space.NewMockService(t)
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
+		space.EXPECT().IsPersonal().Return(isPersonal)
+		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 
 		expectedUri := "test"
 		testFile := "test"
@@ -447,7 +474,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.Error(t, err)
@@ -660,31 +687,29 @@ func TestService_PublishingList(t *testing.T) {
 	})
 }
 
-func prepaeSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService, error) {
+var ctx = context.Background()
+
+func prepareSpaceService(t *testing.T, isPersonal bool, includeSpaceInfo bool) (*mock_space.MockService, error) {
 	spaceService := mock_space.NewMockService(t)
 	space := mock_clientspace.NewMockSpace(t)
-	space.EXPECT().IsPersonal().Return(isPersonal)
-	space.EXPECT().Id().Return(spaceId)
+	ctrl := gomock.NewController(t)
 
-	storage, err := spacestorage.NewInMemorySpaceStorage(spacestorage.SpaceStorageCreatePayload{
-		AclWithId:           &consensusproto.RawRecordWithId{Id: "aclId"},
-		SpaceHeaderWithId:   &spacesyncproto.RawSpaceHeaderWithId{Id: spaceId},
-		SpaceSettingsWithId: &treechangeproto.RawTreeChangeWithId{Id: "settingsId"},
-	},
-	)
-	assert.NoError(t, err)
-	objectHeads := []string{"heads"}
-	_, err = storage.CreateTreeStorage(treestorage.TreeStorageCreatePayload{
-		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: objectId},
-		Heads:         objectHeads,
-	})
-	assert.NoError(t, err)
-	space.EXPECT().Storage().Return(storage)
+	st := mock_anystorage.NewMockClientSpaceStorage(t)
+	mockSt := mock_objecttree.NewMockStorage(ctrl)
+	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil)
+	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil)
+	space.EXPECT().Storage().Return(st)
+	if includeSpaceInfo && !isPersonal {
+		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
+	}
+	if includeSpaceInfo {
+		space.EXPECT().IsPersonal().Return(isPersonal)
+	}
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
-	return spaceService, err
+	return spaceService, nil
 }
 
-func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space.MockService) export.Export {
+func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space.MockService, includeSpaceInfo bool) export.Export {
 	storeFixture := objectstore.NewStoreFixture(t)
 	objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 	assert.Nil(t, err)
@@ -701,6 +726,12 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 			bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
 			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 			bundle.RelationKeySpaceId:              domain.String(spaceId),
+		},
+		{
+			bundle.RelationKeyId:        domain.String(workspaceId),
+			bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_space)),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
 		},
 	})
 
@@ -734,6 +765,24 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	})
 	objectType.Doc = objectTypeDoc
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
+
+	if includeSpaceInfo {
+		workspaceTest := smarttest.New(workspaceId)
+		workspaceDoc := workspaceTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(workspaceId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		workspaceDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		workspaceTest.Doc = workspaceDoc
+		objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
+	}
+
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 
@@ -779,6 +828,12 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 			bundle.RelationKeySpaceId:              domain.String(spaceId),
 		},
+		{
+			bundle.RelationKeyId:        domain.String(workspaceId),
+			bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
+			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_space)),
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+		},
 	})
 
 	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
@@ -814,6 +869,20 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	objectType.Doc = objectTypeDoc
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
 
+	workspaceTest := smarttest.New(workspaceId)
+	workspaceDoc := workspaceTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:   domain.String(workspaceId),
+		bundle.RelationKeyType: domain.String(objectTypeId),
+	}))
+	workspaceDoc.AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyId.String(),
+		Format: model.RelationFormat_longtext,
+	}, &model.RelationLink{
+		Key:    bundle.RelationKeyType.String(),
+		Format: model.RelationFormat_longtext,
+	})
+	workspaceTest.Doc = workspaceDoc
+
 	file := smarttest.New(fileId)
 	fileDoc := file.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:     domain.String(fileId),
@@ -832,12 +901,14 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	file.SetSpaceId(spaceId)
 	space := mock_clientspace.NewMockSpace(t)
 	space.EXPECT().Id().Return(spaceId)
-	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{})
+	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
 	file.SetSpace(space)
 
+	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil).Times(2)
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
+	objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
 
 	fileService := mock_files.NewMockService(t)
 	fileObject := mock_files.NewMockFile(t)
@@ -894,4 +965,23 @@ func createTestFile(fileName string, size int64) error {
 	file.Sync()
 	file.Close()
 	return nil
+}
+
+func createStore(ctx context.Context, t testing.TB) anystore.DB {
+	return createNamedStore(ctx, t, "changes.db")
+}
+
+func createNamedStore(ctx context.Context, t testing.TB, name string) anystore.DB {
+	path := filepath.Join(t.TempDir(), name)
+	db, err := anystore.Open(ctx, path, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := db.Close()
+		require.NoError(t, err)
+		unix.Rmdir(path)
+	})
+	return objecttree.TestStore{
+		DB:   db,
+		Path: path,
+	}
 }

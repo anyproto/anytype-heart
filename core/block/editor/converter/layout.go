@@ -158,9 +158,6 @@ func (c *layoutConverter) fromAnyToBookmark(st *state.State) error {
 }
 
 func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
-	if err := st.SetAlign(model.Block_AlignLeft); err != nil {
-		return err
-	}
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyDone}),
@@ -183,7 +180,7 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := st.Details().GetStringList(bundle.RelationKeySetOf)
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source)
+	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source, "")
 	if err != nil {
 		return err
 	}
@@ -296,7 +293,7 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
-	blockContent := template.MakeDataviewContent(true, nil, nil)
+	blockContent := template.MakeDataviewContent(true, nil, nil, "")
 	if err := c.insertTypeLevelFieldsToDataview(blockContent, st); err != nil {
 		log.Error("failed to insert type level fields to dataview block", zap.Error(err))
 	}

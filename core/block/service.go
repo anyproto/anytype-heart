@@ -109,7 +109,7 @@ type Service struct {
 }
 
 type builtinObjects interface {
-	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (dashboardId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type openedObjects struct {
@@ -342,7 +342,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return err
 	}
 
-	if spaceChatExists, err := spc.Storage().HasTree(chatId); err != nil {
+	if spaceChatExists, err := spc.Storage().HasTree(ctx, chatId); err != nil {
 		return err
 	} else if !spaceChatExists {
 		_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
