@@ -88,13 +88,13 @@ func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs)
 				continue
 			}
 		}
-		addrs := iface.GetAddr()
-		if len(addrs) == 0 {
+		ifaceAddrs := iface.GetAddr()
+		if len(ifaceAddrs) == 0 {
 			continue
 		}
-		for _, addr := range addrs {
-			if ip, ok := addr.(*gonet.IPNet); ok {
-				ipv4 := ip.IP.To4()
+		for _, addr := range ifaceAddrs {
+			if ip, ok := addrs.AddrToIP(addr); ok {
+				ipv4 := ip.To4()
 				if ipv4 == nil {
 					continue
 				}
@@ -147,7 +147,10 @@ func (l *localDiscovery) RegisterDiscoveryPossibilityHook(hook func(state Discov
 func (l *localDiscovery) getAddresses() (ipv4, ipv6 []gonet.IP) {
 	for _, iface := range l.interfacesAddrs.Interfaces {
 		for _, addr := range iface.GetAddr() {
-			ip := addr.(*gonet.IPNet).IP
+			ip, ok := addrs.AddrToIP(addr)
+			if !ok {
+				continue
+			}
 			if ip.To4() != nil {
 				ipv4 = append(ipv4, ip)
 			} else {

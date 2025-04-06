@@ -65,8 +65,10 @@ type ConfigRequired struct {
 }
 
 type Config struct {
-	ConfigRequired                         `json:",inline"`
-	NewAccount                             bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
+	ConfigRequired `json:",inline"`
+	NewAccount     bool   `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
+	AutoJoinStream string `ignored:"true"` // contains the invite of the stream space to automatically join
+
 	DisableThreadsSyncEvents               bool
 	DontStartLocalNetworkSyncAutomatically bool
 	PeferYamuxTransport                    bool
@@ -119,6 +121,12 @@ func WithNewAccount(isNewAccount bool) func(*Config) {
 		if isNewAccount {
 			c.AnalyticsId = metrics.GenerateAnalyticsId()
 		}
+	}
+}
+
+func WithAutoJoinStream(inviteUrl string) func(*Config) {
+	return func(c *Config) {
+		c.AutoJoinStream = inviteUrl
 	}
 }
 
@@ -194,7 +202,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		if len(split) == 1 {
 			return fmt.Errorf("failed to split repo path: %s", repoPath)
 		}
-		c.SqliteTempPath = filepath.Join(split[0], "cache")
+		c.SqliteTempPath = filepath.Join(split[0], "files")
 		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
 		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
 	}

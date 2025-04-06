@@ -101,7 +101,7 @@ func (s *IconSyncer) handleIconImage(spaceId string, newIdsSet map[string]struct
 		RpcFileUploadRequest: req,
 		ObjectOrigin:         origin,
 	}
-	fileObjectId, _, err := s.service.UploadFile(context.Background(), spaceId, dto)
+	fileObjectId, _, _, err := s.service.UploadFile(context.Background(), spaceId, dto)
 	if err != nil {
 		return "", anyerror.CleanupError(err)
 	}

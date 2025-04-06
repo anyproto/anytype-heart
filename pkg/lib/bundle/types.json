@@ -2,73 +2,87 @@
   {
     "id": "recipe",
     "name": "Recipe",
+    "pluralName": "Recipes",
     "types": [
       "Page"
     ],
-    "emoji": "🍲",
+    "iconColor": 4,
+    "iconName": "pizza",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag",
-      "time",
-      "ingredients"
+      "ingredients",
+      "time"
     ],
-    "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food"
+    "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
+    "revision": 2
   },
   {
     "id": "note",
     "name": "Note",
+    "pluralName": "Notes",
     "types": [
       "Page"
     ],
-    "emoji": "📝",
+    "iconColor": 2,
+    "iconName": "create",
     "hidden": false,
     "layout": "note",
     "relations": [
       "tag"
     ],
-    "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory"
+    "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory",
+    "revision": 2
   },
   {
     "id": "contact",
     "name": "Contact",
+    "pluralName": "Contacts",
     "types": [
       "Page"
     ],
-    "emoji": "📇",
+    "iconColor": 8,
+    "iconName": "id-card",
     "hidden": false,
     "layout": "profile",
     "relations": [
       "tag",
-      "phone",
+      "company",
       "email",
-      "company"
+      "phone"
     ],
-    "description": "Information to make action of communicating or meeting with Human or Company"
+    "description": "Information to make action of communicating or meeting with Human or Company",
+    "revision": 2
   },
   {
     "id": "bookmark",
     "name": "Bookmark",
+    "pluralName": "Bookmarks",
     "types": [
       "Page"
     ],
-    "emoji": "🔖",
+    "iconColor": 4,
+    "iconName": "bookmark",
     "hidden": false,
     "layout": "bookmark",
     "relations": [
       "tag",
-      "source",
-      "picture"
+      "picture",
+      "source"
     ],
-    "description": "URL that is stored as Object and may be categorised and linked with objects"
+    "description": "URL that is stored as Object and may be categorised and linked with objects",
+    "revision": 2
   },
   {
     "id": "date",
     "name": "Date",
+    "pluralName": "Dates",
     "types": [
       "Date"
     ],
-    "emoji": "📅",
+    "iconColor": 9,
+    "iconName": "calendar",
     "hidden": true,
     "layout": "date",
     "relations": [
@@ -79,32 +93,35 @@
   {
     "id": "task",
     "name": "Task",
+    "pluralName": "Tasks",
     "types": [
       "Page"
     ],
-    "emoji": "✅",
+    "iconColor": 10,
+    "iconName": "checkbox",
     "hidden": false,
     "layout": "todo",
     "relations": [
       "tag",
       "assignee",
-      "dueDate",
-      "status",
       "done",
-      "priority",
-      "tasks",
-      "linkedProjects"
+      "dueDate",
+      "linkedProjects",
+      "status"
     ],
-    "description": "A piece of work to be done or undertaken"
+    "description": "A piece of work to be done or undertaken",
+    "revision": 2
   },
   {
     "id": "relation",
     "name": "Relation",
+    "pluralName": "Relation",
     "types": [
       "SubObject",
       "BundledRelation"
     ],
-    "emoji": "🔗",
+    "iconColor": 7,
+    "iconName": "share-social",
     "hidden": true,
     "layout": "relation",
     "relations": [
@@ -113,51 +130,57 @@
       "relationDefaultValue",
       "relationFormatObjectTypes"
     ],
-    "description": "Meaningful connection between objects"
+    "description": "Meaningful connection between objects",
+    "revision": 2
   },
   {
     "id": "book",
     "name": "Book",
+    "pluralName": "Books",
     "types": [
       "Page"
     ],
-    "emoji": "📘",
+    "iconColor": 3,
+    "iconName": "book",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag",
       "author",
-      "status",
       "starred",
+      "status",
       "url"
     ],
-    "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover"
+    "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover",
+    "revision": 2
   },
   {
     "id": "video",
     "name": "Video",
+    "pluralName": "Video",
     "types": [
       "File"
     ],
-    "emoji": "📽",
+    "iconColor": 6,
+    "iconName": "videocam",
     "hidden": false,
     "layout": "file",
     "relations": [
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
-      "fileMimeType",
-      "camera",
       "heightInPixels",
       "widthInPixels",
+      "fileMimeType",
+      "camera",
       "cameraIso",
       "aperture",
-      "exposure",
-      "addedDate",
-      "fileExt",
-      "origin"
+      "exposure"
     ],
     "description": "The recording of moving visual images",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 4
   },
   {
     "id": "dashboard",
@@ -175,10 +198,12 @@
   {
     "id": "movie",
     "name": "Movie",
+    "pluralName": "Movies",
     "types": [
       "Page"
     ],
-    "emoji": "🍿",
+    "iconColor": 5,
+    "iconName": "film",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -186,23 +211,27 @@
       "genre",
       "status"
     ],
-    "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images"
+    "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images",
+    "revision": 2
   },
   {
     "id": "objectType",
     "name": "Type",
+    "pluralName": "Types",
     "types": [
       "SubObject",
       "BundledObjectType"
     ],
-    "emoji": "🥚",
+    "iconColor": 9,
+    "iconName": "extension-puzzle",
     "hidden": false,
     "layout": "objectType",
     "relations": [
       "recommendedRelations",
       "recommendedLayout"
     ],
-    "description": "Object that contains a definition of some object type"
+    "description": "Object that contains a definition of some object type",
+    "revision": 2
   },
   {
     "id": "relationOption",
@@ -210,7 +239,6 @@
     "types": [
       "SubObject"
     ],
-    "emoji": "🥚",
     "hidden": true,
     "layout": "relationOption",
     "relations": [],
@@ -219,40 +247,48 @@
   {
     "id": "space",
     "name": "Space",
+    "pluralName": "Spaces",
     "types": [
       "Workspace"
     ],
-    "emoji": "🌎",
+    "iconColor": 10,
+    "iconName": "folder",
     "hidden": true,
     "layout": "space",
     "relations": [
       "tag"
     ],
     "description": "Workspace",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 2
   },
   {
     "id": "spaceView",
     "name": "Space",
+    "pluralName": "Spaces",
     "types": [
       "SpaceView"
     ],
-    "emoji": "🌎",
+    "iconColor": 10,
+    "iconName": "folder",
     "hidden": true,
     "layout": "spaceView",
     "relations": [
       "tag"
     ],
     "description": "Space",
-    "restrictObjectCreation": true
+    "restrictObjectCreation": true,
+    "revision": 1
   },
   {
     "id": "participant",
     "name": "Space member",
+    "pluralName": "Space members",
     "types": [
       "Participant"
     ],
-    "emoji": "\uD83E\uDDD1",
+    "iconColor": 3,
+    "iconName": "person",
     "hidden": false,
     "layout": "participant",
     "relations": [
@@ -260,15 +296,17 @@
     ],
     "description": "Anytype identity as a space participant",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 3
   },
   {
     "id": "template",
     "name": "Template",
+    "pluralName": "Templates",
     "types": [
       "Template"
     ],
-    "emoji": "\uD83E\uDDE9",
+    "iconColor": 8,
+    "iconName": "copy",
     "hidden": false,
     "layout": "basic",
     "relations": [
@@ -276,186 +314,213 @@
       "templateIsBundled"
     ],
     "description": "Sample object that has already some details in place and used to create objects from",
-    "revision": 1
+    "revision": 3
   },
   {
     "id": "set",
-    "name": "Set",
+    "name": "Query",
+    "pluralName": "Queries",
     "types": [
       "Page"
     ],
-    "emoji": "🔎",
+    "iconColor": 6,
+    "iconName": "search",
     "hidden": false,
     "layout": "set",
     "relations": [
       "tag",
       "setOf"
     ],
-    "description": "Query all objects in your space based on types and relations"
+    "description": "Query all objects in your space based on types and relations",
+    "revision": 3
   },
   {
     "id": "collection",
     "name": "Collection",
+    "pluralName": "Collections",
     "types": [
       "Page"
     ],
-    "emoji": "🗂️",
+    "iconColor": 7,
+    "iconName": "layers",
     "hidden": false,
     "layout": "collection",
     "relations": [
       "tag"
     ],
-    "description": "Collect objects in one place, use different views to organize them"
+    "description": "Collect objects in one place, use different views to organize them",
+    "revision": 2
   },
   {
     "id": "diaryEntry",
     "name": "Diary Entry",
+    "pluralName": "Diary Entries",
     "types": [
       "Page"
     ],
-    "emoji": "✨",
+    "iconColor": 2,
+    "iconName":"reader",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag",
       "mood"
     ],
-    "description": "Record of events and experiences"
+    "description": "Record of events and experiences",
+    "revision": 2
   },
   {
     "id": "page",
     "name": "Page",
+    "pluralName": "Pages",
     "types": [
       "Page"
     ],
-    "emoji": "📄",
+    "iconColor": 8,
+    "iconName": "document",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag"
     ],
-    "description": "Blank canvas with Title"
+    "description": "Blank canvas with Title",
+    "revision": 2
   },
   {
     "id": "image",
     "name": "Image",
+    "pluralName": "Images",
     "types": [
       "File"
     ],
-    "emoji": "🏞",
+    "iconColor": 10,
+    "iconName": "image",
     "hidden": false,
     "layout": "image",
     "relations": [
-      "fileMimeType",
-      "widthInPixels",
-      "camera",
-      "heightInPixels",
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
+      "heightInPixels",
+      "widthInPixels",
+      "fileMimeType",
+      "camera",
       "cameraIso",
       "aperture",
       "exposure",
-      "addedDate",
-      "focalRatio",
-      "fileExt",
-      "origin"
+      "focalRatio"
     ],
     "description": "A representation of the external form of a person or thing in art",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 4
   },
   {
     "id": "profile",
     "name": "Human",
+    "pluralName": "Humans",
     "types": [
       "Page",
       "ProfilePage"
     ],
-    "emoji": "🧍",
-    "hidden": false,
+    "iconColor": 3,
+    "iconName": "man",
+    "hidden": true,
     "layout": "profile",
     "relations": [
       "tag"
     ],
-    "description": "Homo sapiens"
+    "description": "Homo sapiens",
+    "revision": 2
   },
   {
     "id": "audio",
     "name": "Audio",
+    "pluralName": "Audio",
     "types": [
       "File"
     ],
-    "emoji": "🎵",
+    "iconColor": 5,
+    "iconName": "musical-notes",
     "hidden": false,
     "layout": "file",
     "relations": [
-      "artist",
-      "audioAlbum",
-      "audioAlbumTrackNumber",
-      "audioGenre",
-      "audioLyrics",
-      "releasedYear",
+      "addedDate",
+      "origin",
+      "fileExt",
       "sizeInBytes",
       "fileMimeType",
-      "addedDate",
-      "fileExt",
-      "origin"
+      "artist",
+      "audioAlbum",
+      "audioGenre",
+      "releasedYear",
+      "audioAlbumTrackNumber",
+      "audioLyrics"
     ],
     "description": "Sound when recorded, with ability to reproduce",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 4
   },
   {
     "id": "goal",
     "name": "Goal",
+    "pluralName": "Goals",
     "types": [
       "Page"
     ],
-    "emoji": "🎯",
+    "iconColor": 4,
+    "iconName": "flag",
     "hidden": false,
     "layout": "todo",
     "relations": [
       "tag",
+      "dueDate",
       "progress",
       "status",
-      "dueDate",
       "tasks"
     ],
-    "description": "The object of a person's ambition or effort; an aim or desired result"
+    "description": "The object of a person's ambition or effort; an aim or desired result",
+    "revision": 2
   },
   {
     "id": "file",
     "name": "File",
+    "pluralName": "Files",
     "types": [
       "File"
     ],
-    "emoji": "📎",
+    "iconColor": 7,
+    "iconName": "attach",
     "hidden": false,
     "layout": "file",
     "relations": [
-      "fileMimeType",
-      "sizeInBytes",
       "addedDate",
+      "origin",
       "fileExt",
-      "origin"
+      "sizeInBytes",
+      "fileMimeType"
     ],
     "description": "Computer resource for recording data in a computer storage device",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 4
   },
   {
     "id": "project",
     "name": "Project",
+    "pluralName": "Projects",
     "types": [
       "Page"
     ],
-    "emoji": "🔨",
+    "iconColor": 3,
+    "iconName": "hammer",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag",
       "tasks"
     ],
-    "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim"
+    "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
+    "revision": 2
   },
   {
     "id": "chat",
@@ -463,29 +528,31 @@
     "types": [
       "ChatObject"
     ],
-    "emoji": "💬",
+    "iconColor": 7,
+    "iconName": "chatbubble",
     "hidden": true,
     "layout": "chat",
     "relations": [
-        "tag",
-        "description"
+        "tag"
     ],
-    "description": "A chat [deprecated]"
+    "description": "A chat [deprecated]",
+    "revision": 1
   },
   {
     "id": "chatDerived",
     "name": "Chat Derived Object",
+    "pluralName": "Chat Derived Objects",
     "types": [
       "ChatDerivedObject"
     ],
-    "emoji": "",
+    "iconColor": 7,
+    "iconName": "chatbubble",
     "hidden": true,
     "layout": "chatDerived",
     "relations": [
-      "tag",
-      "description"
+      "tag"
     ],
     "description": "A chat derived object",
-    "revision": 1
+    "revision": 3
   }
 ]

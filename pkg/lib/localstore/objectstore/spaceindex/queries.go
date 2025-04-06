@@ -8,6 +8,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
@@ -21,6 +22,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	text2 "github.com/anyproto/anytype-heart/util/text"
 )
+
+var pluralNameId = domain.ObjectPath{
+	ObjectId:    "",
+	RelationKey: bundle.RelationKeyPluralName.String(),
+}.String()
 
 const (
 	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
@@ -44,7 +50,7 @@ func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey domain.Relati
 func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
 	var injectedResults []database.Record
 	id := details.GetString(bundle.RelationKeyId)
-	if path.RelationKey != bundle.RelationKeyName.String() {
+	if path.RelationKey != bundle.RelationKeyName.String() && path.RelationKey != bundle.RelationKeyPluralName.String() {
 		// inject only in case we match the name
 		return nil
 	}
@@ -59,7 +65,8 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 		return nil
 	}
 
-	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout))
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	switch layout {
 	case model.ObjectType_relationOption:
 		relationKey = details.GetString(bundle.RelationKeyRelationKey)
@@ -79,7 +86,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyType.String(),
-			bundle.RelationKeyLayout.String(),
+			bundle.RelationKeyResolvedLayout.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 		})
 		metaInj := model.SearchMeta{
@@ -209,7 +216,10 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 			rec.Meta = res.Model()
 			if rec.Meta.Highlight == "" {
-				title := details.GetString(bundle.RelationKeyName)
+				title := details.GetString(bundle.RelationKeyPluralName)
+				if title == "" {
+					title = details.GetString(bundle.RelationKeyName)
+				}
 				index := strings.Index(strings.ToLower(title), strings.ToLower(ftsSearch))
 				titleArr := []byte(title)
 				if index != -1 {
@@ -337,7 +347,7 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 		if len(objectPerBlockResults) == 0 {
 			continue
 		}
-		objectResults = append(objectResults, objectPerBlockResults[0])
+		objectResults = append(objectResults, preferPluralNameRelation(objectPerBlockResults))
 	}
 
 	sort.Slice(objectResults, func(i, j int) bool {
@@ -375,6 +385,16 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 	}
 
 	return results, nil
+}
+
+func preferPluralNameRelation(objectPerBlockResults []*ftsearch.DocumentMatch) *ftsearch.DocumentMatch {
+	doc, found := lo.Find(objectPerBlockResults, func(item *ftsearch.DocumentMatch) bool {
+		return strings.HasSuffix(item.ID, pluralNameId)
+	})
+	if !found {
+		doc = objectPerBlockResults[0]
+	}
+	return doc
 }
 
 func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
@@ -549,6 +569,30 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain
 	return
 }
 
+func (s *dsObjectStore) IterateAll(proc func(doc *anyenc.Value) error) error {
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("iterate all ids: %w", err)
+	}
+	defer iter.Close()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("get doc: %w", err)
+		}
+		err = proc(doc.Value())
+		if err != nil {
+			return err
+		}
+	}
+	err = iter.Err()
+	if err != nil {
+		return fmt.Errorf("iterate: %w", err)
+	}
+	return nil
+}
+
 func (s *dsObjectStore) ListIds() ([]string, error) {
 	var ids []string
 	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
@@ -564,6 +608,32 @@ func (s *dsObjectStore) ListIds() ([]string, error) {
 		}
 		id := doc.Value().GetStringBytes("id")
 		ids = append(ids, string(id))
+	}
+	err = iter.Err()
+	if err != nil {
+		return nil, fmt.Errorf("iterate: %w", err)
+	}
+	return ids, nil
+}
+
+func (s *dsObjectStore) ListFullIds() ([]domain.FullID, error) {
+	var ids []domain.FullID
+	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
+	if err != nil {
+		return nil, fmt.Errorf("find all: %w", err)
+	}
+	defer iter.Close()
+	idKey := bundle.RelationKeyId.String()
+	spaceIdKey := bundle.RelationKeySpaceId.String()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		id := doc.Value().GetString(idKey)
+		spaceId := doc.Value().GetString(spaceIdKey)
+		ids = append(ids, domain.FullID{ObjectID: id, SpaceID: spaceId})
 	}
 	err = iter.Err()
 	if err != nil {

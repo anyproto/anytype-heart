@@ -21,11 +21,10 @@ func NewSpaceImport(service *collection.Service) *SpaceImport {
 	return &SpaceImport{service: service}
 }
 
-func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
-	widgetSnapshot *common.Snapshot,
+func (s *SpaceImport) ProvideCollection(
+	snapshots *common.SnapshotContext,
 	oldToNewID map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
-	_ *common.Snapshot,
 	_ bool,
 ) ([]*common.Snapshot, error) {
 	if params.GetNoCollection() {
@@ -37,9 +36,9 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 		objectsNotInWidget []*common.Snapshot
 	)
 
-	if widgetSnapshot != nil {
+	if widgetSnapshot := snapshots.GetWidget(); widgetSnapshot != nil {
 		widgetFlags, rootObjects = s.getObjectsFromWidget(widgetSnapshot, oldToNewID)
-		objectsNotInWidget = lo.Filter(snapshots, func(item *common.Snapshot, index int) bool {
+		objectsNotInWidget = lo.Filter(snapshots.List(), func(item *common.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
 		})
 	}
@@ -48,7 +47,7 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 		rootObjects = append(rootObjects, s.filterObjects(widgetFlags, objectsNotInWidget)...)
 	} else {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
-		rootObjects = lo.FilterMap(snapshots, func(item *common.Snapshot, index int) (string, bool) {
+		rootObjects = lo.FilterMap(snapshots.List(), func(item *common.Snapshot, index int) (string, bool) {
 			if !s.objectShouldBeSkipped(item) {
 				return item.Id, true
 			}
@@ -56,7 +55,12 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 		})
 	}
 	rootCollection := common.NewImportCollection(s.service)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, rootObjects, "", nil, true, true, true)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(rootCollectionName),
+		common.WithTargetObjects(rootObjects),
+		common.WithRelations(),
+		common.WithAddDate(),
+	)
 	rootCollectionSnapshot, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		return nil, err
@@ -65,7 +69,7 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
-	return item.Snapshot.SbType == smartblock.SmartBlockTypeSubObject || item.Snapshot.SbType == smartblock.SmartBlockTypeTemplate ||
+	return item.Snapshot.SbType == smartblock.SmartBlockTypeSubObject ||
 		item.Snapshot.SbType == smartblock.SmartBlockTypeRelation || item.Snapshot.SbType == smartblock.SmartBlockTypeObjectType ||
 		item.Snapshot.SbType == smartblock.SmartBlockTypeRelationOption
 }

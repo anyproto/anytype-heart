@@ -46,7 +46,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		return nil, err
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(true, req.JoinStreamUrl)
 	if req.DisableLocalNetworkSync {
 		cfg.DontStartLocalNetworkSyncAutomatically = true
 	}
@@ -62,7 +62,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, derivationResult),
+		anytype.BootstrapWallet(s.rootPath, derivationResult, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 
@@ -132,7 +132,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
-		hash, _, err := bs.UploadFile(context.Background(), techSpaceId, block.FileUploadRequest{
+		hash, _, _, err := bs.UploadFile(context.Background(), techSpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
 				Type:      model.BlockContentFile_Image,

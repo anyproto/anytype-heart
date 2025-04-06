@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -24,17 +25,10 @@ import (
 )
 
 type (
-	collectionService interface {
-		CreateCollection(details *domain.Details, flags []*model.InternalFlag) (coresb.SmartBlockType, *domain.Details, *state.State, error)
-	}
-
-	templateService interface {
-		CreateTemplateStateWithDetails(templateId string, details *domain.Details) (st *state.State, err error)
-		TemplateCloneInSpace(space clientspace.Space, id string) (templateId string, err error)
-	}
-
 	bookmarkService interface {
-		CreateObjectAndFetch(ctx context.Context, spaceId string, details *domain.Details) (objectID string, newDetails *domain.Details, err error)
+		CreateObjectAndFetch(
+			ctx context.Context, spaceId, templateId string, details *domain.Details,
+		) (objectID string, newDetails *domain.Details, err error)
 	}
 
 	objectArchiver interface {
@@ -44,7 +38,7 @@ type (
 
 const CName = "objectCreator"
 
-var log = logging.Logger("object-service")
+var log = logging.Logger(CName)
 
 type Service interface {
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *domain.Details, err error)
@@ -59,12 +53,11 @@ type Service interface {
 }
 
 type service struct {
-	objectStore       objectstore.ObjectStore
-	collectionService collectionService
-	bookmarkService   bookmarkService
-	spaceService      space.Service
-	templateService   templateService
-	archiver          objectArchiver
+	objectStore     objectstore.ObjectStore
+	bookmarkService bookmarkService
+	spaceService    space.Service
+	templateService template.Service
+	archiver        objectArchiver
 }
 
 func NewCreator() Service {
@@ -74,9 +67,8 @@ func NewCreator() Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmarkService = app.MustComponent[bookmarkService](a)
-	s.collectionService = app.MustComponent[collectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.templateService = app.MustComponent[templateService](a)
+	s.templateService = app.MustComponent[template.Service](a)
 	s.archiver = app.MustComponent[objectArchiver](a)
 	return nil
 }
@@ -129,24 +121,10 @@ func (s *service) createObjectInSpace(
 			return "", nil, errors.Wrap(restriction.ErrRestricted, "creation of this object type is restricted")
 		}
 	}
+
 	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
-		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), details)
-	case bundle.TypeKeySet:
-		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_set))
-		return s.createSet(ctx, space, createSetRequest{
-			Details:       details,
-			InternalFlags: req.InternalFlags,
-			Source:        details.GetStringList(bundle.RelationKeySetOf),
-		})
-	case bundle.TypeKeyCollection:
-		var st *state.State
-		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
-		_, details, st, err = s.collectionService.CreateCollection(details, req.InternalFlags)
-		if err != nil {
-			return "", nil, err
-		}
-		return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyCollection}, st)
+		return s.bookmarkService.CreateObjectAndFetch(ctx, space.Id(), req.TemplateId, details)
 	case bundle.TypeKeyObjectType:
 		return s.createObjectType(ctx, space, details)
 	case bundle.TypeKeyRelation:
@@ -158,28 +136,77 @@ func (s *service) createObjectInSpace(
 	case bundle.TypeKeyFile:
 		return "", nil, fmt.Errorf("files must be created via fileobject service")
 	case bundle.TypeKeyTemplate:
-		if details.GetString(bundle.RelationKeyTargetObjectType) == "" {
-			return "", nil, fmt.Errorf("cannot create template without target object")
-		}
+		return s.createTemplate(ctx, space, details, req)
 	case bundle.TypeKeyDate:
 		return buildDateObject(space, details)
+	default:
+		return s.createCommonObject(ctx, space, details, req)
 	}
-
-	return s.createObjectFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)
 }
 
-func (s *service) createObjectFromTemplate(
-	ctx context.Context,
-	space clientspace.Space,
-	objectTypeKeys []domain.TypeKey,
-	details *domain.Details,
-	templateId string,
-) (id string, newDetails *domain.Details, err error) {
-	createState, err := s.templateService.CreateTemplateStateWithDetails(templateId, details)
+func (s *service) createTemplate(
+	ctx context.Context, space clientspace.Space, details *domain.Details, req CreateObjectRequest,
+) (id string, resultDetails *domain.Details, err error) {
+	target := details.GetString(bundle.RelationKeyTargetObjectType)
+	if target == "" {
+		return "", nil, fmt.Errorf("cannot create template without target object type")
+	}
+	layout, err := s.getTypeRecommendedLayout(domain.FullID{SpaceID: space.Id(), ObjectID: target})
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
+	}
+	typeId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, req.ObjectTypeKey.String()))
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to derive object type id: %w", err)
+	}
+
+	createState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{
+		SpaceId:                space.Id(),
+		TemplateId:             "",
+		TypeId:                 typeId,
+		Layout:                 layout,
+		Details:                details,
+		WithTemplateValidation: false,
+	})
 	if err != nil {
 		return
 	}
-	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
+	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
+}
+
+func (s *service) createCommonObject(
+	ctx context.Context, space clientspace.Space, details *domain.Details, req CreateObjectRequest,
+) (id string, resultDetails *domain.Details, err error) {
+	typeId, err := space.DeriveObjectID(ctx, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, req.ObjectTypeKey.String()))
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to derive object type id: %w", err)
+	}
+
+	layout, err := s.getTypeRecommendedLayout(domain.FullID{SpaceID: space.Id(), ObjectID: typeId})
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
+	}
+
+	createState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{
+		SpaceId:                space.Id(),
+		TemplateId:             req.TemplateId,
+		TypeId:                 typeId,
+		Layout:                 layout,
+		Details:                details,
+		WithTemplateValidation: true,
+	})
+	if err != nil {
+		return
+	}
+	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
+}
+
+func (s *service) getTypeRecommendedLayout(typeId domain.FullID) (model.ObjectTypeLayout, error) {
+	ot, err := s.objectStore.SpaceIndex(typeId.SpaceID).GetObjectType(typeId.ObjectID)
+	if err != nil {
+		return 0, err
+	}
+	return ot.Layout, nil
 }
 
 // buildDateObject does not create real date object. It just builds date object details

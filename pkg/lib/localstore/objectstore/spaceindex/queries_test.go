@@ -181,6 +181,12 @@ func TestQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:    "id1/r/pluralName",
+			Title: "mynames",
+		})
+		require.NoError(t, err)
+
+		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "id2/b/321",
 			Title: "some important note",
 		})
@@ -212,6 +218,19 @@ func TestQuery(t *testing.T) {
 			})
 			require.NoError(t, err)
 
+			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
+			assertRecordsMatch(t, []TestObject{
+				obj1,
+			}, recs)
+		})
+
+		t.Run("fulltext by plural name relation", func(t *testing.T) {
+			recs, err := s.Query(database.Query{
+				TextQuery: "mynames",
+			})
+			require.NoError(t, err)
+
+			assert.Equal(t, "pluralName", recs[0].Meta.RelationKey)
 			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
 			assertRecordsMatch(t, []TestObject{
 				obj1,
@@ -257,36 +276,36 @@ func TestQuery(t *testing.T) {
 		}
 
 		relObj := TestObject{
-			bundle.RelationKeyId:          domain.String("relid1"),
-			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
-			bundle.RelationKeyName:        domain.String("relname"),
-			bundle.RelationKeyDescription: domain.String("this is a relation's description"),
-			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyId:             domain.String("relid1"),
+			bundle.RelationKeyRelationKey:    domain.String("bsonid1"),
+			bundle.RelationKeyName:           domain.String("relname"),
+			bundle.RelationKeyDescription:    domain.String("this is a relation's description"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		relObjDeleted := TestObject{
-			bundle.RelationKeyId:          domain.String("relid2"),
-			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
-			bundle.RelationKeyName:        domain.String("deletedtag"),
-			bundle.RelationKeyIsDeleted:   domain.Bool(true),
-			bundle.RelationKeyDescription: domain.String("this is a deleted relation's description"),
-			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyId:             domain.String("relid2"),
+			bundle.RelationKeyRelationKey:    domain.String("bsonid1"),
+			bundle.RelationKeyName:           domain.String("deletedtag"),
+			bundle.RelationKeyIsDeleted:      domain.Bool(true),
+			bundle.RelationKeyDescription:    domain.String("this is a deleted relation's description"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		relObjArchived := TestObject{
-			bundle.RelationKeyId:          domain.String("relid3"),
-			bundle.RelationKeyRelationKey: domain.String("bsonid1"),
-			bundle.RelationKeyName:        domain.String("archived"),
-			bundle.RelationKeyIsDeleted:   domain.Bool(true),
-			bundle.RelationKeyDescription: domain.String("this is a archived relation's description"),
-			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyId:             domain.String("relid3"),
+			bundle.RelationKeyRelationKey:    domain.String("bsonid1"),
+			bundle.RelationKeyName:           domain.String("archived"),
+			bundle.RelationKeyIsDeleted:      domain.Bool(true),
+			bundle.RelationKeyDescription:    domain.String("this is a archived relation's description"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 		}
 
 		typeObj := TestObject{
-			bundle.RelationKeyId:          domain.String("typeid1"),
-			bundle.RelationKeyName:        domain.String("typename"),
-			bundle.RelationKeyDescription: domain.String("this is a type's description"),
-			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyId:             domain.String("typeid1"),
+			bundle.RelationKeyName:           domain.String("typename"),
+			bundle.RelationKeyDescription:    domain.String("this is a type's description"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
 		}
 
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3, relObj, relObjDeleted, relObjArchived, typeObj})
@@ -535,7 +554,7 @@ func TestQuery(t *testing.T) {
 				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
-						RelationKey: "layout",
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_NotIn,
 						Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
 					},
@@ -548,7 +567,7 @@ func TestQuery(t *testing.T) {
 					Details: makeDetails(obj1),
 					Meta: model.SearchMeta{
 						RelationKey:     "bsonid1",
-						RelationDetails: makeDetails(relObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
+						RelationDetails: makeDetails(relObj).CopyOnlyKeys(bundle.RelationKeyResolvedLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				}}, recs)
 		})
@@ -593,7 +612,7 @@ func TestQuery(t *testing.T) {
 				Filters: []database.FilterRequest{
 					{
 						Operator:    0,
-						RelationKey: "layout",
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_NotIn,
 						Value:       domain.Int64List([]int64{int64(model.ObjectType_objectType)}),
 					},
@@ -606,14 +625,14 @@ func TestQuery(t *testing.T) {
 					Details: makeDetails(obj2),
 					Meta: model.SearchMeta{
 						RelationKey:     "type",
-						RelationDetails: makeDetails(typeObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
+						RelationDetails: makeDetails(typeObj).CopyOnlyKeys(bundle.RelationKeyResolvedLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				},
 				{
 					Details: makeDetails(obj3),
 					Meta: model.SearchMeta{
 						RelationKey:     "type",
-						RelationDetails: makeDetails(typeObj).CopyOnlyKeys(bundle.RelationKeyLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
+						RelationDetails: makeDetails(typeObj).CopyOnlyKeys(bundle.RelationKeyResolvedLayout, bundle.RelationKeyId, bundle.RelationKeyName).ToProto(),
 					},
 				},
 			}, recs)
@@ -984,26 +1003,26 @@ func TestQueryRaw(t *testing.T) {
 		t.Run("not equal", func(t *testing.T) {
 			s := NewStoreFixture(t)
 			obj1 := TestObject{
-				bundle.RelationKeyId:     domain.String("id1"),
-				bundle.RelationKeyType:   domain.String("type1"),
-				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeyType:           domain.String("type1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			}
 			obj2 := TestObject{
-				bundle.RelationKeyId:     domain.String("id2"),
-				bundle.RelationKeyType:   domain.String("type2"),
-				bundle.RelationKeyLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyId:             domain.String("id2"),
+				bundle.RelationKeyType:           domain.String("type2"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			}
 			type1 := TestObject{
-				bundle.RelationKeyId:        domain.String("type1"),
-				bundle.RelationKeyType:      domain.String("objectType"),
-				bundle.RelationKeyUniqueKey: domain.String("ot-template"),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:             domain.String("type1"),
+				bundle.RelationKeyType:           domain.String("objectType"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-template"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
 			}
 			type2 := TestObject{
-				bundle.RelationKeyId:        domain.String("type2"),
-				bundle.RelationKeyType:      domain.String("objectType"),
-				bundle.RelationKeyUniqueKey: domain.String("ot-page"),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyId:             domain.String("type2"),
+				bundle.RelationKeyType:           domain.String("objectType"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-page"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
 			}
 
 			s.AddObjects(t, []TestObject{obj1, obj2, type1, type2})
@@ -1016,7 +1035,7 @@ func TestQueryRaw(t *testing.T) {
 						Value:       domain.String("ot-template"),
 					},
 					{
-						RelationKey: bundle.RelationKeyLayout,
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       domain.Int64(int64(model.ObjectType_basic)),
 					},

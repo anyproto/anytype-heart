@@ -5,6 +5,7 @@ package event
 
 import (
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -74,7 +75,9 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
 				es.shutdownCh <- server.Token
 			}
-			log.Errorf("failed to send event: %s", err)
+			if strings.Contains(err.Error(), "transport is closing") {
+				log.Errorf("failed to send event: %v", err)
+			}
 		}
 	}()
 }
@@ -143,7 +146,6 @@ func (es *GrpcSender) CloseSession(token string) {
 
 	s, ok := es.Servers[token]
 	if ok {
-		log.Errorf("method close session %s", token)
 		close(s.Done)
 		delete(es.Servers, token)
 	}

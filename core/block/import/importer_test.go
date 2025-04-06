@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers/mock_parsers"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/mock_common"
@@ -971,6 +972,9 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		fileSync.EXPECT().SendImportEvents().Return().Times(1)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 		i.fileSync = fileSync
+		mockSpaceService := mock_space.NewMockService(t)
+		mockSpaceService.EXPECT().Get(nil, "space1").Return(nil, fmt.Errorf("not found"))
+		i.spaceService = mockSpaceService
 
 		// when
 		importRequest := &ImportRequest{

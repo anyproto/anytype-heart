@@ -25,6 +25,7 @@ import (
 	"unicode"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	tantivy "github.com/anyproto/tantivy-go"
 	"github.com/valyala/fastjson"
 
@@ -39,7 +40,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "11"
+	ftsVer   = "13"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -91,28 +92,35 @@ type DocumentMatch struct {
 	Fields    map[string]any
 }
 
-var specialChars = map[rune]struct{}{
-	'+': {}, '^': {}, '`': {}, ':': {}, '{': {},
-	'}': {}, '"': {}, '[': {}, ']': {}, '(': {},
-	')': {}, '~': {}, '!': {}, '\\': {}, '*': {},
-}
-
-type ftSearchTantivy struct {
+type ftSearch struct {
 	rootPath   string
 	ftsPath    string
 	builderId  string
 	index      *tantivy.TantivyContext
-	schema     *tantivy.Schema
 	parserPool *fastjson.ParserPool
 	mu         sync.Mutex
 	blevePath  string
+	lang       tantivy.Language
+}
+
+func (f *ftSearch) ProvideStat() any {
+	count, _ := f.DocCount()
+	return count
+}
+
+func (f *ftSearch) StatId() string {
+	return "doc_count"
+}
+
+func (f *ftSearch) StatType() string {
+	return CName
 }
 
 func TantivyNew() FTSearch {
-	return new(ftSearchTantivy)
+	return new(ftSearch)
 }
 
-func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
+func (f *ftSearch) BatchDeleteObjects(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -136,21 +144,26 @@ func (f *ftSearchTantivy) BatchDeleteObjects(ids []string) error {
 	return nil
 }
 
-func (f *ftSearchTantivy) DeleteObject(objectId string) error {
+func (f *ftSearch) DeleteObject(objectId string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.index.DeleteDocuments(fieldIdRaw, objectId)
 }
 
-func (f *ftSearchTantivy) Init(a *app.App) error {
+func (f *ftSearch) Init(a *app.App) error {
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
+	statService, _ := app.GetComponent[debugstat.StatService](a)
+	if statService != nil {
+		statService.AddProvider(f)
+	}
+	f.lang = validateLanguage(app.MustComponent[wallet.Wallet](a).FtsPrimaryLang())
 	f.rootPath = filepath.Join(repoPath, ftsDir2)
 	f.blevePath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir2, ftsVer)
 	return tantivy.LibInit(false, true, "release")
 }
 
-func (f *ftSearchTantivy) cleanUpOldIndexes() {
+func (f *ftSearch) cleanUpOldIndexes() {
 	if strings.HasSuffix(f.rootPath, ftsDir2) {
 		dirs, err := os.ReadDir(f.rootPath)
 		if err == nil {
@@ -164,11 +177,11 @@ func (f *ftSearchTantivy) cleanUpOldIndexes() {
 	}
 }
 
-func (f *ftSearchTantivy) Name() (name string) {
+func (f *ftSearch) Name() (name string) {
 	return CName
 }
 
-func (f *ftSearchTantivy) Run(context.Context) error {
+func (f *ftSearch) Run(context.Context) error {
 	builder, err := tantivy.NewSchemaBuilder()
 	if err != nil {
 		return err
@@ -245,14 +258,13 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	if err != nil {
 		return err
 	}
-	f.schema = schema
 	f.index = index
 	f.parserPool = &fastjson.ParserPool{}
 
 	f.cleanupBleve()
 	f.cleanUpOldIndexes()
 
-	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, tantivy.English)
+	err = index.RegisterTextAnalyzerSimple(tantivy.TokenizerSimple, 40, f.lang)
 	if err != nil {
 		return err
 	}
@@ -280,7 +292,7 @@ func (f *ftSearchTantivy) Run(context.Context) error {
 	return nil
 }
 
-func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
+func (f *ftSearch) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
 	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
 	if err != nil {
 		log.Warnf("recovering from error: %v", err)
@@ -292,7 +304,7 @@ func (f *ftSearchTantivy) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.Tan
 	return index, err
 }
 
-func (f *ftSearchTantivy) Index(doc SearchDoc) error {
+func (f *ftSearch) Index(doc SearchDoc) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	metrics.ObjectFTUpdatedCounter.Inc()
@@ -305,40 +317,28 @@ func (f *ftSearchTantivy) Index(doc SearchDoc) error {
 	return res
 }
 
-func (f *ftSearchTantivy) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
+func (f *ftSearch) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	document := tantivy.NewDocument()
-	err := document.AddField(fieldId, doc.Id, f.index)
+	err := document.AddFields(doc.Id, f.index, fieldId, fieldIdRaw)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldIdRaw, doc.Id, f.index)
+	err = document.AddField(doc.SpaceId, f.index, fieldSpace)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldSpace, doc.SpaceId, f.index)
+	err = document.AddFields(doc.Title, f.index, fieldTitle, fieldTitleZh)
 	if err != nil {
 		return nil, err
 	}
-	err = document.AddField(fieldTitle, doc.Title, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldTitleZh, doc.Title, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldText, doc.Text, f.index)
-	if err != nil {
-		return nil, err
-	}
-	err = document.AddField(fieldTextZh, doc.Text, f.index)
+	err = document.AddFields(doc.Text, f.index, fieldText, fieldTextZh)
 	if err != nil {
 		return nil, err
 	}
 	return document, nil
 }
 
-func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
+func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
 	if len(docs) == 0 {
 		return nil
 	}
@@ -372,15 +372,15 @@ func (f *ftSearchTantivy) BatchIndex(ctx context.Context, docs []SearchDoc, dele
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
-func (f *ftSearchTantivy) NamePrefixSearch(spaceId, query string) ([]*DocumentMatch, error) {
+func (f *ftSearch) NamePrefixSearch(spaceId, query string) ([]*DocumentMatch, error) {
 	return f.performSearch(spaceId, query, f.buildObjectQuery)
 }
 
-func (f *ftSearchTantivy) Search(spaceId, query string) ([]*DocumentMatch, error) {
+func (f *ftSearch) Search(spaceId, query string) ([]*DocumentMatch, error) {
 	return f.performSearch(spaceId, query, f.buildDetailedQuery)
 }
 
-func (f *ftSearchTantivy) performSearch(spaceId, query string, buildQueryFunc func(*tantivy.QueryBuilder, string)) ([]*DocumentMatch, error) {
+func (f *ftSearch) performSearch(spaceId, query string, buildQueryFunc func(*tantivy.QueryBuilder, string)) ([]*DocumentMatch, error) {
 	query = prepareQuery(query)
 	if query == "" {
 		return nil, nil
@@ -410,7 +410,7 @@ func (f *ftSearchTantivy) performSearch(spaceId, query string, buildQueryFunc fu
 
 	return tantivy.GetSearchResults(
 		result,
-		f.schema,
+		f.index,
 		func(json string) (*DocumentMatch, error) {
 			return parseSearchResult(json, p)
 		},
@@ -418,11 +418,12 @@ func (f *ftSearchTantivy) performSearch(spaceId, query string, buildQueryFunc fu
 	)
 }
 
-func (f *ftSearchTantivy) buildObjectQuery(qb *tantivy.QueryBuilder, query string) {
+func (f *ftSearch) buildObjectQuery(qb *tantivy.QueryBuilder, query string) {
 	qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
 		Query(tantivy.Should, fieldId, bundle.RelationKeyName.String(), tantivy.TermQuery, 1.0).
 		// snippets are indexed only for notes which don't have a name, we should do a prefix search there as well
-		Query(tantivy.Should, fieldId, bundle.RelationKeySnippet.String(), tantivy.TermQuery, 1.0),
+		Query(tantivy.Should, fieldId, bundle.RelationKeySnippet.String(), tantivy.TermQuery, 1.0).
+		Query(tantivy.Should, fieldId, bundle.RelationKeyPluralName.String(), tantivy.TermQuery, 1.0),
 		1.0,
 	)
 
@@ -441,7 +442,7 @@ func (f *ftSearchTantivy) buildObjectQuery(qb *tantivy.QueryBuilder, query strin
 	}
 }
 
-func (f *ftSearchTantivy) buildDetailedQuery(qb *tantivy.QueryBuilder, query string) {
+func (f *ftSearch) buildDetailedQuery(qb *tantivy.QueryBuilder, query string) {
 	if containsChineseCharacters(query) {
 		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
 			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhrasePrefixQuery, 20.0).
@@ -540,25 +541,23 @@ func wrapError(err error) error {
 	return err
 }
 
-func (f *ftSearchTantivy) Delete(id string) error {
+func (f *ftSearch) Delete(id string) error {
 	return f.BatchDeleteObjects([]string{id})
 }
 
-func (f *ftSearchTantivy) DocCount() (uint64, error) {
+func (f *ftSearch) DocCount() (uint64, error) {
 	return f.index.NumDocs()
 }
 
-func (f *ftSearchTantivy) Close(ctx context.Context) error {
-	f.schema = nil
+func (f *ftSearch) Close(ctx context.Context) error {
 	if f.index != nil {
 		f.index.Free()
 		f.index = nil
-		f.schema = nil
 	}
 	return nil
 }
 
-func (f *ftSearchTantivy) cleanupBleve() {
+func (f *ftSearch) cleanupBleve() {
 	_ = os.RemoveAll(f.blevePath)
 }
 
@@ -567,4 +566,18 @@ func prepareQuery(query string) string {
 	query = strings.ToLower(query)
 	query = strings.TrimSpace(query)
 	return query
+}
+
+func validateLanguage(lang string) tantivy.Language {
+	tantivyLang := tantivy.Language(lang)
+	switch tantivyLang {
+	case tantivy.Arabic, tantivy.Armenian, tantivy.Basque, tantivy.Catalan, tantivy.Danish, tantivy.Dutch, tantivy.English,
+		tantivy.Estonian, tantivy.Finnish, tantivy.French, tantivy.German, tantivy.Greek, tantivy.Hindi, tantivy.Hungarian,
+		tantivy.Indonesian, tantivy.Irish, tantivy.Italian, tantivy.Lithuanian, tantivy.Nepali, tantivy.Norwegian,
+		tantivy.Portuguese, tantivy.Romanian, tantivy.Russian, tantivy.Serbian, tantivy.Spanish, tantivy.Swedish,
+		tantivy.Tamil, tantivy.Turkish, tantivy.Yiddish:
+		return tantivyLang
+	default:
+		return tantivy.English
+	}
 }

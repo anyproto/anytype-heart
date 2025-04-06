@@ -25,10 +25,15 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 )
 
+type accountService interface {
+	MyParticipantId(string) string
+}
+
 type indexer struct {
-	fileService  files.Service
-	spaceService space.Service
-	objectStore  objectstore.ObjectStore
+	fileService    files.Service
+	spaceService   space.Service
+	objectStore    objectstore.ObjectStore
+	accountService accountService
 
 	query        database.Query
 	indexCtx     context.Context
@@ -42,9 +47,10 @@ type indexer struct {
 
 func (s *service) newIndexer() *indexer {
 	ind := &indexer{
-		fileService:  s.fileService,
-		spaceService: s.spaceService,
-		objectStore:  s.objectStore,
+		fileService:    s.fileService,
+		spaceService:   s.spaceService,
+		objectStore:    s.objectStore,
+		accountService: s.accountService,
 
 		indexQueue: mb.New[indexRequest](0),
 		isQueued:   make(map[domain.FullID]struct{}),
@@ -98,7 +104,7 @@ func (ind *indexer) initQuery() {
 	ind.query = database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List([]model.ObjectTypeLayout{
 					model.ObjectType_file,
@@ -128,6 +134,13 @@ func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
 	}
 	for _, rec := range recs {
 		spaceId := rec.Details.GetString(bundle.RelationKeySpaceId)
+
+		// There is no point to index file if the current user is not an owner of the file
+		myParticipantId := ind.accountService.MyParticipantId(spaceId)
+		if rec.Details.GetString(bundle.RelationKeyCreator) != myParticipantId {
+			continue
+		}
+
 		id := domain.FullID{
 			SpaceID:  spaceId,
 			ObjectID: rec.Details.GetString(bundle.RelationKeyId),
@@ -195,6 +208,9 @@ func logIndexLoop(err error) {
 		return
 	}
 	if errors.Is(err, rpcstore.ErrNoConnectionToAnyFileClient) {
+		return
+	}
+	if errors.Is(err, files.FailedProtoUnmarshallError) {
 		return
 	}
 	log.Errorf("index loop: %v", err)

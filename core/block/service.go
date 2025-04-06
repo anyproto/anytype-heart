@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -35,7 +36,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -93,7 +93,7 @@ type Service struct {
 	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
 	objectCreator        objectcreator.Service
-	templateService      templateService
+	templateService      template.Service
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
@@ -109,12 +109,7 @@ type Service struct {
 }
 
 type builtinObjects interface {
-	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-}
-
-type templateService interface {
-	CreateTemplateStateWithDetails(templateId string, details *domain.Details) (*state.State, error)
-	CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, details *domain.Details) *state.State
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (dashboardId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type openedObjects struct {
@@ -133,7 +128,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
-	s.templateService = app.MustComponent[templateService](a)
+	s.templateService = app.MustComponent[template.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
@@ -188,27 +183,22 @@ func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb s
 
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
-	startTime := time.Now()
 	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			ob.EnabledRelationAsDependentObjects()
 		}
-		afterSmartBlockTime := time.Now()
 
 		ob.RegisterSession(sctx)
 
-		afterDataviewTime := time.Now()
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
-		afterApplyTime := time.Now()
 		if obj, err = ob.Show(); err != nil {
 			return fmt.Errorf("show: %w", err)
 		}
-		afterShowTime := time.Now()
 
 		if err != nil && !errors.Is(err, treestorage.ErrUnknownTreeId) {
 			log.Errorf("failed to watch status for object %s: %s", id, err)
@@ -218,16 +208,6 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 			v.InjectVirtualBlocks(id.ObjectID, obj)
 		}
 
-		afterHashesTime := time.Now()
-		metrics.Service.Send(&metrics.OpenBlockEvent{
-			ObjectId:       id.ObjectID,
-			GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
-			DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
-			ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
-			ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
-			FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
-			SmartblockType: int(ob.Type()),
-		})
 		return nil
 	})
 	if err != nil {
@@ -607,7 +587,8 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 	return
 }
 
-func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest,
+func (s *Service) CreateObjectFromUrl(
+	ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest,
 ) (id string, objectDetails *domain.Details, err error) {
 	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
@@ -622,6 +603,7 @@ func (s *Service) CreateObjectFromUrl(ctx context.Context, req *pb.RpcObjectCrea
 	createReq := objectcreator.CreateObjectRequest{
 		ObjectTypeKey: objectTypeKey,
 		Details:       details,
+		TemplateId:    req.TemplateId,
 	}
 	id, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {

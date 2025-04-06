@@ -4,6 +4,7 @@ import (
 	"context"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -16,10 +17,18 @@ type invalidStore struct {
 	err error
 }
 
+func (s *invalidStore) IterateAll(proc func(doc *anyenc.Value) error) error {
+	return nil
+}
+
 var _ Store = (*invalidStore)(nil)
 
 func NewInvalidStore(err error) Store {
 	return &invalidStore{err: err}
+}
+
+func (s *invalidStore) ListFullIds() ([]domain.FullID, error) {
+	return nil, s.err
 }
 
 func (s *invalidStore) SpaceId() string {
@@ -27,6 +36,10 @@ func (s *invalidStore) SpaceId() string {
 }
 
 func (s *invalidStore) Close() error {
+	return s.err
+}
+
+func (s *invalidStore) Init() error {
 	return s.err
 }
 

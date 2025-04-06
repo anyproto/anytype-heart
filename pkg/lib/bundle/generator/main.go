@@ -62,6 +62,9 @@ type ObjectType struct {
 	Description            string   `json:"description"`
 	Revision               int      `json:"revision"`
 	RestrictObjectCreation bool     `json:"restrictObjectCreation"`
+	IconColor              int      `json:"iconColor"`
+	IconName               string   `json:"iconName"`
+	PluralName             string   `json:"pluralName"`
 }
 
 type Layout struct {
@@ -277,9 +280,6 @@ func generateTypes() error {
 			if ot.Hidden {
 				dictS[Id("Hidden")] = Lit(ot.Hidden)
 			}
-			if ot.Emoji != "" {
-				dictS[Id("IconEmoji")] = Lit(ot.Emoji)
-			}
 
 			dictS[Id("Readonly")] = Lit(true)
 
@@ -308,6 +308,16 @@ func generateTypes() error {
 
 			if ot.RestrictObjectCreation {
 				dictS[Id("RestrictObjectCreation")] = Lit(ot.RestrictObjectCreation)
+			}
+
+			dictS[Id("IconColor")] = Lit(ot.IconColor)
+
+			if ot.IconName != "" {
+				dictS[Id("IconName")] = Lit(ot.IconName)
+			}
+
+			if ot.PluralName != "" {
+				dictS[Id("PluralName")] = Lit(ot.PluralName)
 			}
 
 			dict[Id(typeConst(ot.ID))] = Block(dictS)

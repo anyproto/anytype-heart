@@ -33,7 +33,6 @@ var pageRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyLinks,
 	bundle.RelationKeyBacklinks,
 	bundle.RelationKeyMentions,
-	bundle.RelationKeyLayoutAlign,
 }
 
 var typeAndRelationRequiredRelations = []domain.RelationKey{
@@ -44,15 +43,6 @@ var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyRevision,
 	bundle.RelationKeyIsHidden,
 }
-
-var typeRequiredRelations = append(typeAndRelationRequiredRelations,
-	bundle.RelationKeyRecommendedRelations,
-	bundle.RelationKeyRecommendedFeaturedRelations,
-	bundle.RelationKeyRecommendedHiddenRelations,
-	bundle.RelationKeyRecommendedFileRelations,
-	bundle.RelationKeyRecommendedLayout,
-	bundle.RelationKeySmartblockTypes,
-)
 
 var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationFormat,
@@ -163,7 +153,7 @@ func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
 				Value:       domain.String(relationKey),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
@@ -184,7 +174,7 @@ func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
 
 func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 2,
+		Version: 4,
 		Proc: func(s *state.State) {
 			layout, ok := ctx.State.Layout()
 			if !ok {
@@ -211,12 +201,9 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 
 			templates := []template.StateTransformer{
 				template.WithEmpty,
-				template.WithObjectTypesAndLayout(ctx.State.ObjectTypeKeys(), layout),
-				template.WithLayout(layout),
-				template.WithDefaultFeaturedRelations,
-				template.WithFeaturedRelations,
+				template.WithObjectTypes(ctx.State.ObjectTypeKeys()),
+				template.WithFeaturedRelationsBlock,
 				template.WithLinkFieldsMigration,
-				template.WithCreatorRemovedFromFeaturedRelations,
 			}
 
 			switch layout {
@@ -235,35 +222,32 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				templates = append(templates,
 					template.WithTitle,
 					template.WithDescription,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-					template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 					template.WithBookmarkBlocks,
 				)
 			case model.ObjectType_relation:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-				)
-			case model.ObjectType_objectType:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+					template.WithLayout(layout),
 				)
 			case model.ObjectType_chat:
 				templates = append(templates,
 					template.WithTitle,
 					template.WithBlockChat,
+					template.WithLayout(layout),
 				)
 			case model.ObjectType_chatDerived:
 				templates = append(templates,
 					template.WithTitle,
 					template.WithBlockChat,
+					template.WithLayout(layout),
 				)
 				// TODO case for relationOption?
 			case model.ObjectType_tag:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithNoDescription)
+					template.WithNoDescription,
+					template.WithLayout(layout),
+				)
 			default:
 				templates = append(templates,
 					template.WithTitle,
@@ -276,10 +260,5 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations([]migration.Migration{
-		{
-			Version: 2,
-			Proc:    template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
-		},
-	})
+	return migration.Migrations{Migrations: []migration.Migration{}}
 }

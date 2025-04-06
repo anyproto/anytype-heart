@@ -38,6 +38,11 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+      Space:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
@@ -226,15 +231,20 @@ packages:
   github.com/anyproto/anytype-heart/core/kanban:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/core/core/inviteservice:
+  github.com/anyproto/anytype-heart/core/inviteservice:
     interfaces:
       InviteService:
   github.com/anyproto/anytype-heart/core/identity:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/pb/service:
+  github.com/anyproto/anytype-heart/core/api/apicore:
     interfaces:
-      ClientCommandsServer:
+      AccountService:
+      ExportService:
+      ClientCommands:
+  github.com/anyproto/anytype-heart/core/block/template:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/util/ai:
     interfaces:
       HttpClient:

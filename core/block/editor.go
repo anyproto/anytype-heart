@@ -364,7 +364,7 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, details *domain.Details, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, fileType model.BlockContentFileType, details *domain.Details, err error) {
 	upl := s.fileUploaderService.NewUploader(spaceId, req.ObjectOrigin)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -388,9 +388,10 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 	}
 	res := upl.Upload(ctx)
 	if res.Err != nil {
-		return "", nil, res.Err
+		return "", 0, nil, res.Err
 	}
-	return res.FileObjectId, res.FileObjectDetails, nil
+
+	return res.FileObjectId, res.Type, res.FileObjectDetails, nil
 }
 
 func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
@@ -435,7 +436,7 @@ func (s *Service) Redo(
 
 func (s *Service) BookmarkFetch(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return cache.Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, req.ObjectOrigin)
+		return b.Fetch(ctx, req.BlockId, req.Url, req.TemplateId, req.ObjectOrigin)
 	})
 }
 

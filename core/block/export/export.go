@@ -3,10 +3,13 @@ package export
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,6 +41,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -62,12 +66,15 @@ const (
 
 	FilesObjects = "filesObjects"
 	Files        = "files"
+
+	defaultFileName = "untitled"
 )
 
 var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
 	Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
+	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
 	app.Component
 }
 
@@ -80,6 +87,7 @@ type export struct {
 	accountService      account.Service
 	notificationService notifications.Notifications
 	processService      process.Service
+	gatewayService      gateway.Gateway
 }
 
 func New() Export {
@@ -95,6 +103,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
 	e.notificationService = app.MustComponent[notifications.Notifications](a)
+	e.gatewayService, _ = app.GetComponent[gateway.Gateway](a)
 	return
 }
 
@@ -115,6 +124,20 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	}
 	exportCtx := newExportContext(e, req)
 	return exportCtx.exportObjects(ctx, queue)
+}
+
+func (e *export) ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error) {
+	req := pb.RpcObjectListExportRequest{
+		SpaceId:         spaceId,
+		ObjectIds:       []string{objectId},
+		IncludeFiles:    true,
+		Format:          format,
+		IncludeNested:   true,
+		IncludeArchived: true,
+	}
+
+	exportCtx := newExportContext(e, req)
+	return exportCtx.exportObject(ctx, objectId)
 }
 
 func (e *export) finishWithNotification(spaceId string, exportFormat model.ExportFormat, queue process.Queue, err error) {
@@ -163,7 +186,11 @@ type exportContext struct {
 	linkStateFilters *state.Filters
 	isLinkProcess    bool
 	includeBackLinks bool
-
+	includeSpace     bool
+	relations        map[string]struct{}
+	setOfList        map[string]struct{}
+	objectTypes      map[string]struct{}
+	gatewayUrl       string
 	*export
 }
 
@@ -181,7 +208,14 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		zip:              req.Zip,
 		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
 		includeBackLinks: req.IncludeBacklinks,
+		includeSpace:     req.IncludeSpace,
+		setOfList:        make(map[string]struct{}),
+		objectTypes:      make(map[string]struct{}),
+		relations:        make(map[string]struct{}),
 		export:           e,
+	}
+	if e.gatewayService != nil {
+		ec.gatewayUrl = "http://" + e.gatewayService.Addr()
 	}
 	return ec
 }
@@ -200,6 +234,10 @@ func (e *exportContext) copy() *exportContext {
 		isLinkProcess:    e.isLinkProcess,
 		linkStateFilters: e.linkStateFilters,
 		includeBackLinks: e.includeBackLinks,
+		relations:        e.relations,
+		setOfList:        e.setOfList,
+		objectTypes:      e.objectTypes,
+		includeSpace:     e.includeSpace,
 	}
 }
 
@@ -208,6 +246,41 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 		return e.linkStateFilters
 	}
 	return nil
+}
+
+// exportObject synchronously exports a single object and return the bytes slice
+func (e *exportContext) exportObject(ctx context.Context, objectId string) (string, error) {
+	e.reqIds = []string{objectId}
+	e.includeArchive = true
+	err := e.docsForExport(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	var docNamer Namer
+	if e.format == model.Export_Markdown && e.gatewayUrl != "" {
+		u, err := url.Parse(e.gatewayUrl)
+		if err != nil {
+			return "", err
+		}
+		docNamer = &deepLinkNamer{gatewayUrl: *u}
+	} else {
+		docNamer = newNamer()
+	}
+	inMemoryWriter := &InMemoryWriter{fn: docNamer}
+	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.transformToDetailsMap())
+	if err != nil {
+		return "", err
+	}
+
+	for _, v := range inMemoryWriter.data {
+		if e.format == model.Export_Protobuf {
+			return base64.StdEncoding.EncodeToString(v), nil
+		}
+		return string(v), nil
+	}
+
+	return "", fmt.Errorf("failed to find data in writer")
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {
@@ -222,7 +295,7 @@ func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) 
 			cleanupFile(wr)
 		}
 	}()
-	err = e.docsForExport()
+	err = e.docsForExport(ctx)
 	if err != nil {
 		return "", 0, err
 	}
@@ -345,19 +418,19 @@ func isAnyblockExport(format model.ExportFormat) bool {
 	return format == model.Export_Protobuf || format == model.Export_JSON
 }
 
-func (e *exportContext) docsForExport() (err error) {
+func (e *exportContext) docsForExport(ctx context.Context) (err error) {
 	isProtobuf := isAnyblockExport(e.format)
 	if len(e.reqIds) == 0 {
 		return e.getExistedObjects(isProtobuf)
 	}
 
 	if len(e.reqIds) > 0 {
-		return e.getObjectsByIDs(isProtobuf)
+		return e.getObjectsByIDs(ctx, isProtobuf)
 	}
 	return
 }
 
-func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
+func (e *exportContext) getObjectsByIDs(ctx context.Context, isProtobuf bool) error {
 	res, err := e.queryAndFilterObjectsByRelation(e.spaceId, e.reqIds, bundle.RelationKeyId)
 	if err != nil {
 		return err
@@ -365,6 +438,12 @@ func (e *exportContext) getObjectsByIDs(isProtobuf bool) error {
 	for _, object := range res {
 		id := object.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: object.Details}
+	}
+	if e.includeSpace {
+		err = e.addSpaceToDocs(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	if isProtobuf {
 		return e.processProtobuf()
@@ -404,6 +483,23 @@ func (e *exportContext) queryObjectsByRelation(spaceId string, reqIds []string, 
 			},
 		},
 	})
+}
+
+func (e *exportContext) addSpaceToDocs(ctx context.Context) error {
+	space, err := e.spaceService.Get(ctx, e.spaceId)
+	if err != nil {
+		return err
+	}
+	workspaceId := space.DerivedIDs().Workspace
+	records, err := e.objectStore.SpaceIndex(e.spaceId).QueryByIds([]string{workspaceId})
+	if err != nil {
+		return err
+	}
+	if len(records) == 0 {
+		return fmt.Errorf("no objects found for space %s", workspaceId)
+	}
+	e.docs[workspaceId] = &Doc{Details: records[0].Details, isLink: true}
+	return nil
 }
 
 func (e *exportContext) processNotProtobuf() error {
@@ -523,70 +619,75 @@ func (e *exportContext) processFiles(ids []string) ([]string, error) {
 
 func (e *exportContext) addDerivedObjects() error {
 	processedObjects := make(map[string]struct{}, 0)
-	allRelations, allTypes, allSetOfList, err := e.getRelationsAndTypes(e.docs, processedObjects)
+	err := e.getRelationsAndTypes(e.docs, processedObjects)
 	if err != nil {
 		return err
 	}
-	templateRelations, templateTypes, templateSetOfList, err := e.getTemplatesRelationsAndTypes(lo.Union(allTypes, allSetOfList), processedObjects)
+
+	err = e.getTemplatesRelationsAndTypes(processedObjects)
 	if err != nil {
 		return err
 	}
-	allRelations = lo.Union(allRelations, templateRelations)
-	allTypes = lo.Union(allTypes, templateTypes)
-	allSetOfList = lo.Union(allSetOfList, templateSetOfList)
-	err = e.addRelationsAndTypes(allTypes, allRelations, allSetOfList)
+	err = e.addRelationsAndTypes()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*Doc, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
-	allRelations, allTypes, allSetOfList, err := e.collectDerivedObjects(notProcessedObjects)
+func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*Doc, processedObjects map[string]struct{}) error {
+	err := e.collectDerivedObjects(notProcessedObjects)
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
 	// get derived objects only from types,
 	// because relations currently have only system relations and object type
-	if len(allTypes) > 0 || len(allSetOfList) > 0 {
-		relations, objectTypes, setOfList, err := e.getDerivedObjectsForTypes(lo.Union(allTypes, allSetOfList), processedObjects)
+	if len(e.objectTypes) > 0 || len(e.setOfList) > 0 {
+		err = e.getDerivedObjectsForTypes(processedObjects)
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
-		allRelations = lo.Union(allRelations, relations)
-		allTypes = lo.Union(allTypes, objectTypes)
-		allSetOfList = lo.Union(allSetOfList, setOfList)
 	}
-	return allRelations, allTypes, allSetOfList, nil
+	return nil
 }
 
-func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) ([]string, []string, []string, error) {
-	var relations, objectsTypes, setOf []string
+func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) error {
 	for id := range objects {
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState().Copy().Filter(e.getStateFilters(id))
-			relations = lo.Union(relations, getObjectRelations(state))
+			objectRelations := getObjectRelations(state)
+			fillObjectsMap(e.relations, objectRelations)
 			details := state.CombinedDetails()
 			if isObjectWithDataview(details) {
 				dataviewRelations, err := getDataviewRelations(state)
 				if err != nil {
 					return err
 				}
-				relations = lo.Union(relations, dataviewRelations)
+				fillObjectsMap(e.relations, dataviewRelations)
 			}
+			var objectTypes []string
 			if details.Has(bundle.RelationKeyType) {
-				objectTypeId := details.GetString(bundle.RelationKeyType)
-				objectsTypes = lo.Union(objectsTypes, []string{objectTypeId})
+				objectTypes = append(objectTypes, details.GetString(bundle.RelationKeyType))
 			}
+			if details.Has(bundle.RelationKeyTargetObjectType) {
+				objectTypes = append(objectTypes, details.GetString(bundle.RelationKeyTargetObjectType))
+			}
+			fillObjectsMap(e.objectTypes, objectTypes)
 			setOfList := details.GetStringList(bundle.RelationKeySetOf)
-			setOf = lo.Union(setOf, setOfList)
+			fillObjectsMap(e.setOfList, setOfList)
 			return nil
 		})
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 	}
-	return relations, objectsTypes, setOf, nil
+	return nil
+}
+
+func fillObjectsMap(dst map[string]struct{}, objectsToAdd []string) {
+	for _, objectId := range objectsToAdd {
+		dst[objectId] = struct{}{}
+	}
 }
 
 func getObjectRelations(state *state.State) []string {
@@ -599,8 +700,8 @@ func getObjectRelations(state *state.State) []string {
 }
 
 func isObjectWithDataview(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_collection) ||
-		details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_set)
+	return details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_collection) ||
+		details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_set)
 }
 
 func getDataviewRelations(state *state.State) ([]string, error) {
@@ -618,33 +719,40 @@ func getDataviewRelations(state *state.State) ([]string, error) {
 	return relations, err
 }
 
-func (e *exportContext) getDerivedObjectsForTypes(allTypes []string, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
+func (e *exportContext) getDerivedObjectsForTypes(processedObjects map[string]struct{}) error {
 	notProceedTypes := make(map[string]*Doc)
-	var relations, objectTypes []string
-	for _, object := range allTypes {
-		if _, ok := processedObjects[object]; ok {
-			continue
-		}
-		notProceedTypes[object] = nil
-		processedObjects[object] = struct{}{}
+	for object := range e.objectTypes {
+		e.fillNotProcessedTypes(processedObjects, object, notProceedTypes)
+	}
+	for object := range e.setOfList {
+		e.fillNotProcessedTypes(processedObjects, object, notProceedTypes)
 	}
 	if len(notProceedTypes) == 0 {
-		return relations, objectTypes, nil, nil
+		return nil
 	}
-	relations, objectTypes, setOfList, err := e.getRelationsAndTypes(notProceedTypes, processedObjects)
+	err := e.getRelationsAndTypes(notProceedTypes, processedObjects)
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
-	return relations, objectTypes, setOfList, nil
+	return nil
 }
 
-func (e *exportContext) getTemplatesRelationsAndTypes(allTypes []string, processedObjects map[string]struct{}) ([]string, []string, []string, error) {
+func (e *exportContext) fillNotProcessedTypes(processedObjects map[string]struct{}, object string, notProceedTypes map[string]*Doc) {
+	if _, ok := processedObjects[object]; ok {
+		return
+	}
+	notProceedTypes[object] = nil
+	processedObjects[object] = struct{}{}
+}
+
+func (e *exportContext) getTemplatesRelationsAndTypes(processedObjects map[string]struct{}) error {
+	allTypes := lo.MapToSlice(e.objectTypes, func(key string, value struct{}) string { return key })
 	templates, err := e.queryAndFilterObjectsByRelation(e.spaceId, allTypes, bundle.RelationKeyTargetObjectType)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil
 	}
 	if len(templates) == 0 {
-		return nil, nil, nil, nil
+		return nil
 	}
 	templatesToProcess := make(map[string]*Doc, len(templates))
 	for _, template := range templates {
@@ -655,14 +763,18 @@ func (e *exportContext) getTemplatesRelationsAndTypes(allTypes []string, process
 			templatesToProcess[id] = templateDoc
 		}
 	}
-	templateRelations, templateType, templateSetOfList, err := e.getRelationsAndTypes(templatesToProcess, processedObjects)
+	err = e.getRelationsAndTypes(templatesToProcess, processedObjects)
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
-	return templateRelations, templateType, templateSetOfList, nil
+	return nil
 }
 
-func (e *exportContext) addRelationsAndTypes(types, relations, setOfList []string) error {
+func (e *exportContext) addRelationsAndTypes() error {
+	types := lo.MapToSlice(e.objectTypes, func(key string, value struct{}) string { return key })
+	setOfList := lo.MapToSlice(e.setOfList, func(key string, value struct{}) string { return key })
+	relations := lo.MapToSlice(e.relations, func(key string, value struct{}) string { return key })
+
 	err := e.addRelations(relations)
 	if err != nil {
 		return err
@@ -707,7 +819,7 @@ func (e *exportContext) getRelationsFromStore(relations []string) ([]database.Re
 
 func (e *exportContext) addRelation(relation database.Record) {
 	relationKey := domain.RelationKey(relation.Details.GetString(bundle.RelationKeyRelationKey))
-	if relationKey != "" && !bundle.HasRelation(relationKey) {
+	if relationKey != "" {
 		id := relation.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: relation.Details, isLink: e.isLinkProcess}
 	}
@@ -741,7 +853,7 @@ func (e *exportContext) getRelationOptions(relationKey string) ([]database.Recor
 	relationOptionsDetails, err := e.objectStore.SpaceIndex(e.spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_relationOption),
 			},
@@ -795,7 +907,12 @@ func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []d
 			if bundle.IsInternalType(key) {
 				continue
 			}
-			recommendedRelations = append(recommendedRelations, objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+			recommendedRelations = lo.Uniq(slices.Concat(recommendedRelations,
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
+				objectTypes[i].Details.GetStringList(bundle.RelationKeyRecommendedFileRelations),
+			))
 		}
 	}
 	return recommendedRelations, nil
@@ -1200,6 +1317,9 @@ func (fn *namer) Get(path, hash, title, ext string) (name string) {
 	title = slug.Make(strings.TrimSuffix(title, ext))
 	name = text.TruncateEllipsized(title, fileLenLimit)
 	name = strings.TrimSuffix(name, text.TruncateEllipsis)
+	if name == "" {
+		name = defaultFileName
+	}
 	var (
 		i = 0
 		b = 36
@@ -1237,8 +1357,8 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 }
 
 func validLayoutForNonProtobuf(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyLayout) != int64(model.ObjectType_collection) &&
-		details.GetInt64(bundle.RelationKeyLayout) != int64(model.ObjectType_set)
+	return details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_collection) &&
+		details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_set)
 }
 
 func cleanupFile(wr writer) {
