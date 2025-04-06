@@ -209,7 +209,8 @@ components:
           example: false
           type: boolean
         blocks:
-          description: The blocks of the object
+          description: The blocks of the object. Omitted in Search endpoints, returned
+            only in GetObject endpoint
           items:
             $ref: '#/components/schemas/object.Block'
           type: array
