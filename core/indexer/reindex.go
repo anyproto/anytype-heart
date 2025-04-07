@@ -10,7 +10,9 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
@@ -49,6 +51,7 @@ const (
 	ForceReindexDeletedObjectsCounter int32 = 1
 
 	ForceReindexParticipantsCounter int32 = 1
+	ForceReindexChatsCounter        int32 = 1
 )
 
 type allDeletedIdsProvider interface {
@@ -76,6 +79,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			AreOldFilesRemoved:    true,
 			ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
 			ReindexParticipants:   ForceReindexParticipantsCounter,
+			ReindexChats:          ForceReindexChatsCounter,
 		}
 	}
 
@@ -115,6 +119,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.LinksErase != ForceLinksReindexCounter {
 		flags.eraseLinks = true
+	}
+	if checksums.ReindexChats != ForceReindexChatsCounter {
+		flags.chats = true
 	}
 	if spaceID == addr.AnytypeMarketplaceWorkspace && checksums.MarketplaceForceReindexCounter != ForceMarketplaceReindex {
 		flags.enableAll()
@@ -201,6 +208,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}()
 	}
 
+	if flags.chats {
+		err = i.reindexChats(ctx, space)
+		if err != nil {
+			log.Error("reindex chats", zap.Error(err))
+		}
+	}
+
 	if flags.deletedObjects {
 		err = i.reindexDeletedObjects(space)
 		if err != nil {
@@ -218,6 +232,56 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	go i.addSyncDetails(space)
 
 	return i.saveLatestChecksums(space.Id())
+}
+
+func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) error {
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	db := i.store.GetCrdtDb(space.Id())
+
+	txn, err := db.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("write tx: %w", err)
+	}
+	defer txn.Rollback()
+
+	for _, id := range ids {
+		col, err := db.OpenCollection(txn.Context(), id+chatobject.CollectionName)
+		if errors.Is(err, anystore.ErrCollectionNotFound) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("open collection: %w", err)
+		}
+		err = col.Drop(txn.Context())
+		if err != nil {
+			return fmt.Errorf("drop chat collection: %w", err)
+		}
+
+		col, err = db.OpenCollection(txn.Context(), id+storestate.CollChangeOrders)
+		if errors.Is(err, anystore.ErrCollectionNotFound) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("open orders collection: %w", err)
+		}
+		err = col.Drop(txn.Context())
+		if err != nil {
+			return fmt.Errorf("drop chat orders collection: %w", err)
+		}
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	return nil
 }
 
 func (i *indexer) addSyncDetails(space clientspace.Space) {
@@ -502,6 +566,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		LinksErase:                       ForceLinksReindexCounter,
 		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
 		ReindexParticipants:              ForceReindexParticipantsCounter,
+		ReindexChats:                     ForceReindexChatsCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
