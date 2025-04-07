@@ -4,20 +4,26 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
 
 type writer interface {
 	Path() string
-	Namer() *namer
+	Namer() Namer
 	WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error)
 	Close() (err error)
+}
+
+type Namer interface {
+	Get(path, hash, title, ext string) (name string)
 }
 
 func uniqName() string {
@@ -44,7 +50,7 @@ type dirWriter struct {
 	m    sync.Mutex
 }
 
-func (d *dirWriter) Namer() *namer {
+func (d *dirWriter) Namer() Namer {
 	d.m.Lock()
 	defer d.m.Unlock()
 	if d.fn == nil {
@@ -108,7 +114,7 @@ type zipWriter struct {
 	fn   *namer
 }
 
-func (d *zipWriter) Namer() *namer {
+func (d *zipWriter) Namer() Namer {
 	d.m.Lock()
 	defer d.m.Unlock()
 	if d.fn == nil {
@@ -148,4 +154,67 @@ func (d *zipWriter) Close() (err error) {
 
 func getZipName(path string) string {
 	return filepath.Join(path, uniqName()+".zip")
+}
+
+type InMemoryWriter struct {
+	data map[string][]byte
+	fn   Namer
+	m    sync.Mutex
+}
+
+func (d *InMemoryWriter) Namer() Namer {
+	return d.fn
+}
+
+func (d *InMemoryWriter) Path() string {
+	return ""
+}
+
+func (d *InMemoryWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error) {
+	d.m.Lock()
+	defer d.m.Unlock()
+	if d.data == nil {
+		d.data = make(map[string][]byte)
+	}
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return
+	}
+	d.data[filename] = b
+	return
+}
+
+func (d *InMemoryWriter) Close() (err error) {
+	return nil
+}
+
+func (d *InMemoryWriter) GetData(id string) []byte {
+	d.m.Lock()
+	defer d.m.Unlock()
+	return d.data[id]
+}
+
+// deepLinkNamer used to render a single-object export, in md format
+type deepLinkNamer struct {
+	gatewayUrl url.URL
+}
+
+func (fn *deepLinkNamer) Get(path, hash, title, ext string) (name string) {
+	if ext == ".md" {
+		// object links via deeplink to the app
+		return "anytype://object?objectId=" + hash
+	}
+
+	// files links via gateway
+	if fn.gatewayUrl.Host == "" {
+		return "anytype://object?objectId=" + hash
+	}
+	u := fn.gatewayUrl
+	if mill.IsImageExt(ext) {
+		u.Path = "image/" + hash
+	} else {
+		u.Path = "file/" + hash
+	}
+
+	return u.String()
 }

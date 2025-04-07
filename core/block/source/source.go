@@ -412,7 +412,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         s.accountKeysService.Account().SignKey,
+		Key:         s.ObjectTree.AclList().AclState().Key(),
 		IsSnapshot:  change.Snapshot != nil,
 		IsEncrypted: true,
 		DataType:    dataType,

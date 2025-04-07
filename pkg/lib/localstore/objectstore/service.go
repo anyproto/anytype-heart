@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"golang.org/x/exp/maps"
 
@@ -39,7 +41,8 @@ type CrossSpace interface {
 	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace() ([]string, error)
-	BatchProcessFullTextQueue(ctx context.Context, limit int, processIds func(processIds []string) error) error
+	EnqueueAllForFulltextIndexing(ctx context.Context) error
+	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) (succeedIds []string, err error)) error
 
 	AccountStore
 	VirtualSpacesStore
@@ -62,9 +65,10 @@ type ObjectStore interface {
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(ctx context.Context, id ...string) error
-	ListIdsFromFullTextQueue(limit int) ([]string, error)
+	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
+	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	RemoveIdsFromFullTextQueue(ids []string) error
+	ClearFullTextQueue(spaceIds []string) error
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
@@ -125,6 +129,19 @@ type dsObjectStore struct {
 	componentCtxCancel context.CancelFunc
 }
 
+func (s *dsObjectStore) ProvideStat() any {
+	count, _ := s.ListIdsCrossSpace()
+	return len(count)
+}
+
+func (s *dsObjectStore) StatId() string {
+	return "ds_count"
+}
+
+func (s *dsObjectStore) StatType() string {
+	return CName
+}
+
 func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) error {
 	s.Lock()
 	spaceIndexes := make([]spaceindex.Store, 0, len(s.spaceIndexes))
@@ -170,6 +187,10 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.setDefaultConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
+	statService, _ := app.GetComponent[debugstat.StatService](a)
+	if statService != nil {
+		statService.AddProvider(s)
+	}
 
 	return nil
 }
@@ -260,14 +281,30 @@ func (s *dsObjectStore) preloadExistingObjectStores() error {
 	s.spaceStoreDirsCheck.Do(func() {
 		var entries []os.DirEntry
 		entries, err = os.ReadDir(s.objectStorePath)
+
+		var indexes []spaceindex.Store
 		s.Lock()
-		defer s.Unlock()
 		for _, entry := range entries {
 			if entry.IsDir() {
 				spaceId := entry.Name()
-				_ = s.getOrInitSpaceIndex(spaceId)
+				spaceIndex := s.getOrInitSpaceIndex(spaceId)
+				indexes = append(indexes, spaceIndex)
 			}
 		}
+		s.Unlock()
+
+		var wg sync.WaitGroup
+		for _, index := range indexes {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				initErr := index.Init()
+				if initErr != nil {
+					log.With("error", initErr).Error("pre-init space index")
+				}
+			}()
+		}
+		wg.Wait()
 	})
 	return err
 }
@@ -313,9 +350,13 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 		return spaceindex.NewInvalidStore(errors.New("empty spaceId"))
 	}
 	s.Lock()
-	defer s.Unlock()
-
-	return s.getOrInitSpaceIndex(spaceId)
+	spaceIndex := s.getOrInitSpaceIndex(spaceId)
+	s.Unlock()
+	err := spaceIndex.Init()
+	if err != nil {
+		return spaceindex.NewInvalidStore(err)
+	}
+	return spaceIndex
 }
 
 func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
@@ -342,10 +383,12 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 
 func (s *dsObjectStore) getAnyStoreConfig() *anystore.Config {
 	return &anystore.Config{
-		Namespace:               s.anyStoreConfig.Namespace,
-		ReadConnections:         s.anyStoreConfig.ReadConnections,
-		SQLiteConnectionOptions: maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
-		SyncPoolElementMaxSize:  s.anyStoreConfig.SyncPoolElementMaxSize,
+		Namespace:                         s.anyStoreConfig.Namespace,
+		ReadConnections:                   s.anyStoreConfig.ReadConnections,
+		SQLiteConnectionOptions:           maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
+		SyncPoolElementMaxSize:            s.anyStoreConfig.SyncPoolElementMaxSize,
+		StalledConnectionsDetectorEnabled: true,
+		StalledConnectionsPanicOnClose:    time.Second * 30,
 	}
 }
 
@@ -393,6 +436,10 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 
 	var result []T
 	for _, store := range stores {
+		err := store.Init()
+		if err != nil {
+			return nil, fmt.Errorf("init store: %w", err)
+		}
 		items, err := proc(store)
 		if err != nil {
 			return nil, err
@@ -402,10 +449,57 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
+func collectCrossSpaceWithoutTech(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
+	stores := s.listStores()
+	for _, store := range stores {
+		if store.SpaceId() == s.techSpaceId {
+			continue
+		}
+		err := proc(store)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
 	return collectCrossSpace(s, func(store spaceindex.Store) ([]string, error) {
 		return store.ListIds()
 	})
+}
+
+func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error {
+	txn, err := s.fulltextQueue.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	err = collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
+		err = store.IterateAll(func(doc *anyenc.Value) error {
+			id := doc.GetString(idKey)
+			spaceId := doc.GetString(spaceIdKey)
+			obj := arena.NewObject()
+			obj.Set(idKey, arena.NewString(id))
+			obj.Set(spaceIdKey, arena.NewString(spaceId))
+			err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+			if err != nil {
+				return err
+			}
+			arena.Reset()
+			return nil
+		})
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, error) {

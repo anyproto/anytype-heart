@@ -158,9 +158,6 @@ func (c *layoutConverter) fromAnyToBookmark(st *state.State) error {
 }
 
 func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
-	if err := st.SetAlign(model.Block_AlignLeft); err != nil {
-		return err
-	}
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyDone}),

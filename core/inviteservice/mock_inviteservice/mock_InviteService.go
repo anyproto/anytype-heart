@@ -135,6 +135,64 @@ func (_c *MockInviteService_Generate_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// GenerateGuestUserInvite provides a mock function with given fields: ctx, spaceId, guestKey
+func (_m *MockInviteService) GenerateGuestUserInvite(ctx context.Context, spaceId string, guestKey crypto.PrivKey) (domain.InviteInfo, error) {
+	ret := _m.Called(ctx, spaceId, guestKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GenerateGuestUserInvite")
+	}
+
+	var r0 domain.InviteInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey) (domain.InviteInfo, error)); ok {
+		return rf(ctx, spaceId, guestKey)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey) domain.InviteInfo); ok {
+		r0 = rf(ctx, spaceId, guestKey)
+	} else {
+		r0 = ret.Get(0).(domain.InviteInfo)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, crypto.PrivKey) error); ok {
+		r1 = rf(ctx, spaceId, guestKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockInviteService_GenerateGuestUserInvite_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GenerateGuestUserInvite'
+type MockInviteService_GenerateGuestUserInvite_Call struct {
+	*mock.Call
+}
+
+// GenerateGuestUserInvite is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - guestKey crypto.PrivKey
+func (_e *MockInviteService_Expecter) GenerateGuestUserInvite(ctx interface{}, spaceId interface{}, guestKey interface{}) *MockInviteService_GenerateGuestUserInvite_Call {
+	return &MockInviteService_GenerateGuestUserInvite_Call{Call: _e.mock.On("GenerateGuestUserInvite", ctx, spaceId, guestKey)}
+}
+
+func (_c *MockInviteService_GenerateGuestUserInvite_Call) Run(run func(ctx context.Context, spaceId string, guestKey crypto.PrivKey)) *MockInviteService_GenerateGuestUserInvite_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(crypto.PrivKey))
+	})
+	return _c
+}
+
+func (_c *MockInviteService_GenerateGuestUserInvite_Call) Return(_a0 domain.InviteInfo, _a1 error) *MockInviteService_GenerateGuestUserInvite_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockInviteService_GenerateGuestUserInvite_Call) RunAndReturn(run func(context.Context, string, crypto.PrivKey) (domain.InviteInfo, error)) *MockInviteService_GenerateGuestUserInvite_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetCurrent provides a mock function with given fields: ctx, spaceId
 func (_m *MockInviteService) GetCurrent(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
 	ret := _m.Called(ctx, spaceId)
@@ -188,6 +246,63 @@ func (_c *MockInviteService_GetCurrent_Call) Return(_a0 domain.InviteInfo, _a1 e
 }
 
 func (_c *MockInviteService_GetCurrent_Call) RunAndReturn(run func(context.Context, string) (domain.InviteInfo, error)) *MockInviteService_GetCurrent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetExistingGuestUserInvite provides a mock function with given fields: ctx, spaceId
+func (_m *MockInviteService) GetExistingGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
+	ret := _m.Called(ctx, spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetExistingGuestUserInvite")
+	}
+
+	var r0 domain.InviteInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (domain.InviteInfo, error)); ok {
+		return rf(ctx, spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) domain.InviteInfo); ok {
+		r0 = rf(ctx, spaceId)
+	} else {
+		r0 = ret.Get(0).(domain.InviteInfo)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockInviteService_GetExistingGuestUserInvite_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetExistingGuestUserInvite'
+type MockInviteService_GetExistingGuestUserInvite_Call struct {
+	*mock.Call
+}
+
+// GetExistingGuestUserInvite is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+func (_e *MockInviteService_Expecter) GetExistingGuestUserInvite(ctx interface{}, spaceId interface{}) *MockInviteService_GetExistingGuestUserInvite_Call {
+	return &MockInviteService_GetExistingGuestUserInvite_Call{Call: _e.mock.On("GetExistingGuestUserInvite", ctx, spaceId)}
+}
+
+func (_c *MockInviteService_GetExistingGuestUserInvite_Call) Run(run func(ctx context.Context, spaceId string)) *MockInviteService_GetExistingGuestUserInvite_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockInviteService_GetExistingGuestUserInvite_Call) Return(_a0 domain.InviteInfo, _a1 error) *MockInviteService_GetExistingGuestUserInvite_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockInviteService_GetExistingGuestUserInvite_Call) RunAndReturn(run func(context.Context, string) (domain.InviteInfo, error)) *MockInviteService_GetExistingGuestUserInvite_Call {
 	_c.Call.Return(run)
 	return _c
 }

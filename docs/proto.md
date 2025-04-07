@@ -49,6 +49,24 @@
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
     - [Rpc](#anytype-Rpc)
+    - [Rpc.AI](#anytype-Rpc-AI)
+    - [Rpc.AI.Autofill](#anytype-Rpc-AI-Autofill)
+    - [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request)
+    - [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response)
+    - [Rpc.AI.Autofill.Response.Error](#anytype-Rpc-AI-Autofill-Response-Error)
+    - [Rpc.AI.ListSummary](#anytype-Rpc-AI-ListSummary)
+    - [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request)
+    - [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response)
+    - [Rpc.AI.ListSummary.Response.Error](#anytype-Rpc-AI-ListSummary-Response-Error)
+    - [Rpc.AI.ObjectCreateFromUrl](#anytype-Rpc-AI-ObjectCreateFromUrl)
+    - [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request)
+    - [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response)
+    - [Rpc.AI.ObjectCreateFromUrl.Response.Error](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error)
+    - [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig)
+    - [Rpc.AI.WritingTools](#anytype-Rpc-AI-WritingTools)
+    - [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request)
+    - [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response)
+    - [Rpc.AI.WritingTools.Response.Error](#anytype-Rpc-AI-WritingTools-Response-Error)
     - [Rpc.Account](#anytype-Rpc-Account)
     - [Rpc.Account.ChangeJsonApiAddr](#anytype-Rpc-Account-ChangeJsonApiAddr)
     - [Rpc.Account.ChangeJsonApiAddr.Request](#anytype-Rpc-Account-ChangeJsonApiAddr-Request)
@@ -288,6 +306,10 @@
     - [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request)
     - [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error)
+    - [Rpc.BlockDataview.Relation.Set](#anytype-Rpc-BlockDataview-Relation-Set)
+    - [Rpc.BlockDataview.Relation.Set.Request](#anytype-Rpc-BlockDataview-Relation-Set-Request)
+    - [Rpc.BlockDataview.Relation.Set.Response](#anytype-Rpc-BlockDataview-Relation-Set-Response)
+    - [Rpc.BlockDataview.Relation.Set.Response.Error](#anytype-Rpc-BlockDataview-Relation-Set-Response-Error)
     - [Rpc.BlockDataview.SetSource](#anytype-Rpc-BlockDataview-SetSource)
     - [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request)
     - [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response)
@@ -584,6 +606,10 @@
     - [Rpc.Chat.Unsubscribe.Request](#anytype-Rpc-Chat-Unsubscribe-Request)
     - [Rpc.Chat.Unsubscribe.Response](#anytype-Rpc-Chat-Unsubscribe-Response)
     - [Rpc.Chat.Unsubscribe.Response.Error](#anytype-Rpc-Chat-Unsubscribe-Response-Error)
+    - [Rpc.Chat.UnsubscribeFromMessagePreviews](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews)
+    - [Rpc.Chat.UnsubscribeFromMessagePreviews.Request](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request)
+    - [Rpc.Chat.UnsubscribeFromMessagePreviews.Response](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response)
+    - [Rpc.Chat.UnsubscribeFromMessagePreviews.Response.Error](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.AccountSelectTrace](#anytype-Rpc-Debug-AccountSelectTrace)
     - [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request)
@@ -883,6 +909,10 @@
     - [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request)
     - [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response)
     - [Rpc.Object.Duplicate.Response.Error](#anytype-Rpc-Object-Duplicate-Response-Error)
+    - [Rpc.Object.Export](#anytype-Rpc-Object-Export)
+    - [Rpc.Object.Export.Request](#anytype-Rpc-Object-Export-Request)
+    - [Rpc.Object.Export.Response](#anytype-Rpc-Object-Export-Response)
+    - [Rpc.Object.Export.Response.Error](#anytype-Rpc-Object-Export-Response-Error)
     - [Rpc.Object.Graph](#anytype-Rpc-Object-Graph)
     - [Rpc.Object.Graph.Edge](#anytype-Rpc-Object-Graph-Edge)
     - [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request)
@@ -1169,6 +1199,10 @@
     - [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request)
     - [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response)
     - [Rpc.Space.InviteGetCurrent.Response.Error](#anytype-Rpc-Space-InviteGetCurrent-Response-Error)
+    - [Rpc.Space.InviteGetGuest](#anytype-Rpc-Space-InviteGetGuest)
+    - [Rpc.Space.InviteGetGuest.Request](#anytype-Rpc-Space-InviteGetGuest-Request)
+    - [Rpc.Space.InviteGetGuest.Response](#anytype-Rpc-Space-InviteGetGuest-Response)
+    - [Rpc.Space.InviteGetGuest.Response.Error](#anytype-Rpc-Space-InviteGetGuest-Response-Error)
     - [Rpc.Space.InviteRevoke](#anytype-Rpc-Space-InviteRevoke)
     - [Rpc.Space.InviteRevoke.Request](#anytype-Rpc-Space-InviteRevoke-Request)
     - [Rpc.Space.InviteRevoke.Response](#anytype-Rpc-Space-InviteRevoke-Response)
@@ -1309,6 +1343,14 @@
     - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
+    - [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode)
+    - [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code)
+    - [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code)
+    - [Rpc.AI.ObjectCreateFromUrl.Response.Error.Code](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code)
+    - [Rpc.AI.Provider](#anytype-Rpc-AI-Provider)
+    - [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language)
+    - [Rpc.AI.WritingTools.Request.WritingMode](#anytype-Rpc-AI-WritingTools-Request-WritingMode)
+    - [Rpc.AI.WritingTools.Response.Error.Code](#anytype-Rpc-AI-WritingTools-Response-Error-Code)
     - [Rpc.Account.ChangeJsonApiAddr.Response.Error.Code](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error-Code)
     - [Rpc.Account.ChangeNetworkConfigAndRestart.Response.Error.Code](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response-Error-Code)
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
@@ -1368,6 +1410,7 @@
     - [Rpc.BlockDataview.ObjectOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
+    - [Rpc.BlockDataview.Relation.Set.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Set-Response-Error-Code)
     - [Rpc.BlockDataview.SetSource.Response.Error.Code](#anytype-Rpc-BlockDataview-SetSource-Response-Error-Code)
     - [Rpc.BlockDataview.Sort.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Sort.Remove.Response.Error.Code](#anytype-Rpc-BlockDataview-Sort-Remove-Response-Error-Code)
@@ -1439,6 +1482,7 @@
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
     - [Rpc.Chat.Unread.Response.Error.Code](#anytype-Rpc-Chat-Unread-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
+    - [Rpc.Chat.UnsubscribeFromMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response-Error-Code)
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code)
@@ -1512,6 +1556,7 @@
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
+    - [Rpc.Object.Export.Response.Error.Code](#anytype-Rpc-Object-Export-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype-Rpc-Object-Graph-Response-Error-Code)
     - [Rpc.Object.GroupsSubscribe.Response.Error.Code](#anytype-Rpc-Object-GroupsSubscribe-Response-Error-Code)
@@ -1582,8 +1627,10 @@
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
+    - [Rpc.Space.InviteGenerate.Request.InviteType](#anytype-Rpc-Space-InviteGenerate-Request-InviteType)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
+    - [Rpc.Space.InviteGetGuest.Response.Error.Code](#anytype-Rpc-Space-InviteGetGuest-Response-Error-Code)
     - [Rpc.Space.InviteRevoke.Response.Error.Code](#anytype-Rpc-Space-InviteRevoke-Response-Error-Code)
     - [Rpc.Space.InviteView.Response.Error.Code](#anytype-Rpc-Space-InviteView-Response-Error-Code)
     - [Rpc.Space.Join.Response.Error.Code](#anytype-Rpc-Space-Join-Response-Error-Code)
@@ -1808,6 +1855,7 @@
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
     - [Event.Space](#anytype-Event-Space)
+    - [Event.Space.AutoWidgetAdded](#anytype-Event-Space-AutoWidgetAdded)
     - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
     - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
     - [Event.Status](#anytype-Event-Status)
@@ -1995,6 +2043,7 @@
     - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
+    - [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus)
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
@@ -2080,6 +2129,7 @@
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | SpaceInviteGenerate | [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request) | [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response) |  |
 | SpaceInviteGetCurrent | [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request) | [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response) |  |
+| SpaceInviteGetGuest | [Rpc.Space.InviteGetGuest.Request](#anytype-Rpc-Space-InviteGetGuest-Request) | [Rpc.Space.InviteGetGuest.Response](#anytype-Rpc-Space-InviteGetGuest-Response) |  |
 | SpaceInviteRevoke | [Rpc.Space.InviteRevoke.Request](#anytype-Rpc-Space-InviteRevoke-Request) | [Rpc.Space.InviteRevoke.Response](#anytype-Rpc-Space-InviteRevoke-Response) |  |
 | SpaceInviteView | [Rpc.Space.InviteView.Request](#anytype-Rpc-Space-InviteView-Request) | [Rpc.Space.InviteView.Response](#anytype-Rpc-Space-InviteView-Response) |  |
 | SpaceJoin | [Rpc.Space.Join.Request](#anytype-Rpc-Space-Join-Request) | [Rpc.Space.Join.Response](#anytype-Rpc-Space-Join-Response) |  |
@@ -2137,6 +2187,7 @@
 | ObjectUndo | [Rpc.Object.Undo.Request](#anytype-Rpc-Object-Undo-Request) | [Rpc.Object.Undo.Response](#anytype-Rpc-Object-Undo-Response) |  |
 | ObjectRedo | [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request) | [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response) |  |
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
+| ObjectExport | [Rpc.Object.Export.Request](#anytype-Rpc-Object-Export-Request) | [Rpc.Object.Export.Response](#anytype-Rpc-Object-Export-Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
 | ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request) | [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response) |  |
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
@@ -2230,6 +2281,7 @@
 | BlockDataviewViewSetActive | [Rpc.BlockDataview.View.SetActive.Request](#anytype-Rpc-BlockDataview-View-SetActive-Request) | [Rpc.BlockDataview.View.SetActive.Response](#anytype-Rpc-BlockDataview-View-SetActive-Response) |  |
 | BlockDataviewViewSetPosition | [Rpc.BlockDataview.View.SetPosition.Request](#anytype-Rpc-BlockDataview-View-SetPosition-Request) | [Rpc.BlockDataview.View.SetPosition.Response](#anytype-Rpc-BlockDataview-View-SetPosition-Response) |  |
 | BlockDataviewSetSource | [Rpc.BlockDataview.SetSource.Request](#anytype-Rpc-BlockDataview-SetSource-Request) | [Rpc.BlockDataview.SetSource.Response](#anytype-Rpc-BlockDataview-SetSource-Response) |  |
+| BlockDataviewRelationSet | [Rpc.BlockDataview.Relation.Set.Request](#anytype-Rpc-BlockDataview-Relation-Set-Request) | [Rpc.BlockDataview.Relation.Set.Response](#anytype-Rpc-BlockDataview-Relation-Set-Response) |  |
 | BlockDataviewRelationAdd | [Rpc.BlockDataview.Relation.Add.Request](#anytype-Rpc-BlockDataview-Relation-Add-Request) | [Rpc.BlockDataview.Relation.Add.Response](#anytype-Rpc-BlockDataview-Relation-Add-Response) |  |
 | BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response) |  |
 | BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
@@ -2326,7 +2378,12 @@
 | ChatReadMessages | [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request) | [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response) |  |
 | ChatUnreadMessages | [Rpc.Chat.Unread.Request](#anytype-Rpc-Chat-Unread-Request) | [Rpc.Chat.Unread.Response](#anytype-Rpc-Chat-Unread-Response) |  |
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
+| ChatUnsubscribeFromMessagePreviews | [Rpc.Chat.UnsubscribeFromMessagePreviews.Request](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request) | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | mock AI RPCs for compatibility between branches. Not implemented in main |
+| AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
+| AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
+| AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
 
  
 
@@ -2990,6 +3047,276 @@ Response – message from a middleware.
 
 
 
+<a name="anytype-Rpc-AI"></a>
+
+### Rpc.AI
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-Autofill"></a>
+
+### Rpc.AI.Autofill
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-Autofill-Request"></a>
+
+### Rpc.AI.Autofill.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| mode | [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode) |  |  |
+| options | [string](#string) | repeated |  |
+| context | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-Autofill-Response"></a>
+
+### Rpc.AI.Autofill.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.Autofill.Response.Error](#anytype-Rpc-AI-Autofill-Response-Error) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-Autofill-Response-Error"></a>
+
+### Rpc.AI.Autofill.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListSummary"></a>
+
+### Rpc.AI.ListSummary
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListSummary-Request"></a>
+
+### Rpc.AI.ListSummary.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| spaceId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
+| prompt | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListSummary-Response"></a>
+
+### Rpc.AI.ListSummary.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.ListSummary.Response.Error](#anytype-Rpc-AI-ListSummary-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListSummary-Response-Error"></a>
+
+### Rpc.AI.ListSummary.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl"></a>
+
+### Rpc.AI.ObjectCreateFromUrl
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl-Request"></a>
+
+### Rpc.AI.ObjectCreateFromUrl.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| spaceId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl-Response"></a>
+
+### Rpc.AI.ObjectCreateFromUrl.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.ObjectCreateFromUrl.Response.Error](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error) |  |  |
+| objectId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error"></a>
+
+### Rpc.AI.ObjectCreateFromUrl.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.ObjectCreateFromUrl.Response.Error.Code](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ProviderConfig"></a>
+
+### Rpc.AI.ProviderConfig
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| provider | [Rpc.AI.Provider](#anytype-Rpc-AI-Provider) |  |  |
+| endpoint | [string](#string) |  |  |
+| model | [string](#string) |  |  |
+| token | [string](#string) |  |  |
+| temperature | [float](#float) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-WritingTools"></a>
+
+### Rpc.AI.WritingTools
+
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Request"></a>
+
+### Rpc.AI.WritingTools.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+| mode | [Rpc.AI.WritingTools.Request.WritingMode](#anytype-Rpc-AI-WritingTools-Request-WritingMode) |  |  |
+| language | [Rpc.AI.WritingTools.Request.Language](#anytype-Rpc-AI-WritingTools-Request-Language) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Response"></a>
+
+### Rpc.AI.WritingTools.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.WritingTools.Response.Error](#anytype-Rpc-AI-WritingTools-Response-Error) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Response-Error"></a>
+
+### Rpc.AI.WritingTools.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.WritingTools.Response.Error.Code](#anytype-Rpc-AI-WritingTools-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account"></a>
 
 ### Rpc.Account
@@ -3215,6 +3542,7 @@ Front end to middleware request-to-create-an account
 | networkCustomConfigFilePath | [string](#string) |  | config path for the custom network mode } |
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
+| joinStreamUrl | [string](#string) |  | anytype:// schema URL to join an embed stream |
 
 
 
@@ -3566,6 +3894,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+| requiredSpace | [int64](#int64) |  |  |
 
 
 
@@ -3876,6 +4205,7 @@ User can select an account from those, that came with an AccountAdd events
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 | fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
+| joinStreamURL | [string](#string) |  | anytype:// schema URL to join an embed stream |
 
 
 
@@ -6471,6 +6801,65 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set"></a>
+
+### Rpc.BlockDataview.Relation.Set
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set-Request"></a>
+
+### Rpc.BlockDataview.Relation.Set.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to set relation |
+| relationKeys | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set-Response"></a>
+
+### Rpc.BlockDataview.Relation.Set.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.Relation.Set.Response.Error](#anytype-Rpc-BlockDataview-Relation-Set-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set-Response-Error"></a>
+
+### Rpc.BlockDataview.Relation.Set.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.Relation.Set.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Set-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10794,6 +11183,57 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-UnsubscribeFromMessagePreviews"></a>
+
+### Rpc.Chat.UnsubscribeFromMessagePreviews
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request"></a>
+
+### Rpc.Chat.UnsubscribeFromMessagePreviews.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response"></a>
+
+### Rpc.Chat.UnsubscribeFromMessagePreviews.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response.Error](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response-Error"></a>
+
+### Rpc.Chat.UnsubscribeFromMessagePreviews.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug"></a>
 
 ### Rpc.Debug
@@ -15099,6 +15539,66 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-Export"></a>
+
+### Rpc.Object.Export
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Export-Request"></a>
+
+### Rpc.Object.Export.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| objectId | [string](#string) |  | ids of documents for export, when empty - will export all available docs |
+| format | [model.Export.Format](#anytype-model-Export-Format) |  | export format |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Export-Response"></a>
+
+### Rpc.Object.Export.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Export.Response.Error](#anytype-Rpc-Object-Export-Response-Error) |  |  |
+| result | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Export-Response-Error"></a>
+
+### Rpc.Object.Export.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Export.Response.Error.Code](#anytype-Rpc-Object-Export-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Graph"></a>
 
 ### Rpc.Object.Graph
@@ -19191,6 +19691,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
+| inviteType | [Rpc.Space.InviteGenerate.Request.InviteType](#anytype-Rpc-Space-InviteGenerate-Request-InviteType) |  |  |
 
 
 
@@ -19281,6 +19782,64 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest"></a>
+
+### Rpc.Space.InviteGetGuest
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest-Request"></a>
+
+### Rpc.Space.InviteGetGuest.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest-Response"></a>
+
+### Rpc.Space.InviteGetGuest.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.InviteGetGuest.Response.Error](#anytype-Rpc-Space-InviteGetGuest-Response-Error) |  |  |
+| inviteCid | [string](#string) |  |  |
+| inviteFileKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest-Response-Error"></a>
+
+### Rpc.Space.InviteGetGuest.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.InviteGetGuest.Response.Error.Code](#anytype-Rpc-Space-InviteGetGuest-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19383,6 +19942,7 @@ Available undo/redo operations
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
+| isGuestUserInvite | [bool](#bool) |  |  |
 
 
 
@@ -21264,6 +21824,145 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
  
 
 
+<a name="anytype-Rpc-AI-Autofill-Request-AutofillMode"></a>
+
+### Rpc.AI.Autofill.Request.AutofillMode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TAG | 0 |  |
+| RELATION | 1 |  |
+| TYPE | 2 |  |
+| TITLE | 3 |  |
+| DESCRIPTION | 4 | ... |
+
+
+
+<a name="anytype-Rpc-AI-Autofill-Response-Error-Code"></a>
+
+### Rpc.AI.Autofill.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-AI-ListSummary-Response-Error-Code"></a>
+
+### Rpc.AI.ListSummary.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code"></a>
+
+### Rpc.AI.ObjectCreateFromUrl.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-AI-Provider"></a>
+
+### Rpc.AI.Provider
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OLLAMA | 0 |  |
+| OPENAI | 1 |  |
+| LMSTUDIO | 2 |  |
+| LLAMACPP | 3 | ... |
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Request-Language"></a>
+
+### Rpc.AI.WritingTools.Request.Language
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EN | 0 |  |
+| ES | 1 |  |
+| FR | 2 |  |
+| DE | 3 |  |
+| IT | 4 |  |
+| PT | 5 |  |
+| HI | 6 |  |
+| TH | 7 | ... |
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Request-WritingMode"></a>
+
+### Rpc.AI.WritingTools.Request.WritingMode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DEFAULT | 0 |  |
+| SUMMARIZE | 1 |  |
+| GRAMMAR | 2 |  |
+| SHORTEN | 3 |  |
+| EXPAND | 4 |  |
+| BULLET | 5 |  |
+| TABLE | 6 |  |
+| CASUAL | 7 |  |
+| FUNNY | 8 |  |
+| CONFIDENT | 9 |  |
+| STRAIGHTFORWARD | 10 |  |
+| PROFESSIONAL | 11 |  |
+| TRANSLATE | 12 | ... |
+
+
+
+<a name="anytype-Rpc-AI-WritingTools-Response-Error-Code"></a>
+
+### Rpc.AI.WritingTools.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 |  |
+| LANGUAGE_NOT_SUPPORTED | 104 | ... |
+
+
+
 <a name="anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error-Code"></a>
 
 ### Rpc.Account.ChangeJsonApiAddr.Response.Error.Code
@@ -22102,6 +22801,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.Relation.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockDataview-Relation-Set-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.Relation.Set.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -23026,6 +23738,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Chat-Unsubscribe-Response-Error-Code"></a>
 
 ### Rpc.Chat.Unsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response-Error-Code"></a>
+
+### Rpc.Chat.UnsubscribeFromMessagePreviews.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -24073,6 +24798,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-Export-Response-Error-Code"></a>
+
+### Rpc.Object.Export.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Object-Graph-Edge-Type"></a>
 
 ### Rpc.Object.Graph.Edge.Type
@@ -24236,6 +24974,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
 | EMPTY | 2 |  |
+| GUIDE_ONLY | 3 | only the guide without other tables |
 
 
 
@@ -25020,6 +25759,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Space-InviteGenerate-Request-InviteType"></a>
+
+### Rpc.Space.InviteGenerate.Request.InviteType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Member | 0 |  |
+| Guest | 1 |  |
+
+
+
 <a name="anytype-Rpc-Space-InviteGenerate-Response-Error-Code"></a>
 
 ### Rpc.Space.InviteGenerate.Response.Error.Code
@@ -25049,6 +25800,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NO_ACTIVE_INVITE | 101 |  |
+
+
+
+<a name="anytype-Rpc-Space-InviteGetGuest-Response-Error-Code"></a>
+
+### Rpc.Space.InviteGetGuest.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INVALID_SPACE_TYPE | 101 |  |
 
 
 
@@ -28075,6 +28840,7 @@ Precondition: user A opened a block
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
 | spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
+| spaceAutoWidgetAdded | [Event.Space.AutoWidgetAdded](#anytype-Event-Space-AutoWidgetAdded) |  |  |
 | p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
 | importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
 | chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
@@ -28535,6 +29301,23 @@ Removes document from subscription
 
 ### Event.Space
 
+
+
+
+
+
+
+<a name="anytype-Event-Space-AutoWidgetAdded"></a>
+
+### Event.Space.AutoWidgetAdded
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| targetId | [string](#string) |  |  |
+| targetName | [string](#string) |  | pluralName (if exists) for types, fallback to name. Special cases for &#34;bin&#34; and &#34;favorites&#34; |
+| widgetBlockId | [string](#string) |  |  |
 
 
 
@@ -29905,6 +30688,7 @@ Link: block to link some content from an external sources.
 | layout | [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
 | limit | [int32](#int32) |  |  |
 | viewId | [string](#string) |  |  |
+| autoAdded | [bool](#bool) |  |  |
 
 
 
@@ -30231,11 +31015,13 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | creatorIdentity | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
-| inviteKey | [bytes](#bytes) |  |  |
+| aclKey | [bytes](#bytes) |  |  |
 | spaceId | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
+| inviteType | [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType) |  |  |
+| guestKey | [bytes](#bytes) |  |  |
 
 
 
@@ -30638,7 +31424,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  | leave empty in case you want to create the new one |
-| name | [string](#string) |  | name of objectType (can be localized for bundled types) |
+| name | [string](#string) |  | name of objectType in singular form (can be localized for bundled types) |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated | cannot contain more than one Relation with the same RelationType |
 | layout | [ObjectType.Layout](#anytype-model-ObjectType-Layout) |  |  |
 | iconEmoji | [string](#string) |  | emoji symbol |
@@ -30653,6 +31439,7 @@ Used to decode block meta only, without the content itself
 | restrictObjectCreation | [bool](#bool) |  | restricts creating objects of this type for users |
 | iconColor | [int64](#int64) |  | color of object type icon |
 | iconName | [string](#string) |  | name of object type icon |
+| pluralName | [string](#string) |  | name of objectType in plural form (can be localized for bundled types) |
 
 
 
@@ -31612,6 +32399,18 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | editorSelectType | 1 |  |
 | editorSelectTemplate | 2 |  |
 | collectionDontIndexLinks | 3 |  |
+
+
+
+<a name="anytype-model-InvitePayload-InviteType"></a>
+
+### InvitePayload.InviteType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| JoinAsMember | 0 | aclKey contains the key to sign the ACL record |
+| JoinAsGuest | 1 | guestKey contains the privateKey of the guest user |
 
 
 

@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/indexer/mock_indexer"
+	"github.com/anyproto/anytype-heart/core/syncstatus/spacesyncstatus/mock_spacesyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -34,10 +35,11 @@ import (
 
 type IndexerFixture struct {
 	*indexer
-	pickerFx         *mock_cache.MockCachedObjectGetter
-	storageServiceFx *mock_storage.MockClientStorage
-	objectStore      *objectstore.StoreFixture
-	sourceFx         *mock_source.MockService
+	pickerFx              *mock_cache.MockCachedObjectGetter
+	storageServiceFx      *mock_storage.MockClientStorage
+	objectStore           *objectstore.StoreFixture
+	sourceFx              *mock_source.MockService
+	techSpaceIdProviderFx *mock_spacesyncstatus.MockSpaceIdGetter
 }
 
 func NewIndexerFixture(t *testing.T) *IndexerFixture {
@@ -69,6 +71,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indxr.store = objectStore
 	indexerFx.storageService = clientStorage
 	indexerFx.storageServiceFx = clientStorage
+	indexerFx.techSpaceIdProviderFx = mock_spacesyncstatus.NewMockSpaceIdGetter(t)
 	indxr.source = sourceService
 
 	hasher := mock_indexer.NewMockHasher(t)
@@ -80,6 +83,8 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	indexerFx.pickerFx = mock_cache.NewMockCachedObjectGetter(t)
 	indxr.picker = indexerFx.pickerFx
 	indxr.spaceIndexers = make(map[string]*spaceIndexer)
+	indxr.techSpaceIdProvider = indexerFx.techSpaceIdProviderFx
+	indexerFx.techSpaceIdProviderFx.EXPECT().TechSpaceId().Return("").Maybe()
 	indxr.forceFt = make(chan struct{})
 	indxr.config = &config.Config{NetworkMode: pb.RpcAccount_LocalOnly}
 	indxr.runCtx, indxr.runCtxCancel = context.WithCancel(ctx)
@@ -181,6 +186,30 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
 	assert.Equal(t, "", docs[0].Title)
+}
+
+func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
+	indexerFx := NewIndexerFixture(t)
+	smartTest := smarttest.New("objectId1")
+	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyPluralName.String(),
+		Format: model.RelationFormat_shorttext,
+	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyPluralName: domain.String("Plural title Text"),
+	}))
+	smartTest.Doc.(*state.State).SetLocalDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyResolvedLayout: domain.Int64(0),
+	}))
+	smartTest.Doc.Layout()
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	assert.NoError(t, err)
+	assert.Len(t, docs, 1)
+	assert.Equal(t, "objectId1/r/pluralName", docs[0].Id)
+	assert.Equal(t, "", docs[0].Text)
+	assert.Equal(t, "Plural title Text", docs[0].Title)
 }
 
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
@@ -315,10 +344,11 @@ func TestRunFullTextIndexer(t *testing.T) {
 					blockbuilder.ID("blockId1"),
 				),
 			)))
-		indexerFx.store.AddToIndexQueue(context.Background(), "objectId"+strconv.Itoa(i))
+		indexerFx.store.AddToIndexQueue(context.Background(), domain.FullID{ObjectID: "objectId" + strconv.Itoa(i), SpaceID: "spaceId1"})
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
 	}
 
+	indexerFx.OnSpaceLoad("spaceId1")
 	indexerFx.runFullTextIndexer(context.Background())
 
 	count, _ := indexerFx.ftsearch.DocCount()
@@ -341,7 +371,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 				),
 			)))
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, "objectId"+strconv.Itoa(i)).Return(smartTest, nil).Once()
-		indexerFx.store.AddToIndexQueue(context.Background(), "objectId"+strconv.Itoa(i))
+		indexerFx.store.AddToIndexQueue(context.Background(), domain.FullID{ObjectID: "objectId" + strconv.Itoa(i), SpaceID: "spaceId1"})
 
 	}
 
@@ -370,8 +400,9 @@ func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 				blockbuilder.ID("blockId1"),
 			),
 		)))
-	indexerFx.store.AddToIndexQueue(context.Background(), "objectId1")
+	indexerFx.store.AddToIndexQueue(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.OnSpaceLoad("spaceId1")
 	indexerFx.runFullTextIndexer(context.Background())
 
 	count, _ = indexerFx.ftsearch.DocCount()

@@ -28,16 +28,7 @@ func (a *storeApply) Apply() error {
 			return true
 		}
 
-		var prevOrderId string
-		if a.needFetchPrevOrderId {
-			prevOrderId, lastErr = a.tx.GetPrevOrderId(change.OrderId)
-			if lastErr != nil {
-				log.With("error", lastErr).Error("get prev order")
-				return false
-			}
-		}
-
-		lastErr = a.applyChange(prevOrderId, change)
+		lastErr = a.applyChange(change)
 		if lastErr != nil {
 			return false
 		}
@@ -48,7 +39,7 @@ func (a *storeApply) Apply() error {
 	return errors.Join(err, lastErr)
 }
 
-func (a *storeApply) applyChange(prevOrderId string, change *objecttree.Change) (err error) {
+func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
 	storeChange, ok := change.Model.(*pb.StoreChange)
 	if !ok {
 		// if it is root
@@ -58,12 +49,11 @@ func (a *storeApply) applyChange(prevOrderId string, change *objecttree.Change) 
 		return fmt.Errorf("unexpected change content type: %T", change.Model)
 	}
 	set := storestate.ChangeSet{
-		Id:          change.Id,
-		PrevOrderId: prevOrderId,
-		Order:       change.OrderId,
-		Changes:     storeChange.ChangeSet,
-		Creator:     change.Identity.Account(),
-		Timestamp:   change.Timestamp,
+		Id:        change.Id,
+		Order:     change.OrderId,
+		Changes:   storeChange.ChangeSet,
+		Creator:   change.Identity.Account(),
+		Timestamp: change.Timestamp,
 	}
 	err = a.tx.ApplyChangeSet(set)
 	// Skip invalid changes

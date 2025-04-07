@@ -14,7 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -26,6 +28,7 @@ type WidgetObject struct {
 	basic.Unlinkable
 	basic.Updatable
 	widget.Widget
+	basic.DetailsSettable
 }
 
 func NewWidgetObject(
@@ -35,11 +38,12 @@ func NewWidgetObject(
 ) *WidgetObject {
 	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil)
 	return &WidgetObject{
-		SmartBlock: sb,
-		Movable:    bs,
-		Updatable:  bs,
-		IHistory:   basic.NewHistory(sb),
-		Widget:     widget.NewWidget(sb),
+		SmartBlock:      sb,
+		Movable:         bs,
+		Updatable:       bs,
+		DetailsSettable: bs,
+		IHistory:        basic.NewHistory(sb),
+		Widget:          widget.NewWidget(sb),
 	}
 }
 
@@ -53,8 +57,9 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 
 func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 2,
+		Version: 3,
 		Proc: func(st *state.State) {
+			// we purposefully do not add the ALl Objects widget here(as in migration3), because for new users we don't want to auto-create it
 			template.InitTemplate(st,
 				template.WithEmpty,
 				template.WithObjectTypes([]domain.TypeKey{bundle.TypeKeyDashboard}),
@@ -106,9 +111,31 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 				if err != nil {
 					return
 				}
-				replaceWidgetTarget(s, widget.DefaultWidgetCollection, collectionTypeId, ObjectTypeAllViewId, model.BlockContentWidget_View)
-				replaceWidgetTarget(s, widget.DefaultWidgetSet, setTypeId, ObjectTypeAllViewId, model.BlockContentWidget_View)
+				replaceWidgetTarget(s, widget.DefaultWidgetCollection, collectionTypeId, addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
+				replaceWidgetTarget(s, widget.DefaultWidgetSet, setTypeId, addr.ObjectTypeAllViewId, model.BlockContentWidget_View)
 
+			},
+		},
+		{
+			Version: 3,
+			Proc: func(s *state.State) {
+				// add All Objects widget for existing spaces
+				_, err := w.CreateBlock(s, &pb.RpcBlockCreateWidgetRequest{
+					ContextId:    s.RootId(),
+					WidgetLayout: model.BlockContentWidget_Link,
+					Position:     model.Block_InnerFirst,
+					TargetId:     s.RootId(),
+					ViewId:       "",
+					Block: &model.Block{
+						Id: "allObjects",
+						Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+							TargetBlockId: widget.DefaultWidgetAll,
+						}},
+					},
+				})
+				if err != nil {
+					log.Warnf("all objects migration failed: %s", err.Error())
+				}
 			},
 		},
 	},

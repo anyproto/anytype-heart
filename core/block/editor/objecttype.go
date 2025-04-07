@@ -25,12 +25,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-const ObjectTypeAllViewId = "all"
 
 var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRecommendedRelations,
@@ -41,6 +40,7 @@ var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeySmartblockTypes,
 	bundle.RelationKeyIconOption,
 	bundle.RelationKeyIconName,
+	bundle.RelationKeyPluralName,
 )
 
 type ObjectType struct {
@@ -95,7 +95,7 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 2,
+		Version: 4,
 		Proc: func(s *state.State) {
 			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypeKeys()) == 0 {
 				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
@@ -413,11 +413,11 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_longtext,
 		},
-	}, ObjectTypeAllViewId)
+	}, addr.ObjectTypeAllViewId)
 
 	dvContent.Dataview.TargetObjectId = ot.Id()
 	return []template.StateTransformer{
-		template.WithDataviewID(state.DataviewBlockID, dvContent, false),
+		template.WithDataviewIDIfNotExists(state.DataviewBlockID, dvContent, false),
 		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{ot.Id()})),
 	}
 }

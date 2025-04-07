@@ -593,6 +593,7 @@ message Block {
             Layout layout = 1;
             int32 limit = 2;
             string viewId = 3;
+            bool autoAdded = 4;
 
             enum Layout {
                 Link = 0;
@@ -757,7 +758,7 @@ message SpaceObjectHeader {
 
 message ObjectType {
     string url = 1; // leave empty in case you want to create the new one
-    string name = 2; // name of objectType (can be localized for bundled types)
+    string name = 2; // name of objectType in singular form (can be localized for bundled types)
     repeated RelationLink relationLinks = 3; // cannot contain more than one Relation with the same RelationType
     Layout layout = 4;
     string iconEmoji = 5; // emoji symbol
@@ -772,6 +773,7 @@ message ObjectType {
     bool restrictObjectCreation = 14; // restricts creating objects of this type for users
     int64 iconColor = 15; // color of object type icon
     string iconName = 16; // name of object type icon
+    string pluralName = 17; // name of objectType in plural form (can be localized for bundled types)
 
     enum Layout {
         basic = 0;
@@ -1194,11 +1196,18 @@ message Invite {
 message InvitePayload {
     string creatorIdentity = 1;
     string creatorName = 2;
-    bytes inviteKey = 3;
+    bytes aclKey = 3;
     string spaceId = 4;
     string spaceName = 5;
     string spaceIconCid = 6;
     repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
+
+    InviteType inviteType = 8;
+    bytes guestKey = 9;
+    enum InviteType {
+        JoinAsMember = 0; // aclKey contains the key to sign the ACL record
+        JoinAsGuest = 1; // guestKey contains the privateKey of the guest user
+    }
 }
 
 message IdentityProfile {

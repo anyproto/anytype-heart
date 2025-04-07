@@ -66,7 +66,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	if err != nil {
 		return "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
-	_, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
+	_, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
 	if err != nil {
 		return "", fmt.Errorf("import use-case: %w", err)
 	}
