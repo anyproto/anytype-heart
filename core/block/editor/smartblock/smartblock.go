@@ -706,12 +706,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var (
 		migrationVersionUpdated = true
 		parent                  = s.ParentState()
-		parentDetails           *domain.Details
 	)
 
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
-		parentDetails = parent.Details().Copy()
 	}
 
 	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
@@ -823,6 +821,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.CheckSubscriptions()
 	}
 	if hooks {
+		var parentDetails *domain.Details
+		if act.Details != nil {
+			parentDetails = act.Details.Before
+		}
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{
 			State:             sb.Doc.(*state.State),
 			ParentDetails:     parentDetails,
