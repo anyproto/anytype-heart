@@ -15,7 +15,7 @@
       "ingredients",
       "time"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "note",
@@ -31,7 +31,7 @@
     "relations": [
       "tag"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "contact",
@@ -50,7 +50,7 @@
       "email",
       "phone"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "bookmark",
@@ -68,7 +68,7 @@
       "picture",
       "source"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "date",
@@ -104,7 +104,7 @@
       "linkedProjects",
       "status"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "relation",
@@ -124,7 +124,7 @@
       "relationDefaultValue",
       "relationFormatObjectTypes"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "book",
@@ -144,7 +144,7 @@
       "status",
       "url"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "video",
@@ -171,7 +171,7 @@
       "exposure"
     ],
     "restrictObjectCreation": true,
-    "revision": 5
+    "revision": 4
   },
   {
     "id": "dashboard",
@@ -201,7 +201,7 @@
       "genre",
       "status"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "objectType",
@@ -219,7 +219,7 @@
       "recommendedRelations",
       "recommendedLayout"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "relationOption",
@@ -246,7 +246,7 @@
       "tag"
     ],
     "restrictObjectCreation": true,
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "spaceView",
@@ -263,7 +263,7 @@
       "tag"
     ],
     "restrictObjectCreation": true,
-    "revision": 2
+    "revision": 1
   },
   {
     "id": "participant",
@@ -280,7 +280,7 @@
       "tag"
     ],
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 3
   },
   {
     "id": "template",
@@ -297,7 +297,7 @@
       "targetObjectType",
       "templateIsBundled"
     ],
-    "revision": 4
+    "revision": 3
   },
   {
     "id": "set",
@@ -314,7 +314,7 @@
       "tag",
       "setOf"
     ],
-    "revision": 4
+    "revision": 3
   },
   {
     "id": "collection",
@@ -330,7 +330,7 @@
     "relations": [
       "tag"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "diaryEntry",
@@ -347,7 +347,7 @@
       "tag",
       "mood"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "page",
@@ -363,7 +363,7 @@
     "relations": [
       "tag"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "image",
@@ -391,7 +391,7 @@
       "focalRatio"
     ],
     "restrictObjectCreation": true,
-    "revision": 5
+    "revision": 4
   },
   {
     "id": "profile",
@@ -408,7 +408,7 @@
     "relations": [
       "tag"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "audio",
@@ -435,7 +435,7 @@
       "audioLyrics"
     ],
     "restrictObjectCreation": true,
-    "revision": 5
+    "revision": 4
   },
   {
     "id": "goal",
@@ -455,7 +455,7 @@
       "status",
       "tasks"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "file",
@@ -476,7 +476,7 @@
       "fileMimeType"
     ],
     "restrictObjectCreation": true,
-    "revision": 5
+    "revision": 4
   },
   {
     "id": "project",
@@ -493,7 +493,7 @@
       "tag",
       "tasks"
     ],
-    "revision": 3
+    "revision": 2
   },
   {
     "id": "chat",
@@ -524,6 +524,6 @@
     "relations": [
       "tag"
     ],
-    "revision": 4
+    "revision": 3
   }
 ]

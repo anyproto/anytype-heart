@@ -29,7 +29,6 @@ const revisionKey = bundle.RelationKeyRevision
 var (
 	systemObjectFilterKeys = []domain.RelationKey{
 		bundle.RelationKeyName,
-		bundle.RelationKeyDescription,
 		bundle.RelationKeyIsReadonly,
 		bundle.RelationKeyIsHidden,
 		bundle.RelationKeyRevision,
@@ -46,7 +45,6 @@ var (
 		bundle.RelationKeyIconOption,
 		bundle.RelationKeyIconName,
 		bundle.RelationKeyPluralName,
-		bundle.RelationKeyDescription,
 	}
 )
 
