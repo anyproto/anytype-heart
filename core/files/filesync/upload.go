@@ -42,6 +42,8 @@ func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, upload
 	}
 
 	if !s.fileIsInAnyQueue(it.Key()) {
+		rawIt, _ := json.Marshal(it)
+		fmt.Println("ADDED", string(rawIt))
 		return s.uploadingQueue.Add(it)
 	}
 	return nil
@@ -130,16 +132,21 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 		return s.addToRetryUploadingQueue(it), nil
 	}
 
-	err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
-	if isObjectDeletedError(err) {
-		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
+	// Mark as uploaded only if the root of the file tree is uploaded.
+	if it.VariantId == "" {
+		err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
+		if isObjectDeletedError(err) {
+			return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
+		}
+		if err != nil {
+			return s.addToRetryUploadingQueue(it), err
+		}
+		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}
-	if err != nil {
-		return s.addToRetryUploadingQueue(it), err
-	}
+
 	s.updateSpaceUsageInformation(spaceId)
 
-	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
+	return persistentqueue.ActionDone, nil
 }
 
 func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Action {

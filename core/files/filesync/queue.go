@@ -38,6 +38,9 @@ func (it *QueueItem) Validate() error {
 }
 
 func (it *QueueItem) Key() string {
+	if it.VariantId != "" {
+		return it.ObjectId + "/" + it.VariantId.String()
+	}
 	return it.ObjectId
 }
 
