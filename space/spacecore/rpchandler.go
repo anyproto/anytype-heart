@@ -131,3 +131,11 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
 	return r.s.streamPool.ReadStream(stream, 300)
 }
+
+func (r *rpcHandler) StoreDiff(context.Context, *spacesyncproto.StoreDiffRequest) (*spacesyncproto.StoreDiffResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (r *rpcHandler) StoreElements(spacesyncproto.DRPCSpaceSync_StoreElementsStream) error {
+	return fmt.Errorf("not implemented")
+}

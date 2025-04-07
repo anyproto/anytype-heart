@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -50,7 +52,7 @@ type AccountObject interface {
 
 type TechSpace interface {
 	app.Component
-	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error)
+	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, kvObserver keyvalueobserver.Observer, create bool) (err error)
 	Close(ctx context.Context) (err error)
 
 	WakeUpViews()
@@ -66,6 +68,9 @@ type TechSpace interface {
 	SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) (err error)
 	SpaceViewId(id string) (string, error)
 	AccountObjectId() (string, error)
+
+	KeyValueObserver() keyvalueobserver.Observer
+	KeyValueStore() keyvaluestorage.Storage
 }
 
 type SpaceView interface {
@@ -95,9 +100,10 @@ func New() TechSpace {
 }
 
 type techSpace struct {
-	techCore        commonspace.Space
-	objectCache     objectcache.Cache
-	accountObjectId string
+	techCore         commonspace.Space
+	objectCache      objectcache.Cache
+	keyvalueObserver keyvalueobserver.Observer
+	accountObjectId  string
 
 	mu sync.Mutex
 
@@ -116,9 +122,10 @@ func (s *techSpace) Name() (name string) {
 	return CName
 }
 
-func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error) {
+func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, kvObserver keyvalueobserver.Observer, create bool) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
+	s.keyvalueObserver = kvObserver
 	if !create {
 		exists, err := s.accountObjectExists(s.ctx)
 		if err != nil {
@@ -385,6 +392,14 @@ func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId
 	}
 	s.viewIds[spaceId] = viewId
 	return
+}
+
+func (s *techSpace) KeyValueStore() keyvaluestorage.Storage {
+	return s.techCore.KeyValue().DefaultStore()
+}
+
+func (s *techSpace) KeyValueObserver() keyvalueobserver.Observer {
+	return s.keyvalueObserver
 }
 
 func (s *techSpace) Close(ctx context.Context) (err error) {

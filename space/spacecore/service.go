@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
+	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
@@ -228,10 +229,12 @@ func (s *service) Delete(ctx context.Context, spaceId string) (err error) {
 }
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
+	kvObserver := keyvalueobserver.New()
 	statusService := objectsyncstatus.NewSyncStatusService()
 	deps := commonspace.Deps{
 		TreeSyncer: treesyncer.NewTreeSyncer(id),
 		SyncStatus: statusService,
+		Indexer:    kvObserver,
 	}
 	if res, ok := ctx.Value(OptsKey).(Opts); ok && res.SignKey != nil {
 		// TODO: [stream] replace with real peer id
@@ -250,7 +253,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return
 	}
-	ns, err := newAnySpace(cc)
+	ns, err := newAnySpace(cc, kvObserver)
 	if err != nil {
 		return
 	}

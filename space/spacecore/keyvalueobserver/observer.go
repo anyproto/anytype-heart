@@ -1,0 +1,53 @@
+package keyvalueobserver
+
+import (
+	"sync"
+
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
+	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage/innerstorage"
+)
+
+const CName = "space.spacecore.keyvalueobserver"
+
+type ObserverFunc func(keyValue ...innerstorage.KeyValue)
+
+type Observer interface {
+	keyvaluestorage.Indexer
+	SetObserver(observerFunc ObserverFunc)
+}
+
+func New() Observer {
+	return &observer{}
+}
+
+type observer struct {
+	lock sync.RWMutex
+
+	observerFunc ObserverFunc
+}
+
+func (o *observer) Init(a *app.App) (err error) {
+	return nil
+}
+
+func (o *observer) Name() (name string) {
+	return CName
+}
+
+func (o *observer) SetObserver(observerFunc ObserverFunc) {
+	o.lock.Lock()
+	defer o.lock.Unlock()
+	o.observerFunc = observerFunc
+}
+
+func (o *observer) Index(keyValue ...innerstorage.KeyValue) error {
+	o.lock.RLock()
+	obs := o.observerFunc
+	o.lock.RUnlock()
+
+	if obs != nil {
+		obs(keyValue...)
+	}
+	return nil
+}
