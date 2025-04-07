@@ -148,9 +148,9 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		// when
 		err := fx.SyncLayoutWithType(
 			// recommendedLayout is changed: basic -> action
-			LayoutState{isLayoutSet: true, layout: int64(model.ObjectType_basic)},
-			LayoutState{isLayoutSet: true, layout: int64(model.ObjectType_todo)},
-			false, false, true,
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_todo)},
+			false, true, true,
 		)
 
 		// then
@@ -235,7 +235,7 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		err := fx.SyncLayoutWithType(
 			LayoutState{isLayoutAlignSet: true, layoutAlign: int64(model.Block_AlignLeft)},
 			LayoutState{isLayoutAlignSet: true, layoutAlign: int64(model.Block_AlignRight)},
-			false, false, true,
+			false, true, true,
 		)
 
 		// then
@@ -331,7 +331,7 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 			LayoutState{isFeaturedRelationsSet: true, featuredRelations: []string{
 				bundle.RelationKeyType.URL(), bundle.RelationKeyTag.URL(), bundle.RelationKeyCreator.URL(),
 			}},
-			false, false, true,
+			false, true, true,
 		)
 
 		// then
@@ -369,9 +369,9 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		// when
 		err := fx.SyncLayoutWithType(
 			// recommendedLayout is changed: note -> action
-			LayoutState{isLayoutSet: true, layout: int64(model.ObjectType_note)},
-			LayoutState{isLayoutSet: true, layout: int64(model.ObjectType_todo)},
-			false, false, true,
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_todo)},
+			false, true, true,
 		)
 
 		// then
@@ -447,9 +447,9 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 
 		// when
 		err := fx.SyncLayoutWithType(
-			LayoutState{isLayoutSet: true, layout: int64(model.ObjectType_note)},
-			LayoutState{isLayoutSet: true, layout: int64(model.ObjectType_note)},
-			true, false, true,
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			true, true, true,
 		)
 
 		// then
@@ -460,7 +460,7 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		assert.False(t, obj3.Details().Has(bundle.RelationKeyLayoutAlign))
 	})
 
-	t.Run("when forceUpdate is enabled, but noApply is set -> only store updates are applied", func(t *testing.T) {
+	t.Run("when forceUpdate is enabled, but no need to Apply -> only store updates are applied", func(t *testing.T) {
 		// given
 		fx := newFixture(t, typeId)
 
@@ -492,9 +492,9 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 
 		// when
 		err := fx.SyncLayoutWithType(
-			LayoutState{isLayoutSet: true, layout: int64(model.ObjectType_basic)},
-			LayoutState{isLayoutSet: true, layout: int64(model.ObjectType_basic)},
-			true, true, true,
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+			true, false, true,
 		)
 
 		// then

@@ -174,7 +174,7 @@ func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo
 	syncer := layout.NewSyncer(ot.Id(), ot.Space(), ot.spaceIndex)
 	newLayout := layout.NewLayoutStateFromEvents(info.Events)
 	oldLayout := layout.NewLayoutStateFromDetails(info.ParentDetails)
-	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, !info.ApplyOtherObjects, true)
+	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, info.ApplyOtherObjects, true)
 }
 
 func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {

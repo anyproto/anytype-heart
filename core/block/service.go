@@ -107,6 +107,9 @@ type Service struct {
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
+
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 }
 
 type builtinObjects interface {
@@ -123,6 +126,8 @@ func (s *Service) Name() string {
 }
 
 func (s *Service) Init(a *app.App) (err error) {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
@@ -513,7 +518,10 @@ func (s *Service) ProcessCancel(id string) (err error) {
 	return s.process.Cancel(id)
 }
 
-func (s *Service) Close(ctx context.Context) (err error) {
+func (s *Service) Close(_ context.Context) (err error) {
+	if s.componentCtxCancel != nil {
+		s.componentCtxCancel()
+	}
 	return nil
 }
 
@@ -705,7 +713,7 @@ func (s *Service) SyncObjectsWithType(typeId string) error {
 		return fmt.Errorf("failed to resolve spaceId for type object: %w", err)
 	}
 
-	spc, err := s.spaceService.Get(context.Background(), spaceId)
+	spc, err := s.spaceService.Get(s.componentCtx, spaceId)
 	if err != nil {
 		return fmt.Errorf("failed to get space: %w", err)
 	}
@@ -719,5 +727,5 @@ func (s *Service) SyncObjectsWithType(typeId string) error {
 	syncer := layout.NewSyncer(typeId, spc, index)
 	newLayout := layout.NewLayoutStateFromDetails(details)
 	oldLayout := newLayout.Copy()
-	return syncer.SyncLayoutWithType(oldLayout, newLayout, true, false, false)
+	return syncer.SyncLayoutWithType(oldLayout, newLayout, true, true, false)
 }

@@ -251,7 +251,7 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		return
 	}
 
-	var valueInType = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
+	valueInType := typeDetails.Get(bundle.RelationKeyRecommendedLayout)
 
 	if s.ObjectTypeKey() == bundle.TypeKeyTemplate {
 		if layoutValue.Ok() {
@@ -283,6 +283,7 @@ func convertLayoutFromNote(st *state.State, oldLayout, newLayout domain.Value) {
 		return
 	}
 	if !oldLayout.Ok() {
+		// absence of Title block means that object has Note layout
 		title := st.Pick(state.TitleBlockID)
 		if title != nil {
 			return

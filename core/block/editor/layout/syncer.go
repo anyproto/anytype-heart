@@ -25,10 +25,20 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var log = logger.NewNamed("layout-syncer")
+var (
+	log = logger.NewNamed("layout-syncer")
+
+	applicableLayouts = []model.ObjectTypeLayout{
+		model.ObjectType_basic,
+		model.ObjectType_todo,
+		model.ObjectType_profile,
+		model.ObjectType_note,
+		model.ObjectType_collection,
+	}
+)
 
 type Syncer interface {
-	SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdate, noApply, withTemplates bool) error
+	SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdate, needApply, withTemplates bool) error
 }
 
 func NewSyncer(typeId string, space smartblock.Space, index spaceindex.Store) Syncer {
@@ -40,25 +50,25 @@ func NewSyncer(typeId string, space smartblock.Space, index spaceindex.Store) Sy
 }
 
 type LayoutState struct {
-	layout            int64
+	recommendedLayout int64
 	layoutAlign       int64
 	featuredRelations []string
 
-	isLayoutSet            bool
+	isRecommendedLayoutSet bool
 	isLayoutAlignSet       bool
 	isFeaturedRelationsSet bool
 }
 
 func (ls LayoutState) isAllSet() bool {
-	return ls.isLayoutSet && ls.isLayoutAlignSet && ls.isFeaturedRelationsSet
+	return ls.isRecommendedLayoutSet && ls.isLayoutAlignSet && ls.isFeaturedRelationsSet
 }
 
 func (ls LayoutState) Copy() LayoutState {
 	return LayoutState{
-		layout:                 ls.layout,
+		recommendedLayout:      ls.recommendedLayout,
 		layoutAlign:            ls.layoutAlign,
 		featuredRelations:      slices.Clone(ls.featuredRelations),
-		isLayoutSet:            ls.isLayoutSet,
+		isRecommendedLayoutSet: ls.isRecommendedLayoutSet,
 		isLayoutAlignSet:       ls.isLayoutAlignSet,
 		isFeaturedRelationsSet: ls.isFeaturedRelationsSet,
 	}
@@ -70,8 +80,8 @@ func NewLayoutStateFromDetails(details *domain.Details) LayoutState {
 		return ls
 	}
 	if layout, ok := details.TryInt64(bundle.RelationKeyRecommendedLayout); ok {
-		ls.layout = layout
-		ls.isLayoutSet = true
+		ls.recommendedLayout = layout
+		ls.isRecommendedLayoutSet = true
 	}
 	if layoutAlign, ok := details.TryInt64(bundle.RelationKeyLayoutAlign); ok {
 		ls.layoutAlign = layoutAlign
@@ -91,8 +101,8 @@ func NewLayoutStateFromEvents(events []simple.EventMessage) LayoutState {
 			for _, detail := range amend.Details {
 				switch detail.Key {
 				case bundle.RelationKeyRecommendedLayout.String():
-					ls.layout = int64(detail.Value.GetNumberValue())
-					ls.isLayoutSet = true
+					ls.recommendedLayout = int64(detail.Value.GetNumberValue())
+					ls.isRecommendedLayoutSet = true
 				case bundle.RelationKeyRecommendedFeaturedRelations.String():
 					ls.featuredRelations = pbtypes.GetStringListValue(detail.Value)
 					ls.isFeaturedRelationsSet = true
@@ -100,6 +110,23 @@ func NewLayoutStateFromEvents(events []simple.EventMessage) LayoutState {
 					ls.layoutAlign = int64(detail.Value.GetNumberValue())
 					ls.isLayoutAlignSet = true
 				}
+			}
+			if ls.isAllSet() {
+				return ls
+			}
+		}
+		if detailsSet := ev.Msg.GetObjectDetailsSet(); detailsSet != nil {
+			if v := detailsSet.Details.Fields[bundle.RelationKeyRecommendedLayout.String()]; v != nil {
+				ls.recommendedLayout = int64(v.GetNumberValue())
+				ls.isRecommendedLayoutSet = true
+			}
+			if v := detailsSet.Details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()]; v != nil {
+				ls.featuredRelations = pbtypes.GetStringListValue(v)
+				ls.isFeaturedRelationsSet = true
+			}
+			if v := detailsSet.Details.Fields[bundle.RelationKeyLayoutAlign.String()]; v != nil {
+				ls.layoutAlign = int64(v.GetNumberValue())
+				ls.isLayoutAlignSet = true
 			}
 			if ls.isAllSet() {
 				return ls
@@ -117,15 +144,15 @@ type syncer struct {
 	cache  map[domain.RelationKey]string
 }
 
-func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdate, noApply, withTemplates bool) error {
-	if newLayout.isLayoutSet && !isLayoutChangeApplicable(newLayout.layout) {
+func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdate, needApply, withTemplates bool) error {
+	if newLayout.isRecommendedLayoutSet && !isLayoutChangeApplicable(newLayout.recommendedLayout) {
 		// if layout change is not applicable, then it is init of some system type. Objects' layout should not be modified
-		newLayout.isLayoutSet = false
+		newLayout.isRecommendedLayoutSet = false
 	}
 
 	var (
 		resultErr         error
-		isConvertFromNote = oldLayout.layout == int64(model.ObjectType_note) && newLayout.layout != int64(model.ObjectType_note)
+		isConvertFromNote = oldLayout.recommendedLayout == int64(model.ObjectType_note) && newLayout.recommendedLayout != int64(model.ObjectType_note)
 	)
 
 	records, err := s.queryObjects(withTemplates)
@@ -140,7 +167,7 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 		}
 
 		changes := s.collectRelationsChanges(record.Details, newLayout, oldLayout, forceUpdate)
-		if !noApply && (len(changes.relationsToRemove) > 0 || changes.isFeaturedRelationsChanged) {
+		if needApply && (len(changes.relationsToRemove) > 0 || changes.isFeaturedRelationsChanged) {
 			// we should modify not local relations from object, that's why we apply changes even if object is not in cache
 			err = s.space.Do(id, func(b smartblock.SmartBlock) error {
 				st := b.NewState()
@@ -159,12 +186,12 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 			continue
 		}
 
-		if !forceUpdate && (changes.isLayoutFound || !newLayout.isLayoutSet) || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.layout {
+		if !forceUpdate && (changes.isLayoutFound || !newLayout.isRecommendedLayoutSet) || record.Details.GetInt64(bundle.RelationKeyResolvedLayout) == newLayout.recommendedLayout {
 			// layout detail remains in object or recommendedLayout was not changed or relevant layout is already set, skipping
 			continue
 		}
 
-		if err = s.updateResolvedLayout(id, newLayout.layout, isConvertFromNote, noApply); err != nil {
+		if err = s.updateResolvedLayout(id, newLayout.recommendedLayout, isConvertFromNote, needApply); err != nil {
 			resultErr = errors.Join(resultErr, err)
 		}
 	}
@@ -205,7 +232,7 @@ func (s *syncer) queryObjects(withTemplates bool) ([]database.Record, error) {
 	return append(records, templates...), nil
 }
 
-func (s *syncer) updateResolvedLayout(id string, layout int64, addName, noApply bool) error {
+func (s *syncer) updateResolvedLayout(id string, layout int64, addName, needApply bool) error {
 	err := s.space.DoLockedIfNotExists(id, func() error {
 		return s.index.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
 			if details == nil {
@@ -228,7 +255,7 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, noApply 
 		return err
 	}
 
-	if err == nil || noApply {
+	if err == nil || !needApply {
 		return nil
 	}
 
@@ -257,11 +284,11 @@ func (s *syncer) collectRelationsChanges(details *domain.Details, newLayout, old
 	}
 	changes.relationsToRemove = make([]domain.RelationKey, 0, 2)
 
-	if newLayout.isLayoutSet {
+	if newLayout.isRecommendedLayoutSet {
 		layout, found := details.TryInt64(bundle.RelationKeyLayout)
 		if found {
 			changes.isLayoutFound = true
-			if layout == newLayout.layout || oldLayout.isLayoutSet && layout == oldLayout.layout {
+			if layout == newLayout.recommendedLayout || oldLayout.isRecommendedLayoutSet && layout == oldLayout.recommendedLayout {
 				changes.relationsToRemove = append(changes.relationsToRemove, bundle.RelationKeyLayout)
 			}
 		}
@@ -305,7 +332,6 @@ func enforcedRelationsChanges(details *domain.Details) layoutRelationsChanges {
 	featuredRelations, found := details.TryStringList(bundle.RelationKeyFeaturedRelations)
 	if found {
 		changes.isFeaturedRelationsChanged = true
-		changes.newFeaturedRelations = []string{}
 		if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
 			changes.newFeaturedRelations = append(changes.newFeaturedRelations, bundle.RelationKeyDescription.String())
 		}
@@ -351,11 +377,5 @@ func (s *syncer) deriveId(key domain.RelationKey) (string, error) {
 }
 
 func isLayoutChangeApplicable(layout int64) bool {
-	return slices.Contains([]model.ObjectTypeLayout{
-		model.ObjectType_basic,
-		model.ObjectType_todo,
-		model.ObjectType_profile,
-		model.ObjectType_note,
-		model.ObjectType_collection,
-	}, model.ObjectTypeLayout(layout)) // nolint:gosec
+	return slices.Contains(applicableLayouts, model.ObjectTypeLayout(layout)) // nolint:gosec
 }
