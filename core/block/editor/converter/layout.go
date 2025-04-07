@@ -178,8 +178,6 @@ func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 
 func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := st.Details().GetStringList(bundle.RelationKeySetOf)
-	addFeaturedRelationSetOf(st)
-
 	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source, "")
 	if err != nil {
 		return err
@@ -189,14 +187,6 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	}
 	template.InitTemplate(st, template.WithDataview(dvBlock, false))
 	return nil
-}
-
-func addFeaturedRelationSetOf(st *state.State) {
-	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-	if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
-		fr = append(fr, bundle.RelationKeySetOf.String())
-	}
-	st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 }
 
 func (c *layoutConverter) fromSetToCollection(st *state.State) error {
