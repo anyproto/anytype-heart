@@ -1,6 +1,9 @@
 package chatobject
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -26,13 +29,27 @@ type Message struct {
 	CurrentUserMentioned bool
 }
 
-func (m *Message) IsCurrentUserMentioned(myParticipantId string) bool {
+func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId string, myIdentity string, repo *repository) (bool, error) {
 	for _, mark := range m.Message.Marks {
 		if mark.Type == model.BlockContentTextMark_Mention && mark.Param == myParticipantId {
-			return true
+			return true, nil
 		}
 	}
-	return false
+
+	if m.ReplyToMessageId != "" {
+		msgs, err := repo.getMessagesByIds(ctx, []string{m.ReplyToMessageId})
+		if err != nil {
+			return false, fmt.Errorf("get messages by id: %w", err)
+		}
+		if len(msgs) == 1 {
+			msg := msgs[0]
+			if msg.Creator == myIdentity {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func unmarshalMessage(val *anyenc.Value) (*Message, error) {
