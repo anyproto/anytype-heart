@@ -312,7 +312,7 @@ func (s *service) generateRequest() (*proto.GetSubscriptionRequestSigned, error)
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: ownerID,
 	}
-	payload, err := gsr.Marshal()
+	payload, err := gsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal GetSubscriptionRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -598,7 +598,7 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		UserEmail: req.UserEmail,
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal BuySubscriptionRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -648,7 +648,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal GetSubscriptionPortalLinkRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -699,7 +699,7 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershi
 		IsOnboardingList:        req.IsOnboardingList,
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal GetVerificationEmailRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -739,7 +739,7 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 		Code:            req.Code,
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal VerifyEmailRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -789,7 +789,7 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal FinalizeSubscriptionRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -901,7 +901,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 		Locale: req.Locale,
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal GetTiersRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -986,7 +986,7 @@ func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembersh
 		Receipt:    req.Receipt,
 	}
 
-	payload, err := verifyReq.Marshal()
+	payload, err := verifyReq.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal VerifyAppStoreReceiptRequest", zap.Error(err))
 		return nil, ErrCanNotSign

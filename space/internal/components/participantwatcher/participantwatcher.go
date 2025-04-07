@@ -132,7 +132,7 @@ func getSymKey(metadata []byte) (crypto.SymKey, error) {
 		return nil, err
 	}
 	keyProto := &cryptoproto.Key{}
-	err = keyProto.Unmarshal(md.GetIdentity().GetProfileSymKey())
+	err = keyProto.UnmarshalVT(md.GetIdentity().GetProfileSymKey())
 	if err != nil {
 		return nil, err
 	}
