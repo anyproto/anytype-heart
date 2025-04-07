@@ -250,7 +250,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 	return messageId, err
 }
 
-func (s *service) sendPushNotification(spaceId, chatObjectId string, message *model.ChatMessage) {
+func (s *service) sendPushNotification(spaceId, chatObjectId string, message *chatobject.Message) {
 	payload := push.MakePushPayload(spaceId, s.accountService.AccountID(), chatObjectId, message)
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {

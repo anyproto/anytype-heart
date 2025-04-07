@@ -122,7 +122,7 @@ message Event {
 
             Chat.Delete chatDelete = 131;
             Chat.UpdateState chatStateUpdate = 133; // in case new unread messages received or chat state changed (e.g. message read on another device)
-            Key.Update keyUpdate = 135;
+            Key.Update keyUpdate = 136;
         }
     }
 

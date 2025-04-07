@@ -1,6 +1,8 @@
 package push
 
-import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+import (
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+)
 
 const ChatsTopicName = "chats"
 
@@ -15,7 +17,7 @@ type Payload struct {
 	NewMessagePayload *NewMessagePayload `json:"newMessage,omitempty"`
 }
 
-func MakePushPayload(spaceId, accountId, chatId string, message *model.ChatMessage) *Payload {
+func MakePushPayload(spaceId, accountId, chatId string, message *chatobject.Message) *Payload {
 	return &Payload{
 		SpaceId:           spaceId,
 		SenderId:          accountId,
@@ -30,7 +32,7 @@ type NewMessagePayload struct {
 	Text   string `json:"text"`
 }
 
-func makeNewMessagePayload(chatId string, message *model.ChatMessage) *NewMessagePayload {
+func makeNewMessagePayload(chatId string, message *chatobject.Message) *NewMessagePayload {
 	return &NewMessagePayload{
 		ChatId: chatId,
 		MsgId:  message.Id,
