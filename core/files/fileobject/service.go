@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -231,7 +233,7 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 		fullId := extractFullFileIdFromDetails(record.Details)
 		if record.Details.GetString(bundle.RelationKeyCreator) == s.accountService.MyParticipantId(fullId.SpaceId) {
 			id := record.Details.GetString(bundle.RelationKeyId)
-			err := s.addToSyncQueue(id, fullId, false, false)
+			err := s.addToSyncQueue(id, fullId, false, false, "", 0)
 			if err != nil {
 				log.Errorf("add to sync queue: %v", err)
 			}
@@ -258,7 +260,7 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 		SpaceId: id.SpaceID,
 		FileId:  domain.FileId(details.GetString(bundle.RelationKeyFileId)),
 	}
-	err := s.addToSyncQueue(id.ObjectID, fullId, false, false)
+	err := s.addToSyncQueue(id.ObjectID, fullId, false, false, "", 0)
 	return err
 }
 
@@ -283,6 +285,11 @@ func (s *service) InitEmptyFileState(st *state.State) {
 	fileblocks.InitEmptyFileState(st)
 }
 
+type imageVariant struct {
+	variantId domain.FileId
+	size      int64
+}
+
 func (s *service) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error) {
 	if !req.AsyncMetadataIndexing && len(req.FileVariants) == 0 {
 		return "", nil, fmt.Errorf("file variants are not provided")
@@ -297,7 +304,29 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 	if err != nil {
 		return "", nil, fmt.Errorf("create in space: %w", err)
 	}
-	err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported())
+
+	var imageVariants []imageVariant
+	for _, variant := range req.FileVariants {
+		if variant.Mill == mill.ImageResizeId {
+			imageVariants = append(imageVariants, imageVariant{
+				variantId: domain.FileId(variant.Hash),
+				size:      variant.Size_,
+			})
+			fmt.Println("SEEN VARIANT", variant.Path, variant.Hash, variant.Size_)
+		}
+	}
+	sort.Slice(imageVariants, func(i, j int) bool {
+		return imageVariants[i].size < imageVariants[j].size
+	})
+	for idx, variant := range imageVariants {
+		score := 1 + (len(imageVariants) - idx)
+		err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported(), variant.variantId, score)
+		if err != nil {
+			return "", nil, fmt.Errorf("add image variant to sync queue: %w", err)
+		}
+	}
+
+	err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported(), "", 0)
 	if err != nil {
 		return "", nil, fmt.Errorf("add to sync queue: %w", err)
 	}
@@ -421,8 +450,8 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	return fileObjectId, nil
 }
 
-func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) error {
-	if err := s.fileSync.AddFile(objectId, fileId, uploadedByUser, imported); err != nil {
+func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool, prioritizeVariantId domain.FileId, score int) error {
+	if err := s.fileSync.AddFile(objectId, fileId, uploadedByUser, imported, prioritizeVariantId, score); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	return nil

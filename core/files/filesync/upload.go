@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
-func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error) {
+func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool, prioritizeVariantId domain.FileId, score int) (err error) {
 	it := &QueueItem{
 		ObjectId:    fileObjectId,
 		SpaceId:     fileId.SpaceId,
@@ -33,6 +33,8 @@ func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, upload
 		AddedByUser: uploadedByUser,
 		Imported:    imported,
 		Timestamp:   time.Now().UnixMilli(),
+		VariantId:   prioritizeVariantId,
+		Score:       score,
 	}
 	err = it.Validate()
 	if err != nil {
@@ -97,8 +99,12 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 }
 
 func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
+
+	rawIt, _ := json.Marshal(it)
+	fmt.Println("HANDLEITEM", string(rawIt))
+
 	spaceId, fileId := it.SpaceId, it.FileId
-	err := s.uploadFile(ctx, spaceId, fileId, it.ObjectId)
+	err := s.uploadFile(ctx, it)
 	if errors.Is(err, context.Canceled) {
 		return persistentqueue.ActionRetry, nil
 	}
@@ -147,7 +153,7 @@ func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Actio
 
 func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
 	spaceId, fileId := it.SpaceId, it.FileId
-	err := s.uploadFile(ctx, spaceId, fileId, it.ObjectId)
+	err := s.uploadFile(ctx, it)
 	if errors.Is(err, context.Canceled) {
 		return persistentqueue.ActionRetry, nil
 	}
@@ -207,7 +213,7 @@ func (s *fileSync) removeFromUploadingQueues(objectId string) error {
 func (s *fileSync) UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error {
 	// TODO After we migrate to storing invites as file objects in tech space, we should update their sync status
 	//  via OnUploadStarted and OnUploaded callbacks
-	err := s.uploadFile(ctx, spaceId, fileId, "")
+	err := s.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 	if err != nil {
 		return err
 	}
@@ -275,24 +281,29 @@ func (e *errLimitReached) Error() string {
 	return "file upload limit has been reached"
 }
 
-func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain.FileId, objectId string) error {
+func (s *fileSync) uploadFile(ctx context.Context, it *QueueItem) error {
 	ctx = filestorage.ContextWithDoNotCache(ctx)
-	log.Debug("uploading file", zap.String("fileId", fileId.String()))
+	log.Debug("uploading file", zap.String("fileId", it.FileId.String()))
 
-	blocksAvailability, err := s.blocksAvailabilityCache.Get(fileId.String())
+	branchToUpload := it.FileId
+	if it.VariantId != "" {
+		branchToUpload = it.VariantId
+	}
+
+	blocksAvailability, err := s.blocksAvailabilityCache.Get(it.FileId.String())
 	if err != nil || blocksAvailability.totalBytesToUpload() == 0 {
 		// Ignore error from cache and calculate blocks availability
-		blocksAvailability, err = s.checkBlocksAvailability(ctx, spaceID, fileId)
+		blocksAvailability, err = s.checkBlocksAvailability(ctx, it.SpaceId, branchToUpload)
 		if err != nil {
 			return fmt.Errorf("check blocks availability: %w", err)
 		}
-		err = s.blocksAvailabilityCache.Set(fileId.String(), blocksAvailability)
+		err = s.blocksAvailabilityCache.Set(it.FileId.String(), blocksAvailability)
 		if err != nil {
-			log.Error("cache blocks availability", zap.String("fileId", fileId.String()), zap.Error(err))
+			log.Error("cache blocks availability", zap.String("fileId", it.FileId.String()), zap.Error(err))
 		}
 	}
 
-	stat, err := s.getAndUpdateSpaceStat(ctx, spaceID)
+	stat, err := s.getAndUpdateSpaceStat(ctx, it.SpaceId)
 	if err != nil {
 		return fmt.Errorf("get space stat: %w", err)
 	}
@@ -300,9 +311,9 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 	bytesLeft := stat.AccountBytesLimit - stat.TotalBytesUsage
 	if blocksAvailability.totalBytesToUpload() > bytesLeft {
 		// Unbind file just in case
-		err := s.rpcStore.DeleteFiles(ctx, spaceID, fileId)
+		err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 		if err != nil {
-			log.Error("calculate limits: unbind off-limit file", zap.String("fileId", fileId.String()), zap.Error(err))
+			log.Error("calculate limits: unbind off-limit file", zap.String("fileId", it.FileId.String()), zap.Error(err))
 		}
 		return &errLimitReached{
 			fileSize:        blocksAvailability.totalBytesToUpload(),
@@ -310,15 +321,16 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 			totalBytesUsage: stat.TotalBytesUsage,
 		}
 	}
-	if objectId != "" {
-		err = s.runOnUploadStartedHook(objectId, domain.FullFileId{FileId: fileId, SpaceId: spaceID})
+	if it.ObjectId != "" {
+		err = s.runOnUploadStartedHook(it.ObjectId, domain.FullFileId{FileId: it.FileId, SpaceId: it.SpaceId})
 		if isObjectDeletedError(err) {
 			return err
 		}
 	}
 	var totalBytesUploaded int
-	err = s.walkFileBlocks(ctx, spaceID, fileId, func(fileBlocks []blocks.Block) error {
-		bytesToUpload, err := s.uploadOrBindBlocks(ctx, spaceID, fileId, fileBlocks, blocksAvailability.cidsToUpload)
+
+	err = s.walkFileBlocks(ctx, it.SpaceId, branchToUpload, func(fileBlocks []blocks.Block) error {
+		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it.SpaceId, it.FileId, fileBlocks, blocksAvailability.cidsToUpload)
 		if err != nil {
 			return fmt.Errorf("select blocks to upload: %w", err)
 		}
@@ -328,9 +340,9 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 	if err != nil {
 		if strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error()) {
 			// Unbind partially uploaded file
-			err := s.rpcStore.DeleteFiles(ctx, spaceID, fileId)
+			err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 			if err != nil {
-				log.Error("upload: unbind off-limit file", zap.String("fileId", fileId.String()), zap.Error(err))
+				log.Error("upload: unbind off-limit file", zap.String("fileId", it.FileId.String()), zap.Error(err))
 			}
 			return &errLimitReached{
 				fileSize:        blocksAvailability.totalBytesToUpload(),
@@ -341,13 +353,13 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 		return fmt.Errorf("walk file blocks: %w", err)
 	}
 
-	err = s.blocksAvailabilityCache.Delete(fileId.String())
+	err = s.blocksAvailabilityCache.Delete(it.FileId.String())
 	if err != nil {
-		log.Warn("delete blocks availability cache entry", zap.String("fileId", fileId.String()), zap.Error(err))
+		log.Warn("delete blocks availability cache entry", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
-	err = s.isLimitReachedErrorLogged.Delete(fileId.String())
+	err = s.isLimitReachedErrorLogged.Delete(it.FileId.String())
 	if err != nil {
-		log.Warn("delete limit reached error logged", zap.String("fileId", fileId.String()), zap.Error(err))
+		log.Warn("delete limit reached error logged", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
 
 	return nil

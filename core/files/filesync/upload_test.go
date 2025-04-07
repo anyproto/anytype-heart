@@ -77,7 +77,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		fileId, fileNode := fx.givenFileAddedToDAG(t)
 		spaceId := "space1"
 
-		require.NoError(t, fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false))
+		require.NoError(t, fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false, "", 0))
 		fx.waitLimitReachedEvent(t, time.Second*5)
 		fx.waitEmptyQueue(t, fx.uploadingQueue, time.Second*5)
 
@@ -104,7 +104,7 @@ func TestFileSync_AddFile(t *testing.T) {
 			return spacestorage.ErrTreeStorageAlreadyDeleted
 		}
 
-		require.NoError(t, fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false))
+		require.NoError(t, fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false, "", 0))
 
 		fx.waitEmptyQueue(t, fx.uploadingQueue, 100*time.Millisecond)
 		assert.Equal(t, 1, fx.uploadingQueue.NumProcessedItems())
@@ -145,7 +145,7 @@ func (fx *fixture) givenFileAddedToDAG(t *testing.T) (domain.FileId, ipld.Node) 
 
 func (fx *fixture) givenFileUploaded(t *testing.T, spaceId string, fileId domain.FileId) {
 	// Add file to upload queue
-	err := fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false)
+	err := fx.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: fileId}, true, false, "", 0)
 	require.NoError(t, err)
 
 	fx.waitEmptyQueue(t, fx.uploadingQueue, time.Second*1)

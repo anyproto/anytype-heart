@@ -30,7 +30,7 @@ func (_m *MockFileSync) EXPECT() *MockFileSync_Expecter {
 }
 
 // AddFile provides a mock function with given fields: fileObjectId, fileId, uploadedByUser, imported
-func (_m *MockFileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) error {
+func (_m *MockFileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool, prioritizeVariantId domain.FileId, score int) error {
 	ret := _m.Called(fileObjectId, fileId, uploadedByUser, imported)
 
 	if len(ret) == 0 {

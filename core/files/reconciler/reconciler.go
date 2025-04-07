@@ -160,7 +160,7 @@ func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persis
 	}
 
 	log.Warn("add to queue", zap.String("objectId", item.ObjectId), zap.String("fileId", item.FileId.FileId.String()))
-	err = r.fileSync.AddFile(item.ObjectId, item.FileId, false, false)
+	err = r.fileSync.AddFile(item.ObjectId, item.FileId, false, false, "", 0)
 	if err != nil {
 		return persistentqueue.ActionRetry, fmt.Errorf("upload file: %w", err)
 	}

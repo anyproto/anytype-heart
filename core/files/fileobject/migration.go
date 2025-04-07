@@ -191,7 +191,7 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 		err = nil
 	}
 
-	err = s.addToSyncQueue(id, fullFileId, false, false)
+	err = s.addToSyncQueue(id, fullFileId, false, false, "", 0)
 	if err != nil {
 		return fmt.Errorf("add to sync queue: %w", err)
 	}
