@@ -1521,7 +1521,7 @@
     "format": "checkbox",
     "hidden": true,
     "key": "autoWidgetDisabled",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Auto Widget disabled",
     "readonly": false,
     "source": "details"

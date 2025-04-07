@@ -88,7 +88,7 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 2,
+		Version: 4,
 		Proc: func(s *state.State) {
 			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypeKeys()) == 0 {
 				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
@@ -196,7 +196,7 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 
 	dvContent.Dataview.TargetObjectId = ot.Id()
 	return []template.StateTransformer{
-		template.WithDataviewID(state.DataviewBlockID, dvContent, false),
+		template.WithDataviewIDIfNotExists(state.DataviewBlockID, dvContent, false),
 		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{ot.Id()})),
 	}
 }

@@ -152,6 +152,9 @@ func (s *service) Close(ctx context.Context) (err error) {
 	var errs []error
 	for _, id := range ids {
 		if err := s.Cancel(id); err != nil {
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
 			errs = append(errs, err)
 		}
 	}

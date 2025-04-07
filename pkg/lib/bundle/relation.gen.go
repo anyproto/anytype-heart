@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a23583f8faef1cbfcd05ca1d2761538e67bbdd1336d1a467a0d657b5f986b313"
+const RelationChecksum = "c4effd0b56ce4d007b246e0371064334d9a7acd7dee184669939217848faa938"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -291,6 +291,7 @@ var (
 			Hidden:           true,
 			Id:               "_brautoWidgetDisabled",
 			Key:              "autoWidgetDisabled",
+			MaxCount:         1,
 			Name:             "Auto Widget disabled",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,

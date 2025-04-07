@@ -87,7 +87,7 @@ func createAccountAndStartApp(t *testing.T, defaultUsecase pb.RpcObjectImportUse
 		eventQueue: eventQueue,
 	}
 	objCreator := getService[builtinobjects.BuiltinObjects](testApp)
-	_, err = objCreator.CreateObjectsForUseCase(session.NewContext(), acc.Info.AccountSpaceId, defaultUsecase)
+	_, _, err = objCreator.CreateObjectsForUseCase(session.NewContext(), acc.Info.AccountSpaceId, defaultUsecase)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
