@@ -60,6 +60,7 @@ func TestRouter_MetadataHeader(t *testing.T) {
 				Records: []*types.Struct{},
 				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}, nil).Once()
+		fx.eventService.On("Broadcast", mock.Anything).Return(nil).Maybe()
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v1/spaces", nil)
