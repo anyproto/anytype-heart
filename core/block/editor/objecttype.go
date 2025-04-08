@@ -139,13 +139,10 @@ func (ot *ObjectType) featuredRelationsMigration(s *state.State) {
 		return
 	}
 
-	var typeKey domain.TypeKey
-	if uk, err := domain.UnmarshalUniqueKey(s.Details().GetString(bundle.RelationKeyUniqueKey)); err == nil {
-		typeKey = domain.TypeKey(uk.InternalKey())
-	}
-
+	typeKey := domain.TypeKey(s.UniqueKeyInternal())
 	featuredRelationKeys := relationutils.DefaultFeaturedRelationKeys(typeKey)
 	featuredRelationIds := make([]string, 0, len(featuredRelationKeys))
+
 	for _, key := range featuredRelationKeys {
 		id, err := ot.Space().DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypeRelation, key.String()))
 		if err != nil {
@@ -175,13 +172,13 @@ func (ot *ObjectType) featuredRelationsMigration(s *state.State) {
 }
 
 func removeDescriptionMigration(s *state.State) {
-	uk, err := domain.UnmarshalUniqueKey(s.Details().GetString(bundle.RelationKeyUniqueKey))
-	if err != nil {
+	uk := s.UniqueKeyInternal()
+	if uk == "" {
 		return
 	}
 
 	// we should delete description value only for bundled object types
-	if !bundle.HasObjectTypeByKey(domain.TypeKey(uk.InternalKey())) {
+	if !bundle.HasObjectTypeByKey(domain.TypeKey(uk)) {
 		return
 	}
 
