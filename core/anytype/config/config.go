@@ -3,7 +3,8 @@ package config
 /*
  Config component provides a way to configure the application both in-memory and on-disk(see PersistedConfig).
  It also provides a way to set up the application with default values and to read configuration from environment variables.
- If you access this config from other components, you should never modify the struct directly. Use method specified in the Updater interface
+ If you access this config from other components, you should never modify the struct directly. Use method specified in the ConfigModifiable interface
+ Fields in the root of Config struct are thread-safe for reading and should not be modified directly.
 */
 import (
 	"errors"
@@ -59,9 +60,11 @@ var (
 	ErrNetworkFileFailedToRead = fmt.Errorf("failed to read network configuration")
 )
 
-type ConfigModifiable interface {
+type Service interface {
+	app.ComponentRunnable
+	// UpdatePersistentConfig updates the persistent config and writes it to the file after
 	UpdatePersistentConfig(f func(cfg *ConfigPersistent) (updated bool)) error
-	Read(f func(*ConfigPersistent))
+	GetPersistentConfig() ConfigPersistent
 }
 
 type ConfigPersistent struct {
@@ -112,10 +115,10 @@ var DefaultConfig = Config{
 
 // Read provides get specific keys values under the lock
 // do not use this method to modify the config
-func (c *Config) Read(f func(*ConfigPersistent)) {
+func (c *Config) GetPersistentConfig() ConfigPersistent {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	f(&c.ConfigPersistent)
+	return c.ConfigPersistent
 }
 
 // UpdatePersistentConfig updates the persistent config and writes it to the file after

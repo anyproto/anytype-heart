@@ -97,12 +97,15 @@ func newFixture(t *testing.T) *fixture {
 
 	fileService := mock_files.NewMockService(t)
 	fileObjectService := mock_fileobject.NewMockService(t)
+	cfg := mock_config.NewMockService(t)
 	gw := New().(*gateway)
-
 	ctx := context.Background()
+	a.Register(testutil.PrepareMock(ctx, a, cfg))
 	a.Register(testutil.PrepareMock(ctx, a, fileService))
 	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
 	a.Register(gw)
+	cfg.EXPECT().GetPersistentConfig().Return(config.ConfigPersistent{GatewayAddr: "127.0.0.1:0"})
+
 	err := a.Start(ctx)
 	assert.NoError(t, err)
 
@@ -175,7 +178,7 @@ func TestRetryReader(t *testing.T) {
 }
 
 func TestDoubleStart(t *testing.T) {
-	cfg := mock_config.NewMockUpdater(t)
+	cfg := mock_config.NewMockService(t)
 	cfg.EXPECT().UpdatePersistentConfig(mock.Anything).Return(nil).Run(func(f func(cfgp *config.ConfigPersistent) bool) {
 		cfgp := &config.ConfigPersistent{
 			GatewayAddr: "127.0.0.1:0",
@@ -191,7 +194,7 @@ func TestDoubleStart(t *testing.T) {
 }
 
 func TestStartStopStart(t *testing.T) {
-	cfg := mock_config.NewMockUpdater(t)
+	cfg := mock_config.NewMockService(t)
 	cfg.EXPECT().UpdatePersistentConfig(mock.Anything).Return(nil).Run(func(f func(cfgp *config.ConfigPersistent) bool) {
 		cfgp := &config.ConfigPersistent{
 			GatewayAddr: "127.0.0.1:0",

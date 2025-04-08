@@ -51,7 +51,7 @@ type Gateway interface {
 type gateway struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
-	cfg               config.ConfigModifiable
+	cfg               config.Service
 	server            *http.Server
 	listener          net.Listener
 	handler           *http.ServeMux
@@ -67,10 +67,7 @@ func (g *gateway) gatewayListener() (net.Listener, error) {
 		return net.Listen("tcp", addr)
 	}
 
-	var addr string
-	g.cfg.Read(func(c *config.ConfigPersistent) {
-		addr = c.GatewayAddr
-	})
+	addr := g.cfg.GetPersistentConfig().GatewayAddr
 	listener, err := netutil.GetTcpListener(addr)
 	if err != nil {
 		// it means we are not able to run on both preferred and random port
@@ -92,7 +89,7 @@ func (g *gateway) gatewayListener() (net.Listener, error) {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
-	g.cfg = a.MustComponent(config.CName).(config.ConfigModifiable)
+	g.cfg = a.MustComponent(config.CName).(config.Service)
 	return nil
 }
 
