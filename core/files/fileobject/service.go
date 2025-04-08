@@ -148,6 +148,7 @@ func (s *service) Init(a *app.App) error {
 		migrationQueueStore,
 		log.Desugar(),
 		s.migrationQueueHandler,
+		nil,
 		persistentqueue.WithContext(migrationQueueCtx),
 	)
 	return nil
@@ -321,8 +322,8 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 		return imageVariants[i].size < imageVariants[j].size
 	})
 	for idx, variant := range imageVariants {
-		score := 1 + (len(imageVariants) - idx)
-		err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported(), variant.variantId, score)
+		priority := len(imageVariants) - idx
+		err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported(), variant.variantId, priority)
 		if err != nil {
 			return "", nil, fmt.Errorf("add image variant to sync queue: %w", err)
 		}
@@ -452,8 +453,8 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	return fileObjectId, nil
 }
 
-func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool, prioritizeVariantId domain.FileId, score int) error {
-	if err := s.fileSync.AddFile(objectId, fileId, uploadedByUser, imported, prioritizeVariantId, score); err != nil {
+func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool, prioritizeVariantId domain.FileId, priority int) error {
+	if err := s.fileSync.AddFile(objectId, fileId, uploadedByUser, imported, prioritizeVariantId, priority); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	return nil

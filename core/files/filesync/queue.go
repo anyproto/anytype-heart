@@ -51,9 +51,9 @@ func (it *QueueItem) FullFileId() domain.FullFileId {
 	}
 }
 
-func (it *QueueItem) Less(other *QueueItem) bool {
-	if it.Score != other.Score {
-		return it.Score > other.Score
+func queueItemLess(one, other *QueueItem) bool {
+	if one.Score != other.Score {
+		return one.Score > other.Score
 	}
-	return it.Timestamp < other.Timestamp
+	return one.Timestamp < other.Timestamp
 }

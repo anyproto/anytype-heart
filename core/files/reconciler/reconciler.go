@@ -89,7 +89,7 @@ func (r *reconciler) Init(a *app.App) error {
 	if err != nil {
 		return fmt.Errorf("init rebindQueueStore: %w", err)
 	}
-	r.rebindQueue = persistentqueue.New(rebindQueueStore, log, r.rebindHandler)
+	r.rebindQueue = persistentqueue.New(rebindQueueStore, log, r.rebindHandler, nil)
 
 	r.isStartedStore = keyvaluestore.NewJsonFromCollection[bool](provider.GetSystemCollection())
 

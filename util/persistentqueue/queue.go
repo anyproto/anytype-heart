@@ -96,10 +96,12 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
+// New creates new queue backed by specified storage. If priorityQueueLessFunc is provided, use priority queue as underlying message queue
 func New[T Item](
 	storage Storage[T],
 	logger *zap.Logger,
 	handler HandlerFunc[T],
+	priorityQueueLessFunc func(one, other T) bool,
 	opts ...Option,
 ) *Queue[T] {
 	q := &Queue[T]{
@@ -119,8 +121,11 @@ func New[T Item](
 	}
 	q.ctx, q.ctxCancel = context.WithCancel(rootCtx)
 
-	// TODO Choose between simple and with priority
-	q.batcher = newSimpleMessageQueue[T](q.ctx)
+	if priorityQueueLessFunc != nil {
+		q.batcher = newPriorityMessageQueue[T](priorityQueueLessFunc)
+	} else {
+		q.batcher = newSimpleMessageQueue[T](q.ctx)
+	}
 
 	err := q.restore()
 	if err != nil {

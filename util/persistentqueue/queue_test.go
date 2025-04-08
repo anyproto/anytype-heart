@@ -60,7 +60,7 @@ func newTestQueueWithDb(t *testing.T, db anystore.DB, handlerFunc HandlerFunc[*t
 	storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
 	require.NoError(t, err)
 
-	q := New[*testItem](storage, log.Desugar(), handlerFunc)
+	q := New[*testItem](storage, log.Desugar(), handlerFunc, nil)
 	return q
 }
 
@@ -373,7 +373,7 @@ func TestWithHandlerTickPeriod(t *testing.T) {
 		tickerPeriod := 50 * time.Millisecond
 		q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
 			return ActionRetry, nil
-		}, WithRetryPause(tickerPeriod))
+		}, nil, WithRetryPause(tickerPeriod))
 
 		err = q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 		require.NoError(t, err)
@@ -399,7 +399,7 @@ func TestWithHandlerTickPeriod(t *testing.T) {
 		tickerPeriod := 50 * time.Millisecond
 		q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
 			return ActionDone, nil
-		}, WithRetryPause(tickerPeriod))
+		}, nil, WithRetryPause(tickerPeriod))
 
 		err = q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 		require.NoError(t, err)
@@ -435,7 +435,7 @@ func TestWithContext(t *testing.T) {
 		assert.Equal(t, "testValue", val)
 		close(wait)
 		return ActionDone, nil
-	}, WithContext(testRootCtx))
+	}, nil, WithContext(testRootCtx))
 	q.Run()
 	t.Cleanup(func() {
 		q.Close()
