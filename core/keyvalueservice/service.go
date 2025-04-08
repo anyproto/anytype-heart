@@ -5,20 +5,30 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
 	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage/innerstorage"
+	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "core.keyvalueservice"
 
-type ObserverFunc func(key string, value []byte)
+var log = logging.Logger(CName).Desugar()
+
+type ObserverFunc func(key string, val Value)
+
+type Value struct {
+	Data           []byte
+	TimestampMilli int
+}
 
 type Service interface {
 	app.ComponentRunnable
 
-	GetUserScopedKey(key string) ([]byte, error)
+	GetUserScopedKey(key string) ([]Value, error)
 	SetUserScopedKey(key string, value []byte) error
 	SubscribeForUserScopedKey(key string, subscriptionName string, observerFunc ObserverFunc) error
 	UnsubscribeFromUserScopedKey(key string, subscriptionName string) error
@@ -59,12 +69,17 @@ func (s *service) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) observeChanges(keyValue ...innerstorage.KeyValue) {
-	for _, kv := range keyValue {
+func (s *service) observeChanges(decryptFunc keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) {
+	for _, kv := range kvs {
 		s.lock.RLock()
 		byKey := s.subscriptions[kv.Key]
 		for _, sub := range byKey {
-			sub.observerFunc(kv.Key, kv.Value.Value)
+			data, err := decryptFunc(kv)
+			if err != nil {
+				log.Error("can't decrypt value", zap.Error(err))
+				continue
+			}
+			sub.observerFunc(kv.Key, Value{Data: data, TimestampMilli: kv.TimestampMilli})
 		}
 		s.lock.RUnlock()
 
@@ -75,7 +90,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) GetUserScopedKey(key string) ([]byte, error) {
+func (s *service) GetUserScopedKey(key string) ([]Value, error) {
 	// TODO implement me
 	panic("implement me")
 }

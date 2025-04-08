@@ -10,7 +10,7 @@ import (
 
 const CName = "space.spacecore.keyvalueobserver"
 
-type ObserverFunc func(keyValue ...innerstorage.KeyValue)
+type ObserverFunc func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue)
 
 type Observer interface {
 	keyvaluestorage.Indexer
@@ -41,13 +41,13 @@ func (o *observer) SetObserver(observerFunc ObserverFunc) {
 	o.observerFunc = observerFunc
 }
 
-func (o *observer) Index(keyValue ...innerstorage.KeyValue) error {
+func (o *observer) Index(decryptor keyvaluestorage.Decryptor, keyValue ...innerstorage.KeyValue) error {
 	o.lock.RLock()
 	obs := o.observerFunc
 	o.lock.RUnlock()
 
 	if obs != nil {
-		obs(keyValue...)
+		obs(decryptor, keyValue)
 	}
 	return nil
 }
