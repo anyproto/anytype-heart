@@ -88,7 +88,7 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 4,
+		Version: 5,
 		Proc: func(s *state.State) {
 			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypeKeys()) == 0 {
 				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
@@ -122,6 +122,10 @@ func (ot *ObjectType) StateMigrations() migration.Migrations {
 			Proc: func(s *state.State) {
 				template.InitTemplate(s, ot.dataviewTemplates()...)
 			},
+		},
+		{
+			Version: 5,
+			Proc:    removeDescriptionMigration,
 		},
 	})
 }
@@ -168,6 +172,24 @@ func (ot *ObjectType) featuredRelationsMigration(s *state.State) {
 	}
 
 	s.SetDetail(bundle.RelationKeyRecommendedRelations, domain.StringList(recommendedRelations))
+}
+
+func removeDescriptionMigration(s *state.State) {
+	uk, err := domain.UnmarshalUniqueKey(s.Details().GetString(bundle.RelationKeyUniqueKey))
+	if err != nil {
+		return
+	}
+
+	// we should delete description value only for bundled object types
+	if !bundle.HasObjectTypeByKey(domain.TypeKey(uk.InternalKey())) {
+		return
+	}
+
+	if s.Details().GetString(bundle.RelationKeyDescription) == "" {
+		return
+	}
+
+	s.RemoveDetail(bundle.RelationKeyDescription)
 }
 
 func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo) error {
