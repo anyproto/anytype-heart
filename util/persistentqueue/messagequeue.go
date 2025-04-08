@@ -10,15 +10,15 @@ var errClosed = fmt.Errorf("closed")
 type messageQueue[T any] struct {
 	closed bool
 	cond   *sync.Cond
-	items  []T
+	items  *priorityQueue[T]
 }
 
-func newMessageQueue[T any](bufSize int) *messageQueue[T] {
+func newMessageQueue[T any](lessFunc func(one, other T) bool) *messageQueue[T] {
 	q := &messageQueue[T]{
 		cond: &sync.Cond{
 			L: &sync.Mutex{},
 		},
-		items: make([]T, 0, bufSize),
+		items: newPriorityQueue[T](lessFunc),
 	}
 	return q
 }
@@ -30,7 +30,7 @@ func (q *messageQueue[T]) add(item T) error {
 	if q.closed {
 		return errClosed
 	}
-	q.items = append(q.items, item)
+	q.items.push(item)
 	q.cond.Signal()
 	return nil
 }
@@ -48,21 +48,23 @@ func (q *messageQueue[T]) close() {
 
 func (q *messageQueue[T]) waitOne() (T, error) {
 	q.cond.L.Lock()
+	defer q.cond.L.Unlock()
+
+	var defaultVal T
+
 	for {
 		if q.closed {
-			q.cond.L.Unlock()
-			var defaultVal T
 			return defaultVal, errClosed
 		}
-		if len(q.items) == 0 {
+		if q.items.Len() == 0 {
 			q.cond.Wait()
 		} else {
 			break
 		}
 	}
-	it := q.items[len(q.items)-1]
-	q.items = q.items[:len(q.items)-1]
-	q.cond.L.Unlock()
-
+	it, ok := q.items.pop()
+	if !ok {
+		return defaultVal, fmt.Errorf("integrity violation")
+	}
 	return it, nil
 }

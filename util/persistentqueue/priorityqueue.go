@@ -1,14 +1,18 @@
 package persistentqueue
 
-import "container/heap"
-
-type itemWithPriority[T any] struct {
-	item     T
-	priority int
-}
+import (
+	"container/heap"
+)
 
 type priorityQueue[T any] struct {
-	items []itemWithPriority[T]
+	items    []T
+	lessFunc func(one, other T) bool
+}
+
+func newPriorityQueue[T any](lessFunc func(one, other T) bool) *priorityQueue[T] {
+	return &priorityQueue[T]{
+		lessFunc: lessFunc,
+	}
 }
 
 func (q *priorityQueue[T]) Len() int {
@@ -16,7 +20,7 @@ func (q *priorityQueue[T]) Len() int {
 }
 
 func (q *priorityQueue[T]) Less(i, j int) bool {
-	return q.items[i].priority > q.items[j].priority
+	return q.lessFunc(q.items[i], q.items[j])
 }
 
 func (q *priorityQueue[T]) Swap(i, j int) {
@@ -24,7 +28,7 @@ func (q *priorityQueue[T]) Swap(i, j int) {
 }
 
 func (q *priorityQueue[T]) Push(x any) {
-	item := x.(itemWithPriority[T])
+	item := x.(T)
 	q.items = append(q.items, item)
 }
 
@@ -34,12 +38,8 @@ func (q *priorityQueue[T]) Pop() any {
 	return item
 }
 
-func newPriorityQueue[T any]() *priorityQueue[T] {
-	return &priorityQueue[T]{}
-}
-
-func (q *priorityQueue[T]) push(item T, priority int) {
-	heap.Push(q, itemWithPriority[T]{item: item, priority: priority})
+func (q *priorityQueue[T]) push(item T) {
+	heap.Push(q, item)
 }
 
 func (q *priorityQueue[T]) pop() (T, bool) {
@@ -47,6 +47,6 @@ func (q *priorityQueue[T]) pop() (T, bool) {
 		var defaultValue T
 		return defaultValue, false
 	}
-	it := heap.Pop(q).(itemWithPriority[T])
-	return it.item, true
+	it := heap.Pop(q).(T)
+	return it, true
 }

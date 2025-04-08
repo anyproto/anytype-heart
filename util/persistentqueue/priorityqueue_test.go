@@ -11,12 +11,15 @@ import (
 )
 
 func TestPriorityQueue(t *testing.T) {
+	lessFunc := func(one, other int) bool {
+		return one > other
+	}
 	t.Run("consecutive insertions", func(t *testing.T) {
-		pq := newPriorityQueue[int]()
+		pq := newPriorityQueue[int](lessFunc)
 
 		const n = 100
 		for i := 0; i < n; i++ {
-			pq.push(i, i)
+			pq.push(i)
 		}
 
 		for i := 0; i < n; i++ {
@@ -34,9 +37,9 @@ func TestPriorityQueue(t *testing.T) {
 			sort.Slice(want, func(i, j int) bool {
 				return want[i] > want[j]
 			})
-			pq := newPriorityQueue[int]()
+			pq := newPriorityQueue[int](lessFunc)
 			for _, in := range input {
-				pq.push(in, in)
+				pq.push(in)
 			}
 
 			got := make([]int, 0, len(input))
