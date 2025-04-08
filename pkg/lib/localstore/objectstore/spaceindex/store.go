@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -115,6 +116,7 @@ type dsObjectStore struct {
 	sourceService SourceDetailsFromID
 	subManager    *SubscriptionManager
 	fulltextQueue FulltextQueue
+	dbProvider    anystoreprovider.Provider
 
 	componentCtx       context.Context
 	arenaPool          *anyenc.ArenaPool
@@ -128,7 +130,7 @@ type dsObjectStore struct {
 }
 
 type Deps struct {
-	Db            anystore.DB
+	DbProvider    anystoreprovider.Provider
 	Fts           ftsearch.FTSearch
 	SourceService SourceDetailsFromID
 	SubManager    *SubscriptionManager
@@ -141,16 +143,13 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		componentCtx:       componentCtx,
 		arenaPool:          &anyenc.ArenaPool{},
 		collatorBufferPool: newCollatorBufferPool(),
-		db:                 deps.Db,
 		sourceService:      deps.SourceService,
 		fts:                deps.Fts,
 		subManager:         deps.SubManager,
 		fulltextQueue:      deps.FulltextQueue,
+		dbProvider:         deps.DbProvider,
 	}
-	err := s.initCollections(componentCtx)
-	if err != nil {
-		return NewInvalidStore(err)
-	}
+
 	return s
 }
 
@@ -158,7 +157,18 @@ func (s *dsObjectStore) Init() error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	return nil
+	if s.db != nil {
+		return nil
+	}
+
+	db, err := s.dbProvider.GetCrdtDb(s.spaceId)
+	if err != nil {
+		return fmt.Errorf("get crdt db: %w", err)
+	}
+
+	s.db = db
+
+	return s.initCollections(s.componentCtx)
 }
 
 type LinksUpdateInfo struct {

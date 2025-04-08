@@ -11,7 +11,6 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
@@ -57,7 +56,7 @@ type Provider interface {
 	GetSystemCollection() anystore.Collection
 
 	GetSpaceIndexDb(spaceId string) (anystore.DB, error)
-	GetCrdtDb(spaceId string) anystore.DB
+	GetCrdtDb(spaceId string) (anystore.DB, error)
 
 	ListSpaceIdsFromFilesystem() ([]string, error)
 
@@ -216,7 +215,7 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 	return db.db, nil
 }
 
-func (s *provider) GetCrdtDb(spaceId string) anystore.DB {
+func (s *provider) GetCrdtDb(spaceId string) (anystore.DB, error) {
 	s.crtdStoreLock.Lock()
 	defer s.crtdStoreLock.Unlock()
 
@@ -229,16 +228,14 @@ func (s *provider) GetCrdtDb(spaceId string) anystore.DB {
 			_ = os.RemoveAll(path)
 			db, err = s.openDatabase(s.componentCtx, path)
 		}
-
 		if err != nil {
-			log.Error("get crdt db", zap.Error(err))
-			return nil
+			return nil, err
 		}
 		s.crdtDbs[spaceId] = db
 
-		return db.db
+		return db.db, nil
 	}
-	return db.db
+	return db.db, nil
 }
 
 func (s *provider) getAnyStoreConfig() *anystore.Config {

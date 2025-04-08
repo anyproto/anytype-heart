@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -249,20 +248,14 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 	store, ok := s.spaceIndexes[spaceId]
 	if !ok {
-		db, err := s.anystoreProvider.GetSpaceIndexDb(spaceId)
-		if err != nil {
-			s.spaceIndexes[spaceId] = spaceindex.NewInvalidStore(err)
-		} else {
-			store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
-				Db:            db,
-				SourceService: s.sourceService,
-				Fts:           s.fts,
-				SubManager:    s.subManager,
-				FulltextQueue: s,
-			})
-			s.spaceIndexes[spaceId] = store
-		}
-
+		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
+			DbProvider:    s.anystoreProvider,
+			SourceService: s.sourceService,
+			Fts:           s.fts,
+			SubManager:    s.subManager,
+			FulltextQueue: s,
+		})
+		s.spaceIndexes[spaceId] = store
 	}
 	return store
 }
@@ -275,11 +268,26 @@ func (s *dsObjectStore) preloadExistingObjectStores() error {
 			log.Error("list space ids from filesystem", zap.Error(err))
 		}
 
+		var indexes []spaceindex.Store
 		s.lock.Lock()
-		defer s.lock.Unlock()
 		for _, spaceId := range spaceIds {
-			_ = s.getOrInitSpaceIndex(spaceId)
+			spaceIndex := s.getOrInitSpaceIndex(spaceId)
+			indexes = append(indexes, spaceIndex)
 		}
+		s.lock.Unlock()
+
+		var wg sync.WaitGroup
+		for _, index := range indexes {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				initErr := index.Init()
+				if initErr != nil {
+					log.With("error", initErr).Error("pre-init space index")
+				}
+			}()
+		}
+		wg.Wait()
 	})
 	return err
 }
@@ -317,7 +325,7 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
-func collectCrossSpaceWithoutTech(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
+func iterateCrossSpaceWithoutTech(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
 	stores := s.listStores()
 	for _, store := range stores {
 		if store.SpaceId() == s.techSpaceId {
@@ -325,9 +333,9 @@ func collectCrossSpaceWithoutTech(s *dsObjectStore, proc func(store spaceindex.S
 		}
 		err := store.Init()
 		if err != nil {
-			return nil, fmt.Errorf("init store: %w", err)
+			return fmt.Errorf("init store: %w", err)
 		}
-		err := proc(store)
+		err = proc(store)
 		if err != nil {
 			return err
 		}
@@ -352,7 +360,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 		s.arenaPool.Put(arena)
 	}()
 
-	err = collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
+	err = iterateCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
 		err = store.IterateAll(func(doc *anyenc.Value) error {
 			id := doc.GetString(idKey)
 			spaceId := doc.GetString(spaceIdKey)

@@ -242,7 +242,11 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if len(ids) == 0 {
 		return nil
 	}
-	db := i.store.GetCrdtDb(space.Id())
+
+	db, err := i.dbProvider.GetCrdtDb(space.Id())
+	if err != nil {
+		return fmt.Errorf("get crdt db: %w", err)
+	}
 
 	txn, err := db.WriteTx(ctx)
 	if err != nil {

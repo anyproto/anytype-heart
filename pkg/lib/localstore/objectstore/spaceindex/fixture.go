@@ -90,7 +90,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	require.NoError(t, err)
 
 	s := New(context.Background(), "test", Deps{
-		Db:            provider.GetCommonDb(),
+		DbProvider:    provider,
 		Fts:           fullText,
 		SourceService: &detailsFromId{},
 		SubManager:    &SubscriptionManager{},
