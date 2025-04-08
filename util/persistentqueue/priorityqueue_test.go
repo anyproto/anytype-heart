@@ -58,4 +58,29 @@ func TestPriorityQueue(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("initWith: property testing", func(t *testing.T) {
+		f := func(input []int) bool {
+			want := slices.Clone(input)
+			// descending order
+			sort.Slice(want, func(i, j int) bool {
+				return want[i] > want[j]
+			})
+			pq := newPriorityQueue[int](lessFunc)
+			pq.initWith(input)
+
+			got := make([]int, 0, len(input))
+			for range input {
+				gotItem, ok := pq.pop()
+				if !ok {
+					return false
+				}
+				got = append(got, gotItem)
+			}
+
+			return assert.Equal(t, want, got)
+		}
+
+		err := quick.Check(f, nil)
+		require.NoError(t, err)
+	})
 }

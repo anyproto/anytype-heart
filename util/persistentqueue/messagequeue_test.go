@@ -18,7 +18,7 @@ func TestMessageQueue(t *testing.T) {
 	}
 
 	t.Run("in one goroutine", func(t *testing.T) {
-		q := newMessageQueue[int](lessFunc)
+		q := newPriorityMessageQueue[int](lessFunc)
 
 		for i := 0; i < 100; i++ {
 			err := q.add(i)
@@ -35,7 +35,7 @@ func TestMessageQueue(t *testing.T) {
 	})
 
 	t.Run("in multiple goroutines", func(t *testing.T) {
-		q := newMessageQueue[int](lessFunc)
+		q := newPriorityMessageQueue[int](lessFunc)
 
 		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
@@ -87,7 +87,7 @@ func TestMessageQueueWithComplexPriority(t *testing.T) {
 		return one.Timestamp < other.Timestamp
 	}
 
-	q := newMessageQueue[testItemWithPriority](lessFunc)
+	q := newPriorityMessageQueue[testItemWithPriority](lessFunc)
 
 	const n = 100
 	var wg sync.WaitGroup

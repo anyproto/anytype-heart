@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
 )
 
@@ -57,7 +56,7 @@ type Queue[T Item] struct {
 	storage Storage[T]
 	logger  *zap.Logger
 
-	batcher      *mb.MB[T]
+	batcher      messageQueue[T]
 	handler      HandlerFunc[T]
 	options      options
 	handledItems uint32
@@ -106,7 +105,6 @@ func New[T Item](
 	q := &Queue[T]{
 		storage:  storage,
 		logger:   logger,
-		batcher:  mb.New[T](0),
 		handler:  handler,
 		set:      make(map[string]struct{}),
 		options:  options{},
@@ -120,6 +118,10 @@ func New[T Item](
 		rootCtx = q.options.ctx
 	}
 	q.ctx, q.ctxCancel = context.WithCancel(rootCtx)
+
+	// TODO Choose between simple and with priority
+	q.batcher = newSimpleMessageQueue[T](q.ctx)
+
 	err := q.restore()
 	if err != nil {
 		q.logger.Error("can't restore queue", zap.Error(err))
@@ -165,7 +167,7 @@ func (q *Queue[T]) loop() {
 }
 
 func (q *Queue[T]) handleNext() error {
-	it, err := q.batcher.WaitOne(q.ctx)
+	it, err := q.batcher.waitOne()
 	if err != nil {
 		return fmt.Errorf("wait one: %w", err)
 	}
@@ -188,7 +190,7 @@ func (q *Queue[T]) handleNext() error {
 		// So just notify waiters that the item has been processed
 		q.notifyWaiters()
 		q.lock.Unlock()
-		addErr := q.batcher.Add(q.ctx, it)
+		addErr := q.batcher.add(it)
 		if addErr != nil {
 			return fmt.Errorf("add to queue: %w", addErr)
 		}
@@ -212,9 +214,7 @@ func (q *Queue[T]) restore() error {
 		return fmt.Errorf("list items from storage: %w", err)
 	}
 
-	sortItems(items)
-
-	err = q.batcher.Add(q.ctx, items...)
+	err = q.batcher.initWith(items)
 	if err != nil {
 		return fmt.Errorf("add to queue: %w", err)
 	}
@@ -224,24 +224,10 @@ func (q *Queue[T]) restore() error {
 	return nil
 }
 
-func sortItems[T Item](items []T) {
-	if len(items) == 0 {
-		return
-	}
-	var itemIface Item = items[0]
-	if _, ok := itemIface.(OrderedItem); ok {
-		sort.Slice(items, func(i, j int) bool {
-			var left Item = items[i]
-			var right Item = items[j]
-			return left.(OrderedItem).Less(right.(OrderedItem))
-		})
-	}
-}
-
 // Close stops queue processing and waits for the last in-process item to be processed
 func (q *Queue[T]) Close() error {
 	q.ctxCancel()
-	err := q.batcher.Close()
+	err := q.batcher.close()
 	q.lock.Lock()
 	isStarted := q.isStarted
 	q.lock.Unlock()
@@ -267,7 +253,7 @@ func (q *Queue[T]) Add(item T) error {
 	q.set[item.Key()] = struct{}{}
 	q.lock.Unlock()
 
-	err = q.batcher.Add(q.ctx, item)
+	err = q.batcher.add(item)
 	if err != nil {
 		return err
 	}
