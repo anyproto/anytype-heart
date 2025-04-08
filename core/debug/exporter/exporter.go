@@ -60,12 +60,14 @@ func ExportTree(ctx context.Context, params ExportParams) error {
 	if err != nil {
 		return err
 	}
+	writeTree.Lock()
+	defer writeTree.Unlock()
 	var (
 		changeBuilder = objecttree.NewChangeBuilder(crypto.NewKeyStorage(), writeTree.Header())
 		converter     = params.Converter
 		changes       []*treechangeproto.RawTreeChangeWithId
 	)
-	err = writeTree.IterateRoot(
+	err = params.Readable.IterateRoot(
 		func(change *objecttree.Change, decrypted []byte) (any, error) {
 			return converter.Unmarshall(change.DataType, decrypted)
 		},

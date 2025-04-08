@@ -129,10 +129,11 @@ var (
 	WarningAfter = time.Second * 1
 )
 
-func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
+func BootstrapConfig(newAccount bool, spaceStreamAutoJoinUrl string) *config.Config {
 	return config.New(
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
+		config.WithAutoJoinStream(spaceStreamAutoJoinUrl),
 	)
 }
 
@@ -221,6 +222,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectstore.New()).
 		Register(backlinks.New()).
 		// Services
+		Register(collection.New()).
+		Register(subscription.New()).
+		Register(crossspacesub.New()).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
@@ -294,9 +298,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
-		Register(collection.New()).
-		Register(subscription.New()).
-		Register(crossspacesub.New()).
 		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).

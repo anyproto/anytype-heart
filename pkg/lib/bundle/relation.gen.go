@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "6646b8b3dbf06f6b71fb26adc8772b0167cd258255d8762d7d304ad77f2cbf4d"
+const RelationChecksum = "7d3fe5cfedf1b2c3a444073ffcf27ae7a680ab76ed3a4ca51393b0d9461cb86a"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -107,6 +107,7 @@ const (
 	RelationKeyIconOption                   domain.RelationKey = "iconOption"
 	RelationKeySpaceAccessibility           domain.RelationKey = "spaceAccessibility"
 	RelationKeySpaceAccessType              domain.RelationKey = "spaceAccessType"
+	RelationKeySpaceUxType                  domain.RelationKey = "spaceUxType"
 	RelationKeySourceFilePath               domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus               domain.RelationKey = "fileSyncStatus"
 	RelationKeyFileBackupStatus             domain.RelationKey = "fileBackupStatus"
@@ -125,6 +126,9 @@ const (
 	RelationKeySpaceAccountStatus           domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid           domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey           domain.RelationKey = "spaceInviteFileKey"
+	RelationKeySpaceInviteGuestFileCid      domain.RelationKey = "spaceInviteGuestFileCid"
+	RelationKeySpaceInviteGuestFileKey      domain.RelationKey = "spaceInviteGuestFileKey"
+	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
 	RelationKeyParticipantPermissions       domain.RelationKey = "participantPermissions"
 	RelationKeyIdentity                     domain.RelationKey = "identity"
 	RelationKeyParticipantStatus            domain.RelationKey = "participantStatus"
@@ -161,6 +165,9 @@ const (
 	RelationKeyRecommendedFileRelations     domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType              domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                domain.RelationKey = "defaultTypeId"
+	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
+	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
+	RelationKeyPluralName                   domain.RelationKey = "pluralName"
 )
 
 var (
@@ -212,7 +219,7 @@ var (
 			Id:               "_brassignee",
 			Key:              "assignee",
 			Name:             "Assignee",
-			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact", TypePrefix + "participant"},
+			ObjectTypes:      []string{TypePrefix + "contact", TypePrefix + "participant"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
@@ -278,10 +285,37 @@ var (
 			Id:               "_brauthor",
 			Key:              "author",
 			Name:             "Author",
-			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact", TypePrefix + "participant"},
+			ObjectTypes:      []string{TypePrefix + "contact", TypePrefix + "participant"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAutoWidgetDisabled: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brautoWidgetDisabled",
+			Key:              "autoWidgetDisabled",
+			MaxCount:         1,
+			Name:             "Auto Widget disabled",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAutoWidgetTargets: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Automatically generated widget. Used to avoid creating widget if was removed by user",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brautoWidgetTargets",
+			Key:              "autoWidgetTargets",
+			Name:             "Auto Widget targets",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBacklinks: {
@@ -808,6 +842,20 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyGuestKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Guest key to read public space",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brguestKey",
+			Key:              "guestKey",
+			MaxCount:         1,
+			Name:             "Space guest key",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyHasChat: {
@@ -1417,6 +1465,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyPluralName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Name of Object type in plural form",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brpluralName",
+			Key:              "pluralName",
+			MaxCount:         1,
+			Name:             "Plural name",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyPriority: {
 
 			DataSource:       model.Relation_details,
@@ -1903,6 +1965,34 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceInviteGuestFileCid: {
+
+			DataSource:       model.Relation_details,
+			Description:      "CID of invite file for  for guest user in the current space. It's stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteGuestFileCid",
+			Key:              "spaceInviteGuestFileCid",
+			MaxCount:         1,
+			Name:             "Guest user invite file CID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteGuestFileKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Encoded encryption key of invite file for guest user in the current space. It's stored in SpaceView",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brspaceInviteGuestFileKey",
+			Key:              "spaceInviteGuestFileKey",
+			MaxCount:         1,
+			Name:             "Guest user invite file key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySpaceLocalStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -1956,6 +2046,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space shareable status",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceUxType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Space UX type, see enum model.SpaceUxType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceUxType",
+			Key:              "spaceUxType",
+			MaxCount:         1,
+			Name:             "Space UX type",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

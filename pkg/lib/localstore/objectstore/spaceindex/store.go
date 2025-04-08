@@ -30,6 +30,7 @@ var (
 type Store interface {
 	SpaceId() string
 	Close() error
+	Init() error
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
@@ -38,12 +39,13 @@ type Store interface {
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIds(q database.Query) (ids []string, total int, err error)
 	QueryIterate(q database.Query, proc func(details *domain.Details)) error
-
+	IterateAll(proc func(doc *anyenc.Value) error) error
 	HasIds(ids []string) (exists []string, err error)
 	GetInfosByIds(ids []string) ([]*database.ObjectInfo, error)
 	List(includeArchived bool) ([]*database.ObjectInfo, error)
 
 	ListIds() ([]string, error)
+	ListFullIds() ([]domain.FullID, error)
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
@@ -93,8 +95,9 @@ type SourceDetailsFromID interface {
 
 type FulltextQueue interface {
 	RemoveIdsFromFullTextQueue(ids []string) error
-	AddToIndexQueue(ctx context.Context, ids ...string) error
-	ListIdsFromFullTextQueue(limit int) ([]string, error)
+	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
+	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
+	ClearFullTextQueue(spaceIds []string) error
 }
 
 type dsObjectStore struct {
@@ -149,6 +152,13 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		return NewInvalidStore(err)
 	}
 	return s
+}
+
+func (s *dsObjectStore) Init() error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return nil
 }
 
 type LinksUpdateInfo struct {

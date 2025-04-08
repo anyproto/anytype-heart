@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -138,7 +139,11 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 	}
 	opts["synchronous"] = "off"
 	return &anystore.Config{
-		ReadConnections:         4,
-		SQLiteConnectionOptions: opts,
+		ReadConnections:                           4,
+		SQLiteConnectionOptions:                   opts,
+		SQLiteGlobalPageCachePreallocateSizeBytes: 1 << 26,
+
+		StalledConnectionsPanicOnClose:    time.Second * 45,
+		StalledConnectionsDetectorEnabled: true,
 	}
 }

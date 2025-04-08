@@ -172,6 +172,9 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err error) {
+	if req.SpaceId == "" {
+		return nil, fmt.Errorf("spaceId should not be empty")
+	}
 	// todo: removed temp fix after we will have session-scoped subscriptions
 	// this is to prevent multiple subscriptions with the same id in different spaces
 	err = s.Unsubscribe(req.SubId)
@@ -186,6 +189,9 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
+	if req.SpaceId == "" {
+		return nil, fmt.Errorf("spaceId should not be empty")
+	}
 	// todo: removed temp fix after we will have session-scoped subscriptions
 	// this is to prevent multiple subscriptions with the same id in different spaces
 	err = s.Unsubscribe(req.SubId)

@@ -64,9 +64,12 @@ type indexer struct {
 	forceFt chan struct{}
 
 	// state
-	lock             sync.Mutex
-	reindexLogFields []zap.Field
-	spaceIndexers    map[string]*spaceIndexer
+	lock                sync.Mutex
+	reindexLogFields    []zap.Field
+	spaceIndexers       map[string]*spaceIndexer
+	techSpaceIdProvider objectstore.TechSpaceIdProvider
+	spaces              map[string]struct{}
+	spacesLock          sync.RWMutex
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -80,6 +83,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.forceFt = make(chan struct{})
 	i.config = app.MustComponent[*config.Config](a)
 	i.spaceIndexers = map[string]*spaceIndexer{}
+	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
 	return
 }
 
@@ -133,6 +137,10 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	if err != nil {
 		return fmt.Errorf("remove acl: %w", err)
 	}
+	err = i.store.ClearFullTextQueue([]string{spaceId})
+	if err != nil {
+		return fmt.Errorf("remove fts: %w", err)
+	}
 	return store.DeleteDetails(i.runCtx, ids)
 }
 
@@ -140,7 +148,12 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {
-		spaceInd = newSpaceIndexer(i.runCtx, i.store.SpaceIndex(info.Space.Id()), i.store)
+		spaceInd = newSpaceIndexer(
+			i.runCtx,
+			i.store.SpaceIndex(info.Space.Id()),
+			i.store,
+			i.techSpaceIdProvider.TechSpaceId() == info.Space.Id(),
+		)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}
 	i.lock.Unlock()

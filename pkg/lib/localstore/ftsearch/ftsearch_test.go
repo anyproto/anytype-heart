@@ -114,10 +114,18 @@ func TestNamePrefixSearch(t *testing.T) {
 		Id:   "id5/r/desc",
 		Text: "noone",
 	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:   "id6/r/snippet",
+		Text: "opa",
+	}))
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:   "id7/r/pluralName",
+		Text: "opa",
+	}))
 
 	search, err := ft.NamePrefixSearch("", "o")
 	require.NoError(t, err)
-	require.Len(t, search, 2)
+	require.Len(t, search, 4)
 
 	search, err = ft.NamePrefixSearch("", "n")
 	require.NoError(t, err)
@@ -360,7 +368,7 @@ func assertMultiSpace(t *testing.T, tmpDir string) {
 
 func TestFtSearch_Close(t *testing.T) {
 	// given
-	fts := new(ftSearchTantivy)
+	fts := new(ftSearch)
 
 	// when
 	err := fts.Close(nil)

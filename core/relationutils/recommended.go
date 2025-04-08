@@ -25,6 +25,13 @@ var (
 		bundle.RelationKeyBacklinks,
 	}
 
+	defaultSetFeaturedRelationKeys = []domain.RelationKey{
+		bundle.RelationKeyType,
+		bundle.RelationKeySetOf,
+		bundle.RelationKeyTag,
+		bundle.RelationKeyBacklinks,
+	}
+
 	defaultRecommendedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyCreatedDate,
 		bundle.RelationKeyCreator,
@@ -35,11 +42,6 @@ var (
 		bundle.RelationKeyLastModifiedDate,
 		bundle.RelationKeyLastModifiedBy,
 		bundle.RelationKeyLastOpenedDate,
-		bundle.RelationKeyAddedDate,
-		bundle.RelationKeySource,
-		bundle.RelationKeySourceObject,
-		bundle.RelationKeyImportType,
-		bundle.RelationKeyOrigin,
 	}
 
 	fileSpecificRelationKeysMap = map[domain.RelationKey]struct{}{
@@ -64,14 +66,19 @@ var (
 	errRecommendedRelationsAlreadyFilled = fmt.Errorf("recommended featured relations are already filled")
 )
 
-func DefaultFeaturedRelationKeys() []domain.RelationKey {
+func DefaultFeaturedRelationKeys(typeKey domain.TypeKey) []domain.RelationKey {
+	if typeKey == bundle.TypeKeySet {
+		return defaultSetFeaturedRelationKeys
+	}
 	return defaultFeaturedRelationKeys
 }
 
 // FillRecommendedRelations fills recommendedRelations, recommendedFeaturedRelations, recommendedFileRelations
 // and recommendedHiddenRelations based on object's details.
 // If these relations are already filled with correct ids, isAlreadyFilled = true is returned
-func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, details *domain.Details) (keys []domain.RelationKey, isAlreadyFilled bool, err error) {
+func FillRecommendedRelations(
+	ctx context.Context, deriver ObjectIDDeriver, details *domain.Details, typeKey domain.TypeKey,
+) (keys []domain.RelationKey, isAlreadyFilled bool, err error) {
 	keys, err = getRelationKeysFromDetails(details)
 	if err != nil {
 		if errors.Is(err, errRecommendedRelationsAlreadyFilled) {
@@ -99,11 +106,13 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 		keys = other
 	}
 
+	featuredRelationKeys := DefaultFeaturedRelationKeys(typeKey)
+
 	// we should include default system recommended relations and
 	// exclude default recommended featured relations and default hidden relations
 	keys = lo.Uniq(append(keys, defaultRecommendedRelationKeys...))
 	keys = slices.DeleteFunc(keys, func(key domain.RelationKey) bool {
-		return slices.Contains(append(defaultHiddenRelationKeys, defaultFeaturedRelationKeys...), key)
+		return slices.Contains(append(defaultHiddenRelationKeys, featuredRelationKeys...), key)
 	})
 
 	relationIds, err := prepareRelationIds(ctx, deriver, keys)
@@ -112,7 +121,7 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedRelations, relationIds)
 
-	featuredRelationIds, err := prepareRelationIds(ctx, deriver, defaultFeaturedRelationKeys)
+	featuredRelationIds, err := prepareRelationIds(ctx, deriver, featuredRelationKeys)
 	if err != nil {
 		return nil, false, fmt.Errorf("prepare recommended featured relation ids: %w", err)
 	}
@@ -124,7 +133,7 @@ func FillRecommendedRelations(ctx context.Context, deriver ObjectIDDeriver, deta
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, hiddenRelationIds)
 
-	return slices.Concat(keys, fileRecommendedRelationKeys, defaultHiddenRelationKeys, defaultFeaturedRelationKeys), false, nil
+	return slices.Concat(keys, fileRecommendedRelationKeys, defaultHiddenRelationKeys, featuredRelationKeys), false, nil
 }
 
 func getRelationKeysFromDetails(details *domain.Details) ([]domain.RelationKey, error) {

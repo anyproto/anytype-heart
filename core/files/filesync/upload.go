@@ -349,7 +349,6 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceID string, fileId domain
 	if err != nil {
 		log.Warn("delete limit reached error logged", zap.String("fileId", fileId.String()), zap.Error(err))
 	}
-	log.Warn("done upload", zap.String("fileId", fileId.String()), zap.Int("bytesToUpload", blocksAvailability.bytesToUpload), zap.Int("bytesUploaded", totalBytesUploaded))
 
 	return nil
 }

@@ -212,6 +212,9 @@ func logIndexLoop(err error) {
 	if errors.Is(err, rpcstore.ErrNoConnectionToAnyFileClient) {
 		return
 	}
+	if errors.Is(err, files.FailedProtoUnmarshallError) {
+		return
+	}
 	log.Errorf("index loop: %v", err)
 }
 

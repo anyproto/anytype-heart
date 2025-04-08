@@ -17,14 +17,14 @@ type AutoBatcher interface {
 	Finish() error
 }
 
-func (f *ftSearchTantivy) NewAutoBatcher() AutoBatcher {
+func (f *ftSearch) NewAutoBatcher() AutoBatcher {
 	return &ftIndexBatcherTantivy{
 		index: f.index,
 		mu:    &f.mu,
 	}
 }
 
-func (f *ftSearchTantivy) Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error) {
+func (f *ftSearch) Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error) {
 	sCtx := tantivy.NewSearchContextBuilder().
 		SetQuery(fmt.Sprintf("%s:%s", fieldId, objectId)).
 		SetDocsLimit(docLimit).

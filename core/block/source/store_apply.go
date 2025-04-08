@@ -16,28 +16,27 @@ type storeApply struct {
 	ot       objecttree.ObjectTree
 	allIsNew bool
 
-	prevOrder  string
-	prevChange *objecttree.Change
-
-	nextCachedOrder string
-	nextCacheChange map[string]struct{}
+	needFetchPrevOrderId bool
 }
 
-func (a *storeApply) Apply() (err error) {
-	iterErr := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
+func (a *storeApply) Apply() error {
+	var lastErr error
+
+	err := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		// not a new change - remember and continue
 		if !a.allIsNew && !change.IsNew {
 			return true
 		}
-		if err = a.applyChange(change); err != nil {
+
+		lastErr = a.applyChange(change)
+		if lastErr != nil {
 			return false
 		}
+
 		return true
 	})
-	if err == nil && iterErr != nil {
-		return iterErr
-	}
-	return
+
+	return errors.Join(err, lastErr)
 }
 
 func (a *storeApply) applyChange(change *objecttree.Change) (err error) {

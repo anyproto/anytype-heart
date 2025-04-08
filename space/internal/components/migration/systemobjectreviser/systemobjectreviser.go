@@ -26,6 +26,28 @@ const MName = "SystemObjectReviser"
 
 const revisionKey = bundle.RelationKeyRevision
 
+var (
+	systemObjectFilterKeys = []domain.RelationKey{
+		bundle.RelationKeyName,
+		bundle.RelationKeyIsReadonly,
+		bundle.RelationKeyIsHidden,
+		bundle.RelationKeyRevision,
+		bundle.RelationKeyRelationReadonlyValue,
+		bundle.RelationKeyRelationMaxCount,
+		bundle.RelationKeyIconEmoji,
+		bundle.RelationKeyIconOption,
+		bundle.RelationKeyIconName,
+		bundle.RelationKeyPluralName,
+		bundle.RelationKeyRecommendedLayout,
+	}
+
+	customObjectFilterKeys = []domain.RelationKey{
+		bundle.RelationKeyIconOption,
+		bundle.RelationKeyIconName,
+		bundle.RelationKeyPluralName,
+	}
+)
+
 // Migration SystemObjectReviser performs revision of all system object types and relations, so after Migration
 // objects installed in space should correspond to bundled objects from library.
 // To modify relations of system objects relation revision should be incremented in types.json or relations.json
@@ -98,7 +120,7 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	details := buildDiffDetails(bundleObject, localObject, isSystem)
 
 	if isSystem {
-		recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject)
+		recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject, uk)
 		if err != nil {
 			log.Error("failed to check recommended relations", zap.Error(err))
 		}
@@ -157,30 +179,24 @@ func getBundleObjectDetails(uk domain.UniqueKey) (details *domain.Details, isSys
 }
 
 func buildDiffDetails(origin, current *domain.Details, isSystem bool) *domain.Details {
-	// non-system bundled types are going to update only icons for now
-	filterKeys := []domain.RelationKey{bundle.RelationKeyIconOption, bundle.RelationKeyIconName}
+	// non-system bundled types are going to update only icons and plural names for now
+	filterKeys := customObjectFilterKeys
 	if isSystem {
-		filterKeys = []domain.RelationKey{
-			bundle.RelationKeyName,
-			bundle.RelationKeyDescription,
-			bundle.RelationKeyIsReadonly,
-			bundle.RelationKeyIsHidden,
-			bundle.RelationKeyRevision,
-			bundle.RelationKeyRelationReadonlyValue,
-			bundle.RelationKeyRelationMaxCount,
-			bundle.RelationKeyIconEmoji,
-			bundle.RelationKeyIconOption,
-			bundle.RelationKeyIconName,
-		}
+		filterKeys = systemObjectFilterKeys
 	}
 	diff, _ := domain.StructDiff(current, origin)
 	diff = diff.CopyOnlyKeys(filterKeys...)
 
-	details := domain.NewDetails()
-	for key, value := range diff.Iterate() {
-		details.Set(key, value)
+	if cannotApplyPluralName(isSystem, current, origin) {
+		diff.Delete(bundle.RelationKeyName)
+		diff.Delete(bundle.RelationKeyPluralName)
 	}
-	return details
+	return diff
+}
+
+func cannotApplyPluralName(isSystem bool, current, origin *domain.Details) bool {
+	// we cannot set plural name to custom types with custom name
+	return !isSystem && current.GetString(bundle.RelationKeyName) != origin.GetString(bundle.RelationKeyName)
 }
 
 func checkRelationFormatObjectTypes(
@@ -225,7 +241,7 @@ func checkRelationFormatObjectTypes(
 }
 
 func checkRecommendedRelations(
-	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details,
+	ctx context.Context, space dependencies.SpaceWithCtx, origin, current *domain.Details, uk domain.UniqueKey,
 ) (newValues []*domain.Detail, err error) {
 	details := origin.CopyOnlyKeys(
 		bundle.RelationKeyRecommendedRelations,
@@ -233,7 +249,7 @@ func checkRecommendedRelations(
 		bundle.RelationKeyUniqueKey,
 	)
 
-	_, filled, err := relationutils.FillRecommendedRelations(ctx, space, details)
+	_, filled, err := relationutils.FillRecommendedRelations(ctx, space, details, domain.TypeKey(uk.InternalKey()))
 	if filled {
 		return nil, nil
 	}

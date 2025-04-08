@@ -174,7 +174,7 @@ func (p *Page) deleteRelationOptions(spaceID string, relationKey string) error {
 
 func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 2,
+		Version: 4,
 		Proc: func(s *state.State) {
 			layout, ok := ctx.State.Layout()
 			if !ok {
@@ -260,10 +260,5 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations([]migration.Migration{
-		{
-			Version: 2,
-			Proc:    func(s *state.State) {},
-		},
-	})
+	return migration.Migrations{Migrations: []migration.Migration{}}
 }

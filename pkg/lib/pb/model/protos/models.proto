@@ -336,7 +336,7 @@ message Block {
         }
 
         message Dataview {
-            repeated string source = 1;
+            repeated string source = 1; // can be set for detached(without TargetObjectId) inline sets
             repeated View views = 2;
             string activeView = 3; // do not generate changes for this field
             // deprecated
@@ -344,7 +344,7 @@ message Block {
             repeated GroupOrder groupOrders = 12;
             repeated ObjectOrder objectOrders = 13;
             repeated anytype.model.RelationLink relationLinks = 5;
-            string TargetObjectId = 6;
+            string TargetObjectId = 6; // empty for original set/collection objects and for detached inline sets
             bool isCollection = 14;
 
             message View {
@@ -593,6 +593,7 @@ message Block {
             Layout layout = 1;
             int32 limit = 2;
             string viewId = 3;
+            bool autoAdded = 4;
 
             enum Layout {
                 Link = 0;
@@ -672,6 +673,7 @@ message Account {
         string timeZone = 104; // time zone from config
         string analyticsId = 105;
         string networkId = 106; // network id to which anytype is connected
+        string ethereumAddress = 107; // we have Any PK AND Ethereum PK derived from one seed phrase
     }
 
     message Auth {
@@ -756,7 +758,7 @@ message SpaceObjectHeader {
 
 message ObjectType {
     string url = 1; // leave empty in case you want to create the new one
-    string name = 2; // name of objectType (can be localized for bundled types)
+    string name = 2; // name of objectType in singular form (can be localized for bundled types)
     repeated RelationLink relationLinks = 3; // cannot contain more than one Relation with the same RelationType
     Layout layout = 4;
     string iconEmoji = 5; // emoji symbol
@@ -771,6 +773,7 @@ message ObjectType {
     bool restrictObjectCreation = 14; // restricts creating objects of this type for users
     int64 iconColor = 15; // color of object type icon
     string iconName = 16; // name of object type icon
+    string pluralName = 17; // name of objectType in plural form (can be localized for bundled types)
 
     enum Layout {
         basic = 0;
@@ -1018,6 +1021,12 @@ enum SpaceAccessType {
     Shared = 2;
 }
 
+enum SpaceUxType {
+    Chat = 0; // chat-first UX
+    Data = 1; // objects-first UX
+    Stream = 2; // stream UX (chat with limited amount of owners)
+}
+
 message Metadata {
     oneof payload {
         Payload.IdentityPayload identity = 1;
@@ -1187,11 +1196,18 @@ message Invite {
 message InvitePayload {
     string creatorIdentity = 1;
     string creatorName = 2;
-    bytes inviteKey = 3;
+    bytes aclKey = 3;
     string spaceId = 4;
     string spaceName = 5;
     string spaceIconCid = 6;
     repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
+
+    InviteType inviteType = 8;
+    bytes guestKey = 9;
+    enum InviteType {
+        JoinAsMember = 0; // aclKey contains the key to sign the ACL record
+        JoinAsGuest = 1; // guestKey contains the privateKey of the guest user
+    }
 }
 
 message IdentityProfile {
@@ -1371,17 +1387,32 @@ message DeviceInfo {
     bool isConnected = 5;
 }
 
+message ChatState {
+    message UnreadState {
+        string oldestOrderId = 1; // oldest(in the lex sorting) unread message order id. Client should ALWAYS scroll through unread messages from the oldest to the newest
+        int32 counter = 2; // total number of unread messages
+    }
+    UnreadState messages = 1; // unread messages
+    UnreadState mentions = 2; // unread mentions
+    string lastStateId = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
+}
+
 message ChatMessage {
     string id = 1;        // Unique message identifier
-    string orderId = 2;   // Used for subscriptions
+    string orderId = 2;   // Lexicographical id for message in order of tree traversal
     string creator = 3;       // Identifier for the message creator
     int64 createdAt = 4;
     int64 modifiedAt = 9;
+
+    // stateId is ever-increasing id (BSON ObjectId) for this message. Unlike orderId, this ID is ordered by the time messages are added. For example, it's useful to prevent accidental reading of messages from the past when a ChatReadMessages request is sent: a message from the past may appear, but the client is still unaware of it
+    string stateId = 11;
+
     string replyToMessageId = 5;   // Identifier for the message being replied to
     MessageContent message = 6;  // Message content
     repeated Attachment attachments = 7;  // Attachments slice
     Reactions reactions = 8;  // Reactions to the message
-
+    bool read = 10; // Message read status
+    bool mentionRead = 12;
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
