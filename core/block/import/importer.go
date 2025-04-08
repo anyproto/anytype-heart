@@ -42,6 +42,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -494,7 +495,15 @@ func (i *Import) getObjectID(
 		return err
 	}
 	oldIDToNew[snapshot.Id] = id
-	if payload.RootRawChange != nil {
+	var isBundled bool
+	switch snapshot.Snapshot.SbType {
+	case smartblock.SmartBlockTypeObjectType:
+		isBundled = bundle.HasObjectTypeByKey(domain.TypeKey(snapshot.Snapshot.Data.Key))
+	case smartblock.SmartBlockTypeRelation:
+		isBundled = bundle.HasRelation(domain.RelationKey(snapshot.Snapshot.Data.Key))
+	}
+	// bundled types will be created and then updated, cause they can be installed asynchronously
+	if payload.RootRawChange != nil && !isBundled {
 		createPayloads[id] = payload
 	}
 	return i.extractInternalKey(snapshot, oldIDToNew)
