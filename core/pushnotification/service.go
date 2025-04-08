@@ -1,4 +1,4 @@
-package pushnotifcation
+package pushnotification
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/pushnotifcation/client"
+	"github.com/anyproto/anytype-heart/core/pushnotification/client"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"

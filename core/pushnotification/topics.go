@@ -1,4 +1,4 @@
-package pushnotifcation
+package pushnotification
 
 type TopicSet struct {
 	topics map[string]struct{}

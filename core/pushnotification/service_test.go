@@ -1,4 +1,4 @@
-package pushnotifcation
+package pushnotification
 
 import (
 	"context"

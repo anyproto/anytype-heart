@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	"github.com/anyproto/anytype-heart/core/pushnotifcation"
+	"github.com/anyproto/anytype-heart/core/pushnotification"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -15,7 +15,7 @@ func (mw *Middleware) PushNotificationRegisterToken(cctx context.Context, req *p
 		}
 		return m
 	}
-	err := mustService[pushnotifcation.Service](mw).RegisterToken(cctx, req)
+	err := mustService[pushnotification.Service](mw).RegisterToken(cctx, req)
 
 	if err != nil {
 		return response(pb.RpcPushNotificationRegisterTokenResponseError_UNKNOWN_ERROR, err)
