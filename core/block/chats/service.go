@@ -2,6 +2,7 @@ package chats
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/push"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -49,6 +51,14 @@ type Service interface {
 
 var _ Service = (*service)(nil)
 
+type pushService interface {
+	Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error)
+}
+
+type accountService interface {
+	AccountID() string
+}
+
 type service struct {
 	objectGetter         cache.ObjectGetter
 	crossSpaceSubService crossspacesub.Service
@@ -61,6 +71,8 @@ type service struct {
 	lock                sync.Mutex
 	chatObjectsSubQueue *mb.MB[*pb.EventMessage]
 	chatObjectIds       map[string]struct{}
+	pushService         pushService
+	accountService      accountService
 }
 
 func New() Service {
@@ -78,7 +90,8 @@ func (s *service) Init(a *app.App) error {
 	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
-
+	s.pushService = app.MustComponent[pushService](a)
+	s.accountService = app.MustComponent[accountService](a)
 	return nil
 }
 
@@ -226,13 +239,27 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatobject.Message) (string, error) {
-	var messageId string
+	var messageId, spaceId string
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
+		spaceId = sb.SpaceID()
 		return err
 	})
+	go s.sendPushNotification(spaceId, chatObjectId, message)
 	return messageId, err
+}
+
+func (s *service) sendPushNotification(spaceId, chatObjectId string, message *chatobject.Message) {
+	payload := push.MakePushPayload(spaceId, s.accountService.AccountID(), chatObjectId, message)
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		log.Error("marshal push payload", zap.Error(err))
+	}
+	err = s.pushService.Notify(context.Background(), spaceId, []string{push.ChatsTopicName}, jsonPayload)
+	if err != nil {
+		log.Error("notify push message", zap.Error(err))
+	}
 }
 
 func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatobject.Message) error {
