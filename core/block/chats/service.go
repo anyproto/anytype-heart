@@ -30,15 +30,15 @@ const CName = "core.block.chats"
 var log = logging.Logger(CName).Desugar()
 
 type Service interface {
-	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error)
-	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error
+	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatobject.Message) (string, error)
+	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatobject.Message) error
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)
-	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error)
+	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatobject.Message, error)
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatobject.SubscribeLastMessagesResponse, error)
-	ReadMessages(ctx context.Context, chatObjectId string, afterOrderId string, beforeOrderId string, lastDbState int64) error
-	UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string) error
+	ReadMessages(ctx context.Context, req ReadMessagesRequest) error
+	UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string, counterType chatobject.CounterType) error
 	Unsubscribe(chatObjectId string, subId string) error
 
 	SubscribeToMessagePreviews(ctx context.Context) (string, error)
@@ -218,13 +218,14 @@ func (s *service) Close(ctx context.Context) error {
 
 	s.componentCtxCancel()
 
-	err = errors.Join(err,
-		s.crossSpaceSubService.Unsubscribe(allChatsSubscriptionId),
-	)
+	unsubErr := s.crossSpaceSubService.Unsubscribe(allChatsSubscriptionId)
+	if !errors.Is(err, crossspacesub.ErrSubscriptionNotFound) {
+		err = errors.Join(err, unsubErr)
+	}
 	return err
 }
 
-func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *model.ChatMessage) (string, error) {
+func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatobject.Message) (string, error) {
 	var messageId string
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
@@ -234,7 +235,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 	return messageId, err
 }
 
-func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *model.ChatMessage) error {
+func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatobject.Message) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.EditMessage(ctx, messageId, newMessage)
 	})
@@ -265,8 +266,8 @@ func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chat
 	return resp, err
 }
 
-func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*model.ChatMessage, error) {
-	var res []*model.ChatMessage
+func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatobject.Message, error) {
+	var res []*chatobject.Message
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		msg, err := sb.GetMessagesByIds(ctx, messageIds)
 		if err != nil {
@@ -297,14 +298,22 @@ func (s *service) Unsubscribe(chatObjectId string, subId string) error {
 	})
 }
 
-func (s *service) ReadMessages(ctx context.Context, chatObjectId string, afterOrderId string, beforeOrderId string, lastAddedMessageTimestamp int64) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkReadMessages(ctx, afterOrderId, beforeOrderId, lastAddedMessageTimestamp)
+type ReadMessagesRequest struct {
+	ChatObjectId  string
+	AfterOrderId  string
+	BeforeOrderId string
+	LastStateId   string
+	CounterType   chatobject.CounterType
+}
+
+func (s *service) ReadMessages(ctx context.Context, req ReadMessagesRequest) error {
+	return cache.Do(s.objectGetter, req.ChatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.MarkReadMessages(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastStateId, req.CounterType)
 	})
 }
 
-func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string) error {
+func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string, counterType chatobject.CounterType) error {
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkMessagesAsUnread(ctx, afterOrderId)
+		return sb.MarkMessagesAsUnread(ctx, afterOrderId, counterType)
 	})
 }

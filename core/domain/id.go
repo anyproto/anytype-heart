@@ -22,7 +22,7 @@ func NewParticipantId(spaceId, identity string) string {
 	return fmt.Sprintf("%s%s_%s", ParticipantPrefix, spaceId, identity)
 }
 
-func ParseParticipantId(participantId string) (string, string, error) {
+func ParseParticipantId(participantId string) (spaceId string, identity string, err error) {
 	if !strings.HasPrefix(participantId, ParticipantPrefix) {
 		return "", "", fmt.Errorf("participant id must start with _participant_")
 	}
