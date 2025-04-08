@@ -90,7 +90,7 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 		relationKey := domain.RelationKey(parts[0])
 		nestedRelationKey := domain.RelationKey(parts[1])
 
-		if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual {
+		if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual || rawFilter.Condition == model.BlockContentDataviewFilter_NotIn {
 			return makeFilterNestedNotIn(spaceID, rawFilter, store, relationKey, nestedRelationKey)
 		} else {
 			return makeFilterNestedIn(spaceID, rawFilter, store, relationKey, nestedRelationKey)
@@ -858,13 +858,29 @@ type FilterNestedNotIn struct {
 	IDs []string
 }
 
+func negativeConditionToPositive(cond model.BlockContentDataviewFilterCondition) (model.BlockContentDataviewFilterCondition, error) {
+	switch cond {
+	case model.BlockContentDataviewFilter_NotEqual:
+		return model.BlockContentDataviewFilter_Equal, nil
+	case model.BlockContentDataviewFilter_NotIn:
+		return model.BlockContentDataviewFilter_In, nil
+	default:
+		return 0, fmt.Errorf("condition %d is not supported", cond)
+	}
+}
+
 func makeFilterNestedNotIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
 	rawNestedFilter := rawFilter
 	rawNestedFilter.RelationKey = nestedRelationKey
 
+	cond, err := negativeConditionToPositive(rawFilter.Condition)
+	if err != nil {
+		return nil, fmt.Errorf("convert condition: %w", err)
+	}
+
 	subQueryRawFilter := rawFilter
 	subQueryRawFilter.RelationKey = nestedRelationKey
-	subQueryRawFilter.Condition = model.BlockContentDataviewFilter_Equal
+	subQueryRawFilter.Condition = cond
 
 	subQueryFilter, err := MakeFilter(spaceID, subQueryRawFilter, store)
 	if err != nil {

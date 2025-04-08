@@ -178,8 +178,6 @@ func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 
 func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := st.Details().GetStringList(bundle.RelationKeySetOf)
-	addFeaturedRelationSetOf(st)
-
 	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source, "")
 	if err != nil {
 		return err
@@ -189,14 +187,6 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	}
 	template.InitTemplate(st, template.WithDataview(dvBlock, false))
 	return nil
-}
-
-func addFeaturedRelationSetOf(st *state.State) {
-	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-	if !slices.Contains(fr, bundle.RelationKeySetOf.String()) {
-		fr = append(fr, bundle.RelationKeySetOf.String())
-	}
-	st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 }
 
 func (c *layoutConverter) fromSetToCollection(st *state.State) error {
@@ -302,27 +292,7 @@ func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromNoteToAny(st *state.State) error {
-	name, ok := st.Details().TryString(bundle.RelationKeyName)
-
-	if !ok || name == "" {
-		textBlock, err := getFirstTextBlock(st)
-		if err != nil {
-			return err
-		}
-		if textBlock == nil {
-			return nil
-		}
-		st.SetDetail(bundle.RelationKeyName, domain.String(textBlock.Model().GetText().GetText()))
-
-		for _, id := range textBlock.Model().ChildrenIds {
-			st.Unlink(id)
-		}
-		err = st.InsertTo(textBlock.Model().Id, model.Block_Bottom, textBlock.Model().ChildrenIds...)
-		if err != nil {
-			return fmt.Errorf("insert children: %w", err)
-		}
-		st.Unlink(textBlock.Model().Id)
-	}
+	template.InitTemplate(st, template.WithNameFromFirstBlock)
 	return nil
 }
 
@@ -341,21 +311,6 @@ func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())
 	st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
-}
-
-func getFirstTextBlock(st *state.State) (simple.Block, error) {
-	var res simple.Block
-	err := st.Iterate(func(b simple.Block) (isContinue bool) {
-		if b.Model().GetText() != nil {
-			res = b
-			return false
-		}
-		return true
-	})
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
 }
 
 func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]database.FilterRequest, error) {
