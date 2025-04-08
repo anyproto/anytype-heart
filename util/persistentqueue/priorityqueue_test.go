@@ -1,68 +1,58 @@
 package persistentqueue
 
 import (
-	"sync"
+	"sort"
 	"testing"
+	"testing/quick"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
 
 func TestPriorityQueue(t *testing.T) {
-	t.Run("in one goroutine", func(t *testing.T) {
-		q := newPriorityQueue[int](10)
+	t.Run("consecutive insertions", func(t *testing.T) {
+		pq := newPriorityQueue[int]()
 
-		for i := 0; i < 100; i++ {
-			err := q.add(i)
-			require.NoError(t, err)
+		const n = 100
+		for i := 0; i < n; i++ {
+			pq.push(i, i)
 		}
 
-		for i := 0; i < 100; i++ {
-			got, err := q.waitOne()
-			require.NoError(t, err)
-
-			want := 99 - i
-			assert.Equal(t, want, got)
+		for i := 0; i < n; i++ {
+			got, ok := pq.pop()
+			require.True(t, ok)
+			want := n - 1 - i
+			require.Equal(t, want, got)
 		}
 	})
 
-	t.Run("in multiple goroutines", func(t *testing.T) {
-		q := newPriorityQueue[int](10)
+	t.Run("property testing", func(t *testing.T) {
+		f := func(input []int) bool {
+			want := slices.Clone(input)
+			// descending order
+			sort.Slice(want, func(i, j int) bool {
+				return want[i] > want[j]
+			})
+			pq := newPriorityQueue[int]()
+			for _, in := range input {
+				pq.push(in, in)
+			}
 
-		var wg sync.WaitGroup
-		for i := 0; i < 100; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err := q.add(i)
-				require.NoError(t, err)
-			}()
+			got := make([]int, 0, len(input))
+			for range input {
+				gotItem, ok := pq.pop()
+				if !ok {
+					return false
+				}
+				got = append(got, gotItem)
+			}
+
+			return assert.Equal(t, want, got)
 		}
 
-		results := make(chan int, 100)
-		for i := 0; i < 100; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				got, err := q.waitOne()
-				require.NoError(t, err)
-
-				results <- got
-			}()
-		}
-		wg.Wait()
-
-		close(results)
-
-		resultsSlice := lo.ChannelToSlice(results)
-
-		want := make([]int, 100)
-		for i := 0; i < 100; i++ {
-			want[i] = i
-		}
-
-		assert.ElementsMatch(t, want, resultsSlice)
+		err := quick.Check(f, nil)
+		require.NoError(t, err)
 	})
 
 }

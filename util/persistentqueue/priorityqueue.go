@@ -1,68 +1,52 @@
 package persistentqueue
 
-import (
-	"fmt"
-	"sync"
-)
+import "container/heap"
 
-var errClosed = fmt.Errorf("closed")
+type itemWithPriority[T any] struct {
+	item     T
+	priority int
+}
 
 type priorityQueue[T any] struct {
-	closed bool
-	cond   *sync.Cond
-	items  []T
+	items []itemWithPriority[T]
 }
 
-func newPriorityQueue[T any](bufSize int) *priorityQueue[T] {
-	q := &priorityQueue[T]{
-		cond: &sync.Cond{
-			L: &sync.Mutex{},
-		},
-		items: make([]T, 0, bufSize),
-	}
-	return q
+func (q *priorityQueue[T]) Len() int {
+	return len(q.items)
 }
 
-func (q *priorityQueue[T]) add(item T) error {
-	q.cond.L.Lock()
-	defer q.cond.L.Unlock()
+func (q *priorityQueue[T]) Less(i, j int) bool {
+	return q.items[i].priority > q.items[j].priority
+}
 
-	if q.closed {
-		return errClosed
-	}
+func (q *priorityQueue[T]) Swap(i, j int) {
+	q.items[i], q.items[j] = q.items[j], q.items[i]
+}
+
+func (q *priorityQueue[T]) Push(x any) {
+	item := x.(itemWithPriority[T])
 	q.items = append(q.items, item)
-	q.cond.Signal()
-	return nil
 }
 
-func (q *priorityQueue[T]) close() {
-	q.cond.L.Lock()
-	defer q.cond.L.Unlock()
-
-	if q.closed {
-		return
-	}
-	q.closed = true
-	q.cond.Broadcast()
+func (q *priorityQueue[T]) Pop() any {
+	item := q.items[len(q.items)-1]
+	q.items = q.items[0 : len(q.items)-1]
+	return item
 }
 
-func (q *priorityQueue[T]) waitOne() (T, error) {
-	q.cond.L.Lock()
-	for {
-		if q.closed {
-			q.cond.L.Unlock()
-			var defaultVal T
-			return defaultVal, errClosed
-		}
-		if len(q.items) == 0 {
-			q.cond.Wait()
-		} else {
-			break
-		}
-	}
-	it := q.items[len(q.items)-1]
-	q.items = q.items[:len(q.items)-1]
-	q.cond.L.Unlock()
+func newPriorityQueue[T any]() *priorityQueue[T] {
+	return &priorityQueue[T]{}
+}
 
-	return it, nil
+func (q *priorityQueue[T]) push(item T, priority int) {
+	heap.Push(q, itemWithPriority[T]{item: item, priority: priority})
+}
+
+func (q *priorityQueue[T]) pop() (T, bool) {
+	if q.Len() == 0 {
+		var defaultValue T
+		return defaultValue, false
+	}
+	it := heap.Pop(q).(itemWithPriority[T])
+	return it.item, true
 }
