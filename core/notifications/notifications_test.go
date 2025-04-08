@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
+	anystore "github.com/anyproto/any-store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -323,9 +323,14 @@ func TestNotificationService_CreateAndSend(t *testing.T) {
 	})
 }
 func NewTestStore(t *testing.T) NotificationStore {
-	db, err := badger.Open(badger.DefaultOptions(filepath.Join(t.TempDir(), "badger")))
+	db, err := anystore.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"), nil)
 	require.NoError(t, err)
-	return &notificationStore{
-		db: db,
-	}
+	t.Cleanup(func() {
+		require.NoError(t, db.Close())
+	})
+
+	kv, err := NewNotificationStore(db)
+	require.NoError(t, err)
+
+	return kv
 }

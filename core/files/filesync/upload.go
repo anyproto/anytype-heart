@@ -78,7 +78,7 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 	}
 	var limitReachedErr *errLimitReached
 	if errors.As(err, &limitReachedErr) {
-		setErr := s.isLimitReachedErrorLogged.Set(it.ObjectId, true)
+		setErr := s.isLimitReachedErrorLogged.Set(context.Background(), it.ObjectId, true)
 		if setErr != nil {
 			log.Error("set limit reached error logged", zap.String("objectId", it.ObjectId), zap.Error(setErr))
 		}
@@ -172,7 +172,7 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		var limitErrorIsLogged bool
 		if limitErr != nil {
 			var hasErr error
-			limitErrorIsLogged, hasErr = s.isLimitReachedErrorLogged.Has(it.ObjectId)
+			limitErrorIsLogged, hasErr = s.isLimitReachedErrorLogged.Has(context.Background(), it.ObjectId)
 			if hasErr != nil {
 				log.Error("check if limit reached error is logged", zap.String("objectId", it.ObjectId), zap.Error(hasErr))
 			}
@@ -297,14 +297,14 @@ func (s *fileSync) uploadFile(ctx context.Context, it *QueueItem) error {
 		branchToUpload = it.VariantId
 	}
 
-	blocksAvailability, err := s.blocksAvailabilityCache.Get(it.FileId.String())
+	blocksAvailability, err := s.blocksAvailabilityCache.Get(context.Background(), it.FileId.String())
 	if err != nil || blocksAvailability.totalBytesToUpload() == 0 {
 		// Ignore error from cache and calculate blocks availability
 		blocksAvailability, err = s.checkBlocksAvailability(ctx, it.SpaceId, branchToUpload)
 		if err != nil {
 			return fmt.Errorf("check blocks availability: %w", err)
 		}
-		err = s.blocksAvailabilityCache.Set(it.FileId.String(), blocksAvailability)
+		err = s.blocksAvailabilityCache.Set(context.Background(), it.FileId.String(), blocksAvailability)
 		if err != nil {
 			log.Error("cache blocks availability", zap.String("fileId", it.FileId.String()), zap.Error(err))
 		}
@@ -360,11 +360,11 @@ func (s *fileSync) uploadFile(ctx context.Context, it *QueueItem) error {
 		return fmt.Errorf("walk file blocks: %w", err)
 	}
 
-	err = s.blocksAvailabilityCache.Delete(it.FileId.String())
+	err = s.blocksAvailabilityCache.Delete(context.Background(), it.FileId.String())
 	if err != nil {
 		log.Warn("delete blocks availability cache entry", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
-	err = s.isLimitReachedErrorLogged.Delete(it.FileId.String())
+	err = s.isLimitReachedErrorLogged.Delete(context.Background(), it.FileId.String())
 	if err != nil {
 		log.Warn("delete limit reached error logged", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}

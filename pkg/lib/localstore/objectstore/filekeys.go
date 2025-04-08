@@ -5,46 +5,39 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-store/anyenc"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func fileKeysKey(fileId domain.FileId) string {
-	return fmt.Sprintf("fileKeys/%s", fileId)
+func keyValueItem(arena *anyenc.Arena, key string, value any) (*anyenc.Value, error) {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := arena.NewObject()
+	obj.Set("id", arena.NewString(key))
+	obj.Set("value", arena.NewStringBytes(raw))
+	return obj, nil
 }
 
 func (s *dsObjectStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
-	arena := s.arenaPool.Get()
-	defer func() {
-		arena.Reset()
-		s.arenaPool.Put(arena)
-	}()
-
-	txn, err := s.system.WriteTx(s.componentCtx)
+	txn, err := s.fileKeys.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start transaction: %w", err)
 	}
 	defer txn.Commit()
 
 	for _, fk := range fileKeys {
-		it, err := keyValueItem(arena, fileKeysKey(fk.FileId), fk.EncryptionKeys)
+		err = s.fileKeys.Set(txn.Context(), fk.FileId.String(), fk.EncryptionKeys)
 		if err != nil {
-			return errors.Join(txn.Rollback(), fmt.Errorf("create item: %w", err))
-		}
-		err = s.system.UpsertOne(txn.Context(), it)
-		if err != nil {
-			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
+			return errors.Join(txn.Rollback(), fmt.Errorf("set: %w", err))
 		}
 	}
 	return err
 }
 
 func (s *dsObjectStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
-	doc, err := s.system.FindId(s.componentCtx, fileKeysKey(fileId))
-	if err != nil {
-		return nil, fmt.Errorf("find file keys: %w", err)
-	}
-	val := doc.Value().GetStringBytes("value")
-	keys := map[string]string{}
-	err = json.Unmarshal(val, &keys)
-	return keys, err
+	return s.fileKeys.Get(s.componentCtx, fileId.String())
 }
