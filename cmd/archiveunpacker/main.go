@@ -62,55 +62,51 @@ type File struct {
 func processFile(file File, outputFile string) {
 	defer file.RC.Close()
 
-	content, err := ioutil.ReadAll(file.RC)
-	if err != nil {
-		log.Fatalf("Failed to read file: %v", err)
+	if !strings.HasSuffix(file.Name, ".pb") && !strings.HasPrefix(file.Name, constant.ProfileFile) {
+		// write file as is
+		if err := os.MkdirAll(filepath.Dir(outputFile), 0755); err != nil {
+			log.Fatalf("Failed to create output subdirectory: %v", err)
+		}
+		// write from reader to file
+		outFile, err := os.Create(outputFile)
+		if err != nil {
+			log.Fatalf("Failed to create output file: %v", err)
+		}
+		defer outFile.Close()
+		if _, err := io.Copy(outFile, file.RC); err != nil {
+			log.Fatalf("Failed to copy file: %v", err)
+		}
+		return
 	}
-
 	// assuming Snapshot is a protobuf message
 	var snapshot proto.Message = &pb.ChangeSnapshot{}
 	if strings.HasPrefix(file.Name, constant.ProfileFile) {
 		snapshot = &pb.Profile{}
 	}
 
-	if strings.HasSuffix(file.Name, ".json") {
+	content, err := ioutil.ReadAll(file.RC)
+	if err != nil {
+		log.Fatalf("Failed to read file: %v", err)
+	}
 
-		if err := jsonpb.UnmarshalString(string(content), snapshot); err != nil {
-			log.Fatalf("Failed to parse jsonpb message: %v", err)
-		}
-
-		// convert to pb and write to outputFile
-		pbData, err := proto.Marshal(snapshot)
-		if err != nil {
-			log.Fatalf("Failed to marshal jsonpb message to protobuf: %v", err)
-		}
-
-		outputFile = strings.TrimSuffix(outputFile, filepath.Ext(outputFile)) + ".pb"
-
-		if err := ioutil.WriteFile(outputFile, pbData, 0644); err != nil {
-			log.Fatalf("Failed to write pb file: %v", err)
-		}
-
-	} else {
-
+	if err := proto.Unmarshal(content, snapshot); err != nil {
+		snapshot = &pb.SnapshotWithType{}
 		if err := proto.Unmarshal(content, snapshot); err != nil {
-			snapshot = &pb.SnapshotWithType{}
-			if err := proto.Unmarshal(content, snapshot); err != nil {
-				log.Fatalf("Failed to parse protobuf message: %v", err)
-			}
-		}
-
-		// convert to jsonpb and write to outputFile
-		jsonData, err := jsonM.MarshalToString(snapshot)
-		if err != nil {
-			log.Fatalf("Failed to marshal protobuf message to json: %v", err)
-		}
-
-		outputFile = strings.TrimSuffix(outputFile, filepath.Ext(outputFile)) + ".json"
-		if err := ioutil.WriteFile(outputFile, []byte(jsonData), 0644); err != nil {
-			log.Fatalf("Failed to write json file: %v", err)
+			log.Fatalf("Failed to parse protobuf message: %v", err)
 		}
 	}
+
+	// convert to jsonpb and write to outputFile
+	jsonData, err := jsonM.MarshalToString(snapshot)
+	if err != nil {
+		log.Fatalf("Failed to marshal protobuf message to json: %v", err)
+	}
+
+	outputFile = strings.TrimSuffix(outputFile, filepath.Ext(outputFile)) + ".json"
+	if err := ioutil.WriteFile(outputFile, []byte(jsonData), 0644); err != nil {
+		log.Fatalf("Failed to write json file: %v", err)
+	}
+
 }
 
 func handleZip(input, output string) {
@@ -167,7 +163,7 @@ func createZipFromDirectory(input, output string) {
 			return err
 		}
 
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".json") {
+		if !info.IsDir() {
 			// Get relative path
 			rel, err := filepath.Rel(input, path)
 			if err != nil {
@@ -177,6 +173,15 @@ func createZipFromDirectory(input, output string) {
 			data, err := ioutil.ReadFile(path)
 			if err != nil {
 				return err
+			}
+			if !strings.HasSuffix(info.Name(), ".json") {
+				// pass original file
+				fw, err := w.Create(rel)
+				if err != nil {
+					return err
+				}
+				_, err = fw.Write(data)
+				return nil
 			}
 
 			isProfile := strings.HasPrefix(info.Name(), constant.ProfileFile)

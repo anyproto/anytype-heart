@@ -216,7 +216,7 @@ var WithTitle = StateTransformer(func(s *state.State) {
 	}
 })
 
-var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
+var withRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		var featRels = s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 		if slice.FindPos(featRels, key.String()) > -1 {
@@ -315,7 +315,7 @@ var WithFirstTextBlockContent = func(text string) StateTransformer {
 }
 
 var WithNoDescription = StateTransformer(func(s *state.State) {
-	WithRemovedFeaturedRelation(bundle.RelationKeyDescription)(s)
+	withRemovedFeaturedRelation(bundle.RelationKeyDescription)(s)
 	s.Unlink(DescriptionBlockId)
 })
 
@@ -338,6 +338,47 @@ var WithNameToFirstBlock = StateTransformer(func(s *state.State) {
 		}
 	}
 })
+
+var WithNameFromFirstBlock = StateTransformer(func(s *state.State) {
+	name, ok := s.Details().TryString(bundle.RelationKeyName)
+
+	if !ok || name == "" {
+		textBlock, err := getFirstTextBlock(s)
+		if err != nil {
+			log.Errorf("failed to get first block with text: %v", err)
+			return
+		}
+		if textBlock == nil {
+			return
+		}
+		s.SetDetail(bundle.RelationKeyName, domain.String(textBlock.Model().GetText().GetText()))
+
+		for _, id := range textBlock.Model().ChildrenIds {
+			s.Unlink(id)
+		}
+		err = s.InsertTo(textBlock.Model().Id, model.Block_Bottom, textBlock.Model().ChildrenIds...)
+		if err != nil {
+			log.Errorf("insert children: %v", err)
+			return
+		}
+		s.Unlink(textBlock.Model().Id)
+	}
+})
+
+func getFirstTextBlock(st *state.State) (simple.Block, error) {
+	var res simple.Block
+	err := st.Iterate(func(b simple.Block) (isContinue bool) {
+		if b.Model().GetText() != nil {
+			res = b
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
 
 var WithFeaturedRelationsBlock = StateTransformer(func(s *state.State) {
 	RequireHeader(s)
@@ -554,13 +595,6 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, oldRel := range oldBookmarkRelations {
 		s.RemoveRelation(oldRel)
-	}
-
-	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-
-	if slice.FindPos(fr, bundle.RelationKeyCreatedDate.String()) == -1 {
-		fr = append(fr, bundle.RelationKeyCreatedDate.String())
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 	}
 
 	for _, k := range bookmarkRelationKeys {

@@ -46,10 +46,10 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	return
 }
 
-func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, err error) {
+func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
 	newSpace, err := s.spaceService.Create(ctx)
 	if err != nil {
-		return "", fmt.Errorf("error creating space: %w", err)
+		return "", "", fmt.Errorf("error creating space: %w", err)
 	}
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
@@ -64,13 +64,13 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return b.SetDetails(nil, details, true)
 	})
 	if err != nil {
-		return "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
+		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
-	_, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
+	startingPageId, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
 	if err != nil {
-		return "", fmt.Errorf("import use-case: %w", err)
+		return "", "", fmt.Errorf("import use-case: %w", err)
 	}
-	return newSpace.Id(), err
+	return newSpace.Id(), startingPageId, err
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
