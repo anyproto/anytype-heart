@@ -11,6 +11,8 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/spacepayloads"
+
 	// nolint: misspell
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
@@ -128,7 +130,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace, err error) {
-	payload := commonspace.SpaceDerivePayload{
+	payload := spacepayloads.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
 		SpaceType:  spaceType,
@@ -150,7 +152,7 @@ func (s *service) CloseSpace(ctx context.Context, id string) error {
 }
 
 func (s *service) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
-	payload := commonspace.SpaceDerivePayload{
+	payload := spacepayloads.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
 		SpaceType:  spaceType,
@@ -163,7 +165,7 @@ func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPay
 	if err != nil {
 		return nil, fmt.Errorf("generate metadata key: %w", err)
 	}
-	payload := commonspace.SpaceCreatePayload{
+	payload := spacepayloads.SpaceCreatePayload{
 		SigningKey:     s.wallet.GetAccountPrivkey(),
 		MasterKey:      s.wallet.GetMasterKey(),
 		ReadKey:        crypto.NewAES(),

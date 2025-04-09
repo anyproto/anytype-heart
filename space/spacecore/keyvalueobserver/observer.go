@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage/innerstorage"
 )
 
-const CName = "space.spacecore.keyvalueobserver"
+const CName = keyvaluestorage.IndexerCName
 
 type ObserverFunc func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue)
 

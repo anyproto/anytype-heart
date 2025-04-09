@@ -2,6 +2,7 @@ package keyvalueservice
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -28,8 +29,8 @@ type Value struct {
 type Service interface {
 	app.ComponentRunnable
 
-	GetUserScopedKey(key string) ([]Value, error)
-	SetUserScopedKey(key string, value []byte) error
+	GetUserScopedKey(ctx context.Context, key string) ([]Value, error)
+	SetUserScopedKey(ctx context.Context, key string, value []byte) error
 	SubscribeForUserScopedKey(key string, subscriptionName string, observerFunc ObserverFunc) error
 	UnsubscribeFromUserScopedKey(key string, subscriptionName string) error
 }
@@ -90,14 +91,28 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) GetUserScopedKey(key string) ([]Value, error) {
-	// TODO implement me
-	panic("implement me")
+func (s *service) GetUserScopedKey(ctx context.Context, key string) ([]Value, error) {
+	kvs, decryptor, err := s.techSpace.KeyValueStore().GetAll(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("get all: %w", err)
+	}
+
+	result := make([]Value, 0, len(kvs))
+	for _, kv := range kvs {
+		data, err := decryptor(kv)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt: %w", err)
+		}
+		result = append(result, Value{
+			Data:           data,
+			TimestampMilli: kv.TimestampMilli,
+		})
+	}
+	return result, nil
 }
 
-func (s *service) SetUserScopedKey(key string, value []byte) error {
-	// TODO implement me
-	panic("implement me")
+func (s *service) SetUserScopedKey(ctx context.Context, key string, value []byte) error {
+	return s.techSpace.KeyValueStore().Set(ctx, key, value)
 }
 
 func (s *service) SubscribeForUserScopedKey(key string, name string, observerFunc ObserverFunc) error {
