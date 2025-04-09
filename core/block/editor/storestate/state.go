@@ -103,6 +103,10 @@ type StoreState struct {
 	db anystore.DB
 }
 
+func (ss *StoreState) Id() string {
+	return ss.id
+}
+
 func (ss *StoreState) init(ctx context.Context) (err error) {
 	if ss.collChangeOrders, err = ss.Collection(ctx, CollChangeOrders); err != nil {
 		return
