@@ -68,10 +68,6 @@ func (co *ContactObject) SetDetails(ctx session.Context, details []domain.Detail
 	return nil
 }
 
-func (co *ContactObject) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	return co.SetDetails(ctx, details, showEvent)
-}
-
 func (co *ContactObject) updateContactInStore(combinedDetails *domain.Details) {
 	space := co.techSpaceProvider.TechSpace()
 	ctx := context.Background()

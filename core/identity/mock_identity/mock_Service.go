@@ -75,6 +75,54 @@ func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) 
 	return _c
 }
 
+// GetIdentityKey provides a mock function with given fields: _a0
+func (_m *MockService) GetIdentityKey(_a0 string) crypto.SymKey {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetIdentityKey")
+	}
+
+	var r0 crypto.SymKey
+	if rf, ok := ret.Get(0).(func(string) crypto.SymKey); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(crypto.SymKey)
+		}
+	}
+
+	return r0
+}
+
+// MockService_GetIdentityKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIdentityKey'
+type MockService_GetIdentityKey_Call struct {
+	*mock.Call
+}
+
+// GetIdentityKey is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockService_Expecter) GetIdentityKey(_a0 interface{}) *MockService_GetIdentityKey_Call {
+	return &MockService_GetIdentityKey_Call{Call: _e.mock.On("GetIdentityKey", _a0)}
+}
+
+func (_c *MockService_GetIdentityKey_Call) Run(run func(_a0 string)) *MockService_GetIdentityKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetIdentityKey_Call) Return(_a0 crypto.SymKey) *MockService_GetIdentityKey_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_GetIdentityKey_Call) RunAndReturn(run func(string) crypto.SymKey) *MockService_GetIdentityKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetMyProfileDetails provides a mock function with given fields: ctx
 func (_m *MockService) GetMyProfileDetails(ctx context.Context) (string, crypto.SymKey, *domain.Details) {
 	ret := _m.Called(ctx)

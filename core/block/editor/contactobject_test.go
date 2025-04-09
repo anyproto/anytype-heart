@@ -146,58 +146,6 @@ func TestContactObject_SetDetails(t *testing.T) {
 	})
 }
 
-func TestContactObject_SetDetailsAndUpdateLastUsed(t *testing.T) {
-	t.Run("success updated only description", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		err := fx.ContactObject.Init(&smartblock.InitContext{})
-		require.NoError(t, err)
-		var wg sync.WaitGroup
-		wg.Add(2)
-
-		var collection *storestate.StoreState
-		fx.source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, params source.PushStoreChangeParams) (string, error) {
-			defer wg.Done()
-			collection = params.State
-			return storechanges.PushStoreChanges(ctx, params)
-		})
-		aesKey := crypto.NewAES()
-		raw, err := aesKey.Raw()
-		require.NoError(t, err)
-		encodedKey := base64.StdEncoding.EncodeToString(raw)
-		err = fx.userDataObject.SaveContact(context.Background(), userdataobject.NewContact(id, encodedKey))
-		require.NoError(t, err)
-
-		// when
-		fx.callTechSpace(t)
-		err = fx.ContactObject.SetDetailsAndUpdateLastUsed(nil, []domain.Detail{
-			{
-				Key:   bundle.RelationKeyName,
-				Value: domain.String(name),
-			},
-			{
-				Key:   bundle.RelationKeyDescription,
-				Value: domain.String(description),
-			},
-		}, false)
-
-		// then
-		wg.Wait()
-		require.NoError(t, err)
-		details := fx.ContactObject.CombinedDetails()
-		assert.Equal(t, "", details.GetString(bundle.RelationKeyName))
-		assert.Equal(t, description, details.GetString(bundle.RelationKeyDescription))
-
-		c, err := collection.Collection(context.Background(), "contacts")
-		require.NoError(t, err)
-		jsonContact, err := c.FindId(context.Background(), contactId)
-		require.NoError(t, err)
-
-		contact := userdataobject.NewContactFromJson(jsonContact.Value())
-		assert.Equal(t, description, contact.Description())
-	})
-}
-
 func newFixture(t *testing.T) *fixture {
 	techSpace := techspace.New()
 

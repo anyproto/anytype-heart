@@ -5,8 +5,6 @@ package mock_contact
 import (
 	app "github.com/anyproto/any-sync/app"
 
-	context "context"
-
 	crypto "github.com/anyproto/any-sync/util/crypto"
 
 	mock "github.com/stretchr/testify/mock"
@@ -245,55 +243,6 @@ func (_c *MockidentityService_UnregisterIdentity_Call) Return() *MockidentitySer
 }
 
 func (_c *MockidentityService_UnregisterIdentity_Call) RunAndReturn(run func(string, string)) *MockidentityService_UnregisterIdentity_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// WaitProfile provides a mock function with given fields: ctx, identity
-func (_m *MockidentityService) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
-	ret := _m.Called(ctx, identity)
-
-	if len(ret) == 0 {
-		panic("no return value specified for WaitProfile")
-	}
-
-	var r0 *model.IdentityProfile
-	if rf, ok := ret.Get(0).(func(context.Context, string) *model.IdentityProfile); ok {
-		r0 = rf(ctx, identity)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.IdentityProfile)
-		}
-	}
-
-	return r0
-}
-
-// MockidentityService_WaitProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitProfile'
-type MockidentityService_WaitProfile_Call struct {
-	*mock.Call
-}
-
-// WaitProfile is a helper method to define mock.On call
-//   - ctx context.Context
-//   - identity string
-func (_e *MockidentityService_Expecter) WaitProfile(ctx interface{}, identity interface{}) *MockidentityService_WaitProfile_Call {
-	return &MockidentityService_WaitProfile_Call{Call: _e.mock.On("WaitProfile", ctx, identity)}
-}
-
-func (_c *MockidentityService_WaitProfile_Call) Run(run func(ctx context.Context, identity string)) *MockidentityService_WaitProfile_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockidentityService_WaitProfile_Call) Return(_a0 *model.IdentityProfile) *MockidentityService_WaitProfile_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockidentityService_WaitProfile_Call) RunAndReturn(run func(context.Context, string) *model.IdentityProfile) *MockidentityService_WaitProfile_Call {
 	_c.Call.Return(run)
 	return _c
 }
