@@ -369,6 +369,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 		currentRevision := b.Details().GetInt64(bundle.RelationKeyRevision)
 		newRevision := st.Details().GetInt64(bundle.RelationKeyRevision)
 		if currentRevision > newRevision {
+			log.With(zap.String("object id", newID)).Warnf("skipping object %s, revision %d > %d", st.Details().GetString(bundle.RelationKeyUniqueKey), currentRevision, newRevision)
 			// never update objects with older revision
 			// we use revision for bundled objects like relations and object types
 			return nil
