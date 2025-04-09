@@ -11,12 +11,8 @@ components:
     auth.TokenResponse:
       properties:
         app_key:
-          description: The permanent app key
+          description: The app key used to authenticate requests
           example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
-          type: string
-        session_token:
-          description: The ephemeral session token
-          example: eyJhbGciOeJIRzI1NiIsInR5cCI6IkpXVCJ1.eyJzZWVkIjaiY0dmVndlUnAifQ.Y1EZecYnwmvMkrXKOa2XJnAbaRt34urBabe06tmDQII
           type: string
       type: object
     export.ObjectExportResponse:
@@ -939,7 +935,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.ServerError'
           description: Internal server error
-      summary: Retrieve token
+      summary: Solve challenge
       tags:
       - auth
   /search:

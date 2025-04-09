@@ -18,7 +18,7 @@ var (
 
 type Service interface {
 	NewChallenge(ctx context.Context, appName string) (string, error)
-	SolveChallenge(ctx context.Context, challengeId string, code string) (sessionToken, appKey string, err error)
+	SolveChallenge(ctx context.Context, challengeId string, code string) (appKey string, err error)
 }
 
 type service struct {
@@ -48,9 +48,9 @@ func (s *service) NewChallenge(ctx context.Context, appName string) (string, err
 }
 
 // SolveChallenge calls AccountLocalLinkSolveChallenge and returns the session token + app key, or an error if it fails.
-func (s *service) SolveChallenge(ctx context.Context, challengeId string, code string) (sessionToken string, appKey string, err error) {
+func (s *service) SolveChallenge(ctx context.Context, challengeId string, code string) (appKey string, err error) {
 	if challengeId == "" || code == "" {
-		return "", "", ErrInvalidInput
+		return "", ErrInvalidInput
 	}
 
 	// Call AccountLocalLinkSolveChallenge to retrieve session token and app key
@@ -60,8 +60,8 @@ func (s *service) SolveChallenge(ctx context.Context, challengeId string, code s
 	})
 
 	if resp.Error.Code != pb.RpcAccountLocalLinkSolveChallengeResponseError_NULL {
-		return "", "", ErrFailedAuthenticate
+		return "", ErrFailedAuthenticate
 	}
 
-	return resp.SessionToken, resp.AppKey, nil
+	return resp.AppKey, nil
 }
