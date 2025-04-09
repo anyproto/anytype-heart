@@ -212,23 +212,18 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
-	details := resp.ObjectView.Details[0].Details.Fields
-	icon := util.GetIcon(s.AccountInfo.GatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details[bundle.RelationKeyIconImage.String()].GetStringValue(), details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue())
-
 	object := ObjectWithBlocks{
-		Object: Object{
-			Object:     "object",
-			Id:         details[bundle.RelationKeyId.String()].GetStringValue(),
-			Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:       icon,
-			Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-			SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
-			Snippet:    details[bundle.RelationKeySnippet.String()].GetStringValue(),
-			Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-			Type:       s.GetTypeFromDetails(resp.ObjectView.Details, details[bundle.RelationKeyType.String()].GetStringValue()),
-			Properties: s.getPropertiesFromDetails(resp),
-		},
-		Blocks: s.getBlocksFromDetails(resp),
+		Object:     "object",
+		Id:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:       resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:       util.GetIcon(s.AccountInfo.GatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Archived:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		SpaceId:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		Snippet:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:     model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+		Type:       s.GetTypeFromDetails(resp.ObjectView.Details, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue()),
+		Properties: s.getPropertiesFromDetails(resp),
+		Blocks:     s.getBlocksFromDetails(resp),
 	}
 
 	return object, nil
@@ -487,10 +482,14 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(templateTypeId),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(typeId),
 			},
 		},
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIsArchived.String()},
@@ -500,34 +499,18 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 		return nil, 0, false, ErrFailedRetrieveTemplates
 	}
 
-	templateIds := make([]string, 0)
-	for _, record := range templateObjectsResp.Records {
-		if record.Fields[bundle.RelationKeyTargetObjectType.String()].GetStringValue() == typeId {
-			templateIds = append(templateIds, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
-		}
-	}
-
-	total = len(templateIds)
-	paginatedTemplates, hasMore := pagination.Paginate(templateIds, offset, limit)
+	total = len(templateObjectsResp.Records)
+	paginatedTemplates, hasMore := pagination.Paginate(templateObjectsResp.Records, offset, limit)
 	templates = make([]Template, 0, len(paginatedTemplates))
 
 	// Finally, open each template and populate the response
-	for _, templateId := range paginatedTemplates {
-		templateResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
-			SpaceId:  spaceId,
-			ObjectId: templateId,
-		})
-
-		if templateResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return nil, 0, false, ErrFailedRetrieveTemplate
-		}
-
+	for _, record := range paginatedTemplates {
 		templates = append(templates, Template{
 			Object:   "template",
-			Id:       templateId,
-			Name:     templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:     util.GetIcon(s.AccountInfo.GatewayUrl, templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
-			Archived: templateResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+			Id:       record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+			Name:     record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Icon:     util.GetIcon(s.AccountInfo.GatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
+			Archived: record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		})
 	}
 
@@ -535,7 +518,7 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 }
 
 // GetTemplate returns a single template by its ID in a specific space.
-func (s *service) GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error) {
+func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (Template, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: templateId,
@@ -1001,7 +984,7 @@ func (s *service) GetObjectFromStruct(details *types.Struct, propertyFormatMap m
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       s.getIconFromStruct(details, s.AccountInfo.GatewayUrl),
+		Icon:       util.GetIcon(s.AccountInfo.GatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
@@ -1036,9 +1019,4 @@ func (s *service) getPropertiesFromStruct(details *types.Struct, propertyFormatM
 	}
 
 	return properties
-}
-
-// getIconFromStruct creates an icon from the details.
-func (s *service) getIconFromStruct(details *types.Struct, gatewayUrl string) util.Icon {
-	return util.GetIcon(gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue())
 }

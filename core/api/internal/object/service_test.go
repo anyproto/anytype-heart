@@ -677,28 +677,13 @@ func TestObjectService_ListTemplates(t *testing.T) {
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():               pbtypes.String("template-1"),
 						bundle.RelationKeyTargetObjectType.String(): pbtypes.String("target-type-id"),
+						bundle.RelationKeyName.String():             pbtypes.String("Template Name"),
+						bundle.RelationKeyIconEmoji.String():        pbtypes.String("📝"),
 					},
 				},
 			},
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
-
-		// Mock object show for template details
-		fx.mwMock.On("ObjectShow", mock.Anything, mock.Anything).Return(&pb.RpcObjectShowResponse{
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-			ObjectView: &model.ObjectView{
-				Details: []*model.ObjectViewDetailsSet{
-					{
-						Details: &types.Struct{
-							Fields: map[string]*types.Value{
-								bundle.RelationKeyName.String():      pbtypes.String("Template Name"),
-								bundle.RelationKeyIconEmoji.String(): pbtypes.String("📝"),
-							},
-						},
-					},
-				},
-			},
-		}, nil).Once()
 
 		// when
 		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "target-type-id", offset, limit)
