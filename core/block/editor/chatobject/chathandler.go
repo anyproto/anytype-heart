@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ChatHandler struct {
@@ -76,7 +77,28 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		return fmt.Errorf("get prev order id: %w", err)
 	}
 
-	d.subscription.add(ctx, prevOrderId, msg)
+	d.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
+		if !msg.Read {
+			if msg.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
+				state.Messages.OldestOrderId = msg.OrderId
+			}
+			state.Messages.Counter++
+
+			if isMentioned {
+				state.Mentions.Counter++
+				if msg.OrderId < state.Mentions.OldestOrderId || state.Mentions.OldestOrderId == "" {
+					state.Mentions.OldestOrderId = msg.OrderId
+				}
+			}
+
+		}
+		if msg.StateId > state.LastStateId {
+			state.LastStateId = msg.StateId
+		}
+		return state
+	})
+
+	d.subscription.add(prevOrderId, msg)
 
 	msg.MarshalAnyenc(ch.Value, ch.Arena)
 
