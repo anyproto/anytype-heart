@@ -750,10 +750,14 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format st
 	case *types.Value_StringValue:
 		// TODO: investigate how this is possible? select option not list and not returned in further details
 		if format == "select" {
-			return s.getTagFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
+			tags := s.getTagsFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), []string{kind.StringValue})
+			if len(tags) > 0 {
+				return tags[0]
+			}
+			return nil
 		}
 		if format == "multi_select" {
-			return []Tag{s.getTagFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)}
+			return s.getTagsFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), []string{kind.StringValue})
 		}
 		return kind.StringValue
 	case *types.Value_BoolValue:
@@ -765,15 +769,30 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format st
 		}
 		return m
 	case *types.Value_ListValue:
+		if format == "select" {
+			listValues := kind.ListValue.Values
+			if len(listValues) > 0 {
+				tags := s.getTagsFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), []string{listValues[0].GetStringValue()})
+				if len(tags) > 0 {
+					return tags[0]
+				}
+			}
+			return nil
+		}
+		if format == "multi_select" {
+			listValues := kind.ListValue.Values
+			if len(listValues) > 0 {
+				listStringValues := make([]string, len(listValues))
+				for i, v := range listValues {
+					listStringValues[i] = v.GetStringValue()
+				}
+				return s.getTagsFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), listStringValues)
+			}
+			return nil
+		}
 		var list []interface{}
 		for _, v := range kind.ListValue.Values {
 			list = append(list, s.convertPropertyValue(key, v, format, details))
-		}
-		if format == "select" {
-			return s.getTagFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
-		}
-		if format == "multi_select" {
-			return s.getTagFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
 		}
 		return list
 	default:
@@ -794,31 +813,6 @@ func (s *service) getPropertyFormatMapFromLinks(propertyLinks []*model.RelationL
 	}
 
 	return propertyFormatMap
-}
-
-// getTagsFromDetails returns the list of tags from the ObjectShowResponse
-func (s *service) getTagsFromDetails(key string, details []*model.ObjectViewDetailsSet) []Tag {
-	tags := []Tag{}
-
-	tagField, ok := details[0].Details.Fields[key]
-	if !ok || tagField.GetListValue() == nil {
-		return tags
-	}
-
-	for _, tagId := range tagField.GetListValue().Values {
-		id := tagId.GetStringValue()
-		for _, detail := range details {
-			if detail.Id == id {
-				tags = append(tags, Tag{
-					Id:    id,
-					Name:  detail.Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-					Color: detail.Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
-				})
-				break
-			}
-		}
-	}
-	return tags
 }
 
 // getBlocksFromDetails returns the list of blocks from the ObjectShowResponse.
@@ -891,25 +885,30 @@ func (s *service) MapRelationFormat(format model.RelationFormat) string {
 }
 
 // TODO: remove once bug of select option not being returned in details is fixed
-func (s *service) getTagFromStore(spaceId string, tagId string) Tag {
-	if tagId == "" {
-		return Tag{}
+func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
+	tags := make([]Tag, 0, len(tagIds))
+	for _, tagId := range tagIds {
+		if tagId == "" {
+			continue
+		}
+
+		resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+			SpaceId:  spaceId,
+			ObjectId: tagId,
+		})
+
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			continue
+		}
+
+		tags = append(tags, Tag{
+			Id:    tagId,
+			Name:  resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Color: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
+		})
 	}
 
-	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
-		SpaceId:  spaceId,
-		ObjectId: tagId,
-	})
-
-	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return Tag{}
-	}
-
-	return Tag{
-		Id:    tagId,
-		Name:  resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Color: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
-	}
+	return tags
 }
 
 // GetPropertyFormatMapsFromStore retrieves all properties from the store and returns a map of spaceId to property keys to their formats.
