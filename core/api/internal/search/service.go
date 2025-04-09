@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
@@ -63,6 +65,7 @@ func (s *service) GlobalSearch(ctx context.Context, request SearchRequest, offse
 		SpaceId     string
 		numericSort float64
 		stringSort  string
+		rawRecord   *types.Struct
 	}
 	combinedRecords := make([]sortRecord, 0)
 
@@ -77,7 +80,6 @@ func (s *service) GlobalSearch(ctx context.Context, request SearchRequest, offse
 			SpaceId: space.Id,
 			Filters: filters,
 			Sorts:   sorts,
-			Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), criterionToSortAfter},
 			Limit:   int32(offset + limit), // nolint: gosec
 		})
 
@@ -91,8 +93,9 @@ func (s *service) GlobalSearch(ctx context.Context, request SearchRequest, offse
 	for _, objResp := range allResponses {
 		for _, record := range objResp.Records {
 			sr := sortRecord{
-				Id:      record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-				SpaceId: record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+				Id:        record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+				SpaceId:   record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+				rawRecord: record,
 			}
 			if criterionToSortAfter == bundle.RelationKeyName.String() {
 				sr.stringSort = record.Fields[criterionToSortAfter].GetStringValue()
@@ -121,13 +124,23 @@ func (s *service) GlobalSearch(ctx context.Context, request SearchRequest, offse
 	total = len(combinedRecords)
 	paginatedRecords, hasMore := pagination.Paginate(combinedRecords, offset, limit)
 
+	// pre-fetch properties and types to fill the objects
+	spaceIds := make([]string, 0, len(spaces))
+	for _, space := range spaces {
+		spaceIds = append(spaceIds, space.Id)
+	}
+	propertyFormatMap, err := s.objectService.GetPropertyFormatMapsFromStore(spaceIds)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	typeMap, err := s.objectService.GetTypeMapsFromStore(spaceIds)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
 	results := make([]object.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		object, err := s.objectService.GetObject(ctx, record.SpaceId, record.Id)
-		if err != nil {
-			return nil, 0, false, err
-		}
-		results = append(results, object)
+		results = append(results, s.objectService.GetObjectFromStruct(record.rawRecord, propertyFormatMap, typeMap))
 	}
 
 	return results, total, hasMore, nil
@@ -145,13 +158,11 @@ func (s *service) Search(ctx context.Context, spaceId string, request SearchRequ
 	if len(sorts) == 0 {
 		return nil, 0, false, errors.New("no sort criteria provided")
 	}
-	criterionToSortAfter := sorts[0].RelationKey
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: filters,
 		Sorts:   sorts,
-		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), criterionToSortAfter},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -161,14 +172,19 @@ func (s *service) Search(ctx context.Context, spaceId string, request SearchRequ
 	total = len(resp.Records)
 	paginatedRecords, hasMore := pagination.Paginate(resp.Records, offset, limit)
 
+	// pre-fetch properties and types to fill the objects
+	propertyFormatMap, err := s.objectService.GetPropertyFormatMapsFromStore([]string{spaceId})
+	if err != nil {
+		return nil, 0, false, err
+	}
+	typeMap, err := s.objectService.GetTypeMapsFromStore([]string{spaceId})
+	if err != nil {
+		return nil, 0, false, err
+	}
+
 	results := make([]object.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-
-		object, err := s.objectService.GetObject(ctx, record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), record.Fields[bundle.RelationKeyId.String()].GetStringValue())
-		if err != nil {
-			return nil, 0, false, err
-		}
-		results = append(results, object)
+		results = append(results, s.objectService.GetObjectFromStruct(record, propertyFormatMap, typeMap))
 	}
 
 	return results, total, hasMore, nil

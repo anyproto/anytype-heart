@@ -13,7 +13,7 @@ type CreateObjectRequest struct {
 }
 
 type ObjectResponse struct {
-	Object Object `json:"object"` // The object
+	Object ObjectWithBlocks `json:"object"` // The object
 }
 
 type Object struct {
@@ -26,8 +26,11 @@ type Object struct {
 	Snippet    string     `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
 	Layout     string     `json:"layout" example:"basic"`                                                                       // The layout of the object
 	Type       Type       `json:"type"`                                                                                         // The type of the object
-	Blocks     []Block    `json:"blocks"`                                                                                       // The blocks of the object. Omitted in Search endpoints, returned only in GetObject endpoint
 	Properties []Property `json:"properties"`                                                                                   // The properties of the object
+}
+type ObjectWithBlocks struct {
+	Object
+	Blocks []Block `json:"blocks"` // The blocks of the object. Omitted in endpoints for searching or listing objects, only included when getting single object.
 }
 
 type Block struct {

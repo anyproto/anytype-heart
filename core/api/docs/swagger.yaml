@@ -202,18 +202,11 @@ components:
           type: string
       type: object
     object.Object:
-      description: The object
       properties:
         archived:
           description: Whether the object is archived
           example: false
           type: boolean
-        blocks:
-          description: The blocks of the object
-          items:
-            $ref: '#/components/schemas/object.Block'
-          type: array
-          uniqueItems: false
         icon:
           $ref: '#/components/schemas/util.Icon'
         id:
@@ -253,7 +246,57 @@ components:
     object.ObjectResponse:
       properties:
         object:
-          $ref: '#/components/schemas/object.Object'
+          $ref: '#/components/schemas/object.ObjectWithBlocks'
+      type: object
+    object.ObjectWithBlocks:
+      description: The object
+      properties:
+        archived:
+          description: Whether the object is archived
+          example: false
+          type: boolean
+        blocks:
+          description: The blocks of the object. Omitted in endpoints for searching
+            or listing objects, only included when getting single object.
+          items:
+            $ref: '#/components/schemas/object.Block'
+          type: array
+          uniqueItems: false
+        icon:
+          $ref: '#/components/schemas/util.Icon'
+        id:
+          description: The id of the object
+          example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
+          type: string
+        layout:
+          description: The layout of the object
+          example: basic
+          type: string
+        name:
+          description: The name of the object
+          example: My object
+          type: string
+        object:
+          description: The data model of the object
+          example: object
+          type: string
+        properties:
+          description: The properties of the object
+          items:
+            $ref: '#/components/schemas/object.Property'
+          type: array
+          uniqueItems: false
+        snippet:
+          description: The snippet of the object, especially important for notes as
+            they don't have a name
+          example: The beginning of the object body...
+          type: string
+        space_id:
+          description: The id of the space the object is in
+          example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
+          type: string
+        type:
+          $ref: '#/components/schemas/object.Type'
       type: object
     object.Property:
       description: The property block, if applicable

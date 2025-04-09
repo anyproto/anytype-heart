@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -21,18 +22,19 @@ import (
 
 var (
 	// objects
-	ErrObjectNotFound            = errors.New("object not found")
-	ErrObjectDeleted             = errors.New("object deleted")
-	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
-	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
-	ErrFailedDeleteObject        = errors.New("failed to delete object")
-	ErrFailedCreateObject        = errors.New("failed to create object")
-	ErrInputMissingSource        = errors.New("source is missing for bookmark")
-	ErrIconNameColorNotSupported = errors.New("icon name and color are not supported for object")
-	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
-	ErrFailedCreateBookmark      = errors.New("failed to fetch bookmark")
-	ErrFailedCreateBlock         = errors.New("failed to create block")
-	ErrFailedPasteBody           = errors.New("failed to paste body")
+	ErrObjectNotFound                  = errors.New("object not found")
+	ErrObjectDeleted                   = errors.New("object deleted")
+	ErrFailedRetrieveObject            = errors.New("failed to retrieve object")
+	ErrFailedRetrieveObjects           = errors.New("failed to retrieve list of objects")
+	ErrFailedRetrievePropertyFormatMap = errors.New("failed to retrieve property format map")
+	ErrFailedDeleteObject              = errors.New("failed to delete object")
+	ErrFailedCreateObject              = errors.New("failed to create object")
+	ErrInputMissingSource              = errors.New("source is missing for bookmark")
+	ErrIconNameColorNotSupported       = errors.New("icon name and color are not supported for object")
+	ErrFailedSetPropertyFeatured       = errors.New("failed to set property featured")
+	ErrFailedCreateBookmark            = errors.New("failed to fetch bookmark")
+	ErrFailedCreateBlock               = errors.New("failed to create block")
+	ErrFailedPasteBody                 = errors.New("failed to paste body")
 
 	// types
 	ErrFailedRetrieveTypes        = errors.New("failed to retrieve types")
@@ -94,15 +96,18 @@ var excludedSystemProperties = map[string]bool{
 type Service interface {
 	SetAccountInfo(accountInfo *model.AccountInfo)
 	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
-	GetObject(ctx context.Context, spaceId string, objectId string) (Object, error)
-	DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error)
-	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error)
+	GetObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
+	DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
+	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error)
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
 	GetType(ctx context.Context, spaceId string, typeId string) (Type, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
 	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error)
 
 	MapRelationFormat(format model.RelationFormat) string
+	GetObjectFromStruct(details *types.Struct, propertyFormatMap map[string]map[string]string, typeMap map[string]map[string]Type) Object
+	GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]map[string]string, error)
+	GetTypeMapsFromStore(spaceIds []string) (map[string]map[string]Type, error)
 	GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string) Type
 }
 
@@ -160,7 +165,6 @@ func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, l
 			IncludeTime:    true,
 			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -171,19 +175,24 @@ func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, l
 	paginatedObjects, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	objects = make([]Object, 0, len(paginatedObjects))
 
-	for _, record := range paginatedObjects {
-		object, err := s.GetObject(ctx, spaceId, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
-		if err != nil {
-			return nil, 0, false, err
-		}
+	// pre-fetch properties and types to fill the objects
+	propertyFormatMap, err := s.GetPropertyFormatMapsFromStore([]string{spaceId})
+	if err != nil {
+		return nil, 0, false, err
+	}
+	typeMap, err := s.GetTypeMapsFromStore([]string{spaceId})
+	if err != nil {
+		return nil, 0, false, err
+	}
 
-		objects = append(objects, object)
+	for _, record := range paginatedObjects {
+		objects = append(objects, s.GetObjectFromStruct(record, propertyFormatMap, typeMap))
 	}
 	return objects, total, hasMore, nil
 }
 
 // GetObject retrieves a single object by its ID in a specific space.
-func (s *service) GetObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
+func (s *service) GetObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -191,43 +200,45 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return Object{}, ErrObjectNotFound
+			return ObjectWithBlocks{}, ErrObjectNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return Object{}, ErrObjectDeleted
+			return ObjectWithBlocks{}, ErrObjectDeleted
 		}
 
 		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return Object{}, ErrFailedRetrieveObject
+			return ObjectWithBlocks{}, ErrFailedRetrieveObject
 		}
 	}
 
 	details := resp.ObjectView.Details[0].Details.Fields
 	icon := util.GetIcon(s.AccountInfo.GatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details[bundle.RelationKeyIconImage.String()].GetStringValue(), details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue())
 
-	object := Object{
-		Object:     "object",
-		Id:         details[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       icon,
-		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
-		Snippet:    details[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		Type:       s.GetTypeFromDetails(resp.ObjectView.Details, details[bundle.RelationKeyType.String()].GetStringValue()),
-		Blocks:     s.getBlocks(resp),
-		Properties: s.getProperties(resp),
+	object := ObjectWithBlocks{
+		Object: Object{
+			Object:     "object",
+			Id:         details[bundle.RelationKeyId.String()].GetStringValue(),
+			Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
+			Icon:       icon,
+			Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+			SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
+			Snippet:    details[bundle.RelationKeySnippet.String()].GetStringValue(),
+			Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+			Type:       s.GetTypeFromDetails(resp.ObjectView.Details, details[bundle.RelationKeyType.String()].GetStringValue()),
+			Properties: s.getPropertiesFromDetails(resp),
+		},
+		Blocks: s.getBlocksFromDetails(resp),
 	}
 
 	return object, nil
 }
 
 // DeleteObject deletes an existing object in a specific space.
-func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
+func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error) {
 	object, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
-		return Object{}, err
+		return ObjectWithBlocks{}, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -236,17 +247,17 @@ func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return Object{}, ErrFailedDeleteObject
+		return ObjectWithBlocks{}, ErrFailedDeleteObject
 	}
 
 	return object, nil
 }
 
 // CreateObject creates a new object in a specific space.
-func (s *service) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error) {
+func (s *service) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error) {
 	details, err := s.buildObjectDetails(request)
 	if err != nil {
-		return Object{}, err
+		return ObjectWithBlocks{}, err
 	}
 
 	var objectId string
@@ -258,7 +269,7 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 		})
 
 		if resp.Error.Code != pb.RpcObjectCreateBookmarkResponseError_NULL {
-			return Object{}, ErrFailedCreateBookmark
+			return ObjectWithBlocks{}, ErrFailedCreateBookmark
 		}
 		objectId = resp.ObjectId
 	} else {
@@ -270,7 +281,7 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 		})
 
 		if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
-			return Object{}, ErrFailedCreateObject
+			return ObjectWithBlocks{}, ErrFailedCreateObject
 		}
 		objectId = resp.ObjectId
 	}
@@ -553,9 +564,33 @@ func (s *service) GetTemplate(ctx context.Context, spaceId string, typeId string
 	}, nil
 }
 
-// getProperties returns a list of properties by iterating over all properties found in the RelationLinks and mapping their format and value.
-func (s *service) getProperties(resp *pb.RpcObjectShowResponse) []Property {
-	propertyFormatMap := s.getPropertyFormatMap(resp.ObjectView.RelationLinks)
+// GetTypeFromDetails retrieves the type from the details.
+func (s *service) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string) Type {
+	var objectTypeDetail *types.Struct
+	for _, detail := range details {
+		if detail.Id == typeId {
+			objectTypeDetail = detail.GetDetails()
+			break
+		}
+	}
+
+	if objectTypeDetail == nil {
+		return Type{}
+	}
+
+	return Type{
+		Object:            "type",
+		Id:                objectTypeDetail.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:               objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:              util.GetIcon(s.AccountInfo.GatewayUrl, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+	}
+}
+
+// getPropertiesFromDetails returns a list of properties by iterating over all properties found in the RelationLinks and mapping their format and value.
+func (s *service) getPropertiesFromDetails(resp *pb.RpcObjectShowResponse) []Property {
+	propertyFormatMap := s.getPropertyFormatMapFromLinks(resp.ObjectView.RelationLinks)
 	linkedProperties := resp.ObjectView.RelationLinks
 	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
 
@@ -571,7 +606,7 @@ func (s *service) getProperties(resp *pb.RpcObjectShowResponse) []Property {
 
 		id, name := s.getPropertyIdAndName(key, resp.ObjectView.Details[0].Details)
 		format := propertyFormatMap[key]
-		convertedVal := s.convertValue(key, primaryDetailFields[key], format, resp.ObjectView.Details)
+		convertedVal := s.convertPropertyValue(key, primaryDetailFields[key], format, resp.ObjectView.Details[0].Details)
 
 		if s.isMissingObject(convertedVal) {
 			continue
@@ -702,8 +737,8 @@ func (s *service) getPropertyIdAndName(key string, details *types.Struct) (strin
 	return key, key
 }
 
-// convertValue converts a protobuf types.Value into a native Go value.
-func (s *service) convertValue(key string, value *types.Value, format string, details []*model.ObjectViewDetailsSet) interface{} {
+// convertPropertyValue converts a protobuf types.Value into a native Go value.
+func (s *service) convertPropertyValue(key string, value *types.Value, format string, details *types.Struct) interface{} {
 	switch kind := value.Kind.(type) {
 	case *types.Value_NullValue:
 		return nil
@@ -715,10 +750,10 @@ func (s *service) convertValue(key string, value *types.Value, format string, de
 	case *types.Value_StringValue:
 		// TODO: investigate how this is possible? select option not list and not returned in further details
 		if format == "select" {
-			return s.resolveTag(details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
+			return s.getTagFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)
 		}
 		if format == "multi_select" {
-			return []Tag{s.resolveTag(details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)}
+			return []Tag{s.getTagFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), kind.StringValue)}
 		}
 		return kind.StringValue
 	case *types.Value_BoolValue:
@@ -726,23 +761,19 @@ func (s *service) convertValue(key string, value *types.Value, format string, de
 	case *types.Value_StructValue:
 		m := make(map[string]interface{})
 		for k, v := range kind.StructValue.Fields {
-			m[k] = s.convertValue(key, v, format, details)
+			m[k] = s.convertPropertyValue(key, v, format, details)
 		}
 		return m
 	case *types.Value_ListValue:
 		var list []interface{}
 		for _, v := range kind.ListValue.Values {
-			list = append(list, s.convertValue(key, v, format, details))
+			list = append(list, s.convertPropertyValue(key, v, format, details))
 		}
 		if format == "select" {
-			tags := s.getTags(key, details)
-			if len(tags) > 0 {
-				return tags[0]
-			}
-			return nil
+			return s.getTagFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
 		}
 		if format == "multi_select" {
-			return s.getTags(key, details)
+			return s.getTagFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), key)
 		}
 		return list
 	default:
@@ -750,8 +781,8 @@ func (s *service) convertValue(key string, value *types.Value, format string, de
 	}
 }
 
-// getPropertyFormatMap returns the map of property key to property format from the ObjectShowResponse.
-func (s *service) getPropertyFormatMap(propertyLinks []*model.RelationLink) map[string]string {
+// getPropertyFormatMapFromLinks returns the map of property key to property format from the ObjectShowResponse.
+func (s *service) getPropertyFormatMapFromLinks(propertyLinks []*model.RelationLink) map[string]string {
 	propertyFormatToName := make(map[int32]string, len(model.RelationFormat_name))
 	for k := range model.RelationFormat_name {
 		propertyFormatToName[k] = s.MapRelationFormat(model.RelationFormat(k))
@@ -765,30 +796,8 @@ func (s *service) getPropertyFormatMap(propertyLinks []*model.RelationLink) map[
 	return propertyFormatMap
 }
 
-// TODO: remove once bug of select option not being returned in details is fixed
-func (s *service) resolveTag(spaceId string, tagId string) Tag {
-	if tagId == "" {
-		return Tag{}
-	}
-
-	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
-		SpaceId:  spaceId,
-		ObjectId: tagId,
-	})
-
-	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return Tag{}
-	}
-
-	return Tag{
-		Id:    tagId,
-		Name:  resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Color: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
-	}
-}
-
-// getTags returns the list of tags from the ObjectShowResponse
-func (s *service) getTags(key string, details []*model.ObjectViewDetailsSet) []Tag {
+// getTagsFromDetails returns the list of tags from the ObjectShowResponse
+func (s *service) getTagsFromDetails(key string, details []*model.ObjectViewDetailsSet) []Tag {
 	tags := []Tag{}
 
 	tagField, ok := details[0].Details.Fields[key]
@@ -812,8 +821,8 @@ func (s *service) getTags(key string, details []*model.ObjectViewDetailsSet) []T
 	return tags
 }
 
-// getBlocks returns the list of blocks from the ObjectShowResponse.
-func (s *service) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
+// getBlocksFromDetails returns the list of blocks from the ObjectShowResponse.
+func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}
 
 	for _, block := range resp.ObjectView.Blocks {
@@ -881,58 +890,144 @@ func (s *service) MapRelationFormat(format model.RelationFormat) string {
 	}
 }
 
-// GetObjectFromDetails creates an Object without blocks from the details.
-func (s *service) GetObjectFromDetails(details []*model.ObjectViewDetailsSet) Object {
+// TODO: remove once bug of select option not being returned in details is fixed
+func (s *service) getTagFromStore(spaceId string, tagId string) Tag {
+	if tagId == "" {
+		return Tag{}
+	}
+
+	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: tagId,
+	})
+
+	if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return Tag{}
+	}
+
+	return Tag{
+		Id:    tagId,
+		Name:  resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Color: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
+	}
+}
+
+// GetPropertyFormatMapsFromStore retrieves all properties from the store and returns a map of spaceId to property keys to their formats.
+func (s *service) GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]map[string]string, error) {
+	spacesToProperties := make(map[string]map[string]string, len(spaceIds))
+
+	for _, spaceId := range spaceIds {
+		resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+			SpaceId: spaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyRelationFormat.String()},
+		})
+
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+			return nil, ErrFailedRetrievePropertyFormatMap
+		}
+
+		propertyFormatMap := make(map[string]string, len(resp.Records))
+		for _, record := range resp.Records {
+			name := strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-")
+			format := model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())
+			propertyFormatMap[name] = s.MapRelationFormat(format)
+		}
+
+		spacesToProperties[spaceId] = propertyFormatMap
+	}
+
+	return spacesToProperties, nil
+}
+
+// GetTypeMapsFromStore retrieves all types from the store and returns a map of spaceId to type id to type.
+func (s *service) GetTypeMapsFromStore(spaceIds []string) (map[string]map[string]Type, error) {
+	spacesToTypes := make(map[string]map[string]Type, len(spaceIds))
+
+	for _, spaceId := range spaceIds {
+		resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+			SpaceId: spaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+				},
+				{
+					// resolve deleted types as well
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+				},
+			},
+			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconName.String(), bundle.RelationKeyIconOption.String(), bundle.RelationKeyRecommendedLayout.String(), bundle.RelationKeyIsArchived.String()},
+		})
+
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+			return nil, ErrFailedRetrieveTypes
+		}
+
+		typeMap := make(map[string]Type, len(resp.Records))
+		for _, record := range resp.Records {
+			typeMap[record.Fields[bundle.RelationKeyId.String()].GetStringValue()] = Type{
+				Object:            "type",
+				Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+				Key:               record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+				Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+				Icon:              util.GetIcon(s.AccountInfo.GatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+				Archived:          record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+				RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+			}
+		}
+
+		spacesToTypes[spaceId] = typeMap
+	}
+
+	return spacesToTypes, nil
+}
+
+// GetObjectFromStruct creates an ObjectWithBlocks without blocks from the details.
+func (s *service) GetObjectFromStruct(details *types.Struct, propertyFormatMap map[string]map[string]string, typeMap map[string]map[string]Type) Object {
 	return Object{
 		Object:     "object",
-		Id:         details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:       details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       IconFromStruct(details[0].Details, s.AccountInfo.GatewayUrl),
-		Archived:   details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
-		Snippet:    details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     model.ObjectTypeLayout_name[int32(details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		Type:       s.GetTypeFromDetails(details, details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue()),
-		Blocks:     nil,
-		Properties: []Property{},
+		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:       s.getIconFromStruct(details, s.AccountInfo.GatewayUrl),
+		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:     model.ObjectTypeLayout_name[int32(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+		Type:       s.getTypeFromStruct(details, typeMap[details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]),
+		Properties: s.getPropertiesFromStruct(details, propertyFormatMap[details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]),
 	}
 }
 
-// GetTypeFromDetails retrieves the type from the details.
-func (s *service) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string) Type {
-	var objectTypeDetail *types.Struct
-	for _, detail := range details {
-		if detail.Id == typeId {
-			objectTypeDetail = detail.GetDetails()
-			break
-		}
-	}
-
-	if objectTypeDetail == nil {
-		return Type{}
-	}
-
-	return Type{
-		Object:            "type",
-		Id:                objectTypeDetail.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:               objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              util.GetIcon(s.AccountInfo.GatewayUrl, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-	}
+// getTypeFromStruct retrieves the type from the details.
+func (s *service) getTypeFromStruct(details *types.Struct, typeMap map[string]Type) Type {
+	return typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]
 }
 
-// getPropertiesFromDetails retrieves the properties from the details.
-func (s *service) getPropertiesFromDetails(details []*model.ObjectViewDetailsSet, propertyFormatMap map[string]string) []Property {
+// getPropertiesFromStruct retrieves the properties from the details.
+func (s *service) getPropertiesFromStruct(details *types.Struct, propertyFormatMap map[string]string) []Property {
 	properties := []Property{}
-	for key, value := range details[0].Details.GetFields() {
+	for key, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[key]; isExcluded {
 			continue
 		}
 
-		id, name := s.getPropertyIdAndName(key, details[0].Details)
+		id, name := s.getPropertyIdAndName(key, details)
 		format := propertyFormatMap[key]
-		convertedVal := s.convertValue(key, value, format, details)
+		convertedVal := s.convertPropertyValue(key, value, format, details)
 
 		if s.isMissingObject(convertedVal) {
 			continue
@@ -944,7 +1039,7 @@ func (s *service) getPropertiesFromDetails(details []*model.ObjectViewDetailsSet
 	return properties
 }
 
-// IconFromStruct creates an icon from the details struct.
-func IconFromStruct(details *types.Struct, gatewayUrl string) util.Icon {
+// getIconFromStruct creates an icon from the details.
+func (s *service) getIconFromStruct(details *types.Struct, gatewayUrl string) util.Icon {
 	return util.GetIcon(gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue())
 }
