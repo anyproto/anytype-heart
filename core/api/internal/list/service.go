@@ -154,7 +154,7 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 
 	var collectionId string
 	var source []string
-	listType := s.objectService.GetTypeFromDetails(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details)
+	listType := s.objectService.GetTypeFromDetails(resp.ObjectView.Details, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue())
 
 	if listType.RecommendedLayout == "set" {
 		// for queries, we search within the space for objects of the setOf type

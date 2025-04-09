@@ -207,7 +207,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 		SpaceId:    details[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		Type:       s.GetTypeFromDetails(details[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details),
+		Type:       s.GetTypeFromDetails(resp.ObjectView.Details, details[bundle.RelationKeyType.String()].GetStringValue()),
 		Blocks:     s.getBlocks(resp),
 		Properties: s.getProperties(resp),
 	}
@@ -545,30 +545,6 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 	}, nil
 }
 
-// GetTypeFromDetails returns the type from the details of the ObjectShowResponse.
-func (s *ObjectService) GetTypeFromDetails(typeId string, details []*model.ObjectViewDetailsSet) Type {
-	var objectTypeDetail *types.Struct
-	for _, detail := range details {
-		if detail.Id == typeId {
-			objectTypeDetail = detail.GetDetails()
-			break
-		}
-	}
-
-	if objectTypeDetail == nil {
-		return Type{}
-	}
-
-	return Type{
-		Object:            "type",
-		Id:                typeId,
-		Key:               objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              util.GetIcon(s.AccountInfo.GatewayUrl objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-	}
-}
-
 // getProperties returns a list of properties by iterating over all properties found in the RelationLinks and mapping their format and value.
 func (s *ObjectService) getProperties(resp *pb.RpcObjectShowResponse) []Property {
 	propertyFormatMap := s.getPropertyFormatMap(resp.ObjectView.RelationLinks)
@@ -585,7 +561,7 @@ func (s *ObjectService) getProperties(resp *pb.RpcObjectShowResponse) []Property
 			continue
 		}
 
-		id, name := s.getProperty(key, resp)
+		id, name := s.getPropertyIdAndName(key, resp.ObjectView.Details[0].Details)
 		format := propertyFormatMap[key]
 		convertedVal := s.convertValue(key, primaryDetailFields[key], format, resp.ObjectView.Details)
 
@@ -696,8 +672,8 @@ func (s *ObjectService) buildProperty(id string, name string, format string, val
 	return *prop
 }
 
-// getProperty returns the property id and name from the ObjectShowResponse.
-func (s *ObjectService) getProperty(key string, resp *pb.RpcObjectShowResponse) (string, string) {
+// getPropertyIdAndName returns the property id and name from the ObjectShowResponse.
+func (s *ObjectService) getPropertyIdAndName(key string, details *types.Struct) (string, string) {
 	// Handle special cases first
 	switch key {
 	case bundle.RelationKeyCreator.String():
@@ -711,7 +687,7 @@ func (s *ObjectService) getProperty(key string, resp *pb.RpcObjectShowResponse) 
 	}
 
 	// Fallback to resolving the property name
-	spaceId := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
 	if name, err2 := util.ResolveRelationKeyToPropertyName(s.mw, spaceId, key); err2 == nil {
 		return key, name
 	}
@@ -782,7 +758,7 @@ func (s *ObjectService) getPropertyFormatMap(propertyLinks []*model.RelationLink
 }
 
 // TODO: remove once bug of select option not being returned in details is fixed
-func (s *ObjectService) resolveTag(spaceId, tagId string) Tag {
+func (s *ObjectService) resolveTag(spaceId string, tagId string) Tag {
 	if tagId == "" {
 		return Tag{}
 	}
@@ -897,53 +873,70 @@ func (s *ObjectService) MapRelationFormat(format model.RelationFormat) string {
 	}
 }
 
-func PropertiesFromStuct(details *types.Struct, relationsMap map[string]*model.Relation) Object {
+// GetObjectFromDetails creates an Object without blocks from the details.
+func (s *ObjectService) GetObjectFromDetails(details []*model.ObjectViewDetailsSet) Object {
+	return Object{
+		Object:     "object",
+		Id:         details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:       details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:       IconFromStruct(details[0].Details, s.AccountInfo.GatewayUrl),
+		Archived:   details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		SpaceId:    details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		Snippet:    details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:     model.ObjectTypeLayout_name[int32(details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+		Type:       s.GetTypeFromDetails(details, details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue()),
+		Blocks:     nil,
+		Properties: []Property{},
+	}
+}
+
+// GetTypeFromDetails retrieves the type from the details.
+func (s *ObjectService) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string) Type {
+	var objectTypeDetail *types.Struct
+	for _, detail := range details {
+		if detail.Id == typeId {
+			objectTypeDetail = detail.GetDetails()
+			break
+		}
+	}
+
+	if objectTypeDetail == nil {
+		return Type{}
+	}
+
+	return Type{
+		Object:            "type",
+		Id:                objectTypeDetail.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:               objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:              util.GetIcon(s.AccountInfo.GatewayUrl, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+	}
+}
+
+// getPropertiesFromDetails retrieves the properties from the details.
+func (s *ObjectService) getPropertiesFromDetails(details []*model.ObjectViewDetailsSet, propertyFormatMap map[string]string) []Property {
 	properties := []Property{}
-	for key, value := range details.GetFields() {
+	for key, value := range details[0].Details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[key]; isExcluded {
 			continue
 		}
 
-		id, name := getProperty(key, details)
-		format := getPropertyFormat(key, details)
-		convertedVal := convertValue(key, value, format, details)
+		id, name := s.getPropertyIdAndName(key, details[0].Details)
+		format := propertyFormatMap[key]
+		convertedVal := s.convertValue(key, value, format, details)
 
-		if isMissingObject(convertedVal) {
+		if s.isMissingObject(convertedVal) {
 			continue
 		}
 
-		properties = append(properties, buildProperty(id, name, format, convertedVal))
+		properties = append(properties, s.buildProperty(id, name, format, convertedVal))
 	}
 
 	return properties
 }
 
-func ObjectFromStuct(details *types.Struct, gatewayUrl string) Object {
-	return Object{
-		Object:     "object",
-		Id:         details.GetFields()[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:       details.GetFields()[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       IconFromStruct(details, gatewayUrl),
-		Archived:   details.GetFields()[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    details.GetFields()[bundle.RelationKeySpaceId.String()].GetStringValue(),
-		Snippet:    details.GetFields()[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     model.ObjectTypeLayout_name[int32(details.GetFields()[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		Properties: []Property{},
-	}
-}
-
-func TypesFromStruct(details *types.Struct, gatewayUrl string) Type {
-	return Type{
-		Object:            "type",
-		Id:                details.GetFields()[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:               details.GetFields()[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-		Name:              details.GetFields()[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              IconFromStruct(details, gatewayUrl),
-		Archived:          details.GetFields()[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		RecommendedLayout: model.ObjectTypeLayout_name[int32(details.GetFields()[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-	}
-}
-
+// IconFromStruct creates an icon from the details struct.
 func IconFromStruct(details *types.Struct, gatewayUrl string) util.Icon {
-	return util.GetIcon(gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()))
+	return util.GetIcon(gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue())
 }
