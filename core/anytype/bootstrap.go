@@ -58,6 +58,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
+	"github.com/anyproto/anytype-heart/core/contact"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
@@ -320,7 +321,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
 		Register(spaceview.New()).
-		Register(api.New())
+		Register(api.New()).
+		Register(contact.New())
 }
 
 func MiddlewareVersion() string {

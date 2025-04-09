@@ -245,3 +245,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/template:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/contact:
+    interfaces:
+      identityService:

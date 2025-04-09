@@ -34,9 +34,21 @@ const (
 )
 
 func TestTechSpace_Run(t *testing.T) {
-	var initIDs = []string{"1", "2", "3"}
-	fx := newFixture(t, initIDs)
-	defer fx.finish(t)
+	t.Run("success", func(t *testing.T) {
+		var initIDs = []string{"1", "2", "3"}
+		fx := newFixture(t, initIDs)
+		defer fx.finish(t)
+	})
+	t.Run("create user data object", func(t *testing.T) {
+		// given
+		fx := newFixtureCreateUserDataObject(t, nil)
+
+		// when
+		defer fx.finish(t)
+
+		// then
+		assert.Equal(t, fx.userDataObject, fx.TechSpace.(*techSpace).userDataObjectId)
+	})
 }
 
 type spaceViewStub struct {
@@ -322,29 +334,53 @@ func TestTechSpace_WaitViews(t *testing.T) {
 
 type fixture struct {
 	TechSpace
-	a           *app.App
-	spaceCore   *mock_spacecore.MockSpaceCoreService
-	objectCache *mock_objectcache.MockCache
-	ctrl        *gomock.Controller
-	techCore    *mock_commonspace.MockSpace
-	ids         []string
+	a                     *app.App
+	spaceCore             *mock_spacecore.MockSpaceCoreService
+	objectCache           *mock_objectcache.MockCache
+	ctrl                  *gomock.Controller
+	techCore              *mock_commonspace.MockSpace
+	ids                   []string
+	userDataObject        string
+	userDataObjectCreator func(fx *fixture)
 }
 
 func newFixture(t *testing.T, storeIDs []string) *fixture {
+	fx := prepareFixture(t, storeIDs)
+	userDataObjectExist(fx)
+	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
+	require.NoError(t, err)
+	// do not cancel wakeUpIds func
+	fx.TechSpace.(*techSpace).ctxCancel = func() {}
+	return fx
+}
+
+func newFixtureCreateUserDataObject(t *testing.T, storeIDs []string) *fixture {
+	fx := prepareFixture(t, storeIDs)
+	userDataObjectNotExist(fx)
+	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
+	require.NoError(t, err)
+	// do not cancel wakeUpIds func
+	fx.TechSpace.(*techSpace).ctxCancel = func() {}
+	return fx
+}
+
+func prepareFixture(t *testing.T, storeIDs []string) *fixture {
 	ctrl := gomock.NewController(t)
 	fx := &fixture{
-		TechSpace:   New(),
-		a:           new(app.App),
-		ctrl:        ctrl,
-		spaceCore:   mock_spacecore.NewMockSpaceCoreService(t),
-		objectCache: mock_objectcache.NewMockCache(t),
-		techCore:    mock_commonspace.NewMockSpace(ctrl),
-		ids:         storeIDs,
+		TechSpace:      New(),
+		a:              new(app.App),
+		ctrl:           ctrl,
+		spaceCore:      mock_spacecore.NewMockSpaceCoreService(t),
+		objectCache:    mock_objectcache.NewMockCache(t),
+		techCore:       mock_commonspace.NewMockSpace(ctrl),
+		ids:            storeIDs,
+		userDataObject: "userDataObjectId",
 	}
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore))
 
 	// expect wakeUpIds
 	fx.techCore.EXPECT().Id().Return(testTechSpaceId).AnyTimes()
+
 	fx.objectCache.EXPECT().DeriveTreePayload(ctx, mock.Anything).Return(treestorage.TreeStorageCreatePayload{
 		RootRawChange: &treechangeproto.RawTreeChangeWithId{
 			Id: accountObjectId,
@@ -358,13 +394,18 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 		return nil, nil
 	}).Times(1)
 	require.NoError(t, fx.a.Start(ctx))
-	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
-	require.NoError(t, err)
-
-	// do not cancel wakeUpIds func
-	fx.TechSpace.(*techSpace).ctxCancel = func() {}
-
 	return fx
+}
+
+func userDataObjectExist(fx *fixture) {
+	fx.objectCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(fx.userDataObject, nil).Times(1)
+	fx.objectCache.EXPECT().GetObject(mock.Anything, fx.userDataObject).Return(nil, nil)
+}
+
+func userDataObjectNotExist(fx *fixture) {
+	fx.objectCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(fx.userDataObject, nil).Times(1)
+	fx.objectCache.EXPECT().GetObject(mock.Anything, fx.userDataObject).Return(nil, fmt.Errorf("error")).Times(1)
+	fx.objectCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, nil).Times(1)
 }
 
 func (fx *fixture) expectDeriveTreePayload(viewId string) {

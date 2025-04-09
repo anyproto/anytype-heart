@@ -192,7 +192,8 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		objectStore:        s.objectStore.SpaceIndex(space.Id()),
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
-	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
+	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject ||
+		sbt == smartblock.SmartBlockTypeUserDataObject {
 		return &store{source: src, sbType: sbt, diffManagers: map[string]*diffManager{}}, nil
 	}
 

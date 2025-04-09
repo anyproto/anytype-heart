@@ -14,7 +14,10 @@ func (i FullID) IsEmpty() bool {
 	return i.ObjectID == ""
 }
 
-const ParticipantPrefix = "_participant_"
+const (
+	ParticipantPrefix = "_participant_"
+	ContactPrefix     = "_contact_"
+)
 
 func NewParticipantId(spaceId, identity string) string {
 	// Replace dots with underscores to avoid issues on Desktop client
@@ -32,4 +35,8 @@ func ParseParticipantId(participantId string) (spaceId string, identity string, 
 	}
 
 	return fmt.Sprintf("%s.%s", parts[2], parts[3]), parts[4], nil
+}
+
+func NewContactId(identity string) string {
+	return fmt.Sprintf("%s%s", ContactPrefix, identity)
 }

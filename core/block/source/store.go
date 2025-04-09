@@ -154,6 +154,9 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 	case smartblock.SmartBlockTypeAccountObject:
 		st.SetObjectTypeKey(bundle.TypeKeyProfile)
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_profile)))
+	case smartblock.SmartBlockTypeUserDataObject:
+		st.SetObjectTypeKey(bundle.TypeKeyPage)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_basic)))
 	default:
 		return nil, fmt.Errorf("unsupported smartblock type: %v", s.sbType)
 	}
@@ -242,7 +245,7 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	}
 	changeId = addResult.Added[0].Id
 	err = tx.Commit()
-	if err == nil {
+	if err == nil && s.onUpdateHook != nil {
 		s.onUpdateHook()
 	}
 	ch, err := s.ObjectTree.GetChange(changeId)
@@ -281,7 +284,7 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 			m.diffManager.Update(tree)
 		}
 	}
-	if err == nil {
+	if err == nil && s.onUpdateHook != nil {
 		s.onUpdateHook()
 	}
 	return err

@@ -409,4 +409,7 @@ service ClientCommands {
     rpc AIAutofill (anytype.Rpc.AI.Autofill.Request) returns (anytype.Rpc.AI.Autofill.Response);
     rpc AIListSummary (anytype.Rpc.AI.ListSummary.Request) returns (anytype.Rpc.AI.ListSummary.Response);
     rpc AIObjectCreateFromUrl (anytype.Rpc.AI.ObjectCreateFromUrl.Request) returns (anytype.Rpc.AI.ObjectCreateFromUrl.Response);
+
+    rpc ContactCreate (anytype.Rpc.Contact.Create.Request) returns (anytype.Rpc.Contact.Create.Response);
+    rpc ContactDelete (anytype.Rpc.Contact.Delete.Request) returns (anytype.Rpc.Contact.Delete.Response);
 }

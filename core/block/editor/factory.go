@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/userdataobject"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -32,12 +33,21 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 var log = logging.Logger("anytype-mw-editor")
 
 type ObjectDeleter interface {
 	DeleteObjectByFullID(id domain.FullID) (err error)
+}
+
+type spaceService interface {
+	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
+	OnWorkspaceChanged(spaceId string, details *domain.Details)
+	PersonalSpaceId() string
+	TechSpace() *clientspace.TechSpace
 }
 
 type accountService interface {
@@ -214,6 +224,10 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id()), spaceIndex), nil
 	case coresb.SmartBlockTypeAccountObject:
 		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
+	case coresb.SmartBlockTypeUserDataObject:
+		return userdataobject.New(sb, f.objectStore.GetCrdtDb(space.Id())), nil
+	case coresb.SmartBlockTypeContactObject:
+		return NewContactObject(sb, spaceIndex, f.spaceService), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

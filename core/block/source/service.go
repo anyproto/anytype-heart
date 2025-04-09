@@ -108,7 +108,8 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 			if err != nil {
 				return nil, err
 			}
-			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
+			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject ||
+				sbt == smartblock.SmartBlockTypeUserDataObject {
 				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
 			}
 			return ot, nil
@@ -174,6 +175,16 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 				State:     participantState,
 				SbType:    smartblock.SmartBlockTypeParticipant,
 				CreatorId: addr.AnytypeProfileId,
+			}
+			return s.NewStaticSource(params), nil
+		case smartblock.SmartBlockTypeContactObject:
+			params := StaticSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  space.Id(),
+				},
+				State:  state.NewDoc(id, nil).(*state.State),
+				SbType: smartblock.SmartBlockTypeContactObject,
 			}
 			return s.NewStaticSource(params), nil
 		}

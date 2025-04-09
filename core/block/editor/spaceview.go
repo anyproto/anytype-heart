@@ -46,12 +46,6 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyWritersLimit,
 }
 
-type spaceService interface {
-	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
-	OnWorkspaceChanged(spaceId string, details *domain.Details)
-	PersonalSpaceId() string
-}
-
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
 type SpaceView struct {
 	smartblock.SmartBlock

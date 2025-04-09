@@ -47,6 +47,7 @@ type Service interface {
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
 
+	GetIdentityKey(identity string) crypto.SymKey
 	app.ComponentRunnable
 }
 
@@ -518,4 +519,8 @@ func (s *service) UnregisterIdentitiesInSpace(spaceId string) {
 
 func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details) {
 	return s.ownProfileSubscription.getDetails(ctx)
+}
+
+func (s *service) GetIdentityKey(identity string) crypto.SymKey {
+	return s.identityEncryptionKeys[identity]
 }
