@@ -314,22 +314,31 @@ func (b *builtinObjects) getStartingPage(profile *pb.Profile, spaceId string) st
 }
 
 func (b *builtinObjects) handleHomePage(profile *pb.Profile, spaceId string, isMigration bool) (dashboardId string) {
-	oldID := migrationDashboardName
-	if !isMigration && profile != nil {
+	var oldID string
+	if !isMigration {
 		oldID = profile.SpaceDashboardId
 		if oldID == "" {
 			oldID = defaultDashboardId
 		}
+	} else if profile != nil {
+		oldID = profile.SpaceDashboardId
 	}
 
-	if oldID == defaultDashboardId {
-		return oldID
+	if oldID == "" {
+		oldID = defaultDashboardId
 	}
 
-	newID, err := b.getNewObjectID(spaceId, oldID)
-	if err != nil {
-		log.Errorf("failed to get new id of home page object: %s", err)
-		return
+	var newID string
+	if oldID != defaultDashboardId {
+		var err error
+		newID, err = b.getNewObjectID(spaceId, oldID)
+		if err != nil {
+			log.Errorf("failed to get new id of home page object: %s", err)
+		} else {
+			newID = defaultDashboardId
+		}
+	} else {
+		newID = defaultDashboardId
 	}
 
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
@@ -338,9 +347,8 @@ func (b *builtinObjects) handleHomePage(profile *pb.Profile, spaceId string, isM
 		return
 	}
 	dashboardId = newID
-	if newID != "" {
-		b.setHomePageIdToWorkspace(spc, newID)
-	}
+	b.setHomePageIdToWorkspace(spc, newID)
+
 	return
 }
 
