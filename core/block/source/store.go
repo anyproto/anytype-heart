@@ -93,14 +93,24 @@ func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []str
 }
 
 func (s *store) initDiffManagers(ctx context.Context) error {
-	for name := range s.diffManagers {
-		seenHeads, err := s.loadSeenHeads(ctx, name)
-		if err != nil {
-			return fmt.Errorf("load seen heads: %w", err)
-		}
-		err = s.InitDiffManager(ctx, name, seenHeads)
+	for name, manager := range s.diffManagers {
+		err := s.InitDiffManager(ctx, name, nil)
 		if err != nil {
 			return fmt.Errorf("init diff manager: %w", err)
+		}
+
+		vals, err := s.keyValueService.GetUserScopedKey(ctx, s.seenHeadsKey(name))
+		if err != nil {
+			return fmt.Errorf("get value: %w", err)
+		}
+		for _, val := range vals {
+			var seenHeads []string
+			err = json.Unmarshal(val.Data, &seenHeads)
+			if err != nil {
+				return fmt.Errorf("unmarshal seen heads: %w", err)
+			}
+			manager.diffManager.Remove(seenHeads)
+			fmt.Println("LOAD SEEN HEADS", s.seenHeadsKey(name), seenHeads)
 		}
 	}
 	return nil
@@ -131,8 +141,15 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 		return fmt.Errorf("init diff manager: %w", err)
 	}
 
-	err = s.keyValueService.SubscribeForUserScopedKey(s.seenHeadsKey(name), "messages", func(key string, val keyvalueservice.Value) {
+	err = s.keyValueService.SubscribeForUserScopedKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
 		fmt.Println("RECV", key, string(val.Data))
+		var newSeenHeads []string
+		err = json.Unmarshal(val.Data, &newSeenHeads)
+		if err != nil {
+			log.Errorf("subscribe for seenHeads: %s: %v", name, err)
+			return
+		}
+		manager.diffManager.Remove(newSeenHeads)
 	})
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
@@ -321,29 +338,6 @@ func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 
 func (s *store) seenHeadsKey(diffManagerName string) string {
 	return s.id + diffManagerName
-}
-
-func (s *store) loadSeenHeads(ctx context.Context, name string) ([]string, error) {
-	// TODO Refactor to init diff manager with heads iteratively
-
-	var result []string
-
-	vals, err := s.keyValueService.GetUserScopedKey(ctx, s.seenHeadsKey(name))
-	if err != nil {
-		return nil, fmt.Errorf("get value: %w", err)
-	}
-	for _, val := range vals {
-		var seenHeads []string
-		err = json.Unmarshal(val.Data, &seenHeads)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshal seen heads: %w", err)
-		}
-		result = append(result, seenHeads...)
-	}
-
-	fmt.Println("LOAD SEEN HEADS", s.seenHeadsKey(name), result)
-
-	return result, nil
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) error {
