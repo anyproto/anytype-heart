@@ -2,10 +2,10 @@ package restriction
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/samber/lo"
-	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
