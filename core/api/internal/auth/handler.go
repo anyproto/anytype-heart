@@ -20,7 +20,7 @@ import (
 //	@Failure		400			{object}	util.ValidationError	"Invalid input"
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/display_code [post]
-func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
+func DisplayCodeHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := c.Query("app_name")
 
@@ -52,7 +52,7 @@ func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 //	@Failure		400				{object}	util.ValidationError	"Invalid input"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/token [post]
-func TokenHandler(s *AuthService) gin.HandlerFunc {
+func TokenHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		challengeId := c.Query("challenge_id")
 		code := c.Query("code")

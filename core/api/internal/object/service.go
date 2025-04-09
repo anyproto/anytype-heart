@@ -92,6 +92,7 @@ var excludedSystemProperties = map[string]bool{
 }
 
 type Service interface {
+	SetAccountInfo(accountInfo *model.AccountInfo)
 	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
 	GetObject(ctx context.Context, spaceId string, objectId string) (Object, error)
 	DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error)
@@ -100,20 +101,27 @@ type Service interface {
 	GetType(ctx context.Context, spaceId string, typeId string) (Type, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
 	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error)
+
+	MapRelationFormat(format model.RelationFormat) string
+	GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string) Type
 }
 
-type ObjectService struct {
+type service struct {
 	mw           apicore.ClientCommands
-	spaceService *space.SpaceService
+	spaceService space.Service
 	AccountInfo  *model.AccountInfo
 }
 
-func NewService(mw apicore.ClientCommands, spaceService *space.SpaceService) *ObjectService {
-	return &ObjectService{mw: mw, spaceService: spaceService}
+func NewService(mw apicore.ClientCommands, spaceService space.Service) Service {
+	return &service{mw: mw, spaceService: spaceService}
+}
+
+func (s *service) SetAccountInfo(accountInfo *model.AccountInfo) {
+	s.AccountInfo = accountInfo
 }
 
 // ListObjects retrieves a paginated list of objects in a specific space.
-func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []Object, total int, hasMore bool, err error) {
+func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []Object, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -175,7 +183,7 @@ func (s *ObjectService) ListObjects(ctx context.Context, spaceId string, offset 
 }
 
 // GetObject retrieves a single object by its ID in a specific space.
-func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
+func (s *service) GetObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -216,7 +224,7 @@ func (s *ObjectService) GetObject(ctx context.Context, spaceId string, objectId 
 }
 
 // DeleteObject deletes an existing object in a specific space.
-func (s *ObjectService) DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
+func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId string) (Object, error) {
 	object, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
 		return Object{}, err
@@ -235,7 +243,7 @@ func (s *ObjectService) DeleteObject(ctx context.Context, spaceId string, object
 }
 
 // CreateObject creates a new object in a specific space.
-func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error) {
+func (s *service) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (Object, error) {
 	details, err := s.buildObjectDetails(request)
 	if err != nil {
 		return Object{}, err
@@ -325,7 +333,7 @@ func (s *ObjectService) CreateObject(ctx context.Context, spaceId string, reques
 }
 
 // buildObjectDetails extracts the details structure from the CreateObjectRequest.
-func (s *ObjectService) buildObjectDetails(request CreateObjectRequest) (*types.Struct, error) {
+func (s *service) buildObjectDetails(request CreateObjectRequest) (*types.Struct, error) {
 	// Validate bookmark source
 	if request.TypeKey == "ot-bookmark" && request.Source == "" {
 		return nil, ErrInputMissingSource
@@ -357,7 +365,7 @@ func (s *ObjectService) buildObjectDetails(request CreateObjectRequest) (*types.
 }
 
 // ListTypes returns a paginated list of types in a specific space.
-func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []Type, total int, hasMore bool, err error) {
+func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []Type, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -406,7 +414,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 }
 
 // GetType returns a single type by its ID in a specific space.
-func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId string) (Type, error) {
+func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (Type, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: typeId,
@@ -439,7 +447,7 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 }
 
 // ListTemplates returns a paginated list of templates in a specific space.
-func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []Template, total int, hasMore bool, err error) {
+func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []Template, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -516,7 +524,7 @@ func (s *ObjectService) ListTemplates(ctx context.Context, spaceId string, typeI
 }
 
 // GetTemplate returns a single template by its ID in a specific space.
-func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error) {
+func (s *service) GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: templateId,
@@ -546,7 +554,7 @@ func (s *ObjectService) GetTemplate(ctx context.Context, spaceId string, typeId 
 }
 
 // getProperties returns a list of properties by iterating over all properties found in the RelationLinks and mapping their format and value.
-func (s *ObjectService) getProperties(resp *pb.RpcObjectShowResponse) []Property {
+func (s *service) getProperties(resp *pb.RpcObjectShowResponse) []Property {
 	propertyFormatMap := s.getPropertyFormatMap(resp.ObjectView.RelationLinks)
 	linkedProperties := resp.ObjectView.RelationLinks
 	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
@@ -576,7 +584,7 @@ func (s *ObjectService) getProperties(resp *pb.RpcObjectShowResponse) []Property
 }
 
 // isMissingObject returns true if val indicates a "_missing_object" placeholder.
-func (s *ObjectService) isMissingObject(val interface{}) bool {
+func (s *service) isMissingObject(val interface{}) bool {
 	switch v := val.(type) {
 	case string:
 		return v == "_missing_object"
@@ -597,7 +605,7 @@ func (s *ObjectService) isMissingObject(val interface{}) bool {
 }
 
 // buildProperty creates a Property based on the format and converted value.
-func (s *ObjectService) buildProperty(id string, name string, format string, val interface{}) Property {
+func (s *service) buildProperty(id string, name string, format string, val interface{}) Property {
 	prop := &Property{
 		Id:     id,
 		Name:   name,
@@ -673,7 +681,7 @@ func (s *ObjectService) buildProperty(id string, name string, format string, val
 }
 
 // getPropertyIdAndName returns the property id and name from the ObjectShowResponse.
-func (s *ObjectService) getPropertyIdAndName(key string, details *types.Struct) (string, string) {
+func (s *service) getPropertyIdAndName(key string, details *types.Struct) (string, string) {
 	// Handle special cases first
 	switch key {
 	case bundle.RelationKeyCreator.String():
@@ -695,7 +703,7 @@ func (s *ObjectService) getPropertyIdAndName(key string, details *types.Struct) 
 }
 
 // convertValue converts a protobuf types.Value into a native Go value.
-func (s *ObjectService) convertValue(key string, value *types.Value, format string, details []*model.ObjectViewDetailsSet) interface{} {
+func (s *service) convertValue(key string, value *types.Value, format string, details []*model.ObjectViewDetailsSet) interface{} {
 	switch kind := value.Kind.(type) {
 	case *types.Value_NullValue:
 		return nil
@@ -743,7 +751,7 @@ func (s *ObjectService) convertValue(key string, value *types.Value, format stri
 }
 
 // getPropertyFormatMap returns the map of property key to property format from the ObjectShowResponse.
-func (s *ObjectService) getPropertyFormatMap(propertyLinks []*model.RelationLink) map[string]string {
+func (s *service) getPropertyFormatMap(propertyLinks []*model.RelationLink) map[string]string {
 	propertyFormatToName := make(map[int32]string, len(model.RelationFormat_name))
 	for k := range model.RelationFormat_name {
 		propertyFormatToName[k] = s.MapRelationFormat(model.RelationFormat(k))
@@ -758,7 +766,7 @@ func (s *ObjectService) getPropertyFormatMap(propertyLinks []*model.RelationLink
 }
 
 // TODO: remove once bug of select option not being returned in details is fixed
-func (s *ObjectService) resolveTag(spaceId string, tagId string) Tag {
+func (s *service) resolveTag(spaceId string, tagId string) Tag {
 	if tagId == "" {
 		return Tag{}
 	}
@@ -780,7 +788,7 @@ func (s *ObjectService) resolveTag(spaceId string, tagId string) Tag {
 }
 
 // getTags returns the list of tags from the ObjectShowResponse
-func (s *ObjectService) getTags(key string, details []*model.ObjectViewDetailsSet) []Tag {
+func (s *service) getTags(key string, details []*model.ObjectViewDetailsSet) []Tag {
 	tags := []Tag{}
 
 	tagField, ok := details[0].Details.Fields[key]
@@ -805,7 +813,7 @@ func (s *ObjectService) getTags(key string, details []*model.ObjectViewDetailsSe
 }
 
 // getBlocks returns the list of blocks from the ObjectShowResponse.
-func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
+func (s *service) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}
 
 	for _, block := range resp.ObjectView.Blocks {
@@ -858,7 +866,7 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 }
 
 // MapRelationFormat maps the relation format to a string.
-func (s *ObjectService) MapRelationFormat(format model.RelationFormat) string {
+func (s *service) MapRelationFormat(format model.RelationFormat) string {
 	switch format {
 	case model.RelationFormat_longtext:
 		return "text"
@@ -874,7 +882,7 @@ func (s *ObjectService) MapRelationFormat(format model.RelationFormat) string {
 }
 
 // GetObjectFromDetails creates an Object without blocks from the details.
-func (s *ObjectService) GetObjectFromDetails(details []*model.ObjectViewDetailsSet) Object {
+func (s *service) GetObjectFromDetails(details []*model.ObjectViewDetailsSet) Object {
 	return Object{
 		Object:     "object",
 		Id:         details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -891,7 +899,7 @@ func (s *ObjectService) GetObjectFromDetails(details []*model.ObjectViewDetailsS
 }
 
 // GetTypeFromDetails retrieves the type from the details.
-func (s *ObjectService) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string) Type {
+func (s *service) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string) Type {
 	var objectTypeDetail *types.Struct
 	for _, detail := range details {
 		if detail.Id == typeId {
@@ -915,7 +923,7 @@ func (s *ObjectService) GetTypeFromDetails(details []*model.ObjectViewDetailsSet
 }
 
 // getPropertiesFromDetails retrieves the properties from the details.
-func (s *ObjectService) getPropertiesFromDetails(details []*model.ObjectViewDetailsSet, propertyFormatMap map[string]string) []Property {
+func (s *service) getPropertiesFromDetails(details []*model.ObjectViewDetailsSet, propertyFormatMap map[string]string) []Property {
 	properties := []Property{}
 	for key, value := range details[0].Details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[key]; isExcluded {

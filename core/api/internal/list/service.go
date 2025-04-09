@@ -32,17 +32,17 @@ type Service interface {
 	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 }
 
-type ListService struct {
+type service struct {
 	mw            apicore.ClientCommands
-	objectService *object.ObjectService
+	objectService object.Service
 }
 
-func NewService(mw apicore.ClientCommands, objectService *object.ObjectService) *ListService {
-	return &ListService{mw: mw, objectService: objectService}
+func NewService(mw apicore.ClientCommands, objectService object.Service) Service {
+	return &service{mw: mw, objectService: objectService}
 }
 
 // GetListViews retrieves views of a list
-func (s *ListService) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error) {
+func (s *service) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -106,7 +106,7 @@ func (s *ListService) GetListViews(ctx context.Context, spaceId string, listId s
 }
 
 // GetObjectsInList retrieves objects in a list
-func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error) {
+func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -206,7 +206,7 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 }
 
 // AddObjectsToList adds objects to a list
-func (s *ListService) AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+func (s *service) AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
 	resp := s.mw.ObjectCollectionAdd(ctx, &pb.RpcObjectCollectionAddRequest{
 		ContextId: listId,
 		ObjectIds: objectIds,
@@ -220,7 +220,7 @@ func (s *ListService) AddObjectsToList(ctx context.Context, spaceId string, list
 }
 
 // RemoveObjectsFromList removes objects from a list
-func (s *ListService) RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+func (s *service) RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
 	resp := s.mw.ObjectCollectionRemove(ctx, &pb.RpcObjectCollectionRemoveRequest{
 		ContextId: listId,
 		ObjectIds: objectIds,
@@ -234,7 +234,7 @@ func (s *ListService) RemoveObjectsFromList(ctx context.Context, spaceId string,
 }
 
 // mapDataviewTypeName maps the dataview type to a string.
-func (s *ListService) mapDataviewTypeName(dataviewType model.BlockContentDataviewViewType) string {
+func (s *service) mapDataviewTypeName(dataviewType model.BlockContentDataviewViewType) string {
 	switch dataviewType {
 	case model.BlockContentDataviewView_Table:
 		return "grid"

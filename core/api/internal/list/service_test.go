@@ -29,22 +29,22 @@ const (
 )
 
 type fixture struct {
-	*ListService
+	service       Service
 	mwMock        *mock_apicore.MockClientCommands
-	objectService *object.ObjectService
+	objectService object.Service
 }
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	spaceService := space.NewService(mwMock)
 	objectService := object.NewService(mwMock, spaceService)
-	objectService.AccountInfo = &model.AccountInfo{
+	objectService.SetAccountInfo(&model.AccountInfo{
 		TechSpaceId: "mocked-tech-space-id",
 		GatewayUrl:  "http://localhost:31006",
-	}
+	})
 	listService := NewService(mwMock, objectService)
 	return &fixture{
-		ListService:   listService,
+		service:       listService,
 		mwMock:        mwMock,
 		objectService: objectService,
 	}
@@ -103,7 +103,7 @@ func TestListService_GetListViews(t *testing.T) {
 			}).
 			Return(resp, nil).Once()
 
-		views, total, hasMore, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		views, total, hasMore, err := fx.service.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
 		require.NoError(t, err)
 		require.Len(t, views, 1)
 		require.Equal(t, 1, total)
@@ -128,7 +128,7 @@ func TestListService_GetListViews(t *testing.T) {
 				Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_UNKNOWN_ERROR},
 			}, nil).Once()
 
-		_, _, _, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		_, _, _, err := fx.service.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
 		require.ErrorIs(t, err, ErrFailedGetList)
 	})
 
@@ -149,7 +149,7 @@ func TestListService_GetListViews(t *testing.T) {
 				},
 			}, nil).Once()
 
-		_, _, _, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		_, _, _, err := fx.service.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
 		require.ErrorIs(t, err, ErrFailedGetListDataview)
 	})
 
@@ -170,7 +170,7 @@ func TestListService_GetListViews(t *testing.T) {
 				},
 			}, nil).Once()
 
-		_, _, _, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		_, _, _, err := fx.service.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
 		require.ErrorIs(t, err, ErrFailedGetListDataview)
 	})
 
@@ -217,7 +217,7 @@ func TestListService_GetListViews(t *testing.T) {
 			}).
 			Return(resp, nil).Once()
 
-		views, total, hasMore, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		views, total, hasMore, err := fx.service.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
 		require.NoError(t, err)
 		require.Len(t, views, 1)
 		require.Equal(t, 1, total)
@@ -279,7 +279,7 @@ func TestListService_GetListViews(t *testing.T) {
 			}).
 			Return(resp, nil).Once()
 
-		views, total, hasMore, err := fx.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
+		views, total, hasMore, err := fx.service.GetListViews(ctx, mockedSpaceId, mockedListId, offset, limit)
 		require.NoError(t, err)
 		require.Len(t, views, 1)
 		require.Equal(t, 1, total)
@@ -427,7 +427,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, mockedViewId, offset, limit)
+		objects, total, hasMore, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, mockedViewId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -553,7 +553,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
+		objects, total, hasMore, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -580,7 +580,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		_, _, _, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
+		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetList)
@@ -607,7 +607,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		_, _, _, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
+		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetListDataview)
@@ -637,7 +637,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		_, _, _, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
+		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetListDataview)
@@ -677,7 +677,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		_, _, _, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "non-existent-view", offset, limit)
+		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "non-existent-view", offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetListDataviewView)
@@ -753,7 +753,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		_, _, _, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, mockedViewId, offset, limit)
+		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, mockedViewId, offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetObjectsInList)
@@ -845,7 +845,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		_, _, _, err := fx.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
+		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
 
 		// then
 		require.ErrorIs(t, err, object.ErrObjectNotFound)
@@ -870,7 +870,7 @@ func TestListService_AddObjectsToList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		err := fx.AddObjectsToList(ctx, mockedSpaceId, mockedListId, objectIds)
+		err := fx.service.AddObjectsToList(ctx, mockedSpaceId, mockedListId, objectIds)
 
 		// then
 		require.NoError(t, err)
@@ -892,7 +892,7 @@ func TestListService_AddObjectsToList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		err := fx.AddObjectsToList(ctx, mockedSpaceId, mockedListId, objectIds)
+		err := fx.service.AddObjectsToList(ctx, mockedSpaceId, mockedListId, objectIds)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedAddObjectsToList)
@@ -917,7 +917,7 @@ func TestListService_RemoveObjectsFromList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		err := fx.RemoveObjectsFromList(ctx, mockedSpaceId, mockedListId, objectIds)
+		err := fx.service.RemoveObjectsFromList(ctx, mockedSpaceId, mockedListId, objectIds)
 
 		// then
 		require.NoError(t, err)
@@ -939,7 +939,7 @@ func TestListService_RemoveObjectsFromList(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		err := fx.RemoveObjectsFromList(ctx, mockedSpaceId, mockedListId, objectIds)
+		err := fx.service.RemoveObjectsFromList(ctx, mockedSpaceId, mockedListId, objectIds)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedRemoveObjectsFromList)

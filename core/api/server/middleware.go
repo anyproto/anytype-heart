@@ -94,9 +94,9 @@ func (s *Server) ensureAccountInfo(accountService apicore.AccountService) gin.Ha
 			return
 		}
 
-		s.objectService.AccountInfo = accInfo
-		s.spaceService.AccountInfo = accInfo
-		s.searchService.AccountInfo = accInfo
+		s.objectService.SetAccountInfo(accInfo)
+		s.spaceService.SetAccountInfo(accInfo)
+		s.searchService.SetAccountInfo(accInfo)
 
 		c.Next()
 	}

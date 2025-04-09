@@ -23,7 +23,7 @@ import (
 //	@Failure		500			{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects [get]
-func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
+func GetObjectsHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -61,7 +61,7 @@ func GetObjectsHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id} [get]
-func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
+func GetObjectHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
@@ -99,7 +99,7 @@ func GetObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id} [delete]
-func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
+func DeleteObjectHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
@@ -137,7 +137,7 @@ func DeleteObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects [post]
-func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
+func CreateObjectHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
@@ -185,7 +185,7 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError					"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types [get]
-func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
+func GetTypesHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -221,7 +221,7 @@ func GetTypesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id} [get]
-func GetTypeHandler(s *ObjectService) gin.HandlerFunc {
+func GetTypeHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
@@ -258,7 +258,7 @@ func GetTypeHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id}/templates [get]
-func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
+func GetTemplatesHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
@@ -299,7 +299,7 @@ func GetTemplatesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id}/templates/{template_id} [get]
-func GetTemplateHandler(s *ObjectService) gin.HandlerFunc {
+func GetTemplateHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")

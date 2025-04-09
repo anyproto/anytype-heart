@@ -36,6 +36,7 @@ var (
 )
 
 type Service interface {
+	SetAccountInfo(accountInfo *model.AccountInfo)
 	ListSpaces(ctx context.Context, offset int, limit int) ([]Space, int, bool, error)
 	GetSpace(ctx context.Context, spaceId string) (Space, error)
 	CreateSpace(ctx context.Context, request CreateSpaceRequest) (Space, error)
@@ -44,17 +45,21 @@ type Service interface {
 	UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error)
 }
 
-type SpaceService struct {
+type service struct {
 	mw          apicore.ClientCommands
 	AccountInfo *model.AccountInfo
 }
 
-func NewService(mw apicore.ClientCommands) *SpaceService {
-	return &SpaceService{mw: mw}
+func NewService(mw apicore.ClientCommands) Service {
+	return &service{mw: mw}
+}
+
+func (s *service) SetAccountInfo(accountInfo *model.AccountInfo) {
+	s.AccountInfo = accountInfo
 }
 
 // ListSpaces returns a paginated list of spaces for the account.
-func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (spaces []Space, total int, hasMore bool, err error) {
+func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []Space, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.AccountInfo.TechSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -103,7 +108,7 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 }
 
 // GetSpace returns the space info for the space with the given ID.
-func (s *SpaceService) GetSpace(ctx context.Context, spaceId string) (Space, error) {
+func (s *service) GetSpace(ctx context.Context, spaceId string) (Space, error) {
 	// Check if the workspace exists and is active
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.AccountInfo.TechSpaceId,
@@ -136,7 +141,7 @@ func (s *SpaceService) GetSpace(ctx context.Context, spaceId string) (Space, err
 }
 
 // CreateSpace creates a new space with the given name and returns the space info.
-func (s *SpaceService) CreateSpace(ctx context.Context, request CreateSpaceRequest) (Space, error) {
+func (s *service) CreateSpace(ctx context.Context, request CreateSpaceRequest) (Space, error) {
 	name := request.Name
 	iconOption, err := rand.Int(rand.Reader, big.NewInt(13))
 	if err != nil {
@@ -179,7 +184,7 @@ func (s *SpaceService) CreateSpace(ctx context.Context, request CreateSpaceReque
 }
 
 // ListMembers returns a paginated list of members in the space with the given ID.
-func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []Member, total int, hasMore bool, err error) {
+func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []Member, total int, hasMore bool, err error) {
 	activeResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -267,7 +272,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 }
 
 // GetMember returns the member with the given ID in the space with the given ID.
-func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId string) (Member, error) {
+func (s *service) GetMember(ctx context.Context, spaceId string, memberId string) (Member, error) {
 	// Member ID can be either a participant ID or an identity.
 	relationKey := bundle.RelationKeyId
 	if !strings.HasPrefix(memberId, "_participant") {
@@ -310,7 +315,7 @@ func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId s
 }
 
 // UpdateMember approves member with defined role or removes them
-func (s *SpaceService) UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error) {
+func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error) {
 	member, err := s.GetMember(ctx, spaceId, memberId)
 	if err != nil {
 		return Member{}, err
@@ -377,7 +382,7 @@ func (s *SpaceService) UpdateMember(ctx context.Context, spaceId string, memberI
 }
 
 // getSpaceInfo returns the workspace info for the space with the given ID.
-func (s *SpaceService) getSpaceInfo(spaceId string) (space Space, err error) {
+func (s *service) getSpaceInfo(spaceId string) (space Space, err error) {
 	workspaceResponse := s.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
 		SpaceId: spaceId,
 	})
@@ -411,7 +416,7 @@ func (s *SpaceService) getSpaceInfo(spaceId string) (space Space, err error) {
 }
 
 // mapMemberPermissions maps participant permissions to a role
-func (s *SpaceService) mapMemberPermissions(permissions model.ParticipantPermissions) string {
+func (s *service) mapMemberPermissions(permissions model.ParticipantPermissions) string {
 	switch permissions {
 	case model.ParticipantPermissions_Reader:
 		return "viewer"
@@ -423,7 +428,7 @@ func (s *SpaceService) mapMemberPermissions(permissions model.ParticipantPermiss
 }
 
 // mapMemberPermissions maps a role to participant permissions
-func (s *SpaceService) mapMemberRole(role string) model.ParticipantPermissions {
+func (s *service) mapMemberRole(role string) model.ParticipantPermissions {
 	switch role {
 	case "viewer":
 		return model.ParticipantPermissions_Reader

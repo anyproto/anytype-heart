@@ -21,16 +21,16 @@ type Service interface {
 	SolveChallenge(ctx context.Context, challengeId string, code string) (sessionToken, appKey string, err error)
 }
 
-type AuthService struct {
+type service struct {
 	mw apicore.ClientCommands
 }
 
-func NewService(mw apicore.ClientCommands) *AuthService {
-	return &AuthService{mw: mw}
+func NewService(mw apicore.ClientCommands) Service {
+	return &service{mw: mw}
 }
 
 // NewChallenge calls AccountLocalLinkNewChallenge and returns the challenge ID, or an error if it fails.
-func (s *AuthService) NewChallenge(ctx context.Context, appName string) (string, error) {
+func (s *service) NewChallenge(ctx context.Context, appName string) (string, error) {
 	if appName == "" {
 		return "", ErrMissingAppName
 	}
@@ -48,7 +48,7 @@ func (s *AuthService) NewChallenge(ctx context.Context, appName string) (string,
 }
 
 // SolveChallenge calls AccountLocalLinkSolveChallenge and returns the session token + app key, or an error if it fails.
-func (s *AuthService) SolveChallenge(ctx context.Context, challengeId string, code string) (sessionToken string, appKey string, err error) {
+func (s *service) SolveChallenge(ctx context.Context, challengeId string, code string) (sessionToken string, appKey string, err error) {
 	if challengeId == "" || code == "" {
 		return "", "", ErrInvalidInput
 	}

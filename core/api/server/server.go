@@ -18,12 +18,12 @@ import (
 type Server struct {
 	engine *gin.Engine
 
-	authService   *auth.AuthService
-	exportService *export.ExportService
-	listService   *list.ListService
-	objectService *object.ObjectService
-	spaceService  *space.SpaceService
-	searchService *search.SearchService
+	authService   auth.Service
+	exportService export.Service
+	listService   list.Service
+	objectService object.Service
+	spaceService  space.Service
+	searchService search.Service
 
 	mu         sync.Mutex
 	KeyToToken map[string]string // appKey -> token

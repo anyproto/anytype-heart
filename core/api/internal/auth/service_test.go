@@ -21,8 +21,8 @@ const (
 )
 
 type fixture struct {
-	*AuthService
-	mwMock *mock_apicore.MockClientCommands
+	service Service
+	mwMock  *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -30,8 +30,8 @@ func newFixture(t *testing.T) *fixture {
 	authService := NewService(mwMock)
 
 	return &fixture{
-		AuthService: authService,
-		mwMock:      mwMock,
+		service: authService,
+		mwMock:  mwMock,
 	}
 }
 
@@ -51,7 +51,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 			}).Once()
 
 		// when
-		challengeId, err := fx.NewChallenge(ctx, mockedAppName)
+		challengeId, err := fx.service.NewChallenge(ctx, mockedAppName)
 
 		// then
 		require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		challengeId, err := fx.NewChallenge(ctx, "")
+		challengeId, err := fx.service.NewChallenge(ctx, "")
 
 		// then
 		require.Error(t, err)
@@ -86,7 +86,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 			}).Once()
 
 		// when
-		challengeId, err := fx.NewChallenge(ctx, mockedAppName)
+		challengeId, err := fx.service.NewChallenge(ctx, mockedAppName)
 
 		// then
 		require.Error(t, err)
@@ -112,7 +112,7 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 			}).Once()
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallenge(ctx, mockedChallengeId, mockedCode)
+		sessionToken, appKey, err := fx.service.SolveChallenge(ctx, mockedChallengeId, mockedCode)
 
 		// then
 		require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallenge(ctx, "", "")
+		sessionToken, appKey, err := fx.service.SolveChallenge(ctx, "", "")
 
 		// then
 		require.Error(t, err)
@@ -150,7 +150,7 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 			}).Once()
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallenge(ctx, mockedChallengeId, mockedCode)
+		sessionToken, appKey, err := fx.service.SolveChallenge(ctx, mockedChallengeId, mockedCode)
 
 		// then
 		require.Error(t, err)
