@@ -50,6 +50,7 @@ const (
 
 	migrationUseCase       = -1
 	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
+	defaultDashboardId     = "lastOpened"
 
 	contentLengthHeader        = "Content-Length"
 	archiveDownloadingPercents = 30
@@ -316,6 +317,13 @@ func (b *builtinObjects) handleHomePage(profile *pb.Profile, spaceId string, isM
 	oldID := migrationDashboardName
 	if !isMigration && profile != nil {
 		oldID = profile.SpaceDashboardId
+		if oldID == "" {
+			oldID = defaultDashboardId
+		}
+	}
+
+	if oldID == defaultDashboardId {
+		return oldID
 	}
 
 	newID, err := b.getNewObjectID(spaceId, oldID)
