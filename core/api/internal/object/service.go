@@ -10,7 +10,6 @@ import (
 	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
-	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -112,13 +111,12 @@ type Service interface {
 }
 
 type service struct {
-	mw           apicore.ClientCommands
-	spaceService space.Service
-	AccountInfo  *model.AccountInfo
+	mw          apicore.ClientCommands
+	AccountInfo *model.AccountInfo
 }
 
-func NewService(mw apicore.ClientCommands, spaceService space.Service) Service {
-	return &service{mw: mw, spaceService: spaceService}
+func NewService(mw apicore.ClientCommands) Service {
+	return &service{mw: mw}
 }
 
 func (s *service) SetAccountInfo(accountInfo *model.AccountInfo) {

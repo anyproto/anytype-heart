@@ -34,10 +34,10 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw, exportService),
+		objectService: object.NewService(mw),
 		spaceService:  space.NewService(mw),
 	}
 
-	s.objectService = object.NewService(mw, s.spaceService)
 	s.listService = list.NewService(mw, s.objectService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
 	s.engine = s.NewRouter(mw, accountService)
