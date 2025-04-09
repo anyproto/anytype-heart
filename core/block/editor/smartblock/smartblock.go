@@ -97,7 +97,6 @@ func New(
 	space Space,
 	currentParticipantId string,
 	fileStore filestore.FileStore,
-	restrictionService restriction.Service,
 	spaceIndex spaceindex.Store,
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
@@ -112,14 +111,13 @@ func New(
 		Locker:               &sync.Mutex{},
 		sessions:             map[string]session.Context{},
 
-		fileStore:          fileStore,
-		restrictionService: restrictionService,
-		spaceIndex:         spaceIndex,
-		indexer:            indexer,
-		eventSender:        eventSender,
-		objectStore:        objectStore,
-		spaceIdResolver:    spaceIdResolver,
-		lastDepDetails:     map[string]*domain.Details{},
+		fileStore:       fileStore,
+		spaceIndex:      spaceIndex,
+		indexer:         indexer,
+		eventSender:     eventSender,
+		objectStore:     objectStore,
+		spaceIdResolver: spaceIdResolver,
+		lastDepDetails:  map[string]*domain.Details{},
 	}
 	return s
 }
@@ -203,7 +201,6 @@ type InitContext struct {
 	RequiredInternalRelationKeys []domain.RelationKey // bundled relations that MUST be present in the state
 	State                        *state.State
 	Relations                    []*model.Relation
-	Restriction                  restriction.Service
 	ObjectStore                  objectstore.ObjectStore
 	SpaceID                      string
 	BuildOpts                    source.BuildOptions
@@ -250,13 +247,12 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileStore          filestore.FileStore
-	restrictionService restriction.Service
-	spaceIndex         spaceindex.Store
-	objectStore        objectstore.ObjectStore
-	indexer            Indexer
-	eventSender        event.Sender
-	spaceIdResolver    idresolver.Resolver
+	fileStore       filestore.FileStore
+	spaceIndex      spaceindex.Store
+	objectStore     objectstore.ObjectStore
+	indexer         Indexer
+	eventSender     event.Sender
+	spaceIdResolver idresolver.Resolver
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -327,7 +323,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
-	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
+	sb.restrictions = restriction.GetRestrictions(sb)
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
@@ -390,7 +386,7 @@ func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	r := sb.restrictionService.GetRestrictions(sb)
+	r := restriction.GetRestrictions(sb)
 	if sb.restrictions.Equal(r) {
 		return
 	}

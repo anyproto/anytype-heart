@@ -11,11 +11,9 @@ import (
 )
 
 func TestService_DataviewRestrictions(t *testing.T) {
-	s := service{}
-
 	t.Run("internal types have restrictions", func(t *testing.T) {
 		for _, typeKey := range bundle.InternalTypes {
-			restrictions := s.GetRestrictions(givenObjectType(typeKey))
+			restrictions := GetRestrictions(givenObjectType(typeKey))
 			assert.Equal(t,
 				DataviewRestrictions{
 					model.RestrictionsDataviewRestrictions{
@@ -28,17 +26,17 @@ func TestService_DataviewRestrictions(t *testing.T) {
 	})
 
 	t.Run("non-internal types have no restrictions", func(t *testing.T) {
-		restrictions := s.GetRestrictions(givenObjectType(bundle.TypeKeyContact))
+		restrictions := GetRestrictions(givenObjectType(bundle.TypeKeyContact))
 		assert.Nil(t, restrictions.Dataview)
 	})
 
 	t.Run("relations don't have restrictions", func(t *testing.T) {
-		restrictions := s.GetRestrictions(givenRelation(bundle.RelationKeyId))
+		restrictions := GetRestrictions(givenRelation(bundle.RelationKeyId))
 		assert.Nil(t, restrictions.Dataview)
 	})
 
 	t.Run("ordinary objects don't have restrictions", func(t *testing.T) {
-		restrictions := s.GetRestrictions(
+		restrictions := GetRestrictions(
 			&restrictionHolder{
 				sbType:    smartblock.SmartBlockTypePage,
 				uniqueKey: nil,
