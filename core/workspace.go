@@ -16,8 +16,8 @@ import (
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
-	response := func(spaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
-		m := &pb.RpcWorkspaceCreateResponse{SpaceId: spaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
+	response := func(spaceId string, startingPageId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
+		m := &pb.RpcWorkspaceCreateResponse{SpaceId: spaceId, StartingObjectId: startingPageId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
@@ -25,9 +25,12 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		return m
 	}
 
-	var spaceId string
+	var (
+		spaceId        string
+		startingPageId string
+	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		spaceId, err = bs.CreateWorkspace(cctx, req)
+		spaceId, startingPageId, err = bs.CreateWorkspace(cctx, req)
 		if err != nil {
 			return
 		}
@@ -41,10 +44,10 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		return
 	})
 	if err != nil {
-		return response("", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
+		return response("", "", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(spaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
+	return response(spaceId, startingPageId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
