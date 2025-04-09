@@ -1,4 +1,4 @@
-package keyvalueservice
+package keyvalueserviceimpl
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage/innerstorage"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/keyvalueservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -19,26 +20,10 @@ const CName = "core.keyvalueservice"
 
 var log = logging.Logger(CName).Desugar()
 
-type ObserverFunc func(key string, val Value)
-
-type Value struct {
-	Data           []byte
-	TimestampMilli int
-}
-
-type Service interface {
-	app.ComponentRunnable
-
-	GetUserScopedKey(ctx context.Context, key string) ([]Value, error)
-	SetUserScopedKey(ctx context.Context, key string, value []byte) error
-	SubscribeForUserScopedKey(key string, subscriptionName string, observerFunc ObserverFunc) error
-	UnsubscribeFromUserScopedKey(key string, subscriptionName string) error
-}
-
 type subscription struct {
 	key          string
 	name         string
-	observerFunc ObserverFunc
+	observerFunc keyvalueservice.ObserverFunc
 }
 
 type service struct {
@@ -49,7 +34,7 @@ type service struct {
 	techSpace    techspace.TechSpace
 }
 
-func New() Service {
+func New() keyvalueservice.Service {
 	return &service{}
 }
 
@@ -80,7 +65,7 @@ func (s *service) observeChanges(decryptFunc keyvaluestorage.Decryptor, kvs []in
 				log.Error("can't decrypt value", zap.Error(err))
 				continue
 			}
-			sub.observerFunc(kv.Key, Value{Data: data, TimestampMilli: kv.TimestampMilli})
+			sub.observerFunc(kv.Key, keyvalueservice.Value{Data: data, TimestampMilli: kv.TimestampMilli})
 		}
 		s.lock.RUnlock()
 
@@ -91,19 +76,19 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) GetUserScopedKey(ctx context.Context, key string) ([]Value, error) {
+func (s *service) GetUserScopedKey(ctx context.Context, key string) ([]keyvalueservice.Value, error) {
 	kvs, decryptor, err := s.techSpace.KeyValueStore().GetAll(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("get all: %w", err)
 	}
 
-	result := make([]Value, 0, len(kvs))
+	result := make([]keyvalueservice.Value, 0, len(kvs))
 	for _, kv := range kvs {
 		data, err := decryptor(kv)
 		if err != nil {
 			return nil, fmt.Errorf("decrypt: %w", err)
 		}
-		result = append(result, Value{
+		result = append(result, keyvalueservice.Value{
 			Data:           data,
 			TimestampMilli: kv.TimestampMilli,
 		})
@@ -115,7 +100,7 @@ func (s *service) SetUserScopedKey(ctx context.Context, key string, value []byte
 	return s.techSpace.KeyValueStore().Set(ctx, key, value)
 }
 
-func (s *service) SubscribeForUserScopedKey(key string, name string, observerFunc ObserverFunc) error {
+func (s *service) SubscribeForUserScopedKey(key string, name string, observerFunc keyvalueservice.ObserverFunc) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
