@@ -48,6 +48,34 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 	}
 }
 
+func (mw *Middleware) ObjectTypeRecommendedRelationsSet(_ context.Context, req *pb.RpcObjectTypeRecommendedRelationsSetRequest) *pb.RpcObjectTypeRecommendedRelationsSetResponse {
+	detailsService := mustService[detailservice.Service](mw)
+	err := detailsService.ObjectTypeSetRelations(req.TypeObjectId, req.RelationObjectIds)
+	code := mapErrorCode(err,
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedRelationsSetResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeRecommendedRelationsSetResponse{
+		Error: &pb.RpcObjectTypeRecommendedRelationsSetResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ObjectTypeRecommendedFeaturedRelationsSet(_ context.Context, req *pb.RpcObjectTypeRecommendedFeaturedRelationsSetRequest) *pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse {
+	detailsService := mustService[detailservice.Service](mw)
+	err := detailsService.ObjectTypeSetFeaturedRelations(req.TypeObjectId, req.RelationObjectIds)
+	code := mapErrorCode(err,
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponse{
+		Error: &pb.RpcObjectTypeRecommendedFeaturedRelationsSetResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
 	response := func(code pb.RpcRelationListRemoveOptionResponseErrorCode, err error) *pb.RpcRelationListRemoveOptionResponse {
 		if err != nil {
@@ -99,4 +127,35 @@ func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelati
 
 	list, err := mustService[detailservice.Service](mw).ListRelationsWithValue(req.SpaceId, domain.ValueFromProto(req.Value))
 	return response(list, err)
+}
+
+func (mw *Middleware) ObjectTypeListConflictingRelations(_ context.Context, req *pb.RpcObjectTypeListConflictingRelationsRequest) *pb.RpcObjectTypeListConflictingRelationsResponse {
+	detailsService := mustService[detailservice.Service](mw)
+	conflictingRelations, err := detailsService.ObjectTypeListConflictingRelations(req.SpaceId, req.TypeObjectId)
+	code := mapErrorCode(err,
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeListConflictingRelationsResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeListConflictingRelationsResponse{
+		Error: &pb.RpcObjectTypeListConflictingRelationsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+		RelationIds: conflictingRelations,
+	}
+}
+
+func (mw *Middleware) ObjectTypeResolveLayoutConflicts(_ context.Context, req *pb.RpcObjectTypeResolveLayoutConflictsRequest) *pb.RpcObjectTypeResolveLayoutConflictsResponse {
+	code := pb.RpcObjectTypeResolveLayoutConflictsResponseError_NULL
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.SyncObjectsWithType(req.TypeObjectId)
+	})
+	if err != nil {
+		code = pb.RpcObjectTypeResolveLayoutConflictsResponseError_UNKNOWN_ERROR
+	}
+	return &pb.RpcObjectTypeResolveLayoutConflictsResponse{
+		Error: &pb.RpcObjectTypeResolveLayoutConflictsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
 }

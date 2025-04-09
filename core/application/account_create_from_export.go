@@ -87,6 +87,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 		return RecoverFromLegacyResponse{}, ErrAccountMismatch
 	}
 	s.rootPath = req.RootPath
+	s.fulltextPrimaryLanguage = req.FulltextPrimaryLanguage
 	err = os.MkdirAll(s.rootPath, 0700)
 	if err != nil {
 		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
@@ -134,7 +135,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 func (s *Service) startApp(cfg *config.Config, derivationResult crypto.DerivationResult) error {
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, derivationResult),
+		anytype.BootstrapWallet(s.rootPath, derivationResult, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 
@@ -156,7 +157,7 @@ func (s *Service) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRe
 		return nil, fmt.Errorf("failed to extract config: %w", err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
+	cfg := anytype.BootstrapConfig(true, "")
 	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
 	return cfg, nil
 }

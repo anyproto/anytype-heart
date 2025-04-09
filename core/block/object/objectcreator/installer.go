@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"go.uber.org/zap"
@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -146,12 +147,12 @@ func (s *service) listInstalledObjects(space clientspace.Space, sourceObjectIds 
 				Operator: model.BlockContentDataviewFilter_Or,
 				NestedFilters: []database.FilterRequest{
 					{
-						RelationKey: bundle.RelationKeyLayout,
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       domain.Int64(model.ObjectType_objectType),
 					},
 					{
-						RelationKey: bundle.RelationKeyLayout,
+						RelationKey: bundle.RelationKeyResolvedLayout,
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       domain.Int64(model.ObjectType_relation),
 					},
@@ -186,7 +187,7 @@ func (s *service) reinstallBundledObjects(
 		ids = append(ids, id)
 		objects = append(objects, details)
 
-		if err = s.installTemplatesForObjectType(space, typeKey); err != nil {
+		if err = s.createTemplatesForObjectType(space, typeKey); err != nil {
 			return nil, nil, fmt.Errorf("install templates for object type %s: %w", typeKey, err)
 		}
 	}
@@ -213,6 +214,7 @@ func (s *service) reinstallObject(
 		st.SetDetails(installingDetails)
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(false))
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(false))
+		st.SetOriginalCreatedTimestamp(time.Now().Unix())
 
 		key = domain.TypeKey(st.UniqueKeyInternal())
 		details = st.CombinedDetails()
@@ -253,49 +255,38 @@ func (s *service) prepareDetailsForInstallingObject(
 	details.SetString(bundle.RelationKeySpaceId, spaceID)
 	details.SetString(bundle.RelationKeySourceObject, sourceId)
 	details.SetBool(bundle.RelationKeyIsReadonly, false)
-
-	// we should delete old createdDate as it belongs to source object from marketplace
-	details.Delete(bundle.RelationKeyCreatedDate)
+	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 
 	if isNewSpace {
 		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
 	}
 
-	bundledRelationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)
-	if len(bundledRelationIds) > 0 {
-		recommendedRelationKeys := make([]string, 0, len(bundledRelationIds))
-		for _, id := range bundledRelationIds {
-			key, err := bundle.RelationKeyFromID(id)
-			if err != nil {
-				return nil, fmt.Errorf("relation key from id: %w", err)
-			}
-			recommendedRelationKeys = append(recommendedRelationKeys, key.String())
-		}
-		recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, spc, recommendedRelationKeys)
-		if err != nil {
-			return nil, fmt.Errorf("prepare recommended relation ids: %w", err)
-		}
-		details.SetStringList(bundle.RelationKeyRecommendedRelations, recommendedRelationIds)
+	uk, err := domain.UnmarshalUniqueKey(details.GetString(bundle.RelationKeyUniqueKey))
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
 
-	objectTypes := details.GetStringList(bundle.RelationKeyRelationFormatObjectTypes)
-
-	if len(objectTypes) > 0 {
-		for i, objectType := range objectTypes {
-			// replace object type url with id
-			uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, strings.TrimPrefix(objectType, addr.BundledObjectTypeURLPrefix))
-			if err != nil {
-				// should never happen
-				return nil, err
-			}
-			id, err := spc.DeriveObjectID(ctx, uniqueKey)
-			if err != nil {
-				// should never happen
-				return nil, err
-			}
-			objectTypes[i] = id
+	switch uk.SmartblockType() {
+	case coresb.SmartBlockTypeBundledObjectType, coresb.SmartBlockTypeObjectType:
+		relationKeys, isAlreadyFilled, err := relationutils.FillRecommendedRelations(ctx, spc, details, domain.TypeKey(uk.InternalKey()))
+		if err != nil {
+			return nil, fmt.Errorf("fill recommended relations: %w", err)
 		}
-		details.SetStringList(bundle.RelationKeyRelationFormatObjectTypes, objectTypes)
+
+		if !isAlreadyFilled {
+			bundledRelationIds := make([]string, len(relationKeys))
+			for j, key := range relationKeys {
+				bundledRelationIds[j] = key.BundledURL()
+			}
+			if _, _, err = s.InstallBundledObjects(ctx, spc, bundledRelationIds, isNewSpace); err != nil {
+				return nil, fmt.Errorf("install recommended relations: %w", err)
+			}
+		}
+
+	case coresb.SmartBlockTypeBundledRelation, coresb.SmartBlockTypeRelation:
+		if err = fillRelationFormatObjectTypes(ctx, spc, details); err != nil {
+			return nil, fmt.Errorf("fill relation format objectTypes: %w", err)
+		}
 	}
 
 	return details, nil
@@ -310,11 +301,11 @@ func (s *service) queryDeletedObjects(space clientspace.Space, sourceObjectIDs [
 	return s.objectStore.SpaceIndex(space.Id()).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FiltersOr{
 			database.FilterEq{
-				Key:   bundle.RelationKeyLayout,
+				Key:   bundle.RelationKeyResolvedLayout,
 				Value: domain.Int64(model.ObjectType_objectType),
 			},
 			database.FilterEq{
-				Key:   bundle.RelationKeyLayout,
+				Key:   bundle.RelationKeyResolvedLayout,
 				Value: domain.Int64(model.ObjectType_relation),
 			},
 		},

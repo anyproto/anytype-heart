@@ -108,9 +108,11 @@ func TestTemplateRestriction(t *testing.T) {
 		assert.ErrorIs(t, rs.GetRestrictions(template).Object.Check(model.Restrictions_Template), ErrRestricted)
 	})
 
-	t.Run("cannot make template from set or collection layout", func(t *testing.T) {
+	t.Run("we CAN make template from set or collection layout", func(t *testing.T) {
 		collection := givenRestrictionHolder(coresb.SmartBlockTypePage, bundle.TypeKeyCollection)
-		assert.ErrorIs(t, rs.GetRestrictions(collection).Object.Check(model.Restrictions_Template), ErrRestricted)
+		set := givenRestrictionHolder(coresb.SmartBlockTypePage, bundle.TypeKeySet)
+		assert.NoError(t, rs.GetRestrictions(collection).Object.Check(model.Restrictions_Template))
+		assert.NoError(t, rs.GetRestrictions(set).Object.Check(model.Restrictions_Template))
 	})
 
 	t.Run("cannot make template from space layout", func(t *testing.T) {

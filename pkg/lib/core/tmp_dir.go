@@ -4,11 +4,15 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
+
+var log = logging.Logger("anytype-core")
 
 const tmpDir = "tmp"
 
@@ -51,8 +55,37 @@ func (s *TempDirService) TempDir() string {
 			s.tempDir = os.TempDir()
 		} else {
 			s.tempDir = path
+			go s.cleanUp()
 		}
 	})
 
 	return s.tempDir
+}
+
+func (s *TempDirService) cleanUp() {
+	cutoff := time.Now().Add(-72 * time.Hour)
+	recursiveCleanup(s.tempDir, cutoff)
+}
+
+func recursiveCleanup(path string, cutoff time.Time) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		log.Warnf("tmp cleanup readdir: %v", err)
+	}
+	for _, entry := range entries {
+		fullEntryPath := filepath.Join(path, entry.Name())
+		info, err := entry.Info()
+		if err != nil {
+			log.Warnf("tmp cleanup entry: %v", err)
+			continue
+		}
+		if entry.IsDir() {
+			recursiveCleanup(fullEntryPath, cutoff)
+		} else if info.ModTime().IsZero() || info.ModTime().Before(cutoff) {
+			err = os.RemoveAll(fullEntryPath)
+			if err != nil {
+				log.Warnf("tmp cleanup delete: %v", err)
+			}
+		}
+	}
 }

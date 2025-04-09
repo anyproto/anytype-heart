@@ -37,10 +37,10 @@ func (ot *ObjectType) BundledTypeDetails() *domain.Details {
 
 	det := domain.NewDetails()
 	det.SetString(bundle.RelationKeyType, bundle.TypeKeyObjectType.BundledURL())
+	det.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
 	det.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 	det.SetString(bundle.RelationKeyName, ot.Name)
 	det.SetString(bundle.RelationKeyCreator, addr.AnytypeProfileId)
-	det.SetString(bundle.RelationKeyIconEmoji, ot.IconEmoji)
 	det.SetString(bundle.RelationKeyUniqueKey, uk.Marshal())
 	det.SetStringList(bundle.RelationKeyRecommendedRelations, relationIds)
 	det.SetInt64(bundle.RelationKeyRecommendedLayout, int64(ot.Layout))
@@ -53,5 +53,8 @@ func (ot *ObjectType) BundledTypeDetails() *domain.Details {
 	det.SetString(bundle.RelationKeySpaceId, addr.AnytypeMarketplaceWorkspace)
 	det.SetInt64(bundle.RelationKeyOrigin, int64(model.ObjectOrigin_builtin))
 	det.SetInt64(bundle.RelationKeyRevision, ot.Revision)
+	det.SetInt64(bundle.RelationKeyIconOption, ot.IconColor)
+	det.SetString(bundle.RelationKeyIconName, ot.IconName)
+	det.SetString(bundle.RelationKeyPluralName, ot.PluralName)
 	return det
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -28,25 +27,13 @@ func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEv
 	return err
 }
 
-func (bs *basic) SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	var keys []domain.RelationKey
-	keys, err = bs.setDetails(ctx, details, showEvent)
-	if err != nil {
-		return err
-	}
-	ts := time.Now().Unix()
-	for _, key := range keys {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
-	}
-	return nil
-}
-
 func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
 	s := bs.NewStateCtx(ctx)
 
+	var updates []domain.Detail
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
-	updates, updatedKeys := bs.collectDetailUpdates(details, s)
+	updates, updatedKeys = bs.collectDetailUpdates(details, s)
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
@@ -62,33 +49,16 @@ func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEv
 	return updatedKeys, nil
 }
 
-func (bs *basic) UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error) {
-	_, _, err = bs.updateDetails(update)
+func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
+	_, _, err = bs.updateDetails(ctx, update)
 	return err
 }
 
-func (bs *basic) UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) error {
-	oldDetails, newDetails, err := bs.updateDetails(update)
-	if err != nil {
-		return err
-	}
-
-	diff := domain.StructDiff(oldDetails, newDetails)
-	if diff.Len() == 0 {
-		return nil
-	}
-	ts := time.Now().Unix()
-	for _, key := range diff.Keys() {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), key, ts)
-	}
-	return nil
-}
-
-func (bs *basic) updateDetails(update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
+func (bs *basic) updateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
 	if update == nil {
 		return nil, nil, fmt.Errorf("update function is nil")
 	}
-	s := bs.NewState()
+	s := bs.NewStateCtx(ctx)
 
 	oldDetails = s.CombinedDetails()
 	oldDetailsCopy := oldDetails.Copy()
@@ -180,7 +150,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 		}
 		return nil
 	case model.RelationFormat_status:
-		vals, ok := v.TryStringList()
+		vals, ok := v.TryWrapToStringList()
 		if !ok {
 			return fmt.Errorf("incorrect type: %v instead of string list", v)
 		}
@@ -190,7 +160,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 		return bs.validateOptions(r, vals)
 
 	case model.RelationFormat_tag:
-		vals, ok := v.TryStringList()
+		vals, ok := v.TryWrapToStringList()
 		if !ok {
 			return fmt.Errorf("incorrect type: %v instead of string list", v)
 		}
@@ -206,7 +176,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 
 		return nil
 	case model.RelationFormat_file, model.RelationFormat_object:
-		vals, ok := v.TryStringList()
+		vals, ok := v.TryWrapToStringList()
 		if !ok {
 			return fmt.Errorf("incorrect type: %v instead of string list", v)
 		}
@@ -289,9 +259,12 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 	if detail.Key == bundle.RelationKeyType {
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}
-	if detail.Key == bundle.RelationKeyLayout {
-		// special case when client sets the layout detail directly instead of using SetLayoutInState command
-		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.Int64()), false)
+	if detail.Key == bundle.RelationKeyResolvedLayout {
+		return fmt.Errorf("can't change object layout directly: %w", domain.ErrValidationFailed)
+	}
+	if detail.Key == bundle.RelationKeyRecommendedLayout {
+		// nolint:gosec
+		return bs.layoutConverter.CheckRecommendedLayoutConversionAllowed(st, model.ObjectTypeLayout(detail.Value.Int64()))
 	}
 	return nil
 }
@@ -378,10 +351,6 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
 
-	if bs.CombinedDetails().GetInt64(bundle.RelationKeyOrigin) == int64(model.ObjectOrigin_none) {
-		bs.lastUsedUpdater.UpdateLastUsedDate(bs.SpaceID(), objectTypeKeys[0], time.Now().Unix())
-	}
-
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
@@ -403,15 +372,15 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 }
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
+	fromLayout, _ := s.Layout()
+
 	if !ignoreRestriction {
 		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
 			return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
 		}
 	}
 
-	fromLayout, _ := s.Layout()
-	s.SetDetail(bundle.RelationKeyLayout, domain.Int64(toLayout))
-	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
+	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout, ignoreRestriction); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil

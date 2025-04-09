@@ -134,17 +134,17 @@ func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string,
 	return _c
 }
 
-// ModifyDetails provides a mock function with given fields: objectId, modifier
-func (_m *MockService) ModifyDetails(objectId string, modifier func(*domain.Details) (*domain.Details, error)) error {
-	ret := _m.Called(objectId, modifier)
+// ModifyDetails provides a mock function with given fields: ctx, objectId, modifier
+func (_m *MockService) ModifyDetails(ctx session.Context, objectId string, modifier func(*domain.Details) (*domain.Details, error)) error {
+	ret := _m.Called(ctx, objectId, modifier)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ModifyDetails")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, func(*domain.Details) (*domain.Details, error)) error); ok {
-		r0 = rf(objectId, modifier)
+	if rf, ok := ret.Get(0).(func(session.Context, string, func(*domain.Details) (*domain.Details, error)) error); ok {
+		r0 = rf(ctx, objectId, modifier)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -158,15 +158,16 @@ type MockService_ModifyDetails_Call struct {
 }
 
 // ModifyDetails is a helper method to define mock.On call
+//   - ctx session.Context
 //   - objectId string
 //   - modifier func(*domain.Details)(*domain.Details , error)
-func (_e *MockService_Expecter) ModifyDetails(objectId interface{}, modifier interface{}) *MockService_ModifyDetails_Call {
-	return &MockService_ModifyDetails_Call{Call: _e.mock.On("ModifyDetails", objectId, modifier)}
+func (_e *MockService_Expecter) ModifyDetails(ctx interface{}, objectId interface{}, modifier interface{}) *MockService_ModifyDetails_Call {
+	return &MockService_ModifyDetails_Call{Call: _e.mock.On("ModifyDetails", ctx, objectId, modifier)}
 }
 
-func (_c *MockService_ModifyDetails_Call) Run(run func(objectId string, modifier func(*domain.Details) (*domain.Details, error))) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) Run(run func(ctx session.Context, objectId string, modifier func(*domain.Details) (*domain.Details, error))) *MockService_ModifyDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(func(*domain.Details) (*domain.Details, error)))
+		run(args[0].(session.Context), args[1].(string), args[2].(func(*domain.Details) (*domain.Details, error)))
 	})
 	return _c
 }
@@ -176,7 +177,7 @@ func (_c *MockService_ModifyDetails_Call) Return(_a0 error) *MockService_ModifyD
 	return _c
 }
 
-func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(string, func(*domain.Details) (*domain.Details, error)) error) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(session.Context, string, func(*domain.Details) (*domain.Details, error)) error) *MockService_ModifyDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -320,6 +321,65 @@ func (_c *MockService_ObjectTypeAddRelations_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// ObjectTypeListConflictingRelations provides a mock function with given fields: spaceId, typeKey
+func (_m *MockService) ObjectTypeListConflictingRelations(spaceId string, typeKey string) ([]string, error) {
+	ret := _m.Called(spaceId, typeKey)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectTypeListConflictingRelations")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) ([]string, error)); ok {
+		return rf(spaceId, typeKey)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) []string); ok {
+		r0 = rf(spaceId, typeKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceId, typeKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_ObjectTypeListConflictingRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeListConflictingRelations'
+type MockService_ObjectTypeListConflictingRelations_Call struct {
+	*mock.Call
+}
+
+// ObjectTypeListConflictingRelations is a helper method to define mock.On call
+//   - spaceId string
+//   - typeKey string
+func (_e *MockService_Expecter) ObjectTypeListConflictingRelations(spaceId interface{}, typeKey interface{}) *MockService_ObjectTypeListConflictingRelations_Call {
+	return &MockService_ObjectTypeListConflictingRelations_Call{Call: _e.mock.On("ObjectTypeListConflictingRelations", spaceId, typeKey)}
+}
+
+func (_c *MockService_ObjectTypeListConflictingRelations_Call) Run(run func(spaceId string, typeKey string)) *MockService_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_ObjectTypeListConflictingRelations_Call) Return(relationObjectIds []string, err error) *MockService_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Return(relationObjectIds, err)
+	return _c
+}
+
+func (_c *MockService_ObjectTypeListConflictingRelations_Call) RunAndReturn(run func(string, string) ([]string, error)) *MockService_ObjectTypeListConflictingRelations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectTypeRemoveRelations provides a mock function with given fields: ctx, objectTypeId, relationKeys
 func (_m *MockService) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
 	ret := _m.Called(ctx, objectTypeId, relationKeys)
@@ -368,6 +428,100 @@ func (_c *MockService_ObjectTypeRemoveRelations_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// ObjectTypeSetFeaturedRelations provides a mock function with given fields: objectTypeId, relationObjectIds
+func (_m *MockService) ObjectTypeSetFeaturedRelations(objectTypeId string, relationObjectIds []string) error {
+	ret := _m.Called(objectTypeId, relationObjectIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectTypeSetFeaturedRelations")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, []string) error); ok {
+		r0 = rf(objectTypeId, relationObjectIds)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_ObjectTypeSetFeaturedRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeSetFeaturedRelations'
+type MockService_ObjectTypeSetFeaturedRelations_Call struct {
+	*mock.Call
+}
+
+// ObjectTypeSetFeaturedRelations is a helper method to define mock.On call
+//   - objectTypeId string
+//   - relationObjectIds []string
+func (_e *MockService_Expecter) ObjectTypeSetFeaturedRelations(objectTypeId interface{}, relationObjectIds interface{}) *MockService_ObjectTypeSetFeaturedRelations_Call {
+	return &MockService_ObjectTypeSetFeaturedRelations_Call{Call: _e.mock.On("ObjectTypeSetFeaturedRelations", objectTypeId, relationObjectIds)}
+}
+
+func (_c *MockService_ObjectTypeSetFeaturedRelations_Call) Run(run func(objectTypeId string, relationObjectIds []string)) *MockService_ObjectTypeSetFeaturedRelations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockService_ObjectTypeSetFeaturedRelations_Call) Return(_a0 error) *MockService_ObjectTypeSetFeaturedRelations_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_ObjectTypeSetFeaturedRelations_Call) RunAndReturn(run func(string, []string) error) *MockService_ObjectTypeSetFeaturedRelations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ObjectTypeSetRelations provides a mock function with given fields: objectTypeId, relationObjectIds
+func (_m *MockService) ObjectTypeSetRelations(objectTypeId string, relationObjectIds []string) error {
+	ret := _m.Called(objectTypeId, relationObjectIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectTypeSetRelations")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, []string) error); ok {
+		r0 = rf(objectTypeId, relationObjectIds)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_ObjectTypeSetRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectTypeSetRelations'
+type MockService_ObjectTypeSetRelations_Call struct {
+	*mock.Call
+}
+
+// ObjectTypeSetRelations is a helper method to define mock.On call
+//   - objectTypeId string
+//   - relationObjectIds []string
+func (_e *MockService_Expecter) ObjectTypeSetRelations(objectTypeId interface{}, relationObjectIds interface{}) *MockService_ObjectTypeSetRelations_Call {
+	return &MockService_ObjectTypeSetRelations_Call{Call: _e.mock.On("ObjectTypeSetRelations", objectTypeId, relationObjectIds)}
+}
+
+func (_c *MockService_ObjectTypeSetRelations_Call) Run(run func(objectTypeId string, relationObjectIds []string)) *MockService_ObjectTypeSetRelations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockService_ObjectTypeSetRelations_Call) Return(_a0 error) *MockService_ObjectTypeSetRelations_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_ObjectTypeSetRelations_Call) RunAndReturn(run func(string, []string) error) *MockService_ObjectTypeSetRelations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetDetails provides a mock function with given fields: ctx, objectId, details
 func (_m *MockService) SetDetails(ctx session.Context, objectId string, details []domain.Detail) error {
 	ret := _m.Called(ctx, objectId, details)
@@ -412,54 +566,6 @@ func (_c *MockService_SetDetails_Call) Return(_a0 error) *MockService_SetDetails
 }
 
 func (_c *MockService_SetDetails_Call) RunAndReturn(run func(session.Context, string, []domain.Detail) error) *MockService_SetDetails_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetDetailsAndUpdateLastUsed provides a mock function with given fields: ctx, objectId, details
-func (_m *MockService) SetDetailsAndUpdateLastUsed(ctx session.Context, objectId string, details []domain.Detail) error {
-	ret := _m.Called(ctx, objectId, details)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetDetailsAndUpdateLastUsed")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, []domain.Detail) error); ok {
-		r0 = rf(ctx, objectId, details)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockService_SetDetailsAndUpdateLastUsed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDetailsAndUpdateLastUsed'
-type MockService_SetDetailsAndUpdateLastUsed_Call struct {
-	*mock.Call
-}
-
-// SetDetailsAndUpdateLastUsed is a helper method to define mock.On call
-//   - ctx session.Context
-//   - objectId string
-//   - details []domain.Detail
-func (_e *MockService_Expecter) SetDetailsAndUpdateLastUsed(ctx interface{}, objectId interface{}, details interface{}) *MockService_SetDetailsAndUpdateLastUsed_Call {
-	return &MockService_SetDetailsAndUpdateLastUsed_Call{Call: _e.mock.On("SetDetailsAndUpdateLastUsed", ctx, objectId, details)}
-}
-
-func (_c *MockService_SetDetailsAndUpdateLastUsed_Call) Run(run func(ctx session.Context, objectId string, details []domain.Detail)) *MockService_SetDetailsAndUpdateLastUsed_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].([]domain.Detail))
-	})
-	return _c
-}
-
-func (_c *MockService_SetDetailsAndUpdateLastUsed_Call) Return(_a0 error) *MockService_SetDetailsAndUpdateLastUsed_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockService_SetDetailsAndUpdateLastUsed_Call) RunAndReturn(run func(session.Context, string, []domain.Detail) error) *MockService_SetDetailsAndUpdateLastUsed_Call {
 	_c.Call.Return(run)
 	return _c
 }

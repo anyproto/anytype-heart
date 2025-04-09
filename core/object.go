@@ -407,31 +407,6 @@ func objectResponse(
 	return response
 }
 
-func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
-		m := &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-	if len(req.RelationKeys) == 0 {
-		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
-	}
-
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.AddExtraRelations(ctx, req.ContextId, req.RelationKeys)
-	})
-	if err != nil {
-		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
-	}
-
-	return response(pb.RpcObjectRelationAddResponseError_NULL, nil)
-}
-
 func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationDeleteResponseErrorCode, err error) *pb.RpcObjectRelationDeleteResponse {
@@ -718,7 +693,7 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
 	ctx := mw.newContext(cctx)
 
-	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
+	response := func(_ string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
 		resp := &pb.RpcObjectImportUseCaseResponse{
 			Error: &pb.RpcObjectImportUseCaseResponseError{
 				Code: code,

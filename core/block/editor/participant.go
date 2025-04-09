@@ -30,7 +30,7 @@ type participant struct {
 }
 
 func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock, spaceIndex spaceindex.Store) *participant {
-	basicComponent := basic.NewBasic(sb, spaceIndex, f.layoutConverter, nil, f.lastUsedUpdater)
+	basicComponent := basic.NewBasic(sb, spaceIndex, f.layoutConverter, nil)
 	return &participant{
 		SmartBlock:       sb,
 		DetailsUpdatable: basicComponent,
@@ -49,7 +49,6 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, domain.Bool(false))
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_participant))
 	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
 
 	records, err := p.objectStore.QueryByIds([]string{p.Id()})
@@ -63,9 +62,8 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDescription,
-		template.WithFeaturedRelations,
-		template.WithAddedFeaturedRelation(bundle.RelationKeyType),
-		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
+		template.WithFeaturedRelationsBlock,
+		template.WithLayout(model.ObjectType_participant),
 	)
 	return nil
 }
@@ -100,7 +98,7 @@ func (p *participant) TryClose(objectTTL time.Duration) (bool, error) {
 }
 
 func (p *participant) modifyDetails(newDetails *domain.Details) (err error) {
-	return p.DetailsUpdatable.UpdateDetails(func(current *domain.Details) (*domain.Details, error) {
+	return p.DetailsUpdatable.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
 		return current.Merge(newDetails), nil
 	})
 }

@@ -160,7 +160,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 
 		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)
 		return nil
-	})
+	}, smartblock.KeepInternalFlags)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -206,7 +206,7 @@ func (s *Service) CreateCollection(details *domain.Details, flags []*model.Inter
 
 	tmpls := []template.StateTransformer{}
 
-	blockContent := template.MakeDataviewContent(true, nil, nil)
+	blockContent := template.MakeDataviewContent(true, nil, nil, "")
 	tmpls = append(tmpls,
 		template.WithDataview(blockContent, false),
 	)
@@ -220,7 +220,7 @@ func (s *Service) ObjectToCollection(id string) error {
 		sb := b.(smartblock.SmartBlock)
 		s.setDefaultObjectTypeToViews(sb.SpaceID(), st)
 		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeyCollection}, true)
-	})
+	}, smartblock.KeepInternalFlags)
 }
 
 func (s *Service) setDefaultObjectTypeToViews(spaceId string, st *state.State) {

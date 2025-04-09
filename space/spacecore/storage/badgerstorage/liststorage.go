@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 
-	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/dgraph-io/badger/v4"
 )
 
-var ErrIncorrectKey = errors.New("key format is incorrect")
+var (
+	ErrIncorrectKey  = errors.New("key format is incorrect")
+	ErrUnknownRecord = errors.New("record does not exist")
+)
 
 type listStorage struct {
 	db   *badger.DB
@@ -18,7 +21,7 @@ type listStorage struct {
 	root *consensusproto.RawRecordWithId
 }
 
-func newListStorage(spaceId string, db *badger.DB, txn *badger.Txn) (ls liststorage.ListStorage, err error) {
+func newListStorage(spaceId string, db *badger.DB, txn *badger.Txn) (ls oldstorage.ListStorage, err error) {
 	keys := newAclKeys(spaceId)
 	rootId, err := getTxn(txn, keys.RootIdKey())
 	if err != nil {
@@ -45,7 +48,7 @@ func newListStorage(spaceId string, db *badger.DB, txn *badger.Txn) (ls liststor
 	return
 }
 
-func createListStorage(spaceID string, db *badger.DB, txn *badger.Txn, root *consensusproto.RawRecordWithId) (ls liststorage.ListStorage, err error) {
+func createListStorage(spaceID string, db *badger.DB, txn *badger.Txn, root *consensusproto.RawRecordWithId) (ls oldstorage.ListStorage, err error) {
 	keys := newAclKeys(spaceID)
 	_, err = getTxn(txn, keys.RootIdKey())
 	if err != badger.ErrKeyNotFound {
@@ -99,7 +102,7 @@ func (l *listStorage) GetRawRecord(_ context.Context, id string) (raw *consensus
 	res, err := getDB(l.db, l.keys.RawRecordKey(id))
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			err = liststorage.ErrUnknownRecord
+			err = ErrUnknownRecord
 		}
 		return
 	}

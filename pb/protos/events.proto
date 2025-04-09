@@ -22,6 +22,7 @@ message Event {
             Account.Config.Update accountConfigUpdate = 202;
             Account.Update accountUpdate = 203;
             Account.LinkChallenge accountLinkChallenge = 204;
+            Account.LinkChallengeHide accountLinkChallengeHide = 205;
 
             Object.Details.Set objectDetailsSet = 16;
             Object.Details.Amend objectDetailsAmend = 50;
@@ -107,6 +108,7 @@ message Event {
             Membership.Update membershipUpdate = 117;
 
             Space.SyncStatus.Update spaceSyncStatusUpdate = 119;
+            Space.AutoWidgetAdded spaceAutoWidgetAdded = 122;
 
             P2PStatus.Update p2pStatusUpdate = 120;
 
@@ -115,7 +117,11 @@ message Event {
             Chat.Add chatAdd = 128;
             Chat.Update chatUpdate = 129;
             Chat.UpdateReactions chatUpdateReactions = 130;
+            Chat.UpdateMessageReadStatus chatUpdateMessageReadStatus = 134; // received to update per-message read status (if needed to highlight the unread messages in the UI)
+            Chat.UpdateMentionReadStatus chatUpdateMentionReadStatus = 135; // received to update per-message mention read status (if needed to highlight the unread mentions in the UI)
+
             Chat.Delete chatDelete = 131;
+            Chat.UpdateState chatStateUpdate = 133; // in case new unread messages received or chat state changed (e.g. message read on another device)
         }
     }
 
@@ -123,18 +129,40 @@ message Event {
         message Add {
             string id = 1;
             string orderId = 2;
+            string afterOrderId = 6;
             model.ChatMessage message = 3;
+            repeated string subIds = 4;
+            repeated google.protobuf.Struct dependencies = 5;
         }
         message Delete {
             string id = 1;
+            repeated string subIds = 2;
         }
         message Update {
             string id = 1;
             model.ChatMessage message = 2;
+            repeated string subIds = 3;
         }
         message UpdateReactions {
             string id = 1;
             model.ChatMessage.Reactions reactions = 2;
+            repeated string subIds = 3;
+        }
+
+        message UpdateMessageReadStatus {
+            repeated string ids = 1;
+            bool isRead = 2;
+            repeated string subIds = 3;
+        }
+        message UpdateMentionReadStatus {
+            repeated string ids = 1;
+            bool isRead = 2;
+            repeated string subIds = 3;
+        }
+
+        message UpdateState {
+            model.ChatState state = 1;
+            repeated string subIds = 2;
         }
     }
 
@@ -172,6 +200,11 @@ message Event {
             }
             string challenge = 1;
             ClientInfo clientInfo = 2;
+            model.Account.Auth.LocalApiScope scope = 3;
+        }
+
+        message LinkChallengeHide {
+            string challenge = 1; // verify code before hiding to protect from MITM attacks
         }
     }
 
@@ -726,7 +759,7 @@ message Event {
                 FaviconHash faviconHash = 6;
                 Type type = 7;
                 TargetObjectId targetObjectId = 8;
-                
+
 
                 message Url {
                     string value = 1;
@@ -1126,6 +1159,12 @@ message Event {
             StorageLimitExceed = 1;
             IncompatibleVersion = 2;
             NetworkError = 3;
+        }
+
+        message AutoWidgetAdded {
+            string targetId = 1;
+            string targetName = 2; // pluralName (if exists) for types, fallback to name. Special cases for "bin" and "favorites"
+            string widgetBlockId = 3;
         }
     }
     message P2PStatus {

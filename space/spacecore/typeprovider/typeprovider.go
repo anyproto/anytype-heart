@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 )
 
 const CName = "space.typeprovider"
@@ -200,17 +201,15 @@ func (p *provider) objectTypeFromSpace(spaceID string, id string) (tp smartblock
 		return
 	}
 	p.RUnlock()
-
-	sp, err := p.spaceService.Get(context.Background(), spaceID)
+	ctx := context.Background()
+	sp, err := p.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return
 	}
-	store := sp.Storage()
-	rawRoot, err := store.TreeRoot(id)
+	rawRoot, err := sp.Storage().(anystorage.ClientSpaceStorage).TreeRoot(ctx, id)
 	if err != nil {
 		return
 	}
-
 	tp, _, err = GetTypeAndKeyFromRoot(rawRoot)
 	if err != nil {
 		return

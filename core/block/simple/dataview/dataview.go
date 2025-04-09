@@ -53,6 +53,8 @@ type Block interface {
 
 	AddRelation(relation *model.RelationLink) error
 	DeleteRelation(relationKey string) error
+	SetRelations(relationLinks []*model.RelationLink)
+	ListRelationLinks() []*model.RelationLink
 
 	GetSource() []string
 	SetSource(source []string) error
@@ -338,6 +340,14 @@ func (d *Dataview) DeleteRelation(relationKey string) error {
 		view.Sorts = filteredSorts
 	}
 	return nil
+}
+
+func (d *Dataview) SetRelations(relationLinks []*model.RelationLink) {
+	d.content.RelationLinks = relationLinks
+}
+
+func (d *Dataview) ListRelationLinks() []*model.RelationLink {
+	return d.content.RelationLinks
 }
 
 func (td *Dataview) ModelToSave() *model.Block {

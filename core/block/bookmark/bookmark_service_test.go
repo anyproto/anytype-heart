@@ -10,6 +10,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator/mock_objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/template"
+	"github.com/anyproto/anytype-heart/core/block/template/mock_template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -34,10 +36,11 @@ func (ds *detailsSetter) SetDetails(session.Context, string, []domain.Detail) er
 type fixture struct {
 	s *service
 
-	creator      *mock_objectcreator.MockService
-	space        *mock_clientspace.MockSpace
-	spaceService *mock_space.MockService
-	store        *objectstore.StoreFixture
+	creator         *mock_objectcreator.MockService
+	space           *mock_clientspace.MockSpace
+	spaceService    *mock_space.MockService
+	store           *objectstore.StoreFixture
+	templateService *mock_template.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -48,20 +51,23 @@ func newFixture(t *testing.T) *fixture {
 
 	store := objectstore.NewStoreFixture(t)
 	creator := mock_objectcreator.NewMockService(t)
+	templateService := mock_template.NewMockService(t)
 
 	s := &service{
-		detailsSetter: &detailsSetter{},
-		creator:       creator,
-		store:         store,
-		spaceService:  spaceSvc,
+		detailsSetter:   &detailsSetter{},
+		creator:         creator,
+		store:           store,
+		spaceService:    spaceSvc,
+		templateService: templateService,
 	}
 
 	return &fixture{
-		s:            s,
-		creator:      creator,
-		space:        spc,
-		spaceService: spaceSvc,
-		store:        store,
+		s:               s,
+		creator:         creator,
+		space:           spc,
+		spaceService:    spaceSvc,
+		store:           store,
+		templateService: templateService,
 	}
 }
 
@@ -74,14 +80,18 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 			func(_ context.Context, spcId string, keys []domain.TypeKey, state *state.State) (string, *domain.Details, error) {
 				assert.Equal(t, spaceId, spcId)
 				assert.Equal(t, []domain.TypeKey{bundle.TypeKeyBookmark}, keys)
-				assert.Equal(t, details, state.Details())
 
 				return "some_id", nil, nil
 			},
 		).Once()
+		fx.templateService.EXPECT().CreateTemplateStateWithDetails(mock.Anything).RunAndReturn(func(req template.CreateTemplateRequest) (*state.State, error) {
+			assert.Empty(t, req.TemplateId)
+			assert.Equal(t, model.ObjectType_bookmark, req.Layout)
+			return state.NewDoc("", nil).NewState(), nil
+		})
 
 		// when
-		_, _, err := fx.s.CreateBookmarkObject(nil, spaceId, details, func() *bookmark.ObjectContent { return nil })
+		_, _, err := fx.s.CreateBookmarkObject(nil, spaceId, "", details, func() *bookmark.ObjectContent { return nil })
 
 		// then
 		assert.NoError(t, err)
@@ -101,7 +111,7 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 		}})
 
 		// when
-		id, _, err := fx.s.CreateBookmarkObject(nil, spaceId, details, func() *bookmark.ObjectContent {
+		id, _, err := fx.s.CreateBookmarkObject(nil, spaceId, "", details, func() *bookmark.ObjectContent {
 			return &bookmark.ObjectContent{BookmarkContent: &model.BlockContentBookmark{}}
 		})
 
@@ -157,6 +167,70 @@ func TestService_FetchBookmarkContent(t *testing.T) {
 		assert.Len(t, content.Blocks, 1)
 		assert.NotNil(t, content.Blocks[0].GetFile())
 	})
+}
+
+func TestGetFileNameFromURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		filename string
+		want     string
+	}{
+		{
+			name:     "Valid URL with file extension, includes www",
+			url:      "https://www.example.com/path/image.png",
+			filename: "myfile",
+			want:     "example_com_myfile.png",
+		},
+		{
+			name:     "Valid URL without file extension",
+			url:      "https://example.com/path/file",
+			filename: "myfile",
+			want:     "example_com_myfile",
+		},
+		{
+			name:     "Trailing slash, no explicit file name in path",
+			url:      "http://www.example.org/folder/",
+			filename: "test",
+			want:     "example_org_test",
+		},
+		{
+			name:     "Invalid URL format",
+			url:      "vvv",
+			filename: "file",
+			want:     "",
+		},
+		{
+			name:     "Empty path (no trailing slash)",
+			url:      "http://www.example.com",
+			filename: "file",
+			want:     "example_com_file",
+		},
+		{
+			name:     "Complex domain without www",
+			url:      "https://sub.example.co.uk/path/report.pdf",
+			filename: "report",
+			want:     "sub_example_co_uk_report.pdf",
+		},
+		{
+			name:     "URL with query parameters (should ignore queries)",
+			url:      "https://www.testsite.com/path/subpath/file.txt?key=value",
+			filename: "newfile",
+			want:     "testsite_com_newfile.txt",
+		},
+		{
+			name:     "URL ends with a dot-based extension in path but no file name",
+			url:      "https://www.example.net/path/.htaccess",
+			filename: "hidden",
+			want:     "example_net_hidden.htaccess",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getFileNameFromURL(tt.url, tt.filename)
+			assert.Equal(t, tt.want, got, "Output filename should match the expected value")
+		})
+	}
 }
 
 const testHtml = `<html><head>

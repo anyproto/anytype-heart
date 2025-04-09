@@ -1,11 +1,14 @@
 #https://linear.app/anytype/issue/GO-3985/make-performance-report-on-the-stand
+name: Perf tests
+
+
 on:
   workflow_dispatch:
     inputs:
       run-on-runner-mac:
         description: 'Specify the runner to use on MacOS'
         required: true
-        default: 'ARM64'
+        default: 'mac-mini-org-heart'
       run-on-runner-win:
         description: 'Specify the runner to use on Windows'
         required: true
@@ -21,16 +24,20 @@ on:
           include:
             - 'main'
 
+
 permissions:
   actions: 'write'
   contents: 'write'
 
 
-name: Perf tests
 jobs:
+  wait_for_self_hosted_mac_mini:
+    uses: ./.github/workflows/reusable_wait_for_self_hosted_mac_mini.yml
+
   perftests-macos:
+    needs: wait_for_self_hosted_mac_mini
     timeout-minutes: 60
-    runs-on: 'ARM64'
+    runs-on: 'mac-mini-org-heart'
     steps:
       - name: Setup GO
         run: |

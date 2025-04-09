@@ -6,7 +6,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -18,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -54,7 +54,7 @@ type CommonOperations interface {
 	FeaturedRelationRemove(ctx session.Context, relations ...string) error
 
 	ReplaceLink(oldId, newId string) error
-	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc TemplateStateCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc templateSvc.Service, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
 	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
 	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
@@ -64,12 +64,10 @@ type CommonOperations interface {
 
 type DetailsSettable interface {
 	SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error)
-	SetDetailsAndUpdateLastUsed(ctx session.Context, details []domain.Detail, showEvent bool) (err error)
 }
 
 type DetailsUpdatable interface {
-	UpdateDetails(update func(current *domain.Details) (*domain.Details, error)) (err error)
-	UpdateDetailsAndLastUsed(update func(current *domain.Details) (*domain.Details, error)) (err error)
+	UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error)
 }
 
 type Restrictionable interface {
@@ -105,24 +103,21 @@ func NewBasic(
 	objectStore spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
-	lastUsedUpdater lastused.ObjectUsageUpdater,
 ) AllOperations {
 	return &basic{
 		SmartBlock:        sb,
 		objectStore:       objectStore,
 		layoutConverter:   layoutConverter,
 		fileObjectService: fileObjectService,
-		lastUsedUpdater:   lastUsedUpdater,
 	}
 }
 
 type basic struct {
 	smartblock.SmartBlock
 
-	objectStore     spaceindex.Store
-	layoutConverter converter.LayoutConverter
+	objectStore       spaceindex.Store
+	layoutConverter   converter.LayoutConverter
 	fileObjectService fileobject.Service
-	lastUsedUpdater   lastused.ObjectUsageUpdater
 }
 
 func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error) {

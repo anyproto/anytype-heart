@@ -42,7 +42,10 @@ const (
 	CName = "files"
 )
 
-var log = logging.Logger("anytype-files")
+var (
+	log                        = logging.Logger("anytype-files")
+	FailedProtoUnmarshallError = errors.New("failed proto unmarshall")
+)
 
 var _ Service = (*service)(nil)
 
@@ -306,7 +309,7 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 		}
 		err = proto.Unmarshal(b, &file)
 		if err != nil || file.Hash == "" {
-			return nil, fmt.Errorf("failed to unmarshal not-encrypted file info: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal not-encrypted file info: %w", FailedProtoUnmarshallError)
 		}
 	}
 

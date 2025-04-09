@@ -53,6 +53,16 @@ type fixture struct {
 	*service
 }
 
+type dummyAccountService struct{}
+
+func (s *dummyAccountService) MyParticipantId(spaceId string) string {
+	return ""
+}
+
+func (s *dummyAccountService) Init(_ *app.App) error { return nil }
+
+func (s *dummyAccountService) Name() string { return "dummyAccountService" }
+
 type dummyConfig struct{}
 
 func (c *dummyConfig) IsLocalOnlyMode() bool {
@@ -108,6 +118,7 @@ func newFixture(t *testing.T) *fixture {
 
 	a := new(app.App)
 	a.Register(&dummyConfig{})
+	a.Register(&dummyAccountService{})
 	a.Register(dataStoreProvider)
 	a.Register(fileStore)
 	a.Register(objectStore)

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/samber/lo"
@@ -27,11 +28,33 @@ const (
 )
 
 var (
-	// every duration will be added to the previous ones
-	UnaryTraceCollections = []time.Duration{time.Second * 3, time.Second * 7, time.Second * 10, time.Second * 30, time.Second * 50} // 3, 10, 20, 50, 100
-	// UnaryWarningInProgressIndex specify the index of UnaryTraceCollections when we will send the warning log in-progress without waiting for the command to finish
-	UnaryWarningInProgressIndex = 1
+	maxDuration = time.Second * 10
+	cache       = new(methodsCache)
 )
+
+type methodsCache struct {
+	methods map[string]struct{}
+	mu      sync.RWMutex
+}
+
+func (c *methodsCache) addMethod(method string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.methods == nil {
+		c.methods = make(map[string]struct{})
+	}
+	c.methods[method] = struct{}{}
+}
+
+func (c *methodsCache) hasMethod(method string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	_, exists := c.methods[method]
+	return exists
+}
+
 var excludedMethods = []string{
 	"BlockSetCarriage",
 	"BlockTextSetText",
@@ -174,38 +197,39 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 	lastTrace := atomic.NewString("")
 	l := log.With("method", methodName)
 	go func() {
-	loop:
-		for i, duration := range UnaryTraceCollections {
-			select {
-			case <-doneCh:
-				break loop
-			case <-time.After(duration):
-				trace := debug.Stack(true)
-				// double check, because we can have a race and the stack trace can be taken after the method is already finished
-				if stackTraceHasMethod(methodName, trace) {
-					lastTrace.Store(string(trace))
-					if i == UnaryWarningInProgressIndex {
-						traceCompressed := debug.CompressBytes(trace)
-						l.With("ver", 2).With("in_progress", true).With("goroutines", traceCompressed).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request is taking too long")
-					}
-				}
+		select {
+		case <-doneCh:
+			break
+		case <-time.After(maxDuration):
+			trace := debug.Stack(true)
+			// double check, because we can have a race and the stack trace can be taken after the method is already finished
+			if !cache.hasMethod(methodName) && stackTraceHasMethod(methodName, trace) {
+				lastTrace.Store(string(trace))
+				traceCompressed := debug.CompressBytes(trace)
+				l.With("ver", 2).
+					With("in_progress", true).
+					With("goroutines", traceCompressed).
+					With("total", time.Since(start).Milliseconds()).
+					Warnf("grpc unary request is taking too long")
+				cache.addMethod(methodName)
 			}
 		}
 	}()
 	ctx = context.WithValue(ctx, CtxKeyRPC, methodName)
 	resp, err := actualCall(ctx, req)
 	close(doneCh)
-	if len(UnaryTraceCollections) > 0 && time.Since(start) > UnaryTraceCollections[0] {
-		// todo: save long stack trace to files
-		lastTraceB := debug.CompressBytes([]byte(lastTrace.String()))
-		l.With("ver", 2).With("error", err).With("in_progress", false).With("goroutines", lastTraceB).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
-		Service.Send(
-			&LongMethodEvent{
-				methodName: methodName,
-				middleTime: time.Since(start).Milliseconds(),
-				stack:      debug.ParseGoroutinesDump(lastTrace.String(), "core.(*Middleware)."+methodName),
-			},
-		)
+	if time.Since(start) > maxDuration {
+		if !cache.hasMethod(methodName) {
+			// todo: save long stack trace to files
+			lastTraceB := debug.CompressBytes([]byte(lastTrace.String()))
+			l.With("ver", 2).
+				With("error", err).
+				With("in_progress", false).
+				With("goroutines", lastTraceB).
+				With("total", time.Since(start).Milliseconds()).
+				Warnf("grpc unary request took too long")
+			cache.addMethod(methodName)
+		}
 	}
 	return resp, err
 }

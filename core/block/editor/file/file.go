@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -126,7 +127,8 @@ func (sf *sfile) SetFileTargetObjectId(ctx session.Context, blockId, targetObjec
 		return err
 	}
 	var blockContentFileType model.BlockContentFileType
-	switch model.ObjectTypeLayout(sb.Details().GetInt64(bundle.RelationKeyLayout)) {
+	//nolint:gosec
+	switch model.ObjectTypeLayout(sb.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)) {
 	case model.ObjectType_image:
 		blockContentFileType = model.BlockContentFile_Image
 	case model.ObjectType_audio:
@@ -306,10 +308,13 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 }
 
 func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
-	if info.err == context.Canceled {
+	if errors.Is(info.err, context.Canceled) {
 		s := sf.NewState().SetGroupId(info.groupId)
 		s.Unlink(info.blockId)
 		return sf.Apply(s)
+	}
+	if info.err != nil {
+		return fmt.Errorf("drop file: %w", info.err)
 	}
 	if isCollection(sf) {
 		s := sf.NewState()

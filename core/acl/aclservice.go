@@ -10,9 +10,9 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
@@ -48,6 +48,7 @@ type AclService interface {
 	GenerateInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	RevokeInvite(ctx context.Context, spaceId string) error
 	GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
+	GetGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error)
 	Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 	ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error
@@ -59,10 +60,18 @@ type AclService interface {
 	Leave(ctx context.Context, spaceId string) (err error)
 	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
+	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permissions list.AclPermissions) error
+	AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error)
 }
 
 func New() AclService {
 	return &aclService{}
+}
+
+type identityRepoClient interface {
+	app.Component
+	IdentityRepoPut(ctx context.Context, identity string, data []*identityrepoproto.Data) (err error)
+	IdentityRepoGet(ctx context.Context, identities []string, kinds []string) (res []*identityrepoproto.DataWithIdentity, err error)
 }
 
 type aclService struct {
@@ -72,6 +81,7 @@ type aclService struct {
 	inviteService    inviteservice.InviteService
 	accountService   account.Service
 	coordClient      coordinatorclient.CoordinatorClient
+	identityRepo     identityRepoClient
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -81,6 +91,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
+	a.identityRepo = app.MustComponent[identityRepoClient](ap)
 	return nil
 }
 
@@ -98,6 +109,48 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 	err = a.spaceService.TechSpace().SetLocalInfo(ctx, info)
 	if err != nil {
 		return convertedOrInternalError("set local info", err)
+	}
+	return nil
+}
+
+func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey) (metadata []byte, err error) {
+	metadataModel, _, err := space.DeriveAccountMetadata(privKey)
+	if err != nil {
+		return nil, fmt.Errorf("derive account metadata: %w", err)
+	}
+	metadata, err = metadataModel.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("marshal metadata: %w", err)
+	}
+	return
+}
+
+func (a *aclService) AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error) {
+	pk, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := a.pushGuest(ctx, pk)
+	if err != nil {
+		return nil, err
+	}
+	return pk, a.AddAccount(ctx, spaceId, pubKey, metadata, list.AclPermissionsGuest)
+}
+
+func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permission list.AclPermissions) error {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return convertedOrSpaceErr(err)
+	}
+	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: []list.AccountAdd{
+		{
+			Identity:    pubKey,
+			Metadata:    metadata,
+			Permissions: permission,
+		},
+	}})
+	if err != nil {
+		return convertedOrAclRequestError(err)
 	}
 	return nil
 }
@@ -250,6 +303,13 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) error {
 		}
 		return convertedOrSpaceErr(err)
 	}
+	identity := a.accountService.Keys().SignKey.GetPublic()
+	if !removeSpace.GetAclIdentity().Equals(identity) {
+		// this is a streamable space
+		// we exist there under ephemeral guest identity and should not remove it
+		return nil
+	}
+
 	cl := removeSpace.CommonSpace().AclClient()
 	err = cl.RequestSelfRemove(ctx)
 	if err != nil {
@@ -338,7 +398,14 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	if err != nil {
 		return convertedOrInternalError("get invite payload", err)
 	}
-	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.InviteKey)
+	if invitePayload.InviteType == model.InvitePayload_JoinAsGuest {
+		guestKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.GuestKey)
+		if err != nil {
+			return convertedOrInternalError("unmarshal invite key", err)
+		}
+		return a.joinAsGuest(ctx, invitePayload.SpaceId, guestKey)
+	}
+	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.AclKey)
 	if err != nil {
 		return convertedOrInternalError("unmarshal invite key", err)
 	}
@@ -381,7 +448,16 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return domain.InviteView{}, convertedOrInternalError("view invite", err)
 	}
-	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.InviteKey)
+	if res.IsGuestUserInvite() {
+		return domain.InviteView{
+			SpaceId:      res.SpaceId,
+			GuestKey:     res.GuestKey,
+			SpaceName:    res.SpaceName,
+			SpaceIconCid: res.SpaceIconCid,
+			CreatorName:  res.CreatorName,
+		}, nil
+	}
+	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.AclKey)
 	if err != nil {
 		return domain.InviteView{}, convertedOrInternalError("unmarshal invite key", err)
 	}
@@ -392,7 +468,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if len(recs) == 0 {
 		return domain.InviteView{}, fmt.Errorf("no acl records found for space: %s, %w", res.SpaceId, ErrAclRequestFailed)
 	}
-	store, err := liststorage.NewInMemoryAclListStorage(recs[0].Id, recs)
+	store, err := list.NewInMemoryStorage(recs[0].Id, recs)
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
@@ -483,4 +559,46 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result
 		}
 		return nil
 	})
+}
+
+func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
+	if spaceId == a.accountService.PersonalSpaceID() {
+		err = ErrPersonalSpace
+		return
+	}
+	current, err := a.inviteService.GetExistingGuestUserInvite(ctx, spaceId)
+	if err == nil {
+		return current, nil
+	}
+	var shareableStatus spaceinfo.ShareableStatus
+	err = a.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+		localInfo := spaceView.GetLocalInfo()
+		shareableStatus = localInfo.GetShareableStatus()
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	if shareableStatus != spaceinfo.ShareableStatusShareable {
+		err = a.MakeShareable(ctx, spaceId)
+		if err != nil {
+			return
+		}
+	}
+	// todo: race conds in case guest user already created?
+	// we can iterate users to find the guest key
+	guestKey, err := a.AddGuestAccount(ctx, spaceId)
+	if err != nil {
+		return domain.InviteInfo{}, convertedOrInternalError("add guest account", err)
+	}
+	info, err = a.inviteService.GenerateGuestUserInvite(ctx, spaceId, guestKey)
+	if err != nil {
+		return domain.InviteInfo{}, convertedOrInternalError("generate guest user invite", err)
+	}
+	return
+}
+
+func (a *aclService) joinAsGuest(ctx context.Context, spaceId string, guestUserKey crypto.PrivKey) (err error) {
+	return a.spaceService.AddStreamable(ctx, spaceId, guestUserKey)
 }

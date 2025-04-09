@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -56,7 +56,7 @@ func newFixture(t *testing.T, aggregationInterval time.Duration) *fixture {
 		spaceService: spaceSvc,
 
 		aggregationInterval:  aggregationInterval,
-		infoBatch:            mb.New(0),
+		infoBatch:            mb.New[spaceindex.LinksUpdateInfo](0),
 		accumulatedBacklinks: make(map[string]*backLinksUpdate),
 	}
 

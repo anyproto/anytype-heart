@@ -18,6 +18,10 @@ var log = logging.Logger(CName).Desugar()
 
 const CName = "core.subscription.crossspacesub"
 
+var (
+	ErrSubscriptionNotFound = fmt.Errorf("subscription not found")
+)
+
 type Service interface {
 	app.ComponentRunnable
 	Subscribe(req subscriptionservice.SubscribeRequest) (resp *subscriptionservice.SubscribeResponse, err error)
@@ -89,6 +93,9 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 	if len(req.Sorts) > 0 {
 		return nil, fmt.Errorf("sorting is not supported")
 	}
+	if req.AsyncInit {
+		return nil, fmt.Errorf("async init is not supported")
+	}
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -97,7 +104,7 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 		return nil, fmt.Errorf("new cross space subscription: %w", err)
 	}
 	s.subscriptions[req.SubId] = spaceSub
-	go spaceSub.run()
+	go spaceSub.run(req.InternalQueue)
 	return resp, nil
 }
 
@@ -107,7 +114,7 @@ func (s *service) Unsubscribe(subId string) error {
 
 	sub, ok := s.subscriptions[subId]
 	if !ok {
-		return fmt.Errorf("subscription not found")
+		return ErrSubscriptionNotFound
 	}
 
 	err := sub.close()

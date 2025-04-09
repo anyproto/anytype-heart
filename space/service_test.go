@@ -13,6 +13,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/testutil/accounttest"
+	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -27,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller/mock_spacecontroller"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -45,6 +48,19 @@ const (
 	testPersonalSpaceID = "personal.12345"
 )
 
+type mockAclJoiner struct {
+}
+
+func (m *mockAclJoiner) Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error {
+	return nil
+}
+func (m *mockAclJoiner) Init(a *app.App) error {
+	return nil
+}
+func (m *mockAclJoiner) Name() string {
+	return "aclJoiner"
+}
+
 func TestService_Init(t *testing.T) {
 	t.Run("tech space getter", func(t *testing.T) {
 		serv := New().(*service)
@@ -60,7 +76,7 @@ func TestService_Init(t *testing.T) {
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 
 		// initialized - expect space
-		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), time.Millisecond)
+		ctx2, ctxCancel2 := context.WithTimeout(context.Background(), 2*time.Millisecond)
 		defer ctxCancel2()
 
 		factory.EXPECT().LoadAndSetTechSpace(ctx2).Return(&clientspace.TechSpace{}, nil)
@@ -240,10 +256,10 @@ func TestService_UpdateRemoteStatus(t *testing.T) {
 
 		storeFixture := objectstore.NewStoreFixture(t)
 		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{{
-			bundle.RelationKeyLayout:        domain.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyId:            domain.String("spaceViewId"),
-			bundle.RelationKeyTargetSpaceId: domain.String(spaceID),
-			bundle.RelationKeyName:          domain.String("Test"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyId:             domain.String("spaceViewId"),
+			bundle.RelationKeyTargetSpaceId:  domain.String(spaceID),
+			bundle.RelationKeyName:           domain.String("Test"),
 		}})
 
 		s := service{
@@ -312,6 +328,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	fx.a.
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(fx.config).
+		Register(&mockAclJoiner{}).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.notificationSender)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.updater)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
@@ -319,6 +336,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
 		Register(fx.objectStore).
+		Register(&testSpaceLoaderListener{}).
 		Register(fx.service)
 	fx.expectRun(t, expectOldAccount)
 
@@ -409,3 +427,14 @@ func makeLocalInfo(spaceId string, remoteStatus spaceinfo.RemoteStatus) spaceinf
 	info.SetRemoteStatus(remoteStatus)
 	return info
 }
+
+type testSpaceLoaderListener struct {
+	aclobjectmanager.SpaceLoaderListener
+	app.Component
+}
+
+func (s *testSpaceLoaderListener) OnSpaceLoad(_ string)   {}
+func (s *testSpaceLoaderListener) OnSpaceUnload(_ string) {}
+
+func (s *testSpaceLoaderListener) Init(a *app.App) (err error) { return nil }
+func (s *testSpaceLoaderListener) Name() (name string)         { return "spaceLoaderListener" }

@@ -32,9 +32,9 @@ func TestTextSort(t *testing.T) {
 			bundle.RelationKeyName: domain.String("b"),
 		})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("a"),
-			bundle.RelationKeySnippet: domain.String("b"),
-			bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyName:           domain.String("a"),
+			bundle.RelationKeySnippet:        domain.String("b"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 		})
 		asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
@@ -47,8 +47,8 @@ func TestTextSort(t *testing.T) {
 				bundle.RelationKeyName: domain.String("a"),
 			})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeySnippet: domain.String("b"),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_note)),
+				bundle.RelationKeySnippet:        domain.String("b"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 			})
 			asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 			assertCompare(t, asc, a, b, -1)
@@ -60,8 +60,8 @@ func TestTextSort(t *testing.T) {
 				bundle.RelationKeyName: domain.String("a"),
 			})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeySnippet: domain.String("a"),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_note)),
+				bundle.RelationKeySnippet:        domain.String("a"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 			})
 			asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 			assertCompare(t, asc, a, b, 0)
@@ -375,6 +375,36 @@ func TestKeyOrder_Compare(t *testing.T) {
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySpaceOrder: domain.String("--jc")})
 		ko := &KeyOrder{disableCollator: true, arena: arena, Key: bundle.RelationKeySpaceOrder, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, ko, a, b, -1)
+	})
+	t.Run("compare_bool_false_null", func(t *testing.T) {
+		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(false)})
+		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, 0)
+	})
+	t.Run("compare_bool_true_null", func(t *testing.T) {
+		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
+		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, 1)
+	})
+	t.Run("compare_bool_true_null_desc", func(t *testing.T) {
+		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
+		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, -1)
+	})
+	t.Run("compare_bool_true_false", func(t *testing.T) {
+		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
+		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(false)})
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, 1)
+	})
+	t.Run("compare_bool_true_true", func(t *testing.T) {
+		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
+		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
+		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		assertCompare(t, ko, a, b, 0)
 	})
 }
 

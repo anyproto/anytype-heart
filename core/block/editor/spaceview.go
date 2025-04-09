@@ -39,7 +39,11 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceAccountStatus,
 	bundle.RelationKeySpaceShareableStatus,
 	bundle.RelationKeySpaceAccessType,
+	bundle.RelationKeySpaceUxType,
 	bundle.RelationKeyLatestAclHeadId,
+	bundle.RelationKeyChatId,
+	bundle.RelationKeyReadersLimit,
+	bundle.RelationKeyWritersLimit,
 }
 
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
@@ -72,11 +76,11 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	s.log = s.log.With("spaceId", spaceId)
 
-	s.DisableLayouts()
 	info := spaceinfo.NewSpacePersistentInfoFromState(ctx.State)
 	newInfo := spaceinfo.NewSpacePersistentInfo(spaceId)
 	newInfo.SetAccountStatus(info.GetAccountStatus()).
-		SetAclHeadId(info.GetAclHeadId())
+		SetAclHeadId(info.GetAclHeadId()).
+		SetEncodedKey(info.EncodedKey)
 	s.setSpacePersistentInfo(ctx.State, newInfo)
 	localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
 	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
@@ -106,7 +110,8 @@ func (s *SpaceView) StateMigrations() migration.Migrations {
 
 func (s *SpaceView) initTemplate(st *state.State) {
 	template.InitTemplate(st,
-		template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
+		template.WithObjectTypes([]domain.TypeKey{bundle.TypeKeySpaceView}),
+		template.WithLayout(model.ObjectType_spaceView),
 	)
 }
 
@@ -123,6 +128,13 @@ func (s *SpaceView) RemoveExistingInviteInfo() (fileCid string, err error) {
 	newState := s.NewState()
 	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
 	return fileCid, s.Apply(newState)
+}
+
+func (s *SpaceView) GetGuestUserInviteInfo() (fileCid string, fileKey string) {
+	details := s.CombinedDetails()
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteGuestFileCid)
+	fileKey = details.GetString(bundle.RelationKeySpaceInviteGuestFileKey)
+	return
 }
 
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
@@ -247,14 +259,17 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyIconImage,
 	bundle.RelationKeyIconOption,
 	bundle.RelationKeySpaceDashboardId,
+	bundle.RelationKeySpaceUxType,
 	bundle.RelationKeyCreatedDate,
 	bundle.RelationKeyChatId,
+	bundle.RelationKeyDescription,
 }
 
 func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
 	details := s.CombinedDetails()
 	data.Name = details.GetString(bundle.RelationKeyName)
 	data.IconImage = details.GetString(bundle.RelationKeyIconImage)
+	data.SpaceUxType = model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType))
 	return
 }
 

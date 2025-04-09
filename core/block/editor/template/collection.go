@@ -46,7 +46,7 @@ var (
 	}
 )
 
-func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink) *model.BlockContentOfDataview {
+func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink, forceViewId string) *model.BlockContentOfDataview {
 	var (
 		defaultRelations = defaultCollectionRelations
 		visibleRelations = defaultVisibleRelations
@@ -67,14 +67,17 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 	}
 
 	relationLinks, viewRelations := generateRelationLists(defaultRelations, relLinks, visibleRelations)
-
+	viewId := forceViewId
+	if viewId == "" {
+		viewId = bson.NewObjectId().Hex()
+	}
 	return &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			IsCollection:  isCollection,
 			RelationLinks: relationLinks,
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:        bson.NewObjectId().Hex(),
+					Id:        viewId,
 					Type:      model.BlockContentDataviewView_Table,
 					Name:      defaultViewName,
 					Sorts:     sorts,
@@ -144,4 +147,8 @@ func defaultNameSort() []*model.BlockContentDataviewSort {
 			Type:        model.BlockContentDataviewSort_Asc,
 		},
 	}
+}
+
+func DefaultCollectionRelations() []domain.RelationKey {
+	return defaultCollectionRelations
 }

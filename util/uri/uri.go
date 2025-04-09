@@ -2,8 +2,10 @@ package uri
 
 import (
 	"fmt"
+	"mime"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -83,4 +85,96 @@ func NormalizeAndParseURI(uri string) (*url.URL, error) {
 	}
 
 	return url.Parse(normalizeURI(uri))
+}
+
+var preferredExtensions = map[string]string{
+	"image/jpeg": ".jpeg",
+	"audio/mpeg": ".mp3",
+	// Add more preferred mappings if needed
+}
+
+func GetFileNameFromURLAndContentType(u *url.URL, contentType string) string {
+	var host string
+	if u != nil {
+
+		lastSegment := filepath.Base(u.Path)
+		// Determine if this looks like a real filename. We'll say it's real if it has a dot or is a hidden file starting with a dot.
+		if lastSegment == "." || lastSegment == "" || (!strings.HasPrefix(lastSegment, ".") && !strings.Contains(lastSegment, ".")) {
+			// Not a valid filename
+			lastSegment = ""
+		}
+
+		if lastSegment != "" {
+			// A plausible filename was found directly in the URL
+			return lastSegment
+		}
+
+		// No filename, fallback to host-based
+		host = strings.TrimPrefix(u.Hostname(), "www.")
+		host = strings.ReplaceAll(host, ".", "_")
+		if host == "" {
+			host = "file"
+		}
+	}
+
+	// Try to get a preferred extension for the content type
+	var ext string
+	if preferred, ok := preferredExtensions[contentType]; ok {
+		ext = preferred
+	} else {
+		extensions, err := mime.ExtensionsByType(contentType)
+		if err != nil || len(extensions) == 0 {
+			// Fallback if no known extension
+			extensions = []string{".bin"}
+		}
+		ext = extensions[0]
+	}
+
+	// Determine a base name from content type
+	base := "file"
+	if strings.HasPrefix(contentType, "image/") {
+		base = "image"
+	} else if strings.HasPrefix(contentType, "audio/") {
+		base = "audio"
+	} else if strings.HasPrefix(contentType, "video/") {
+		base = "video"
+	}
+
+	var res strings.Builder
+	if host != "" {
+		res.WriteString(host)
+		res.WriteString("_")
+	}
+	res.WriteString(base)
+	if ext != "" {
+		res.WriteString(ext)
+	}
+	return res.String()
+}
+
+func ParseInviteUrl(inviteUrl string) (inviteId string, inviteKey string, spaceId string, networkId string, err error) {
+	// e.g. anytype://invite/?cid=ba&key=AbCd
+	if inviteUrl == "" {
+		return "", "", "", "", nil
+	}
+	u, err := url.Parse(inviteUrl)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	if u.Scheme == "anytype" {
+		inviteId = u.Query().Get("cid")
+		inviteKey = u.Query().Get("key")
+		spaceId = u.Query().Get("spaceId")
+		networkId = u.Query().Get("networkId")
+		return inviteId, inviteKey, spaceId, networkId, nil
+	}
+
+	if u.Scheme == "" {
+		return "", "", "", "", fmt.Errorf("invalid invite url: %s", inviteUrl)
+	}
+
+	u.Fragment = strings.TrimPrefix(u.Fragment, "#")
+	inviteId = u.Path
+
+	return inviteId, u.Fragment, "", "", nil
 }

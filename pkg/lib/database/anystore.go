@@ -144,7 +144,7 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	}()
 	val := v.GetStringBytes(s.relationKey)
 	if s.relationKey == bundle.RelationKeyName.String() && len(val) == 0 {
-		layout := model.ObjectTypeLayout(v.GetFloat64(bundle.RelationKeyLayout.String()))
+		layout := model.ObjectTypeLayout(v.GetFloat64(bundle.RelationKeyResolvedLayout.String()))
 		if layout == model.ObjectType_note {
 			val = v.GetStringBytes(bundle.RelationKeySnippet.String())
 		}
@@ -212,5 +212,34 @@ func (s tagStatusSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tup
 		return tuple.AppendInverted(s.arena.NewString(sortKey))
 	} else {
 		return tuple.Append(s.arena.NewString(sortKey))
+	}
+}
+
+type boolSort struct {
+	arena       *anyenc.Arena
+	relationKey string
+	reverse     bool
+}
+
+func (b boolSort) Fields() []query.SortField {
+	return []query.SortField{
+		{
+			Field: "",
+		},
+	}
+}
+
+func (b boolSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
+	defer func() {
+		b.arena.Reset()
+	}()
+	val := v.Get(b.relationKey)
+	if val == nil {
+		val = b.arena.NewFalse()
+	}
+	if b.reverse {
+		return tuple.AppendInverted(val)
+	} else {
+		return tuple.Append(val)
 	}
 }

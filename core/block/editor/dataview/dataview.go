@@ -39,6 +39,7 @@ type Dataview interface {
 	CreateView(ctx session.Context, blockID string,
 		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) error
+	SetRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
 	AddRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
 	DeleteRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
 	UpdateView(ctx session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
@@ -93,7 +94,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
-	dvContent, err := BlockBySource(d.objectStore, source)
+	dvContent, err := BlockBySource(d.objectStore, source, "")
 	if err != nil {
 		return
 	}
@@ -118,10 +119,20 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 		return err
 	}
 
+	var viewRelations []*model.BlockContentDataviewRelation
+	if srcBlock, err := BlockBySource(d.objectStore, source, ""); err != nil {
+		log.Errorf("failed to build dataview block to modify view relation lists: %v", err)
+	} else {
+		dv.SetRelations(srcBlock.Dataview.RelationLinks)
+		viewRelations = srcBlock.Dataview.Views[0].Relations
+	}
+
 	for _, view := range dv.ListViews() {
-		// TODO: GO-4189 Need to review relation lists modification in each view on source change
 		view.DefaultTemplateId = ""
 		view.DefaultObjectTypeId = ""
+		if len(viewRelations) > 0 {
+			view.Relations = viewRelations
+		}
 		if err = dv.SetView(view.Id, *view); err != nil {
 			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
 		}
@@ -134,6 +145,28 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 	flags.AddToState(s)
 
 	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
+}
+
+func (d *sdataview) SetRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+	var links []*model.RelationLink
+	for _, key := range relationKeys {
+		relation, err2 := d.objectStore.FetchRelationByKey(key)
+		if err2 != nil {
+			return err2
+		}
+		links = append(links, relation.RelationLink())
+	}
+	tb.SetRelations(links)
+	if showEvent {
+		return d.Apply(s)
+	} else {
+		return d.Apply(s, smartblock.NoEvent)
+	}
 }
 
 func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
@@ -456,16 +489,16 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func BlockBySource(objectStore spaceindex.Store, sources []string) (*model.BlockContentOfDataview, error) {
+func BlockBySource(objectStore spaceindex.Store, sources []string, forceViewId string) (*model.BlockContentOfDataview, error) {
 	// Empty schema
 	if len(sources) == 0 {
-		return template.MakeDataviewContent(false, nil, nil), nil
+		return template.MakeDataviewContent(false, nil, nil, forceViewId), nil
 	}
 
 	// Try object type
 	objectType, err := objectStore.GetObjectType(sources[0])
 	if err == nil {
-		return template.MakeDataviewContent(false, objectType, nil), nil
+		return template.MakeDataviewContent(false, objectType, nil, forceViewId), nil
 	}
 
 	// Finally, try relations
@@ -478,5 +511,5 @@ func BlockBySource(objectStore spaceindex.Store, sources []string) (*model.Block
 
 		relations = append(relations, (&relationutils.Relation{Relation: rel}).RelationLink())
 	}
-	return template.MakeDataviewContent(false, objectType, relations), nil
+	return template.MakeDataviewContent(false, objectType, relations, forceViewId), nil
 }

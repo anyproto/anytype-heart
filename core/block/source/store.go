@@ -3,15 +3,18 @@ package source
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 
@@ -20,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -32,6 +36,18 @@ type Store interface {
 	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 	SetPushChangeHook(onPushChange PushChangeHook)
+
+	// RegisterDiffManager sets a hook that will be called when a change is removed (marked as read) from the diff manager
+	// must be called before ReadStoreDoc.
+	//
+	// If a head is marked as read in the diff manager, all earlier heads for that branch marked as read as well
+	RegisterDiffManager(name string, onRemoveHook func(removed []string))
+	// MarkSeenHeads marks heads as seen in a diff manager. Then the diff manager will call a hook from SetDiffManagerOnRemoveHook
+	MarkSeenHeads(ctx context.Context, name string, heads []string) error
+	// StoreSeenHeads persists current seen heads in any-store
+	StoreSeenHeads(ctx context.Context, name string) error
+	// InitDiffManager initializes a diff manager with specified seen heads
+	InitDiffManager(ctx context.Context, name string, seenHeads []string) error
 }
 
 type PushStoreChangeParams struct {
@@ -50,6 +66,14 @@ type store struct {
 	store        *storestate.StoreState
 	onUpdateHook func()
 	onPushChange PushChangeHook
+	sbType       smartblock.SmartBlockType
+
+	diffManagers map[string]*diffManager
+}
+
+type diffManager struct {
+	diffManager *objecttree.DiffManager
+	onRemove    func(removed []string)
 }
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
@@ -58,6 +82,56 @@ func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 
 func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
 	s.onPushChange = onPushChange
+}
+
+func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []string)) {
+	if _, ok := s.diffManagers[name]; !ok {
+		s.diffManagers[name] = &diffManager{
+			onRemove: onRemoveHook,
+		}
+	}
+}
+
+func (s *store) initDiffManagers(ctx context.Context) error {
+	for name := range s.diffManagers {
+		seenHeads, err := s.loadSeenHeads(ctx, name)
+		if err != nil {
+			return fmt.Errorf("load seen heads: %w", err)
+		}
+		err = s.InitDiffManager(ctx, name, seenHeads)
+		if err != nil {
+			return fmt.Errorf("init diff manager: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []string) (err error) {
+	manager, ok := s.diffManagers[name]
+	if !ok {
+		return nil
+	}
+
+	curTreeHeads := s.source.Tree().Heads()
+
+	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
+		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
+			Heads:   heads,
+			Include: true,
+		})
+	}
+	onRemove := func(removed []string) {
+		if manager.onRemove != nil {
+			manager.onRemove(removed)
+		}
+	}
+
+	manager.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
+	if err != nil {
+		return fmt.Errorf("init diff manager: %w", err)
+	}
+
+	return
 }
 
 func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -73,8 +147,17 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 
 	st := state.NewDoc(s.id, nil).(*state.State)
 	// Set object type here in order to derive value of Type relation in smartblock.Init
-	st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	switch s.sbType {
+	case smartblock.SmartBlockTypeChatDerivedObject:
+		st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	case smartblock.SmartBlockTypeAccountObject:
+		st.SetObjectTypeKey(bundle.TypeKeyProfile)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_profile)))
+	default:
+		return nil, fmt.Errorf("unsupported smartblock type: %v", s.sbType)
+	}
+
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(true))
 	return st, nil
 }
@@ -90,6 +173,10 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	s.onUpdateHook = onUpdateHook
 	s.store = storeState
 
+	err = s.initDiffManagers(ctx)
+	if err != nil {
+		return err
+	}
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
@@ -126,17 +213,17 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	if err != nil {
 		return "", fmt.Errorf("marshal change: %w", err)
 	}
+
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         s.accountKeysService.Account().SignKey,
+		Key:         s.ObjectTree.AclList().AclState().Key(),
 		IsEncrypted: true,
 		DataType:    dataType,
 		Timestamp:   params.Time.Unix(),
-	}, func(change *treechangeproto.RawTreeChangeWithId) error {
-		order := tx.NextOrder(tx.GetMaxOrder())
+	}, func(change objecttree.StorageChange) error {
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
 			Id:        change.Id,
-			Order:     order,
+			Order:     change.OrderId,
 			Changes:   params.Changes,
 			Creator:   s.accountService.AccountID(),
 			Timestamp: params.Time.Unix(),
@@ -158,6 +245,20 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	if err == nil && s.onUpdateHook != nil {
 		s.onUpdateHook()
 	}
+	ch, err := s.ObjectTree.GetChange(changeId)
+	if err != nil {
+		return "", err
+	}
+
+	for _, m := range s.diffManagers {
+		if m.diffManager != nil {
+			m.diffManager.Add(&objecttree.Change{
+				Id:          changeId,
+				PreviousIds: ch.PreviousIds,
+			})
+		}
+	}
+
 	return changeId, err
 }
 
@@ -167,17 +268,80 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return err
 	}
 	applier := &storeApply{
-		tx: tx,
-		ot: tree,
+		tx:                   tx,
+		ot:                   tree,
+		needFetchPrevOrderId: true,
 	}
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)
 	}
 	err = tx.Commit()
+	for _, m := range s.diffManagers {
+		if m.diffManager != nil {
+			m.diffManager.Update(tree)
+		}
+	}
 	if err == nil && s.onUpdateHook != nil {
 		s.onUpdateHook()
 	}
 	return err
+}
+
+func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) error {
+	manager, ok := s.diffManagers[name]
+	if ok {
+		manager.diffManager.Remove(heads)
+		return s.StoreSeenHeads(ctx, name)
+	}
+	return nil
+}
+
+func seenHeadsCollectionName(name string) string {
+	return "seenHeads/" + name
+}
+
+func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
+	manager, ok := s.diffManagers[name]
+	if !ok {
+		return nil
+	}
+
+	coll, err := s.store.Collection(ctx, seenHeadsCollectionName(name))
+	if err != nil {
+		return fmt.Errorf("get collection: %w", err)
+	}
+
+	seenHeads := manager.diffManager.SeenHeads()
+	raw, err := json.Marshal(seenHeads)
+	if err != nil {
+		return fmt.Errorf("marshal seen heads: %w", err)
+	}
+
+	arena := &anyenc.Arena{}
+	doc := arena.NewObject()
+	doc.Set("id", arena.NewString(s.id))
+	doc.Set("h", arena.NewBinary(raw))
+	return coll.UpsertOne(ctx, doc)
+}
+
+func (s *store) loadSeenHeads(ctx context.Context, name string) ([]string, error) {
+	coll, err := s.store.Collection(ctx, seenHeadsCollectionName(name))
+	if err != nil {
+		return nil, fmt.Errorf("get collection: %w", err)
+	}
+
+	doc, err := coll.FindId(ctx, s.id)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil, nil
+	}
+
+	raw := doc.Value().GetBytes("h")
+	var seenHeads []string
+	err = json.Unmarshal(raw, &seenHeads)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal seen heads: %w", err)
+	}
+	return seenHeads, nil
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) error {

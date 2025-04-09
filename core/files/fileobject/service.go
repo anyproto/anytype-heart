@@ -76,6 +76,7 @@ type service struct {
 	objectStore     objectstore.ObjectStore
 	spaceIdResolver idresolver.Resolver
 	migrationQueue  *persistentqueue.Queue[*migrationItem]
+	accountService  accountService
 	objectArchiver  objectArchiver
 
 	indexer *indexer
@@ -83,7 +84,9 @@ type service struct {
 	resolverRetryStartDelay time.Duration
 	resolverRetryMaxDelay   time.Duration
 
-	closeWg *sync.WaitGroup
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
+	closeWg            *sync.WaitGroup
 }
 
 func New(
@@ -108,6 +111,8 @@ type configProvider interface {
 var _ configProvider = (*config.Config)(nil)
 
 func (s *service) Init(a *app.App) error {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.objectCreator = app.MustComponent[objectCreatorService](a)
 	s.fileService = app.MustComponent[files.Service](a)
@@ -117,6 +122,8 @@ func (s *service) Init(a *app.App) error {
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.objectArchiver = app.MustComponent[objectArchiver](a)
+	s.accountService = app.MustComponent[accountService](a)
+
 	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()
@@ -145,7 +152,7 @@ func (s *service) Run(_ context.Context) error {
 	go func() {
 		defer s.closeWg.Done()
 
-		err := s.deleteMigratedFilesInNonPersonalSpaces(context.Background())
+		err := s.deleteMigratedFilesInNonPersonalSpaces(s.componentCtx)
 		if err != nil {
 			log.Errorf("delete migrated files in non personal spaces: %v", err)
 		}
@@ -220,10 +227,12 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 
 	for _, record := range records {
 		fullId := extractFullFileIdFromDetails(record.Details)
-		id := record.Details.GetString(bundle.RelationKeyId)
-		err := s.addToSyncQueue(id, fullId, false, false)
-		if err != nil {
-			log.Errorf("add to sync queue: %v", err)
+		if record.Details.GetString(bundle.RelationKeyCreator) == s.accountService.MyParticipantId(fullId.SpaceId) {
+			id := record.Details.GetString(bundle.RelationKeyId)
+			err := s.addToSyncQueue(id, fullId, false, false)
+			if err != nil {
+				log.Errorf("add to sync queue: %v", err)
+			}
 		}
 	}
 
@@ -252,6 +261,9 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 }
 
 func (s *service) Close(ctx context.Context) error {
+	if s.componentCtxCancel != nil {
+		s.componentCtxCancel()
+	}
 	s.closeWg.Wait()
 	err := s.migrationQueue.Close()
 	return errors.Join(err, s.indexer.close())

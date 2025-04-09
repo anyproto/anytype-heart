@@ -144,7 +144,7 @@ func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 			hasArchivedFilter = true
 		}
 
-		if filter.RelationKey == bundle.RelationKeyLayout {
+		if filter.RelationKey == bundle.RelationKeyResolvedLayout {
 			hasTypeFilter = true
 		}
 
@@ -190,6 +190,7 @@ func FiltersFromProto(filters []*model.BlockContentDataviewFilter) []FilterReque
 			QuickOption:      f.QuickOption,
 			Format:           f.Format,
 			IncludeTime:      f.IncludeTime,
+			NestedFilters:    FiltersFromProto(f.NestedFilters),
 		})
 	}
 	return res

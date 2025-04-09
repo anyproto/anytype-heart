@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	simpleDataview "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -22,25 +21,52 @@ type ImportCollectionSetting struct {
 	collectionName                                      string
 	targetObjects                                       []string
 	icon                                                string
-	fileKeys                                            []*pb.ChangeFileKeys
 	needToAddDate, shouldBeFavorite, shouldAddRelations bool
 }
 
-func MakeImportCollectionSetting(
-	collectionName string,
-	targetObjects []string,
-	icon string,
-	fileKeys []*pb.ChangeFileKeys,
-	needToAddDate, shouldBeFavorite, shouldAddRelations bool,
-) *ImportCollectionSetting {
-	return &ImportCollectionSetting{
-		collectionName:     collectionName,
-		targetObjects:      targetObjects,
-		icon:               icon,
-		fileKeys:           fileKeys,
-		needToAddDate:      needToAddDate,
-		shouldBeFavorite:   shouldBeFavorite,
-		shouldAddRelations: shouldAddRelations,
+type ImportCollectionOption func(*ImportCollectionSetting)
+
+func NewImportCollectionSetting(opts ...ImportCollectionOption) *ImportCollectionSetting {
+	s := &ImportCollectionSetting{}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+func WithCollectionName(name string) ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.collectionName = name
+	}
+}
+
+func WithTargetObjects(objs []string) ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.targetObjects = objs
+	}
+}
+
+func WithIcon(icon string) ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.icon = icon
+	}
+}
+
+func WithAddDate() ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.needToAddDate = true
+	}
+}
+
+func WithFavorite() ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.shouldBeFavorite = true
+	}
+}
+
+func WithRelations() ImportCollectionOption {
+	return func(s *ImportCollectionSetting) {
+		s.shouldAddRelations = true
 	}
 }
 
@@ -75,19 +101,18 @@ func (r *ImportCollection) MakeImportCollection(req *ImportCollectionSetting) (*
 	detailsStruct = st.CombinedDetails().Merge(detailsStruct)
 	st.UpdateStoreSlice(template.CollectionStoreKey, req.targetObjects)
 
-	return r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct, req.fileKeys), nil
+	return r.getRootCollectionSnapshot(req.collectionName, st, detailsStruct), nil
 }
 
 func (r *ImportCollection) getRootCollectionSnapshot(
 	collectionName string,
 	st *state.State,
 	detailsStruct *domain.Details,
-	fileKeys []*pb.ChangeFileKeys,
 ) *Snapshot {
 	if detailsStruct == nil {
 		detailsStruct = domain.NewDetails()
 	}
-	detailsStruct.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_collection))
+	detailsStruct.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_collection))
 	return &Snapshot{
 		Id:       uuid.New().String(),
 		FileName: collectionName,
@@ -100,7 +125,6 @@ func (r *ImportCollection) getRootCollectionSnapshot(
 				RelationLinks: st.GetRelationLinks(),
 				Collections:   st.Store(),
 			},
-			FileKeys: fileKeys,
 		},
 	}
 }
@@ -129,7 +153,7 @@ func (r *ImportCollection) getCreateCollectionRequest(collectionName string, ico
 		bundle.RelationKeySourceFilePath: domain.String(collectionName),
 		bundle.RelationKeyName:           domain.String(collectionName),
 		bundle.RelationKeyIsFavorite:     domain.Bool(shouldBeFavorite),
-		bundle.RelationKeyLayout:         domain.Int64(model.ObjectType_collection),
+		bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_collection),
 		bundle.RelationKeyIconImage:      domain.String(icon),
 	})
 }

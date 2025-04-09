@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -31,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/reflection"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -192,7 +194,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject ||
 		sbt == smartblock.SmartBlockTypeUserDataObject {
-		return &store{source: src}, nil
+		return &store{source: src, sbType: sbt, diffManagers: map[string]*diffManager{}}, nil
 	}
 
 	return src, nil
@@ -332,8 +334,12 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// we need to have required internal relations for all objects, including system
 	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
-		template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks)(st)
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+	}
+
+	if s.Type() == smartblock.SmartBlockTypeWidget {
+		// todo: remove this after 0.41 release
+		state.CleanupLayouts(st)
 	}
 
 	s.fileObjectMigrator.MigrateFiles(st, s.space, s.GetFileKeysSnapshot())
@@ -373,6 +379,20 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
+	for _, change := range params.Changes {
+		name := reflection.GetChangeContent(change.Value)
+		if name == "" {
+			log.Errorf("can't detect change content for %s", change.Value)
+		} else {
+			ev := &metrics.ChangeEvent{
+				ChangeName: name,
+				SbType:     s.smartblockType.String(),
+				Count:      1,
+			}
+			metrics.Service.SendSampled(ev)
+		}
+	}
+
 	if params.Time.IsZero() {
 		params.Time = time.Now()
 	}
@@ -390,7 +410,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         s.accountKeysService.Account().SignKey,
+		Key:         s.ObjectTree.AclList().AclState().Key(),
 		IsSnapshot:  change.Snapshot != nil,
 		IsEncrypted: true,
 		DataType:    dataType,
