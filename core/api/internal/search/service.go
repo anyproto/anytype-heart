@@ -35,7 +35,7 @@ type SearchService struct {
 }
 
 func NewService(mw apicore.ClientCommands, spaceService *space.SpaceService, objectService *object.ObjectService) *SearchService {
-	return &SearchService{mw: mw, spaceService: spaceService, objectService: objectService}
+	return &SearchService{3mw: mw, spaceService: spaceService, objectService: objectService}
 }
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
@@ -158,11 +158,13 @@ func (s *SearchService) Search(ctx context.Context, spaceId string, request Sear
 
 	results := make([]object.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
+
 		object, err := s.objectService.GetObject(ctx, record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), record.Fields[bundle.RelationKeyId.String()].GetStringValue())
 		if err != nil {
 			return nil, 0, false, err
 		}
-		results = append(results, object)
+		object.
+			results = append(results, object)
 	}
 
 	return results, total, hasMore, nil
