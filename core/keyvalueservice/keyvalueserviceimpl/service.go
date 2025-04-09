@@ -35,7 +35,7 @@ type service struct {
 }
 
 func New() keyvalueservice.Service {
-	return &service{}
+	return &service{subscriptions: make(map[string]map[string]subscription)}
 }
 
 func (s *service) Init(a *app.App) (err error) {

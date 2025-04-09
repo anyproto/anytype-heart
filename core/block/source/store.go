@@ -131,6 +131,13 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 		return fmt.Errorf("init diff manager: %w", err)
 	}
 
+	err = s.keyValueService.SubscribeForUserScopedKey(s.seenHeadsKey(name), "messages", func(key string, val keyvalueservice.Value) {
+		fmt.Println("RECV", key, string(val.Data))
+	})
+	if err != nil {
+		return fmt.Errorf("subscribe: %w", err)
+	}
+
 	return
 }
 
