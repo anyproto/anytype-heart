@@ -104,16 +104,23 @@ func (s *store) initDiffManagers(ctx context.Context) error {
 			return fmt.Errorf("get value: %w", err)
 		}
 		for _, val := range vals {
-			var seenHeads []string
-			err = json.Unmarshal(val.Data, &seenHeads)
+			seenHeads, err := unmarshalSeenHeads(val.Data)
 			if err != nil {
 				return fmt.Errorf("unmarshal seen heads: %w", err)
 			}
 			manager.diffManager.Remove(seenHeads)
-			fmt.Println("LOAD SEEN HEADS", s.seenHeadsKey(name), seenHeads)
 		}
 	}
 	return nil
+}
+
+func unmarshalSeenHeads(raw []byte) ([]string, error) {
+	var seenHeads []string
+	err := json.Unmarshal(raw, &seenHeads)
+	if err != nil {
+		return nil, err
+	}
+	return seenHeads, nil
 }
 
 func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []string) (err error) {
@@ -142,9 +149,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 	}
 
 	err = s.keyValueService.SubscribeForUserScopedKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
-		fmt.Println("RECV", key, string(val.Data))
-		var newSeenHeads []string
-		err = json.Unmarshal(val.Data, &newSeenHeads)
+		newSeenHeads, err := unmarshalSeenHeads(val.Data)
 		if err != nil {
 			log.Errorf("subscribe for seenHeads: %s: %v", name, err)
 			return
@@ -332,7 +337,6 @@ func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 		return fmt.Errorf("marshal seen heads: %w", err)
 	}
 
-	fmt.Println("SAVE SEEN HEADS", s.seenHeadsKey(name), seenHeads)
 	return s.keyValueService.SetUserScopedKey(ctx, s.seenHeadsKey(name), raw)
 }
 
