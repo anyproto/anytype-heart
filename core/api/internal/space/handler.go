@@ -22,7 +22,7 @@ import (
 //	@Failure		500		{object}	util.ServerError					"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces [get]
-func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
+func GetSpacesHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
@@ -57,7 +57,7 @@ func GetSpacesHandler(s *SpaceService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id} [get]
-func GetSpaceHandler(s *SpaceService) gin.HandlerFunc {
+func GetSpaceHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
@@ -93,7 +93,7 @@ func GetSpaceHandler(s *SpaceService) gin.HandlerFunc {
 //	@Failure		500		{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces [post]
-func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
+func CreateSpaceHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req CreateSpaceRequest
 		if err := c.BindJSON(&req); err != nil {
@@ -134,7 +134,7 @@ func CreateSpaceHandler(s *SpaceService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/members [get]
-func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
+func GetMembersHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -169,7 +169,7 @@ func GetMembersHandler(s *SpaceService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/members/{member_id} [get]
-func GetMemberHandler(s *SpaceService) gin.HandlerFunc {
+func GetMemberHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		memberId := c.Param("member_id")

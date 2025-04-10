@@ -39,26 +39,23 @@ const (
 )
 
 type fixture struct {
-	*SearchService
-	mwMock *mock_apicore.MockClientCommands
+	service Service
+	mwMock  *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 
 	spaceService := space.NewService(mwMock)
-	spaceService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId, GatewayUrl: gatewayUrl}
+	spaceService.SetAccountInfo(&model.AccountInfo{TechSpaceId: techSpaceId, GatewayUrl: gatewayUrl})
 	objectService := object.NewService(mwMock, spaceService)
-	objectService.AccountInfo = &model.AccountInfo{TechSpaceId: techSpaceId}
+	objectService.SetAccountInfo(&model.AccountInfo{TechSpaceId: techSpaceId})
 	searchService := NewService(mwMock, spaceService, objectService)
-	searchService.AccountInfo = &model.AccountInfo{
-		TechSpaceId: techSpaceId,
-		GatewayUrl:  gatewayUrl,
-	}
+	searchService.SetAccountInfo(&model.AccountInfo{TechSpaceId: techSpaceId, GatewayUrl: gatewayUrl})
 
 	return &fixture{
-		SearchService: searchService,
-		mwMock:        mwMock,
+		service: searchService,
+		mwMock:  mwMock,
 	}
 }
 
@@ -371,7 +368,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -426,7 +423,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -445,7 +442,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.Error(t, err)
@@ -571,7 +568,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -596,7 +593,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -615,7 +612,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
 
 		// then
 		require.Error(t, err)

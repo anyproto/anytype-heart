@@ -18,12 +18,12 @@ import (
 type Server struct {
 	engine *gin.Engine
 
-	authService   *auth.AuthService
-	exportService *export.ExportService
-	listService   *list.ListService
-	objectService *object.ObjectService
-	spaceService  *space.SpaceService
-	searchService *search.SearchService
+	authService   auth.Service
+	exportService export.Service
+	listService   list.Service
+	objectService object.Service
+	spaceService  space.Service
+	searchService search.Service
 
 	mu         sync.Mutex
 	KeyToToken map[string]string // appKey -> token
@@ -34,10 +34,10 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw, exportService),
+		objectService: object.NewService(mw),
 		spaceService:  space.NewService(mw),
 	}
 
-	s.objectService = object.NewService(mw, s.spaceService)
 	s.listService = list.NewService(mw, s.objectService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
 	s.engine = s.NewRouter(mw, accountService)

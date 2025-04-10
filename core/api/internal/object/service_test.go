@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
-	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -39,23 +38,21 @@ const (
 )
 
 type fixture struct {
-	*ObjectService
-	mwMock *mock_apicore.MockClientCommands
+	service Service
+	mwMock  *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-
-	spaceService := space.NewService(mwMock)
-	objectService := NewService(mwMock, spaceService)
-	objectService.AccountInfo = &model.AccountInfo{
+	objectService := NewService(mwMock)
+	objectService.SetAccountInfo(&model.AccountInfo{
 		TechSpaceId: mockedTechSpaceId,
 		GatewayUrl:  gatewayUrl,
-	}
+	})
 
 	return &fixture{
-		ObjectService: objectService,
-		mwMock:        mwMock,
+		service: objectService,
+		mwMock:  mwMock,
 	}
 }
 
@@ -197,7 +194,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.ListObjects(ctx, mockedSpaceId, offset, limit)
+		objects, total, hasMore, err := fx.service.ListObjects(ctx, mockedSpaceId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -284,7 +281,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.ListObjects(ctx, mockedSpaceId, offset, limit)
+		objects, total, hasMore, err := fx.service.ListObjects(ctx, mockedSpaceId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -367,7 +364,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		object, err := fx.GetObject(ctx, mockedSpaceId, mockedObjectId)
+		object, err := fx.service.GetObject(ctx, mockedSpaceId, mockedObjectId)
 
 		// then
 		require.NoError(t, err)
@@ -412,7 +409,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		object, err := fx.GetObject(ctx, mockedSpaceId, "missing-obj")
+		object, err := fx.service.GetObject(ctx, mockedSpaceId, "missing-obj")
 
 		// then
 		require.ErrorIs(t, err, ErrObjectNotFound)
@@ -491,7 +488,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		}).Once()
 
 		// when
-		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
+		object, err := fx.service.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name:       mockedObjectName,
 			Icon:       util.Icon{Format: util.IconFormatEmoji, Emoji: util.StringPtr(mockedObjectIcon)},
 			TemplateId: mockedTemplateId,
@@ -522,7 +519,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 			}).Once()
 
 		// when
-		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
+		object, err := fx.service.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name: "Fail Object",
 			Icon: util.Icon{},
 		})
@@ -555,7 +552,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 			}).Once()
 
 		// when
-		types, total, hasMore, err := fx.ListTypes(ctx, mockedSpaceId, offset, limit)
+		types, total, hasMore, err := fx.service.ListTypes(ctx, mockedSpaceId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -580,7 +577,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 			}).Once()
 
 		// when
-		types, total, hasMore, err := fx.ListTypes(ctx, "empty-space", offset, limit)
+		types, total, hasMore, err := fx.service.ListTypes(ctx, "empty-space", offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -619,7 +616,7 @@ func TestObjectService_GetType(t *testing.T) {
 		}).Once()
 
 		// when
-		objType, err := fx.GetType(ctx, mockedSpaceId, mockedTypeId)
+		objType, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
 
 		// then
 		require.NoError(t, err)
@@ -643,7 +640,7 @@ func TestObjectService_GetType(t *testing.T) {
 		}).Once()
 
 		// when
-		objType, err := fx.GetType(ctx, mockedSpaceId, mockedTypeId)
+		objType, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
 
 		// then
 		require.ErrorIs(t, err, ErrTypeNotFound)
@@ -677,31 +674,16 @@ func TestObjectService_ListTemplates(t *testing.T) {
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():               pbtypes.String("template-1"),
 						bundle.RelationKeyTargetObjectType.String(): pbtypes.String("target-type-id"),
+						bundle.RelationKeyName.String():             pbtypes.String("Template Name"),
+						bundle.RelationKeyIconEmoji.String():        pbtypes.String("📝"),
 					},
 				},
 			},
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock object show for template details
-		fx.mwMock.On("ObjectShow", mock.Anything, mock.Anything).Return(&pb.RpcObjectShowResponse{
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-			ObjectView: &model.ObjectView{
-				Details: []*model.ObjectViewDetailsSet{
-					{
-						Details: &types.Struct{
-							Fields: map[string]*types.Value{
-								bundle.RelationKeyName.String():      pbtypes.String("Template Name"),
-								bundle.RelationKeyIconEmoji.String(): pbtypes.String("📝"),
-							},
-						},
-					},
-				},
-			},
-		}, nil).Once()
-
 		// when
-		templates, total, hasMore, err := fx.ListTemplates(ctx, mockedSpaceId, "target-type-id", offset, limit)
+		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "target-type-id", offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -725,7 +707,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 			}).Once()
 
 		// when
-		templates, total, hasMore, err := fx.ListTemplates(ctx, mockedSpaceId, "missing-type-id", offset, limit)
+		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "missing-type-id", offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrTemplateTypeNotFound)
@@ -762,7 +744,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		}).Once()
 
 		// when
-		template, err := fx.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
+		template, err := fx.service.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
 
 		// then
 		require.NoError(t, err)
@@ -784,7 +766,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		}).Once()
 
 		// when
-		template, err := fx.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
+		template, err := fx.service.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
 
 		// then
 		require.ErrorIs(t, err, ErrTemplateNotFound)

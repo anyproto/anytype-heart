@@ -24,7 +24,7 @@ import (
 //	@Failure		500		{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/search [post]
-func GlobalSearchHandler(s *SearchService) gin.HandlerFunc {
+func GlobalSearchHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
@@ -67,7 +67,7 @@ func GlobalSearchHandler(s *SearchService) gin.HandlerFunc {
 //	@Failure		500			{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/search [post]
-func SearchHandler(s *SearchService) gin.HandlerFunc {
+func SearchHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceID := c.Param("space_id")
 		offset := c.GetInt("offset")
