@@ -216,7 +216,7 @@ var WithTitle = StateTransformer(func(s *state.State) {
 	}
 })
 
-var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
+var withRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		var featRels = s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
 		if slice.FindPos(featRels, key.String()) > -1 {
@@ -315,7 +315,7 @@ var WithFirstTextBlockContent = func(text string) StateTransformer {
 }
 
 var WithNoDescription = StateTransformer(func(s *state.State) {
-	WithRemovedFeaturedRelation(bundle.RelationKeyDescription)(s)
+	withRemovedFeaturedRelation(bundle.RelationKeyDescription)(s)
 	s.Unlink(DescriptionBlockId)
 })
 
@@ -595,13 +595,6 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, oldRel := range oldBookmarkRelations {
 		s.RemoveRelation(oldRel)
-	}
-
-	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-
-	if slice.FindPos(fr, bundle.RelationKeyCreatedDate.String()) == -1 {
-		fr = append(fr, bundle.RelationKeyCreatedDate.String())
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 	}
 
 	for _, k := range bookmarkRelationKeys {
