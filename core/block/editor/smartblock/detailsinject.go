@@ -26,7 +26,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := details.CopyOnlyKeys(keys...)
-	localDetailsFromStore.Delete(bundle.RelationKeyResolvedLayout)
 
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
@@ -240,6 +239,11 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		}
 		convertLayoutFromNote(s, currentValue, newValue)
 	}()
+
+	if !currentValue.Ok() && layoutValue.Ok() {
+		// we don't have resolvedLayout in local details, but we have layout
+		currentValue = layoutValue
+	}
 
 	typeDetails, err := sb.getTypeDetails(s)
 	if err != nil {
