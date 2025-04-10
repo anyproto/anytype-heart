@@ -16188,6 +16188,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ImportUseCase.Response.Error](#anytype-Rpc-Object-ImportUseCase-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| startingObjectId | [string](#string) |  |  |
 
 
 
@@ -21332,6 +21333,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Workspace.Create.Response.Error](#anytype-Rpc-Workspace-Create-Response-Error) |  |  |
 | spaceId | [string](#string) |  |  |
+| startingObjectId | [string](#string) |  |  |
 
 
 
@@ -29923,6 +29925,7 @@ Precondition: user A and user B opened the same block
 | spaceDashboardId | [string](#string) |  |  |
 | profileId | [string](#string) |  |  |
 | analyticsId | [string](#string) |  |  |
+| startingPage | [string](#string) |  |  |
 
 
 

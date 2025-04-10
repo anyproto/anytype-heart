@@ -26,6 +26,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := details.CopyOnlyKeys(keys...)
+	localDetailsFromStore.Delete(bundle.RelationKeyResolvedLayout)
 
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
