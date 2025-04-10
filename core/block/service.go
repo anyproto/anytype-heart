@@ -111,7 +111,7 @@ type Service struct {
 }
 
 type builtinObjects interface {
-	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (dashboardId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (startingPageId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type openedObjects struct {

@@ -159,32 +159,7 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 	return details, nil
 }
 
-func (s *subscription) add(ctx context.Context, prevOrderId string, message *Message) {
-	s.updateChatState(func(state *model.ChatState) *model.ChatState {
-		if !message.Read {
-			if message.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
-				state.Messages.OldestOrderId = message.OrderId
-			}
-			state.Messages.Counter++
-
-			isMentioned, err := message.IsCurrentUserMentioned(ctx, s.myParticipantId, s.myIdentity, s.repository)
-			if err != nil {
-				log.Error("subscription add: check if the current user is mentioned", zap.Error(err))
-			}
-			if isMentioned {
-				state.Mentions.Counter++
-				if message.OrderId < state.Mentions.OldestOrderId || state.Mentions.OldestOrderId == "" {
-					state.Mentions.OldestOrderId = message.OrderId
-				}
-			}
-
-		}
-		if message.StateId > state.LastStateId {
-			state.LastStateId = message.StateId
-		}
-		return state
-	})
-
+func (s *subscription) add(prevOrderId string, message *Message) {
 	if !s.canSend() {
 		return
 	}

@@ -442,7 +442,12 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		u.fileStyle = u.block.Model().GetFile().GetStyle()
 	}
 	if !u.forceType {
-		u.fileType = u.detectType(buf)
+		fileType, detectErr := u.detectType(buf)
+		if detectErr != nil {
+			err = fmt.Errorf("detectType: %w", detectErr)
+			return
+		}
+		u.fileType = fileType
 	}
 	if u.fileStyle == model.BlockContentFile_Auto {
 		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
@@ -542,13 +547,17 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 
 }
 
-func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
+func (u *uploader) detectType(buf *fileReader) (model.BlockContentFileType, error) {
 	mime, err := mimetype.DetectReader(buf)
+	_, seekErr := buf.Seek(0, io.SeekStart)
+	if seekErr != nil {
+		return 0, fmt.Errorf("seek: %w", err)
+	}
 	if err != nil {
 		log.With("error", err).Error("detect MIME")
-		return model.BlockContentFile_File
+		return model.BlockContentFile_File, nil
 	}
-	return file.DetectTypeByMIME(u.name, mime.String())
+	return file.DetectTypeByMIME(u.name, mime.String()), nil
 }
 
 type FileComponent interface {
