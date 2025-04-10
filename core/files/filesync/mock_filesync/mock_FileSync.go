@@ -9,7 +9,7 @@ import (
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
-	filesync "github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	filesync "github.com/anyproto/anytype-heart/core/files/filesync"
 
 	http "net/http"
 
@@ -350,66 +350,6 @@ func (_c *MockFileSync_DeleteFileSynchronously_Call) Return(err error) *MockFile
 }
 
 func (_c *MockFileSync_DeleteFileSynchronously_Call) RunAndReturn(run func(domain.FullFileId) error) *MockFileSync_DeleteFileSynchronously_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// FileListStats provides a mock function with given fields: ctx, spaceId, hashes
-func (_m *MockFileSync) FileListStats(ctx context.Context, spaceId string, hashes []domain.FileId) ([]filesync.FileStat, error) {
-	ret := _m.Called(ctx, spaceId, hashes)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FileListStats")
-	}
-
-	var r0 []filesync.FileStat
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, []domain.FileId) ([]filesync.FileStat, error)); ok {
-		return rf(ctx, spaceId, hashes)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, []domain.FileId) []filesync.FileStat); ok {
-		r0 = rf(ctx, spaceId, hashes)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]filesync.FileStat)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, []domain.FileId) error); ok {
-		r1 = rf(ctx, spaceId, hashes)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockFileSync_FileListStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FileListStats'
-type MockFileSync_FileListStats_Call struct {
-	*mock.Call
-}
-
-// FileListStats is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceId string
-//   - hashes []domain.FileId
-func (_e *MockFileSync_Expecter) FileListStats(ctx interface{}, spaceId interface{}, hashes interface{}) *MockFileSync_FileListStats_Call {
-	return &MockFileSync_FileListStats_Call{Call: _e.mock.On("FileListStats", ctx, spaceId, hashes)}
-}
-
-func (_c *MockFileSync_FileListStats_Call) Run(run func(ctx context.Context, spaceId string, hashes []domain.FileId)) *MockFileSync_FileListStats_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].([]domain.FileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_FileListStats_Call) Return(_a0 []filesync.FileStat, _a1 error) *MockFileSync_FileListStats_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockFileSync_FileListStats_Call) RunAndReturn(run func(context.Context, string, []domain.FileId) ([]filesync.FileStat, error)) *MockFileSync_FileListStats_Call {
 	_c.Call.Return(run)
 	return _c
 }

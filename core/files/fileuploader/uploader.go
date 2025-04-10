@@ -115,6 +115,7 @@ type UploadResult struct {
 	Type              model.BlockContentFileType
 	FileObjectId      string
 	FileObjectDetails *domain.Details
+	EncryptionKeys    map[string]string
 	MIME              string
 	Size              int64
 	Err               error
@@ -497,6 +498,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 	result.FileObjectId = fileObjectId
 	result.FileObjectDetails = fileObjectDetails
+	result.EncryptionKeys = addResult.EncryptionKeys.EncryptionKeys
 
 	result.Type = u.fileType
 	result.Name = u.name
@@ -536,6 +538,7 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 		ObjectOrigin:      u.origin,
 		ImageKind:         u.imageKind,
 		AdditionalDetails: u.additionalDetails,
+		FileVariants:      addResult.Variants,
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("create file object: %w", err)
