@@ -208,7 +208,7 @@ func TestRebindQueue(t *testing.T) {
 	fx := newFixture(t)
 
 	fx.fileSync.EXPECT().CancelDeletion("objectId1", testFullFileId).Return(nil)
-	fx.fileSync.EXPECT().AddFile("objectId1", testFullFileId, false, false).Return(nil)
+	fx.fileSync.EXPECT().AddFile("objectId1", testFullFileId, false, false, domain.FileId(""), 0).Return(nil)
 
 	err := fx.rebindQueue.Add(&queueItem{
 		ObjectId: "objectId1",

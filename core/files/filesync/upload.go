@@ -42,8 +42,6 @@ func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, upload
 	}
 
 	if !s.fileIsInAnyQueue(it.Key()) {
-		rawIt, _ := json.Marshal(it)
-		fmt.Println("ADDED", string(rawIt))
 		return s.uploadingQueue.Add(it)
 	}
 	return nil
@@ -101,10 +99,6 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 }
 
 func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
-
-	rawIt, _ := json.Marshal(it)
-	fmt.Println("HANDLEITEM", string(rawIt))
-
 	spaceId, fileId := it.SpaceId, it.FileId
 	err := s.uploadFile(ctx, it)
 	if errors.Is(err, context.Canceled) {
@@ -141,11 +135,12 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 		if err != nil {
 			return s.addToRetryUploadingQueue(it), err
 		}
+
+		s.updateSpaceUsageInformation(spaceId)
 		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}
 
 	s.updateSpaceUsageInformation(spaceId)
-
 	return persistentqueue.ActionDone, nil
 }
 

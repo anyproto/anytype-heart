@@ -174,7 +174,7 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, spaceId, fileId, "")
+		err := fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
@@ -188,13 +188,13 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, spaceId, fileId, "")
+		err := fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
 		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
 
-		err = fx.uploadFile(ctx, spaceId, fileId, "")
+		err = fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().CidsBinded() == fx.rpcStore.Stats().BlocksAdded())
@@ -207,7 +207,7 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, spaceId, fileId, "")
+		err := fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 		var errLimit *errLimitReached
 		require.ErrorAs(t, err, &errLimit)
 	})
@@ -239,7 +239,7 @@ func TestUpload(t *testing.T) {
 			go func(fileId domain.FileId) {
 				defer wg.Done()
 
-				err := fx.uploadFile(ctx, spaceId, fileId, "")
+				err := fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 				if err != nil {
 					errorsLock.Lock()
 					errors = append(errors, err)

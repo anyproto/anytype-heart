@@ -315,7 +315,6 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 				variantId: domain.FileId(variant.Hash),
 				size:      variant.Size_,
 			})
-			fmt.Println("SEEN VARIANT", variant.Path, variant.Hash, variant.Size_)
 		}
 	}
 	sort.Slice(imageVariants, func(i, j int) bool {
