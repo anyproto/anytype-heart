@@ -175,8 +175,6 @@ var (
 		bundle.TypeKeySet, bundle.TypeKeyCollection, // lists
 		bundle.TypeKeyFile, bundle.TypeKeyAudio, bundle.TypeKeyVideo, bundle.TypeKeyImage, // files
 	}
-
-	deletableSystemTypes = []domain.TypeKey{bundle.TypeKeyTask, bundle.TypeKeyNote}
 )
 
 func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
@@ -264,8 +262,6 @@ func getRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 		if slices.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
 			if slices.Contains(editableSystemTypes, domain.TypeKey(key)) {
 				r = sysTypesRestrictions
-			} else if slices.Contains(deletableSystemTypes, domain.TypeKey(key)) {
-				r = objRestrictEditAndTemplate
 			} else {
 				r = sysTypesRestrictionsEdit
 			}
