@@ -348,7 +348,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 			}
 		}
 		for _, message := range messages {
-			s.subscription.add(ctx, previousOrderId, message)
+			s.subscription.add(previousOrderId, message)
 			previousOrderId = message.OrderId
 		}
 
