@@ -131,3 +131,25 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
 	return r.s.streamPool.ReadStream(stream, 300)
 }
+
+func (r *rpcHandler) StoreDiff(ctx context.Context, req *spacesyncproto.StoreDiffRequest) (*spacesyncproto.StoreDiffResponse, error) {
+	space, err := r.s.Get(ctx, req.SpaceId)
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	return space.KeyValue().HandleStoreDiffRequest(ctx, req)
+}
+
+func (r *rpcHandler) StoreElements(stream spacesyncproto.DRPCSpaceSync_StoreElementsStream) error {
+	msg, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("recv first message: %w", err)
+	}
+
+	ctx := context.Background()
+	space, err := r.s.Get(ctx, msg.SpaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	return space.KeyValue().HandleStoreElementsRequest(ctx, stream)
+}

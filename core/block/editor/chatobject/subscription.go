@@ -136,7 +136,6 @@ func (s *subscription) flush() {
 		ContextId: s.chatId,
 		Messages:  events,
 	}
-
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, events)
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
