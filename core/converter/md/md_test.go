@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/converter/md/csv"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -78,7 +79,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		)
-		c := NewMDConverter(nil, objectstore.NewStoreFixture(t), nil, nil, nil, nil)
+		c := NewMDConverter(nil, objectstore.NewStoreFixture(t), nil, csv.NewExportCtx())
 		res := c.Convert(s, model.SmartBlockType_Page, "")
 		exp := "# Header 1   \n## Header 2   \n --- \n### Header 3   \nUsual text   \n#### Header 4   \n"
 		assert.Equal(t, exp, string(res))
@@ -127,7 +128,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(nil, objectstore.NewStoreFixture(t), nil, nil, nil, nil)
+		c := NewMDConverter(nil, objectstore.NewStoreFixture(t), nil, csv.NewExportCtx())
 		res := c.Convert(s, model.SmartBlockType_Page, "")
 		exp := "***[some](http://golang.org)*** [t](http://golang.org) [e](http://golang.org)xt **wi~~th m~~**~~ar~~ks @mention   \n"
 		assert.Equal(t, exp, string(res))
@@ -144,7 +145,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(nil, objectstore.NewStoreFixture(t), nil, nil, nil, nil)
+		c := NewMDConverter(nil, objectstore.NewStoreFixture(t), nil, csv.NewExportCtx())
 		res := c.Convert(s, model.SmartBlockType_Page, "")
 		exp := "Test 😝   \n"
 		assert.Equal(t, exp, string(res))
@@ -166,7 +167,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(nil, objectstore.NewStoreFixture(t), nil, nil, nil, nil)
+		c := NewMDConverter(nil, objectstore.NewStoreFixture(t), nil, csv.NewExportCtx())
 		res := c.Convert(s, model.SmartBlockType_Page, "")
 		exp := "Test ⛰️   \n"
 		assert.Equal(t, exp, string(res))

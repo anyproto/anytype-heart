@@ -26,34 +26,34 @@ func (s stubName) Get(path, hash, title, ext string) (name string) {
 func TestConverter(t *testing.T) {
 	t.Run("no dataview block", func(t *testing.T) {
 		// given
-		converter := NewConverter(objectstore.NewStoreFixture(t), nil, nil, nil, nil)
+		converter := NewConverter(NewExportCtx(), objectstore.NewStoreFixture(t), nil)
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}),
 		}).(*state.State)
 
 		// when
-		result := converter.Convert(st, nil, nil, nil)
+		result := converter.Convert(st)
 
 		// then
 		assert.Nil(t, result)
 	})
 	t.Run("empty dataview", func(t *testing.T) {
 		// given
-		converter := NewConverter(objectstore.NewStoreFixture(t), nil, nil, nil, nil)
+		converter := NewConverter(NewExportCtx(), objectstore.NewStoreFixture(t), nil)
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root":     simple.New(&model.Block{Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}),
 			"dataview": simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{}}}),
 		}).(*state.State)
 
 		// when
-		result := converter.Convert(st, nil, nil, nil)
+		result := converter.Convert(st)
 
 		// then
 		assert.Nil(t, result)
 	})
 	t.Run("no known docs", func(t *testing.T) {
 		// given
-		converter := NewConverter(objectstore.NewStoreFixture(t), nil, nil, nil, nil)
+		converter := NewConverter(NewExportCtx(), objectstore.NewStoreFixture(t), nil)
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}),
 			"dataview": simple.New(&model.Block{ChildrenIds: []string{"dataview"}, Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
@@ -85,7 +85,7 @@ func TestConverter(t *testing.T) {
 		st.UpdateStoreSlice(template.CollectionStoreKey, []string{"test1"})
 
 		// when
-		result := converter.Convert(st, nil, nil, nil)
+		result := converter.Convert(st)
 
 		// then
 		assert.Empty(t, result)
@@ -95,59 +95,51 @@ func TestConverter(t *testing.T) {
 		storeFixture := objectstore.NewStoreFixture(t)
 		storeFixture.AddObjects(t, "spaceId", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:          domain.String("id1"),
-				bundle.RelationKeyName:        domain.String("Name"),
-				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyName.String()),
-				bundle.RelationKeySpaceId:     domain.String("spaceId"),
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeyName:           domain.String("Name"),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
+				bundle.RelationKeySpaceId:        domain.String("spaceId"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_relation),
 			},
 			{
-				bundle.RelationKeyId:          domain.String("id2"),
-				bundle.RelationKeyName:        domain.String("Due date"),
-				bundle.RelationKeyRelationKey: domain.String(bundle.RelationKeyDueDate.String()),
-				bundle.RelationKeySpaceId:     domain.String("spaceId"),
+				bundle.RelationKeyId:             domain.String("id2"),
+				bundle.RelationKeyName:           domain.String("Due date"),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyDueDate.String()),
+				bundle.RelationKeySpaceId:        domain.String("spaceId"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_relation),
 			},
 		})
-		converter := NewConverter(storeFixture, map[string]*domain.Details{
+		converter := NewConverter(NewExportCtx(), storeFixture, map[string]*domain.Details{
 			"test1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyName:    domain.String("Test Name"),
-				bundle.RelationKeyDueDate: domain.Int64(time.Now().Unix()),
+				bundle.RelationKeyDueDate: domain.Int64(time.Date(2025, 1, 1, 1, 0, 0, 0, time.UTC).Unix()),
 				bundle.RelationKeyCamera:  domain.String("test"),
 			}),
-		}, nil, nil, nil)
+		})
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{ChildrenIds: []string{"dataview"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}),
 			"dataview": simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
-				Views: []*model.BlockContentDataviewView{
+				RelationLinks: []*model.RelationLink{
 					{
-						Relations: []*model.BlockContentDataviewRelation{
-							{
-								Key:       bundle.RelationKeyName.String(),
-								IsVisible: true,
-							},
-							{
-								Key:       bundle.RelationKeyDueDate.String(),
-								IsVisible: false,
-							},
-						},
+						Key: bundle.RelationKeyName.String(),
 					},
 					{
-						Relations: []*model.BlockContentDataviewRelation{
-							{
-								Key:       bundle.RelationKeyCamera.String(),
-								IsVisible: true,
-							},
-						},
+						Key: bundle.RelationKeyDueDate.String(),
+					},
+					{
+						Key: bundle.RelationKeyCamera.String(),
 					},
 				},
 			}}}),
 		}).(*state.State)
 		st.SetLocalDetail(bundle.RelationKeySpaceId, domain.String("spaceId"))
 		st.UpdateStoreSlice(template.CollectionStoreKey, []string{"test1"})
+		st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_collection))
 
 		// when
-		result := converter.Convert(st, nil, nil, nil)
+		result := converter.Convert(st)
 
 		// then
-		assert.Equal(t, "Name\nTest Name\n", string(result))
+		assert.Equal(t, "Name,Due date\nTest Name,1735693200\n", string(result))
 	})
 }

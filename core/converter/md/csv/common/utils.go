@@ -19,6 +19,11 @@ func ExtractHeaders(spaceIndex spaceindex.Store, keys []string) ([]string, []str
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.StringList(keys),
 			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64(model.ObjectType_relation),
+			},
 		},
 	})
 	if err != nil {

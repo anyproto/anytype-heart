@@ -54,7 +54,6 @@ type MD struct {
 
 	knownDocs map[string]*domain.Details
 
-	mw *marksWriter
 	fn FileNamer
 
 	objectTypeFiles csv.ObjectTypeFiles
@@ -76,7 +75,7 @@ func (h *MD) Convert(st *state.State, sbType model.SmartBlockType, filename stri
 		result = h.convertToMarkdown()
 	}
 
-	if err := h.writeRecordToObjectTypeCsvFile(filename); err != nil {
+	if err := h.writeRecordToObjectTypeCsvFile(filename, layout); err != nil {
 		log.Errorf("failed to write CSV with object type: %v", err)
 	}
 
@@ -95,12 +94,14 @@ func (h *MD) convertToMarkdown() []byte {
 	}
 
 	buf := new(bytes.Buffer)
-	h.renderChildren(buf, new(renderState), root.Model())
+	mw := &marksWriter{h: h}
+
+	h.renderChildren(buf, new(renderState), root.Model(), mw)
 
 	return buf.Bytes()
 }
 
-func (h *MD) writeRecordToObjectTypeCsvFile(filename string) error {
+func (h *MD) writeRecordToObjectTypeCsvFile(filename string, layout model.ObjectTypeLayout) error {
 	details, err := h.getObjectTypeDetails(h.s)
 	if err != nil {
 		return err
@@ -110,6 +111,9 @@ func (h *MD) writeRecordToObjectTypeCsvFile(filename string) error {
 		return err
 	}
 
+	if !h.isDocumentLayout(layout) {
+		filename = h.s.Details().GetString(bundle.RelationKeyName)
+	}
 	return file.WriteRecord(h.s, filename)
 }
 
@@ -150,12 +154,12 @@ func (h *MD) isListLayout(layout model.ObjectTypeLayout) bool {
 func (h *MD) Export() (result string) {
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
-	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
+	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model(), nil)
 	return buf.String()
 }
 
 func (h *MD) Ext(layout model.ObjectTypeLayout) string {
-	if h.isListLayout(layout) {
+	if h.isListLayout(0) {
 		return ".csv"
 	}
 	return ".md"
@@ -181,44 +185,44 @@ type writer interface {
 	WriteRune(r rune) (n int, err error)
 }
 
-func (h *MD) render(buf writer, in *renderState, b *model.Block) {
+func (h *MD) render(buf writer, in *renderState, b *model.Block, mw *marksWriter) {
 	switch b.Content.(type) {
 	case *model.BlockContentOfSmartblock:
 	case *model.BlockContentOfText:
-		h.renderText(buf, in, b)
+		h.renderText(buf, in, b, mw)
 	case *model.BlockContentOfFile:
 		h.renderFile(buf, in, b)
 	case *model.BlockContentOfBookmark:
 		h.renderBookmark(buf, in, b)
 	case *model.BlockContentOfDiv:
-		h.renderDiv(buf, in, b)
+		h.renderDiv(buf, in, b, mw)
 	case *model.BlockContentOfLayout:
-		h.renderLayout(buf, in, b)
+		h.renderLayout(buf, in, b, mw)
 	case *model.BlockContentOfLink:
 		h.renderLink(buf, in, b)
 	case *model.BlockContentOfLatex:
 		h.renderLatex(buf, in, b)
 	case *model.BlockContentOfTable:
-		h.renderTable(buf, in, b)
+		h.renderTable(buf, in, b, mw)
 	default:
-		h.renderLayout(buf, in, b)
+		h.renderLayout(buf, in, b, nil)
 	}
 }
 
-func (h *MD) renderChildren(buf writer, in *renderState, parent *model.Block) {
+func (h *MD) renderChildren(buf writer, in *renderState, parent *model.Block, mw *marksWriter) {
 	for _, chId := range parent.ChildrenIds {
 		b := h.s.Pick(chId)
 		if b == nil {
 			continue
 		}
-		h.render(buf, in, b.Model())
+		h.render(buf, in, b.Model(), mw)
 	}
 }
 
-func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
+func (h *MD) renderText(buf writer, in *renderState, b *model.Block, mw *marksWriter) {
 	text := b.GetText()
+	mw.Init(text)
 	renderText := func() {
-		mw := h.marksWriter(text)
 		var (
 			i int
 			r rune
@@ -246,38 +250,38 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 			log.Warnf("failed to export header1 in markdown: %v", err)
 		}
 		renderText()
-		h.renderChildren(buf, in.AddSpace(), b)
+		h.renderChildren(buf, in.AddSpace(), b, mw)
 	case model.BlockContentText_Header2:
 		_, err := buf.WriteString(`## `)
 		if err != nil {
 			log.Warnf("failed to export header2 in markdown: %v", err)
 		}
 		renderText()
-		h.renderChildren(buf, in.AddSpace(), b)
+		h.renderChildren(buf, in.AddSpace(), b, mw)
 	case model.BlockContentText_Header3:
 		_, err := buf.WriteString(`### `)
 		if err != nil {
 			log.Warnf("failed to export header3 in markdown: %v", err)
 		}
 		renderText()
-		h.renderChildren(buf, in.AddSpace(), b)
+		h.renderChildren(buf, in.AddSpace(), b, mw)
 	case model.BlockContentText_Header4:
 		_, err := buf.WriteString(`#### `)
 		if err != nil {
 			log.Warnf("failed to export header4 in markdown: %v", err)
 		}
 		renderText()
-		h.renderChildren(buf, in.AddSpace(), b)
+		h.renderChildren(buf, in.AddSpace(), b, mw)
 	case model.BlockContentText_Quote, model.BlockContentText_Toggle:
 		buf.WriteString("> ")
 		buf.WriteString(strings.ReplaceAll(text.Text, "\n", "   \n> "))
 		buf.WriteString("   \n\n")
-		h.renderChildren(buf, in, b)
+		h.renderChildren(buf, in, b, mw)
 	case model.BlockContentText_Code:
 		buf.WriteString("```\n")
 		buf.WriteString(strings.ReplaceAll(text.Text, "```", "\\`\\`\\`"))
 		buf.WriteString("\n```\n")
-		h.renderChildren(buf, in, b)
+		h.renderChildren(buf, in, b, mw)
 	case model.BlockContentText_Checkbox:
 		if text.Checked {
 			buf.WriteString("- [x] ")
@@ -285,21 +289,21 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 			buf.WriteString("- [ ] ")
 		}
 		renderText()
-		h.renderChildren(buf, in.AddNBSpace(), b)
+		h.renderChildren(buf, in.AddNBSpace(), b, mw)
 	case model.BlockContentText_Marked:
 		buf.WriteString(`- `)
 		renderText()
-		h.renderChildren(buf, in.AddSpace(), b)
+		h.renderChildren(buf, in.AddSpace(), b, mw)
 		in.listOpened = true
 	case model.BlockContentText_Numbered:
 		in.listNumber++
 		buf.WriteString(fmt.Sprintf(`%d. `, in.listNumber))
 		renderText()
-		h.renderChildren(buf, in.AddSpace(), b)
+		h.renderChildren(buf, in.AddSpace(), b, mw)
 		in.listOpened = true
 	default:
 		renderText()
-		h.renderChildren(buf, in.AddNBSpace(), b)
+		h.renderChildren(buf, in.AddNBSpace(), b, mw)
 	}
 }
 
@@ -334,15 +338,15 @@ func (h *MD) renderBookmark(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderDiv(buf writer, in *renderState, b *model.Block) {
+func (h *MD) renderDiv(buf writer, in *renderState, b *model.Block, mw *marksWriter) {
 	switch b.GetDiv().Style {
 	case model.BlockContentDiv_Dots, model.BlockContentDiv_Line:
 		buf.WriteString(" --- \n")
 	}
-	h.renderChildren(buf, in, b)
+	h.renderChildren(buf, in, b, mw)
 }
 
-func (h *MD) renderLayout(buf writer, in *renderState, b *model.Block) {
+func (h *MD) renderLayout(buf writer, in *renderState, b *model.Block, mw *marksWriter) {
 	style := model.BlockContentLayoutStyle(-1)
 	layout := b.GetLayout()
 	if layout != nil {
@@ -351,7 +355,7 @@ func (h *MD) renderLayout(buf writer, in *renderState, b *model.Block) {
 
 	switch style {
 	default:
-		h.renderChildren(buf, in, b)
+		h.renderChildren(buf, in, b, mw)
 	}
 }
 
@@ -374,7 +378,7 @@ func (h *MD) renderLatex(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
+func (h *MD) renderTable(buf writer, in *renderState, b *model.Block, mw *marksWriter) {
 	if t := b.GetTable(); t == nil {
 		return
 	}
@@ -396,7 +400,7 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 		err = tb.Iterate(func(b simple.Block, pos table.CellPosition) bool {
 			cellBuf := &bytes.Buffer{}
 			if b != nil {
-				h.render(cellBuf, in, b.Model())
+				h.render(cellBuf, in, b.Model(), mw)
 			}
 			content := cellBuf.String()
 			content = strings.ReplaceAll(content, "\r\n", " ")
@@ -467,15 +471,6 @@ func (h *MD) FileHashes() []string {
 
 func (h *MD) ImageHashes() []string {
 	return h.imageHashes
-}
-
-func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
-	if h.mw == nil {
-		h.mw = &marksWriter{
-			h: h,
-		}
-	}
-	return h.mw.Init(text)
 }
 
 func (h *MD) Flush(wr converter.FileWriter) error {

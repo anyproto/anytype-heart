@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestExtractHeaders(t *testing.T) {
@@ -19,14 +20,16 @@ func TestExtractHeaders(t *testing.T) {
 
 		storeFixture.AddObjects(t, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:          domain.String("id1"),
-				bundle.RelationKeyRelationKey: domain.String("key1"),
-				bundle.RelationKeyName:        domain.String("Name1"),
+				bundle.RelationKeyId:             domain.String("id1"),
+				bundle.RelationKeyRelationKey:    domain.String("key1"),
+				bundle.RelationKeyName:           domain.String("Name1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_relation),
 			},
 			{
-				bundle.RelationKeyId:          domain.String("id2"),
-				bundle.RelationKeyRelationKey: domain.String("key2"),
-				bundle.RelationKeyName:        domain.String("Name2"),
+				bundle.RelationKeyId:             domain.String("id2"),
+				bundle.RelationKeyRelationKey:    domain.String("key2"),
+				bundle.RelationKeyName:           domain.String("Name2"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_relation),
 			},
 		})
 

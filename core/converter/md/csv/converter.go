@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -20,7 +21,6 @@ type ExportCtx struct {
 	sorts             []*model.BlockContentDataviewSort
 	relationKeys      []string
 	includeSetObjects bool
-	includeLinked     bool
 }
 
 type ExportCtxOption func(*ExportCtx)
@@ -51,12 +51,6 @@ func WithIncludeSetObjects(includeSetObjects bool) ExportCtxOption {
 	}
 }
 
-func WithIncludeLinked(includeLinked bool) ExportCtxOption {
-	return func(e *ExportCtx) {
-		e.includeLinked = includeLinked
-	}
-}
-
 func WithRelationKeys(relationKeys []string) ExportCtxOption {
 	return func(e *ExportCtx) {
 		e.relationKeys = relationKeys
@@ -82,106 +76,145 @@ func NewConverter(
 }
 
 func (c *Converter) Convert(st *state.State) []byte {
-	var headers, headersName, objects []string
-	var err error
-	if len(c.ctx.relationKeys) == 0 {
-		block := findDataviewBlock(st)
-		if block == nil {
-			return nil
-		}
-		headers, headersName, err = c.extractHeaders(block.RelationLinks, st.SpaceID())
-		if err != nil {
-			log.Errorf("failed extracting headers for csv export: %v", err)
-			return nil
-		}
-	} else {
-		headers, headersName, err = common.ExtractHeaders(c.store.SpaceIndex(st.SpaceID()), c.ctx.relationKeys)
-		if err != nil {
-			log.Errorf("failed extracting headers for csv export: %v", err)
-			return nil
+	headers, headerLabels, err := c.resolveHeaders(st)
+	if err != nil {
+		log.Errorf("failed resolve header: %v", err)
+		return nil
+	}
+	if len(headers) == 0 {
+		return nil
+	}
+	csvRows := [][]string{headerLabels}
+	objectIDs := c.collectObjectIDs(st)
+	for _, id := range objectIDs {
+		if details, ok := c.knownDocs[id]; ok {
+			csvRows = append(csvRows, c.buildCSVRow(details, headers))
 		}
 	}
-	csvRows := [][]string{headersName}
-	layout, _ := st.Layout()
-	spaceIndex := c.store.SpaceIndex(st.SpaceID())
-	if c.ctx.includeSetObjects && layout == model.ObjectType_set {
-		setOf := st.Details().GetString(bundle.RelationKeySetOf)
-		uk, err := spaceIndex.GetUniqueKeyById(setOf)
-		if err != nil {
-			return nil
-		}
-		query := database.Query{}
-		switch uk.SmartblockType() {
-		case smartblock.SmartBlockTypeRelation:
-			query.Filters = append(query.Filters, database.FilterRequest{
-				RelationKey: domain.RelationKey(uk.InternalKey()),
-				Condition:   model.BlockContentDataviewFilter_Exists,
-			})
-		case smartblock.SmartBlockTypeObjectType:
-			query.Filters = append(query.Filters, database.FilterRequest{
-				RelationKey: bundle.RelationKeyType,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(setOf),
-			})
-		}
-		if len(c.ctx.filters) > 0 {
-			proto := database.FiltersFromProto(c.ctx.filters)
-			query.Filters = append(query.Filters, proto...)
-		}
-		query.Sorts = database.SortsFromProto(c.ctx.sorts)
-		objects, _, err = spaceIndex.QueryObjectIds(query)
-		if err != nil {
-			return nil
-		}
-	}
-	if c.ctx.includeLinked && layout == model.ObjectType_collection {
-		objects = st.GetStoreSlice(template.CollectionStoreKey)
-		if len(c.ctx.filters) > 0 || len(c.ctx.sorts) > 0 {
-			query := database.Query{}
-			query.Filters = database.FiltersFromProto(c.ctx.filters)
-			query.Sorts = database.SortsFromProto(c.ctx.sorts)
-			query.Filters = append(query.Filters, database.FilterRequest{
-				RelationKey: bundle.RelationKeyId,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.StringList(objects),
-			})
-			objects, _, err = spaceIndex.QueryObjectIds(query)
-		}
-	}
-	for _, object := range objects {
-		if objectDetail, ok := c.knownDocs[object]; ok {
-			csvRows = append(csvRows, c.getCSVRow(objectDetail, headers))
-		}
-	}
+
 	result, err := common.WriteCSV(csvRows)
 	if err != nil {
-		log.Errorf("failed writing csv: %v", err)
+		log.Errorf("CSV writing failed: %v", err)
 		return nil
 	}
 	return result.Bytes()
 }
 
-func (c *Converter) getCSVRow(details *domain.Details, headers []string) []string {
+func (c *Converter) resolveHeaders(st *state.State) ([]string, []string, error) {
+	spaceIndex := c.store.SpaceIndex(st.SpaceID())
+
+	if len(c.ctx.relationKeys) > 0 {
+		return common.ExtractHeaders(spaceIndex, c.ctx.relationKeys)
+	}
+
+	block := findDataviewBlock(st)
+	if block == nil {
+		return nil, nil, nil
+	}
+	var relationKeys []string
+	for _, link := range block.RelationLinks {
+		relationKeys = append(relationKeys, link.Key)
+	}
+	return common.ExtractHeaders(spaceIndex, relationKeys)
+}
+
+func (c *Converter) collectObjectIDs(st *state.State) []string {
+	layout, _ := st.Layout()
+	spaceIndex := c.store.SpaceIndex(st.SpaceID())
+	var (
+		ids []string
+		err error
+	)
+
+	switch {
+	case c.ctx.includeSetObjects && layout == model.ObjectType_set:
+		ids, err = c.querySetObjects(st, spaceIndex)
+	case layout == model.ObjectType_collection:
+		ids, err = c.queryLinkedObjects(st, spaceIndex)
+	}
+
+	if err != nil {
+		log.Errorf("object ID query failed: %v", err)
+		return nil
+	}
+	return ids
+}
+
+func (c *Converter) querySetObjects(st *state.State, spaceIndex spaceindex.Store) ([]string, error) {
+	setOf := st.Details().GetStringList(bundle.RelationKeySetOf)
+	if len(setOf) == 0 {
+		return nil, nil
+	}
+	uk, err := spaceIndex.GetUniqueKeyById(setOf[0])
+	if err != nil {
+		return nil, err
+	}
+
+	query := database.Query{Filters: c.composeSetFilters(uk, setOf[0])}
+	query.Sorts = database.SortsFromProto(c.ctx.sorts)
+
+	return c.executeQuery(spaceIndex, query)
+}
+
+func (c *Converter) composeSetFilters(uk domain.UniqueKey, setOf string) []database.FilterRequest {
+	var filters []database.FilterRequest
+
+	switch uk.SmartblockType() {
+	case smartblock.SmartBlockTypeRelation:
+		filters = append(filters, database.FilterRequest{
+			RelationKey: domain.RelationKey(uk.InternalKey()),
+			Condition:   model.BlockContentDataviewFilter_Exists,
+		})
+	case smartblock.SmartBlockTypeObjectType:
+		filters = append(filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeyType,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(setOf),
+		})
+	}
+	if len(c.ctx.filters) > 0 {
+		filters = append(filters, database.FiltersFromProto(c.ctx.filters)...)
+	}
+	return filters
+}
+
+func (c *Converter) queryLinkedObjects(st *state.State, spaceIndex spaceindex.Store) ([]string, error) {
+	ids := st.GetStoreSlice(template.CollectionStoreKey)
+	if len(c.ctx.filters) == 0 && len(c.ctx.sorts) == 0 {
+		return ids, nil
+	}
+
+	query := database.Query{
+		Filters: append(
+			database.FiltersFromProto(c.ctx.filters),
+			database.FilterRequest{
+				RelationKey: bundle.RelationKeyId,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.StringList(ids),
+			},
+		),
+		Sorts: database.SortsFromProto(c.ctx.sorts),
+	}
+	return c.executeQuery(spaceIndex, query)
+}
+
+func (c *Converter) executeQuery(spaceIndex spaceindex.Store, q database.Query) ([]string, error) {
+	ids, _, err := spaceIndex.QueryObjectIds(q)
+	return ids, err
+}
+
+func (c *Converter) buildCSVRow(details *domain.Details, headers []string) []string {
 	values := make([]string, len(headers))
-	for i, header := range headers {
-		relationKey := domain.RelationKey(header)
-		values[i] = common.GetValueAsString(details, nil, relationKey)
+	for i, key := range headers {
+		values[i] = common.GetValueAsString(details, nil, domain.RelationKey(key))
 	}
 	return values
 }
 
-func (c *Converter) extractHeaders(relationLinks []*model.RelationLink, spaceId string) ([]string, []string, error) {
-	var headersKeys []string
-	for _, relation := range relationLinks {
-		headersKeys = append(headersKeys, relation.Key)
-	}
-	return common.ExtractHeaders(c.store.SpaceIndex(spaceId), headersKeys)
-}
-
 func findDataviewBlock(st *state.State) *model.BlockContentDataview {
 	for _, block := range st.Blocks() {
-		if block.GetDataview() != nil {
-			return block.GetDataview()
+		if dv := block.GetDataview(); dv != nil {
+			return dv
 		}
 	}
 	return nil

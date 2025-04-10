@@ -23,7 +23,8 @@ func getStringValueFromDetail(details *domain.Details, key domain.RelationKey) s
 		return fmt.Sprintf("%t", boolValue)
 	}
 	if number, ok := details.TryFloat64(key); ok {
-		return fmt.Sprintf("%g", number)
+		str := strings.TrimRight(fmt.Sprintf("%f", number), "0")
+		return strings.TrimRight(str, ".")
 	}
 	if intNumber, ok := details.TryInt64(key); ok {
 		return fmt.Sprintf("%d", intNumber)

@@ -283,6 +283,7 @@ func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) 
 			cleanupFile(wr)
 		}
 	}()
+	e.req.IncludeSetObjects = true
 	err = e.docsForExport(ctx)
 	if err != nil {
 		return "", 0, err
@@ -377,7 +378,6 @@ func (e *exportContext) getConverterByFormat(wr writer) converter.Converter {
 		csvCtx := csv.NewExportCtx(
 			csv.WithFilters(e.req.Filters),
 			csv.WithSorts(e.req.Sorts),
-			csv.WithIncludeLinked(e.includeNested),
 			csv.WithRelationKeys(e.req.RelationKeys),
 			csv.WithIncludeSetObjects(e.req.IncludeSetObjects),
 		)
