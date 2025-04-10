@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/anytype/config/mock_config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
@@ -95,12 +97,15 @@ func newFixture(t *testing.T) *fixture {
 
 	fileService := mock_files.NewMockService(t)
 	fileObjectService := mock_fileobject.NewMockService(t)
+	cfg := mock_config.NewMockService(t)
 	gw := New().(*gateway)
-
 	ctx := context.Background()
+	a.Register(testutil.PrepareMock(ctx, a, cfg))
 	a.Register(testutil.PrepareMock(ctx, a, fileService))
 	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
 	a.Register(gw)
+	cfg.EXPECT().GetPersistentConfig().Return(config.ConfigPersistent{GatewayAddr: "127.0.0.1:0"})
+
 	err := a.Start(ctx)
 	assert.NoError(t, err)
 
@@ -170,4 +175,40 @@ func TestRetryReader(t *testing.T) {
 
 	assert.True(t, reader.readCalled > 1)
 	assert.True(t, reader.seekCalled > 1)
+}
+
+func TestDoubleStart(t *testing.T) {
+	cfg := mock_config.NewMockService(t)
+	cfg.EXPECT().UpdatePersistentConfig(mock.Anything).Return(nil).Run(func(f func(cfgp *config.ConfigPersistent) bool) {
+		cfgp := &config.ConfigPersistent{
+			GatewayAddr: "127.0.0.1:0",
+		}
+		f(cfgp)
+	})
+
+	gw := gateway{cfg: cfg}
+	require.False(t, gw.isServerStarted)
+	require.NoError(t, gw.startServer())
+	require.NoError(t, gw.startServer())
+	require.True(t, gw.isServerStarted)
+}
+
+func TestStartStopStart(t *testing.T) {
+	cfg := mock_config.NewMockService(t)
+	cfg.EXPECT().UpdatePersistentConfig(mock.Anything).Return(nil).Run(func(f func(cfgp *config.ConfigPersistent) bool) {
+		cfgp := &config.ConfigPersistent{
+			GatewayAddr: "127.0.0.1:0",
+		}
+		f(cfgp)
+	})
+
+	gw := gateway{cfg: cfg}
+	require.False(t, gw.isServerStarted)
+	require.NoError(t, gw.startServer())
+	require.True(t, gw.isServerStarted)
+	require.NoError(t, gw.stopServer())
+	require.False(t, gw.isServerStarted)
+	require.NoError(t, gw.startServer())
+	require.True(t, gw.isServerStarted)
+
 }
