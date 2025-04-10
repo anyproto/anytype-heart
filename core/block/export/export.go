@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/dot"
 	"github.com/anyproto/anytype-heart/core/converter/graphjson"
 	"github.com/anyproto/anytype-heart/core/converter/md"
+	"github.com/anyproto/anytype-heart/core/converter/md/csv"
 	"github.com/anyproto/anytype-heart/core/converter/pbc"
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -373,7 +374,14 @@ func (e *exportContext) getConverterByFormat(wr writer) converter.Converter {
 	var conv converter.Converter
 	switch e.req.Format {
 	case model.Export_Markdown:
-		conv = md.NewMDConverter(wr.Namer(), e.objectStore, e.docs.transformToDetailsMap(), e.req.Filters, e.req.Sorts, e.req.RelationKeys)
+		csvCtx := csv.NewExportCtx(
+			csv.WithFilters(e.req.Filters),
+			csv.WithSorts(e.req.Sorts),
+			csv.WithIncludeLinked(e.includeNested),
+			csv.WithRelationKeys(e.req.RelationKeys),
+			csv.WithIncludeSetObjects(e.req.IncludeSetObjects),
+		)
+		conv = md.NewMDConverter(wr.Namer(), e.objectStore, e.docs.transformToDetailsMap(), csvCtx)
 	case model.Export_Protobuf:
 		conv = pbc.NewConverter(e.req.IsJson)
 	case model.Export_JSON:

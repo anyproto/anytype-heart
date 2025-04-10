@@ -35,15 +35,13 @@ func NewMDConverter(
 	fn FileNamer,
 	store objectstore.ObjectStore,
 	knownDocs map[string]*domain.Details,
-	filters []*model.BlockContentDataviewFilter,
-	sorts []*model.BlockContentDataviewSort,
-	relationKey []string,
+	ctx *csv.ExportCtx,
 ) converter.Converter {
 	return &MD{
 		fn:              fn,
 		objectTypeFiles: csv.ObjectTypeFiles{},
 		store:           store,
-		listCsv:         csv.NewConverter(&csv.ExportCtx{}, store, knownDocs),
+		listCsv:         csv.NewConverter(ctx, store, knownDocs),
 		knownDocs:       knownDocs,
 	}
 }

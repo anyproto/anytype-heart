@@ -57,6 +57,12 @@ func WithIncludeLinked(includeLinked bool) ExportCtxOption {
 	}
 }
 
+func WithRelationKeys(relationKeys []string) ExportCtxOption {
+	return func(e *ExportCtx) {
+		e.relationKeys = relationKeys
+	}
+}
+
 type Converter struct {
 	knownDocs map[string]*domain.Details
 	store     objectstore.ObjectStore
@@ -83,10 +89,7 @@ func (c *Converter) Convert(st *state.State) []byte {
 		if block == nil {
 			return nil
 		}
-		if len(block.Views) == 0 {
-			return nil
-		}
-		headers, headersName, err = c.extractHeaders(block, st.SpaceID())
+		headers, headersName, err = c.extractHeaders(block.RelationLinks, st.SpaceID())
 		if err != nil {
 			log.Errorf("failed extracting headers for csv export: %v", err)
 			return nil
@@ -167,9 +170,9 @@ func (c *Converter) getCSVRow(details *domain.Details, headers []string) []strin
 	return values
 }
 
-func (c *Converter) extractHeaders(dataview *model.BlockContentDataview, spaceId string) ([]string, []string, error) {
+func (c *Converter) extractHeaders(relationLinks []*model.RelationLink, spaceId string) ([]string, []string, error) {
 	var headersKeys []string
-	for _, relation := range dataview.RelationLinks {
+	for _, relation := range relationLinks {
 		headersKeys = append(headersKeys, relation.Key)
 	}
 	return common.ExtractHeaders(c.store.SpaceIndex(spaceId), headersKeys)
