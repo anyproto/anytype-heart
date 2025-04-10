@@ -143,7 +143,7 @@ func TestDropFiles(t *testing.T) {
 	t.Run("do not drop files to object with Blocks restriction", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks}}
+		fx.sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks: {}}}
 
 		// when
 		err := fx.sfile.DropFiles(pb.RpcFileDropRequest{})
