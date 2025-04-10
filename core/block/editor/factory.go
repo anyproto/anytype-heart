@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -74,6 +75,7 @@ type ObjectFactory struct {
 	deviceService       deviceService
 	spaceIdResolver     idresolver.Resolver
 	commonFile          fileservice.FileService
+	dbProvider          anystoreprovider.Provider
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -106,6 +108,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	f.commonFile = app.MustComponent[fileservice.FileService](a)
+	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	return nil
 }
 
@@ -210,9 +213,17 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id()), spaceIndex), nil
+		db, err := f.dbProvider.GetCrdtDb(space.Id())
+		if err != nil {
+			return nil, fmt.Errorf("get crdt db: %w", err)
+		}
+		return chatobject.New(sb, f.accountService, f.eventSender, db, spaceIndex), nil
 	case coresb.SmartBlockTypeAccountObject:
-		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
+		db, err := f.dbProvider.GetCrdtDb(space.Id())
+		if err != nil {
+			return nil, fmt.Errorf("get crdt db: %w", err)
+		}
+		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}
