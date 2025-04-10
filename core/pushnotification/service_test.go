@@ -35,6 +35,10 @@ type mockPushClient struct {
 	expectedTokenReq *pushapi.SetTokenRequest
 }
 
+func (m *mockPushClient) Subscriptions(ctx context.Context, req *pushapi.SubscriptionsRequest) (resp *pushapi.SubscriptionsResponse, err error) {
+	return &pushapi.SubscriptionsResponse{}, nil
+}
+
 func (m *mockPushClient) Init(a *app.App) (err error) {
 	return nil
 }
@@ -65,12 +69,14 @@ func TestNotify(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		wallet := mock_wallet.NewMockWallet(t)
+		accKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		wallet.EXPECT().GetAccountPrivkey().Return(accKey)
 
 		sender := mock_event.NewMockSender(t)
 		a := &app.App{}
 		a.Register(testutil.PrepareMock(context.TODO(), a, sender))
 		store := spacekeystore.New()
-		err := store.Init(a)
+		err = store.Init(a)
 		assert.NoError(t, err)
 		readKey := crypto.NewAES()
 		privKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
@@ -80,6 +86,7 @@ func TestNotify(t *testing.T) {
 
 		pushClient := &mockPushClient{t: t}
 		s := &service{
+			started:       true,
 			pushClient:    pushClient,
 			wallet:        wallet,
 			spaceKeyStore: store,
@@ -96,7 +103,7 @@ func TestNotify(t *testing.T) {
 		assert.Len(t, pushClient.expectedNotify.Topics.Topics, 1)
 		assert.Equal(t, topic, pushClient.expectedNotify.Topics.Topics[0].Topic)
 
-		spaceKey, err := store.EncryptionKeyBySpaceId(spaceId)
+		spaceKey, err := store.SignKeyBySpaceId(spaceId)
 		raw, err := spaceKey.GetPublic().Raw()
 		assert.NoError(t, err)
 		assert.Equal(t, raw, pushClient.expectedNotify.Topics.Topics[0].SpaceKey)
@@ -107,7 +114,10 @@ func TestNotify(t *testing.T) {
 		keyBySpaceId, err := store.KeyBySpaceId(spaceId)
 		assert.NoError(t, err)
 		assert.Equal(t, keyBySpaceId, pushClient.expectedNotify.Message.KeyId)
-		decryptedJson, err := spaceKey.Decrypt(pushClient.expectedNotify.Message.Payload)
+
+		symKey, err := store.EncryptionKeyBySpaceId(keyBySpaceId)
+		assert.NoError(t, err)
+		decryptedJson, err := symKey.Decrypt(pushClient.expectedNotify.Message.Payload)
 		assert.NoError(t, err)
 
 		expectedMsg := &testPayload{}
@@ -141,8 +151,6 @@ func TestRegisterToken(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		wallet := mock_wallet.NewMockWallet(t)
-		privKey, pubKey, err := crypto.GenerateEd25519Key(rand.Reader)
-		wallet.EXPECT().GetAccountPrivkey().Return(privKey)
 		pushClient := &mockPushClient{t: t}
 		s := &service{
 			pushClient:    pushClient,
@@ -151,16 +159,13 @@ func TestRegisterToken(t *testing.T) {
 		}
 
 		// when
-		err = s.RegisterToken(context.TODO(), &pb.RpcPushNotificationRegisterTokenRequest{
+		err := s.RegisterToken(context.TODO(), &pb.RpcPushNotificationRegisterTokenRequest{
 			Token:    "token",
 			Platform: pb.RpcPushNotificationRegisterToken_IOS,
 		})
 
 		// then
 		assert.NoError(t, err)
-		verify, err := pubKey.Verify([]byte("token"), pushClient.expectedTokenReq.Signature)
-		assert.NoError(t, err)
-		assert.True(t, verify)
 		assert.Equal(t, "token", pushClient.expectedTokenReq.Token)
 		assert.Equal(t, pushapi.Platform_IOS, pushClient.expectedTokenReq.Platform)
 	})

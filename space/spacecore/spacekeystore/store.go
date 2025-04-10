@@ -1,7 +1,6 @@
 package spacekeystore
 
 import (
-	"bytes"
 	"errors"
 	"sync"
 
@@ -23,20 +22,23 @@ const (
 	CName        = "space.core.spaceKeyStore"
 	spaceKeyPath = "m/99999'/1'"
 	spaceVersion = 0xB5
+	spacePath    = "m/99999'/1'"
 )
 
 type Store interface {
 	SyncKeysFromAclState(spaceID string, aclRecordID string, firstMetadataKey crypto.PrivKey, readKey crypto.SymKey)
-	EncryptionKeyBySpaceId(spaceId string) (crypto.PrivKey, error)
+	SignKeyBySpaceId(spaceId string) (crypto.PrivKey, error)
 	KeyBySpaceId(spaceId string) (string, error)
-	EncryptionKeyByKeyId(keyId string) (crypto.PrivKey, error)
+	SignKeyByKeyId(keyId string) (crypto.PrivKey, error)
+	EncryptionKeyBySpaceId(spaceId string) (crypto.SymKey, error)
 	app.Component
 }
 
 type SpaceKeyStore struct {
 	spaceIdToKey            map[string]string
 	spaceKeyToAclRecordId   map[string]string
-	spaceKeyToEncryptionKey map[string]crypto.PrivKey
+	spaceKeyToSignatureKey  map[string]crypto.PrivKey
+	spaceKeyToEncryptionKey map[string]crypto.SymKey
 	sync.Mutex
 
 	eventSender event.Sender
@@ -53,20 +55,21 @@ func (s *SpaceKeyStore) Name() (name string) {
 
 func New() Store {
 	return &SpaceKeyStore{
-		spaceIdToKey:            make(map[string]string),
-		spaceKeyToEncryptionKey: make(map[string]crypto.PrivKey),
+		spaceKeyToSignatureKey:  make(map[string]crypto.PrivKey),
+		spaceKeyToEncryptionKey: make(map[string]crypto.SymKey),
 		spaceKeyToAclRecordId:   make(map[string]string),
+		spaceIdToKey:            make(map[string]string),
 	}
 }
 
-func (s *SpaceKeyStore) SyncKeysFromAclState(spaceID string, aclRecordID string, firstMetadataKey crypto.PrivKey, readKey crypto.SymKey) {
+func (s *SpaceKeyStore) SyncKeysFromAclState(spaceID, aclRecordID string, firstMetadataKey crypto.PrivKey, readKey crypto.SymKey) {
 	s.Lock()
 	defer s.Unlock()
 
 	keyID, exists := s.spaceIdToKey[spaceID]
 	if !exists {
 		var err error
-		keyID, err = s.deriveAndStoreKeyId(spaceID, firstMetadataKey)
+		keyID, err = s.deriveAndStoreSpaceKey(spaceID, firstMetadataKey)
 		if err != nil {
 			log.Errorf("Failed to derive and store key ID for space %s: %v", spaceID, err)
 			return
@@ -77,22 +80,24 @@ func (s *SpaceKeyStore) SyncKeysFromAclState(spaceID string, aclRecordID string,
 		return
 	}
 
-	privKey, err := s.deriveEncryptionKey(readKey)
+	symKey, err := s.deriveEncryptionKey(readKey)
 	if err != nil {
 		log.Errorf("Failed to derive encryption key for space %s: %v", spaceID, err)
 		return
 	}
-
-	s.spaceKeyToEncryptionKey[keyID] = privKey
 	s.spaceKeyToAclRecordId[keyID] = aclRecordID
-
-	if err := s.broadcastKeyUpdate(spaceID, keyID, aclRecordID, privKey); err != nil {
+	s.spaceKeyToEncryptionKey[keyID] = symKey
+	if err := s.broadcastKeyUpdate(spaceID, keyID, aclRecordID, symKey); err != nil {
 		log.Errorf("Failed to broadcast key update for space %s: %v", spaceID, err)
 	}
 }
 
-func (s *SpaceKeyStore) deriveAndStoreKeyId(spaceID string, firstMetadataKey crypto.PrivKey) (string, error) {
-	rawKey, err := s.deriveKey(firstMetadataKey)
+func (s *SpaceKeyStore) deriveAndStoreSpaceKey(spaceID string, firstMetadataKey crypto.PrivKey) (string, error) {
+	key, err := privkey.DeriveFromPrivKey(spaceKeyPath, firstMetadataKey)
+	if err != nil {
+		return "", err
+	}
+	rawKey, err := key.GetPublic().Raw()
 	if err != nil {
 		return "", err
 	}
@@ -101,36 +106,20 @@ func (s *SpaceKeyStore) deriveAndStoreKeyId(spaceID string, firstMetadataKey cry
 		return "", err
 	}
 	s.spaceIdToKey[spaceID] = encodedKey
+	s.spaceKeyToSignatureKey[encodedKey] = key
 	return encodedKey, nil
 }
 
-func (s *SpaceKeyStore) deriveKey(firstMetadataKey crypto.PrivKey) ([]byte, error) {
-	pk, err := privkey.DeriveFromPrivKey(spaceKeyPath, firstMetadataKey)
+func (s *SpaceKeyStore) deriveEncryptionKey(readKey crypto.SymKey) (crypto.SymKey, error) {
+	raw, err := readKey.Raw()
 	if err != nil {
 		return nil, err
 	}
-	raw, err := pk.GetPublic().Raw()
-	if err != nil {
-		return nil, err
-	}
-	return raw, nil
+	return crypto.DeriveSymmetricKey(raw, spacePath)
 }
 
-func (s *SpaceKeyStore) deriveEncryptionKey(readKey crypto.SymKey) (crypto.PrivKey, error) {
-	seed, err := readKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	reader := bytes.NewReader(seed)
-	privKey, _, err := crypto.GenerateEd25519Key(reader)
-	if err != nil {
-		return nil, err
-	}
-	return privKey, nil
-}
-
-func (s *SpaceKeyStore) broadcastKeyUpdate(spaceID, keyID, aclRecordID string, privKey crypto.PrivKey) error {
-	rawKey, err := privKey.Raw()
+func (s *SpaceKeyStore) broadcastKeyUpdate(spaceID, keyID, aclRecordID string, symKey crypto.SymKey) error {
+	rawKey, err := symKey.Raw()
 	if err != nil {
 		return err
 	}
@@ -149,24 +138,34 @@ func (s *SpaceKeyStore) broadcastKeyUpdate(spaceID, keyID, aclRecordID string, p
 	return nil
 }
 
-func (s *SpaceKeyStore) EncryptionKeyBySpaceId(spaceId string) (crypto.PrivKey, error) {
+func (s *SpaceKeyStore) SignKeyBySpaceId(spaceId string) (crypto.PrivKey, error) {
 	s.Lock()
 	defer s.Unlock()
 	keyId, exists := s.spaceIdToKey[spaceId]
 	if !exists {
 		return nil, ErrNotFound
 	}
-	key, exists := s.spaceKeyToEncryptionKey[keyId]
+	key, exists := s.spaceKeyToSignatureKey[keyId]
 	if !exists {
 		return nil, ErrNotFound
 	}
 	return key, nil
 }
 
-func (s *SpaceKeyStore) EncryptionKeyByKeyId(keyId string) (crypto.PrivKey, error) {
+func (s *SpaceKeyStore) EncryptionKeyBySpaceId(spaceId string) (crypto.SymKey, error) {
 	s.Lock()
 	defer s.Unlock()
-	key, exists := s.spaceKeyToEncryptionKey[keyId]
+	key, exists := s.spaceKeyToEncryptionKey[spaceId]
+	if !exists {
+		return nil, ErrNotFound
+	}
+	return key, nil
+}
+
+func (s *SpaceKeyStore) SignKeyByKeyId(keyId string) (crypto.PrivKey, error) {
+	s.Lock()
+	defer s.Unlock()
+	key, exists := s.spaceKeyToSignatureKey[keyId]
 	if !exists {
 		return nil, ErrNotFound
 	}

@@ -133,7 +133,7 @@ func (s *service) buildPushTopics() []*pushapi.Topic {
 }
 
 func (s *service) createTopicsForSpace(spaceKey string, topicNames []string) ([]*pushapi.Topic, error) {
-	privKey, err := s.spaceKeyStore.EncryptionKeyByKeyId(spaceKey)
+	privKey, err := s.spaceKeyStore.SignKeyByKeyId(spaceKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get encryption key for space %s: %w", spaceKey, err)
 	}
@@ -148,7 +148,7 @@ func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 	if !s.started {
 		return nil
 	}
-	spaceKey, err := s.spaceKeyStore.EncryptionKeyBySpaceId(spaceId)
+	spaceKey, err := s.spaceKeyStore.SignKeyBySpaceId(spaceId)
 	if err != nil {
 		return err
 	}
@@ -180,11 +180,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 	if err != nil {
 		return err
 	}
-	key, err := s.spaceKeyStore.EncryptionKeyBySpaceId(spaceId)
-	if err != nil {
-		return err
-	}
-	encryptedJson, err := s.prepareEncryptedJson(key, payload)
+	encryptedJson, err := s.prepareEncryptedJson(keyId, payload)
 	if err != nil {
 		return err
 	}
@@ -228,8 +224,12 @@ func (s *service) fillSubscriptions(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) prepareEncryptedJson(key crypto.PrivKey, payload []byte) ([]byte, error) {
-	encryptedJson, err := key.GetPublic().Encrypt(payload)
+func (s *service) prepareEncryptedJson(keyId string, payload []byte) ([]byte, error) {
+	symKey, err := s.spaceKeyStore.EncryptionKeyBySpaceId(keyId)
+	if err != nil {
+		return nil, err
+	}
+	encryptedJson, err := symKey.Encrypt(payload)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (s *service) prepareEncryptedJson(key crypto.PrivKey, payload []byte) ([]by
 }
 
 func (s *service) makeTopicsBySpaceId(spaceId string, topics []string) (*pushapi.Topics, error) {
-	spaceKey, err := s.spaceKeyStore.EncryptionKeyBySpaceId(spaceId)
+	spaceKey, err := s.spaceKeyStore.SignKeyBySpaceId(spaceId)
 	if err != nil {
 		return nil, err
 	}
