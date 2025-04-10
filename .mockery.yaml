@@ -240,6 +240,7 @@ packages:
   github.com/anyproto/anytype-heart/core/api/apicore:
     interfaces:
       AccountService:
+      EventService:
       ExportService:
       ClientCommands:
   github.com/anyproto/anytype-heart/core/block/template:
