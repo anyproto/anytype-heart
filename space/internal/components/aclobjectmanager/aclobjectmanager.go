@@ -2,6 +2,7 @@ package aclobjectmanager
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"slices"
 	"sync"
@@ -294,6 +295,7 @@ func (a *aclObjectManager) broadcastKeyUpdate(aclState *list.AclState, common co
 	if err != nil {
 		return err
 	}
+	encodedKey := base64.StdEncoding.EncodeToString(raw)
 	a.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -301,7 +303,7 @@ func (a *aclObjectManager) broadcastKeyUpdate(aclState *list.AclState, common co
 				Value: &pb.EventMessageValueOfKeyUpdate{KeyUpdate: &pb.EventKeyUpdate{
 					SpaceKeyId:      spaceKey,
 					EncryptionKeyId: aclState.CurrentReadKeyId(),
-					EncryptionKey:   raw,
+					EncryptionKey:   encodedKey,
 				}},
 			},
 		},

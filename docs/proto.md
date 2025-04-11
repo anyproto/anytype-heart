@@ -28965,7 +28965,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | spaceKeyId | [string](#string) |  |  |
 | encryptionKeyId | [string](#string) |  |  |
-| encryptionKey | [bytes](#bytes) |  |  |
+| encryptionKey | [string](#string) |  |  |
 
 
 

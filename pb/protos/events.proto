@@ -1195,7 +1195,7 @@ message Event {
         message Update {
             string spaceKeyId = 1;
             string encryptionKeyId = 2;
-            bytes encryptionKey = 3;
+            string encryptionKey = 3;
         }
     }
 }
