@@ -245,6 +245,7 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, needAppl
 				snippet := details.GetString(bundle.RelationKeySnippet)
 				cutSnippet, _, _ := strings.Cut(snippet, "\n")
 				details.SetString(bundle.RelationKeyName, cutSnippet)
+				details.SetBool(bundle.RelationKeyShouldConvertFromNote, true)
 			}
 			details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 			return details, true, nil

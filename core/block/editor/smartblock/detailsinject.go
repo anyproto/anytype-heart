@@ -26,7 +26,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := details.CopyOnlyKeys(keys...)
-	localDetailsFromStore.Delete(bundle.RelationKeyResolvedLayout)
 
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
@@ -220,6 +219,31 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 	return nil
 }
 
+// pickResolvedLayout determines the final resolved layout based on following priority:
+// 1. explicitLayoutValue:     explicit layout from object details (if any)
+// 2. typeRecommendedLayout:   layout recommended by the object's type (if any)
+// 3. currentResolvedValue:    the current already-resolved layout (if any)
+// 4. fallbackValue:           a layout value to use if none of the above is set
+func pickResolvedLayout(
+	explicitLayoutValue, typeRecommendedLayout, currentResolvedValue, fallbackValue domain.Value,
+) domain.Value {
+	// Highest priority: explicitLayoutValue
+	if explicitLayoutValue.Ok() {
+		return explicitLayoutValue
+	}
+	// Next: recommended layout from the type
+	if typeRecommendedLayout.Ok() {
+		return typeRecommendedLayout
+	}
+
+	if currentResolvedValue.Ok() {
+		// If current is already set, return it
+		return currentResolvedValue
+	}
+	// Finally: if current is not set, use fallback
+	return fallbackValue
+}
+
 // resolveLayout adds resolvedLayout to local details of object. Priority:
 // layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
 // resolveLayout also converts object from Note, i.e. adds Name and Title to state
@@ -229,50 +253,42 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 	}
 
 	var (
-		layoutValue  = s.Details().Get(bundle.RelationKeyLayout)
-		currentValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
-		newValue     domain.Value
+		explicitLayoutValue  = s.Details().Get(bundle.RelationKeyLayout)
+		typeRecommendedValue domain.Value
+		currentResolvedValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
+		fallbackValue        = domain.Int64(int64(model.ObjectType_basic)) // if we don't find bundled type, fallback to basic
 	)
-
-	defer func() {
-		if newValue.Ok() {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, newValue)
-		}
-		convertLayoutFromNote(s, currentValue, newValue)
-	}()
 
 	typeDetails, err := sb.getTypeDetails(s)
 	if err != nil {
-		if layoutValue.Ok() {
-			newValue = layoutValue
-		} else if !currentValue.Ok() {
-			log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-			newValue = domain.Int64(int64(model.ObjectType_basic))
+		log.Debugf("resolveLayout: failed to get type details: %v", err)
+	} else {
+		typeRecommendedValue = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
+	}
+
+	if len(s.ObjectTypeKeys()) > 0 {
+		// take last type key because for templates we store the target type as a second one
+		if t, err := bundle.GetType(s.ObjectTypeKeys()[len(s.ObjectTypeKeys())-1]); err == nil {
+			// take fallback value from the bundled type
+			fallbackValue = domain.Int64(int64(t.Layout))
 		}
+	}
+
+	finalLayout := pickResolvedLayout(explicitLayoutValue, typeRecommendedValue, currentResolvedValue, fallbackValue)
+	if !currentResolvedValue.Equal(finalLayout) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, finalLayout)
+		from := currentResolvedValue
+		if !from.Ok() {
+			from = explicitLayoutValue
+		}
+		convertLayoutFromNote(s, from, finalLayout)
 		return
 	}
 
-	valueInType := typeDetails.Get(bundle.RelationKeyRecommendedLayout)
-
-	if s.ObjectTypeKey() == bundle.TypeKeyTemplate {
-		if layoutValue.Ok() {
-			newValue = layoutValue
-		} else if valueInType.Ok() {
-			newValue = valueInType
-		} else if !currentValue.Ok() {
-			log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-			newValue = domain.Int64(int64(model.ObjectType_basic))
-		}
-		return
-	}
-
-	if valueInType.Ok() {
-		newValue = valueInType
-	} else if layoutValue.Ok() {
-		newValue = layoutValue
-	} else if !currentValue.Ok() {
-		log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-		newValue = domain.Int64(int64(model.ObjectType_basic))
+	// in case object was not in cache on conversion layout from note, we set special flag
+	if s.LocalDetails().GetBool(bundle.RelationKeyShouldConvertFromNote) {
+		convertLayoutFromNote(s, domain.Int64(int64(model.ObjectType_note)), finalLayout)
+		s.LocalDetails().Delete(bundle.RelationKeyShouldConvertFromNote)
 	}
 }
 
@@ -282,13 +298,6 @@ func convertLayoutFromNote(st *state.State, oldLayout, newLayout domain.Value) {
 	}
 	if oldLayout.Ok() && oldLayout.Int64() != int64(model.ObjectType_note) {
 		return
-	}
-	if !oldLayout.Ok() {
-		// absence of Title block means that object has Note layout
-		title := st.Pick(state.TitleBlockID)
-		if title != nil {
-			return
-		}
 	}
 	template.InitTemplate(st, template.WithNameFromFirstBlock, template.WithTitle)
 }
