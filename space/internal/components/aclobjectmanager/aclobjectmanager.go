@@ -18,13 +18,15 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/push"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacekey"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -62,7 +64,6 @@ type aclObjectManager struct {
 	spaceLoaderListener     SpaceLoaderListener
 	participantWatcher      participantwatcher.ParticipantWatcher
 	inviteMigrator          invitemigrator.InviteMigrator
-	spaceKeyStore           spacekeystore.Store
 	accountService          accountservice.Service
 	pushNotificationService pushNotificationService
 
@@ -70,6 +71,7 @@ type aclObjectManager struct {
 	lastIndexed   string
 	guestKey      crypto.PrivKey
 	mx            sync.Mutex
+	eventSender   event.Sender
 }
 
 type SpaceLoaderListener interface {
@@ -119,8 +121,8 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
-	a.spaceKeyStore = app.MustComponent[spacekeystore.Store](ap)
 	a.pushNotificationService = app.MustComponent[pushNotificationService](ap)
+	a.eventSender = app.MustComponent[event.Sender](ap)
 	return nil
 }
 
@@ -268,10 +270,10 @@ func (a *aclObjectManager) processAcl() (err error) {
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
-	return a.updateSpaceKeyStore(aclState, common)
+	return a.broadcastKeyUpdate(aclState, common)
 }
 
-func (a *aclObjectManager) updateSpaceKeyStore(aclState *list.AclState, common commonspace.Space) error {
+func (a *aclObjectManager) broadcastKeyUpdate(aclState *list.AclState, common commonspace.Space) error {
 	firstMetadataKey, err := aclState.FirstMetadataKey()
 	if err != nil {
 		return err
@@ -280,7 +282,30 @@ func (a *aclObjectManager) updateSpaceKeyStore(aclState *list.AclState, common c
 	if err != nil {
 		return err
 	}
-	a.spaceKeyStore.SyncKeysFromAclState(common.Id(), aclState.CurrentReadKeyId(), firstMetadataKey, readKey)
+	spaceKey, _, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	if err != nil {
+		return err
+	}
+	encryptionKey, err := spacekey.DeriveEncryptionKey(readKey)
+	if err != nil {
+		return err
+	}
+	raw, err := encryptionKey.Raw()
+	if err != nil {
+		return err
+	}
+	a.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				SpaceId: common.Id(),
+				Value: &pb.EventMessageValueOfKeyUpdate{KeyUpdate: &pb.EventKeyUpdate{
+					SpaceKeyId:      spaceKey,
+					EncryptionKeyId: aclState.CurrentReadKeyId(),
+					EncryptionKey:   raw,
+				}},
+			},
+		},
+	})
 	return nil
 }
 

@@ -113,7 +113,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
@@ -325,7 +324,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(spaceview.New()).
 		Register(api.New()).
 		Register(client.NewPushClient()).
-		Register(spacekeystore.New()).
 		Register(pushnotification.New())
 }
 

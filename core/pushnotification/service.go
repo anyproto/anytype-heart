@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
 	"github.com/cheggaaa/mb/v3"
@@ -15,7 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacekeystore"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacekey"
 )
 
 const CName = "core.pushnotification.service"
@@ -42,7 +44,6 @@ func New() Service {
 type service struct {
 	pushClient              client.Client
 	wallet                  wallet.Wallet
-	spaceKeyStore           spacekeystore.Store
 	cfg                     *config.Config
 	started                 bool
 	activeSubscriptions     map[string]TopicSet
@@ -50,6 +51,7 @@ type service struct {
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	batcher                 *mb.MB[newSubscription]
+	spaceService            space.Service
 }
 
 func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
@@ -84,8 +86,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cfg = app.MustComponent[*config.Config](a)
 	s.pushClient = app.MustComponent[client.Client](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
-	s.spaceKeyStore = app.MustComponent[spacekeystore.Store](a)
 	s.batcher = mb.New[newSubscription](0)
+	s.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 
@@ -121,9 +123,10 @@ func (s *service) subscribeAll(ctx context.Context) error {
 func (s *service) buildPushTopics() []*pushapi.Topic {
 	s.activeSubscriptionsLock.Lock()
 	defer s.activeSubscriptionsLock.Unlock()
+
 	var allTopics []*pushapi.Topic
-	for spaceKey, topicsSet := range s.activeSubscriptions {
-		spaceTopics, err := s.createTopicsForSpace(spaceKey, topicsSet.Slice())
+	for spaceId, topicsSet := range s.activeSubscriptions {
+		spaceTopics, err := s.createTopicsForSpace(spaceId, topicsSet.Slice())
 		if err != nil {
 			continue
 		}
@@ -132,14 +135,23 @@ func (s *service) buildPushTopics() []*pushapi.Topic {
 	return allTopics
 }
 
-func (s *service) createTopicsForSpace(spaceKey string, topicNames []string) ([]*pushapi.Topic, error) {
-	privKey, err := s.spaceKeyStore.SignKeyByKeyId(spaceKey)
+func (s *service) createTopicsForSpace(spaceId string, topicNames []string) ([]*pushapi.Topic, error) {
+	space, err := s.spaceService.Get(s.ctx, spaceId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get encryption key for space %s: %w", spaceKey, err)
+		return nil, err
 	}
-	topics, err := s.makeTopics(privKey, topicNames)
+	state := space.CommonSpace().Acl().AclState()
+	firstMetadataKey, err := state.FirstMetadataKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to make topics for space %s: %w", spaceKey, err)
+		return nil, err
+	}
+	_, signKey, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key for space %s: %w", spaceId, err)
+	}
+	topics, err := s.makeTopics(signKey, topicNames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make topics for space %s: %w", spaceId, err)
 	}
 	return topics, nil
 }
@@ -148,15 +160,24 @@ func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 	if !s.started {
 		return nil
 	}
-	spaceKey, err := s.spaceKeyStore.SignKeyBySpaceId(spaceId)
+	space, err := s.spaceService.Get(s.ctx, spaceId)
 	if err != nil {
 		return err
 	}
-	signature, err := spaceKey.Sign([]byte(s.wallet.GetAccountPrivkey().GetPublic().Account()))
+	state := space.CommonSpace().Acl().AclState()
+	firstMetadataKey, err := state.FirstMetadataKey()
 	if err != nil {
 		return err
 	}
-	pubKey := spaceKey.GetPublic()
+	_, signKey, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	if err != nil {
+		return err
+	}
+	signature, err := signKey.Sign([]byte(s.wallet.GetAccountPrivkey().GetPublic().Account()))
+	if err != nil {
+		return err
+	}
+	pubKey := signKey.GetPublic()
 	rawKey, err := pubKey.Raw()
 	if err != nil {
 		return err
@@ -172,15 +193,24 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 	if !s.started {
 		return nil
 	}
-	topics, err := s.makeTopicsBySpaceId(spaceId, topic)
+	space, err := s.spaceService.Get(s.ctx, spaceId)
 	if err != nil {
 		return err
 	}
-	keyId, err := s.spaceKeyStore.KeyBySpaceId(spaceId)
+	state := space.CommonSpace().Acl().AclState()
+	firstMetadataKey, err := state.FirstMetadataKey()
 	if err != nil {
 		return err
 	}
-	encryptedJson, err := s.prepareEncryptedJson(keyId, payload)
+	keyId, signKey, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	if err != nil {
+		return err
+	}
+	topics, err := s.makeTopics(signKey, topic)
+	if err != nil {
+		return err
+	}
+	encryptedJson, err := s.prepareEncryptedPayload(state, payload)
 	if err != nil {
 		return err
 	}
@@ -194,10 +224,26 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 		Signature: signature,
 	}
 	_, err = s.pushClient.Notify(ctx, &pushapi.NotifyRequest{
-		Topics:  topics,
+		Topics:  &pushapi.Topics{Topics: topics},
 		Message: p,
 	})
 	return err
+}
+
+func (s *service) prepareEncryptedPayload(state *list.AclState, payload []byte) ([]byte, error) {
+	symKey, err := state.CurrentReadKey()
+	if err != nil {
+		return nil, err
+	}
+	encryptionKey, err := spacekey.DeriveEncryptionKey(symKey)
+	if err != nil {
+		return nil, err
+	}
+	encryptedJson, err := encryptionKey.Encrypt(payload)
+	if err != nil {
+		return nil, err
+	}
+	return encryptedJson, nil
 }
 
 func (s *service) fillSubscriptions(ctx context.Context) (err error) {
@@ -222,30 +268,6 @@ func (s *service) fillSubscriptions(ctx context.Context) (err error) {
 		s.activeSubscriptionsLock.Unlock()
 	}
 	return nil
-}
-
-func (s *service) prepareEncryptedJson(keyId string, payload []byte) ([]byte, error) {
-	symKey, err := s.spaceKeyStore.EncryptionKeyBySpaceId(keyId)
-	if err != nil {
-		return nil, err
-	}
-	encryptedJson, err := symKey.Encrypt(payload)
-	if err != nil {
-		return nil, err
-	}
-	return encryptedJson, nil
-}
-
-func (s *service) makeTopicsBySpaceId(spaceId string, topics []string) (*pushapi.Topics, error) {
-	spaceKey, err := s.spaceKeyStore.SignKeyBySpaceId(spaceId)
-	if err != nil {
-		return nil, err
-	}
-	pushApiTopics, err := s.makeTopics(spaceKey, topics)
-	if err != nil {
-		return nil, err
-	}
-	return &pushapi.Topics{Topics: pushApiTopics}, nil
 }
 
 func (s *service) makeTopics(spaceKey crypto.PrivKey, topics []string) ([]*pushapi.Topic, error) {
@@ -313,13 +335,9 @@ func (s *service) run() {
 }
 
 func (s *service) addNewSubscription(sub newSubscription) (shouldUpdate bool, err error) {
-	keyId, err := s.spaceKeyStore.KeyBySpaceId(sub.SpaceId)
-	if err != nil {
-		return false, err
-	}
 	s.activeSubscriptionsLock.Lock()
 	defer s.activeSubscriptionsLock.Unlock()
-	activeTopics, ok := s.activeSubscriptions[keyId]
+	activeTopics, ok := s.activeSubscriptions[sub.SpaceId]
 	if !ok {
 		activeTopics = NewTopicSet()
 	}
@@ -328,6 +346,6 @@ func (s *service) addNewSubscription(sub newSubscription) (shouldUpdate bool, er
 			shouldUpdate = true
 		}
 	}
-	s.activeSubscriptions[keyId] = activeTopics
+	s.activeSubscriptions[sub.SpaceId] = activeTopics
 	return shouldUpdate, nil
 }
