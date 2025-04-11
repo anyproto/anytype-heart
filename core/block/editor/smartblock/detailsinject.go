@@ -27,7 +27,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	localDetailsFromStore := details.CopyOnlyKeys(keys...)
 	localDetailsFromStore.Delete(bundle.RelationKeyResolvedLayout)
-
 	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
 		// inject for both current and parent state
@@ -229,68 +228,74 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 	}
 
 	var (
-		layoutValue  = s.Details().Get(bundle.RelationKeyLayout)
-		currentValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
-		newValue     domain.Value
+		layoutValue   = s.Details().Get(bundle.RelationKeyLayout)
+		currentValue  = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
+		newValue      domain.Value
+		fallbackValue = domain.Int64(int64(model.ObjectType_basic))
 	)
 
-	defer func() {
-		if newValue.Ok() {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, newValue)
+	if !currentValue.Ok() && layoutValue.Ok() {
+		// we don't have resolvedLayout in local details, but we have layout
+		currentValue = layoutValue
+	}
+
+	if len(s.ObjectTypeKeys()) > 0 {
+		if bt, err := bundle.GetType(s.ObjectTypeKeys()[len(s.ObjectTypeKeys())-1]); err == nil {
+			fallbackValue = domain.Int64(int64(bt.Layout))
 		}
-		convertLayoutFromNote(s, currentValue, newValue)
-	}()
+	}
 
 	typeDetails, err := sb.getTypeDetails(s)
 	if err != nil {
-		if layoutValue.Ok() {
-			newValue = layoutValue
-		} else if !currentValue.Ok() {
-			log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-			newValue = domain.Int64(int64(model.ObjectType_basic))
-		}
-		return
+		log.Warnf("failed to get type details: %v", err)
 	}
 
 	valueInType := typeDetails.Get(bundle.RelationKeyRecommendedLayout)
-
-	if s.ObjectTypeKey() == bundle.TypeKeyTemplate {
-		if layoutValue.Ok() {
-			newValue = layoutValue
-		} else if valueInType.Ok() {
-			newValue = valueInType
-		} else if !currentValue.Ok() {
-			log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-			newValue = domain.Int64(int64(model.ObjectType_basic))
-		}
-		return
-	}
-
-	if valueInType.Ok() {
-		newValue = valueInType
-	} else if layoutValue.Ok() {
+	if layoutValue.Ok() {
 		newValue = layoutValue
-	} else if !currentValue.Ok() {
-		log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-		newValue = domain.Int64(int64(model.ObjectType_basic))
+	} else if valueInType.Ok() {
+		newValue = valueInType
+	} else if currentValue.Ok() {
+		newValue = currentValue
+	} else {
+		log.Warnf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
+		newValue = fallbackValue
 	}
+
+	if newValue.Ok() {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, newValue)
+	}
+
+	convertLayoutBlocks(s, currentValue, newValue)
 }
 
-func convertLayoutFromNote(st *state.State, oldLayout, newLayout domain.Value) {
-	if !newLayout.Ok() || newLayout.Int64() == int64(model.ObjectType_note) {
+func convertLayoutBlocks(st *state.State, oldLayout, newLayout domain.Value) {
+	if !newLayout.Ok() {
 		return
 	}
-	if oldLayout.Ok() && oldLayout.Int64() != int64(model.ObjectType_note) {
+	if oldLayout.Equal(newLayout) {
 		return
 	}
-	if !oldLayout.Ok() {
-		// absence of Title block means that object has Note layout
+	if newLayout.Int64() != int64(model.ObjectType_note) {
 		title := st.Pick(state.TitleBlockID)
 		if title != nil {
 			return
 		}
+		log.With("objectId", st.RootId()).Infof("convert layout: %s -> %s", oldLayout, newLayout)
+		template.InitTemplate(st, template.WithNameFromFirstBlock, template.WithTitle)
+	} else if newLayout.Int64() == int64(model.ObjectType_note) {
+		title := st.Pick(state.TitleBlockID)
+		if title == nil {
+			return
+		}
+
+		log.With("objectId", st.RootId()).Infof("convert layout: %s -> %s", oldLayout, newLayout)
+		template.InitTemplate(st,
+			template.WithNameToFirstBlock,
+			template.WithNoTitle,
+			template.WithNoDescription,
+		)
 	}
-	template.InitTemplate(st, template.WithNameFromFirstBlock, template.WithTitle)
 }
 
 func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
