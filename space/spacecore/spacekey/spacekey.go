@@ -10,7 +10,7 @@ import (
 const (
 	spaceKeyPath = "m/99999'/1'"
 	spaceVersion = 0xB5
-	spacePath    = "m/99999'/1'"
+	spacePath    = "m/SLIP-0021/anytype/space/key"
 )
 
 func DeriveSpaceKey(firstMetadataKey crypto.PrivKey) (string, crypto.PrivKey, error) {
