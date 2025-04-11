@@ -247,7 +247,7 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 
 	typeDetails, err := sb.getTypeDetails(s)
 	if err != nil {
-		log.Warnf("failed to get type details: %v", err)
+		log.Debugf("failed to get type details: %v", err)
 	}
 
 	valueInType := typeDetails.Get(bundle.RelationKeyRecommendedLayout)
