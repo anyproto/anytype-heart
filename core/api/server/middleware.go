@@ -16,6 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+const ApiVersion = "2025-03-17"
+
 var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
 	ErrInvalidAuthorizationHeader = errors.New("invalid authorization header format")
@@ -105,7 +107,7 @@ func (s *Server) ensureAccountInfo(accountService apicore.AccountService) gin.Ha
 // ensureMetadataHeader is a middleware that ensures the metadata header is set.
 func (s *Server) ensureMetadataHeader() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Anytype-Version", "2025-03-17")
+		c.Writer.Header().Set("Anytype-Version", ApiVersion)
 		c.Next()
 	}
 }
