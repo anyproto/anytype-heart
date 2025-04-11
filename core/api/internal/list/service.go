@@ -15,6 +15,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+const (
+	subId = "json-api-internal"
+)
+
 var (
 	ErrFailedGetList               = errors.New("failed to get list")
 	ErrFailedGetListDataview       = errors.New("failed to get list dataview")
@@ -175,17 +179,18 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 
 	// TODO: use subscription service with internal: 'true' to not send events to clients
 	searchResp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
-		SpaceId:      spaceId,
-		Limit:        int64(limit),  // nolint: gosec
-		Offset:       int64(offset), // nolint: gosec
-		Keys:         []string{bundle.RelationKeyId.String()},
+		SpaceId: spaceId,
+		SubId:   subId,
+		Limit:   int64(limit),  // nolint: gosec
+		Offset:  int64(offset), // nolint: gosec
+		// TODO: fix not all keys being returned
+		// Keys:         []string{bundle.RelationKeyId.String()},
 		Sorts:        sorts,
 		Filters:      filters,
 		Source:       source,
 		CollectionId: collectionId,
 	})
 
-	// TODO: returned error from ObjectSearchSubscribe is inconsistent with other RPCs: Error is nil instead of Code being NULL
 	if searchResp.Error != nil && searchResp.Error.Code != pb.RpcObjectSearchSubscribeResponseError_NULL {
 		return nil, 0, false, ErrFailedGetObjectsInList
 	}
@@ -193,13 +198,18 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
+	propertyFormatMap, err := s.objectService.GetPropertyFormatMapsFromStore([]string{spaceId})
+	if err != nil {
+		return nil, 0, false, err
+	}
+	typeMap, err := s.objectService.GetTypeMapsFromStore([]string{spaceId})
+	if err != nil {
+		return nil, 0, false, err
+	}
+
 	objects := make([]object.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		object, err := s.objectService.GetObject(ctx, spaceId, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
-		if err != nil {
-			return nil, 0, false, err
-		}
-		objects = append(objects, object)
+		objects = append(objects, s.objectService.GetObjectFromStruct(record, propertyFormatMap, typeMap))
 	}
 
 	return objects, total, hasMore, nil
