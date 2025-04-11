@@ -325,34 +325,36 @@ func (e *exportContext) getWriter() (writer, error) {
 
 func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue process.Queue) (int, error) {
 	queue.SetMessage("export docs")
+
 	if e.req.Format == model.Export_Protobuf && len(e.reqIds) == 0 {
 		if err := e.createProfileFile(e.spaceId, wr); err != nil {
 			log.Errorf("failed to create profile file: %s", err)
 		}
 	}
-	var succeed int
-	if e.req.Format == model.Export_DOT || e.req.Format == model.Export_SVG {
-		succeed = e.exportDotAndSVG(ctx, succeed, wr, queue)
-	} else if e.req.Format == model.Export_GRAPH_JSON {
-		succeed = e.exportGraphJson(ctx, succeed, wr, queue)
-	} else {
+	switch e.req.Format {
+	case model.Export_DOT, model.Export_SVG:
+		return e.exportDotAndSVG(ctx, 0, wr, queue), nil
+
+	case model.Export_GRAPH_JSON:
+		return e.exportGraphJson(ctx, 0, wr, queue), nil
+
+	default:
 		var succeedAsync int64
 		conv := e.getConverterByFormat(wr)
 		tasks := e.exportDocs(ctx, wr, &succeedAsync, conv)
-		err := queue.Wait(tasks...)
-		if err != nil {
+
+		if err := queue.Wait(tasks...); err != nil {
 			cleanupFile(wr)
 			return 0, nil
 		}
+
 		if flusher, ok := conv.(converter.Flusher); ok {
-			err = flusher.Flush(wr)
-			if err != nil {
+			if err := flusher.Flush(wr); err != nil {
 				return 0, err
 			}
 		}
-		succeed += int(succeedAsync)
+		return int(succeedAsync), nil
 	}
-	return succeed, nil
 }
 
 func (e *exportContext) exportDocs(ctx context.Context, wr writer, succeed *int64, conv converter.Converter) []process.Task {
