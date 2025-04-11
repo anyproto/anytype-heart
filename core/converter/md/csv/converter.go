@@ -111,7 +111,7 @@ func (c *Converter) resolveHeaders(st *state.State) ([]string, []string, error) 
 	if block == nil {
 		return nil, nil, nil
 	}
-	var relationKeys []string
+	relationKeys := make([]string, 0, len(block.RelationLinks))
 	for _, link := range block.RelationLinks {
 		relationKeys = append(relationKeys, link.Key)
 	}
