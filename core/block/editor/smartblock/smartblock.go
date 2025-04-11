@@ -366,11 +366,11 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(ctx.State)
 	}
 
-	sb.resolveLayout(ctx.State)
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+	sb.resolveLayout(ctx.State)
 
 	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return

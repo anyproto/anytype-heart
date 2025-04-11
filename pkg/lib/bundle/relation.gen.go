@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "c4effd0b56ce4d007b246e0371064334d9a7acd7dee184669939217848faa938"
+const RelationChecksum = "40f927a64a108c72afa41cb6d5253b460098c188eb5c636bc23198a62ab8cc00"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -160,6 +160,7 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyShouldConvertFromNote        domain.RelationKey = "shouldConvertFromNote"
 )
 
 var (
@@ -1669,6 +1670,20 @@ var (
 			Key:              "sharedSpacesLimit",
 			MaxCount:         1,
 			Name:             "Shared spaces limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyShouldConvertFromNote: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Object should be converted from Note",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brshouldConvertFromNote",
+			Key:              "shouldConvertFromNote",
+			MaxCount:         1,
+			Name:             "Should convert from Note",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

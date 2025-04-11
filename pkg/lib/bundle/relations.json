@@ -1535,5 +1535,15 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Object should be converted from Note",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "shouldConvertFromNote",
+    "maxCount": 1,
+    "name": "Should convert from Note",
+    "readonly": true,
+    "source": "local"
   }
 ]

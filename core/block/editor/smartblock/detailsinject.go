@@ -219,44 +219,76 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 	return nil
 }
 
+// pickResolvedLayout determines the final resolved layout based on following priority:
+// 1. explicitLayoutValue:     explicit layout from object details (if any)
+// 2. typeRecommendedLayout:   layout recommended by the object's type (if any)
+// 3. currentResolvedValue:    the current already-resolved layout (if any)
+// 4. fallbackValue:           a layout value to use if none of the above is set
+func pickResolvedLayout(
+	explicitLayoutValue, typeRecommendedLayout, currentResolvedValue, fallbackValue domain.Value,
+) domain.Value {
+	// Highest priority: explicitLayoutValue
+	if explicitLayoutValue.Ok() {
+		return explicitLayoutValue
+	}
+	// Next: recommended layout from the type
+	if typeRecommendedLayout.Ok() {
+		return typeRecommendedLayout
+	}
+
+	if currentResolvedValue.Ok() {
+		// If current is already set, return it
+		return currentResolvedValue
+	}
+	// Finally: if current is not set, use fallback
+	return fallbackValue
+}
+
 // resolveLayout adds resolvedLayout to local details of object. Priority:
 // layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
 // resolveLayout also converts object from Note, i.e. adds Name and Title to state
 func (sb *smartBlock) resolveLayout(s *state.State) {
-	var layoutValue, currentValue, newValue domain.Value
-	if s.Details() != nil {
-		layoutValue = s.Details().Get(bundle.RelationKeyLayout)
-	}
-	if s.LocalDetails() != nil {
-		currentValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
-	}
-
-	defer func() {
-		if newValue.Ok() {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, newValue)
-		}
-		convertLayoutFromNote(s, currentValue, newValue)
-	}()
-
-	if layoutValue.Ok() {
-		newValue = layoutValue
+	if s.Details() == nil && s.LocalDetails() == nil {
 		return
 	}
 
-	valueInType, err := sb.getRecommendedLayoutValue(s)
+	var (
+		explicitLayoutValue  = s.Details().Get(bundle.RelationKeyLayout)
+		typeRecommendedValue domain.Value
+		currentResolvedValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
+		fallbackValue        = domain.Int64(int64(model.ObjectType_basic)) // if we don't find bundled type, fallback to basic
+	)
+
+	typeDetails, err := sb.getTypeDetails(s)
 	if err != nil {
-		if !currentValue.Ok() {
-			log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-			newValue = domain.Int64(int64(model.ObjectType_basic))
+		log.Debugf("resolveLayout: failed to get type details: %v", err)
+	} else {
+		typeRecommendedValue = typeDetails.Get(bundle.RelationKeyRecommendedLayout)
+	}
+
+	if len(s.ObjectTypeKeys()) > 0 {
+		// take last type key because for templates we store the target type as a second one
+		if t, err := bundle.GetType(s.ObjectTypeKeys()[len(s.ObjectTypeKeys())-1]); err == nil {
+			// take fallback value from the bundled type
+			fallbackValue = domain.Int64(int64(t.Layout))
 		}
+	}
+
+	finalLayout := pickResolvedLayout(explicitLayoutValue, typeRecommendedValue, currentResolvedValue, fallbackValue)
+	if !currentResolvedValue.Equal(finalLayout) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, finalLayout)
+		from := currentResolvedValue
+		if !from.Ok() {
+			from = explicitLayoutValue
+		}
+		convertLayoutFromNote(s, from, finalLayout)
 		return
 	}
 
-	if valueInType.Ok() {
-		newValue = valueInType
-	} else if !currentValue.Ok() {
-		log.Errorf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-		newValue = domain.Int64(int64(model.ObjectType_basic))
+	// in case object was not in cache on conversion layout from note, we set special flag
+	if s.LocalDetails().GetBool(bundle.RelationKeyShouldConvertFromNote) {
+		convertLayoutFromNote(s, domain.Int64(int64(model.ObjectType_note)), finalLayout)
+		s.LocalDetails().Delete(bundle.RelationKeyShouldConvertFromNote)
 	}
 }
 
@@ -267,62 +299,29 @@ func convertLayoutFromNote(st *state.State, oldLayout, newLayout domain.Value) {
 	if oldLayout.Ok() && oldLayout.Int64() != int64(model.ObjectType_note) {
 		return
 	}
-	if !oldLayout.Ok() {
-		// absence of Title block means that object has Note layout
-		title := st.Pick(state.TitleBlockID)
-		if title != nil {
-			return
-		}
-	}
 	template.InitTemplate(st, template.WithNameFromFirstBlock, template.WithTitle)
 }
 
-func (sb *smartBlock) getRecommendedLayoutValue(s *state.State) (domain.Value, error) {
-	var typeObjectId string
-	if s.LocalDetails() != nil {
-		typeObjectId = s.LocalDetails().GetString(bundle.RelationKeyType)
-	}
+func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
+	typeObjectId := s.LocalDetails().GetString(bundle.RelationKeyType)
 
 	if s.ObjectTypeKey() == bundle.TypeKeyTemplate {
 		// resolvedLayout for templates should be derived from target type
-		if s.Details() == nil {
-			typeKeys := s.ObjectTypeKeys()
-			if len(typeKeys) == 2 {
-				ot, err := bundle.GetType(typeKeys[1])
-				if err == nil {
-					return domain.Int64(int64(ot.Layout)), nil
-				}
-				return domain.Value{}, fmt.Errorf("failed to find id of non bundled target object type")
-			}
-			return domain.Value{}, fmt.Errorf("failed to find id of target object type")
-		}
 		typeObjectId = s.Details().GetString(bundle.RelationKeyTargetObjectType)
 	}
 
 	if typeObjectId == "" {
-		log.Debugf("failed to get id of object type. Trying to get bundled version")
-		ot, err := bundle.GetType(s.ObjectTypeKey())
-		if err == nil {
-			return domain.Int64(int64(ot.Layout)), nil
-		}
-		return domain.Value{}, fmt.Errorf("failed to find id of non bundled object type")
+		return nil, fmt.Errorf("failed to find id of object type")
 	}
 
 	typeDetails, found := sb.lastDepDetails[typeObjectId]
 	if found {
-		return typeDetails.Get(bundle.RelationKeyRecommendedLayout), nil
+		return typeDetails, nil
 	}
 
 	records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
-	if err == nil && len(records) == 1 {
-		return records[0].Details.Get(bundle.RelationKeyRecommendedLayout), nil
+	if err != nil || len(records) != 1 {
+		return nil, fmt.Errorf("failed to query object %s: %w", typeObjectId, err)
 	}
-
-	log.Debugf("failed to query object type: %v. Trying to get bundled version", err)
-	ot, e := bundle.GetType(s.ObjectTypeKey())
-	if e == nil {
-		return domain.Int64(int64(ot.Layout)), nil
-	}
-
-	return domain.Value{}, fmt.Errorf("failed to query non bundled object %s: %w", typeObjectId, err)
+	return records[0].Details, nil
 }
