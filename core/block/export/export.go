@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/dot"
 	"github.com/anyproto/anytype-heart/core/converter/graphjson"
 	"github.com/anyproto/anytype-heart/core/converter/md"
+	"github.com/anyproto/anytype-heart/core/converter/md/csv"
 	"github.com/anyproto/anytype-heart/core/converter/pbc"
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -178,15 +179,10 @@ type exportContext struct {
 	includeArchive   bool
 	includeNested    bool
 	includeFiles     bool
-	format           model.ExportFormat
-	isJson           bool
-	reqIds           []string
-	zip              bool
-	path             string
 	linkStateFilters *state.Filters
 	isLinkProcess    bool
-	includeBackLinks bool
-	includeSpace     bool
+	reqIds           []string
+	req              pb.RpcObjectListExportRequest
 	relations        map[string]struct{}
 	setOfList        map[string]struct{}
 	objectTypes      map[string]struct{}
@@ -196,19 +192,14 @@ type exportContext struct {
 
 func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
 	ec := &exportContext{
-		path:             req.Path,
 		spaceId:          req.SpaceId,
 		docs:             map[string]*Doc{},
 		includeArchive:   req.IncludeArchived,
 		includeNested:    req.IncludeNested,
 		includeFiles:     req.IncludeFiles,
-		format:           req.Format,
-		isJson:           req.IsJson,
 		reqIds:           req.ObjectIds,
-		zip:              req.Zip,
+		req:              req,
 		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
-		includeBackLinks: req.IncludeBacklinks,
-		includeSpace:     req.IncludeSpace,
 		setOfList:        make(map[string]struct{}),
 		objectTypes:      make(map[string]struct{}),
 		relations:        make(map[string]struct{}),
@@ -227,17 +218,13 @@ func (e *exportContext) copy() *exportContext {
 		includeArchive:   e.includeArchive,
 		includeNested:    e.includeNested,
 		includeFiles:     e.includeFiles,
-		format:           e.format,
-		isJson:           e.isJson,
-		reqIds:           e.reqIds,
 		export:           e.export,
 		isLinkProcess:    e.isLinkProcess,
 		linkStateFilters: e.linkStateFilters,
-		includeBackLinks: e.includeBackLinks,
 		relations:        e.relations,
 		setOfList:        e.setOfList,
 		objectTypes:      e.objectTypes,
-		includeSpace:     e.includeSpace,
+		req:              e.req,
 	}
 }
 
@@ -258,7 +245,7 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 	}
 
 	var docNamer Namer
-	if e.format == model.Export_Markdown && e.gatewayUrl != "" {
+	if e.req.Format == model.Export_Markdown && e.gatewayUrl != "" {
 		u, err := url.Parse(e.gatewayUrl)
 		if err != nil {
 			return "", err
@@ -268,13 +255,14 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 		docNamer = newNamer()
 	}
 	inMemoryWriter := &InMemoryWriter{fn: docNamer}
-	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.transformToDetailsMap())
+	conv := e.getConverterByFormat(inMemoryWriter)
+	err = e.writeDoc(ctx, inMemoryWriter, objectId, conv)
 	if err != nil {
 		return "", err
 	}
 
 	for _, v := range inMemoryWriter.data {
-		if e.format == model.Export_Protobuf {
+		if e.req.Format == model.Export_Protobuf {
 			return base64.StdEncoding.EncodeToString(v), nil
 		}
 		return string(v), nil
@@ -290,11 +278,12 @@ func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) 
 		path string
 	)
 	defer func() {
-		e.finishWithNotification(e.spaceId, e.format, queue, err)
+		e.finishWithNotification(e.spaceId, e.req.Format, queue, err)
 		if err = queue.Finalize(); err != nil {
 			cleanupFile(wr)
 		}
 	}()
+	e.req.IncludeSetObjects = true
 	err = e.docsForExport(ctx)
 	if err != nil {
 		return "", 0, err
@@ -308,7 +297,7 @@ func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) 
 		return "", 0, err
 	}
 	wr.Close()
-	if e.zip {
+	if e.req.Zip {
 		path, succeed, err = e.renameZipArchive(wr, succeed)
 		return path, succeed, err
 	}
@@ -320,13 +309,13 @@ func (e *exportContext) getWriter() (writer, error) {
 		wr  writer
 		err error
 	)
-	if e.zip {
-		if wr, err = newZipWriter(e.path, tempFileName); err != nil {
+	if e.req.Zip {
+		if wr, err = newZipWriter(e.req.Path, tempFileName); err != nil {
 			err = anyerror.CleanupError(err)
 			return nil, err
 		}
 	} else {
-		if wr, err = newDirWriter(e.path, e.includeFiles); err != nil {
+		if wr, err = newDirWriter(e.req.Path, e.includeFiles); err != nil {
 			err = anyerror.CleanupError(err)
 			return nil, err
 		}
@@ -336,40 +325,44 @@ func (e *exportContext) getWriter() (writer, error) {
 
 func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue process.Queue) (int, error) {
 	queue.SetMessage("export docs")
-	if e.format == model.Export_Protobuf && len(e.reqIds) == 0 {
+
+	if e.req.Format == model.Export_Protobuf && len(e.reqIds) == 0 {
 		if err := e.createProfileFile(e.spaceId, wr); err != nil {
 			log.Errorf("failed to create profile file: %s", err)
 		}
 	}
-	var succeed int
-	if e.format == model.Export_DOT || e.format == model.Export_SVG {
-		succeed = e.exportDotAndSVG(ctx, succeed, wr, queue)
-	} else if e.format == model.Export_GRAPH_JSON {
-		succeed = e.exportGraphJson(ctx, succeed, wr, queue)
-	} else {
-		tasks := make([]process.Task, 0, len(e.docs))
+	switch e.req.Format {
+	case model.Export_DOT, model.Export_SVG:
+		return e.exportDotAndSVG(ctx, 0, wr, queue), nil
+
+	case model.Export_GRAPH_JSON:
+		return e.exportGraphJson(ctx, 0, wr, queue), nil
+
+	default:
 		var succeedAsync int64
-		tasks = e.exportDocs(ctx, wr, &succeedAsync, tasks)
-		err := queue.Wait(tasks...)
-		if err != nil {
+		conv := e.getConverterByFormat(wr)
+		tasks := e.exportDocs(ctx, wr, &succeedAsync, conv)
+
+		if err := queue.Wait(tasks...); err != nil {
 			cleanupFile(wr)
 			return 0, nil
 		}
-		succeed += int(succeedAsync)
+
+		if flusher, ok := conv.(converter.Flusher); ok {
+			if err := flusher.Flush(wr); err != nil {
+				return 0, err
+			}
+		}
+		return int(succeedAsync), nil
 	}
-	return succeed, nil
 }
 
-func (e *exportContext) exportDocs(ctx context.Context,
-	wr writer,
-	succeed *int64,
-	tasks []process.Task,
-) []process.Task {
-	docsDetails := e.docs.transformToDetailsMap()
+func (e *exportContext) exportDocs(ctx context.Context, wr writer, succeed *int64, conv converter.Converter) []process.Task {
+	tasks := make([]process.Task, 0, len(e.docs))
 	for docId := range e.docs {
 		did := docId
 		task := func() {
-			if werr := e.writeDoc(ctx, wr, did, docsDetails); werr != nil {
+			if werr := e.writeDoc(ctx, wr, did, conv); werr != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
 				atomic.AddInt64(succeed, 1)
@@ -380,9 +373,27 @@ func (e *exportContext) exportDocs(ctx context.Context,
 	return tasks
 }
 
+func (e *exportContext) getConverterByFormat(wr writer) converter.Converter {
+	var conv converter.Converter
+	switch e.req.Format {
+	case model.Export_Markdown:
+		csvCtx := csv.NewExportCtx(
+			csv.WithFilters(e.req.Filters),
+			csv.WithSorts(e.req.Sorts),
+			csv.WithRelationKeys(e.req.RelationKeys),
+			csv.WithIncludeSetObjects(e.req.IncludeSetObjects),
+		)
+		conv = md.NewMDConverter(wr.Namer(), e.objectStore, e.docs.transformToDetailsMap(), csvCtx)
+	case model.Export_Protobuf:
+		conv = pbc.NewConverter(e.req.IsJson)
+	case model.Export_JSON:
+		conv = pbjson.NewConverter()
+	}
+	return conv
+}
+
 func (e *exportContext) exportGraphJson(ctx context.Context, succeed int, wr writer, queue process.Queue) int {
-	mc := graphjson.NewMultiConverter(e.sbtProvider)
-	mc.SetKnownDocs(e.docs.transformToDetailsMap())
+	mc := graphjson.NewMultiConverter(e.sbtProvider, e.docs.transformToDetailsMap())
 	var werr error
 	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, queue); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
@@ -392,11 +403,10 @@ func (e *exportContext) exportGraphJson(ctx context.Context, succeed int, wr wri
 
 func (e *exportContext) exportDotAndSVG(ctx context.Context, succeed int, wr writer, queue process.Queue) int {
 	var format = dot.ExportFormatDOT
-	if e.format == model.Export_SVG {
+	if e.req.Format == model.Export_SVG {
 		format = dot.ExportFormatSVG
 	}
-	mc := dot.NewMultiConverter(format, e.sbtProvider)
-	mc.SetKnownDocs(e.docs.transformToDetailsMap())
+	mc := dot.NewMultiConverter(format, e.sbtProvider, e.docs.transformToDetailsMap())
 	var werr error
 	if succeed, werr = e.writeMultiDoc(ctx, mc, wr, queue); werr != nil {
 		log.Warnf("can't export docs: %v", werr)
@@ -405,7 +415,7 @@ func (e *exportContext) exportDotAndSVG(ctx context.Context, succeed int, wr wri
 }
 
 func (e *exportContext) renameZipArchive(wr writer, succeed int) (string, int, error) {
-	zipName := getZipName(e.path)
+	zipName := getZipName(e.req.Path)
 	err := os.Rename(wr.Path(), zipName)
 	if err != nil {
 		os.Remove(wr.Path())
@@ -414,23 +424,23 @@ func (e *exportContext) renameZipArchive(wr writer, succeed int) (string, int, e
 	return zipName, succeed, nil
 }
 
-func isAnyblockExport(format model.ExportFormat) bool {
-	return format == model.Export_Protobuf || format == model.Export_JSON
+func shouldExportRelationsAndType(format model.ExportFormat) bool {
+	return format == model.Export_Protobuf || format == model.Export_JSON || format == model.Export_Markdown
 }
 
 func (e *exportContext) docsForExport(ctx context.Context) (err error) {
-	isProtobuf := isAnyblockExport(e.format)
+	shouldExportRelationsAndType := shouldExportRelationsAndType(e.req.Format)
 	if len(e.reqIds) == 0 {
-		return e.getExistedObjects(isProtobuf)
+		return e.getExistedObjects(shouldExportRelationsAndType)
 	}
 
 	if len(e.reqIds) > 0 {
-		return e.getObjectsByIDs(ctx, isProtobuf)
+		return e.getObjectsByIDs(ctx, shouldExportRelationsAndType)
 	}
 	return
 }
 
-func (e *exportContext) getObjectsByIDs(ctx context.Context, isProtobuf bool) error {
+func (e *exportContext) getObjectsByIDs(ctx context.Context, shouldExportRelationsAndType bool) error {
 	res, err := e.queryAndFilterObjectsByRelation(e.spaceId, e.reqIds, bundle.RelationKeyId)
 	if err != nil {
 		return err
@@ -439,16 +449,16 @@ func (e *exportContext) getObjectsByIDs(ctx context.Context, isProtobuf bool) er
 		id := object.Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: object.Details}
 	}
-	if e.includeSpace {
+	if e.req.IncludeSpace {
 		err = e.addSpaceToDocs(ctx)
 		if err != nil {
 			return err
 		}
 	}
-	if isProtobuf {
-		return e.processProtobuf()
+	if shouldExportRelationsAndType {
+		return e.processAllObjects()
 	}
-	return e.processNotProtobuf()
+	return e.processDocuments()
 }
 
 func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds []string, relationKey domain.RelationKey) ([]database.Record, error) {
@@ -502,7 +512,7 @@ func (e *exportContext) addSpaceToDocs(ctx context.Context) error {
 	return nil
 }
 
-func (e *exportContext) processNotProtobuf() error {
+func (e *exportContext) processDocuments() error {
 	ids := listObjectIds(e.docs)
 	if e.includeFiles {
 		fileObjectsIds, err := e.processFiles(ids)
@@ -519,7 +529,7 @@ func (e *exportContext) processNotProtobuf() error {
 	return nil
 }
 
-func (e *exportContext) processProtobuf() error {
+func (e *exportContext) processAllObjects() error {
 	if !e.includeNested {
 		err := e.addDependentObjectsFromDataview()
 		if err != nil {
@@ -954,7 +964,7 @@ func (e *exportContext) addNestedObjects(ids []string) error {
 	exportCtxChild.includeNested = false
 	exportCtxChild.docs = nestedDocs
 	exportCtxChild.isLinkProcess = true
-	err := exportCtxChild.processProtobuf()
+	err := exportCtxChild.processAllObjects()
 	if err != nil {
 		return err
 	}
@@ -975,9 +985,17 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 			Details:                  true,
 			Collection:               true,
 			NoHiddenBundledRelations: true,
-			NoBackLinks:              !e.includeBackLinks,
+			NoBackLinks:              !e.req.IncludeBacklinks,
 			CreatorModifierWorkspace: true,
 		})
+		layout, _ := st.Layout()
+		if layout == model.ObjectType_set && e.req.IncludeSetObjects {
+			var err error
+			links, err = e.getSetObjects(st, links)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -1006,6 +1024,39 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 			}
 		}
 	}
+}
+
+func (e *exportContext) getSetObjects(st *state.State, links []string) ([]string, error) {
+	setOf := st.Details().GetString(bundle.RelationKeySetOf)
+	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
+	uk, err := spaceIndex.GetUniqueKeyById(setOf)
+	if err != nil {
+		return nil, err
+	}
+	query := database.Query{}
+	switch uk.SmartblockType() {
+	case smartblock.SmartBlockTypeRelation:
+		query.Filters = append(query.Filters, database.FilterRequest{
+			RelationKey: domain.RelationKey(uk.InternalKey()),
+			Condition:   model.BlockContentDataviewFilter_Exists,
+		})
+	case smartblock.SmartBlockTypeObjectType:
+		query.Filters = append(query.Filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeyType,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(setOf),
+		})
+	}
+	if len(e.req.Filters) > 0 {
+		proto := database.FiltersFromProto(e.req.Filters)
+		query.Filters = append(query.Filters, proto...)
+	}
+	records, _, err := spaceIndex.QueryObjectIds(query)
+	if err != nil {
+		return nil, err
+	}
+	links = append(links, records...)
+	return links, nil
 }
 
 func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
@@ -1040,7 +1091,7 @@ func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 	return fileObjectsIds, nil
 }
 
-func (e *exportContext) getExistedObjects(isProtobuf bool) error {
+func (e *exportContext) getExistedObjects(shouldExportRelationsAndType bool) error {
 	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
 	res, err := spaceIndex.List(false)
 	if err != nil {
@@ -1064,7 +1115,7 @@ func (e *exportContext) getExistedObjects(isProtobuf bool) error {
 			log.With("objectId", info.Id).Errorf("failed to get smartblock type: %v", err)
 			continue
 		}
-		if !objectValid(sbType, info, e.includeArchive, isProtobuf) {
+		if !objectValid(sbType, info, e.includeArchive, shouldExportRelationsAndType) {
 			continue
 		}
 		e.docs[info.Id] = &Doc{Details: info.Details}
@@ -1110,14 +1161,14 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 		}
 	}
 
-	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0)), 0); err != nil {
+	if err = wr.WriteFile("export"+mw.Ext(0), bytes.NewReader(mw.Convert(nil, 0, "")), 0); err != nil {
 		return 0, err
 	}
 	err = nil
 	return
 }
 
-func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, details map[string]*domain.Details) (err error) {
+func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, conv converter.Converter) (err error) {
 	return cache.Do(e.picker, docId, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
@@ -1131,30 +1182,20 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 				return fmt.Errorf("save file: %w", err)
 			}
 			st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
-			// Don't save file objects in markdown
-			if e.format == model.Export_Markdown {
-				return nil
-			}
 		}
-
-		var conv converter.Converter
-		switch e.format {
-		case model.Export_Markdown:
-			conv = md.NewMDConverter(st, wr.Namer())
-		case model.Export_Protobuf:
-			conv = pbc.NewConverter(st, e.isJson)
-		case model.Export_JSON:
-			conv = pbjson.NewConverter(st)
-		}
-		conv.SetKnownDocs(details)
-		result := conv.Convert(b.Type().ToProto())
 		var filename string
-		if e.format == model.Export_Markdown {
-			filename = makeMarkdownName(st, wr, docId, conv.Ext(), e.spaceId)
+		layout, _ := st.Layout()
+		ext := conv.Ext(layout)
+		if e.req.Format == model.Export_Markdown {
+			filename = makeMarkdownName(st, wr, docId, ext, e.spaceId)
 		} else if docId == b.Space().DerivedIDs().Home {
-			filename = "index" + conv.Ext()
+			filename = "index" + ext
 		} else {
-			filename = makeFileName(docId, e.spaceId, conv.Ext(), st, b.Type())
+			filename = makeFileName(docId, e.spaceId, ext, st, b.Type())
+		}
+		result := conv.Convert(st, b.Type().ToProto(), filename)
+		if len(result) == 0 {
+			return nil
 		}
 		lastModifiedDate := st.LocalDetails().GetInt64(bundle.RelationKeyLastModifiedDate)
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
@@ -1275,14 +1316,14 @@ func provideFileDirectory(blockType smartblock.SmartBlockType) string {
 	}
 }
 
-func objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
+func objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, includeArchived bool, shouldExportRelationsAndType bool) bool {
 	if info.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && (!validTypeForNonProtobuf(sbType) || !validLayoutForNonProtobuf(info.Details)) {
+	if !shouldExportRelationsAndType && !validDocumentType(sbType) {
 		return false
 	}
-	if isProtobuf && !validType(sbType) {
+	if shouldExportRelationsAndType && !validType(sbType) {
 		return false
 	}
 	if strings.HasPrefix(info.Id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(info.Id, addr.BundledRelationURLPrefix) {
@@ -1350,15 +1391,10 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeParticipant
 }
 
-func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
+func validDocumentType(sbType smartblock.SmartBlockType) bool {
 	return sbType == smartblock.SmartBlockTypeProfilePage ||
 		sbType == smartblock.SmartBlockTypePage ||
 		sbType == smartblock.SmartBlockTypeFileObject
-}
-
-func validLayoutForNonProtobuf(details *domain.Details) bool {
-	return details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_collection) &&
-		details.GetInt64(bundle.RelationKeyResolvedLayout) != int64(model.ObjectType_set)
 }
 
 func cleanupFile(wr writer) {
