@@ -77,13 +77,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 					}...),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: "type.uniqueKey",
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.String("ot-template"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIsHidden.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.Bool(true),
@@ -128,7 +126,6 @@ func TestObjectService_ListObjects(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIsHidden.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.Bool(true),
@@ -274,13 +271,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 					}...),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: "type.uniqueKey",
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.String("ot-template"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIsHidden.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.Bool(true),

@@ -50,13 +50,11 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -232,13 +230,11 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("space-id"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -309,13 +305,11 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("space-id"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -343,13 +337,11 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("space-id"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -464,13 +456,11 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		SpaceId: "space-id",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
@@ -498,13 +488,11 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		SpaceId: "space-id",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
@@ -629,7 +617,6 @@ func TestSpaceService_GetMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-id"),
@@ -685,7 +672,6 @@ func TestSpaceService_GetMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-id")},
@@ -720,7 +706,6 @@ func TestSpaceService_GetMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-id"),
@@ -771,7 +756,6 @@ func TestSpaceService_GetMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String(participantId),
@@ -831,7 +815,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-1"),
@@ -879,7 +862,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-1"),
@@ -935,7 +917,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-2"),
@@ -987,7 +968,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-2"),
@@ -1043,7 +1023,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-3"),
@@ -1090,7 +1069,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-3"),
@@ -1144,7 +1122,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-4"),
@@ -1191,7 +1168,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-4"),
@@ -1245,7 +1221,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-5"),
@@ -1299,7 +1274,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-6"),
@@ -1353,7 +1327,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-7"),
@@ -1415,7 +1388,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-8"),

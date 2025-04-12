@@ -124,7 +124,6 @@ func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, l
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: pbtypes.IntList([]int{
@@ -139,13 +138,11 @@ func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, l
 				}...),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: "type.uniqueKey",
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       pbtypes.String("ot-template"),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyIsHidden.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       pbtypes.Bool(true),
@@ -369,13 +366,11 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyIsHidden.String(),
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       pbtypes.Bool(true),
@@ -452,7 +447,6 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String("ot-template"),
@@ -901,7 +895,6 @@ func (s *service) GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]
 					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIsHidden.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.Bool(true),

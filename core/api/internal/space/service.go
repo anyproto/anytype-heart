@@ -61,13 +61,11 @@ func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces
 		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -111,13 +109,11 @@ func (s *service) GetSpace(ctx context.Context, spaceId string) (Space, error) {
 		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(spaceId),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -186,13 +182,11 @@ func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, l
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
@@ -215,13 +209,11 @@ func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, l
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
@@ -280,7 +272,6 @@ func (s *service) GetMember(ctx context.Context, spaceId string, memberId string
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: relationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(memberId),

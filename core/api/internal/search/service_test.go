@@ -66,13 +66,11 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -134,7 +132,6 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 					Operator: model.BlockContentDataviewFilter_And,
 					NestedFilters: []*model.BlockContentDataviewFilter{
 						{
-							Operator:    model.BlockContentDataviewFilter_No,
 							RelationKey: bundle.RelationKeyResolvedLayout.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
 							Value: pbtypes.IntList([]int{
@@ -149,13 +146,11 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 							}...),
 						},
 						{
-							Operator:    model.BlockContentDataviewFilter_No,
 							RelationKey: bundle.RelationKeyIsHidden.String(),
 							Condition:   model.BlockContentDataviewFilter_NotEqual,
 							Value:       pbtypes.Bool(true),
 						},
 						{
-							Operator:    model.BlockContentDataviewFilter_No,
 							RelationKey: "type.uniqueKey",
 							Condition:   model.BlockContentDataviewFilter_NotEqual,
 							Value:       pbtypes.String("ot-template"),
@@ -164,13 +159,11 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 							Operator: model.BlockContentDataviewFilter_Or,
 							NestedFilters: []*model.BlockContentDataviewFilter{
 								{
-									Operator:    model.BlockContentDataviewFilter_No,
 									RelationKey: bundle.RelationKeyName.String(),
 									Condition:   model.BlockContentDataviewFilter_Like,
 									Value:       pbtypes.String(mockedSearchTerm),
 								},
 								{
-									Operator:    model.BlockContentDataviewFilter_No,
 									RelationKey: bundle.RelationKeySnippet.String(),
 									Condition:   model.BlockContentDataviewFilter_Like,
 									Value:       pbtypes.String(mockedSearchTerm),
@@ -220,7 +213,6 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIsHidden.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.Bool(true),
@@ -444,7 +436,6 @@ func TestSearchService_Search(t *testing.T) {
 					Operator: model.BlockContentDataviewFilter_And,
 					NestedFilters: []*model.BlockContentDataviewFilter{
 						{
-							Operator:    model.BlockContentDataviewFilter_No,
 							RelationKey: bundle.RelationKeyResolvedLayout.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
 							Value: pbtypes.IntList([]int{
@@ -459,13 +450,11 @@ func TestSearchService_Search(t *testing.T) {
 							}...),
 						},
 						{
-							Operator:    model.BlockContentDataviewFilter_No,
 							RelationKey: bundle.RelationKeyIsHidden.String(),
 							Condition:   model.BlockContentDataviewFilter_NotEqual,
 							Value:       pbtypes.Bool(true),
 						},
 						{
-							Operator:    model.BlockContentDataviewFilter_No,
 							RelationKey: "type.uniqueKey",
 							Condition:   model.BlockContentDataviewFilter_NotEqual,
 							Value:       pbtypes.String("ot-template"),
@@ -474,13 +463,11 @@ func TestSearchService_Search(t *testing.T) {
 							Operator: model.BlockContentDataviewFilter_Or,
 							NestedFilters: []*model.BlockContentDataviewFilter{
 								{
-									Operator:    model.BlockContentDataviewFilter_No,
 									RelationKey: bundle.RelationKeyName.String(),
 									Condition:   model.BlockContentDataviewFilter_Like,
 									Value:       pbtypes.String(mockedSearchTerm),
 								},
 								{
-									Operator:    model.BlockContentDataviewFilter_No,
 									RelationKey: bundle.RelationKeySnippet.String(),
 									Condition:   model.BlockContentDataviewFilter_Like,
 									Value:       pbtypes.String(mockedSearchTerm),
@@ -521,7 +508,6 @@ func TestSearchService_Search(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIsHidden.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.Bool(true),
