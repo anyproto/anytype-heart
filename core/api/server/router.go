@@ -28,7 +28,7 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.AccountService) *gin.Engine {
+func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 	debug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)

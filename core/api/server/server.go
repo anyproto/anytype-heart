@@ -46,7 +46,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 
 	s.listService = list.NewService(mw, s.objectService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
-	s.engine = s.NewRouter(mw, accountService)
+	s.engine = s.NewRouter(mw)
 	s.KeyToToken = make(map[string]string)
 
 	return s
