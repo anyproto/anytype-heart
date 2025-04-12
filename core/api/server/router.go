@@ -62,7 +62,6 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.Acc
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
 	v1.Use(s.ensureAuthenticated(mw))
-	v1.Use(s.ensureAccountInfo(accountService))
 	{
 		// Export
 		v1.GET("/spaces/:space_id/objects/:object_id/:format", export.GetObjectExportHandler(s.exportService))

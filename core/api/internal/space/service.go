@@ -36,7 +36,6 @@ var (
 )
 
 type Service interface {
-	SetAccountInfo(accountInfo *model.AccountInfo)
 	ListSpaces(ctx context.Context, offset int, limit int) ([]Space, int, bool, error)
 	GetSpace(ctx context.Context, spaceId string) (Space, error)
 	CreateSpace(ctx context.Context, request CreateSpaceRequest) (Space, error)
@@ -47,21 +46,18 @@ type Service interface {
 
 type service struct {
 	mw          apicore.ClientCommands
-	AccountInfo *model.AccountInfo
+	gatewayUrl  string
+	techSpaceId string
 }
 
-func NewService(mw apicore.ClientCommands) Service {
-	return &service{mw: mw}
-}
-
-func (s *service) SetAccountInfo(accountInfo *model.AccountInfo) {
-	s.AccountInfo = accountInfo
+func NewService(mw apicore.ClientCommands, gatewayUrl string, techSpaceId string) Service {
+	return &service{mw: mw, gatewayUrl: gatewayUrl, techSpaceId: techSpaceId}
 }
 
 // ListSpaces returns a paginated list of spaces for the account.
 func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []Space, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: s.AccountInfo.TechSpaceId,
+		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
@@ -111,7 +107,7 @@ func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces
 func (s *service) GetSpace(ctx context.Context, spaceId string) (Space, error) {
 	// Check if the workspace exists and is active
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: s.AccountInfo.TechSpaceId,
+		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Operator:    model.BlockContentDataviewFilter_No,
@@ -252,7 +248,7 @@ func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, l
 	members = make([]Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := util.GetIcon(s.AccountInfo.GatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+		icon := util.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 		member := Member{
 			Object:     "member",
@@ -300,7 +296,7 @@ func (s *service) GetMember(ctx context.Context, spaceId string, memberId string
 		return Member{}, ErrMemberNotFound
 	}
 
-	icon := util.GetIcon(s.AccountInfo.GatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := util.GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 	return Member{
 		Object:     "member",
@@ -401,7 +397,7 @@ func (s *service) getSpaceInfo(spaceId string) (space Space, err error) {
 	}
 
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := util.GetIcon(s.AccountInfo.GatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := util.GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return Space{

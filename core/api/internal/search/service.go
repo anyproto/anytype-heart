@@ -25,7 +25,6 @@ var (
 )
 
 type Service interface {
-	SetAccountInfo(accountInfo *model.AccountInfo)
 	GlobalSearch(ctx context.Context, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error)
 	Search(ctx context.Context, spaceId string, request SearchRequest, offset int, limit int) (objects []object.Object, total int, hasMore bool, err error)
 }
@@ -34,15 +33,10 @@ type service struct {
 	mw            apicore.ClientCommands
 	spaceService  space.Service
 	objectService object.Service
-	AccountInfo   *model.AccountInfo
 }
 
 func NewService(mw apicore.ClientCommands, spaceService space.Service, objectService object.Service) Service {
 	return &service{mw: mw, spaceService: spaceService, objectService: objectService}
-}
-
-func (s *service) SetAccountInfo(accountInfo *model.AccountInfo) {
-	s.AccountInfo = accountInfo
 }
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.

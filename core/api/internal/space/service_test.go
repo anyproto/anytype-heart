@@ -33,11 +33,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-	spaceService := NewService(mwMock)
-	spaceService.SetAccountInfo(&model.AccountInfo{
-		TechSpaceId: techSpaceId,
-		GatewayUrl:  gatewayUrl,
-	})
+	spaceService := NewService(mwMock, gatewayUrl, techSpaceId)
 
 	return &fixture{
 		service: spaceService,

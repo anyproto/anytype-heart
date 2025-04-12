@@ -93,7 +93,6 @@ var excludedSystemProperties = map[string]bool{
 }
 
 type Service interface {
-	SetAccountInfo(accountInfo *model.AccountInfo)
 	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
 	GetObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
@@ -111,16 +110,12 @@ type Service interface {
 }
 
 type service struct {
-	mw          apicore.ClientCommands
-	AccountInfo *model.AccountInfo
+	mw         apicore.ClientCommands
+	gatewayUrl string
 }
 
-func NewService(mw apicore.ClientCommands) Service {
-	return &service{mw: mw}
-}
-
-func (s *service) SetAccountInfo(accountInfo *model.AccountInfo) {
-	s.AccountInfo = accountInfo
+func NewService(mw apicore.ClientCommands, gatewayUrl string) Service {
+	return &service{mw: mw, gatewayUrl: gatewayUrl}
 }
 
 // ListObjects retrieves a paginated list of objects in a specific space.
@@ -214,7 +209,7 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 		Object:     "object",
 		Id:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       util.GetIcon(s.AccountInfo.GatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       util.GetIcon(s.gatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
@@ -409,7 +404,7 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Key:               record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:              util.GetIcon(s.AccountInfo.GatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+			Icon:              util.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:          record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 		})
@@ -444,7 +439,7 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (T
 		Id:                typeId,
 		Key:               details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              details[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              util.GetIcon(s.AccountInfo.GatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:              util.GetIcon(s.gatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:          details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 	}, nil
@@ -507,7 +502,7 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 			Object:   "template",
 			Id:       record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Name:     record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:     util.GetIcon(s.AccountInfo.GatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
+			Icon:     util.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
 			Archived: record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		})
 	}
@@ -540,7 +535,7 @@ func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 		Object:   "template",
 		Id:       templateId,
 		Name:     resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:     util.GetIcon(s.AccountInfo.GatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
+		Icon:     util.GetIcon(s.gatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
 		Archived: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 	}, nil
 }
@@ -564,7 +559,7 @@ func (s *service) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, type
 		Id:                objectTypeDetail.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:               objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              util.GetIcon(s.AccountInfo.GatewayUrl, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:              util.GetIcon(s.gatewayUrl, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 	}
 }
@@ -812,7 +807,7 @@ func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 				Checked: content.Text.Checked,
 				Color:   content.Text.Color,
-				Icon:    util.GetIcon(s.AccountInfo.GatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
+				Icon:    util.GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
 			}
 		case *model.BlockContentOfFile:
 			file = &File{
@@ -964,7 +959,7 @@ func (s *service) GetTypeMapsFromStore(spaceIds []string) (map[string]map[string
 				Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 				Key:               record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 				Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-				Icon:              util.GetIcon(s.AccountInfo.GatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+				Icon:              util.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 				Archived:          record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 				RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 			}
@@ -982,7 +977,7 @@ func (s *service) GetObjectFromStruct(details *types.Struct, propertyFormatMap m
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       util.GetIcon(s.AccountInfo.GatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       util.GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),

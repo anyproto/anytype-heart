@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	gatewayUrl        = "http://localhost:31006"
 	mockedSpaceId     = "mocked-space-id"
 	mockedListId      = "mocked-list-id"
 	mockedTypeId      = "mocked-type-id"
@@ -34,12 +35,9 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-	objectService := object.NewService(mwMock)
-	objectService.SetAccountInfo(&model.AccountInfo{
-		TechSpaceId: "mocked-tech-space-id",
-		GatewayUrl:  "http://localhost:31006",
-	})
+	objectService := object.NewService(mwMock, gatewayUrl)
 	listService := NewService(mwMock, objectService)
+
 	return &fixture{
 		service: listService,
 		mwMock:  mwMock,

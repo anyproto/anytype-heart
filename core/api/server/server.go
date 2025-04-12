@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -31,11 +32,16 @@ type Server struct {
 
 // NewServer constructs a new Server with default config and sets up the routes.
 func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, exportService apicore.ExportService) *Server {
+	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
+	if err != nil {
+		panic(err)
+	}
+
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw, exportService),
-		objectService: object.NewService(mw),
-		spaceService:  space.NewService(mw),
+		objectService: object.NewService(mw, gatewayUrl),
+		spaceService:  space.NewService(mw, gatewayUrl, techSpaceId),
 	}
 
 	s.listService = list.NewService(mw, s.objectService)
@@ -44,6 +50,17 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 	s.KeyToToken = make(map[string]string)
 
 	return s
+}
+
+// getAccountInfo retrieves the account information from the account service and returns the gateway URL and tech space ID.
+func getAccountInfo(accountService apicore.AccountService) (gatewayUrl string, techSpaceId string, err error) {
+	accountInfo, err := accountService.GetInfo(context.Background())
+	if err != nil {
+		return "", "", err
+	}
+	gatewayUrl = accountInfo.GatewayUrl
+	techSpaceId = accountInfo.TechSpaceId
+	return gatewayUrl, techSpaceId, nil
 }
 
 // Engine returns the underlying gin.Engine.
