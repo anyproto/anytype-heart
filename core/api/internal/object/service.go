@@ -999,7 +999,7 @@ func (s *service) getTypeFromStruct(details *types.Struct, typeMap map[string]Ty
 
 // getPropertiesFromStruct retrieves the properties from the details.
 func (s *service) getPropertiesFromStruct(details *types.Struct, propertyFormatMap map[string]string) []Property {
-	properties := []Property{}
+	properties := make([]Property, 0, len(details.GetFields()))
 	for key, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[key]; isExcluded {
 			continue
