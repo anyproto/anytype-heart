@@ -42,6 +42,7 @@ type Service interface {
 	ListMembers(ctx context.Context, spaceId string, offset int, limit int) ([]Member, int, bool, error)
 	GetMember(ctx context.Context, spaceId string, memberId string) (Member, error)
 	UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error)
+	GetAllSpaceIds() ([]string, error)
 }
 
 type service struct {
@@ -409,6 +410,39 @@ func (s *service) getSpaceInfo(spaceId string) (space Space, err error) {
 		GatewayUrl:  workspaceResponse.Info.GatewayUrl,
 		NetworkId:   workspaceResponse.Info.NetworkId,
 	}, nil
+}
+
+// GetAllSpaceIds effectively retrieves all space IDs from the tech space.
+func (s *service) GetAllSpaceIds() ([]string, error) {
+	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: s.techSpaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+			},
+		},
+		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, ErrFailedListSpaces
+	}
+
+	spaceIds := make([]string, 0, len(resp.Records))
+	for _, record := range resp.Records {
+		if id := record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue(); id != "" {
+			spaceIds = append(spaceIds, id)
+		}
+	}
+
+	return spaceIds, nil
 }
 
 // mapMemberPermissions maps participant permissions to a role
