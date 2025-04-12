@@ -28,9 +28,8 @@ const (
 )
 
 type fixture struct {
-	service       Service
-	mwMock        *mock_apicore.MockClientCommands
-	objectService object.Service
+	service Service
+	mwMock  *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -42,9 +41,8 @@ func newFixture(t *testing.T) *fixture {
 	})
 	listService := NewService(mwMock, objectService)
 	return &fixture{
-		service:       listService,
-		mwMock:        mwMock,
-		objectService: objectService,
+		service: listService,
+		mwMock:  mwMock,
 	}
 }
 
