@@ -2,8 +2,7 @@ package restriction
 
 import (
 	"fmt"
-
-	"github.com/samber/lo"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -170,12 +169,13 @@ var (
 	}
 )
 
-var editableSystemTypes = []domain.TypeKey{
-	bundle.TypeKeyPage, bundle.TypeKeyTask, bundle.TypeKeyNote, // pages
-	bundle.TypeKeySet, bundle.TypeKeyCollection, // lists
-	bundle.TypeKeyFile, bundle.TypeKeyAudio, bundle.TypeKeyVideo, bundle.TypeKeyImage, // files
-	bundle.TypeKeyBookmark,
-}
+var (
+	editableSystemTypes = []domain.TypeKey{
+		bundle.TypeKeyPage, bundle.TypeKeyBookmark, // pages
+		bundle.TypeKeySet, bundle.TypeKeyCollection, // lists
+		bundle.TypeKeyFile, bundle.TypeKeyAudio, bundle.TypeKeyVideo, bundle.TypeKeyImage, // files
+	}
+)
 
 func GetRestrictionsBySBType(sbType smartblock.SmartBlockType) []int {
 	restrictions := objectRestrictionsBySBType[sbType]
@@ -259,8 +259,8 @@ func getRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
-		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
-			if lo.Contains(editableSystemTypes, domain.TypeKey(key)) {
+		if slices.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
+			if slices.Contains(editableSystemTypes, domain.TypeKey(key)) {
 				r = sysTypesRestrictions
 			} else {
 				r = sysTypesRestrictionsEdit
@@ -272,7 +272,7 @@ func getRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 		return r
 	case smartblock.SmartBlockTypeRelation:
 		key := uk.InternalKey()
-		if lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
+		if slices.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
 			r = sysRelationsRestrictions
 		}
 	}

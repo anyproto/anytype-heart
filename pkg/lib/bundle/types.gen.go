@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "4c26441b1e7a99b4344c736f8237e70b122fd4b0923015c8fcb375dc5804cb55"
+const TypeChecksum = "2036a5654c912ee27758ac5c32356c3e1446905db136e7486740858f3ff7e623"
 const (
 	TypePrefix = "_ot"
 )
@@ -100,7 +100,7 @@ var (
 			Name:          "Chat [deprecated]",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      1,
+			Revision:      2,
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
 			Url:           TypePrefix + "chat",
 		},
@@ -170,6 +170,7 @@ var (
 			PluralName:    "Dates",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Date},
 			Url:           TypePrefix + "date",
 		},

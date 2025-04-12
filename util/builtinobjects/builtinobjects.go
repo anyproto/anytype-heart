@@ -50,6 +50,7 @@ const (
 
 	migrationUseCase       = -1
 	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
+	defaultDashboardId     = "lastOpened"
 
 	contentLengthHeader        = "Content-Length"
 	archiveDownloadingPercents = 30
@@ -197,8 +198,13 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	}
 
 	if isNewSpace {
+		profile, err := b.getProfile(path)
+		if err != nil {
+			log.Warnf("failed to profile object: %s", err)
+		}
 		// TODO: GO-2627 Home page handling should be moved to importer
-		b.handleHomePage(path, spaceID, removeFunc, false)
+		b.handleHomePage(profile, spaceID, false)
+		removeFunc()
 	} else {
 		removeFunc()
 	}
@@ -227,25 +233,33 @@ func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
 	return err
 }
 
-func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (dashboardId string, err error) {
+func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (startingPageId string, err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return "", fmt.Errorf("failed to save use case archive to temporary file: %w", err)
 	}
+	defer func() {
+		if rmErr := os.Remove(path); rmErr != nil {
+			log.Errorf("failed to remove temporary file: %v", anyerror.CleanupError(rmErr))
+		}
+	}()
 
 	if err = b.importArchive(context.Background(), spaceID, path, "", pb.RpcObjectImportRequestPbParams_SPACE, nil, false); err != nil {
 		return "", err
 	}
 
+	profile, err := b.getProfile(path)
+	if err != nil {
+		log.Warnf("failed to get profile object: %s", err)
+	}
+	startingPageId = b.getStartingPage(profile, spaceID)
+
 	// TODO: GO-2627 Home page handling should be moved to importer
-	dashboardId = b.handleHomePage(path, spaceID, func() {
-		if rmErr := os.Remove(path); rmErr != nil {
-			log.Errorf("failed to remove temporary file: %v", anyerror.CleanupError(rmErr))
-		}
-	}, useCase == migrationUseCase)
+	_ = b.handleHomePage(profile, spaceID, useCase == migrationUseCase)
 
 	// TODO: GO-2627 Widgets creation should be moved to importer
 	b.createWidgets(ctx, spaceID, useCase)
+
 	return
 }
 
@@ -283,28 +297,48 @@ func (b *builtinObjects) importArchive(
 	return res.Err
 }
 
-func (b *builtinObjects) handleHomePage(path, spaceId string, removeFunc func(), isMigration bool) (dashboardId string) {
-	defer removeFunc()
-	oldID := migrationDashboardName
-	if !isMigration {
-		r, err := zip.OpenReader(path)
-		if err != nil {
-			log.Errorf("cannot open zip file %s: %w", path, err)
-			return
-		}
-		defer r.Close()
-
-		oldID, err = b.getOldHomePageId(&r.Reader)
-		if err != nil {
-			log.Errorf("failed to get old id of home page object: %s", err)
-			return
-		}
+func (b *builtinObjects) getStartingPage(profile *pb.Profile, spaceId string) string {
+	if profile == nil {
+		return ""
 	}
-
-	newID, err := b.getNewObjectID(spaceId, oldID)
+	if profile.StartingPage == "" {
+		return ""
+	}
+	newID, err := b.getNewObjectID(spaceId, profile.StartingPage)
 	if err != nil {
 		log.Errorf("failed to get new id of home page object: %s", err)
-		return
+		return ""
+	}
+
+	return newID
+}
+
+func (b *builtinObjects) handleHomePage(profile *pb.Profile, spaceId string, isMigration bool) (dashboardId string) {
+	var oldID string
+	if !isMigration {
+		oldID = profile.SpaceDashboardId
+		if oldID == "" {
+			oldID = defaultDashboardId
+		}
+	} else if profile != nil {
+		oldID = profile.SpaceDashboardId
+	}
+
+	if oldID == "" {
+		oldID = defaultDashboardId
+	}
+
+	var newID string
+	if oldID != defaultDashboardId {
+		var err error
+		newID, err = b.getNewObjectID(spaceId, oldID)
+		if err != nil {
+			log.Errorf("failed to get new id of home page object: %s", err)
+		} else {
+			newID = defaultDashboardId
+		}
+	} else {
+		newID = defaultDashboardId
 	}
 
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
@@ -314,10 +348,18 @@ func (b *builtinObjects) handleHomePage(path, spaceId string, removeFunc func(),
 	}
 	dashboardId = newID
 	b.setHomePageIdToWorkspace(spc, newID)
+
 	return
 }
 
-func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err error) {
+func (b *builtinObjects) getProfile(path string) (profile *pb.Profile, err error) {
+	zipReader, err := zip.OpenReader(path)
+	if err != nil {
+		log.Errorf("cannot open zip file %s: %w", path, err)
+		return
+	}
+	defer zipReader.Close()
+
 	var (
 		rd           io.ReadCloser
 		profileFound bool
@@ -327,24 +369,24 @@ func (b *builtinObjects) getOldHomePageId(zipReader *zip.Reader) (id string, err
 			profileFound = true
 			rd, err = zf.Open()
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 			break
 		}
 	}
 
 	if !profileFound {
-		return "", fmt.Errorf("no profile file included in archive")
+		return nil, fmt.Errorf("no profile file included in archive")
 	}
 
 	defer rd.Close()
 	data, err := io.ReadAll(rd)
 
-	profile := &pb.Profile{}
+	profile = &pb.Profile{}
 	if err = profile.Unmarshal(data); err != nil {
-		return "", err
+		return nil, err
 	}
-	return profile.SpaceDashboardId, nil
+	return profile, nil
 }
 
 func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
