@@ -34,6 +34,12 @@ var (
 	ErrFailedCreateBlock         = errors.New("failed to create block")
 	ErrFailedPasteBody           = errors.New("failed to paste body")
 
+	// properties
+	ErrFailedRetrieveProperties = errors.New("failed to retrieve properties")
+	ErrFailedRetrieveProperty   = errors.New("failed to retrieve property")
+	ErrPropertyNotFound         = errors.New("property not found")
+	ErrPropertyDeleted          = errors.New("property deleted")
+
 	// types
 	ErrFailedRetrieveTypes        = errors.New("failed to retrieve types")
 	ErrTypeNotFound               = errors.New("type not found")
@@ -356,6 +362,91 @@ func (s *ObjectService) buildObjectDetails(request CreateObjectRequest) (*types.
 	return &types.Struct{Fields: fields}, nil
 }
 
+// ListProperties returns a list of properties for a specific space.
+func (s *ObjectService) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []Property, total int, hasMore bool, err error) {
+	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsHidden.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Bool(true),
+			},
+		},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyRelationFormat.String(),
+		},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, 0, false, ErrFailedRetrieveProperties
+	}
+
+	total = len(resp.Records)
+	paginatedProperties, hasMore := pagination.Paginate(resp.Records, offset, limit)
+	properties = make([]Property, 0, len(paginatedProperties))
+	for _, record := range paginatedProperties {
+		properties = append(properties, Property{
+			Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+			Key:    record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+			Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Format: s.MapRelationFormat(model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())),
+		})
+	}
+
+	return properties, total, hasMore, nil
+}
+
+// GetProperty retrieves a single property by its ID in a specific space.
+func (s *ObjectService) GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error) {
+	// TODO: change to object show to return possible deleted status, after fixing id / key
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(propertyId),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+		},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyRelationFormat.String(),
+		},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return Property{}, ErrFailedRetrieveProperty
+	}
+
+	if len(resp.Records) == 0 {
+		return Property{}, ErrPropertyNotFound
+	}
+
+	property := resp.Records[0]
+	return Property{
+		Id:     property.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:    property.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:   property.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Format: s.MapRelationFormat(model.RelationFormat(property.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())),
+	}, nil
+}
+
 // ListTypes returns a paginated list of types in a specific space.
 func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []Type, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
@@ -380,7 +471,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconName.String(), bundle.RelationKeyIconOption.String(), bundle.RelationKeyRecommendedLayout.String(), bundle.RelationKeyIsArchived.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconName.String(), bundle.RelationKeyIconOption.String(), bundle.RelationKeyRecommendedLayout.String(), bundle.RelationKeyIsArchived.String(), bundle.RelationKeyRecommendedFeaturedRelations.String(), bundle.RelationKeyRecommendedRelations.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -400,6 +491,7 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 			Icon:              util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:          record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+			Properties:        s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
 		})
 	}
 	return types, total, hasMore, nil
@@ -435,7 +527,24 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 		Icon:              util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:          details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+		Properties:        s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, details[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
 	}, nil
+}
+
+// getRecommendedPropertiesFromLists combines featured and regular properties into a single list of strings.
+func (s *ObjectService) getRecommendedPropertiesFromLists(featured, regular []*types.Value) []string {
+	properties := make([]string, 0, len(featured)+len(regular))
+	for _, prop := range featured {
+		if prop.GetStringValue() != "" {
+			properties = append(properties, strcase.ToSnake(prop.GetStringValue()))
+		}
+	}
+	for _, prop := range regular {
+		if prop.GetStringValue() != "" {
+			properties = append(properties, strcase.ToSnake(prop.GetStringValue()))
+		}
+	}
+	return properties
 }
 
 // ListTemplates returns a paginated list of templates in a specific space.
@@ -566,6 +675,7 @@ func (s *ObjectService) GetTypeFromDetails(typeId string, details []*model.Objec
 		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:              util.GetIcon(s.AccountInfo, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+		Properties:        s.getRecommendedPropertiesFromLists(objectTypeDetail.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, objectTypeDetail.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
 	}
 }
 
@@ -593,7 +703,8 @@ func (s *ObjectService) getProperties(resp *pb.RpcObjectShowResponse) []Property
 			continue
 		}
 
-		properties = append(properties, s.buildProperty(id, name, format, convertedVal))
+		// TODO: fix id
+		properties = append(properties, s.buildProperty("", key, name, format, convertedVal))
 	}
 
 	return properties
@@ -621,9 +732,10 @@ func (s *ObjectService) isMissingObject(val interface{}) bool {
 }
 
 // buildProperty creates a Property based on the format and converted value.
-func (s *ObjectService) buildProperty(id string, name string, format string, val interface{}) Property {
+func (s *ObjectService) buildProperty(id string, key string, name string, format string, val interface{}) Property {
 	prop := &Property{
 		Id:     id,
+		Key:    key,
 		Name:   name,
 		Format: format,
 	}
@@ -860,8 +972,8 @@ func (s *ObjectService) getBlocks(resp *pb.RpcObjectShowResponse) []Block {
 			}
 		case *model.BlockContentOfRelation:
 			property = &Property{
-				// TODO: is it sufficient to return the id only?
-				Id: content.Relation.Key,
+				// TODO: is it sufficient to return the key only?
+				Key: content.Relation.Key,
 			}
 		}
 		// TODO: other content types?

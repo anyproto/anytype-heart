@@ -64,6 +64,12 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.Acc
 	v1.Use(s.ensureAuthenticated(mw))
 	v1.Use(s.ensureAccountInfo(accountService))
 	{
+		// Block
+		// TODO: implement create, update and delete block endpoints
+		// v1.POST("/spaces/:space_id/objects/:object_id/blocks", s.rateLimit(maxWriteRequestsPerSecond), object.CreateBlockHandler(s.objectService))
+		// v1.PATCH("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateBlockHandler(s.objectService))
+		// v1.DELETE("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteBlockHandler(s.objectService))
+
 		// Export
 		v1.GET("/spaces/:space_id/objects/:object_id/:format", export.GetObjectExportHandler(s.exportService))
 
@@ -76,8 +82,24 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.Acc
 		// Object
 		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
 		v1.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
-		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteObjectHandler(s.objectService))
 		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), object.CreateObjectHandler(s.objectService))
+		// TODO: implement update object properties endpoint
+		// v1.PATCH("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateObjectHandler(s.objectService))
+		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteObjectHandler(s.objectService))
+
+		// Property
+		v1.GET("/spaces/:space_id/properties", object.GetPropertiesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/properties/:property_id", object.GetPropertyHandler(s.objectService))
+		// TODO: implement  create, delete and update property endpoints
+		// v1.POST("/spaces/:space_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.CreatePropertyHandler(s.objectService))
+		// v1.PATCH("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyHandler(s.objectService))
+		// v1.DELETE("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeletePropertyHandler(s.objectService))
+		// TODO: implement get, create, delete and update property options endpoints
+		// v1.GET("/spaces/:space_id/properties/:property_id/options", object.GetPropertyOptionsHandler(s.objectService))
+		// v1.GET("/spaces/:space_id/properties/:property_id/options/:option_id", object.GetPropertyOptionHandler(s.objectService))
+		// v1.POST("/spaces/:space_id/properties/:property_id/options", s.rateLimit(maxWriteRequestsPerSecond), object.AddPropertyOptionHandler(s.objectService))
+		// v1.PATCH("/spaces/:space_id/properties/:property_id/options/:option_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyOptionHandler(s.objectService))
+		// v1.DELETE("/spaces/:space_id/properties/:property_id/options/:option_id", s.rateLimit(maxWriteRequestsPerSecond), object.RemovePropertyOptionHandler(s.objectService))
 
 		// Search
 		v1.POST("/search", search.GlobalSearchHandler(s.searchService))
@@ -88,12 +110,18 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, accountService apicore.Acc
 		v1.GET("/spaces/:space_id", space.GetSpaceHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members", space.GetMembersHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members/:member_id", space.GetMemberHandler(s.spaceService))
+		// TODO: renable when granular permissions are implementeds
 		// v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond), space.UpdateMemberHandler(s.spaceService))
 		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
 
 		// Type
 		v1.GET("/spaces/:space_id/types", object.GetTypesHandler(s.objectService))
 		v1.GET("/spaces/:space_id/types/:type_id", object.GetTypeHandler(s.objectService))
+		// TODO: implement add and remove type properties endpoints
+		// v1.POST("/spaces/:space_id/types/:type_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.AddTypePropertyHandler(s.objectService))
+		// v1.DELETE("/spaces/:space_id/types/:type_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteTypePropertyHandler(s.objectService))
+
+		// Template
 		v1.GET("/spaces/:space_id/types/:type_id/templates", object.GetTemplatesHandler(s.objectService))
 		v1.GET("/spaces/:space_id/types/:type_id/templates/:template_id", object.GetTemplateHandler(s.objectService))
 	}

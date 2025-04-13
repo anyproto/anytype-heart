@@ -175,6 +175,80 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 	}
 }
 
+// GetPropertiesHandler retrieves a list of properties in a space
+//
+//	@Summary		List properties
+//	@Description	This endpoint retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
+//	@Tags			properties
+//	@Produce		json
+//	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
+//	@Param			space_id		path		string									true	"Space ID"
+//	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success		200				{object}	pagination.PaginatedResponse[Property]	"List of properties"
+//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
+//	@Failure		500				{object}	util.ServerError							"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties [get]
+func GetPropertiesHandler(s *ObjectService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		offset := c.GetInt("offset")
+		limit := c.GetInt("limit")
+
+		properties, total, hasMore, err := s.ListProperties(c.Request.Context(), spaceId, offset, limit)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrFailedRetrieveProperties, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		pagination.RespondWithPagination(c, http.StatusOK, properties, total, offset, limit, hasMore)
+	}
+}
+
+// GetPropertyHandler retrieves a property in a space
+//
+//	@Summary		Get property
+//	@Description	Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).
+//	@Tags			properties
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			property_id		path		string					true	"Property ID"
+//	@Success		200				{object}	PropertyResponse			"The requested property"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties/{property_id} [get]
+func GetPropertyHandler(s *ObjectService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		propertyId := c.Param("property_id")
+
+		property, err := s.GetProperty(c.Request.Context(), spaceId, propertyId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrPropertyNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrPropertyDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedRetrieveProperty, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+	}
+}
+
 // GetTypesHandler retrieves a list of types in a space
 //
 //	@Summary		List types

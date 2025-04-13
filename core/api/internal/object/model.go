@@ -61,8 +61,13 @@ type File struct {
 	Style          string `json:"style"`            // The style of the file
 }
 
+type PropertyResponse struct {
+	Property Property `json:"property"` // The property
+}
+
 type Property struct {
-	Id          string   `json:"id" example:"last_modified_date"`                                                                         // The id of the property
+	Id          string   `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"`                                // The id of the property
+	Key         string   `json:"key" example:"last_modified_date"`                                                                        // The key of the property
 	Name        string   `json:"name" example:"Last modified date"`                                                                       // The name of the property
 	Format      string   `json:"format" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property
 	Text        *string  `json:"text,omitempty" example:"Some text..."`                                                                   // The text value, if applicable
@@ -96,6 +101,7 @@ type Type struct {
 	Icon              util.Icon `json:"icon"`                                                                     // The icon of the type
 	Archived          bool      `json:"archived" example:"false"`                                                 // Whether the type is archived
 	RecommendedLayout string    `json:"recommended_layout" example:"todo"`                                        // The recommended layout of the type
+	Properties        []string  `json:"properties" example:"['last_modified_date', 'created_date']"`              // The properties linked to the type
 }
 
 type TemplateResponse struct {
