@@ -398,7 +398,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Expect the ObjectSearch call to get the relation format for the relation key.
+		// Mock GetPropertyFormatMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -414,7 +414,12 @@ func TestListService_GetObjectsInList(t *testing.T) {
 						Value:       pbtypes.Bool(true),
 					},
 				},
-				Keys: []string{bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyRelationFormat.String()},
+				Keys: []string{
+					bundle.RelationKeyId.String(),
+					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyName.String(),
+					bundle.RelationKeyRelationFormat.String(),
+				},
 			}).
 			Return(&pb.RpcObjectSearchResponse{
 				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -428,7 +433,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Expect the ObjectSearch call to get the type map.
+		// Mock GetTypeMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -575,7 +580,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Expect the ObjectSearch call to get the relation format for the relation key.
+		// Mock GetPropertyFormatMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -591,7 +596,12 @@ func TestListService_GetObjectsInList(t *testing.T) {
 						Value:       pbtypes.Bool(true),
 					},
 				},
-				Keys: []string{bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyRelationFormat.String()},
+				Keys: []string{
+					bundle.RelationKeyId.String(),
+					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyName.String(),
+					bundle.RelationKeyRelationFormat.String(),
+				},
 			}).
 			Return(&pb.RpcObjectSearchResponse{
 				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -930,7 +940,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Simulate an error when trying to retrieve the property map.
+		// Mock GetPropertyFormatMapsFromStore to return an error.
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -946,7 +956,12 @@ func TestListService_GetObjectsInList(t *testing.T) {
 						Value:       pbtypes.Bool(true),
 					},
 				},
-				Keys: []string{bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyRelationFormat.String()},
+				Keys: []string{
+					bundle.RelationKeyId.String(),
+					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyName.String(),
+					bundle.RelationKeyRelationFormat.String(),
+				},
 			}).
 			Return(&pb.RpcObjectSearchResponse{
 				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_UNKNOWN_ERROR},

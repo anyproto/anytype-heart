@@ -980,7 +980,8 @@ func (s *service) GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
-				bundle.RelationKeyRelationFormat.String()},
+				bundle.RelationKeyRelationFormat.String(),
+			},
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {

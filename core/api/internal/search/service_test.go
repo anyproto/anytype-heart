@@ -167,7 +167,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Add mock for GetPropertyFormatMapsFromStore
+		// Mock GetPropertyFormatMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -183,7 +183,9 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				},
 			},
 			Keys: []string{
+				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
 		}).Return(&pb.RpcObjectSearchResponse{
@@ -228,7 +230,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Add mock for GetTypeMapsFromStore
+		// Mock GetTypeMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -462,7 +464,7 @@ func TestSearchService_Search(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Add mock for GetPropertyFormatMapsFromStore
+		// Mock GetPropertyFormatMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -478,7 +480,9 @@ func TestSearchService_Search(t *testing.T) {
 				},
 			},
 			Keys: []string{
+				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
 		}).Return(&pb.RpcObjectSearchResponse{
@@ -523,7 +527,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Add mock for GetTypeMapsFromStore
+		// Mock GetTypeMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
