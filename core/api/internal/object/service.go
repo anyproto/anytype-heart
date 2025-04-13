@@ -484,14 +484,14 @@ func (s *ObjectService) ListTypes(ctx context.Context, spaceId string, offset in
 
 	for _, record := range paginatedTypes {
 		types = append(types, Type{
-			Object:            "type",
-			Id:                record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			Key:               record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-			Name:              record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:              util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-			Archived:          record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-			RecommendedLayout: model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-			Properties:        s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
+			Object:     "type",
+			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+			Key:        record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Icon:       util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+			Layout:     model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
 		})
 	}
 	return types, total, hasMore, nil
@@ -520,14 +520,14 @@ func (s *ObjectService) GetType(ctx context.Context, spaceId string, typeId stri
 
 	details := resp.ObjectView.Details[0].Details.Fields
 	return Type{
-		Object:            "type",
-		Id:                typeId,
-		Key:               details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-		Name:              details[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		Archived:          details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		RecommendedLayout: model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-		Properties:        s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, details[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
+		Object:     "type",
+		Id:         typeId,
+		Key:        details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:       util.GetIcon(s.AccountInfo, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+		Properties: s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, details[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
 	}, nil
 }
 
@@ -669,13 +669,13 @@ func (s *ObjectService) GetTypeFromDetails(typeId string, details []*model.Objec
 	}
 
 	return Type{
-		Object:            "type",
-		Id:                typeId,
-		Key:               objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-		Name:              objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:              util.GetIcon(s.AccountInfo, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		RecommendedLayout: model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-		Properties:        s.getRecommendedPropertiesFromLists(objectTypeDetail.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, objectTypeDetail.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
+		Object:     "type",
+		Id:         typeId,
+		Key:        objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:       objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:       util.GetIcon(s.AccountInfo, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Layout:     model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+		Properties: s.getRecommendedPropertiesFromLists(objectTypeDetail.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, objectTypeDetail.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
 	}
 }
 

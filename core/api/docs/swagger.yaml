@@ -297,6 +297,10 @@ components:
           type: string
         id:
           description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
           example: last_modified_date
           type: string
         multi_select:
@@ -335,6 +339,11 @@ components:
           description: The url value, if applicable
           example: https://example.com
           type: string
+      type: object
+    object.PropertyResponse:
+      properties:
+        property:
+          $ref: '#/components/schemas/object.Property'
       type: object
     object.Tag:
       description: The select value, if applicable
@@ -434,6 +443,10 @@ components:
             types)
           example: ot-page
           type: string
+        layout:
+          description: The recommended layout of the type
+          example: todo
+          type: string
         name:
           description: The name of the type
           example: Page
@@ -442,10 +455,15 @@ components:
           description: The data model of the object
           example: type
           type: string
-        recommended_layout:
-          description: The recommended layout of the type
-          example: todo
-          type: string
+        properties:
+          description: The properties linked to the type
+          example:
+          - '[''last_modified_date'''
+          - ' ''created_date'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
       type: object
     object.TypeResponse:
       properties:
@@ -469,6 +487,17 @@ components:
           description: The list of items in the current result set
           items:
             $ref: '#/components/schemas/object.Object'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginatedResponse-object_Property:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/object.Property'
           type: array
           uniqueItems: false
         pagination:
@@ -1847,6 +1876,125 @@ paths:
       summary: Export object
       tags:
       - export
+  /spaces/{space_id}/properties:
+    get:
+      description: This endpoint retrieves a paginated list of properties available
+        within a specific space. Each property record includes its unique identifier,
+        name and format. This information is essential for clients to understand the
+        available properties for filtering or creating objects.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: The number of items to return
+        in: query
+        name: limit
+        schema:
+          default: 100
+          maximum: 1000
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Property'
+          description: List of properties
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: List properties
+      tags:
+      - properties
+  /spaces/{space_id}/properties/{property_id}:
+    get:
+      description: Fetches detailed information about one specific property by its
+        ID. This includes the property’s unique identifier, name and format. This
+        detailed view assists clients in showing property options to users and in
+        guiding the user interface (such as displaying appropriate input fields or
+        selection options).
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Property ID
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.PropertyResponse'
+          description: The requested property
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Get property
+      tags:
+      - properties
   /spaces/{space_id}/search:
     post:
       description: This endpoint performs a focused search within a single space (specified

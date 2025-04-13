@@ -186,8 +186,8 @@ func CreateObjectHandler(s *ObjectService) gin.HandlerFunc {
 //	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[Property]	"List of properties"
-//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
-//	@Failure		500				{object}	util.ServerError							"Internal server error"
+//	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure		500				{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties [get]
 func GetPropertiesHandler(s *ObjectService) gin.HandlerFunc {
@@ -220,7 +220,7 @@ func GetPropertiesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			property_id		path		string					true	"Property ID"
-//	@Success		200				{object}	PropertyResponse			"The requested property"
+//	@Success		200				{object}	PropertyResponse		"The requested property"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
