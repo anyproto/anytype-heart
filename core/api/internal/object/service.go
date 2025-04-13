@@ -103,6 +103,8 @@ type Service interface {
 	GetObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error)
+	ListProperties(ctx context.Context, spaceId string, offset int, limit int) ([]Property, int, bool, error)
+	GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error)
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
 	GetType(ctx context.Context, spaceId string, typeId string) (Type, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)

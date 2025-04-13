@@ -190,7 +190,7 @@ func CreateObjectHandler(s Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties [get]
-func GetPropertiesHandler(s *ObjectService) gin.HandlerFunc {
+func GetPropertiesHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -227,7 +227,7 @@ func GetPropertiesHandler(s *ObjectService) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id} [get]
-func GetPropertyHandler(s *ObjectService) gin.HandlerFunc {
+func GetPropertyHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
