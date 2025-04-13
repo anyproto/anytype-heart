@@ -26,7 +26,7 @@ import (
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/views [get]
-func GetListViewsHandler(s *ListService) gin.HandlerFunc {
+func GetListViewsHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
@@ -67,7 +67,7 @@ func GetListViewsHandler(s *ListService) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/{view_id}/objects [get]
-func GetObjectsInListHandler(s *ListService) gin.HandlerFunc {
+func GetObjectsInListHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
@@ -113,7 +113,7 @@ func GetObjectsInListHandler(s *ListService) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/objects [post]
-func AddObjectsToListHandler(s *ListService) gin.HandlerFunc {
+func AddObjectsToListHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
@@ -157,7 +157,7 @@ func AddObjectsToListHandler(s *ListService) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/objects/{object_id} [delete]
-func RemoveObjectFromListHandler(s *ListService) gin.HandlerFunc {
+func RemoveObjectFromListHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -82,24 +81,6 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 
 		// Add token to request context for downstream services (subscriptions, events, etc.)
 		c.Set("token", token)
-		c.Next()
-	}
-}
-
-// ensureAccountInfo is a middleware that ensures the account info is available in the services.
-func (s *Server) ensureAccountInfo(accountService apicore.AccountService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		accInfo, err := accountService.GetInfo(context.Background())
-		if err != nil {
-			apiErr := util.CodeToAPIError(http.StatusInternalServerError, fmt.Sprintf("failed to get account info: %v", err))
-			c.AbortWithStatusJSON(http.StatusInternalServerError, apiErr)
-			return
-		}
-
-		s.objectService.AccountInfo = accInfo
-		s.spaceService.AccountInfo = accInfo
-		s.searchService.AccountInfo = accInfo
-
 		c.Next()
 	}
 }

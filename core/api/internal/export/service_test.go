@@ -15,7 +15,7 @@ const (
 )
 
 type fixture struct {
-	*ExportService
+	service    Service
 	exportMock *mock_apicore.MockExportService
 	mwMock     *mock_apicore.MockClientCommands
 }
@@ -26,9 +26,9 @@ func newFixture(t *testing.T) *fixture {
 	exportService := NewService(mwMock, exportMock)
 
 	return &fixture{
-		ExportService: exportService,
-		exportMock:    exportMock,
-		mwMock:        mwMock,
+		service:    exportService,
+		exportMock: exportMock,
+		mwMock:     mwMock,
 	}
 }
 
