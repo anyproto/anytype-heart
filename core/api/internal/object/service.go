@@ -846,21 +846,6 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format st
 	}
 }
 
-// getPropertyFormatMapFromLinks returns the map of property key to property format from the ObjectShowResponse.
-func (s *service) getPropertyFormatMapFromLinks(propertyLinks []*model.RelationLink) map[string]string {
-	propertyFormatToName := make(map[int32]string, len(model.RelationFormat_name))
-	for k := range model.RelationFormat_name {
-		propertyFormatToName[k] = s.MapRelationFormat(model.RelationFormat(k))
-	}
-
-	propertyFormatMap := map[string]string{}
-	for _, detail := range propertyLinks {
-		propertyFormatMap[detail.Key] = propertyFormatToName[int32(detail.Format)]
-	}
-
-	return propertyFormatMap
-}
-
 // getBlocksFromDetails returns the list of blocks from the ObjectShowResponse.
 func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 	blocks := []Block{}

@@ -160,7 +160,8 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	var source []string
 	listType := s.objectService.GetTypeFromDetails(resp.ObjectView.Details, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue())
 
-	if listType.Layout == "set" {
+	switch listType.Layout {
+	case "set":
 		// for queries, we search within the space for objects of the setOf type
 		setOfValues := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySetOf.String()].GetListValue().Values
 		for _, value := range setOfValues {
@@ -170,10 +171,10 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 			}
 			source = append(source, typeKey)
 		}
-	} else if listType.Layout == "collection" {
+	case "collection":
 		// for collections, we need to search within that collection
 		collectionId = listId
-	} else {
+	default:
 		return nil, 0, false, ErrUnsupportedListType
 	}
 
