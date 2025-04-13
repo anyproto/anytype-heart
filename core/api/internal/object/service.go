@@ -475,7 +475,17 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconName.String(), bundle.RelationKeyIconOption.String(), bundle.RelationKeyRecommendedLayout.String(), bundle.RelationKeyIsArchived.String(), bundle.RelationKeyRecommendedFeaturedRelations.String(), bundle.RelationKeyRecommendedRelations.String()},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyIconEmoji.String(),
+			bundle.RelationKeyIconName.String(),
+			bundle.RelationKeyIconOption.String(),
+			bundle.RelationKeyRecommendedLayout.String(),
+			bundle.RelationKeyIsArchived.String(),
+			bundle.RelationKeyRecommendedFeaturedRelations.String(),
+			bundle.RelationKeyRecommendedRelations.String()},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -495,7 +505,7 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 			Icon:       util.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 			Layout:     model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
+			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue()),
 		})
 	}
 	return types, total, hasMore, nil
@@ -531,21 +541,21 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (T
 		Icon:       util.GetIcon(s.gatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-		Properties: s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, details[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
+		Properties: s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details[bundle.RelationKeyRecommendedRelations.String()].GetListValue()),
 	}, nil
 }
 
 // getRecommendedPropertiesFromLists combines featured and regular properties into a single list of strings.
-func (s *service) getRecommendedPropertiesFromLists(featured, regular []*types.Value) []string {
-	properties := make([]string, 0, len(featured)+len(regular))
-	for _, prop := range featured {
-		if prop.GetStringValue() != "" {
-			properties = append(properties, strcase.ToSnake(prop.GetStringValue()))
+func (s *service) getRecommendedPropertiesFromLists(featured, regular *types.ListValue) []string {
+	var properties []string
+	for _, list := range []*types.ListValue{featured, regular} {
+		if list == nil {
+			continue
 		}
-	}
-	for _, prop := range regular {
-		if prop.GetStringValue() != "" {
-			properties = append(properties, strcase.ToSnake(prop.GetStringValue()))
+		for _, prop := range list.Values {
+			if prop.GetStringValue() != "" {
+				properties = append(properties, prop.GetStringValue())
+			}
 		}
 	}
 	return properties
@@ -666,7 +676,7 @@ func (s *service) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, type
 		Name:       objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:       util.GetIcon(s.gatewayUrl, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Layout:     model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-		Properties: s.getRecommendedPropertiesFromLists(objectTypeDetail.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue().Values, objectTypeDetail.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue().Values),
+		Properties: s.getRecommendedPropertiesFromLists(objectTypeDetail.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), objectTypeDetail.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue()),
 	}
 }
 
@@ -677,18 +687,18 @@ func (s *service) getPropertiesFromDetails(resp *pb.RpcObjectShowResponse) []Pro
 	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
 
 	properties := make([]Property, 0, len(linkedProperties))
-	for _, r := range linkedProperties {
-		key := r.Key
-		if _, isExcluded := excludedSystemProperties[key]; isExcluded {
+	for _, p := range linkedProperties {
+		propertyKey := p.Key
+		if _, isExcluded := excludedSystemProperties[propertyKey]; isExcluded {
 			continue
 		}
-		if _, ok := primaryDetailFields[key]; !ok {
+		if _, ok := primaryDetailFields[propertyKey]; !ok {
 			continue
 		}
 
-		key, name := s.getPropertyKeyAndName(key, resp.ObjectView.Details[0].Details)
-		format := propertyFormatMap[key]
-		convertedVal := s.convertPropertyValue(key, primaryDetailFields[key], format, resp.ObjectView.Details[0].Details)
+		key, name := s.getPropertyKeyAndName(propertyKey, resp.ObjectView.Details[0].Details)
+		format := propertyFormatMap[propertyKey]
+		convertedVal := s.convertPropertyValue(propertyKey, primaryDetailFields[propertyKey], format, resp.ObjectView.Details[0].Details)
 
 		if s.isMissingObject(convertedVal) {
 			continue
