@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -210,6 +209,12 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
+	// pre-fetch properties to fill the object
+	propertyFormatMap, err := s.GetPropertyFormatMapsFromStore([]string{spaceId})
+	if err != nil {
+		return ObjectWithBlocks{}, err
+	}
+
 	object := ObjectWithBlocks{
 		Object:     "object",
 		Id:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -220,7 +225,7 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 		Snippet:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
 		Type:       s.GetTypeFromDetails(resp.ObjectView.Details, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue()),
-		Properties: s.getPropertiesFromDetails(resp),
+		Properties: s.getPropertiesFromStruct(resp.ObjectView.Details[0].Details, propertyFormatMap[spaceId]),
 		Blocks:     s.getBlocksFromDetails(resp),
 	}
 
@@ -680,36 +685,6 @@ func (s *service) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, type
 	}
 }
 
-// getPropertiesFromDetails returns a list of properties by iterating over all properties found in the RelationLinks and mapping their format and value.
-func (s *service) getPropertiesFromDetails(resp *pb.RpcObjectShowResponse) []Property {
-	propertyFormatMap := s.getPropertyFormatMapFromLinks(resp.ObjectView.RelationLinks)
-	linkedProperties := resp.ObjectView.RelationLinks
-	primaryDetailFields := resp.ObjectView.Details[0].Details.Fields
-
-	properties := make([]Property, 0, len(linkedProperties))
-	for _, p := range linkedProperties {
-		propertyKey := p.Key
-		if _, isExcluded := excludedSystemProperties[propertyKey]; isExcluded {
-			continue
-		}
-		if _, ok := primaryDetailFields[propertyKey]; !ok {
-			continue
-		}
-
-		id, key, name := s.getPropertyInfo(propertyKey, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue())
-		format := propertyFormatMap[propertyKey]
-		convertedVal := s.convertPropertyValue(propertyKey, primaryDetailFields[propertyKey], format, resp.ObjectView.Details[0].Details)
-
-		if s.isMissingObject(convertedVal) {
-			continue
-		}
-
-		properties = append(properties, s.buildProperty(id, key, name, format, convertedVal))
-	}
-
-	return properties
-}
-
 // isMissingObject returns true if val indicates a "_missing_object" placeholder.
 func (s *service) isMissingObject(val interface{}) bool {
 	switch v := val.(type) {
@@ -806,27 +781,6 @@ func (s *service) buildProperty(id string, key string, name string, format strin
 	}
 
 	return *prop
-}
-
-// getPropertyInfo returns the property id, key, and name based on the key.
-func (s *service) getPropertyInfo(key string, spaceId string) (string, string, string) {
-	// bundled properties
-	if property, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
-		switch key {
-		case bundle.RelationKeyCreator.String():
-			return property.Id, "created_by", "Created By"
-		case bundle.RelationKeyCreatedDate.String():
-
-			return property.Id, "created_date", "Created Date"
-		}
-		return property.Id, strcase.ToSnake(property.Key), property.Name
-	}
-
-	// custom properties
-	if id, name, err2 := util.ResolveRelationKeyToPropertyIdAndName(s.mw, spaceId, key); err2 == nil {
-		return id, key, name
-	}
-	return key, key, key
 }
 
 // convertPropertyValue converts a protobuf types.Value into a native Go value.
