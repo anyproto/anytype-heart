@@ -111,8 +111,8 @@ type Service interface {
 	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error)
 
 	MapRelationFormat(format model.RelationFormat) string
-	GetObjectFromStruct(details *types.Struct, propertyFormatMap map[string]map[string]string, typeMap map[string]map[string]Type) Object
-	GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]map[string]string, error)
+	GetObjectFromStruct(details *types.Struct, propertyFormatMap map[string]map[string]Property, typeMap map[string]map[string]Type) Object
+	GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]map[string]Property, error)
 	GetTypeMapsFromStore(spaceIds []string) (map[string]map[string]Type, error)
 	GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string) Type
 }
@@ -402,7 +402,7 @@ func (s *service) ListProperties(ctx context.Context, spaceId string, offset int
 	for _, record := range paginatedProperties {
 		properties = append(properties, Property{
 			Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			Key:    record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+			Key:    strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-"),
 			Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Format: s.MapRelationFormat(model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())),
 		})
@@ -447,7 +447,7 @@ func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId st
 	property := resp.Records[0]
 	return Property{
 		Id:     property.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:    property.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Key:    strings.TrimPrefix(property.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-"),
 		Name:   property.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Format: s.MapRelationFormat(model.RelationFormat(property.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())),
 	}, nil
@@ -696,7 +696,7 @@ func (s *service) getPropertiesFromDetails(resp *pb.RpcObjectShowResponse) []Pro
 			continue
 		}
 
-		key, name := s.getPropertyKeyAndName(propertyKey, resp.ObjectView.Details[0].Details)
+		id, key, name := s.getPropertyInfo(propertyKey, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue())
 		format := propertyFormatMap[propertyKey]
 		convertedVal := s.convertPropertyValue(propertyKey, primaryDetailFields[propertyKey], format, resp.ObjectView.Details[0].Details)
 
@@ -704,8 +704,7 @@ func (s *service) getPropertiesFromDetails(resp *pb.RpcObjectShowResponse) []Pro
 			continue
 		}
 
-		// TODO: fix id
-		properties = append(properties, s.buildProperty("", key, name, format, convertedVal))
+		properties = append(properties, s.buildProperty(id, key, name, format, convertedVal))
 	}
 
 	return properties
@@ -809,26 +808,25 @@ func (s *service) buildProperty(id string, key string, name string, format strin
 	return *prop
 }
 
-// getPropertyKeyAndName returns the property id and name from the ObjectShowResponse.
-func (s *service) getPropertyKeyAndName(key string, details *types.Struct) (string, string) {
-	// Handle special cases first
-	switch key {
-	case bundle.RelationKeyCreator.String():
-		return "created_by", "Created By"
-	case bundle.RelationKeyCreatedDate.String():
-		return "created_date", "Created Date"
-	}
-
+// getPropertyInfo returns the property id, key, and name based on the key.
+func (s *service) getPropertyInfo(key string, spaceId string) (string, string, string) {
+	// bundled properties
 	if property, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
-		return strcase.ToSnake(key), property.Name
+		switch key {
+		case bundle.RelationKeyCreator.String():
+			return property.Id, "created_by", "Created By"
+		case bundle.RelationKeyCreatedDate.String():
+
+			return property.Id, "created_date", "Created Date"
+		}
+		return property.Id, strcase.ToSnake(property.Key), property.Name
 	}
 
-	// Fallback to resolving the property name
-	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
-	if name, err2 := util.ResolveRelationKeyToPropertyName(s.mw, spaceId, key); err2 == nil {
-		return key, name
+	// custom properties
+	if id, name, err2 := util.ResolveRelationKeyToPropertyIdAndName(s.mw, spaceId, key); err2 == nil {
+		return id, key, name
 	}
-	return key, key
+	return key, key, key
 }
 
 // convertPropertyValue converts a protobuf types.Value into a native Go value.
@@ -1006,8 +1004,8 @@ func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
 }
 
 // GetPropertyFormatMapsFromStore retrieves all properties from the store and returns a map of spaceId to property keys to their formats.
-func (s *service) GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]map[string]string, error) {
-	spacesToProperties := make(map[string]map[string]string, len(spaceIds))
+func (s *service) GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]map[string]Property, error) {
+	spacesToProperties := make(map[string]map[string]Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
 		resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
@@ -1024,18 +1022,45 @@ func (s *service) GetPropertyFormatMapsFromStore(spaceIds []string) (map[string]
 					Value:       pbtypes.Bool(true),
 				},
 			},
-			Keys: []string{bundle.RelationKeyUniqueKey.String(), bundle.RelationKeyRelationFormat.String()},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String()},
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 			return nil, ErrFailedRetrievePropertyFormatMap
 		}
 
-		propertyFormatMap := make(map[string]string, len(resp.Records))
+		propertyFormatMap := make(map[string]Property, len(resp.Records))
 		for _, record := range resp.Records {
-			name := strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-")
-			format := model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())
-			propertyFormatMap[name] = s.MapRelationFormat(format)
+			propertyKey := strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-")
+
+			var key, name string
+			switch propertyKey {
+			case bundle.RelationKeyCreator.String():
+				key = "created_by"
+				name = "Created By"
+			case bundle.RelationKeyCreatedDate.String():
+				key = "created_date"
+				name = "Created Date"
+			default:
+				// check if the property is custom or bundled
+				if len(propertyKey) == 24 && strings.ContainsAny(propertyKey, "0123456789") {
+					key = propertyKey
+				} else {
+					key = strcase.ToSnake(propertyKey)
+				}
+				name = record.Fields[bundle.RelationKeyName.String()].GetStringValue()
+			}
+
+			propertyFormatMap[propertyKey] = Property{
+				Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+				Key:    key,
+				Name:   name,
+				Format: s.MapRelationFormat(model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())),
+			}
 		}
 
 		spacesToProperties[spaceId] = propertyFormatMap
@@ -1089,7 +1114,7 @@ func (s *service) GetTypeMapsFromStore(spaceIds []string) (map[string]map[string
 }
 
 // GetObjectFromStruct creates an ObjectWithBlocks without blocks from the details.
-func (s *service) GetObjectFromStruct(details *types.Struct, propertyFormatMap map[string]map[string]string, typeMap map[string]map[string]Type) Object {
+func (s *service) GetObjectFromStruct(details *types.Struct, propertyFormatMap map[string]map[string]Property, typeMap map[string]map[string]Type) Object {
 	return Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -1110,23 +1135,24 @@ func (s *service) getTypeFromStruct(details *types.Struct, typeMap map[string]Ty
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
-func (s *service) getPropertiesFromStruct(details *types.Struct, propertyFormatMap map[string]string) []Property {
-	properties := make([]Property, 0, len(details.GetFields()))
-	for key, value := range details.GetFields() {
-		if _, isExcluded := excludedSystemProperties[key]; isExcluded {
+func (s *service) getPropertiesFromStruct(details *types.Struct, propertyFormatMap map[string]Property) []Property {
+	properties := make([]Property, 0)
+	for propertyKey, value := range details.GetFields() {
+		if _, isExcluded := excludedSystemProperties[propertyKey]; isExcluded {
 			continue
 		}
 
-		key, name := s.getPropertyKeyAndName(key, details)
-		format := propertyFormatMap[key]
+		key := propertyFormatMap[propertyKey].Key
+		format := propertyFormatMap[propertyKey].Format
 		convertedVal := s.convertPropertyValue(key, value, format, details)
 
 		if s.isMissingObject(convertedVal) {
 			continue
 		}
 
-		// TODO: fix this
-		properties = append(properties, s.buildProperty("", key, name, format, convertedVal))
+		id := propertyFormatMap[propertyKey].Id
+		name := propertyFormatMap[propertyKey].Name
+		properties = append(properties, s.buildProperty(id, key, name, format, convertedVal))
 	}
 
 	return properties

@@ -121,8 +121,8 @@ func ResolveIdtoUniqueKey(mw apicore.ClientCommands, spaceId string, typeId stri
 	return resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), nil
 }
 
-// ResolveRelationKeyToPropertyName resolves the property key to the property's name
-func ResolveRelationKeyToPropertyName(mw apicore.ClientCommands, spaceId string, relationKey string) (property string, err error) {
+// ResolveRelationKeyToPropertyIdAndName resolves the property key to the property's id and name
+func ResolveRelationKeyToPropertyIdAndName(mw apicore.ClientCommands, spaceId string, relationKey string) (propertyId string, propertyName string, err error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -137,16 +137,19 @@ func ResolveRelationKeyToPropertyName(mw apicore.ClientCommands, spaceId string,
 				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyResolvedLayout.String()},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+		},
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return "", ErrFailedSearchProperty
+		return "", "", ErrFailedSearchProperty
 	}
 
 	if len(resp.Records) == 0 {
-		return "", ErrorPropertyNotFound
+		return "", "", ErrorPropertyNotFound
 	}
 
-	return resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(), nil
+	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(), nil
 }
