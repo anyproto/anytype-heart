@@ -27,13 +27,13 @@ var log = logging.Logger("assistant").Desugar()
 const contextWindow = 20
 
 func run() error {
-	if len(os.Args) < 2 {
-		return fmt.Errorf("pass datadir as argument")
+	if len(os.Args) < 3 {
+		return fmt.Errorf("pass datadir and name as argument")
 	}
 	dataDir := os.Args[1]
 
 	ctx := context.Background()
-	app, err := createAccountAndStartApp(ctx, dataDir, pb.RpcObjectImportUseCaseRequest_EMPTY)
+	app, err := createAccountAndStartApp(ctx, dataDir, os.Args[2], pb.RpcObjectImportUseCaseRequest_EMPTY)
 	if err != nil {
 		return fmt.Errorf("create account: %w", err)
 	}
@@ -89,6 +89,7 @@ func run() error {
 		chatService:  chatService,
 		client:       openAiClient,
 		store:        handledMessages,
+		maxRequests:  10,
 	}
 
 	go func() {
@@ -106,7 +107,6 @@ func run() error {
 	}
 
 	chatter.InitWith(messages)
-	// TODO Check that all last messages are handled. Even if we have one unhandled message, pass all messages to openai
 
 	for {
 		msg, err := app.eventQueue.WaitOne(ctx)
@@ -118,10 +118,6 @@ func run() error {
 			chatter.Add(chatAddEv.Message)
 		}
 	}
-
-	// TODO Check that space view is not exist -> join space
-	// TODO If invite is sent, wait for space to load
-	// TODO When it loaded -> write a message to chat :)
 
 	return nil
 }

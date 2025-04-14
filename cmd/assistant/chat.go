@@ -23,13 +23,14 @@ type Chatter struct {
 	lock     sync.Mutex
 	messages []*model.ChatMessage
 
+	maxRequests int
 	chatService chats.Service
 	client      *openai.Client
 	store       keyvaluestore.Store[string]
 }
 
 func (c *Chatter) Run(ctx context.Context) {
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
@@ -123,6 +124,11 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 }
 
 func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatCompletionMessage) error {
+	if c.maxRequests <= 0 {
+		return nil
+	}
+	c.maxRequests--
+
 	compResp, err := c.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 		Model:    openai.GPT4oMini,
 		Messages: messages,

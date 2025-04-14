@@ -123,7 +123,7 @@ func writeConfig(fileName string, config *assistantConfig) error {
 	return nil
 }
 
-func createAccountAndStartApp(ctx context.Context, repoDir string, defaultUsecase pb.RpcObjectImportUseCaseRequestUseCase) (*testApplication, error) {
+func createAccountAndStartApp(ctx context.Context, repoDir string, name string, defaultUsecase pb.RpcObjectImportUseCaseRequestUseCase) (*testApplication, error) {
 	app := application.New()
 	platform := "test"
 	version := "1.0.0"
@@ -137,14 +137,18 @@ func createAccountAndStartApp(ctx context.Context, repoDir string, defaultUsecas
 	resolvedDir := filepath.Join(repoDir, "config.json")
 	config, err := readConfig(resolvedDir)
 	if errors.Is(err, os.ErrNotExist) {
-		return createAccount(ctx, app, repoDir, defaultUsecase)
+		return createAccount(ctx, app, repoDir, name, nil, defaultUsecase)
 	} else if err != nil {
 		return nil, fmt.Errorf("read mnemonic from file: %w", err)
+	}
+	// If we have a config, but without mnemonic
+	if config.Mnemonic == "" {
+		return createAccount(ctx, app, repoDir, name, config, defaultUsecase)
 	}
 	return loadAccount(ctx, app, repoDir, config)
 }
 
-func createAccount(ctx context.Context, app *application.Service, repoDir string, defaultUsecase pb.RpcObjectImportUseCaseRequestUseCase) (*testApplication, error) {
+func createAccount(ctx context.Context, app *application.Service, repoDir string, name string, config *assistantConfig, defaultUsecase pb.RpcObjectImportUseCaseRequestUseCase) (*testApplication, error) {
 	mnemonic, err := app.WalletCreate(&pb.RpcWalletCreateRequest{
 		RootPath: repoDir,
 	})
@@ -156,7 +160,7 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 	eventQueue := createEventQueue(ctx, app)
 
 	acc, err := app.AccountCreate(ctx, &pb.RpcAccountCreateRequest{
-		Name:        "test name",
+		Name:        name,
 		StorePath:   repoDir,
 		NetworkMode: pb.RpcAccount_DefaultConfig,
 	})
@@ -164,10 +168,13 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 		return nil, fmt.Errorf("account create: %w", err)
 	}
 
-	config := &assistantConfig{
-		AccountId: acc.Id,
-		Mnemonic:  mnemonic,
+	if config == nil {
+		config = &assistantConfig{}
 	}
+
+	config.AccountId = acc.Id
+	config.Mnemonic = mnemonic
+
 	err = writeConfig(filepath.Join(repoDir, "config.json"), config)
 	if err != nil {
 		return nil, fmt.Errorf("write config: %w", err)
