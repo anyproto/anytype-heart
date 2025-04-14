@@ -363,7 +363,15 @@ func (c *layoutConverter) insertTypeLevelFieldsToDataview(block *model.BlockCont
 	}
 
 	rawViewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
-	defaultTypeId := records[0].Details.GetString(bundle.RelationKeyDefaultTypeId)
+	defaultTypeValue := records[0].Details.Get(bundle.RelationKeyDefaultTypeId)
+	defaultTypeId, ok := defaultTypeValue.TryString()
+	if !ok {
+		// some clients put a list of ids to detail, that is normal, because relation has object format
+		list, ok := defaultTypeValue.TryStringList()
+		if ok && len(list) > 0 {
+			defaultTypeId = list[0]
+		}
+	}
 
 	// nolint:gosec
 	viewType := model.BlockContentDataviewViewType(rawViewType)
