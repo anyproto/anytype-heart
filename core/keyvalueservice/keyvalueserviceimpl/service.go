@@ -77,21 +77,23 @@ func (s *service) Close(ctx context.Context) (err error) {
 }
 
 func (s *service) GetUserScopedKey(ctx context.Context, key string) ([]keyvalueservice.Value, error) {
-	kvs, decryptor, err := s.techSpace.KeyValueStore().GetAll(ctx, key)
+	var result []keyvalueservice.Value
+	err := s.techSpace.KeyValueStore().GetAll(ctx, key, func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) error {
+		result = make([]keyvalueservice.Value, 0, len(kvs))
+		for _, kv := range kvs {
+			data, err := decryptor(kv)
+			if err != nil {
+				return fmt.Errorf("decrypt: %w", err)
+			}
+			result = append(result, keyvalueservice.Value{
+				Data:           data,
+				TimestampMilli: kv.TimestampMilli,
+			})
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("get all: %w", err)
-	}
-
-	result := make([]keyvalueservice.Value, 0, len(kvs))
-	for _, kv := range kvs {
-		data, err := decryptor(kv)
-		if err != nil {
-			return nil, fmt.Errorf("decrypt: %w", err)
-		}
-		result = append(result, keyvalueservice.Value{
-			Data:           data,
-			TimestampMilli: kv.TimestampMilli,
-		})
 	}
 	return result, nil
 }
