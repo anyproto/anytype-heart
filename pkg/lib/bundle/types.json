@@ -453,8 +453,7 @@
       "tag",
       "dueDate",
       "progress",
-      "status",
-      "tasks"
+      "status"
     ],
     "revision": 3
   },
@@ -491,8 +490,7 @@
     "hidden": false,
     "layout": "basic",
     "relations": [
-      "tag",
-      "tasks"
+      "tag"
     ],
     "revision": 3
   },
