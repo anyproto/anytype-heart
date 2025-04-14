@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,14 +26,16 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
-
 
 type assistantConfig struct {
 	AccountId string
 	Mnemonic  string
 	InviteCid string
 	InviteKey string
+	// SpaceId is fetched from invite automatically, you don't have to write it manually
+	SpaceId      string
 	SystemPrompt string
 	// IsActive if is true the bot will proactively write messages to the chats
 	IsActive bool
@@ -72,7 +73,7 @@ type testApplication struct {
 	appService *application.Service
 	account    *model.Account
 	eventQueue *mb.MB[*pb.EventMessage]
-	config *assistantConfig
+	config     *assistantConfig
 }
 
 func (a *testApplication) personalSpaceId() string {
@@ -154,9 +155,9 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 	eventQueue := createEventQueue(ctx, app)
 
 	acc, err := app.AccountCreate(ctx, &pb.RpcAccountCreateRequest{
-		Name:                    "test name",
-		StorePath:               repoDir,
-		NetworkMode:             pb.RpcAccount_DefaultConfig,
+		Name:        "test name",
+		StorePath:   repoDir,
+		NetworkMode: pb.RpcAccount_DefaultConfig,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("account create: %w", err)
@@ -175,7 +176,7 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 		appService: app,
 		account:    acc,
 		eventQueue: eventQueue,
-		config: config,
+		config:     config,
 	}
 	objCreator := getService[builtinobjects.BuiltinObjects](testApp)
 	_, _, err = objCreator.CreateObjectsForUseCase(session.NewContext(), acc.Info.AccountSpaceId, defaultUsecase)
@@ -191,7 +192,7 @@ func createEventQueue(ctx context.Context, app *application.Service) *mb.MB[*pb.
 		for _, msg := range event.Messages {
 			err := eventQueue.Add(ctx, msg)
 			if err != nil {
-				log.Println("event queue error:", err)
+				log.Error("event queue", zap.Error(err))
 			}
 		}
 	})
@@ -222,7 +223,7 @@ func loadAccount(ctx context.Context, app *application.Service, repoDir string, 
 		appService: app,
 		account:    acc,
 		eventQueue: eventQueue,
-		config: config,
+		config:     config,
 	}
 	return testApp, nil
 }
