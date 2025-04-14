@@ -134,7 +134,8 @@ func createAccountAndStartApp(ctx context.Context, repoDir string, defaultUsecas
 
 	logging.SetLogLevels("WARN")
 
-	config, err := readConfig(filepath.Join(repoDir, "config.json"))
+	resolvedDir := filepath.Join(repoDir, "config.json")
+	config, err := readConfig(resolvedDir)
 	if errors.Is(err, os.ErrNotExist) {
 		return createAccount(ctx, app, repoDir, defaultUsecase)
 	} else if err != nil {

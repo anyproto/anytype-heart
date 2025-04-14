@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block/chats"
-	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -79,12 +78,35 @@ func run() error {
 	}
 
 	chatService := getService[chats.Service](app)
-	_, err = chatService.SubscribeLastMessages(ctx, chatObjectId, contextWindow, "test")
+
+	openAiClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+
+	chatter := &Chatter{
+		limit:        contextWindow,
+		myIdentity:   app.account.Id,
+		chatObjectId: chatObjectId,
+		systemPrompt: app.config.SystemPrompt,
+		chatService:  chatService,
+		client:       openAiClient,
+		store:        handledMessages,
+	}
+
+	go func() {
+		chatter.Run(context.Background())
+	}()
+
+	lastMessagesResp, err := chatService.SubscribeLastMessages(ctx, chatObjectId, contextWindow, "test")
 	if err != nil {
 		return fmt.Errorf("subscribe to chat: %w", err)
 	}
 
-	openAiClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+	messages := make([]*model.ChatMessage, 0, len(lastMessagesResp.Messages))
+	for _, msg := range lastMessagesResp.Messages {
+		messages = append(messages, msg.ChatMessage)
+	}
+
+	chatter.InitWith(messages)
+	// TODO Check that all last messages are handled. Even if we have one unhandled message, pass all messages to openai
 
 	for {
 		msg, err := app.eventQueue.WaitOne(ctx)
@@ -93,33 +115,7 @@ func run() error {
 		}
 		chatAddEv := msg.GetChatAdd()
 		if chatAddEv != nil {
-			if chatAddEv.Message.Creator != app.account.Id {
-				compResp, err := openAiClient.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-					Model: openai.GPT4oMini,
-					Messages: []openai.ChatCompletionMessage{
-						{
-							Role:    openai.ChatMessageRoleUser,
-							Content: chatAddEv.Message.Message.Text,
-						},
-					},
-				})
-				if err != nil {
-					return fmt.Errorf("create chat completion: %w", err)
-				}
-
-				completion := compResp.Choices[0].Message.Content
-
-				_, err = chatService.AddMessage(ctx, nil, chatObjectId, &chatobject.Message{
-					ChatMessage: &model.ChatMessage{
-						Message: &model.ChatMessageMessageContent{
-							Text: completion,
-						},
-					},
-				})
-				if err != nil {
-					return fmt.Errorf("response in chat: %w", err)
-				}
-			}
+			chatter.Add(chatAddEv.Message)
 		}
 	}
 
