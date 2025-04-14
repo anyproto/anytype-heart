@@ -23,7 +23,7 @@ func TestValidateDetails(t *testing.T) {
 				bundle.RelationKeyName.String():     pbtypes.String("snap shot"),
 				bundle.RelationKeyType.String():     pbtypes.String(bundle.TypeKeyTask.URL()),
 				bundle.RelationKeyAssignee.String(): pbtypes.String("kirill"),
-				bundle.RelationKeyTasks.String():    pbtypes.StringList([]string{"task1", "task2"}),
+				bundle.RelationKeyMentions.String(): pbtypes.StringList([]string{"task1", "task2"}),
 				bundle.RelationKeyFeaturedRelations.String(): pbtypes.StringList([]string{
 					bundle.RelationKeyType.URL(), "rel-customTag",
 				}),
