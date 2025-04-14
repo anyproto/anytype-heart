@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "c783b9e9c309b48d6a0960d7b99554b68fc52fec4df4b26f15281c93f97228a0"
+const RelationChecksum = "62a158a458a241cdf5b502bad800a109a8917ab9026826dd1274262c46b1f839"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -28,6 +28,7 @@ const (
 	RelationKeyWritersLimit                 domain.RelationKey = "writersLimit"
 	RelationKeySharedSpacesLimit            domain.RelationKey = "sharedSpacesLimit"
 	RelationKeyIsHighlighted                domain.RelationKey = "isHighlighted"
+	RelationKeyTasks                        domain.RelationKey = "tasks"
 	RelationKeySnippet                      domain.RelationKey = "snippet"
 	RelationKeyRelationFormat               domain.RelationKey = "relationFormat"
 	RelationKeyRelationReadonlyValue        domain.RelationKey = "relationReadonlyValue"
@@ -74,6 +75,7 @@ const (
 	RelationKeyMood                         domain.RelationKey = "mood"
 	RelationKeyAudioLyrics                  domain.RelationKey = "audioLyrics"
 	RelationKeyFocalRatio                   domain.RelationKey = "focalRatio"
+	RelationKeyPriority                     domain.RelationKey = "priority"
 	RelationKeyFileMimeType                 domain.RelationKey = "fileMimeType"
 	RelationKeyType                         domain.RelationKey = "type"
 	RelationKeyLayout                       domain.RelationKey = "layout"
@@ -1364,6 +1366,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyPriority: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Used to order tasks in list/canban",
+			Format:           model.RelationFormat_number,
+			Id:               "_brpriority",
+			Key:              "priority",
+			MaxCount:         1,
+			Name:             "Priority",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyProfileOwnerIdentity: {
 
 			DataSource:       model.Relation_derived,
@@ -2041,6 +2056,19 @@ var (
 			MaxCount:         1,
 			Name:             "Target space id",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTasks: {
+
+			DataSource:       model.Relation_details,
+			Description:      "List of related tasks",
+			Format:           model.RelationFormat_object,
+			Id:               "_brtasks",
+			Key:              "tasks",
+			Name:             "Tasks",
+			ObjectTypes:      []string{TypePrefix + "task"},
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
