@@ -242,7 +242,11 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if len(ids) == 0 {
 		return nil
 	}
-	db := i.store.GetCrdtDb(space.Id())
+
+	db, err := i.dbProvider.GetCrdtDb(space.Id())
+	if err != nil {
+		return fmt.Errorf("get crdt db: %w", err)
+	}
 
 	txn, err := db.WriteTx(ctx)
 	if err != nil {
@@ -442,15 +446,6 @@ func (i *indexer) removeDetails(spaceId string) error {
 func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
-	}
-
-	if flags.fileKeys {
-		err = i.fileStore.RemoveEmptyFileKeys()
-		if err != nil {
-			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err)
-		} else {
-			log.Infof("RemoveEmptyFileKeys filekeys succeed")
-		}
 	}
 
 	if flags.eraseLinks {

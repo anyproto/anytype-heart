@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -24,14 +25,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -54,7 +54,11 @@ type Service interface {
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
-	GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error)
+
+	DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error
+	GetFileData(ctx context.Context, objectId string) (files.File, error)
+	GetImageData(ctx context.Context, objectId string) (files.Image, error)
+
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
@@ -71,7 +75,6 @@ type service struct {
 	objectCreator   objectCreatorService
 	fileService     files.Service
 	fileSync        filesync.FileSync
-	fileStore       filestore.FileStore
 	fileOffloader   fileoffloader.Service
 	objectStore     objectstore.ObjectStore
 	spaceIdResolver idresolver.Resolver
@@ -118,28 +121,29 @@ func (s *service) Init(a *app.App) error {
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.objectArchiver = app.MustComponent[objectArchiver](a)
 	s.accountService = app.MustComponent[accountService](a)
 
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+
 	cfg := app.MustComponent[configProvider](a)
 
 	s.indexer = s.newIndexer()
-
-	dbProvider := app.MustComponent[datastore.Datastore](a)
-	db, err := dbProvider.LocalStorage()
-	if err != nil {
-		return fmt.Errorf("get badger: %w", err)
-	}
 
 	migrationQueueCtx := context.Background()
 	if cfg.IsLocalOnlyMode() {
 		migrationQueueCtx = context.WithValue(migrationQueueCtx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(1*time.Minute))
 	}
+
+	migrationQueueStore, err := persistentqueue.NewAnystoreStorage(provider.GetCommonDb(), "queue/file_migration", makeMigrationItem)
+	if err != nil {
+		return fmt.Errorf("init migration queue store: %w", err)
+	}
+
 	s.migrationQueue = persistentqueue.New(
-		persistentqueue.NewBadgerStorage(db, []byte("queue/file_migration/"), makeMigrationItem),
+		migrationQueueStore,
 		log.Desugar(),
 		s.migrationQueueHandler,
 		persistentqueue.WithContext(migrationQueueCtx),
@@ -282,6 +286,10 @@ func (s *service) InitEmptyFileState(st *state.State) {
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error) {
+	if !req.AsyncMetadataIndexing && len(req.FileVariants) == 0 {
+		return "", nil, fmt.Errorf("file variants are not provided")
+	}
+
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
@@ -324,7 +332,8 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 		fileblocks.InitEmptyFileState(createState)
 		fullFileId := domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}
 		fullObjectId := domain.FullID{SpaceID: space.Id(), ObjectID: payload.RootRawChange.Id}
-		err := s.indexer.injectMetadataToState(ctx, createState, fullFileId, fullObjectId)
+
+		err = s.indexer.injectMetadataToState(ctx, createState, req.FileVariants, fullFileId, fullObjectId)
 		if err != nil {
 			return "", nil, fmt.Errorf("inject metadata to state: %w", err)
 		}
@@ -398,7 +407,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	if err == nil {
 		return fileObjectId, nil
 	}
-	keys, err := s.fileStore.GetFileKeys(fileId.FileId)
+	keys, err := s.objectStore.GetFileKeys(fileId.FileId)
 	if err != nil {
 		return "", fmt.Errorf("get file keys: %w", err)
 	}
@@ -465,30 +474,47 @@ func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error
 	}, nil
 }
 
-func (s *service) GetFileIdFromObjectWaitLoad(ctx context.Context, objectId string) (domain.FullFileId, error) {
+func (s *service) DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error {
 	spaceId, err := s.resolveSpaceIdWithRetry(ctx, objectId)
 	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("resolve space id: %w", err)
+		return fmt.Errorf("resolve space id: %w", err)
 	}
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("get space: %w", err)
+		return fmt.Errorf("get space: %w", err)
 	}
-	id := domain.FullFileId{
-		SpaceId: spaceId,
-	}
-	err = spc.Do(objectId, func(sb smartblock.SmartBlock) error {
-		details := sb.Details()
-		id.FileId = domain.FileId(details.GetString(bundle.RelationKeyFileId))
+	return spc.Do(objectId, func(sb smartblock.SmartBlock) error {
+		fileObj, ok := sb.(fileobject.FileObject)
+		if !ok {
+			return fmt.Errorf("object is not a fileobject")
+		}
+		id := fileObj.GetFullFileId()
 		if id.FileId == "" {
 			return filemodels.ErrEmptyFileId
 		}
+		return proc(fileObj)
+	})
+}
+
+// GetFileData waits for object to load and returns its file data
+func (s *service) GetFileData(ctx context.Context, objectId string) (files.File, error) {
+	var file files.File
+	err := s.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
+		var err error
+		file, err = object.GetFile()
+		return err
+	})
+	return file, err
+}
+
+// GetImageData waits for object to load and returns its image data
+func (s *service) GetImageData(ctx context.Context, objectId string) (files.Image, error) {
+	var img files.Image
+	err := s.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
+		img = object.GetImage()
 		return nil
 	})
-	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
-	}
-	return id, nil
+	return img, err
 }
 
 func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) (string, error) {
@@ -536,9 +562,6 @@ func (s *service) DeleteFileData(spaceId string, objectId string) error {
 		return fmt.Errorf("list objects that use file id: %w", err)
 	}
 	if len(records) == 0 {
-		if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
-			return err
-		}
 		if err := s.fileSync.DeleteFile(objectId, fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}

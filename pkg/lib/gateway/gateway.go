@@ -18,7 +18,6 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ipfs/go-cid"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
@@ -236,28 +235,19 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	fileIdAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
 	parts := strings.Split(fileIdAndPath, "/")
-	fileId := parts[0]
+	objectId := parts[0]
 
-	var id domain.FullFileId
-	// Treat id as fileId to allow download file directly
-	if domain.IsFileId(fileId) {
-		id = domain.FullFileId{
-			FileId: domain.FileId(fileId),
-		}
-	} else {
-		var err error
-		id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, fileId)
-		if err != nil {
-			return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
-		}
-	}
-
-	file, err := g.fileService.FileByHash(ctx, id)
+	var file files.File
+	var reader io.ReadSeeker
+	file, err := g.fileObjectService.GetFileData(ctx, objectId)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get file by hash: %w", err)
+		return nil, nil, fmt.Errorf("get file data: %w", err)
+	}
+	reader, err = file.Reader(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get reader: %w", err)
 	}
 
-	reader, err := file.Reader(ctx)
 	return file, reader, err
 }
 
@@ -275,23 +265,23 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 
-	file, reader, err := g.getImage(ctx, r)
+	res, err := g.getImage(ctx, r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting image: %s", err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
-	meta := file.Meta()
-	w.Header().Set("Content-Type", meta.Media)
+	meta := res.file.Meta()
+	w.Header().Set("Content-Type", res.mimeType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
 
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
 	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
-	http.ServeContent(w, r, meta.Name, meta.Added, reader)
+	http.ServeContent(w, r, meta.Name, meta.Added, res.reader)
 }
 
-func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
+func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReaderResult, error) {
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageId := urlParts[2]
 
@@ -305,37 +295,32 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	}
 
 	result, err := retry.DoWithData(func() (*getImageReaderResult, error) {
-		var id domain.FullFileId
-		// Treat id as fileId. We need to handle raw fileIds for backward compatibility in case of spaceview. See editor.SpaceView for details.
-		if domain.IsFileId(imageId) {
-			id = domain.FullFileId{
-				FileId: domain.FileId(imageId),
-			}
-		} else {
-			var err error
-			id, err = g.fileObjectService.GetFileIdFromObjectWaitLoad(ctx, imageId)
-			if err != nil {
-				return nil, fmt.Errorf("get file hash from object id: %w", err)
-			}
-		}
-
-		res, err := g.getImageReader(ctx, id, r)
+		img, err := g.fileObjectService.GetImageData(ctx, imageId)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get image data: %w", err)
+		}
+		res, err := g.getImageReader(ctx, img, r)
+		if err != nil {
+			return nil, fmt.Errorf("get image reader: %w", err)
 		}
 		return res, nil
 	}, retryOptions...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get image reader: %w", err)
+		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 
 	retryReader := newRetryReadSeeker(result.reader, retryOptions...)
-	return result.file, retryReader, nil
+	return &getImageReaderResult{
+		file:     result.file,
+		reader:   retryReader,
+		mimeType: result.mimeType,
+	}, nil
 }
 
 type getImageReaderResult struct {
-	file   files.File
-	reader io.ReadSeeker
+	file     files.File
+	reader   io.ReadSeeker
+	mimeType string
 }
 
 type retryReadSeeker struct {
@@ -368,20 +353,17 @@ func (r *retryReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	}, r.options...)
 }
 
-func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req *http.Request) (*getImageReaderResult, error) {
-	image, err := g.fileService.ImageByHash(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("get image by hash: %w", err)
-	}
+func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *http.Request) (*getImageReaderResult, error) {
 	var file files.File
 	query := req.URL.Query()
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
+		var err error
 		file, err = image.GetOriginalFile()
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
-		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+		if filepath.Ext(file.Name()) == constant.SvgExt {
 			return g.handleSVGFile(ctx, file)
 		}
 	} else {
@@ -393,7 +375,7 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
-		if filepath.Ext(file.Info().Name) == constant.SvgExt {
+		if filepath.Ext(file.Name()) == constant.SvgExt {
 			return g.handleSVGFile(ctx, file)
 		}
 	}
@@ -401,15 +383,23 @@ func (g *gateway) getImageReader(ctx context.Context, id domain.FullFileId, req 
 	if err != nil {
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
-	return &getImageReaderResult{file: file, reader: reader}, nil
+	return &getImageReaderResult{
+		file:     file,
+		reader:   reader,
+		mimeType: file.MimeType(),
+	}, nil
 }
 
 func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImageReaderResult, error) {
-	reader, err := svg.ProcessSvg(ctx, file)
+	reader, mimeType, err := svg.ProcessSvg(ctx, file)
 	if err != nil {
 		return nil, err
 	}
-	return &getImageReaderResult{file, reader}, nil
+	return &getImageReaderResult{
+		file:     file,
+		reader:   reader,
+		mimeType: mimeType,
+	}, nil
 }
 
 func cleanUpPathForLogging(input string) string {

@@ -35,7 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/metrics/anymetry"
@@ -44,7 +44,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -64,10 +63,10 @@ type Import struct {
 	oc                  creator.Service
 	idProvider          objectid.IdAndKeyProvider
 	tempDirProvider     core.TempDirProvider
-	fileStore           filestore.FileStore
 	fileSync            filesync.FileSync
 	notificationService notifications.Notifications
 	eventSender         event.Sender
+	objectStore         objectstore.ObjectStore
 
 	importCtx       context.Context
 	importCtxCancel context.CancelFunc
@@ -99,15 +98,14 @@ func (i *Import) Init(a *app.App) (err error) {
 	for _, c := range converters {
 		i.converters[c.Name()] = c
 	}
-	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.fileStore = app.MustComponent[filestore.FileStore](a)
+	i.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	fileObjectService := app.MustComponent[fileobject.Service](a)
-	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, i.fileStore, fileObjectService)
+	i.idProvider = objectid.NewIDProvider(i.objectStore, spaceService, i.s, fileObjectService)
 	factory := syncer.New(syncer.NewFileSyncer(i.s, fileObjectService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, fileObjectService))
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileObjectService)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	detailsService := app.MustComponent[detailservice.Service](a)
-	i.oc = creator.New(detailsService, factory, store, relationSyncer, spaceService, objectCreator, i.s)
+	i.oc = creator.New(detailsService, factory, i.objectStore, relationSyncer, spaceService, objectCreator, i.s)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	i.notificationService = app.MustComponent[notifications.Notifications](a)
 	i.eventSender = app.MustComponent[event.Sender](a)
@@ -464,7 +462,7 @@ func (i *Import) getObjectID(
 
 	// Preload file keys
 	for _, fileKeys := range snapshot.Snapshot.FileKeys {
-		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := i.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         domain.FileId(fileKeys.Hash),
 			EncryptionKeys: fileKeys.Keys,
 		})
@@ -477,7 +475,7 @@ func (i *Import) getObjectID(
 		for _, key := range fileInfo.EncryptionKeys {
 			keys[key.Path] = key.Key
 		}
-		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := i.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         domain.FileId(fileInfo.FileId),
 			EncryptionKeys: keys,
 		})
