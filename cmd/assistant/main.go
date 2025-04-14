@@ -89,7 +89,7 @@ func run() error {
 		chatService:  chatService,
 		client:       openAiClient,
 		store:        handledMessages,
-		maxRequests:  10,
+		maxRequests:  100,
 	}
 
 	go func() {
