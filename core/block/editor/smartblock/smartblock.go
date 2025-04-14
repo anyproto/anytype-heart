@@ -1277,11 +1277,11 @@ func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
 
 	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
 
-	// todo: verify this logic with clients
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
 		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
-
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
+	} else if s.LocalDetails().GetBool(bundle.RelationKeyIsReadonly) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(false))
 	}
 }
 
