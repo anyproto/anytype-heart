@@ -90,7 +90,13 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context) (string, error
 	s.lock.Lock()
 	if s.chatObjectsSubQueue != nil {
 		s.lock.Unlock()
-		return chatobject.LastMessageSubscriptionId, nil
+
+		err := s.UnsubscribeFromMessagePreviews()
+		if err != nil {
+			return "", fmt.Errorf("stop previous subscription: %w", err)
+		}
+
+		s.lock.Lock()
 	}
 	s.chatObjectsSubQueue = mb.New[*pb.EventMessage](0)
 	s.lock.Unlock()

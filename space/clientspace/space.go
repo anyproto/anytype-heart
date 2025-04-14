@@ -164,11 +164,10 @@ func (s *space) tryLoadBundledAndInstallIfMissing(disableRemoteLoad bool) {
 		if errors.Is(err, context.Canceled) {
 			return // we are closing, skip installation,
 		}
-		log.Error("failed to load bundled objects", zap.Error(err))
+		log.Warn("failed to load bundled objects", zap.Error(err))
 	}
-	_, _, err = s.installer.InstallBundledObjects(s.loadMissingBundledObjectsCtx, s, missingSourceIds, true)
-	if err != nil {
-		log.Error("failed to install bundled objects", zap.Error(err))
+	if len(missingSourceIds) > 0 {
+		log.Warn("missing bundled objects", zap.Strings("ids", missingSourceIds))
 	}
 }
 
@@ -187,9 +186,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 		return
 	}
 	go s.tryLoadBundledAndInstallIfMissing(disableRemoteLoad)
-	if s.loadMandatoryObjectsErr != nil {
-		return
-	}
+
 	err := s.migrationProfileObject(ctx)
 	if err != nil {
 		log.Error("failed to migrate profile object", zap.Error(err))
