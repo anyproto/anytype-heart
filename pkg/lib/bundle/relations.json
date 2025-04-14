@@ -170,19 +170,6 @@
     "source": "account"
   },
   {
-    "description": "List of related tasks\n",
-    "format": "object",
-    "hidden": false,
-    "key": "tasks",
-    "maxCount": 0,
-    "name": "Tasks",
-    "objectTypes": [
-      "task"
-    ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Plaintext extracted from the object's blocks ",
     "format": "longtext",
     "hidden": true,
@@ -662,16 +649,6 @@
     "key": "focalRatio",
     "maxCount": 1,
     "name": "Focal ratio",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "Used to order tasks in list/canban",
-    "format": "number",
-    "hidden": false,
-    "key": "priority",
-    "maxCount": 1,
-    "name": "Priority",
     "readonly": false,
     "source": "details"
   },
