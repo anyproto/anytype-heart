@@ -189,6 +189,10 @@ func (s *service) monitorChats() {
 
 func (s *service) onChatAdded(chatObjectId string) error {
 	s.lock.Lock()
+	if _, ok := s.chatObjectIds[chatObjectId]; ok {
+		s.lock.Unlock()
+		return nil
+	}
 	s.chatObjectIds[chatObjectId] = struct{}{}
 	s.lock.Unlock()
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
