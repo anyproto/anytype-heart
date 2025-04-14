@@ -364,8 +364,8 @@ func (c *layoutConverter) insertTypeLevelFieldsToDataview(block *model.BlockCont
 
 	rawViewType := records[0].Details.GetInt64(bundle.RelationKeyDefaultViewType)
 	defaultTypeIds := records[0].Details.WrapToStringList(bundle.RelationKeyDefaultTypeId)
-	defaultTypeId := ""
-	if len(defaultTypeIds) != 0 {
+	var defaultTypeId string
+	if len(defaultTypeIds) > 0 {
 		defaultTypeId = defaultTypeIds[0]
 	}
 
