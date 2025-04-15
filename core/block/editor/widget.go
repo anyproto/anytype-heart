@@ -52,6 +52,35 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	// cleanup broken
+	var removeIds []string
+	_ = ctx.State.Iterate(func(b simple.Block) (isContinue bool) {
+		if wc, ok := b.Model().Content.(*model.BlockContentOfLink); ok {
+			if wc.Link.TargetBlockId == addr.MissingObject {
+				removeIds = append(removeIds, b.Model().Id)
+				return true
+			}
+		}
+		return true
+	})
+
+	for _, id := range removeIds {
+		ctx.State.Unlink(id)
+	}
+	// now remove empty widget wrappers
+	removeIds = removeIds[:0]
+	_ = ctx.State.Iterate(func(b simple.Block) (isContinue bool) {
+		if _, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
+			if len(b.Model().GetChildrenIds()) == 0 {
+				removeIds = append(removeIds, b.Model().Id)
+				return true
+			}
+		}
+		return true
+	})
+	for _, id := range removeIds {
+		ctx.State.Unlink(id)
+	}
 	return nil
 }
 
