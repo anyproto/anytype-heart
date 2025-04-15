@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
-func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
+func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider, knownDocs map[string]*domain.Details) converter.MultiConverter {
 	return &dot{}
 }
 
@@ -31,10 +31,6 @@ const (
 type dot struct {
 }
 
-func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
-	return d
-}
-
 func (d *dot) FileHashes() []string {
 	return nil
 }
@@ -47,11 +43,11 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(sbType model.SmartBlockType) []byte {
-	panic("not supported on windows")
+func (d *dot) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
+	panic("not supported on windows and mobiles")
 	return nil
 }
 
-func (d *dot) Ext() string {
+func (d *dot) Ext(layout model.ObjectTypeLayout) string {
 	return ""
 }

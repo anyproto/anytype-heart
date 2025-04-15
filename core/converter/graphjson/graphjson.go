@@ -53,19 +53,13 @@ type graphjson struct {
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
-func NewMultiConverter(
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) converter.MultiConverter {
+func NewMultiConverter(sbtProvider typeprovider.SmartBlockTypeProvider, knownDocs map[string]*domain.Details) converter.MultiConverter {
 	return &graphjson{
 		linksByNode: map[string][]*Edge{},
 		nodes:       map[string]*Node{},
 		sbtProvider: sbtProvider,
+		knownDocs:   knownDocs,
 	}
-}
-
-func (g *graphjson) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
-	g.knownDocs = docs
-	return g
 }
 
 func (g *graphjson) FileHashes() []string {
@@ -118,7 +112,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (g *graphjson) Convert(sbType model.SmartBlockType) []byte {
+func (g *graphjson) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
 	d := &Graph{
 		Nodes: make([]*Node, 0, len(g.nodes)),
 		Edges: make([]*Edge, 0, len(g.linksByNode)),
@@ -142,6 +136,6 @@ func (g *graphjson) Convert(sbType model.SmartBlockType) []byte {
 	return b
 }
 
-func (g *graphjson) Ext() string {
+func (g *graphjson) Ext(model.ObjectTypeLayout) string {
 	return ".json"
 }

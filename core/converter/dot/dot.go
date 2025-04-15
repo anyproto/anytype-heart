@@ -55,10 +55,7 @@ type dot struct {
 	sbtProvider  typeprovider.SmartBlockTypeProvider
 }
 
-func NewMultiConverter(
-	format graphviz.Format,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) converter.MultiConverter {
+func NewMultiConverter(format graphviz.Format, sbtProvider typeprovider.SmartBlockTypeProvider, knownDocs map[string]*domain.Details) converter.MultiConverter {
 	ctx := context.Background()
 	g, err := graphviz.New(ctx)
 	if err != nil {
@@ -77,12 +74,8 @@ func NewMultiConverter(
 		linksByNode:  map[string][]linkInfo{},
 		nodes:        map[string]*cgraph.Node{},
 		sbtProvider:  sbtProvider,
+		knownDocs:    knownDocs,
 	}
-}
-
-func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
-	d.knownDocs = docs
-	return d
 }
 
 func (d *dot) FileHashes() []string {
@@ -151,7 +144,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 
-func (d *dot) Convert(sbType model.SmartBlockType) []byte {
+func (d *dot) Convert(st *state.State, sbType model.SmartBlockType, filename string) []byte {
 	var err error
 	for id, links := range d.linksByNode {
 		source, exists := d.nodes[id]
@@ -187,7 +180,7 @@ func (d *dot) Convert(sbType model.SmartBlockType) []byte {
 	return b
 }
 
-func (d *dot) Ext() string {
+func (d *dot) Ext(model.ObjectTypeLayout) string {
 	if d.exportFormat == graphviz.SVG {
 		return ".svg"
 	}

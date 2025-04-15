@@ -16372,6 +16372,10 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
 | includeBacklinks | [bool](#bool) |  |  |
 | includeSpace | [bool](#bool) |  |  |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
+| relationKeys | [string](#string) | repeated |  |
+| includeSetObjects | [bool](#bool) |  |  |
 
 
 
