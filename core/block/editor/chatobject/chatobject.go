@@ -220,7 +220,10 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	message.Read = true
+
+	// Normalize message
+	message.Read = false
+	message.MentionRead = false
 
 	obj := arena.NewObject()
 	message.MarshalAnyenc(obj, arena)
@@ -240,6 +243,18 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	if err != nil {
 		return "", fmt.Errorf("push change: %w", err)
 	}
+
+	if !s.chatHandler.forceNotRead {
+		for _, counterType := range []CounterType{CounterTypeMessage, CounterTypeMention} {
+			handler := newReadHandler(counterType, s.subscription)
+
+			err = s.storeSource.MarkSeenHeads(ctx, handler.getDiffManagerName(), []string{messageId})
+			if err != nil {
+				return "", fmt.Errorf("mark read: %w", err)
+			}
+		}
+	}
+
 	return messageId, nil
 }
 
