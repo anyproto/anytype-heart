@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "c4effd0b56ce4d007b246e0371064334d9a7acd7dee184669939217848faa938"
+const RelationChecksum = "62a158a458a241cdf5b502bad800a109a8917ab9026826dd1274262c46b1f839"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -2062,7 +2062,7 @@ var (
 		RelationKeyTasks: {
 
 			DataSource:       model.Relation_details,
-			Description:      "List of related tasks\n",
+			Description:      "List of related tasks",
 			Format:           model.RelationFormat_object,
 			Id:               "_brtasks",
 			Key:              "tasks",
