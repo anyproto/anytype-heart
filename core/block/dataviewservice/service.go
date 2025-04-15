@@ -216,7 +216,7 @@ func (s *service) AddDataviewViewRelation(
 		if err = dv.AddViewRelation(viewId, relation); err != nil {
 			return err
 		}
-		s.syncViewRelationsAndRelationLinks(objectId, viewId, dv)
+		syncViewRelationsAndRelationLinks(viewId, dv)
 		return nil
 	})
 }
@@ -234,7 +234,7 @@ func (s *service) RemoveDataviewViewRelations(
 		if err = dv.RemoveViewRelations(viewId, relationKeys); err != nil {
 			return err
 		}
-		s.syncViewRelationsAndRelationLinks(objectId, viewId, dv)
+		syncViewRelationsAndRelationLinks(viewId, dv)
 		return nil
 	})
 }
@@ -253,7 +253,7 @@ func (s *service) ReplaceDataviewViewRelation(
 		if err = dv.ReplaceViewRelation(viewId, relationKey, relation); err != nil {
 			return err
 		}
-		s.syncViewRelationsAndRelationLinks(objectId, viewId, dv)
+		syncViewRelationsAndRelationLinks(viewId, dv)
 		return nil
 	})
 }
@@ -271,12 +271,12 @@ func (s *service) ReorderDataviewViewRelations(
 		if err = dv.ReorderViewRelations(viewId, relationKeys); err != nil {
 			return err
 		}
-		s.syncViewRelationsAndRelationLinks(objectId, viewId, dv)
+		syncViewRelationsAndRelationLinks(viewId, dv)
 		return nil
 	})
 }
 
-func (s *service) syncViewRelationsAndRelationLinks(objectId, viewId string, dv dvblock.Block) {
+func syncViewRelationsAndRelationLinks(viewId string, dv dvblock.Block) {
 	view, err := dv.GetView(viewId)
 	if err != nil {
 		log.Error("failed to get view", zap.String("viewId", viewId), zap.Error(err))
