@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"hash"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -24,29 +23,32 @@ const CName = "core.keyvalueservice"
 var log = logging.Logger(CName).Desugar()
 
 type subscription struct {
-	key          string
 	name         string
 	observerFunc keyvalueservice.ObserverFunc
 }
 
-var hasherPool = sync.Pool{
-	New: func() interface{} {
-		return sha256.New()
-	},
-}
+type derivedKey string
 
 type service struct {
 	lock          sync.RWMutex
-	subscriptions map[string]map[string]subscription
+	subscriptions map[derivedKey]map[string]subscription
 
 	spaceService space.Service
 	techSpace    *clientspace.TechSpace
 
 	techSpaceSalt []byte
+
+	keysLock        sync.Mutex
+	keyToDerivedKey map[string]derivedKey
+	derivedKeyToKey map[derivedKey]string
 }
 
 func New() keyvalueservice.Service {
-	return &service{subscriptions: make(map[string]map[string]subscription)}
+	return &service{
+		subscriptions:   make(map[derivedKey]map[string]subscription),
+		keyToDerivedKey: make(map[string]derivedKey),
+		derivedKeyToKey: make(map[derivedKey]string),
+	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -102,14 +104,21 @@ func (s *service) initTechSpaceSalt() error {
 func (s *service) observeChanges(decryptFunc keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) {
 	for _, kv := range kvs {
 		s.lock.RLock()
-		byKey := s.subscriptions[kv.Key]
+		byKey := s.subscriptions[derivedKey(kv.Key)]
 		for _, sub := range byKey {
 			data, err := decryptFunc(kv)
 			if err != nil {
 				log.Error("can't decrypt value", zap.Error(err))
 				continue
 			}
-			sub.observerFunc(kv.Key, keyvalueservice.Value{Data: data, TimestampMilli: kv.TimestampMilli})
+
+			key, ok := s.getKeyFromDerived(derivedKey(kv.Key))
+			if !ok {
+				log.Error("can't get key from derived key", zap.String("subName", sub.name))
+				continue
+			}
+
+			sub.observerFunc(key, keyvalueservice.Value{Data: data, TimestampMilli: kv.TimestampMilli})
 		}
 		s.lock.RUnlock()
 
@@ -121,12 +130,12 @@ func (s *service) Close(ctx context.Context) (err error) {
 }
 
 func (s *service) GetUserScopedKey(ctx context.Context, key string) ([]keyvalueservice.Value, error) {
-	derivedKey, err := s.deriveKey(key)
+	derived, err := s.getDerivedKey(key)
 	if err != nil {
-		return nil, fmt.Errorf("deriveKey: %w", err)
+		return nil, fmt.Errorf("getDerivedKey: %w", err)
 	}
 	var result []keyvalueservice.Value
-	err = s.techSpace.KeyValueStore().GetAll(ctx, derivedKey, func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) error {
+	err = s.techSpace.KeyValueStore().GetAll(ctx, string(derived), func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) error {
 		result = make([]keyvalueservice.Value, 0, len(kvs))
 		for _, kv := range kvs {
 			data, err := decryptor(kv)
@@ -147,40 +156,60 @@ func (s *service) GetUserScopedKey(ctx context.Context, key string) ([]keyvalues
 }
 
 func (s *service) SetUserScopedKey(ctx context.Context, key string, value []byte) error {
-	derivedKey, err := s.deriveKey(key)
+	derived, err := s.getDerivedKey(key)
 	if err != nil {
-		return fmt.Errorf("deriveKey: %w", err)
+		return fmt.Errorf("getDerivedKey: %w", err)
 	}
-	return s.techSpace.KeyValueStore().Set(ctx, derivedKey, value)
+	return s.techSpace.KeyValueStore().Set(ctx, string(derived), value)
 }
 
-func (s *service) deriveKey(data string) (string, error) {
-	hasher := hasherPool.Get().(hash.Hash)
-	defer hasherPool.Put(hasher)
+func (s *service) getDerivedKey(key string) (derivedKey, error) {
+	s.keysLock.Lock()
+	defer s.keysLock.Unlock()
 
-	hasher.Reset()
+	derived, ok := s.keyToDerivedKey[key]
+	if ok {
+		return derived, nil
+	}
+
+	hasher := sha256.New()
 	// Salt
 	hasher.Write(s.techSpaceSalt)
-	// Data
-	hasher.Write([]byte(data))
+	// User key
+	hasher.Write([]byte(key))
 	result := hasher.Sum(nil)
 
-	res := hex.EncodeToString(result)
-	return res, nil
+	derived = derivedKey(hex.EncodeToString(result))
+
+	s.keyToDerivedKey[key] = derived
+	s.derivedKeyToKey[derived] = key
+	return derived, nil
+}
+
+func (s *service) getKeyFromDerived(derived derivedKey) (string, bool) {
+	s.keysLock.Lock()
+	defer s.keysLock.Unlock()
+
+	key, ok := s.derivedKeyToKey[derived]
+	return key, ok
 }
 
 func (s *service) SubscribeForUserScopedKey(key string, name string, observerFunc keyvalueservice.ObserverFunc) error {
+	derived, err := s.getDerivedKey(key)
+	if err != nil {
+		return fmt.Errorf("getDerivedKey: %w", err)
+	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	byKey, ok := s.subscriptions[key]
+	byKey, ok := s.subscriptions[derived]
 	if !ok {
 		byKey = make(map[string]subscription)
-		s.subscriptions[key] = byKey
+		s.subscriptions[derived] = byKey
 	}
 
 	byKey[name] = subscription{
-		key:          key,
 		name:         name,
 		observerFunc: observerFunc,
 	}
@@ -188,10 +217,15 @@ func (s *service) SubscribeForUserScopedKey(key string, name string, observerFun
 }
 
 func (s *service) UnsubscribeFromUserScopedKey(key string, name string) error {
+	derived, err := s.getDerivedKey(key)
+	if err != nil {
+		return fmt.Errorf("getDerivedKey: %w", err)
+	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	byKey, ok := s.subscriptions[key]
+	byKey, ok := s.subscriptions[derived]
 	if ok {
 		delete(byKey, name)
 	}
