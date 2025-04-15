@@ -663,6 +663,10 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 			action.Remove = append(action.Remove, s.PickOrigin(id).Copy())
 			delete(s.parent.blocks, id)
 		}
+	} else {
+		for _, id := range toRemove {
+			delete(s.blocks, id)
+		}
 	}
 	if s.parent != nil {
 		for _, b := range s.blocks {
