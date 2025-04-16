@@ -235,8 +235,14 @@ func (r *clientds) Name() (name string) {
 
 func (r *clientds) Close(ctx context.Context) (err error) {
 	close(r.closing)
+	timeout := time.After(time.Minute)
+	select {
+	case <-r.syncerFinished:
+	case <-timeout:
+		return fmt.Errorf("sync time out")
+	}
 	// wait syncer goroutine to finish to make sure we don't have in-progress requests, because it may cause panics
-	<-r.syncerFinished
+
 	if r.localstoreDS != nil {
 		err2 := r.localstoreDS.Close()
 		if err2 != nil {
