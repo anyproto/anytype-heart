@@ -2,6 +2,7 @@ package aclobjectmanager
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"slices"
 	"sync"
@@ -10,17 +11,23 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/push"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacekey"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -39,27 +46,33 @@ func New(ownerMetadata []byte, guestKey crypto.PrivKey) AclObjectManager {
 	}
 }
 
+type pushNotificationService interface {
+	SubscribeToTopics(ctx context.Context, spaceId string, topics []string)
+}
+
 type aclObjectManager struct {
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	wait                chan struct{}
-	waitLoad            chan struct{}
-	sp                  clientspace.Space
-	loadErr             error
-	spaceLoader         spaceloader.SpaceLoader
-	status              spacestatus.SpaceStatus
-	statService         debugstat.StatService
-	started             bool
-	notificationService aclnotifications.AclNotification
-	spaceLoaderListener SpaceLoaderListener
-	participantWatcher  participantwatcher.ParticipantWatcher
-	inviteMigrator      invitemigrator.InviteMigrator
-	accountService      accountservice.Service
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	wait                    chan struct{}
+	waitLoad                chan struct{}
+	sp                      clientspace.Space
+	loadErr                 error
+	spaceLoader             spaceloader.SpaceLoader
+	status                  spacestatus.SpaceStatus
+	statService             debugstat.StatService
+	started                 bool
+	notificationService     aclnotifications.AclNotification
+	spaceLoaderListener     SpaceLoaderListener
+	participantWatcher      participantwatcher.ParticipantWatcher
+	inviteMigrator          invitemigrator.InviteMigrator
+	accountService          accountservice.Service
+	pushNotificationService pushNotificationService
 
 	ownerMetadata []byte
 	lastIndexed   string
 	guestKey      crypto.PrivKey
 	mx            sync.Mutex
+	eventSender   event.Sender
 }
 
 type SpaceLoaderListener interface {
@@ -109,6 +122,8 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
+	a.pushNotificationService = app.MustComponent[pushNotificationService](ap)
+	a.eventSender = app.MustComponent[event.Sender](ap)
 	return nil
 }
 
@@ -164,6 +179,15 @@ func (a *aclObjectManager) process() {
 	err = a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
+		return
+	}
+	a.subscribeToPushNotifications(acl)
+}
+
+func (a *aclObjectManager) subscribeToPushNotifications(acl syncacl.SyncAcl) {
+	aclState := acl.AclState()
+	if !aclState.Permissions(aclState.AccountKey().GetPublic()).IsOwner() {
+		a.pushNotificationService.SubscribeToTopics(a.ctx, a.sp.Id(), []string{push.ChatsTopicName})
 	}
 }
 
@@ -247,7 +271,44 @@ func (a *aclObjectManager) processAcl() (err error) {
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
-	return
+	return a.broadcastKeyUpdate(aclState, common)
+}
+
+func (a *aclObjectManager) broadcastKeyUpdate(aclState *list.AclState, common commonspace.Space) error {
+	firstMetadataKey, err := aclState.FirstMetadataKey()
+	if err != nil {
+		return err
+	}
+	readKey, err := aclState.CurrentReadKey()
+	if err != nil {
+		return err
+	}
+	spaceKey, _, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	if err != nil {
+		return err
+	}
+	encryptionKey, err := spacekey.DeriveEncryptionKey(readKey)
+	if err != nil {
+		return err
+	}
+	raw, err := encryptionKey.Raw()
+	if err != nil {
+		return err
+	}
+	encodedKey := base64.StdEncoding.EncodeToString(raw)
+	a.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				SpaceId: common.Id(),
+				Value: &pb.EventMessageValueOfKeyUpdate{KeyUpdate: &pb.EventKeyUpdate{
+					SpaceKeyId:      spaceKey,
+					EncryptionKeyId: aclState.CurrentReadKeyId(),
+					EncryptionKey:   encodedKey,
+				}},
+			},
+		},
+	})
+	return nil
 }
 
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
