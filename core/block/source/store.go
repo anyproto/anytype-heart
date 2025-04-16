@@ -202,10 +202,6 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	s.onUpdateHook = onUpdateHook
 	s.store = storeState
 
-	err = s.initDiffManagers(ctx)
-	if err != nil {
-		return err
-	}
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
@@ -223,7 +219,16 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)
 	}
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	err = s.initDiffManagers(ctx)
+	if err != nil {
+		return fmt.Errorf("init diff managers: %w", err)
+	}
+	return nil
 }
 
 func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error) {
