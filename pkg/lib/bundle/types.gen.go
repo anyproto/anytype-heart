@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "4c26441b1e7a99b4344c736f8237e70b122fd4b0923015c8fcb375dc5804cb55"
+const TypeChecksum = "880c466315e22d0b573f6542b4ca1dcc4e2cb3395de3bad901f87460ff914191"
 const (
 	TypePrefix = "_ot"
 )
@@ -100,7 +100,7 @@ var (
 			Name:          "Chat [deprecated]",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      1,
+			Revision:      2,
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
 			Url:           TypePrefix + "chat",
 		},
@@ -170,6 +170,7 @@ var (
 			PluralName:    "Dates",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Date},
 			Url:           TypePrefix + "date",
 		},
@@ -211,7 +212,7 @@ var (
 			Name:          "Goal",
 			PluralName:    "Goals",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus)},
 			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
@@ -262,6 +263,7 @@ var (
 		TypeKeyObjectType: {
 
 			Description:   "",
+			Hidden:        true,
 			IconColor:     9,
 			IconName:      "extension-puzzle",
 			Layout:        model.ObjectType_objectType,
@@ -326,7 +328,7 @@ var (
 			Name:          "Project",
 			PluralName:    "Projects",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "project",
