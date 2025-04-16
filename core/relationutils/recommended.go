@@ -21,8 +21,8 @@ type ObjectIDDeriver interface {
 var (
 	defaultFeaturedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyType,
-		bundle.RelationKeyTag,
 		bundle.RelationKeyBacklinks,
+		bundle.RelationKeyTag,
 	}
 
 	defaultSetFeaturedRelationKeys = []domain.RelationKey{
