@@ -82,6 +82,8 @@ github.com/anyproto/any-store v0.1.13 h1:1wmm0qQIRShaycBLKwcgkQbRKy3WrNPAShTE5fw
 github.com/anyproto/any-store v0.1.13/go.mod h1:2M0Xf4rmijoKGd+nqqeKG8I1yIokCLEIxrAXEoHjXn4=
 github.com/anyproto/any-sync v0.6.14-0.20250415110956-76256022c161 h1:l0CMQUdS7Z6vhnIAHCrnU3++luD7e6sIEAy6ejz+8yU=
 github.com/anyproto/any-sync v0.6.14-0.20250415110956-76256022c161/go.mod h1:TSKgCoTV40Bt8AfCh3RxPUUAfYGrhc8Mzh8/AiVlvX4=
+github.com/anyproto/any-sync v0.7.0 h1:1UhugKEygShcTwRy+Cv0XTKdGw1thXKZ2T/scqIS3nk=
+github.com/anyproto/any-sync v0.7.0/go.mod h1:TSKgCoTV40Bt8AfCh3RxPUUAfYGrhc8Mzh8/AiVlvX4=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a/go.mod h1:4fkueCZcGniSMXkrwESO8zzERrh/L7WHimRNWecfGM0=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
