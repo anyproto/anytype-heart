@@ -28,7 +28,6 @@ var (
 	defaultSetFeaturedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyType,
 		bundle.RelationKeySetOf,
-		bundle.RelationKeyTag,
 		bundle.RelationKeyBacklinks,
 	}
 
