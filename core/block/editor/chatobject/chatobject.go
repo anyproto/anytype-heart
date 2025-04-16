@@ -77,7 +77,7 @@ type storeObject struct {
 	storeSource        source.Store
 	store              *storestate.StoreState
 	eventSender        event.Sender
-	subscription       *subscription
+	subscription       *subscriptionManager
 	crdtDb             anystore.DB
 	spaceIndex         spaceindex.Store
 	chatHandler        *ChatHandler
@@ -120,7 +120,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
-	s.subscription = s.newSubscription(
+	s.subscription = s.newSubscriptionManager(
 		domain.FullID{ObjectID: ctx.Source.Id(), SpaceID: ctx.Source.SpaceID()},
 		s.accountService.AccountID(),
 		myParticipantId,
