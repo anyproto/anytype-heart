@@ -31,6 +31,11 @@ var (
 		bundle.RelationKeyBacklinks,
 	}
 
+	defaultCollectionFeaturedRelationKeys = []domain.RelationKey{
+		bundle.RelationKeyType,
+		bundle.RelationKeyBacklinks,
+	}
+
 	defaultRecommendedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyCreatedDate,
 		bundle.RelationKeyCreator,
@@ -66,8 +71,11 @@ var (
 )
 
 func DefaultFeaturedRelationKeys(typeKey domain.TypeKey) []domain.RelationKey {
-	if typeKey == bundle.TypeKeySet {
+	switch typeKey {
+	case bundle.TypeKeySet:
 		return defaultSetFeaturedRelationKeys
+	case bundle.TypeKeyCollection:
+		return defaultCollectionFeaturedRelationKeys
 	}
 	return defaultFeaturedRelationKeys
 }
