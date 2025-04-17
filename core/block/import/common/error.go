@@ -67,6 +67,13 @@ func (ce *ConvertError) IsEmpty() bool {
 	return ce == nil || len(ce.errors) == 0
 }
 
+func (ce *ConvertError) ErrorOrNil() *ConvertError {
+	if ce.IsEmpty() {
+		return nil
+	}
+	return ce
+}
+
 func (ce *ConvertError) Error() error {
 	var pattern = "error: %s" + "\n"
 	var errorString bytes.Buffer

@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -17,6 +18,10 @@ import (
 var log = logging.Logger(CName).Desugar()
 
 const CName = "core.subscription.crossspacesub"
+
+var (
+	ErrSubscriptionNotFound = fmt.Errorf("subscription not found")
+)
 
 type Service interface {
 	app.ComponentRunnable
@@ -32,8 +37,10 @@ type service struct {
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
-	lock               sync.Mutex
-	spaceViewsSubId    string
+	lock             sync.Mutex
+	spaceViewsSubId  string
+	spaceViewDetails map[string]*domain.Details
+	// spaceViewId => targetSpaceId
 	spaceViewTargetIds map[string]string
 	spaceIds           []string
 	subscriptions      map[string]*crossSpaceSubscription
@@ -50,6 +57,7 @@ func (s *service) Init(a *app.App) error {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.subscriptions = map[string]*crossSpaceSubscription{}
 	s.spaceViewTargetIds = map[string]string{}
+	s.spaceViewDetails = map[string]*domain.Details{}
 
 	return nil
 }
@@ -110,7 +118,7 @@ func (s *service) Unsubscribe(subId string) error {
 
 	sub, ok := s.subscriptions[subId]
 	if !ok {
-		return fmt.Errorf("subscription not found")
+		return ErrSubscriptionNotFound
 	}
 
 	err := sub.close()

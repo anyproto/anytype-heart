@@ -15,18 +15,20 @@ import (
 )
 
 const (
-	DefaultWidgetFavorite   = "favorite"
-	DefaultWidgetSet        = "set"
-	DefaultWidgetRecent     = "recent"
-	DefaultWidgetCollection = "collection"
-	DefaultWidgetBin        = "bin"
-	DefaultWidgetAll        = "allObjects"
-	DefaultWidgetRecentOpen = "recentOpen"
-	autoWidgetBlockSuffix   = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
+	DefaultWidgetFavorite    = "favorite"
+	DefaultWidgetSet         = "set"
+	DefaultWidgetRecent      = "recent"
+	DefaultWidgetCollection  = "collection"
+	DefaultWidgetBin         = "bin"
+	DefaultWidgetAll         = "allObjects"
+	DefaultWidgetRecentOpen  = "recentOpen"
+	widgetWrapperBlockSuffix = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
 
 	DefaultWidgetFavoriteEventName = "Favorite"
 	DefaultWidgetBinEventName      = "Bin"
 )
+
+var ErrWidgetAlreadyExists = fmt.Errorf("widget with specified id already exists")
 
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
@@ -187,8 +189,13 @@ func (w *widget) createBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 	}
 
 	var wrapperBlockId string
-	if b.Model().Id != "" && isAutoAdded {
-		wrapperBlockId = b.Model().Id + autoWidgetBlockSuffix
+	if b.Model().Id != "" {
+		if s.Pick(b.Model().Id) != nil {
+			return "", ErrWidgetAlreadyExists
+		}
+		// if caller provide explicit blockId, we need to make the wrapper blockId stable as well.
+		// otherwise, in case of multiple devices applied this change in parallel, we can have empty wrapper blocks
+		wrapperBlockId = b.Model().Id + widgetWrapperBlockSuffix
 	}
 
 	wrapper := simple.New(&model.Block{

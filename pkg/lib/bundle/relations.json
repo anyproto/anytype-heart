@@ -174,7 +174,7 @@
     "source": "account"
   },
   {
-    "description": "List of related tasks\n",
+    "description": "List of related tasks",
     "format": "object",
     "hidden": false,
     "key": "tasks",
@@ -1538,7 +1538,7 @@
     "format": "checkbox",
     "hidden": true,
     "key": "autoWidgetDisabled",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Auto Widget disabled",
     "readonly": false,
     "source": "details"
