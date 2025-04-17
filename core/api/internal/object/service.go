@@ -103,7 +103,7 @@ type Service interface {
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error)
 	ListProperties(ctx context.Context, spaceId string, offset int, limit int) ([]Property, int, bool, error)
 	GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error)
-	ListPropertyOptions(ctx context.Context, spaceId string, propertyId string) ([]Tag, error)
+	ListPropertyOptions(ctx context.Context, spaceId string, propertyId string, offset int, limit int) ([]Tag, int, bool, error)
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
 	GetType(ctx context.Context, spaceId string, typeId string) (Type, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
@@ -461,7 +461,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 // isValidSelectOption checks if the option id is valid for the given property.
 func (s *service) isValidSelectOption(ctx context.Context, spaceId string, property Property, optionId string) bool {
 	// TODO: refine logic
-	tags, err := s.ListPropertyOptions(ctx, spaceId, property.Id)
+	tags, _, _, err := s.ListPropertyOptions(ctx, spaceId, property.Id, 0, 1000)
 	if err != nil {
 		return false
 	}
@@ -476,49 +476,6 @@ func (s *service) isValidSelectOption(ctx context.Context, spaceId string, prope
 func (s *service) isValidObjectReference(ctx context.Context, spaceId string, objectId string) bool {
 	// TODO: implement proper validation
 	return true
-}
-
-// ListPropertyOptions returns all tag options for a given property (relation) id in a space.
-func (s *service) ListPropertyOptions(ctx context.Context, spaceId string, propertyId string) ([]Tag, error) {
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(model.ObjectType_relationOption.String()),
-			},
-			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(propertyId),
-			},
-		},
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyRelationOptionColor.String(),
-		},
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, ErrFailedRetrievePropertyOptions
-	}
-
-	if len(resp.Records) == 0 {
-		return []Tag{}, nil
-	}
-
-	tags := make([]Tag, 0, len(resp.Records))
-	for _, record := range resp.Records {
-		tags = append(tags, Tag{
-			Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Color: record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
-		})
-	}
-
-	return tags, nil
 }
 
 // ListProperties returns a list of properties for a specific space.
@@ -552,6 +509,7 @@ func (s *service) ListProperties(ctx context.Context, spaceId string, offset int
 	total = len(resp.Records)
 	paginatedProperties, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	properties = make([]Property, 0, len(paginatedProperties))
+
 	for _, record := range paginatedProperties {
 		properties = append(properties, Property{
 			Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -604,6 +562,57 @@ func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId st
 		Name:   property.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Format: s.MapRelationFormat(model.RelationFormat(property.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())),
 	}, nil
+}
+
+// ListPropertyOptions returns all tag options for a given property (relation) id in a space.
+func (s *service) ListPropertyOptions(ctx context.Context, spaceId string, propertyId string, offset int, limit int) (options []Tag, total int, hasMore bool, err error) {
+	propertyKey, err := util.ResolveIdtoUniqueKey(s.mw, spaceId, propertyId)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(model.ObjectType_relationOption.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(propertyKey),
+			},
+		},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyRelationOptionColor.String(),
+		},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, 0, false, ErrFailedRetrievePropertyOptions
+	}
+
+	if len(resp.Records) == 0 {
+		return []Tag{}, 0, false, nil
+	}
+
+	total = len(resp.Records)
+	paginatedOptions, hasMore := pagination.Paginate(resp.Records, offset, limit)
+	options = make([]Tag, 0, len(paginatedOptions))
+
+	for _, record := range resp.Records {
+		options = append(options, Tag{
+			Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+			Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+			Color: record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
+		})
+	}
+
+	return options, total, hasMore, nil
 }
 
 // ListTypes returns a paginated list of types in a specific space.

@@ -82,7 +82,7 @@ func GetObjectsInListHandler(s Service) gin.HandlerFunc {
 			util.ErrToCode(ErrFailedGetListDataviewView, http.StatusInternalServerError),
 			util.ErrToCode(ErrUnsupportedListType, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedGetObjectsInList, http.StatusInternalServerError),
-			util.ErrToCode(util.ErrorTypeNotFound, http.StatusInternalServerError),
+			util.ErrToCode(util.ErrorResolveToUniqueKey, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

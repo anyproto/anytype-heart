@@ -93,8 +93,8 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// v1.POST("/spaces/:space_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.CreatePropertyHandler(s.objectService))
 		// v1.PATCH("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyHandler(s.objectService))
 		// v1.DELETE("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeletePropertyHandler(s.objectService))
-		// TODO: implement get, create, delete and update property options endpoints
-		// v1.GET("/spaces/:space_id/properties/:property_id/options", object.GetPropertyOptionsHandler(s.objectService))
+		v1.GET("/spaces/:space_id/properties/:property_id/options", object.GetPropertyOptionsHandler(s.objectService))
+		// TODO: implement create, delete and update property options endpoints
 		// v1.GET("/spaces/:space_id/properties/:property_id/options/:option_id", object.GetPropertyOptionHandler(s.objectService))
 		// v1.POST("/spaces/:space_id/properties/:property_id/options", s.rateLimit(maxWriteRequestsPerSecond), object.AddPropertyOptionHandler(s.objectService))
 		// v1.PATCH("/spaces/:space_id/properties/:property_id/options/:option_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyOptionHandler(s.objectService))

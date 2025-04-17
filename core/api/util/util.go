@@ -14,9 +14,7 @@ import (
 
 var (
 	ErrFailedSearchType     = errors.New("failed to search for type")
-	ErrorTypeNotFound       = errors.New("type not found")
-	ErrFailedSearchProperty = errors.New("failed to search for property")
-	ErrorPropertyNotFound   = errors.New("property not found")
+	ErrorResolveToUniqueKey = errors.New("failed to resolve to unique key")
 )
 
 var iconOptionToColor = map[float64]string{
@@ -100,7 +98,7 @@ func ResolveUniqueKeyToTypeId(mw apicore.ClientCommands, spaceId string, uniqueK
 		}
 
 		if len(resp.Records) == 0 {
-			return "", ErrorTypeNotFound
+			return "", ErrorResolveToUniqueKey
 		}
 	}
 
@@ -115,7 +113,7 @@ func ResolveIdtoUniqueKey(mw apicore.ClientCommands, spaceId string, typeId stri
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return "", ErrorTypeNotFound
+		return "", ErrorResolveToUniqueKey
 	}
 
 	return resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), nil

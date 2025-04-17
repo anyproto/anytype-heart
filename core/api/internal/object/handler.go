@@ -267,16 +267,21 @@ func GetPropertyOptionsHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
+		offset := c.GetInt("offset")
+		limit := c.GetInt("limit")
 
-		tags, err := s.ListPropertyOptions(c.Request.Context(), spaceId, propertyId)
+		options, total, hasMore, err := s.ListPropertyOptions(c.Request.Context(), spaceId, propertyId, offset, limit)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrFailedRetrievePropertyOptions, http.StatusInternalServerError),
+		)
 
-		if err != nil {
-			apiErr := util.CodeToAPIError(http.StatusInternalServerError, err.Error())
-			c.JSON(http.StatusInternalServerError, apiErr)
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, tags)
+		pagination.RespondWithPagination(c, http.StatusOK, options, total, offset, limit, hasMore)
 	}
 }
 
