@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -52,6 +53,42 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	// cleanup broken
+	var removeIds []string
+	_ = ctx.State.Iterate(func(b simple.Block) (isContinue bool) {
+		if wc, ok := b.Model().Content.(*model.BlockContentOfLink); ok {
+			if wc.Link.TargetBlockId == addr.MissingObject {
+				removeIds = append(removeIds, b.Model().Id)
+				return true
+			}
+		}
+		return true
+	})
+
+	if len(removeIds) > 0 {
+		// we need to avoid these situations, so lets log it
+		log.Warnf("widget: removing %d broken links", len(removeIds))
+	}
+	for _, id := range removeIds {
+		ctx.State.Unlink(id)
+	}
+	// now remove empty widget wrappers
+	removeIds = removeIds[:0]
+	_ = ctx.State.Iterate(func(b simple.Block) (isContinue bool) {
+		if _, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
+			if len(b.Model().GetChildrenIds()) == 0 {
+				removeIds = append(removeIds, b.Model().Id)
+				return true
+			}
+		}
+		return true
+	})
+	if len(removeIds) > 0 {
+		log.Warnf("widget: removing %d empty wrappers", len(removeIds))
+	}
+	for _, id := range removeIds {
+		ctx.State.Unlink(id)
+	}
 	return nil
 }
 
@@ -127,12 +164,15 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 					TargetId:     s.RootId(),
 					ViewId:       "",
 					Block: &model.Block{
-						Id: "allObjects",
+						Id: widget.DefaultWidgetAll, // this is correct, to avoid collisions when applied on many devices
 						Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 							TargetBlockId: widget.DefaultWidgetAll,
 						}},
 					},
 				})
+				if errors.Is(err, widget.ErrWidgetAlreadyExists) {
+					return
+				}
 				if err != nil {
 					log.Warnf("all objects migration failed: %s", err.Error())
 				}

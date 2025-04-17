@@ -322,7 +322,7 @@ func (s *repository) getMessagesByIds(ctx context.Context, messageIds []string) 
 		}
 		messages = append(messages, msg)
 	}
-	return messages, txn.Commit()
+	return messages, nil
 }
 
 func (s *repository) getLastMessages(ctx context.Context, limit uint) ([]*Message, error) {
