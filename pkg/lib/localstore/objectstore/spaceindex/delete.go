@@ -51,20 +51,20 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
 	err = s.UpdateObjectDetails(txn.Context(), id, newDetails)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete: update details: %w", err)
 	}
 	err = s.fulltextQueue.RemoveIdsFromFullTextQueue([]string{id})
 	if err != nil {
-		return err
+		return fmt.Errorf("delete: fulltext queue remove: %w", err)
 	}
 
 	err = s.headsState.DeleteId(txn.Context(), id)
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-		return fmt.Errorf("delete: heads state: %w", err)
+		return fmt.Errorf("delete: heads state delete: %w", err)
 	}
 	err = s.eraseLinksForObject(txn.Context(), id)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete: erase links: %w", err)
 	}
 	commited = true
 	err = txn.Commit()
