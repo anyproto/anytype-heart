@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "266939ef14b8467a166ae3c8b75deab57ce05236ae57f4dd973cd837973c7384"
+const TypeChecksum = "880c466315e22d0b573f6542b4ca1dcc4e2cb3395de3bad901f87460ff914191"
 const (
 	TypePrefix = "_ot"
 )
@@ -263,6 +263,7 @@ var (
 		TypeKeyObjectType: {
 
 			Description:   "",
+			Hidden:        true,
 			IconColor:     9,
 			IconName:      "extension-puzzle",
 			Layout:        model.ObjectType_objectType,
