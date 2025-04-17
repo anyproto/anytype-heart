@@ -78,12 +78,7 @@ func (s *repository) loadChatState(ctx context.Context) (*model.ChatState, error
 	if err != nil {
 		return nil, fmt.Errorf("start read tx: %w", err)
 	}
-	var commited bool
-	defer func() {
-		if !commited {
-			txn.Commit()
-		}
-	}()
+	defer txn.Commit()
 
 	messagesState, err := s.loadChatStateByType(txn.Context(), CounterTypeMessage)
 	if err != nil {
@@ -310,12 +305,7 @@ func (s *repository) getMessagesByIds(ctx context.Context, messageIds []string) 
 	if err != nil {
 		return nil, fmt.Errorf("start read tx: %w", err)
 	}
-	var commited bool
-	defer func() {
-		if !commited {
-			_ = txn.Commit()
-		}
-	}()
+	defer txn.Commit()
 
 	messages := make([]*Message, 0, len(messageIds))
 	for _, messageId := range messageIds {
@@ -332,8 +322,7 @@ func (s *repository) getMessagesByIds(ctx context.Context, messageIds []string) 
 		}
 		messages = append(messages, msg)
 	}
-	commited = true
-	return messages, txn.Commit()
+	return messages, nil
 }
 
 func (s *repository) getLastMessages(ctx context.Context, limit uint) ([]*Message, error) {
