@@ -676,6 +676,7 @@ func widgetHasBlock(st *state.State, block *model.Block) (found bool) {
 		return false
 	}
 	targetBlockId := block.GetLink().TargetBlockId
+	// nolint:errcheck
 	_ = st.Iterate(func(b simple.Block) (isContinue bool) {
 		if l := b.Model().GetLink(); l != nil {
 			if l.GetTargetBlockId() == targetBlockId {
