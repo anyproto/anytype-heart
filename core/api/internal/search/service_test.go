@@ -252,6 +252,8 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				bundle.RelationKeyIconOption.String(),
 				bundle.RelationKeyRecommendedLayout.String(),
 				bundle.RelationKeyIsArchived.String(),
+				bundle.RelationKeyRecommendedFeaturedRelations.String(),
+				bundle.RelationKeyRecommendedRelations.String(),
 			},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -527,7 +529,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapsFromStore
+		// Mock GetTypeMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -549,6 +551,8 @@ func TestSearchService_Search(t *testing.T) {
 				bundle.RelationKeyIconOption.String(),
 				bundle.RelationKeyRecommendedLayout.String(),
 				bundle.RelationKeyIsArchived.String(),
+				bundle.RelationKeyRecommendedFeaturedRelations.String(),
+				bundle.RelationKeyRecommendedRelations.String(),
 			},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},

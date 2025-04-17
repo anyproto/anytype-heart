@@ -433,7 +433,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTypeMapsFromStore
+		// Mock GetTypeMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -456,6 +456,8 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					bundle.RelationKeyIconOption.String(),
 					bundle.RelationKeyRecommendedLayout.String(),
 					bundle.RelationKeyIsArchived.String(),
+					bundle.RelationKeyRecommendedFeaturedRelations.String(),
+					bundle.RelationKeyRecommendedRelations.String(),
 				},
 			}).
 			Return(&pb.RpcObjectSearchResponse{
@@ -615,7 +617,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Expect the ObjectSearch call to get the type map.
+		// Mock GetTypeMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -638,6 +640,8 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					bundle.RelationKeyIconOption.String(),
 					bundle.RelationKeyRecommendedLayout.String(),
 					bundle.RelationKeyIsArchived.String(),
+					bundle.RelationKeyRecommendedFeaturedRelations.String(),
+					bundle.RelationKeyRecommendedRelations.String(),
 				},
 			}).
 			Return(&pb.RpcObjectSearchResponse{

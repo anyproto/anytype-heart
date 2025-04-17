@@ -501,11 +501,8 @@ components:
           type: string
         properties:
           description: The properties linked to the type
-          example:
-          - '[''last_modified_date'''
-          - ' ''created_date'']'
           items:
-            type: string
+            $ref: '#/components/schemas/object.Property'
           type: array
           uniqueItems: false
       type: object

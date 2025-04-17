@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
@@ -156,12 +157,18 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 		return nil, 0, false, ErrFailedGetListDataview
 	}
 
+	var typeDetail *types.Struct
+	for _, detail := range resp.ObjectView.Details {
+		if detail.Id == resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue() {
+			typeDetail = detail.GetDetails()
+			break
+		}
+	}
+
 	var collectionId string
 	var source []string
-	listType := s.objectService.GetTypeFromDetails(resp.ObjectView.Details, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue())
-
-	switch listType.Layout {
-	case "set":
+	switch model.ObjectTypeLayout(typeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue()) {
+	case model.ObjectType_set:
 		// for queries, we search within the space for objects of the setOf type
 		setOfValues := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySetOf.String()].GetListValue().Values
 		for _, value := range setOfValues {
@@ -171,7 +178,7 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 			}
 			source = append(source, typeKey)
 		}
-	case "collection":
+	case model.ObjectType_collection:
 		// for collections, we need to search within that collection
 		collectionId = listId
 	default:
@@ -203,7 +210,7 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.objectService.GetTypeMapsFromStore([]string{spaceId})
+	typeMap, err := s.objectService.GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
 		return nil, 0, false, err
 	}
