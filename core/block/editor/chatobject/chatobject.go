@@ -330,7 +330,6 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 	if err != nil {
 		return nil, fmt.Errorf("init read transaction: %w", err)
 	}
-	defer txn.Commit()
 
 	messages, err := s.repository.getLastMessages(txn.Context(), uint(limit))
 	if err != nil {

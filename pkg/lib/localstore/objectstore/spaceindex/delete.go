@@ -36,9 +36,12 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	if err != nil {
 		return fmt.Errorf("write txn: %w", err)
 	}
-	rollback := func(err error) error {
-		return errors.Join(txn.Rollback(), err)
-	}
+	var commited bool
+	defer func() {
+		if !commited {
+			txn.Rollback()
+		}
+	}()
 
 	newDetails := domain.NewDetails()
 	newDetails.SetString(bundle.RelationKeyId, id)
@@ -48,21 +51,22 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
 	err = s.UpdateObjectDetails(txn.Context(), id, newDetails)
 	if err != nil {
-		return rollback(fmt.Errorf("failed to overwrite details and relations: %w", err))
+		return err
 	}
 	err = s.fulltextQueue.RemoveIdsFromFullTextQueue([]string{id})
 	if err != nil {
-		return rollback(fmt.Errorf("delete: fulltext queue: %w", err))
+		return err
 	}
 
 	err = s.headsState.DeleteId(txn.Context(), id)
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-		return rollback(fmt.Errorf("delete: heads state: %w", err))
+		return fmt.Errorf("delete: heads state: %w", err)
 	}
 	err = s.eraseLinksForObject(txn.Context(), id)
 	if err != nil {
-		return rollback(err)
+		return err
 	}
+	commited = true
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("delete object info: %w", err)
