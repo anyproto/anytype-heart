@@ -6,6 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cheggaaa/mb/v3"
+	"github.com/sashabaranov/go-openai"
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -13,13 +17,10 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
-	"github.com/cheggaaa/mb/v3"
-	"github.com/sashabaranov/go-openai"
-	"go.uber.org/zap"
 )
 
 var log = logging.Logger("assistant").Desugar()
@@ -43,8 +44,16 @@ func run() error {
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
-	localStoreDb := getService[anystoreprovider.Provider](app).GetCommonDb()
-	handledMessages, err := keyvaluestore.New(localStoreDb, "handledMessages", keyvaluestore.StringMarshal, keyvaluestore.StringUnmarshal)
+	dbProvider := getService[datastore.Datastore](app)
+	db, err := dbProvider.LocalStorage()
+	if err != nil {
+		return fmt.Errorf("get badger: %w", err)
+	}
+	handledMessages := keyvaluestore.New(db, []byte("assistant/handledMessages"), func(t string) ([]byte, error) {
+		return []byte(t), nil
+	}, func(bytes []byte) (string, error) {
+		return string(bytes), nil
+	})
 	if err != nil {
 		return fmt.Errorf("init handled messages store: %w", err)
 	}

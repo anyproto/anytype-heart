@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sashabaranov/go-openai"
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
-	"github.com/sashabaranov/go-openai"
-	"go.uber.org/zap"
 )
 
 type Chatter struct {
@@ -58,7 +59,7 @@ func (c *Chatter) needToSend(ctx context.Context) (bool, error) {
 
 	for _, msg := range c.messages {
 		if msg.Creator != c.myIdentity {
-			ok, err := c.store.Has(ctx, msg.Id)
+			ok, err := c.store.Has(msg.Id)
 			if err != nil {
 				return false, fmt.Errorf("check if message is handled: %w", err)
 			}
@@ -100,6 +101,9 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 				Content: msg.Message.Text,
 			})
 		} else {
+			if msg.Message.Text == "" {
+				continue
+			}
 			// TODO Prepend with "${user} said: "
 			messages = append(messages, openai.ChatCompletionMessage{
 				Role:    openai.ChatMessageRoleUser,
@@ -115,7 +119,7 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 	}
 
 	for _, msgId := range toMarkAsRead {
-		err = c.store.Set(ctx, msgId, "handled")
+		err = c.store.Set(msgId, "handled")
 		if err != nil {
 			return fmt.Errorf("store handled status: %w", err)
 		}
@@ -162,7 +166,7 @@ func (c *Chatter) InitWith(messages []*model.ChatMessage) {
 func (c *Chatter) setMessages(messages []*model.ChatMessage) {
 	c.messages = messages
 	if len(c.messages) > c.limit {
-		c.messages = c.messages[len(c.messages) - c.limit:]
+		c.messages = c.messages[len(c.messages)-c.limit:]
 	}
 }
 
