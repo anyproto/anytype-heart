@@ -199,7 +199,7 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
-	propertyFormatMap, err := s.objectService.GetPropertyFormatMapsFromStore([]string{spaceId})
+	propertyMap, err := s.objectService.GetPropertyMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -210,7 +210,7 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 
 	objects := make([]object.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		objects = append(objects, s.objectService.GetObjectFromStruct(record, propertyFormatMap, typeMap))
+		objects = append(objects, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap))
 	}
 
 	return objects, total, hasMore, nil

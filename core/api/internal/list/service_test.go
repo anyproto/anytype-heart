@@ -398,7 +398,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetPropertyFormatMapsFromStore
+		// Mock GetPropertyMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -580,7 +580,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetPropertyFormatMapsFromStore
+		// Mock GetPropertyMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -940,7 +940,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetPropertyFormatMapsFromStore to return an error.
+		// Mock GetPropertyMapsFromStore to return an error.
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -971,7 +971,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
 
 		// then
-		require.ErrorIs(t, err, object.ErrFailedRetrievePropertyFormatMap)
+		require.ErrorIs(t, err, object.ErrFailedRetrievePropertyMap)
 	})
 }
 

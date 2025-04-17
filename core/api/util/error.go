@@ -2,7 +2,12 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+)
+
+var (
+	ErrBad = errors.New("bad input")
 )
 
 // ValidationError is a struct for 400 errors
@@ -65,6 +70,11 @@ func ErrToCode(target error, code int) errCodeMapping {
 		target: target,
 		code:   code,
 	}
+}
+
+// ErrBadInput is a sentinel error for bad input
+func ErrBadInput(msg string) error {
+	return fmt.Errorf("%w: %s", ErrBad, msg)
 }
 
 // MapErrorCode checks if err matches any “target” in the mappings,

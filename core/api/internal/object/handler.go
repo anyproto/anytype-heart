@@ -154,8 +154,7 @@ func CreateObjectHandler(s Service) gin.HandlerFunc {
 
 		object, err := s.CreateObject(c.Request.Context(), spaceId, request)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrInputMissingSource, http.StatusBadRequest),
-			util.ErrToCode(ErrIconNameColorNotSupported, http.StatusBadRequest),
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 			util.ErrToCode(ErrFailedCreateBookmark, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedCreateObject, http.StatusInternalServerError),
 			util.ErrToCode(ErrFailedSetPropertyFeatured, http.StatusInternalServerError),
@@ -246,6 +245,38 @@ func GetPropertyHandler(s Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+	}
+}
+
+// GetPropertyOptionsHandler lists all tag options for a given property id in a space
+//
+//	@Summary		List property options
+//	@Description	Lists all tag options for a given property id.
+//	@Tags			properties
+//	@Produce		json
+//	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-03-17)
+//	@Param			space_id		path		string								true	"Space ID"
+//	@Param			property_id		path		string								true	"Property ID"
+//	@Success		200				{object}	pagination.PaginatedResponse[Tag]	"List of property options (tags)"
+//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError					"Property not found"
+//	@Failure		500				{object}	util.ServerError					"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties/{property_id}/options [get]
+func GetPropertyOptionsHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		propertyId := c.Param("property_id")
+
+		tags, err := s.ListPropertyOptions(c.Request.Context(), spaceId, propertyId)
+
+		if err != nil {
+			apiErr := util.CodeToAPIError(http.StatusInternalServerError, err.Error())
+			c.JSON(http.StatusInternalServerError, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, tags)
 	}
 }
 

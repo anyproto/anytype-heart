@@ -153,6 +153,12 @@ components:
           description: The name of the object
           example: My object
           type: string
+        properties:
+          additionalProperties: {}
+          description: Properties to set on the object
+          example:
+            '{"property_key"': ' "value"}'
+          type: object
         source:
           description: The source url, only applicable for bookmarks
           example: https://bookmark-source.com
@@ -536,6 +542,17 @@ components:
           description: The list of items in the current result set
           items:
             $ref: '#/components/schemas/object.Property'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginatedResponse-object_Tag:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/object.Tag'
           type: array
           uniqueItems: false
         pagination:
@@ -2031,6 +2048,58 @@ paths:
       security:
       - bearerauth: []
       summary: Get property
+      tags:
+      - properties
+  /spaces/{space_id}/properties/{property_id}/options:
+    get:
+      description: Lists all tag options for a given property id.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Property ID
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Tag'
+          description: List of property options (tags)
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Property not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: List property options
       tags:
       - properties
   /spaces/{space_id}/search:
