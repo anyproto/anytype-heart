@@ -2,6 +2,9 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 
@@ -50,6 +53,8 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 	return response(spaceId, startingPageId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
 }
 
+var b atomic.Int64
+
 func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
 	response := func(info *model.AccountInfo, code pb.RpcWorkspaceOpenResponseErrorCode, err error) *pb.RpcWorkspaceOpenResponse {
 		m := &pb.RpcWorkspaceOpenResponse{
@@ -61,7 +66,18 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		}
 		return m
 	}
-	info, err := mustService[account.Service](mw).GetSpaceInfo(cctx, req.SpaceId)
+
+	ctx, cancel := context.WithTimeout(cctx, time.Second*10)
+	defer cancel()
+	val := b.Add(1)
+	if val <= 2 {
+		select {
+		case <-ctx.Done():
+			return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, fmt.Errorf("space is not ready: check your internet conenction and try again later"))
+		case <-time.After(time.Second * 11):
+		}
+	}
+	info, err := mustService[account.Service](mw).GetSpaceInfo(ctx, req.SpaceId)
 	if err != nil {
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
 	}
