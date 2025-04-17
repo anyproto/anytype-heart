@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "62a158a458a241cdf5b502bad800a109a8917ab9026826dd1274262c46b1f839"
+const RelationChecksum = "7a2c93ce65a98c55d3b977eaf06de8cc5a40bacd68974a3bb1964b688038616a"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -160,6 +160,7 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyIncludeTime                  domain.RelationKey = "includeTime"
 )
 
 var (
@@ -895,6 +896,19 @@ var (
 			MaxCount:         1,
 			Name:             "Import Type",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIncludeTime: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Should time be shown for relation values with date format",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brincludeTime",
+			Key:              "includeTime",
+			Name:             "IncludeTime",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
