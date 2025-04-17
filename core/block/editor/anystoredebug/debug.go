@@ -51,7 +51,8 @@ func (s *debugComponent) DebugChanges(ctx context.Context) ([]*DebugChange, erro
 	if err != nil {
 		return nil, fmt.Errorf("new tx: %w", err)
 	}
-	defer tx.Commit()
+	// todo: replace with readonly tx
+	defer tx.Rollback()
 
 	var result []*DebugChange
 	err = historyTree.IterateFrom(historyTree.Root().Id, source.UnmarshalStoreChange, func(change *objecttree.Change) bool {

@@ -18,41 +18,34 @@ func (s *dsObjectStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLi
 	if err != nil {
 		return nil, fmt.Errorf("read txn: %w", err)
 	}
-	commit := func(err error) error {
-		return errors.Join(txn.Commit(), err)
-	}
+	defer txn.Commit()
 	pages, err := s.getObjectsInfo(txn.Context(), []string{id})
 	if err != nil {
-		return nil, commit(err)
+		return nil, err
 	}
 
 	if len(pages) == 0 {
-		return nil, commit(fmt.Errorf("page not found"))
+		return nil, fmt.Errorf("page not found")
 	}
 	page := pages[0]
 
 	inboundIds, err := s.findInboundLinks(txn.Context(), id)
 	if err != nil {
-		return nil, commit(fmt.Errorf("find inbound links: %w", err))
+		return nil, fmt.Errorf("find inbound links: %w", err)
 	}
 	outboundsIds, err := s.findOutboundLinks(txn.Context(), id)
 	if err != nil {
-		return nil, commit(fmt.Errorf("find outbound links: %w", err))
+		return nil, fmt.Errorf("find outbound links: %w", err)
 	}
 
 	inbound, err := s.getObjectsInfo(txn.Context(), inboundIds)
 	if err != nil {
-		return nil, commit(err)
+		return nil, err
 	}
 
 	outbound, err := s.getObjectsInfo(txn.Context(), outboundsIds)
 	if err != nil {
-		return nil, commit(err)
-	}
-
-	err = txn.Commit()
-	if err != nil {
-		return nil, fmt.Errorf("commit txn: %w", err)
+		return nil, err
 	}
 
 	inboundProto := make([]*model.ObjectInfo, 0, len(inbound))
