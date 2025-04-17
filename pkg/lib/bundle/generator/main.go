@@ -223,6 +223,9 @@ func generateRelations() error {
 			if relation.Revision != 0 {
 				dictS[Id("Revision")] = Lit(relation.Revision)
 			}
+			if relation.IncludeTime {
+				dictS[Id("IncludeTime")] = Lit(relation.IncludeTime)
+			}
 
 			dict[Id(relConst(relation.Key))] = Block(dictS)
 		}

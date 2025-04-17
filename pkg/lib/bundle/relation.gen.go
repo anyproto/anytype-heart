@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a23583f8faef1cbfcd05ca1d2761538e67bbdd1336d1a467a0d657b5f986b313"
+const RelationChecksum = "24ee576ec18180e32126c1cfec180d973d9f370d7449fe724446fe72cbe49275"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -160,6 +160,7 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyIncludeTime                  domain.RelationKey = "includeTime"
 )
 
 var (
@@ -170,11 +171,13 @@ var (
 			Description:      "Date when the file were added into the anytype",
 			Format:           model.RelationFormat_date,
 			Id:               "_braddedDate",
+			IncludeTime:      true,
 			Key:              "addedDate",
 			MaxCount:         1,
 			Name:             "Added date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAperture: {
@@ -464,11 +467,13 @@ var (
 			Description:      "Date when the object was initially created",
 			Format:           model.RelationFormat_date,
 			Id:               "_brcreatedDate",
+			IncludeTime:      true,
 			Key:              "createdDate",
 			MaxCount:         1,
 			Name:             "Creation date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreator: {
@@ -561,11 +566,13 @@ var (
 			Description:      "",
 			Format:           model.RelationFormat_date,
 			Id:               "_brdueDate",
+			IncludeTime:      true,
 			Key:              "dueDate",
 			MaxCount:         1,
 			Name:             "Due date",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyEmail: {
@@ -897,6 +904,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIncludeTime: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Should time be shown for relation values with date format",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brincludeTime",
+			Key:              "includeTime",
+			Name:             "IncludeTime",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIngredients: {
 
 			DataSource:       model.Relation_details,
@@ -1084,11 +1104,13 @@ var (
 			Description:      "Date when the object was modified last time",
 			Format:           model.RelationFormat_date,
 			Id:               "_brlastModifiedDate",
+			IncludeTime:      true,
 			Key:              "lastModifiedDate",
 			MaxCount:         1,
 			Name:             "Last modified date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLastOpenedDate: {
@@ -1097,11 +1119,13 @@ var (
 			Description:      "Date when the object was modified last opened",
 			Format:           model.RelationFormat_date,
 			Id:               "_brlastOpenedDate",
+			IncludeTime:      true,
 			Key:              "lastOpenedDate",
 			MaxCount:         1,
 			Name:             "Last opened date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLastUsedDate: {
@@ -1111,12 +1135,13 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brlastUsedDate",
+			IncludeTime:      true,
 			Key:              "lastUsedDate",
 			MaxCount:         1,
 			Name:             "Last used date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLatestAclHeadId: {
@@ -1982,11 +2007,13 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brsyncDate",
+			IncludeTime:      true,
 			Key:              "syncDate",
 			MaxCount:         1,
 			Name:             "Sync date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeySyncError: {
@@ -2105,11 +2132,13 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brtimestamp",
+			IncludeTime:      true,
 			Key:              "timestamp",
 			MaxCount:         1,
 			Name:             "Timestamp",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyToBeDeletedDate: {
@@ -2119,11 +2148,13 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brtoBeDeletedDate",
+			IncludeTime:      true,
 			Key:              "toBeDeletedDate",
 			MaxCount:         1,
 			Name:             "Date to delete",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyType: {

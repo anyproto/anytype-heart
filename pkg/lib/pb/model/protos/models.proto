@@ -832,6 +832,7 @@ message Relation {
     Scope scope = 20; // deprecated, to be removed
     string creator = 21; // creator profile id
     int64 revision = 22; // revision of system relation. Used to check if we should change relation content or not
+    bool includeTime = 23; // indicates whether value of relation with date format should be processed with seconds precision
 
     message Option {
         string id = 1; // id generated automatically if omitted
