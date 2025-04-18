@@ -297,6 +297,7 @@ require (
 	modernc.org/memory v1.9.1 // indirect
 	modernc.org/sqlite v1.37.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
+	resty.dev/v3 v3.0.0-beta.2 // indirect
 )
 
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
