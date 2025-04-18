@@ -267,12 +267,15 @@ func (s *service) createFavoriteWidget(spc clientspace.Space) error {
 	if err != nil {
 		return fmt.Errorf("get widget details: %w", err)
 	}
+	if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
+		return nil
+	}
 	targetIds := widgetDetails.GetStringList(bundle.RelationKeyAutoWidgetTargets)
 	if slices.Contains(targetIds, widget.DefaultWidgetFavorite) {
 		return nil
 	}
 
 	return cache.DoState(s.objectGetter, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList)
+		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList, widget.DefaultWidgetFavoriteEventName)
 	})
 }

@@ -657,12 +657,34 @@ func (s *Service) TableColumnListFill(ctx session.Context, req pb.RpcBlockTableC
 	return err
 }
 
-func (s *Service) CreateWidgetBlock(ctx session.Context, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
+func (s *Service) CreateWidgetBlock(ctx session.Context, req *pb.RpcBlockCreateWidgetRequest, checkDuplicatedTarget bool) (string, error) {
 	var id string
 	err := cache.DoStateCtx(s, ctx, req.ContextId, func(st *state.State, w widget.Widget) error {
+		if checkDuplicatedTarget && widgetHasBlock(st, req.Block) {
+			return nil
+		}
 		var err error
 		id, err = w.CreateBlock(st, req)
 		return err
 	})
 	return id, err
+}
+
+// widgetHasBlock checks if widget has block with same targetBlockId as in provided block
+func widgetHasBlock(st *state.State, block *model.Block) (found bool) {
+	if block == nil || block.GetLink() == nil {
+		return false
+	}
+	targetBlockId := block.GetLink().TargetBlockId
+	// nolint:errcheck
+	_ = st.Iterate(func(b simple.Block) (isContinue bool) {
+		if l := b.Model().GetLink(); l != nil {
+			if l.GetTargetBlockId() == targetBlockId {
+				found = true
+				return false
+			}
+		}
+		return true
+	})
+	return found
 }

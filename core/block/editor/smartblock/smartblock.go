@@ -69,10 +69,11 @@ const (
 type Hook int
 
 type ApplyInfo struct {
-	State       *state.State
-	ParentState *state.State
-	Events      []simple.EventMessage
-	Changes     []*pb.ChangeContent
+	State             *state.State
+	ParentDetails     *domain.Details
+	Events            []simple.EventMessage
+	Changes           []*pb.ChangeContent
+	ApplyOtherObjects bool
 }
 
 type HookCallback func(info ApplyInfo) (err error)
@@ -136,6 +137,7 @@ type Space interface {
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
+	TryRemove(objectId string) (bool, error)
 
 	StoredIds() []string
 }
@@ -368,6 +370,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+	sb.resolveLayout(ctx.State)
 
 	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
@@ -668,6 +671,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	// Inject derived details to make sure we have consistent state.
 	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
+	sb.resolveLayout(s)
 
 	if hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
@@ -699,8 +703,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		removeInternalFlags(s)
 	}
 
-	migrationVersionUpdated := true
-	parent := s.ParentState()
+	var (
+		migrationVersionUpdated = true
+		parent                  = s.ParentState()
+	)
+
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
@@ -814,11 +821,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.CheckSubscriptions()
 	}
 	if hooks {
+		var parentDetails *domain.Details
+		if act.Details != nil {
+			parentDetails = act.Details.Before
+		}
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{
-			State:       sb.Doc.(*state.State),
-			ParentState: parent,
-			Events:      msgs,
-			Changes:     changes,
+			State:             sb.Doc.(*state.State),
+			ParentDetails:     parentDetails,
+			Events:            msgs,
+			Changes:           changes,
+			ApplyOtherObjects: true,
 		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
@@ -941,6 +953,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
+	sb.resolveLayout(s)
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
@@ -959,11 +972,15 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
+	var parentDetails *domain.Details
+	if s.ParentState() != nil {
+		parentDetails = s.ParentState().Details()
+	}
 	if err = sb.execHooks(HookAfterApply, ApplyInfo{
-		State:       s,
-		ParentState: s.ParentState(),
-		Events:      msgs,
-		Changes:     changes,
+		State:         s,
+		ParentDetails: parentDetails,
+		Events:        msgs,
+		Changes:       changes,
 	}); err != nil {
 		log.Errorf("failed to execute smartblock hooks after apply on StateAppend: %v", err)
 	}
@@ -978,6 +995,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
+	sb.resolveLayout(d.(*state.State))
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1263,11 +1281,11 @@ func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
 
 	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
 
-	// todo: verify this logic with clients
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
 		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
-
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
+	} else if s.LocalDetails().GetBool(bundle.RelationKeyIsReadonly) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(false))
 	}
 }
 

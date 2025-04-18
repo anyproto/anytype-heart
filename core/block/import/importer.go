@@ -42,6 +42,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -70,6 +71,7 @@ type Import struct {
 
 	importCtx       context.Context
 	importCtxCancel context.CancelFunc
+	spaceService    space.Service
 }
 
 func New() Importer {
@@ -82,6 +84,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.s = app.MustComponent[*block.Service](a)
 	accountService := app.MustComponent[account.Service](a)
 	spaceService := app.MustComponent[space.Service](a)
+	i.spaceService = spaceService
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []common.Converter{
@@ -180,8 +183,31 @@ func (i *Import) importObjects(ctx context.Context, importRequest *ImportRequest
 func (i *Import) onImportFinish(res *ImportResponse, req *ImportRequest, importId string) {
 	i.finishImportProcess(res.Err, req)
 	i.sendFileEvents(res.Err)
+	if res.RootCollectionId != "" {
+		i.addRootCollectionWidget(res, req)
+	}
 	i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
 	i.sendImportFinishEventToClient(res.RootCollectionId, req.IsSync, res.ObjectsCount, req.Type)
+}
+
+func (i *Import) addRootCollectionWidget(res *ImportResponse, req *ImportRequest) {
+	spc, err := i.spaceService.Get(i.importCtx, req.SpaceId)
+	if err != nil {
+		log.Errorf("failed to create widget from root collection, error: %s", err.Error())
+	} else {
+		_, err = i.s.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    spc.DerivedIDs().Widgets,
+			WidgetLayout: model.BlockContentWidget_CompactList,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+					TargetBlockId: res.RootCollectionId,
+				}},
+			},
+		}, true)
+		if err != nil {
+			log.Errorf("failed to create widget from root collection, error: %s", err.Error())
+		}
+	}
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -469,7 +495,15 @@ func (i *Import) getObjectID(
 		return err
 	}
 	oldIDToNew[snapshot.Id] = id
-	if payload.RootRawChange != nil {
+	var isBundled bool
+	switch snapshot.Snapshot.SbType {
+	case smartblock.SmartBlockTypeObjectType:
+		isBundled = bundle.HasObjectTypeByKey(domain.TypeKey(snapshot.Snapshot.Data.Key))
+	case smartblock.SmartBlockTypeRelation:
+		isBundled = bundle.HasRelation(domain.RelationKey(snapshot.Snapshot.Data.Key))
+	}
+	// bundled types will be created and then updated, cause they can be installed asynchronously
+	if payload.RootRawChange != nil && !isBundled {
 		createPayloads[id] = payload
 	}
 	return i.extractInternalKey(snapshot, oldIDToNew)

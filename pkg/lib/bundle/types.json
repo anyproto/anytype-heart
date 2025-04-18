@@ -19,8 +19,7 @@
       "courseType",
       "difficulty"
     ],
-    "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "note",
@@ -36,8 +35,7 @@
     "relations": [
       "tag"
     ],
-    "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "contact",
@@ -56,8 +54,7 @@
       "email",
       "phone"
     ],
-    "description": "Information to make action of communicating or meeting with Human or Company",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "bookmark",
@@ -75,8 +72,7 @@
       "picture",
       "source"
     ],
-    "description": "URL that is stored as Object and may be categorised and linked with objects",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "date",
@@ -92,7 +88,7 @@
     "relations": [
       "tag"
     ],
-    "description": "Gregorian calendar date"
+    "revision": 1
   },
   {
     "id": "task",
@@ -111,12 +107,9 @@
       "done",
       "dueDate",
       "linkedProjects",
-      "priority",
-      "status",
-      "tasks"
+      "status"
     ],
-    "description": "A piece of work to be done or undertaken",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "relation",
@@ -136,8 +129,7 @@
       "relationDefaultValue",
       "relationFormatObjectTypes"
     ],
-    "description": "Meaningful connection between objects",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "book",
@@ -157,8 +149,7 @@
       "status",
       "url"
     ],
-    "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "video",
@@ -184,9 +175,8 @@
       "aperture",
       "exposure"
     ],
-    "description": "The recording of moving visual images",
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 5
   },
   {
     "id": "dashboard",
@@ -198,7 +188,6 @@
     "hidden": true,
     "layout": "dashboard",
     "relations": [],
-    "description": "Internal home dashboard with favourite objects",
     "restrictObjectCreation": true
   },
   {
@@ -217,8 +206,7 @@
       "genre",
       "status"
     ],
-    "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "objectType",
@@ -230,14 +218,13 @@
     ],
     "iconColor": 9,
     "iconName": "extension-puzzle",
-    "hidden": false,
+    "hidden": true,
     "layout": "objectType",
     "relations": [
       "recommendedRelations",
       "recommendedLayout"
     ],
-    "description": "Object that contains a definition of some object type",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "relationOption",
@@ -247,8 +234,7 @@
     ],
     "hidden": true,
     "layout": "relationOption",
-    "relations": [],
-    "description": "Object that contains a relation option"
+    "relations": []
   },
   {
     "id": "space",
@@ -264,9 +250,8 @@
     "relations": [
       "tag"
     ],
-    "description": "Workspace",
     "restrictObjectCreation": true,
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "spaceView",
@@ -282,9 +267,8 @@
     "relations": [
       "tag"
     ],
-    "description": "Space",
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "participant",
@@ -300,9 +284,8 @@
     "relations": [
       "tag"
     ],
-    "description": "Anytype identity as a space participant",
     "restrictObjectCreation": true,
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "template",
@@ -319,8 +302,7 @@
       "targetObjectType",
       "templateIsBundled"
     ],
-    "description": "Sample object that has already some details in place and used to create objects from",
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "set",
@@ -337,8 +319,7 @@
       "tag",
       "setOf"
     ],
-    "description": "Query all objects in your space based on types and relations",
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "collection",
@@ -354,8 +335,7 @@
     "relations": [
       "tag"
     ],
-    "description": "Collect objects in one place, use different views to organize them",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "diaryEntry",
@@ -365,15 +345,14 @@
       "Page"
     ],
     "iconColor": 2,
-    "iconName":"reader",
+    "iconName": "reader",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag",
       "mood"
     ],
-    "description": "Record of events and experiences",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "page",
@@ -389,8 +368,7 @@
     "relations": [
       "tag"
     ],
-    "description": "Blank canvas with Title",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "image",
@@ -417,9 +395,8 @@
       "exposure",
       "focalRatio"
     ],
-    "description": "A representation of the external form of a person or thing in art",
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 5
   },
   {
     "id": "profile",
@@ -436,8 +413,7 @@
     "relations": [
       "tag"
     ],
-    "description": "Homo sapiens",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "audio",
@@ -463,9 +439,8 @@
       "audioAlbumTrackNumber",
       "audioLyrics"
     ],
-    "description": "Sound when recorded, with ability to reproduce",
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 5
   },
   {
     "id": "goal",
@@ -482,11 +457,9 @@
       "tag",
       "dueDate",
       "progress",
-      "status",
-      "tasks"
+      "status"
     ],
-    "description": "The object of a person's ambition or effort; an aim or desired result",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "file",
@@ -506,9 +479,8 @@
       "sizeInBytes",
       "fileMimeType"
     ],
-    "description": "Computer resource for recording data in a computer storage device",
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 5
   },
   {
     "id": "project",
@@ -522,11 +494,9 @@
     "hidden": false,
     "layout": "basic",
     "relations": [
-      "tag",
-      "tasks"
+      "tag"
     ],
-    "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "chat",
@@ -539,10 +509,9 @@
     "hidden": true,
     "layout": "chat",
     "relations": [
-        "tag"
+      "tag"
     ],
-    "description": "A chat [deprecated]",
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "chatDerived",
@@ -558,7 +527,6 @@
     "relations": [
       "tag"
     ],
-    "description": "A chat derived object",
-    "revision": 3
+    "revision": 4
   }
 ]

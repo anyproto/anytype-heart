@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"golang.org/x/exp/maps"
 
@@ -124,6 +126,19 @@ type dsObjectStore struct {
 	componentCtxCancel context.CancelFunc
 }
 
+func (s *dsObjectStore) ProvideStat() any {
+	count, _ := s.ListIdsCrossSpace()
+	return len(count)
+}
+
+func (s *dsObjectStore) StatId() string {
+	return "ds_count"
+}
+
+func (s *dsObjectStore) StatType() string {
+	return CName
+}
+
 func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) error {
 	s.Lock()
 	spaceIndexes := make([]spaceindex.Store, 0, len(s.spaceIndexes))
@@ -169,6 +184,10 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.setDefaultConfig()
 	s.oldStore = app.MustComponent[oldstore.Service](a)
 	s.techSpaceIdProvider = app.MustComponent[TechSpaceIdProvider](a)
+	statService, _ := app.GetComponent[debugstat.StatService](a)
+	if statService != nil {
+		statService.AddProvider(s)
+	}
 
 	return nil
 }
@@ -361,10 +380,12 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 
 func (s *dsObjectStore) getAnyStoreConfig() *anystore.Config {
 	return &anystore.Config{
-		Namespace:               s.anyStoreConfig.Namespace,
-		ReadConnections:         s.anyStoreConfig.ReadConnections,
-		SQLiteConnectionOptions: maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
-		SyncPoolElementMaxSize:  s.anyStoreConfig.SyncPoolElementMaxSize,
+		Namespace:                         s.anyStoreConfig.Namespace,
+		ReadConnections:                   s.anyStoreConfig.ReadConnections,
+		SQLiteConnectionOptions:           maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
+		SyncPoolElementMaxSize:            s.anyStoreConfig.SyncPoolElementMaxSize,
+		StalledConnectionsDetectorEnabled: true,
+		StalledConnectionsPanicOnClose:    time.Second * 30,
 	}
 }
 
@@ -412,6 +433,10 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 
 	var result []T
 	for _, store := range stores {
+		err := store.Init()
+		if err != nil {
+			return nil, fmt.Errorf("init store: %w", err)
+		}
 		items, err := proc(store)
 		if err != nil {
 			return nil, err
@@ -469,6 +494,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 		return err
 	})
 	if err != nil {
+		// todo: we should not rollback here?
 		return err
 	}
 	return txn.Commit()

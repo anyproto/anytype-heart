@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "ea8df49112b3b94f2c1db3af79be6b45e8a5463a55cb30ab9273d7fa05c59c15"
+const RelationChecksum = "629deb3841cb44bde6ac8328193161adb470850054ad0bd615f13164fe04468f"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -164,6 +164,7 @@ const (
 	RelationKeyCourseType                   domain.RelationKey = "courseType"
 	RelationKeyDifficulty                   domain.RelationKey = "difficulty"
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
+	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
 )
 
@@ -286,6 +287,20 @@ var (
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAutoWidgetDisabled: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brautoWidgetDisabled",
+			Key:              "autoWidgetDisabled",
+			MaxCount:         1,
+			Name:             "Auto Widget disabled",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAutoWidgetTargets: {
@@ -2131,7 +2146,7 @@ var (
 		RelationKeyTasks: {
 
 			DataSource:       model.Relation_details,
-			Description:      "List of related tasks\n",
+			Description:      "List of related tasks",
 			Format:           model.RelationFormat_object,
 			Id:               "_brtasks",
 			Key:              "tasks",

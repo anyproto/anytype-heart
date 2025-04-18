@@ -223,7 +223,7 @@ func (c config) GetYamux() yamux.Config {
 
 func (c config) GetQuic() quic.Config {
 	return quic.Config{
-		WriteTimeoutSec:    60,
+		WriteTimeoutSec:    1200,
 		DialTimeoutSec:     60,
 		KeepAlivePeriodSec: 120,
 	}

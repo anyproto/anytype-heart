@@ -194,6 +194,7 @@ jobs:
 
       - name: Set up Python environment
         continue-on-error: true
+        if: github.event_name == 'push'
         run: |
           cd ${{ github.workspace }}/devops-utils/release-utils
           python3 -m venv linear-comment-venv

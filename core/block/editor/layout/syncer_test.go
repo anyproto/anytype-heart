@@ -1,23 +1,18 @@
-package editor
+package layout
 
 import (
 	"context"
 	"testing"
 
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/any-sync/app/ocache"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -27,27 +22,24 @@ const (
 )
 
 type fixture struct {
-	sb    *smarttest.SmartTest
 	store *objectstore.StoreFixture
 	space *smartblock.MockSpace
-	*ObjectType
+	*syncer
 }
 
 func newFixture(t *testing.T, id string) *fixture {
-	sb := smarttest.New(id)
 	store := objectstore.NewStoreFixture(t)
 	spc := smartblock.NewMockSpace(t)
-	sb.SetSpace(spc)
-	page := &ObjectType{
-		SmartBlock: sb,
-		spaceIndex: store.SpaceIndex(spaceId),
+	page := &syncer{
+		typeId: id,
+		space:  spc,
+		index:  store.SpaceIndex(spaceId),
 	}
 
 	return &fixture{
-		sb:         sb,
-		store:      store,
-		space:      spc,
-		ObjectType: page,
+		store:  store,
+		space:  spc,
+		syncer: page,
 	}
 }
 
@@ -56,7 +48,6 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 	t.Run("recommendedLayout is updated", func(t *testing.T) {
 		// given
 		fx := newFixture(t, typeId)
-		fx.sb.SetType(coresb.SmartBlockTypeObjectType)
 
 		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
@@ -152,12 +143,15 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 			return nil
 		})
 
+		fx.space.EXPECT().TryRemove(mock.Anything).Return(true, nil).Maybe()
+
 		// when
-		err := fx.syncLayoutForObjectsAndTemplates(makeApplyInfo(typeId,
-			// recommendedLayout is changed: basic -> todo
-			layoutState{isLayoutSet: true, layout: int64(model.ObjectType_basic)},
-			layoutState{isLayoutSet: true, layout: int64(model.ObjectType_todo)},
-		))
+		err := fx.SyncLayoutWithType(
+			// recommendedLayout is changed: basic -> action
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_todo)},
+			false, true, true,
+		)
 
 		// then
 		assert.NoError(t, err)
@@ -167,7 +161,7 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		assert.False(t, tmpl.Details().Has(bundle.RelationKeyLayout))
 
 		assert.True(t, obj4.Results.IsStateAppendCalled)
-		details, err := fx.spaceIndex.GetDetails("obj5")
+		details, err := fx.index.GetDetails("obj5")
 		require.NoError(t, err)
 		assert.Equal(t, int64(model.ObjectType_todo), details.GetInt64(bundle.RelationKeyResolvedLayout))
 	})
@@ -175,7 +169,6 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 	t.Run("layoutAlign is updated", func(t *testing.T) {
 		// given
 		fx := newFixture(t, typeId)
-		fx.sb.SetType(coresb.SmartBlockTypeObjectType)
 
 		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
@@ -236,13 +229,14 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 			}
 			return nil
 		})
+		fx.space.EXPECT().TryRemove(mock.Anything).Return(true, nil).Maybe()
 
 		// when
-		err := fx.syncLayoutForObjectsAndTemplates(makeApplyInfo(typeId,
-			// recommendedLayout is changed: basic -> todo
-			layoutState{isLayoutAlignSet: true, layoutAlign: int64(model.Block_AlignLeft)},
-			layoutState{isLayoutAlignSet: true, layoutAlign: int64(model.Block_AlignRight)},
-		))
+		err := fx.SyncLayoutWithType(
+			LayoutState{isLayoutAlignSet: true, layoutAlign: int64(model.Block_AlignLeft)},
+			LayoutState{isLayoutAlignSet: true, layoutAlign: int64(model.Block_AlignRight)},
+			false, true, true,
+		)
 
 		// then
 		assert.NoError(t, err)
@@ -255,7 +249,6 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 	t.Run("recommendedFeaturedRelations is updated", func(t *testing.T) {
 		// given
 		fx := newFixture(t, typeId)
-		fx.sb.SetType(coresb.SmartBlockTypeObjectType)
 
 		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
@@ -328,16 +321,18 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 			return key.Marshal(), nil
 		})
 
+		fx.space.EXPECT().TryRemove(mock.Anything).Return(true, nil).Maybe()
+
 		// when
-		err := fx.syncLayoutForObjectsAndTemplates(makeApplyInfo(typeId,
-			// recommendedLayout is changed: basic -> todo
-			layoutState{isFeaturedRelationsSet: true, featuredRelations: []string{
+		err := fx.SyncLayoutWithType(
+			LayoutState{isFeaturedRelationsSet: true, featuredRelations: []string{
 				bundle.RelationKeyType.URL(), bundle.RelationKeyTag.URL(),
 			}},
-			layoutState{isFeaturedRelationsSet: true, featuredRelations: []string{
+			LayoutState{isFeaturedRelationsSet: true, featuredRelations: []string{
 				bundle.RelationKeyType.URL(), bundle.RelationKeyTag.URL(), bundle.RelationKeyCreator.URL(),
 			}},
-		))
+			false, true, true,
+		)
 
 		// then
 		assert.NoError(t, err)
@@ -347,55 +342,168 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		require.True(t, obj2.Details().Has(bundle.RelationKeyFeaturedRelations))
 		assert.Empty(t, obj2.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
 	})
-}
 
-func makeApplyInfo(typeId string, oldLS, newLS layoutState) smartblock.ApplyInfo {
-	events := make([]simple.EventMessage, 0, 3)
-	if newLS.isLayoutSet {
-		events = append(events, makeObjectDetailsAmendMsg(domain.Detail{
-			Key:   bundle.RelationKeyRecommendedLayout,
-			Value: domain.Int64(newLS.layout),
-		}))
-	}
+	t.Run("when switching recommended layout from note to other -> name is derived from snippet", func(t *testing.T) {
+		// given
+		fx := newFixture(t, typeId)
 
-	if newLS.isLayoutAlignSet {
-		events = append(events, makeObjectDetailsAmendMsg(domain.Detail{
-			Key:   bundle.RelationKeyLayoutAlign,
-			Value: domain.Int64(newLS.layoutAlign),
-		}))
-	}
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("obj1"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_note),
+				bundle.RelationKeySnippet:        domain.String("Hello\n there"),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj2"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_note),
+				bundle.RelationKeySnippet:        domain.String("Goodbye!"),
+			},
+		})
 
-	if newLS.isFeaturedRelationsSet {
-		events = append(events, makeObjectDetailsAmendMsg(domain.Detail{
-			Key:   bundle.RelationKeyRecommendedFeaturedRelations,
-			Value: domain.StringList(newLS.featuredRelations),
-		}))
-	}
+		fx.space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func() error) error {
+			return f()
+		})
 
-	ps := state.NewDoc(typeId, nil).NewState().SetDetails(domain.NewDetails())
-	if oldLS.isLayoutSet {
-		ps.SetDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(oldLS.layout))
-	}
-	if oldLS.isLayoutAlignSet {
-		ps.SetDetail(bundle.RelationKeyLayoutAlign, domain.Int64(oldLS.layoutAlign))
-	}
-	if oldLS.isFeaturedRelationsSet {
-		ps.SetDetail(bundle.RelationKeyRecommendedFeaturedRelations, domain.StringList(oldLS.featuredRelations))
-	}
+		// when
+		err := fx.SyncLayoutWithType(
+			// recommendedLayout is changed: note -> action
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_todo)},
+			false, true, true,
+		)
 
-	return smartblock.ApplyInfo{
-		Events:      events,
-		ParentState: ps,
-	}
-}
+		// then
+		assert.NoError(t, err)
 
-func makeObjectDetailsAmendMsg(detail domain.Detail) simple.EventMessage {
-	return simple.EventMessage{
-		Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfObjectDetailsAmend{ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-			Details: []*pb.EventObjectDetailsAmendKeyValue{{
-				Key:   detail.Key.String(),
-				Value: detail.Value.ToProto(),
-			}},
-		}}},
-	}
+		index := fx.store.SpaceIndex(spaceId)
+		det1, err := index.GetDetails("obj1")
+		require.NoError(t, err)
+		det2, err := index.GetDetails("obj2")
+		require.NoError(t, err)
+
+		assert.Equal(t, int64(model.ObjectType_todo), det1.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, int64(model.ObjectType_todo), det2.GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, "Hello", det1.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "Goodbye!", det2.GetString(bundle.RelationKeyName))
+	})
+
+	t.Run("when forceUpdate is enabled -> all layout relations must be removed", func(t *testing.T) {
+		// given
+		fx := newFixture(t, typeId)
+
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("obj1"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyLayout:         domain.Int64(model.ObjectType_note),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_note),
+			},
+			{
+				bundle.RelationKeyId:                domain.String("obj2"),
+				bundle.RelationKeyType:              domain.String(typeId),
+				bundle.RelationKeyResolvedLayout:    domain.Int64(model.ObjectType_basic),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyTag.String()}),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj3"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_basic),
+				bundle.RelationKeyLayoutAlign:    domain.Int64(int64(model.Block_AlignRight)),
+			},
+		})
+
+		obj1 := smarttest.New("obj1")
+		require.NoError(t, obj1.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayout, Value: domain.Int64(model.ObjectType_note),
+		}}, false))
+		obj2 := smarttest.New("obj2")
+		require.NoError(t, obj2.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyFeaturedRelations, Value: domain.StringList([]string{
+				bundle.RelationKeyType.String(), bundle.RelationKeyTag.String(),
+			}),
+		}}, false))
+		obj3 := smarttest.New("obj3")
+		require.NoError(t, obj3.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayoutAlign, Value: domain.Int64(int64(model.Block_AlignRight)),
+		}}, false))
+
+		fx.space.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func(smartblock.SmartBlock) error) error {
+			switch id {
+			case "obj1":
+				assert.NoError(t, f(obj1))
+			case "obj2":
+				assert.NoError(t, f(obj2))
+			case "obj3":
+				assert.NoError(t, f(obj3))
+			default:
+				panic("Do: invalid object id")
+			}
+			return nil
+		})
+
+		fx.space.EXPECT().TryRemove(mock.Anything).Return(true, nil).Maybe()
+
+		// when
+		err := fx.SyncLayoutWithType(
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			true, true, true,
+		)
+
+		// then
+		assert.NoError(t, err)
+
+		assert.False(t, obj1.Details().Has(bundle.RelationKeyLayout))
+		assert.Empty(t, obj2.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+		assert.False(t, obj3.Details().Has(bundle.RelationKeyLayoutAlign))
+	})
+
+	t.Run("when forceUpdate is enabled, but no need to Apply -> only store updates are applied", func(t *testing.T) {
+		// given
+		fx := newFixture(t, typeId)
+
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("obj1"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyLayout:         domain.Int64(model.ObjectType_note),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_note),
+			},
+			{
+				bundle.RelationKeyId:                domain.String("obj2"),
+				bundle.RelationKeyType:              domain.String(typeId),
+				bundle.RelationKeyResolvedLayout:    domain.Int64(model.ObjectType_basic),
+				bundle.RelationKeyFeaturedRelations: domain.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyTag.String()}),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj3"),
+				bundle.RelationKeyType:           domain.String(typeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_basic),
+				bundle.RelationKeyLayoutAlign:    domain.Int64(int64(model.Block_AlignRight)),
+			},
+		})
+
+		fx.space.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, f func() error) error {
+			assert.Equal(t, "obj1", id)
+			return f()
+		})
+
+		// when
+		err := fx.SyncLayoutWithType(
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+			true, false, true,
+		)
+
+		// then
+		assert.NoError(t, err)
+
+		index := fx.store.SpaceIndex(spaceId)
+		det1, err := index.GetDetails("obj1")
+		require.NoError(t, err)
+
+		assert.Equal(t, int64(model.ObjectType_basic), det1.GetInt64(bundle.RelationKeyResolvedLayout))
+	})
 }

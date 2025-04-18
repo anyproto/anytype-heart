@@ -21,14 +21,18 @@ type ObjectIDDeriver interface {
 var (
 	defaultFeaturedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyType,
-		bundle.RelationKeyTag,
 		bundle.RelationKeyBacklinks,
+		bundle.RelationKeyTag,
 	}
 
 	defaultSetFeaturedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyType,
 		bundle.RelationKeySetOf,
-		bundle.RelationKeyTag,
+		bundle.RelationKeyBacklinks,
+	}
+
+	defaultCollectionFeaturedRelationKeys = []domain.RelationKey{
+		bundle.RelationKeyType,
 		bundle.RelationKeyBacklinks,
 	}
 
@@ -67,8 +71,11 @@ var (
 )
 
 func DefaultFeaturedRelationKeys(typeKey domain.TypeKey) []domain.RelationKey {
-	if typeKey == bundle.TypeKeySet {
+	switch typeKey {
+	case bundle.TypeKeySet:
 		return defaultSetFeaturedRelationKeys
+	case bundle.TypeKeyCollection:
+		return defaultCollectionFeaturedRelationKeys
 	}
 	return defaultFeaturedRelationKeys
 }
