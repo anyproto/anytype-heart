@@ -40,6 +40,7 @@ type assistantConfig struct {
 	SpaceId      string
 	SystemPrompt string
 
+	// TODO Use map
 	McpServers []mcp.Config
 }
 

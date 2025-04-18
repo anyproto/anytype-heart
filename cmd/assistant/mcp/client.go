@@ -100,18 +100,25 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) responseReader() error {
-	scanner := bufio.NewScanner(c.output)
-	for scanner.Scan() {
-		raw := scanner.Bytes()
+	rd := bufio.NewReader(c.output)
+
+	for {
+		raw, err := rd.ReadBytes('\n')
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			log.Error("read line", zap.Error(err))
+			continue
+		}
 		var resp ResponseRaw
-		err := json.Unmarshal(raw, &resp)
+		err = json.Unmarshal(raw, &resp)
 		if err != nil {
 			log.Error("unmarshal response", zap.Error(err))
 			continue
 		}
 		c.addResponse(&resp)
 	}
-	return scanner.Err()
 }
 
 func (c *Client) addResponse(resp *ResponseRaw) {
