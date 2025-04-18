@@ -40,6 +40,8 @@ type assistantConfig struct {
 	SpaceId      string
 	SystemPrompt string
 
+	AutoApproveToolUsage bool
+
 	McpServers map[string]mcp.Config
 }
 

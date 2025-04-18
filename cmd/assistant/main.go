@@ -92,18 +92,19 @@ func run() error {
 	openAiClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
 	chatter := &Chatter{
-		limit:            contextWindow,
-		myIdentity:       app.account.Id,
-		chatObjectId:     chatObjectId,
-		systemPrompt:     app.config.SystemPrompt,
-		chatService:      chatService,
-		client:           openAiClient,
-		store:            handledMessages,
-		maxRequests:      100,
-		toolClients:      make(map[string]*mcp.Client),
-		approvedMessages: map[string]bool{},
-		pendingToolCalls: map[string]pendingToolCall{},
-		forceUpdate:      make(chan struct{}),
+		limit:                contextWindow,
+		myIdentity:           app.account.Id,
+		chatObjectId:         chatObjectId,
+		systemPrompt:         app.config.SystemPrompt,
+		chatService:          chatService,
+		client:               openAiClient,
+		store:                handledMessages,
+		maxRequests:          100,
+		toolClients:          make(map[string]*mcp.Client),
+		approvedMessages:     map[string]bool{},
+		pendingToolCalls:     map[string]*toolsCallRequest{},
+		forceUpdate:          make(chan struct{}),
+		autoApproveToolUsage: app.config.AutoApproveToolUsage,
 	}
 
 	err = chatter.InitializeMcpClients(app.config)

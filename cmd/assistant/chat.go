@@ -26,10 +26,12 @@ type Chatter struct {
 
 	forceUpdate chan struct{}
 
+	autoApproveToolUsage bool
+
 	lock     sync.Mutex
 	messages []*model.ChatMessage
 	// message id => tool call
-	pendingToolCalls map[string]pendingToolCall
+	pendingToolCalls map[string]*toolsCallRequest
 	approvedMessages map[string]bool
 
 	maxRequests int
@@ -138,7 +140,12 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 		if _, ok := c.approvedMessages[messageId]; ok {
 			c.lock.Unlock()
 
-			err := c.callPendingTools(ctx, messageId)
+			pending, ok := c.pendingToolCalls[messageId]
+			if !ok {
+				return fmt.Errorf("no such pending tool call")
+			}
+
+			err := c.callTools(ctx, pending)
 			if err != nil {
 				return fmt.Errorf("call pending tools: %w", err)
 			}
@@ -202,16 +209,16 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 	return nil
 }
 
-type toolCallRequest struct {
+type toolCallParams struct {
 	id         string
 	name       string
 	argsString string
 	args       map[string]any
 }
 
-type pendingToolCall struct {
+type toolsCallRequest struct {
 	messageId string
-	calls     []toolCallRequest
+	calls     []toolCallParams
 
 	context []openai.ChatCompletionMessage
 }
@@ -223,14 +230,26 @@ func (c *Chatter) addPendingToolCalls(messageId string, messages []openai.ChatCo
 	// TODO Save context
 	// TODO Report that user need to approve request
 
-	requests := make([]toolCallRequest, 0, len(toolCalls))
+	req, err := createToolsCallRequest(toolCalls, messages)
+	if err != nil {
+		return err
+	}
+
+	req.messageId = messageId
+
+	c.pendingToolCalls[messageId] = req
+	return nil
+}
+
+func createToolsCallRequest(toolCalls []openai.ToolCall, messages []openai.ChatCompletionMessage) (*toolsCallRequest, error) {
+	requests := make([]toolCallParams, 0, len(toolCalls))
 	for _, toolCall := range toolCalls {
 		var args map[string]any
 		err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
 		if err != nil {
-			return fmt.Errorf("unmarshal tool arguments: %w", err)
+			return nil, fmt.Errorf("unmarshal tool arguments: %w", err)
 		}
-		requests = append(requests, toolCallRequest{
+		requests = append(requests, toolCallParams{
 			id:         toolCall.ID,
 			name:       toolCall.Function.Name,
 			argsString: toolCall.Function.Arguments,
@@ -238,25 +257,20 @@ func (c *Chatter) addPendingToolCalls(messageId string, messages []openai.ChatCo
 		})
 	}
 
-	c.pendingToolCalls[messageId] = pendingToolCall{
-		messageId: messageId,
-		calls:     requests,
-		context:   messages,
+	req := &toolsCallRequest{
+
+		calls:   requests,
+		context: messages,
 	}
-	return nil
+	return req, nil
 }
 
 // call approved tool calls
-func (c *Chatter) callPendingTools(ctx context.Context, messageId string) error {
-	pending, ok := c.pendingToolCalls[messageId]
-	if !ok {
-		return fmt.Errorf("no such pending tool call")
-	}
+func (c *Chatter) callTools(ctx context.Context, req *toolsCallRequest) error {
+	toolCalls := make([]openai.ToolCall, 0, len(req.calls))
+	callResultMessages := make([]openai.ChatCompletionMessage, 0, len(req.calls))
 
-	toolCalls := make([]openai.ToolCall, 0, len(pending.calls))
-	callResultMessages := make([]openai.ChatCompletionMessage, 0, len(pending.calls))
-
-	for _, call := range pending.calls {
+	for _, call := range req.calls {
 		callRes, err := c.callTool(call.name, call.args)
 		if err != nil {
 			return fmt.Errorf("call tool: %w", err)
@@ -287,9 +301,8 @@ func (c *Chatter) callPendingTools(ctx context.Context, messageId string) error 
 		})
 
 	}
-	fmt.Println("tool calls finished")
 
-	messages := pending.context
+	messages := req.context
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:      openai.ChatMessageRoleAssistant,
 		ToolCalls: toolCalls,
@@ -334,26 +347,36 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 			}
 		}
 
-		toolNames := make([]string, 0, len(result.Message.ToolCalls))
-		for _, call := range result.Message.ToolCalls {
-			toolNames = append(toolNames, call.Function.Name)
-		}
+		if c.autoApproveToolUsage {
+			toolsCallReq, err := createToolsCallRequest(result.Message.ToolCalls, messages)
+			if err != nil {
+				return fmt.Errorf("create tools call: %w", err)
+			}
 
-		approvalMessageId, err := c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
-			ChatMessage: &model.ChatMessage{
-				Message: &model.ChatMessageMessageContent{
-					Text: fmt.Sprintf("I need to call tools to finish your request: %s", strings.Join(toolNames, " ")),
+			return c.callTools(ctx, toolsCallReq)
+		} else {
+			toolNames := make([]string, 0, len(result.Message.ToolCalls))
+			for _, call := range result.Message.ToolCalls {
+				toolNames = append(toolNames, call.Function.Name)
+			}
+
+			approvalMessageId, err := c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
+				ChatMessage: &model.ChatMessage{
+					Message: &model.ChatMessageMessageContent{
+						Text: fmt.Sprintf("I need to call tools to finish your request: %s", strings.Join(toolNames, " ")),
+					},
 				},
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("response in chat: %w", err)
+			})
+			if err != nil {
+				return fmt.Errorf("response in chat: %w", err)
+			}
+
+			err = c.addPendingToolCalls(approvalMessageId, messages, result.Message.ToolCalls)
+			if err != nil {
+				return fmt.Errorf("add pending tool calls: %w", err)
+			}
 		}
 
-		err = c.addPendingToolCalls(approvalMessageId, messages, result.Message.ToolCalls)
-		if err != nil {
-			return fmt.Errorf("add pending tool calls: %w", err)
-		}
 	} else if result.FinishReason == openai.FinishReasonStop {
 		_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
 			ChatMessage: &model.ChatMessage{
