@@ -33,3 +33,25 @@ type Notification struct {
 	Method string         `json:"method"`
 	Params map[string]any `json:"params"`
 }
+
+type ToolsResponse struct {
+	Tools []Tool `json:"tools"`
+}
+
+type Tool struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	InputSchema any    `json:"inputSchema"`
+}
+
+type ToolCallResult struct {
+	IsError bool                    `json:"isError"`
+	Content []ToolCallResultContent `json:"content"`
+}
+
+type ToolCallResultContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+
+	// TODO: https://modelcontextprotocol.io/specification/2025-03-26/server/tools#tool-result
+}

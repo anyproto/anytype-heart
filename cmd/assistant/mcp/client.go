@@ -157,16 +157,29 @@ func (c *Client) Initialize(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ListTools() error {
-	resp, err := sendRequest[any](c, Request{
+func (c *Client) ListTools() ([]Tool, error) {
+	resp, err := sendRequest[ToolsResponse](c, Request{
 		Method: "tools/list",
 	})
 	if err != nil {
-		return fmt.Errorf("list tools: %w", err)
+		return nil, fmt.Errorf("list tools: %w", err)
+	}
+	return resp.Result.Tools, nil
+}
+
+func (c *Client) CallTool(name string, params any) (*ToolCallResult, error) {
+	resp, err := sendRequest[ToolCallResult](c, Request{
+		Method: "tools/call",
+		Params: map[string]any{
+			"name":      name,
+			"arguments": params,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("call tool %s: %w", name, err)
 	}
 
-	_ = resp
-	return nil
+	return &resp.Result, nil
 }
 
 func (c *Client) sendNotification(req Request) error {

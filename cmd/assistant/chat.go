@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/cmd/assistant/mcp"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,10 +31,12 @@ type Chatter struct {
 	chatService chats.Service
 	client      *openai.Client
 	store       keyvaluestore.Store[string]
+
+	mcpClients []*mcp.Client
 }
 
 func (c *Chatter) Run(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
@@ -127,26 +132,110 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 	return nil
 }
 
+func (c *Chatter) listTools() ([]openai.Tool, error) {
+	cli := c.mcpClients[0]
+
+	mcpTools, err := cli.ListTools()
+	if err != nil {
+		return nil, fmt.Errorf("list tools: %w", err)
+	}
+
+	tools := make([]openai.Tool, 0, len(mcpTools))
+	for _, mcpTool := range mcpTools {
+		tools = append(tools, openai.Tool{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        mcpTool.Name,
+				Description: mcpTool.Description,
+				Parameters:  mcpTool.InputSchema,
+			},
+		})
+	}
+	return tools, nil
+}
+
 func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatCompletionMessage) error {
 	if c.maxRequests <= 0 {
 		return nil
 	}
 	c.maxRequests--
 
-	compResp, err := c.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model:    openai.GPT4oMini,
-		Messages: messages,
-	})
+	tools, err := c.listTools()
 	if err != nil {
-		return fmt.Errorf("create chat completion: %w", err)
+		return fmt.Errorf("list tools: %w", err)
 	}
 
-	completion := compResp.Choices[0].Message.Content
+	var messageText string
+	for {
+		compResp, err := c.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+			Model:    openai.GPT4Turbo,
+			Messages: messages,
+			Tools:    tools,
+		})
+		if err != nil {
+			return fmt.Errorf("create chat completion: %w", err)
+		}
+
+		result := compResp.Choices[0]
+		messageText = result.Message.Content
+
+		// TODO Send message for tool call
+		if result.FinishReason == openai.FinishReasonToolCalls {
+			// TODO Send message and wait for approve
+
+			toolCalls := make([]openai.ToolCall, 0, len(tools))
+			callResultMessages := make([]openai.ChatCompletionMessage, 0, len(tools))
+			for _, tool := range result.Message.ToolCalls {
+				var args map[string]any
+				err = json.Unmarshal([]byte(tool.Function.Arguments), &args)
+				if err != nil {
+					return fmt.Errorf("unmarshal tool arguments: %w", err)
+				}
+
+				callRes, err := c.mcpClients[0].CallTool(tool.Function.Name, args)
+				if err != nil {
+					return fmt.Errorf("call tool: %w", err)
+				}
+
+				var callContent strings.Builder
+				for _, c := range callRes.Content {
+					if c.Type == "text" {
+						callContent.WriteString(c.Text)
+						callContent.WriteString("\n")
+					}
+				}
+
+				callResultMessages = append(callResultMessages, openai.ChatCompletionMessage{
+					Role:       openai.ChatMessageRoleTool,
+					ToolCallID: tool.ID,
+					Name:       tool.Function.Name,
+					Content:    callContent.String(),
+				})
+
+				toolCalls = append(toolCalls, openai.ToolCall{
+					Type:     openai.ToolTypeFunction,
+					ID:       tool.ID,
+					Function: tool.Function,
+				})
+
+			}
+			fmt.Println("tool calls finished")
+
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:      openai.ChatMessageRoleAssistant,
+				ToolCalls: toolCalls,
+			})
+			messages = append(messages, callResultMessages...)
+		} else {
+			break
+		}
+
+	}
 
 	_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
 		ChatMessage: &model.ChatMessage{
 			Message: &model.ChatMessageMessageContent{
-				Text: completion,
+				Text: messageText,
 			},
 		},
 	})

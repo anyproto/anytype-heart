@@ -90,6 +90,11 @@ func run() error {
 
 	openAiClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
+	mcpClients, err := initMcpClients(dataDir)
+	if err != nil {
+		return fmt.Errorf("init mcp clients: %w", err)
+	}
+
 	chatter := &Chatter{
 		limit:        contextWindow,
 		myIdentity:   app.account.Id,
@@ -99,6 +104,7 @@ func run() error {
 		client:       openAiClient,
 		store:        handledMessages,
 		maxRequests:  100,
+		mcpClients:   mcpClients,
 	}
 
 	go func() {
