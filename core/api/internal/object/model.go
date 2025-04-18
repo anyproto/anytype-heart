@@ -60,7 +60,7 @@ type Text struct {
 	Style   string    `json:"style" enums:"Paragraph,Header1,Header2,Header3,Header4,Quote,Code,Title,Checkbox,Marked,Numbered,Toggle,Description,Callout" example:"Paragraph"` // The style of the text
 	Checked bool      `json:"checked" example:"true"`                                                                                                                           // Whether the text is checked
 	Color   string    `json:"color" example:"red"`                                                                                                                              // The color of the text
-	Icon    util.Icon `json:"icon"`                                                                                                                                             // The icon of the text
+	Icon    util.Icon `json:"icon" `                                                                                                                                            // The icon of the text
 }
 
 type File struct {
@@ -98,9 +98,9 @@ type Property struct {
 }
 
 type Tag struct {
-	Id    string `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"` // The id of the tag
-	Name  string `json:"name" example:"in-progress"`                                               // The name of the tag
-	Color string `json:"color" example:"yellow"`                                                   // The color of the tag
+	Id    string     `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag
+	Name  string     `json:"name" example:"in-progress"`                                                           // The name of the tag
+	Color util.Color `json:"color" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the tag
 }
 
 type TypeResponse struct {
