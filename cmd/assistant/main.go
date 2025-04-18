@@ -92,15 +92,18 @@ func run() error {
 	openAiClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
 	chatter := &Chatter{
-		limit:        contextWindow,
-		myIdentity:   app.account.Id,
-		chatObjectId: chatObjectId,
-		systemPrompt: app.config.SystemPrompt,
-		chatService:  chatService,
-		client:       openAiClient,
-		store:        handledMessages,
-		maxRequests:  100,
-		toolClients:  make(map[string]*mcp.Client),
+		limit:            contextWindow,
+		myIdentity:       app.account.Id,
+		chatObjectId:     chatObjectId,
+		systemPrompt:     app.config.SystemPrompt,
+		chatService:      chatService,
+		client:           openAiClient,
+		store:            handledMessages,
+		maxRequests:      100,
+		toolClients:      make(map[string]*mcp.Client),
+		approvedMessages: map[string]bool{},
+		pendingToolCalls: map[string]pendingToolCall{},
+		forceUpdate:      make(chan struct{}),
 	}
 
 	err = chatter.InitializeMcpClients(app.config)
@@ -132,6 +135,14 @@ func run() error {
 		chatAddEv := msg.GetChatAdd()
 		if chatAddEv != nil {
 			chatter.Add(chatAddEv.Message)
+		}
+		chatReaction := msg.GetChatUpdateReactions()
+		if chatReaction != nil {
+			reactions := make(map[string]bool)
+			for emoji := range chatReaction.Reactions.Reactions {
+				reactions[emoji] = true
+			}
+			chatter.AddReaction(chatReaction.Id, reactions)
 		}
 	}
 

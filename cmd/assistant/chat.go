@@ -24,8 +24,13 @@ type Chatter struct {
 	chatObjectId string
 	systemPrompt string
 
+	forceUpdate chan struct{}
+
 	lock     sync.Mutex
 	messages []*model.ChatMessage
+	// message id => tool call
+	pendingToolCalls map[string]pendingToolCall
+	approvedMessages map[string]bool
 
 	maxRequests int
 	chatService chats.Service
@@ -82,6 +87,11 @@ func (c *Chatter) Run(ctx context.Context) {
 
 	for {
 		select {
+		case <-c.forceUpdate:
+			err := c.handleMessages(ctx)
+			if err != nil {
+				log.Error("handle messages", zap.Error(err))
+			}
 		case <-ticker.C:
 			err := c.handleMessages(ctx)
 			if err != nil {
@@ -122,6 +132,22 @@ func (c *Chatter) needToSend(ctx context.Context) (bool, error) {
 
 func (c *Chatter) handleMessages(ctx context.Context) error {
 	c.lock.Lock()
+
+	for messageId := range c.pendingToolCalls {
+		if _, ok := c.approvedMessages[messageId]; ok {
+			c.lock.Unlock()
+
+			err := c.callPendingTools(ctx, messageId)
+			if err != nil {
+				return fmt.Errorf("call pending tools: %w", err)
+			}
+
+			c.lock.Lock()
+			delete(c.pendingToolCalls, messageId)
+			c.lock.Unlock()
+			return nil
+		}
+	}
 
 	needToSend, err := c.needToSend(ctx)
 	if err != nil {
@@ -175,6 +201,103 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 	return nil
 }
 
+type toolCallRequest struct {
+	id         string
+	name       string
+	argsString string
+	args       map[string]any
+}
+
+type pendingToolCall struct {
+	messageId string
+	calls     []toolCallRequest
+
+	context []openai.ChatCompletionMessage
+}
+
+func (c *Chatter) addPendingToolCalls(messageId string, messages []openai.ChatCompletionMessage, toolCalls []openai.ToolCall) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	// TODO Save context
+	// TODO Report that user need to approve request
+
+	requests := make([]toolCallRequest, 0, len(toolCalls))
+	for _, toolCall := range toolCalls {
+		var args map[string]any
+		err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
+		if err != nil {
+			return fmt.Errorf("unmarshal tool arguments: %w", err)
+		}
+		requests = append(requests, toolCallRequest{
+			id:         toolCall.ID,
+			name:       toolCall.Function.Name,
+			argsString: toolCall.Function.Arguments,
+			args:       args,
+		})
+	}
+
+	c.pendingToolCalls[messageId] = pendingToolCall{
+		messageId: messageId,
+		calls:     requests,
+		context:   messages,
+	}
+	return nil
+}
+
+// call approved tool calls
+func (c *Chatter) callPendingTools(ctx context.Context, messageId string) error {
+	pending, ok := c.pendingToolCalls[messageId]
+	if !ok {
+		return fmt.Errorf("no such pending tool call")
+	}
+
+	toolCalls := make([]openai.ToolCall, 0, len(pending.calls))
+	callResultMessages := make([]openai.ChatCompletionMessage, 0, len(pending.calls))
+
+	for _, call := range pending.calls {
+		callRes, err := c.callTool(call.name, call.args)
+		if err != nil {
+			return fmt.Errorf("call tool: %w", err)
+		}
+
+		var callContent strings.Builder
+		for _, c := range callRes.Content {
+			if c.Type == "text" {
+				callContent.WriteString(c.Text)
+				callContent.WriteString("\n")
+			}
+		}
+
+		callResultMessages = append(callResultMessages, openai.ChatCompletionMessage{
+			Role:       openai.ChatMessageRoleTool,
+			ToolCallID: call.id,
+			Name:       call.name,
+			Content:    callContent.String(),
+		})
+
+		toolCalls = append(toolCalls, openai.ToolCall{
+			Type: openai.ToolTypeFunction,
+			ID:   call.id,
+			Function: openai.FunctionCall{
+				Name:      call.name,
+				Arguments: call.argsString,
+			},
+		})
+
+	}
+	fmt.Println("tool calls finished")
+
+	messages := pending.context
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:      openai.ChatMessageRoleAssistant,
+		ToolCalls: toolCalls,
+	})
+	messages = append(messages, callResultMessages...)
+
+	return c.sendRequest(ctx, messages)
+}
+
 func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatCompletionMessage) error {
 	if c.maxRequests <= 0 {
 		return nil
@@ -182,94 +305,67 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 	c.maxRequests--
 
 	var messageText string
-	for {
-		compResp, err := c.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-			Model:    "gpt-4.1-mini",
-			Messages: messages,
-			Tools:    c.toolRequests,
-		})
-		if err != nil {
-			return fmt.Errorf("create chat completion: %w", err)
-		}
-
-		result := compResp.Choices[0]
-		messageText = result.Message.Content
-
-		// TODO Send message for tool call
-		if result.FinishReason == openai.FinishReasonToolCalls {
-			// TODO Send message and wait for approve
-			if messageText != "" {
-				_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
-					ChatMessage: &model.ChatMessage{
-						Message: &model.ChatMessageMessageContent{
-							Text: messageText,
-						},
-					},
-				})
-				if err != nil {
-					return fmt.Errorf("response in chat: %w", err)
-				}
-			}
-
-			toolCalls := make([]openai.ToolCall, 0, len(result.Message.ToolCalls))
-			callResultMessages := make([]openai.ChatCompletionMessage, 0, len(result.Message.ToolCalls))
-			for _, tool := range result.Message.ToolCalls {
-				var args map[string]any
-				err = json.Unmarshal([]byte(tool.Function.Arguments), &args)
-				if err != nil {
-					return fmt.Errorf("unmarshal tool arguments: %w", err)
-				}
-
-				callRes, err := c.callTool(tool.Function.Name, args)
-				if err != nil {
-					return fmt.Errorf("call tool: %w", err)
-				}
-
-				var callContent strings.Builder
-				for _, c := range callRes.Content {
-					if c.Type == "text" {
-						callContent.WriteString(c.Text)
-						callContent.WriteString("\n")
-					}
-				}
-
-				callResultMessages = append(callResultMessages, openai.ChatCompletionMessage{
-					Role:       openai.ChatMessageRoleTool,
-					ToolCallID: tool.ID,
-					Name:       tool.Function.Name,
-					Content:    callContent.String(),
-				})
-
-				toolCalls = append(toolCalls, openai.ToolCall{
-					Type:     openai.ToolTypeFunction,
-					ID:       tool.ID,
-					Function: tool.Function,
-				})
-
-			}
-			fmt.Println("tool calls finished")
-
-			messages = append(messages, openai.ChatCompletionMessage{
-				Role:      openai.ChatMessageRoleAssistant,
-				ToolCalls: toolCalls,
-			})
-			messages = append(messages, callResultMessages...)
-		} else {
-			break
-		}
-
-	}
-
-	_, err := c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
-		ChatMessage: &model.ChatMessage{
-			Message: &model.ChatMessageMessageContent{
-				Text: messageText,
-			},
-		},
+	compResp, err := c.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model:    "gpt-4.1-mini",
+		Messages: messages,
+		Tools:    c.toolRequests,
 	})
 	if err != nil {
-		return fmt.Errorf("response in chat: %w", err)
+		return fmt.Errorf("create chat completion: %w", err)
 	}
+
+	result := compResp.Choices[0]
+	messageText = result.Message.Content
+
+	// TODO Send message for tool call
+	if result.FinishReason == openai.FinishReasonToolCalls {
+		// TODO Send message and wait for approve
+		if messageText != "" {
+			_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
+				ChatMessage: &model.ChatMessage{
+					Message: &model.ChatMessageMessageContent{
+						Text: messageText,
+					},
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("response in chat: %w", err)
+			}
+		}
+
+		toolNames := make([]string, 0, len(result.Message.ToolCalls))
+		for _, call := range result.Message.ToolCalls {
+			toolNames = append(toolNames, call.Function.Name)
+		}
+
+		approvalMessageId, err := c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{
+					Text: fmt.Sprintf("I need to call tools to finish your request: %s", strings.Join(toolNames, " ")),
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("response in chat: %w", err)
+		}
+
+		err = c.addPendingToolCalls(approvalMessageId, messages, result.Message.ToolCalls)
+		if err != nil {
+			return fmt.Errorf("add pending tool calls: %w", err)
+		}
+	} else if result.FinishReason == openai.FinishReasonStop {
+		_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{
+					Text: messageText,
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("response in chat: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -292,4 +388,17 @@ func (c *Chatter) Add(message *model.ChatMessage) {
 	defer c.lock.Unlock()
 
 	c.setMessages(append(c.messages, message))
+}
+
+func (c *Chatter) AddReaction(messageId string, reactions map[string]bool) {
+	c.lock.Lock()
+	// _, ok := reactions["✅"]
+	// if ok {
+	// 	c.approvedMessages[messageId] = true
+	// }
+
+	c.approvedMessages[messageId] = true
+	c.lock.Unlock()
+
+	c.forceUpdate <- struct{}{}
 }
