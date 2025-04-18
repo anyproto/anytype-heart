@@ -566,18 +566,20 @@ func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId st
 
 // ListPropertyOptions returns all tag options for a given property (relation) id in a space.
 func (s *service) ListPropertyOptions(ctx context.Context, spaceId string, propertyId string, offset int, limit int) (options []Tag, total int, hasMore bool, err error) {
-	propertyKey, err := util.ResolveIdtoUniqueKey(s.mw, spaceId, propertyId)
-	if err != nil {
-		return nil, 0, false, err
-	}
+	// TODO: decide key vs id
+	// propertyKey, err := util.ResolveIdtoUniqueKey(s.mw, spaceId, propertyId)
+	// if err != nil {
+	// 	return nil, 0, false, err
+	// }
+	propertyKey := propertyId
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				RelationKey: bundle.RelationKeyType.String(),
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(model.ObjectType_relationOption.String()),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 			},
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
@@ -608,7 +610,7 @@ func (s *service) ListPropertyOptions(ctx context.Context, spaceId string, prope
 		options = append(options, Tag{
 			Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Color: record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
+			Color: util.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 		})
 	}
 
@@ -1108,7 +1110,7 @@ func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
 		tags = append(tags, Tag{
 			Id:    tagId,
 			Name:  resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Color: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue(),
+			Color: util.ColorOptionToColor[resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 		})
 	}
 
