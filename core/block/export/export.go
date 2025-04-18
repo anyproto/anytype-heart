@@ -74,7 +74,7 @@ var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
 	Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
-	ExportInMemory(ctx context.Context, spaceId string, objectIds []string, format model.ExportFormat, includeRelations bool) (res map[string][]byte, err error)
+	ExportInMemory(ctx context.Context, spaceId string, objectIds []string, format model.ExportFormat, includeRelations bool) (res map[string]string, err error)
 
 	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
 	app.Component
@@ -128,7 +128,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	return exportCtx.exportObjects(ctx, queue)
 }
 
-func (e *export) ExportInMemory(ctx context.Context, spaceId string, objectIds []string, format model.ExportFormat, includeRelations bool) (res map[string][]byte, err error) {
+func (e *export) ExportInMemory(ctx context.Context, spaceId string, objectIds []string, format model.ExportFormat, includeRelations bool) (res map[string]string, err error) {
 	req := pb.RpcObjectListExportRequest{
 		SpaceId:                          spaceId,
 		ObjectIds:                        objectIds,
@@ -138,10 +138,10 @@ func (e *export) ExportInMemory(ctx context.Context, spaceId string, objectIds [
 		IncludeRelationsHeaderInMarkdown: includeRelations,
 	}
 
-	res = make(map[string][]byte)
+	res = make(map[string]string)
 	exportCtx := NewExportContext(e, req)
 	for _, objectId := range objectIds {
-		b, err := exportCtx.exportObjectDemo(ctx, objectId)
+		b, err := exportCtx.exportObject(ctx, objectId)
 		if err != nil {
 			return nil, err
 		}
@@ -273,26 +273,6 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 		return e.linkStateFilters
 	}
 	return nil
-}
-
-func (e *exportContext) exportObjectDemo(ctx context.Context, objectId string) ([]byte, error) {
-	e.reqIds = []string{objectId}
-	err := e.docsForExport(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	fakeWriter := &FakeWriter{}
-	err = e.writeDoc(ctx, fakeWriter, objectId, e.docs.transformToDetailsMap())
-	if err != nil {
-		return nil, err
-	}
-
-	for _, v := range fakeWriter.data {
-		return v, nil
-	}
-
-	return nil, fmt.Errorf("failed to find data in writer")
 }
 
 // exportObject synchronously exports a single object and return the bytes slice

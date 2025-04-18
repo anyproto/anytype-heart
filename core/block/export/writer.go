@@ -156,45 +156,6 @@ func getZipName(path string) string {
 	return filepath.Join(path, uniqName()+".zip")
 }
 
-type FakeWriter struct {
-	data map[string][]byte
-	fn   *namer
-	m    sync.Mutex
-}
-
-func (d *FakeWriter) Namer() Namer {
-	d.m.Lock()
-	defer d.m.Unlock()
-	if d.fn == nil {
-		d.fn = newNamer()
-	}
-	return d.fn
-}
-
-func (d *FakeWriter) Path() string {
-	return ""
-}
-
-func (d *FakeWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error) {
-	if d.data == nil {
-		d.data = make(map[string][]byte)
-	}
-	b, err := io.ReadAll(r)
-	if err != nil {
-		return
-	}
-	d.data[filename] = b
-	return
-}
-
-func (d *FakeWriter) Close() (err error) {
-	return nil
-}
-
-func (d *FakeWriter) GetData(id string) []byte {
-	return d.data[id]
-}
-
 type InMemoryWriter struct {
 	data map[string][]byte
 	fn   Namer

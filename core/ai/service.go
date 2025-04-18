@@ -252,7 +252,7 @@ func (ai *AIService) ListSummary(ctx context.Context, params *pb.RpcAIListSummar
 
 	s := strings.Builder{}
 	for _, r := range res {
-		s.Write(r)
+		s.WriteString(r)
 		s.WriteString("\n==========\n\n")
 	}
 	ai.setAPIConfig(params.Config)
