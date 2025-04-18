@@ -5,8 +5,11 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/util/debug"
 	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -32,6 +35,18 @@ func (s *Service) cancelStartIfInProcess() {
 
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 	s.cancelStartIfInProcess()
+	stopped := make(chan struct{})
+	defer close(stopped)
+	go func() {
+		select {
+		case <-stopped:
+		case <-time.After(app.StopDeadline + time.Second*5):
+			// this is extra protection in case we stuck at s.lock
+			_, _ = os.Stderr.Write([]byte("AccountStop timeout\n"))
+			_, _ = os.Stderr.Write(debug.Stack(true))
+			panic("app.Close AccountStop timeout")
+		}
+	}()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
