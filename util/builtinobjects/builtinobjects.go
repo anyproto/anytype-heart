@@ -315,12 +315,7 @@ func (b *builtinObjects) getStartingPage(profile *pb.Profile, spaceId string) st
 
 func (b *builtinObjects) handleHomePage(profile *pb.Profile, spaceId string, isMigration bool) (dashboardId string) {
 	var oldID string
-	if !isMigration {
-		oldID = profile.SpaceDashboardId
-		if oldID == "" {
-			oldID = defaultDashboardId
-		}
-	} else if profile != nil {
+	if profile != nil {
 		oldID = profile.SpaceDashboardId
 	}
 
@@ -376,7 +371,7 @@ func (b *builtinObjects) getProfile(path string) (profile *pb.Profile, err error
 	}
 
 	if !profileFound {
-		return nil, fmt.Errorf("no profile file included in archive")
+		return &pb.Profile{}, nil
 	}
 
 	defer rd.Close()
