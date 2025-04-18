@@ -100,15 +100,16 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 
 	for _, msg := range c.messages {
 		toMarkAsRead = append(toMarkAsRead, msg.Id)
+		if msg.Message.Text == "" {
+			continue
+		}
+
 		if msg.Creator == c.myIdentity {
 			messages = append(messages, openai.ChatCompletionMessage{
 				Role:    openai.ChatMessageRoleAssistant,
 				Content: msg.Message.Text,
 			})
 		} else {
-			if msg.Message.Text == "" {
-				continue
-			}
 			// TODO Prepend with "${user} said: "
 			messages = append(messages, openai.ChatCompletionMessage{
 				Role:    openai.ChatMessageRoleUser,
@@ -182,6 +183,18 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 		// TODO Send message for tool call
 		if result.FinishReason == openai.FinishReasonToolCalls {
 			// TODO Send message and wait for approve
+			if messageText != "" {
+				_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
+					ChatMessage: &model.ChatMessage{
+						Message: &model.ChatMessageMessageContent{
+							Text: messageText,
+						},
+					},
+				})
+				if err != nil {
+					return fmt.Errorf("response in chat: %w", err)
+				}
+			}
 
 			toolCalls := make([]openai.ToolCall, 0, len(tools))
 			callResultMessages := make([]openai.ChatCompletionMessage, 0, len(tools))
