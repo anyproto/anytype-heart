@@ -43,22 +43,22 @@ type Chatter struct {
 	toolClients map[string]*mcp.Client
 }
 
-func (c *Chatter) InitializeMcpClients(cfg *assistantConfig) error {
-	mcpClients, err := initMcpClients(cfg.McpServers)
-	if err != nil {
-		return fmt.Errorf("initialize mcp clients: %w", err)
-	}
-
-	for _, cli := range mcpClients {
-		mcpTools, err := cli.ListTools()
+func (c *Chatter) InitializeMcpClients(config *assistantConfig) error {
+	for serverName, cfg := range config.McpServers {
+		client, err := mcp.New(cfg)
+		if err != nil {
+			return fmt.Errorf("new mcp client: %w", err)
+		}
+		mcpTools, err := client.ListTools()
 		if err != nil {
 			return fmt.Errorf("list tools: %w", err)
 		}
 
+		fmt.Println("registered server:", serverName)
 		tools := make([]openai.Tool, 0, len(mcpTools))
 		for _, mcpTool := range mcpTools {
-			c.toolClients[mcpTool.Name] = cli
-			fmt.Println("registered tool:", mcpTool.Name)
+			c.toolClients[mcpTool.Name] = client
+			fmt.Println("  registered tool:", mcpTool.Name)
 			tools = append(tools, openai.Tool{
 				Type: openai.ToolTypeFunction,
 				Function: &openai.FunctionDefinition{
@@ -70,6 +70,7 @@ func (c *Chatter) InitializeMcpClients(cfg *assistantConfig) error {
 		}
 		c.toolRequests = append(c.toolRequests, tools...)
 	}
+
 	return nil
 }
 

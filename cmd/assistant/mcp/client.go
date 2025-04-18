@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -47,6 +49,13 @@ func New(config Config) (*Client, error) {
 	for k, v := range config.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
+
+	// Copy PATH from OS env to be able to run binaries
+	for _, envLine := range os.Environ() {
+		if strings.HasPrefix(envLine, "PATH=") {
+			env = append(env, envLine)
+		}
+	}
 	cmd.Env = env
 
 	input, err := cmd.StdinPipe()
@@ -82,6 +91,13 @@ func New(config Config) (*Client, error) {
 		err = c.responseReader()
 		if err != nil {
 			log.Error("response reader", zap.Error(err))
+		}
+	}()
+
+	go func() {
+		err := cmd.Wait()
+		if err != nil {
+			log.Error("wait command", zap.Error(err))
 		}
 	}()
 

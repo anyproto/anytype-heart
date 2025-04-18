@@ -40,8 +40,7 @@ type assistantConfig struct {
 	SpaceId      string
 	SystemPrompt string
 
-	// TODO Use map
-	McpServers []mcp.Config
+	McpServers map[string]mcp.Config
 }
 
 func (c *assistantConfig) Validate() error {
