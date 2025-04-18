@@ -972,9 +972,13 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
+	var parentDetails *domain.Details
+	if s.ParentState() != nil {
+		parentDetails = s.ParentState().Details()
+	}
 	if err = sb.execHooks(HookAfterApply, ApplyInfo{
 		State:         s,
-		ParentDetails: s.ParentState().Details(),
+		ParentDetails: parentDetails,
 		Events:        msgs,
 		Changes:       changes,
 	}); err != nil {
