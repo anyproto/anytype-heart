@@ -32,10 +32,10 @@ const (
 	mockedTypeId        = "mocked-type-id"
 	mockedTagId1        = "mocked-tag-id-1"
 	mockedTagValue1     = "mocked-tag-value-1"
-	mockedTagColor1     = "mocked-tag-color-1"
+	mockedTagColor1     = "red"
 	mockedTagId2        = "mocked-tag-id-2"
 	mockedTagValue2     = "mocked-tag-value-2"
-	mockedTagColor2     = "mocked-tag-color-2"
+	mockedTagColor2     = "blue"
 )
 
 type fixture struct {
@@ -342,10 +342,10 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Len(t, tags, 2)
 		require.Equal(t, mockedTagId1, tags[0].Id)
 		require.Equal(t, mockedTagValue1, tags[0].Name)
-		require.Equal(t, mockedTagColor1, tags[0].Color)
+		require.Equal(t, util.Color(mockedTagColor1), tags[0].Color)
 		require.Equal(t, mockedTagId2, tags[1].Id)
 		require.Equal(t, mockedTagValue2, tags[1].Name)
-		require.Equal(t, mockedTagColor2, tags[1].Color)
+		require.Equal(t, util.Color(mockedTagColor2), tags[1].Color)
 
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
