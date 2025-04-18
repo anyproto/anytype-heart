@@ -184,7 +184,7 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 	var messageText string
 	for {
 		compResp, err := c.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-			Model:    openai.GPT4Turbo,
+			Model:    "gpt-4.1-mini",
 			Messages: messages,
 			Tools:    c.toolRequests,
 		})
