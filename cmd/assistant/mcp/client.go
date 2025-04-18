@@ -39,11 +39,15 @@ type Client struct {
 	responses    map[int]*ResponseRaw
 }
 
-// TODO Create response buffer
-
 func New(config Config) (*Client, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, config.Command, config.Args...)
+
+	var env []string
+	for k, v := range config.Env {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+	cmd.Env = env
 
 	input, err := cmd.StdinPipe()
 	if err != nil {
@@ -80,6 +84,12 @@ func New(config Config) (*Client, error) {
 			log.Error("response reader", zap.Error(err))
 		}
 	}()
+
+	err = c.Initialize(ctx)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("initialize mcp client: %w", err)
+	}
 
 	return c, nil
 }

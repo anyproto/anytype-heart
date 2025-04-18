@@ -4,17 +4,16 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/assistant/mcp"
 )
 
-func initMcpClients(dataDir string) ([]*mcp.Client, error) {
-	testConfig := mcp.Config{
-		Command: "npx",
-		Args: []string{
-			"-y", "@modelcontextprotocol/server-filesystem", "/Users/deff/dev/work/any-sync",
-		},
+func initMcpClients(configs []mcp.Config) ([]*mcp.Client, error) {
+	clients := make([]*mcp.Client, 0, len(configs))
+
+	for _, cfg := range configs {
+		client, err := mcp.New(cfg)
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, client)
 	}
 
-	client, err := mcp.New(testConfig)
-	if err != nil {
-		return nil, err
-	}
-	return []*mcp.Client{client}, nil
+	return clients, nil
 }

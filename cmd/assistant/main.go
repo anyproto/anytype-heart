@@ -10,6 +10,7 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/cmd/assistant/mcp"
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -90,11 +91,6 @@ func run() error {
 
 	openAiClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
-	mcpClients, err := initMcpClients(dataDir)
-	if err != nil {
-		return fmt.Errorf("init mcp clients: %w", err)
-	}
-
 	chatter := &Chatter{
 		limit:        contextWindow,
 		myIdentity:   app.account.Id,
@@ -104,7 +100,12 @@ func run() error {
 		client:       openAiClient,
 		store:        handledMessages,
 		maxRequests:  100,
-		mcpClients:   mcpClients,
+		toolClients:  make(map[string]*mcp.Client),
+	}
+
+	err = chatter.InitializeMcpClients(app.config)
+	if err != nil {
+		return fmt.Errorf("initialize mcp clients: %w", err)
 	}
 
 	go func() {

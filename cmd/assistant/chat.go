@@ -32,7 +32,49 @@ type Chatter struct {
 	client      *openai.Client
 	store       keyvaluestore.Store[string]
 
-	mcpClients []*mcp.Client
+	toolRequests []openai.Tool
+
+	// tool name => mcp client
+	toolClients map[string]*mcp.Client
+}
+
+func (c *Chatter) InitializeMcpClients(cfg *assistantConfig) error {
+	mcpClients, err := initMcpClients(cfg.McpServers)
+	if err != nil {
+		return fmt.Errorf("initialize mcp clients: %w", err)
+	}
+
+	for _, cli := range mcpClients {
+		mcpTools, err := cli.ListTools()
+		if err != nil {
+			return fmt.Errorf("list tools: %w", err)
+		}
+
+		tools := make([]openai.Tool, 0, len(mcpTools))
+		for _, mcpTool := range mcpTools {
+			c.toolClients[mcpTool.Name] = cli
+			fmt.Println("registered tool:", mcpTool.Name)
+			tools = append(tools, openai.Tool{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        mcpTool.Name,
+					Description: mcpTool.Description,
+					Parameters:  mcpTool.InputSchema,
+				},
+			})
+		}
+		c.toolRequests = append(c.toolRequests, tools...)
+	}
+	return nil
+}
+
+func (c *Chatter) callTool(name string, args map[string]any) (*mcp.ToolCallResult, error) {
+	cli, ok := c.toolClients[name]
+	if !ok {
+		return nil, fmt.Errorf("tool %s not found", name)
+	}
+
+	return cli.CallTool(name, args)
 }
 
 func (c *Chatter) Run(ctx context.Context) {
@@ -133,45 +175,18 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 	return nil
 }
 
-func (c *Chatter) listTools() ([]openai.Tool, error) {
-	cli := c.mcpClients[0]
-
-	mcpTools, err := cli.ListTools()
-	if err != nil {
-		return nil, fmt.Errorf("list tools: %w", err)
-	}
-
-	tools := make([]openai.Tool, 0, len(mcpTools))
-	for _, mcpTool := range mcpTools {
-		tools = append(tools, openai.Tool{
-			Type: openai.ToolTypeFunction,
-			Function: &openai.FunctionDefinition{
-				Name:        mcpTool.Name,
-				Description: mcpTool.Description,
-				Parameters:  mcpTool.InputSchema,
-			},
-		})
-	}
-	return tools, nil
-}
-
 func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatCompletionMessage) error {
 	if c.maxRequests <= 0 {
 		return nil
 	}
 	c.maxRequests--
 
-	tools, err := c.listTools()
-	if err != nil {
-		return fmt.Errorf("list tools: %w", err)
-	}
-
 	var messageText string
 	for {
 		compResp, err := c.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 			Model:    openai.GPT4Turbo,
 			Messages: messages,
-			Tools:    tools,
+			Tools:    c.toolRequests,
 		})
 		if err != nil {
 			return fmt.Errorf("create chat completion: %w", err)
@@ -196,8 +211,8 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 				}
 			}
 
-			toolCalls := make([]openai.ToolCall, 0, len(tools))
-			callResultMessages := make([]openai.ChatCompletionMessage, 0, len(tools))
+			toolCalls := make([]openai.ToolCall, 0, len(result.Message.ToolCalls))
+			callResultMessages := make([]openai.ChatCompletionMessage, 0, len(result.Message.ToolCalls))
 			for _, tool := range result.Message.ToolCalls {
 				var args map[string]any
 				err = json.Unmarshal([]byte(tool.Function.Arguments), &args)
@@ -205,7 +220,7 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 					return fmt.Errorf("unmarshal tool arguments: %w", err)
 				}
 
-				callRes, err := c.mcpClients[0].CallTool(tool.Function.Name, args)
+				callRes, err := c.callTool(tool.Function.Name, args)
 				if err != nil {
 					return fmt.Errorf("call tool: %w", err)
 				}
@@ -245,7 +260,7 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 
 	}
 
-	_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
+	_, err := c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
 		ChatMessage: &model.ChatMessage{
 			Message: &model.ChatMessageMessageContent{
 				Text: messageText,

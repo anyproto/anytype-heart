@@ -11,6 +11,12 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/cheggaaa/mb/v3"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/cmd/assistant/mcp"
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -23,10 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/encode"
-	"github.com/cheggaaa/mb/v3"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 type assistantConfig struct {
@@ -37,8 +39,8 @@ type assistantConfig struct {
 	// SpaceId is fetched from invite automatically, you don't have to write it manually
 	SpaceId      string
 	SystemPrompt string
-	// IsActive if is true the bot will proactively write messages to the chats
-	IsActive bool
+
+	McpServers []mcp.Config
 }
 
 func (c *assistantConfig) Validate() error {
