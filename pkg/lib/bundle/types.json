@@ -13,7 +13,11 @@
     "relations": [
       "tag",
       "ingredients",
-      "time"
+      "cookingTime",
+      "servings",
+      "cuisine",
+      "courseType",
+      "difficulty"
     ],
     "revision": 3
   },

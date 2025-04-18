@@ -81,6 +81,7 @@ type SpaceView interface {
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 	RemoveExistingInviteInfo() (fileCid string, err error)
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
+
 	GetExistingInviteInfo() (fileCid string, fileKey string)
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)

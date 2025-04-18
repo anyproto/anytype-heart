@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "880c466315e22d0b573f6542b4ca1dcc4e2cb3395de3bad901f87460ff914191"
+const TypeChecksum = "ad51c8c690cb6473cdb84d1a13e608d489fcabfd75c65cd540960e59ad8d81b2"
 const (
 	TypePrefix = "_ot"
 )
@@ -342,7 +342,7 @@ var (
 			Name:          "Recipe",
 			PluralName:    "Recipes",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIngredients), MustGetRelationLink(RelationKeyTime)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIngredients), MustGetRelationLink(RelationKeyCookingTime), MustGetRelationLink(RelationKeyServings), MustGetRelationLink(RelationKeyCuisine), MustGetRelationLink(RelationKeyCourseType), MustGetRelationLink(RelationKeyDifficulty)},
 			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "recipe",

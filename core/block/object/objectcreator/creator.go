@@ -184,7 +184,11 @@ func (s *service) createCommonObject(
 
 	layout, err := s.getTypeRecommendedLayout(domain.FullID{SpaceID: space.Id(), ObjectID: typeId})
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
+		if bundledType, err := bundle.GetType(req.ObjectTypeKey); err == nil {
+			layout = bundledType.Layout
+		} else {
+			return "", nil, fmt.Errorf("failed to fetch target object type from store: %w", err)
+		}
 	}
 
 	createState, err := s.templateService.CreateTemplateStateWithDetails(template.CreateTemplateRequest{

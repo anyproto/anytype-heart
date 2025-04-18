@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
 
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/ai"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/api"
@@ -294,7 +295,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
-		Register(linkpreview.New()).
+		Register(linkpreview.NewWithCache()).
 		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
@@ -320,7 +321,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(paymentscache.New()).
 		Register(peerstatus.New()).
 		Register(spaceview.New()).
-		Register(api.New())
+		Register(api.New()).
+		Register(ai.New())
 }
 
 func MiddlewareVersion() string {
