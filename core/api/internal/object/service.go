@@ -94,6 +94,8 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyIsReadonly.String():             true,
 	bundle.RelationKeyParticipantStatus.String():      true,
 	bundle.RelationKeyParticipantPermissions.String(): true,
+	bundle.RelationKeyIconOption.String():             true,
+	bundle.RelationKeyIconName.String():               true,
 }
 
 type Service interface {
