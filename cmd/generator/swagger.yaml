@@ -393,7 +393,9 @@ components:
       description: The select value, if applicable
       properties:
         color:
-          $ref: '#/components/schemas/util.Color'
+          description: The color of the tag
+          example: yellow
+          type: string
         id:
           description: The id of the tag
           example: bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
@@ -767,32 +769,6 @@ components:
         space:
           $ref: '#/components/schemas/space.Space'
       type: object
-    util.Color:
-      description: The color of the icon
-      enum:
-      - grey
-      - yellow
-      - orange
-      - red
-      - pink
-      - purple
-      - blue
-      - ice
-      - teal
-      - lime
-      example: yellow
-      type: string
-      x-enum-varnames:
-      - ColorGrey
-      - ColorYellow
-      - ColorOrange
-      - ColorRed
-      - ColorPink
-      - ColorPurple
-      - ColorBlue
-      - ColorIce
-      - ColorTeal
-      - ColorLime
     util.ForbiddenError:
       properties:
         error:
@@ -815,7 +791,9 @@ components:
       description: The icon of the object
       properties:
         color:
-          $ref: '#/components/schemas/util.Color'
+          description: The color of the icon
+          example: red
+          type: string
         emoji:
           description: The emoji of the icon
           example: "\U0001F4C4"
@@ -957,7 +935,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.ServerError'
           description: Internal server error
-        x-ai-omit: true
       summary: Start new challenge
       tags:
       - auth
@@ -1013,7 +990,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.ServerError'
           description: Internal server error
-        x-ai-omit: true
       summary: Solve challenge
       tags:
       - auth

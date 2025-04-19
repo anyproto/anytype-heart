@@ -11,6 +11,7 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/cmd/assistant/api"
 	"github.com/anyproto/anytype-heart/cmd/assistant/mcp"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
@@ -42,7 +43,28 @@ type Chatter struct {
 	toolRequests []openai.Tool
 
 	// tool name => mcp client
-	toolClients map[string]*mcp.Client
+	toolClients map[string]ToolCaller
+	localApi    *api.APIClient
+	spaceId     string
+}
+
+type ToolCaller interface {
+	CallTool(name string, params any) (*mcp.ToolCallResult, error)
+}
+
+func apiBaseURL(listenAddr string) string {
+	return fmt.Sprintf("http://%s/v1", listenAddr)
+}
+func (c *Chatter) InitializeAnytypeApi(config *assistantConfig) error {
+	c.localApi = api.NewAPIClient(apiBaseURL(config.apiListenAddr), config.apiKey, config.SpaceId)
+	fmt.Println("registered local api client")
+	fmt.Printf("  local api client: %s: %s\n", config.apiListenAddr, config.apiKey)
+	for _, tool := range api.GetOpenAITools() {
+		fmt.Println("  registered tool:", tool.Function.Name)
+		c.toolRequests = append(c.toolRequests, tool)
+		c.toolClients[tool.Function.Name] = c.localApi
+	}
+	return nil
 }
 
 func (c *Chatter) InitializeMcpClients(config *assistantConfig) error {
@@ -51,6 +73,10 @@ func (c *Chatter) InitializeMcpClients(config *assistantConfig) error {
 		if err != nil {
 			return fmt.Errorf("new mcp client: %w", err)
 		}
+		if cfg.Disabled {
+			continue
+		}
+
 		mcpTools, err := client.ListTools()
 		if err != nil {
 			return fmt.Errorf("list tools: %w", err)
@@ -167,11 +193,12 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 		return nil
 	}
 
+	currentSpacePrompt := "When user mention 'here', it means in anytype tool in the current space. Current space called '%s'. You have no access to other spaces of the user. You do not need to provide space_id in any request."
 	toMarkAsRead := make([]string, 0, len(c.messages))
 	messages := make([]openai.ChatCompletionMessage, 0, len(c.messages)+1)
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: c.systemPrompt,
+		Content: c.systemPrompt + ". " + currentSpacePrompt,
 	})
 
 	for _, msg := range c.messages {

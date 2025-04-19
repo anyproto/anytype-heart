@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
@@ -57,6 +58,19 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 }
 
 func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse {
+	creator := mustService[objectcreator.Service](mw)
+	spaceService := mustService[space.Service](mw)
+	spaceId := "bafyreigryvrmerbtfswwz5kav2uq5dlvx3hl45kxn4nflg7lz46lneqs7m.2nvj2qik6ctdy"
+
+	space, err := spaceService.Get(cctx, spaceId)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = creator.AddChatDerivedObject(cctx, space, req.ObjectId)
+	if err != nil {
+		panic(err)
+	}
 	return &pb.RpcObjectChatAddResponse{
 		Error: &pb.RpcObjectChatAddResponseError{
 			Code:        pb.RpcObjectChatAddResponseError_UNKNOWN_ERROR,

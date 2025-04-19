@@ -24,7 +24,7 @@ const (
 	defaultPageSize           = 100
 	minPageSize               = 1
 	maxPageSize               = 1000
-	maxWriteRequestsPerSecond = 1
+	maxWriteRequestsPerSecond = 100
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.

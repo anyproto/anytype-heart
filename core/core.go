@@ -27,6 +27,13 @@ type Middleware struct {
 	applicationService *application.Service
 }
 
+func NewWithApp(app *application.Service) *Middleware {
+	mw := &Middleware{
+		applicationService: app,
+	}
+	return mw
+}
+
 func New() *Middleware {
 	mw := &Middleware{
 		applicationService: application.New(),

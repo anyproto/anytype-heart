@@ -10,7 +10,6 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/cmd/assistant/mcp"
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -100,11 +99,17 @@ func run() error {
 		client:               openAiClient,
 		store:                handledMessages,
 		maxRequests:          100,
-		toolClients:          make(map[string]*mcp.Client),
+		toolClients:          make(map[string]ToolCaller),
 		approvedMessages:     map[string]bool{},
 		pendingToolCalls:     map[string]*toolsCallRequest{},
 		forceUpdate:          make(chan struct{}),
 		autoApproveToolUsage: app.config.AutoApproveToolUsage,
+		spaceId:              app.currentSpaceId,
+	}
+
+	err = chatter.InitializeAnytypeApi(app.config)
+	if err != nil {
+		return fmt.Errorf("initialize mcp clients: %w", err)
 	}
 
 	err = chatter.InitializeMcpClients(app.config)
@@ -199,6 +204,9 @@ func (app *testApplication) waitSpaceToLoad(ctx context.Context) error {
 
 			if details != nil {
 				if details.GetInt64(bundle.RelationKeySpaceLocalStatus) == int64(model.SpaceStatus_Ok) {
+					log.Debug("space is loaded")
+					app.currentSpaceId = details.GetString(bundle.RelationKeyId)
+					app.currentSpaceName = details.GetString(bundle.RelationKeyName)
 					return
 				}
 			}

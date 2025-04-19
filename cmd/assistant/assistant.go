@@ -17,18 +17,22 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/cmd/assistant/mcp"
+	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/encode"
+	"github.com/anyproto/anytype-heart/util/netutil"
 )
 
 type assistantConfig struct {
@@ -42,7 +46,9 @@ type assistantConfig struct {
 
 	AutoApproveToolUsage bool
 
-	McpServers map[string]mcp.Config
+	McpServers    map[string]mcp.Config
+	apiListenAddr string
+	apiKey        string
 }
 
 func (c *assistantConfig) Validate() error {
@@ -74,10 +80,12 @@ func (c *assistantConfig) Validate() error {
 }
 
 type testApplication struct {
-	appService *application.Service
-	account    *model.Account
-	eventQueue *mb.MB[*pb.EventMessage]
-	config     *assistantConfig
+	appService       *application.Service
+	account          *model.Account
+	eventQueue       *mb.MB[*pb.EventMessage]
+	config           *assistantConfig
+	currentSpaceId   string
+	currentSpaceName string
 }
 
 func (a *testApplication) personalSpaceId() string {
@@ -95,6 +103,30 @@ func (a *testApplication) waitEventMessage(t *testing.T, pred func(msg *pb.Event
 	require.NoError(t, err)
 }
 
+func (a *testApplication) getApiAppKey() (string, error) {
+	if a.config.apiKey != "" {
+		return a.config.apiKey, nil
+	}
+
+	walletService := a.appService.GetApp().Component(wallet.CName).(wallet.Wallet)
+
+	appKey, err := walletService.PersistAppLink(&wallet.AppLinkPayload{AppName: "assistant", Scope: int(model.AccountAuth_JsonAPI), CreatedAt: time.Now().Unix()})
+	if err != nil {
+		return "", fmt.Errorf("persist app link: %w", err)
+	}
+
+	return appKey, nil
+}
+
+func fillApiListenAddr(config *assistantConfig) {
+	if config.apiListenAddr == "" {
+		port, _ := netutil.GetRandomPort()
+		if port == 0 {
+			port = 43125
+		}
+		config.apiListenAddr = fmt.Sprintf("127.0.0.1:%d", port)
+	}
+}
 func readConfig(fileName string) (*assistantConfig, error) {
 	f, err := os.Open(fileName)
 	if err != nil {
@@ -108,6 +140,8 @@ func readConfig(fileName string) (*assistantConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode config file: %w", err)
 	}
+
+	fillApiListenAddr(&config)
 	return &config, nil
 }
 
@@ -129,9 +163,13 @@ func writeConfig(fileName string, config *assistantConfig) error {
 
 func createAccountAndStartApp(ctx context.Context, repoDir string, name string, defaultUsecase pb.RpcObjectImportUseCaseRequestUseCase) (*testApplication, error) {
 	app := application.New()
+	mw := core.NewWithApp(app)
+	api.SetMiddlewareParams(mw)
+
 	platform := "test"
 	version := "1.0.0"
 	app.SetClientVersion(platform, version)
+
 	metrics.Service.SetPlatform(platform)
 	metrics.Service.SetStartVersion(version)
 	metrics.Service.InitWithKeys(metrics.DefaultInHouseKey)
@@ -163,26 +201,23 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 
 	eventQueue := createEventQueue(ctx, app)
 
+	if config == nil {
+		config = &assistantConfig{}
+		fillApiListenAddr(config)
+	}
+
 	acc, err := app.AccountCreate(ctx, &pb.RpcAccountCreateRequest{
-		Name:        name,
-		StorePath:   repoDir,
-		NetworkMode: pb.RpcAccount_DefaultConfig,
+		Name:              name,
+		StorePath:         repoDir,
+		NetworkMode:       pb.RpcAccount_DefaultConfig,
+		JsonApiListenAddr: config.apiListenAddr,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("account create: %w", err)
 	}
 
-	if config == nil {
-		config = &assistantConfig{}
-	}
-
 	config.AccountId = acc.Id
 	config.Mnemonic = mnemonic
-
-	err = writeConfig(filepath.Join(repoDir, "config.json"), config)
-	if err != nil {
-		return nil, fmt.Errorf("write config: %w", err)
-	}
 
 	testApp := &testApplication{
 		appService: app,
@@ -190,6 +225,16 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 		eventQueue: eventQueue,
 		config:     config,
 	}
+	apiKey, err := testApp.getApiAppKey()
+	if err != nil {
+		return nil, fmt.Errorf("get app key: %w", err)
+	}
+	config.apiKey = apiKey
+	err = writeConfig(filepath.Join(repoDir, "config.json"), config)
+	if err != nil {
+		return nil, fmt.Errorf("write config: %w", err)
+	}
+
 	objCreator := getService[builtinobjects.BuiltinObjects](testApp)
 	_, _, err = objCreator.CreateObjectsForUseCase(session.NewContext(), acc.Info.AccountSpaceId, defaultUsecase)
 	if err != nil {
@@ -224,8 +269,9 @@ func loadAccount(ctx context.Context, app *application.Service, repoDir string, 
 	eventQueue := createEventQueue(ctx, app)
 
 	acc, err := app.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
-		Id:       config.AccountId,
-		RootPath: repoDir,
+		Id:                config.AccountId,
+		RootPath:          repoDir,
+		JsonApiListenAddr: config.apiListenAddr,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("account select: %w", err)
@@ -237,6 +283,12 @@ func loadAccount(ctx context.Context, app *application.Service, repoDir string, 
 		eventQueue: eventQueue,
 		config:     config,
 	}
+	apiKey, err := testApp.getApiAppKey()
+	if err != nil {
+		return nil, fmt.Errorf("get app key: %w", err)
+	}
+	config.apiKey = apiKey
+	err = writeConfig(filepath.Join(repoDir, "config.json"), config)
 	return testApp, nil
 }
 
