@@ -13,20 +13,20 @@ var (
 )
 
 type Service interface {
-	GetObjectExport(ctx context.Context, spaceId string, objectId string, format string, path string) (string, error)
+	GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error)
 }
 
-type ExportService struct {
+type service struct {
 	mw            apicore.ClientCommands
 	exportService apicore.ExportService
 }
 
-func NewService(mw apicore.ClientCommands, exportService apicore.ExportService) *ExportService {
-	return &ExportService{mw: mw, exportService: exportService}
+func NewService(mw apicore.ClientCommands, exportService apicore.ExportService) Service {
+	return &service{mw: mw, exportService: exportService}
 }
 
 // GetObjectExport retrieves an object from a space and exports it as a specific format.
-func (s *ExportService) GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error) {
+func (s *service) GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error) {
 	if format != "markdown" {
 		return "", ErrInvalidExportFormat
 	}
@@ -40,7 +40,7 @@ func (s *ExportService) GetObjectExport(ctx context.Context, spaceId string, obj
 }
 
 // mapStringToFormat maps a format string to an ExportFormat enum.
-func (s *ExportService) mapStringToFormat(format string) model.ExportFormat {
+func (s *service) mapStringToFormat(format string) model.ExportFormat {
 	switch format {
 	case "markdown":
 		return model.Export_Markdown

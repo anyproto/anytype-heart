@@ -1,5 +1,7 @@
 package list
 
+import "github.com/anyproto/anytype-heart/core/api/internal/object"
+
 type View struct {
 	Id      string   `json:"id" example:"67bf3f21cda9134102e2422c"`    // The id of the view
 	Name    string   `json:"name" example:"All"`                       // The name of the view
@@ -9,16 +11,16 @@ type View struct {
 }
 
 type Filter struct {
-	Id          string `json:"id" example:"67bf3f21cda9134102e2422c"`                                                                                                                                                  // The id of the filter
-	PropertyKey string `json:"property_key" example:"name"`                                                                                                                                                            // The property key used for filtering
-	Format      string `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"`                                                                                 // The format of the property used for filtering
-	Condition   string `json:"condition" example:"contains" enum:"equal,not_equal,greater,less,greater_or_equal,less_or_equal,like,not_like,in,not_in,empty,not_empty,all_in,not_all_in,exact_in,not_exact_in,exists"` // The filter condition
-	Value       string `json:"value" example:"Some value..."`                                                                                                                                                          // The value used for filtering
+	Id          string                `json:"id" example:"67bf3f21cda9134102e2422c"`                                                                                                                                                  // The id of the filter
+	PropertyKey string                `json:"property_key" example:"name"`                                                                                                                                                            // The property key used for filtering
+	Format      object.PropertyFormat `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"`                                                                                 // The format of the property used for filtering
+	Condition   string                `json:"condition" example:"contains" enum:"equal,not_equal,greater,less,greater_or_equal,less_or_equal,like,not_like,in,not_in,empty,not_empty,all_in,not_all_in,exact_in,not_exact_in,exists"` // The filter condition
+	Value       string                `json:"value" example:"Some value..."`                                                                                                                                                          // The value used for filtering
 }
 
 type Sort struct {
-	Id          string `json:"id" example:"67bf3f21cda9134102e2422c"`                                                                  // The id of the sort
-	PropertyKey string `json:"property_key" example:"name"`                                                                            // The property key used for sorting
-	Format      string `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property used for sorting
-	SortType    string `json:"sort_type" example:"asc" enum:"asc,desc,custom"`                                                         // The sort direction
+	Id          string                `json:"id" example:"67bf3f21cda9134102e2422c"`                                                                  // The id of the sort
+	PropertyKey string                `json:"property_key" example:"name"`                                                                            // The property key used for sorting
+	Format      object.PropertyFormat `json:"format" example:"text" enum:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property used for sorting
+	SortType    string                `json:"sort_type" example:"asc" enum:"asc,desc,custom"`                                                         // The sort direction
 }

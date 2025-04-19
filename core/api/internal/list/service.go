@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
@@ -13,6 +14,10 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+const (
+	subId = "json-api-internal"
 )
 
 var (
@@ -32,17 +37,17 @@ type Service interface {
 	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 }
 
-type ListService struct {
+type service struct {
 	mw            apicore.ClientCommands
-	objectService *object.ObjectService
+	objectService object.Service
 }
 
-func NewService(mw apicore.ClientCommands, objectService *object.ObjectService) *ListService {
-	return &ListService{mw: mw, objectService: objectService}
+func NewService(mw apicore.ClientCommands, objectService object.Service) Service {
+	return &service{mw: mw, objectService: objectService}
 }
 
 // GetListViews retrieves views of a list
-func (s *ListService) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error) {
+func (s *service) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -106,7 +111,7 @@ func (s *ListService) GetListViews(ctx context.Context, spaceId string, listId s
 }
 
 // GetObjectsInList retrieves objects in a list
-func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error) {
+func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -152,11 +157,18 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 		return nil, 0, false, ErrFailedGetListDataview
 	}
 
+	var typeDetail *types.Struct
+	for _, detail := range resp.ObjectView.Details {
+		if detail.Id == resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue() {
+			typeDetail = detail.GetDetails()
+			break
+		}
+	}
+
 	var collectionId string
 	var source []string
-	listType := s.objectService.GetTypeFromDetails(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), resp.ObjectView.Details)
-
-	if listType.RecommendedLayout == "set" {
+	switch model.ObjectTypeLayout(typeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue()) {
+	case model.ObjectType_set:
 		// for queries, we search within the space for objects of the setOf type
 		setOfValues := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySetOf.String()].GetListValue().Values
 		for _, value := range setOfValues {
@@ -166,26 +178,27 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 			}
 			source = append(source, typeKey)
 		}
-	} else if listType.RecommendedLayout == "collection" {
+	case model.ObjectType_collection:
 		// for collections, we need to search within that collection
 		collectionId = listId
-	} else {
+	default:
 		return nil, 0, false, ErrUnsupportedListType
 	}
 
 	// TODO: use subscription service with internal: 'true' to not send events to clients
 	searchResp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
-		SpaceId:      spaceId,
-		Limit:        int64(limit),  // nolint: gosec
-		Offset:       int64(offset), // nolint: gosec
-		Keys:         []string{bundle.RelationKeyId.String()},
+		SpaceId: spaceId,
+		SubId:   subId,
+		Limit:   int64(limit),  // nolint: gosec
+		Offset:  int64(offset), // nolint: gosec
+		// TODO: fix not all keys being returned
+		// Keys:         []string{bundle.RelationKeyId.String()},
 		Sorts:        sorts,
 		Filters:      filters,
 		Source:       source,
 		CollectionId: collectionId,
 	})
 
-	// TODO: returned error from ObjectSearchSubscribe is inconsistent with other RPCs: Error is nil instead of Code being NULL
 	if searchResp.Error != nil && searchResp.Error.Code != pb.RpcObjectSearchSubscribeResponseError_NULL {
 		return nil, 0, false, ErrFailedGetObjectsInList
 	}
@@ -193,20 +206,25 @@ func (s *ListService) GetObjectsInList(ctx context.Context, spaceId string, list
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
+	propertyMap, err := s.objectService.GetPropertyMapFromStore(spaceId)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	typeMap, err := s.objectService.GetTypeMapFromStore(spaceId, propertyMap)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
 	objects := make([]object.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		object, err := s.objectService.GetObject(ctx, spaceId, record.Fields[bundle.RelationKeyId.String()].GetStringValue())
-		if err != nil {
-			return nil, 0, false, err
-		}
-		objects = append(objects, object)
+		objects = append(objects, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap))
 	}
 
 	return objects, total, hasMore, nil
 }
 
 // AddObjectsToList adds objects to a list
-func (s *ListService) AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+func (s *service) AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
 	resp := s.mw.ObjectCollectionAdd(ctx, &pb.RpcObjectCollectionAddRequest{
 		ContextId: listId,
 		ObjectIds: objectIds,
@@ -220,7 +238,7 @@ func (s *ListService) AddObjectsToList(ctx context.Context, spaceId string, list
 }
 
 // RemoveObjectsFromList removes objects from a list
-func (s *ListService) RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+func (s *service) RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
 	resp := s.mw.ObjectCollectionRemove(ctx, &pb.RpcObjectCollectionRemoveRequest{
 		ContextId: listId,
 		ObjectIds: objectIds,
@@ -234,7 +252,7 @@ func (s *ListService) RemoveObjectsFromList(ctx context.Context, spaceId string,
 }
 
 // mapDataviewTypeName maps the dataview type to a string.
-func (s *ListService) mapDataviewTypeName(dataviewType model.BlockContentDataviewViewType) string {
+func (s *service) mapDataviewTypeName(dataviewType model.BlockContentDataviewViewType) string {
 	switch dataviewType {
 	case model.BlockContentDataviewView_Table:
 		return "grid"

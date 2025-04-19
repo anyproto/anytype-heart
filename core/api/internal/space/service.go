@@ -42,30 +42,30 @@ type Service interface {
 	ListMembers(ctx context.Context, spaceId string, offset int, limit int) ([]Member, int, bool, error)
 	GetMember(ctx context.Context, spaceId string, memberId string) (Member, error)
 	UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error)
+	GetAllSpaceIds() ([]string, error)
 }
 
-type SpaceService struct {
+type service struct {
 	mw          apicore.ClientCommands
-	AccountInfo *model.AccountInfo
+	gatewayUrl  string
+	techSpaceId string
 }
 
-func NewService(mw apicore.ClientCommands) *SpaceService {
-	return &SpaceService{mw: mw}
+func NewService(mw apicore.ClientCommands, gatewayUrl string, techSpaceId string) Service {
+	return &service{mw: mw, gatewayUrl: gatewayUrl, techSpaceId: techSpaceId}
 }
 
 // ListSpaces returns a paginated list of spaces for the account.
-func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (spaces []Space, total int, hasMore bool, err error) {
+func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []Space, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: s.AccountInfo.TechSpaceId,
+		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -103,19 +103,17 @@ func (s *SpaceService) ListSpaces(ctx context.Context, offset int, limit int) (s
 }
 
 // GetSpace returns the space info for the space with the given ID.
-func (s *SpaceService) GetSpace(ctx context.Context, spaceId string) (Space, error) {
+func (s *service) GetSpace(ctx context.Context, spaceId string) (Space, error) {
 	// Check if the workspace exists and is active
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: s.AccountInfo.TechSpaceId,
+		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(spaceId),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -136,7 +134,7 @@ func (s *SpaceService) GetSpace(ctx context.Context, spaceId string) (Space, err
 }
 
 // CreateSpace creates a new space with the given name and returns the space info.
-func (s *SpaceService) CreateSpace(ctx context.Context, request CreateSpaceRequest) (Space, error) {
+func (s *service) CreateSpace(ctx context.Context, request CreateSpaceRequest) (Space, error) {
 	name := request.Name
 	iconOption, err := rand.Int(rand.Reader, big.NewInt(13))
 	if err != nil {
@@ -179,18 +177,16 @@ func (s *SpaceService) CreateSpace(ctx context.Context, request CreateSpaceReque
 }
 
 // ListMembers returns a paginated list of members in the space with the given ID.
-func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []Member, total int, hasMore bool, err error) {
+func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []Member, total int, hasMore bool, err error) {
 	activeResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
@@ -213,13 +209,11 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
@@ -247,7 +241,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 	members = make([]Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := util.GetIcon(s.AccountInfo, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+		icon := util.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 		member := Member{
 			Object:     "member",
@@ -267,7 +261,7 @@ func (s *SpaceService) ListMembers(ctx context.Context, spaceId string, offset i
 }
 
 // GetMember returns the member with the given ID in the space with the given ID.
-func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId string) (Member, error) {
+func (s *service) GetMember(ctx context.Context, spaceId string, memberId string) (Member, error) {
 	// Member ID can be either a participant ID or an identity.
 	relationKey := bundle.RelationKeyId
 	if !strings.HasPrefix(memberId, "_participant") {
@@ -278,7 +272,6 @@ func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId s
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: relationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(memberId),
@@ -295,7 +288,7 @@ func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId s
 		return Member{}, ErrMemberNotFound
 	}
 
-	icon := util.GetIcon(s.AccountInfo, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := util.GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 	return Member{
 		Object:     "member",
@@ -310,7 +303,7 @@ func (s *SpaceService) GetMember(ctx context.Context, spaceId string, memberId s
 }
 
 // UpdateMember approves member with defined role or removes them
-func (s *SpaceService) UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error) {
+func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error) {
 	member, err := s.GetMember(ctx, spaceId, memberId)
 	if err != nil {
 		return Member{}, err
@@ -377,7 +370,7 @@ func (s *SpaceService) UpdateMember(ctx context.Context, spaceId string, memberI
 }
 
 // getSpaceInfo returns the workspace info for the space with the given ID.
-func (s *SpaceService) getSpaceInfo(spaceId string) (space Space, err error) {
+func (s *service) getSpaceInfo(spaceId string) (space Space, err error) {
 	workspaceResponse := s.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
 		SpaceId: spaceId,
 	})
@@ -396,7 +389,7 @@ func (s *SpaceService) getSpaceInfo(spaceId string) (space Space, err error) {
 	}
 
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := util.GetIcon(s.AccountInfo, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := util.GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return Space{
@@ -410,8 +403,41 @@ func (s *SpaceService) getSpaceInfo(spaceId string) (space Space, err error) {
 	}, nil
 }
 
+// GetAllSpaceIds effectively retrieves all space IDs from the tech space.
+func (s *service) GetAllSpaceIds() ([]string, error) {
+	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: s.techSpaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+			},
+		},
+		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, ErrFailedListSpaces
+	}
+
+	spaceIds := make([]string, 0, len(resp.Records))
+	for _, record := range resp.Records {
+		if id := record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue(); id != "" {
+			spaceIds = append(spaceIds, id)
+		}
+	}
+
+	return spaceIds, nil
+}
+
 // mapMemberPermissions maps participant permissions to a role
-func (s *SpaceService) mapMemberPermissions(permissions model.ParticipantPermissions) string {
+func (s *service) mapMemberPermissions(permissions model.ParticipantPermissions) string {
 	switch permissions {
 	case model.ParticipantPermissions_Reader:
 		return "viewer"
@@ -423,7 +449,7 @@ func (s *SpaceService) mapMemberPermissions(permissions model.ParticipantPermiss
 }
 
 // mapMemberPermissions maps a role to participant permissions
-func (s *SpaceService) mapMemberRole(role string) model.ParticipantPermissions {
+func (s *service) mapMemberRole(role string) model.ParticipantPermissions {
 	switch role {
 	case "viewer":
 		return model.ParticipantPermissions_Reader

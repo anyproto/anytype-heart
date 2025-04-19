@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
-	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -39,23 +38,17 @@ const (
 )
 
 type fixture struct {
-	*ObjectService
-	mwMock *mock_apicore.MockClientCommands
+	service Service
+	mwMock  *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-
-	spaceService := space.NewService(mwMock)
-	objectService := NewService(mwMock, spaceService)
-	objectService.AccountInfo = &model.AccountInfo{
-		TechSpaceId: mockedTechSpaceId,
-		GatewayUrl:  gatewayUrl,
-	}
+	objectService := NewService(mwMock, gatewayUrl)
 
 	return &fixture{
-		ObjectService: objectService,
-		mwMock:        mwMock,
+		service: objectService,
+		mwMock:  mwMock,
 	}
 }
 
@@ -84,13 +77,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 					}...),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: "type.uniqueKey",
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.String("ot-template"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIsHidden.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.Bool(true),
@@ -103,101 +94,140 @@ func TestObjectService_ListObjects(t *testing.T) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String(mockedObjectId),
-						bundle.RelationKeyName.String():           pbtypes.String(mockedObjectName),
-						bundle.RelationKeySnippet.String():        pbtypes.String(mockedObjectSnippet),
-						bundle.RelationKeyIconEmoji.String():      pbtypes.String(mockedObjectIcon),
-						bundle.RelationKeyType.String():           pbtypes.String(mockedTypeId),
-						bundle.RelationKeyResolvedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
+						bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
+						bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
+						bundle.RelationKeySnippet.String():          pbtypes.String(mockedObjectSnippet),
+						bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
+						bundle.RelationKeyType.String():             pbtypes.String(mockedTypeId),
+						bundle.RelationKeyResolvedLayout.String():   pbtypes.Float64(float64(model.ObjectType_basic)),
+						bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
+						bundle.RelationKeyLastModifiedBy.String():   pbtypes.String(mockedParticipantId),
+						bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
+						bundle.RelationKeyCreator.String():          pbtypes.String(mockedParticipantId),
+						bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
+						bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
 					},
 				},
 			},
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock object show for object details
-		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
-			SpaceId:  mockedSpaceId,
-			ObjectId: mockedObjectId,
-		}).Return(&pb.RpcObjectShowResponse{
-			ObjectView: &model.ObjectView{
-				RootId: mockedObjectId,
-				Details: []*model.ObjectViewDetailsSet{
-					{
-						Id: mockedObjectId,
-						Details: &types.Struct{
-							Fields: map[string]*types.Value{
-								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
-								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
-								bundle.RelationKeySnippet.String():          pbtypes.String(mockedObjectSnippet),
-								bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
-								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
-								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String(mockedParticipantId),
-								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
-								bundle.RelationKeyCreator.String():          pbtypes.String(mockedParticipantId),
-								bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
-								bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
-								bundle.RelationKeyType.String():             pbtypes.String(mockedTypeId),
-							},
-						},
-					},
-					{
-						Id: mockedParticipantId,
-						Details: &types.Struct{
-							Fields: map[string]*types.Value{
-								bundle.RelationKeyId.String(): pbtypes.String(mockedParticipantId),
-							},
-						},
-					},
-					{
-						Id: mockedTypeId,
-						Details: &types.Struct{
-							Fields: map[string]*types.Value{
-								bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),
-								bundle.RelationKeyName.String():      pbtypes.String(mockedTypeName),
-								bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedTypeKey),
-								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedTypeIcon),
-							},
-						},
+		// Mock GetPropertyMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreatedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Created Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
 				},
-				RelationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyLastModifiedDate.String(),
-						Format: model.RelationFormat_date,
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreator.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Creator"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
-					{
-						Key:    bundle.RelationKeyLastModifiedBy.String(),
-						Format: model.RelationFormat_object,
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Modified Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
-					{
-						Key:    bundle.RelationKeyCreatedDate.String(),
-						Format: model.RelationFormat_date,
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Modified By"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
-					{
-						Key:    bundle.RelationKeyCreator.String(),
-						Format: model.RelationFormat_object,
-					},
-					{
-						Key:    bundle.RelationKeyLastOpenedDate.String(),
-						Format: model.RelationFormat_date,
-					},
-					{
-						Key:    bundle.RelationKeyTag.String(),
-						Format: model.RelationFormat_tag,
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Opened Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
 				},
 			},
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-		}).Once()
+		}, nil).Once()
+
+		// Mock GetTypeMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconName.String(),
+				bundle.RelationKeyIconOption.String(),
+				bundle.RelationKeyRecommendedLayout.String(),
+				bundle.RelationKeyIsArchived.String(),
+				bundle.RelationKeyRecommendedFeaturedRelations.String(),
+				bundle.RelationKeyRecommendedRelations.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():                pbtypes.String(mockedTypeId),
+						bundle.RelationKeyUniqueKey.String():         pbtypes.String(mockedTypeKey),
+						bundle.RelationKeyName.String():              pbtypes.String(mockedTypeName),
+						bundle.RelationKeyIconEmoji.String():         pbtypes.String(mockedTypeIcon),
+						bundle.RelationKeyIconName.String():          pbtypes.String(""),
+						bundle.RelationKeyIconOption.String():        pbtypes.String("option1"),
+						bundle.RelationKeyRecommendedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
+						bundle.RelationKeyIsArchived.String():        pbtypes.Bool(false),
+					},
+				},
+			},
+		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.ListObjects(ctx, mockedSpaceId, offset, limit)
+		objects, total, hasMore, err := fx.service.ListObjects(ctx, mockedSpaceId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -212,21 +242,21 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, objects[0].Icon)
 		require.Equal(t, 5, len(objects[0].Properties))
 
-		for _, detail := range objects[0].Properties {
-			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", *detail.Date)
-			} else if detail.Id == "created_by" {
-				require.Equal(t, []string{mockedParticipantId}, detail.Object)
-			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", *detail.Date)
-			} else if detail.Id == "last_modified_by" {
-				require.Equal(t, []string{mockedParticipantId}, detail.Object)
-			} else if detail.Id == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", *detail.Date)
-			} else if detail.Id == "tag" {
-				require.Empty(t, detail.MultiSelect)
+		for _, property := range objects[0].Properties {
+			if property.Key == "created_date" {
+				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
+			} else if property.Key == "created_by" {
+				require.Equal(t, []string{mockedParticipantId}, property.Object)
+			} else if property.Key == "last_modified_date" {
+				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
+			} else if property.Key == "last_modified_by" {
+				require.Equal(t, []string{mockedParticipantId}, property.Object)
+			} else if property.Key == "last_opened_date" {
+				require.Equal(t, "1970-01-01T00:00:00Z", *property.Date)
+			} else if property.Key == "tag" {
+				require.Empty(t, property.MultiSelect)
 			} else {
-				t.Errorf("unexpected detail id: %s", detail.Id)
+				t.Errorf("unexpected property key: %s", property.Key)
 			}
 		}
 
@@ -258,13 +288,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 					}...),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: "type.uniqueKey",
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.String("ot-template"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIsHidden.String(),
 					Condition:   model.BlockContentDataviewFilter_NotEqual,
 					Value:       pbtypes.Bool(true),
@@ -277,14 +305,19 @@ func TestObjectService_ListObjects(t *testing.T) {
 				IncludeTime:    true,
 				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 			}},
-			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
+		// Mock GetPropertyMapFromStore and GetTypeMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Times(2)
+
 		// when
-		objects, total, hasMore, err := fx.ListObjects(ctx, mockedSpaceId, offset, limit)
+		objects, total, hasMore, err := fx.service.ListObjects(ctx, mockedSpaceId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -337,37 +370,78 @@ func TestObjectService_GetObject(t *testing.T) {
 							},
 						},
 					},
-					RelationLinks: []*model.RelationLink{
-						{
-							Key:    bundle.RelationKeyLastModifiedDate.String(),
-							Format: model.RelationFormat_date,
-						},
-						{
-							Key:    bundle.RelationKeyLastModifiedBy.String(),
-							Format: model.RelationFormat_object,
-						},
-						{
-							Key:    bundle.RelationKeyCreatedDate.String(),
-							Format: model.RelationFormat_date,
-						},
-						{
-							Key:    bundle.RelationKeyCreator.String(),
-							Format: model.RelationFormat_object,
-						},
-						{
-							Key:    bundle.RelationKeyLastOpenedDate.String(),
-							Format: model.RelationFormat_date,
-						},
-						{
-							Key:    bundle.RelationKeyTag.String(),
-							Format: model.RelationFormat_tag,
-						},
-					},
 				},
 			}, nil).Once()
 
+		// Mock GetPropertyMapsFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreatedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Created Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
+					},
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreator.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Creator"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
+					},
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Modified Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
+					},
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Modified By"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
+					},
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Opened Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
+					},
+				},
+			},
+		}, nil).Once()
+
 		// when
-		object, err := fx.GetObject(ctx, mockedSpaceId, mockedObjectId)
+		object, err := fx.service.GetObject(ctx, mockedSpaceId, mockedObjectId)
 
 		// then
 		require.NoError(t, err)
@@ -383,20 +457,20 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, 3, len(object.Properties))
 
 		for _, property := range object.Properties {
-			if property.Id == "created_date" {
+			if property.Key == "created_date" {
 				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
-			} else if property.Id == "created_by" {
+			} else if property.Key == "created_by" {
 				require.Empty(t, property.Object)
-			} else if property.Id == "last_modified_date" {
+			} else if property.Key == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
-			} else if property.Id == "last_modified_by" {
+			} else if property.Key == "last_modified_by" {
 				require.Empty(t, property.Object)
-			} else if property.Id == "last_opened_date" {
+			} else if property.Key == "last_opened_date" {
 				require.Equal(t, "1970-01-01T00:00:00Z", *property.Date)
-			} else if property.Id == "tag" {
+			} else if property.Key == "tag" {
 				require.Empty(t, property.MultiSelect)
 			} else {
-				t.Errorf("unexpected property id: %s", property.Id)
+				t.Errorf("unexpected property id: %s", property.Key)
 			}
 		}
 	})
@@ -412,7 +486,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		object, err := fx.GetObject(ctx, mockedSpaceId, "missing-obj")
+		object, err := fx.service.GetObject(ctx, mockedSpaceId, "missing-obj")
 
 		// then
 		require.ErrorIs(t, err, ErrObjectNotFound)
@@ -490,8 +564,75 @@ func TestObjectService_CreateObject(t *testing.T) {
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
 
+		// Mock GetPropertyMapsFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreatedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Created Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
+					},
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreator.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Creator"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
+					},
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Modified Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
+					},
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Modified By"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
+					},
+				},
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
+						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Last Opened Date"),
+						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
+					},
+				},
+			},
+		}, nil).Once()
+
 		// when
-		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
+		object, err := fx.service.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name:       mockedObjectName,
 			Icon:       util.Icon{Format: util.IconFormatEmoji, Emoji: util.StringPtr(mockedObjectIcon)},
 			TemplateId: mockedTemplateId,
@@ -522,7 +663,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 			}).Once()
 
 		// when
-		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
+		object, err := fx.service.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name: "Fail Object",
 			Icon: util.Icon{},
 		})
@@ -554,8 +695,34 @@ func TestObjectService_ListTypes(t *testing.T) {
 				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}).Once()
 
+		// Mock GetPropertyMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{},
+		}, nil).Once()
+
 		// when
-		types, total, hasMore, err := fx.ListTypes(ctx, mockedSpaceId, offset, limit)
+		types, total, hasMore, err := fx.service.ListTypes(ctx, mockedSpaceId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -579,8 +746,34 @@ func TestObjectService_ListTypes(t *testing.T) {
 				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}).Once()
 
+		// Mock GetPropertyMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: "empty-space",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{},
+		}, nil).Once()
+
 		// when
-		types, total, hasMore, err := fx.ListTypes(ctx, "empty-space", offset, limit)
+		types, total, hasMore, err := fx.service.ListTypes(ctx, "empty-space", offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -618,8 +811,34 @@ func TestObjectService_GetType(t *testing.T) {
 			},
 		}).Once()
 
+		// Mock GetPropertyMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Records: []*types.Struct{},
+		}, nil).Once()
+
 		// when
-		objType, err := fx.GetType(ctx, mockedSpaceId, mockedTypeId)
+		objType, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
 
 		// then
 		require.NoError(t, err)
@@ -627,7 +846,7 @@ func TestObjectService_GetType(t *testing.T) {
 		require.Equal(t, mockedTypeName, objType.Name)
 		require.Equal(t, mockedTypeKey, objType.Key)
 		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, objType.Icon)
-		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objType.RecommendedLayout)
+		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objType.Layout)
 	})
 
 	t.Run("type not found", func(t *testing.T) {
@@ -643,7 +862,7 @@ func TestObjectService_GetType(t *testing.T) {
 		}).Once()
 
 		// when
-		objType, err := fx.GetType(ctx, mockedSpaceId, mockedTypeId)
+		objType, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
 
 		// then
 		require.ErrorIs(t, err, ErrTypeNotFound)
@@ -677,31 +896,16 @@ func TestObjectService_ListTemplates(t *testing.T) {
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():               pbtypes.String("template-1"),
 						bundle.RelationKeyTargetObjectType.String(): pbtypes.String("target-type-id"),
+						bundle.RelationKeyName.String():             pbtypes.String("Template Name"),
+						bundle.RelationKeyIconEmoji.String():        pbtypes.String("📝"),
 					},
 				},
 			},
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock object show for template details
-		fx.mwMock.On("ObjectShow", mock.Anything, mock.Anything).Return(&pb.RpcObjectShowResponse{
-			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
-			ObjectView: &model.ObjectView{
-				Details: []*model.ObjectViewDetailsSet{
-					{
-						Details: &types.Struct{
-							Fields: map[string]*types.Value{
-								bundle.RelationKeyName.String():      pbtypes.String("Template Name"),
-								bundle.RelationKeyIconEmoji.String(): pbtypes.String("📝"),
-							},
-						},
-					},
-				},
-			},
-		}, nil).Once()
-
 		// when
-		templates, total, hasMore, err := fx.ListTemplates(ctx, mockedSpaceId, "target-type-id", offset, limit)
+		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "target-type-id", offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -725,7 +929,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 			}).Once()
 
 		// when
-		templates, total, hasMore, err := fx.ListTemplates(ctx, mockedSpaceId, "missing-type-id", offset, limit)
+		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "missing-type-id", offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrTemplateTypeNotFound)
@@ -762,7 +966,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		}).Once()
 
 		// when
-		template, err := fx.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
+		template, err := fx.service.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
 
 		// then
 		require.NoError(t, err)
@@ -784,7 +988,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		}).Once()
 
 		// when
-		template, err := fx.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
+		template, err := fx.service.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
 
 		// then
 		require.ErrorIs(t, err, ErrTemplateNotFound)

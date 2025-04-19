@@ -27,21 +27,17 @@ const (
 )
 
 type fixture struct {
-	*SpaceService
-	mwMock *mock_apicore.MockClientCommands
+	service Service
+	mwMock  *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-	spaceService := NewService(mwMock)
-	spaceService.AccountInfo = &model.AccountInfo{
-		TechSpaceId: techSpaceId,
-		GatewayUrl:  gatewayUrl,
-	}
+	spaceService := NewService(mwMock, gatewayUrl, techSpaceId)
 
 	return &fixture{
-		SpaceService: spaceService,
-		mwMock:       mwMock,
+		service: spaceService,
+		mwMock:  mwMock,
 	}
 }
 
@@ -54,13 +50,11 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -152,7 +146,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		spaces, total, hasMore, err := fx.ListSpaces(nil, offset, limit)
+		spaces, total, hasMore, err := fx.service.ListSpaces(nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -186,7 +180,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			}).Once()
 
 		// when
-		spaces, total, hasMore, err := fx.ListSpaces(nil, offset, limit)
+		spaces, total, hasMore, err := fx.service.ListSpaces(nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -217,7 +211,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		spaces, total, hasMore, err := fx.ListSpaces(nil, offset, limit)
+		spaces, total, hasMore, err := fx.service.ListSpaces(nil, offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedOpenWorkspace)
@@ -236,13 +230,11 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("space-id"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -294,7 +286,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		space, err := fx.GetSpace(nil, "space-id")
+		space, err := fx.service.GetSpace(nil, "space-id")
 
 		// then
 		require.NoError(t, err)
@@ -313,13 +305,11 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("space-id"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -332,7 +322,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 		}).Once()
 
 		// when
-		space, err := fx.GetSpace(nil, "space-id")
+		space, err := fx.service.GetSpace(nil, "space-id")
 
 		// then
 		require.ErrorIs(t, err, ErrWorkspaceNotFound)
@@ -347,13 +337,11 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			SpaceId: techSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyTargetSpaceId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("space-id"),
 				},
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
@@ -377,7 +365,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		space, err := fx.GetSpace(nil, "space-id")
+		space, err := fx.service.GetSpace(nil, "space-id")
 
 		// then
 		require.ErrorIs(t, err, ErrFailedOpenWorkspace)
@@ -436,7 +424,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		space, err := fx.CreateSpace(nil, CreateSpaceRequest{Name: "New Space", Description: "A new space"})
+		space, err := fx.service.CreateSpace(nil, CreateSpaceRequest{Name: "New Space", Description: "A new space"})
 
 		// then
 		require.NoError(t, err)
@@ -455,7 +443,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 			}).Once()
 
 		// when
-		space, err := fx.CreateSpace(nil, CreateSpaceRequest{Name: "New Space"})
+		space, err := fx.service.CreateSpace(nil, CreateSpaceRequest{Name: "New Space"})
 
 		// then
 		require.ErrorIs(t, err, ErrFailedCreateSpace)
@@ -468,13 +456,11 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		SpaceId: "space-id",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
@@ -502,13 +488,11 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		SpaceId: "space-id",
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
 			},
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
 				RelationKey: bundle.RelationKeyParticipantStatus.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
@@ -573,7 +557,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 			}).Once()
 
 		// when
-		members, total, hasMore, err := fx.ListMembers(nil, "space-id", offset, limit)
+		members, total, hasMore, err := fx.service.ListMembers(nil, "space-id", offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -614,7 +598,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 			}).Once()
 
 		// when
-		members, total, hasMore, err := fx.ListMembers(nil, "space-id", offset, limit)
+		members, total, hasMore, err := fx.service.ListMembers(nil, "space-id", offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -633,7 +617,6 @@ func TestSpaceService_GetMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-id"),
@@ -668,7 +651,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 		}).Once()
 
 		// when
-		member, err := fx.GetMember(nil, "space-id", "member-id")
+		member, err := fx.service.GetMember(nil, "space-id", "member-id")
 
 		// then
 		require.NoError(t, err)
@@ -689,7 +672,6 @@ func TestSpaceService_GetMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-id")},
@@ -710,7 +692,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 		}).Once()
 
 		// when
-		member, err := fx.GetMember(nil, "space-id", "member-id")
+		member, err := fx.service.GetMember(nil, "space-id", "member-id")
 
 		// then
 		require.ErrorIs(t, err, ErrMemberNotFound)
@@ -724,7 +706,6 @@ func TestSpaceService_GetMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-id"),
@@ -759,7 +740,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 		}).Once()
 
 		// when
-		member, err := fx.GetMember(nil, "space-id", "member-id")
+		member, err := fx.service.GetMember(nil, "space-id", "member-id")
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetMember)
@@ -775,7 +756,6 @@ func TestSpaceService_GetMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyId.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String(participantId),
@@ -810,7 +790,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 		}).Once()
 
 		// when
-		member, err := fx.GetMember(nil, "space-id", participantId)
+		member, err := fx.service.GetMember(nil, "space-id", participantId)
 
 		// then
 		require.NoError(t, err)
@@ -835,7 +815,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-1"),
@@ -883,7 +862,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-1"),
@@ -918,7 +896,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		member, err := fx.UpdateMember(ctx, "space-id", "member-1", UpdateMemberRequest{
+		member, err := fx.service.UpdateMember(ctx, "space-id", "member-1", UpdateMemberRequest{
 			Status: "active",
 			Role:   "viewer",
 		})
@@ -939,7 +917,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-2"),
@@ -991,7 +968,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-2"),
@@ -1026,7 +1002,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		member, err := fx.UpdateMember(ctx, "space-id", "member-2", UpdateMemberRequest{
+		member, err := fx.service.UpdateMember(ctx, "space-id", "member-2", UpdateMemberRequest{
 			Status: "active",
 			Role:   "editor",
 		})
@@ -1047,7 +1023,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-3"),
@@ -1094,7 +1069,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-3"),
@@ -1129,7 +1103,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		member, err := fx.UpdateMember(ctx, "space-id", "member-3", UpdateMemberRequest{
+		member, err := fx.service.UpdateMember(ctx, "space-id", "member-3", UpdateMemberRequest{
 			Status: "declined",
 		})
 
@@ -1148,7 +1122,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-4"),
@@ -1195,7 +1168,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-4"),
@@ -1230,7 +1202,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		member, err := fx.UpdateMember(ctx, "space-id", "member-4", UpdateMemberRequest{
+		member, err := fx.service.UpdateMember(ctx, "space-id", "member-4", UpdateMemberRequest{
 			Status: "removed",
 		})
 
@@ -1249,7 +1221,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-5"),
@@ -1284,7 +1255,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		_, err := fx.UpdateMember(ctx, "space-id", "member-5", UpdateMemberRequest{
+		_, err := fx.service.UpdateMember(ctx, "space-id", "member-5", UpdateMemberRequest{
 			Status: "invalid",
 			Role:   "viewer",
 		})
@@ -1303,7 +1274,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-6"),
@@ -1338,7 +1308,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		_, err := fx.UpdateMember(ctx, "space-id", "member-6", UpdateMemberRequest{
+		_, err := fx.service.UpdateMember(ctx, "space-id", "member-6", UpdateMemberRequest{
 			Status: "active",
 			Role:   "invalid",
 		})
@@ -1357,7 +1327,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-7"),
@@ -1401,7 +1370,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		_, err := fx.UpdateMember(ctx, "space-id", "member-7", UpdateMemberRequest{
+		_, err := fx.service.UpdateMember(ctx, "space-id", "member-7", UpdateMemberRequest{
 			Status: "active",
 			Role:   "viewer",
 		})
@@ -1419,7 +1388,6 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 			SpaceId: "space-id",
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					Operator:    model.BlockContentDataviewFilter_No,
 					RelationKey: bundle.RelationKeyIdentity.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.String("member-8"),
@@ -1441,7 +1409,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		_, err := fx.UpdateMember(ctx, "space-id", "member-8", UpdateMemberRequest{
+		_, err := fx.service.UpdateMember(ctx, "space-id", "member-8", UpdateMemberRequest{
 			Status: "active",
 			Role:   "viewer",
 		})

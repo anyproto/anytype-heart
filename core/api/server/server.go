@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -18,12 +19,12 @@ import (
 type Server struct {
 	engine *gin.Engine
 
-	authService   *auth.AuthService
-	exportService *export.ExportService
-	listService   *list.ListService
-	objectService *object.ObjectService
-	spaceService  *space.SpaceService
-	searchService *search.SearchService
+	authService   auth.Service
+	exportService export.Service
+	listService   list.Service
+	objectService object.Service
+	spaceService  space.Service
+	searchService search.Service
 
 	mu         sync.Mutex
 	KeyToToken map[string]string // appKey -> token
@@ -31,19 +32,35 @@ type Server struct {
 
 // NewServer constructs a new Server with default config and sets up the routes.
 func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, exportService apicore.ExportService) *Server {
+	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
+	if err != nil {
+		panic(err)
+	}
+
 	s := &Server{
 		authService:   auth.NewService(mw),
 		exportService: export.NewService(mw, exportService),
-		spaceService:  space.NewService(mw),
+		objectService: object.NewService(mw, gatewayUrl),
+		spaceService:  space.NewService(mw, gatewayUrl, techSpaceId),
 	}
 
-	s.objectService = object.NewService(mw, s.spaceService)
 	s.listService = list.NewService(mw, s.objectService)
 	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
-	s.engine = s.NewRouter(mw, accountService)
+	s.engine = s.NewRouter(mw)
 	s.KeyToToken = make(map[string]string)
 
 	return s
+}
+
+// getAccountInfo retrieves the account information from the account service and returns the gateway URL and tech space ID.
+func getAccountInfo(accountService apicore.AccountService) (gatewayUrl string, techSpaceId string, err error) {
+	accountInfo, err := accountService.GetInfo(context.Background())
+	if err != nil {
+		return "", "", err
+	}
+	gatewayUrl = accountInfo.GatewayUrl
+	techSpaceId = accountInfo.TechSpaceId
+	return gatewayUrl, techSpaceId, nil
 }
 
 // Engine returns the underlying gin.Engine.
