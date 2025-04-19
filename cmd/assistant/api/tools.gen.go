@@ -19,44 +19,8 @@ var AnytypeTools = []ApiTool{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
-				Name: "remove_object_from_list",
-				Description: "Removes a given object from the specified list (collection only) in a space. The endpoint takes the space, list, and object identifiers as path parameters. It's subject to rate limiting and returns a success message on completion. It is used for dynamically managing collections without affecting the underlying object data.",
-				Parameters: json.RawMessage(`{"properties":{"list_id":{"description":"List ID","type":"string"},"object_id":{"description":"Object ID","type":"string"}},"required":["list_id","object_id"],"type":"object"}`),
-			},
-		},
-		Method: "DELETE",
-		Path: "/spaces/{space_id}/lists/{list_id}/objects/{object_id}",
-	},
-	{
-		Tool: openai.Tool{
-			Type: openai.ToolTypeFunction,
-			Function: &openai.FunctionDefinition{
-				Name: "search_objects_within_a_space",
-				Description: "This endpoint performs a focused search within a single space. It accepts pagination parameters and a JSON payload containing the search query, object types, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.",
-				Parameters: json.RawMessage(`{"properties":{"body":{"type":"object"},"limit":{"description":"The number of items to return","type":"integer"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"}},"required":["body"],"type":"object"}`),
-			},
-		},
-		Method: "POST",
-		Path: "/spaces/{space_id}/search",
-	},
-	{
-		Tool: openai.Tool{
-			Type: openai.ToolTypeFunction,
-			Function: &openai.FunctionDefinition{
-				Name: "get_property",
-				Description: "Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).",
-				Parameters: json.RawMessage(`{"properties":{"property_id":{"description":"Property ID","type":"string"}},"required":["property_id"],"type":"object"}`),
-			},
-		},
-		Method: "GET",
-		Path: "/spaces/{space_id}/properties/{property_id}",
-	},
-	{
-		Tool: openai.Tool{
-			Type: openai.ToolTypeFunction,
-			Function: &openai.FunctionDefinition{
 				Name: "list_properties",
-				Description: "This endpoint retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.",
+				Description: "Use this endpoint to get all available properties. This is useful when you need to know what properties can be used when creating or filtering objects. The response includes each property's ID, name, and format. Check this endpoint first when working with properties to understand the available options.",
 				Parameters: json.RawMessage(`{"properties":{"limit":{"description":"The number of items to return","type":"integer"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"}},"required":[],"type":"object"}`),
 			},
 		},
@@ -67,32 +31,20 @@ var AnytypeTools = []ApiTool{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
-				Name: "list_property_options",
-				Description: "Lists all tag options for a given property id.",
-				Parameters: json.RawMessage(`{"properties":{"property_id":{"description":"Property ID","type":"string"}},"required":["property_id"],"type":"object"}`),
+				Name: "list_templates",
+				Description: "Use this endpoint to retrieve all available templates. Templates provide pre-configured structures for creating new objects. The response includes each template's ID, name, and associated type. Use this information when you want to create a new object based on an existing template.",
+				Parameters: json.RawMessage(`{"properties":{"limit":{"description":"The number of items to return","type":"integer"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"},"type_id":{"description":"Type ID","type":"string"}},"required":["type_id"],"type":"object"}`),
 			},
 		},
 		Method: "GET",
-		Path: "/spaces/{space_id}/properties/{property_id}/options",
-	},
-	{
-		Tool: openai.Tool{
-			Type: openai.ToolTypeFunction,
-			Function: &openai.FunctionDefinition{
-				Name: "get_objects_in_list",
-				Description: "Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.",
-				Parameters: json.RawMessage(`{"properties":{"limit":{"description":"The number of items to return","type":"integer"},"list_id":{"description":"List ID","type":"string"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"},"view_id":{"description":"View ID","type":"string"}},"required":["list_id","view_id"],"type":"object"}`),
-			},
-		},
-		Method: "GET",
-		Path: "/spaces/{space_id}/lists/{list_id}/{view_id}/objects",
+		Path: "/spaces/{space_id}/types/{type_id}/templates",
 	},
 	{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
 				Name: "delete_object",
-				Description: "This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.",
+				Description: "Use this endpoint to delete (archive) an object. The object will be marked as archived but not permanently deleted. This operation is irreversible through the API. Use this when a user explicitly requests to remove an object from their workspace.",
 				Parameters: json.RawMessage(`{"properties":{"object_id":{"description":"Object ID","type":"string"}},"required":["object_id"],"type":"object"}`),
 			},
 		},
@@ -104,7 +56,7 @@ var AnytypeTools = []ApiTool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
 				Name: "get_object",
-				Description: "Fetches the full details of a single object identified by the object ID within the specified space. The response includes not only basic metadata (ID, name, icon, type) but also the complete set of blocks (which may include text, files, properties and dataviews) and extra details (such as timestamps and linked member information). This endpoint is essential when a client needs to render or edit the full object view.",
+				Description: "Use this endpoint to retrieve complete details of a specific object by its ID. The response includes all metadata, content blocks, and properties of the object. Use this when you need the full content and structure of an object, such as when displaying its complete details to a user.",
 				Parameters: json.RawMessage(`{"properties":{"object_id":{"description":"Object ID","type":"string"}},"required":["object_id"],"type":"object"}`),
 			},
 		},
@@ -115,33 +67,20 @@ var AnytypeTools = []ApiTool{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
-				Name: "add_objects_to_list",
-				Description: "Enables clients to add one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag‑and‑drop or multi‑select additions to collections.",
-				Parameters: json.RawMessage(`{"properties":{"body":{"type":"object"},"list_id":{"description":"List ID","type":"string"}},"required":["list_id","body"],"type":"object"}`),
-			},
-		},
-		Method: "POST",
-		Path: "/spaces/{space_id}/lists/{list_id}/objects",
-	},
-	{
-		Tool: openai.Tool{
-			Type: openai.ToolTypeFunction,
-			Function: &openai.FunctionDefinition{
 				Name: "export_object",
-				Description: "This endpoint exports a single object from the specified space into a desired format. The export format is provided as a path parameter (currently supporting “markdown” only). The endpoint calls the export service which converts the object’s content into the requested format. It is useful for sharing, or displaying the markdown representation of the objecte externally.",
-				Parameters: json.RawMessage(`{"properties":{"format":{"description":"Export format","type":"string"},"object_id":{"description":"Object ID","type":"string"}},"required":["object_id","format"],"type":"object"}`),
+				Description: "Use this endpoint to export an object to markdown format. This is useful when you need to convert an object's content into portable markdown text. The response includes the complete markdown representation of the object that can be shared or used in other applications.",
+				Parameters: json.RawMessage(`{"properties":{"format":{"description":"Export format","enum":["markdown"],"type":"string"},"object_id":{"description":"Object ID","type":"string"}},"required":["object_id","format"],"type":"object"}`),
 			},
 		},
 		Method: "GET",
 		Path: "/spaces/{space_id}/objects/{object_id}/{format}",
 	},
-
 	{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
 				Name: "list_members",
-				Description: "Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.",
+				Description: "Use this endpoint to retrieve all members with access to specific content. The response includes member details such as name, identity, and access level. This is useful when you need to display or manage who has access to content.",
 				Parameters: json.RawMessage(`{"properties":{"limit":{"description":"The number of items to return","type":"integer"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"}},"required":[],"type":"object"}`),
 			},
 		},
@@ -152,8 +91,20 @@ var AnytypeTools = []ApiTool{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
+				Name: "add_objects_to_list",
+				Description: "Use this endpoint to add multiple objects to a collection. You need to provide an array of object IDs in the request body. This is useful for organizing objects into collections, such as adding multiple tasks to a task list or multiple pages to a collection.",
+				Parameters: json.RawMessage(`{"properties":{"body":{"items":{"type":"string"},"type":"array"},"list_id":{"description":"List ID","type":"string"}},"required":["list_id","body"],"type":"object"}`),
+			},
+		},
+		Method: "POST",
+		Path: "/spaces/{space_id}/lists/{list_id}/objects",
+	},
+	{
+		Tool: openai.Tool{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
 				Name: "list_types",
-				Description: "This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and a recommended layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.",
+				Description: "Use this endpoint to retrieve all available object types. Before creating a new object, check this endpoint to determine what types are available and which one to use. Each type has a unique key that you'll need when creating objects of that type.",
 				Parameters: json.RawMessage(`{"properties":{"limit":{"description":"The number of items to return","type":"integer"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"}},"required":[],"type":"object"}`),
 			},
 		},
@@ -164,32 +115,44 @@ var AnytypeTools = []ApiTool{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
-				Name: "get_list_views",
-				Description: "Returns a paginated list of views defined for a specific list (query or collection) within a space. Each view includes configuration details such as layout, applied filters, and sorting options, enabling clients to render the list according to user preferences and context. This endpoint supports pagination parameters to control the number of views returned and the starting point of the result set.",
-				Parameters: json.RawMessage(`{"properties":{"limit":{"description":"The number of items to return","type":"integer"},"list_id":{"description":"List ID","type":"string"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"}},"required":["list_id"],"type":"object"}`),
+				Name: "remove_object_from_list",
+				Description: "Use this endpoint to remove an object from a collection. The object itself is not deleted, only its association with the collection is removed. This is useful when reorganizing collections or when an object should no longer be part of a specific collection.",
+				Parameters: json.RawMessage(`{"properties":{"list_id":{"description":"List ID","type":"string"},"object_id":{"description":"Object ID","type":"string"}},"required":["list_id","object_id"],"type":"object"}`),
 			},
 		},
-		Method: "GET",
-		Path: "/spaces/{space_id}/lists/{list_id}/views",
+		Method: "DELETE",
+		Path: "/spaces/{space_id}/lists/{list_id}/objects/{object_id}",
 	},
 	{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
-				Name: "get_member",
-				Description: "Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.",
-				Parameters: json.RawMessage(`{"properties":{"member_id":{"description":"Member ID or Identity","type":"string"}},"required":["member_id"],"type":"object"}`),
+				Name: "list_property_options",
+				Description: "Use this endpoint to retrieve all possible values for select, multiselect, or status properties. The response includes the option ID, name, and additional metadata for each possible value. Use this information when you need to set a property value that accepts only specific options.",
+				Parameters: json.RawMessage(`{"properties":{"property_id":{"description":"Property ID","type":"string"}},"required":["property_id"],"type":"object"}`),
 			},
 		},
 		Method: "GET",
-		Path: "/spaces/{space_id}/members/{member_id}",
+		Path: "/spaces/{space_id}/properties/{property_id}/options",
+	},
+	{
+		Tool: openai.Tool{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name: "get_objects_in_list",
+				Description: "Use this endpoint to retrieve all objects within a specific list (collection or query). You can specify a view ID to apply filters and sorting. The response includes detailed information about each object in the list. Use this when you need to display or manipulate the contents of a list, such as showing all items in a collection.",
+				Parameters: json.RawMessage(`{"properties":{"limit":{"description":"The number of items to return","type":"integer"},"list_id":{"description":"List ID","type":"string"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"},"view_id":{"description":"View ID","type":"string"}},"required":["list_id","view_id"],"type":"object"}`),
+			},
+		},
+		Method: "GET",
+		Path: "/spaces/{space_id}/lists/{list_id}/{view_id}/objects",
 	},
 	{
 		Tool: openai.Tool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
 				Name: "list_objects",
-				Description: "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.",
+				Description: "Use this endpoint to retrieve all objects. You can paginate through results with offset and limit parameters. This endpoint returns basic information about each object such as ID, name, and type, making it useful when you need to list available objects before performing an action on a specific one.",
 				Parameters: json.RawMessage(`{"properties":{"limit":{"description":"The number of items to return","type":"integer"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"}},"required":[],"type":"object"}`),
 			},
 		},
@@ -201,12 +164,24 @@ var AnytypeTools = []ApiTool{
 			Type: openai.ToolTypeFunction,
 			Function: &openai.FunctionDefinition{
 				Name: "create_object",
-				Description: "Creates a new object using a JSON payload. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), and the type_key (which is the non-unique identifier of the type of object to create). When choosing a type_key, first check the list of available types. If suitable type is not found, you may need to create a new type",
-				Parameters: json.RawMessage(`{"properties":{"body":{"type":"object"}},"required":["body"],"type":"object"}`),
+				Description: "Use this endpoint to create a new object. You should first check available object types with the List types endpoint, then create the appropriate object type with this endpoint. When creating content, use structured markdown for the body field. If the content is based on a web page, include the source URL. The endpoint returns the full details of the newly created object.",
+				Parameters: json.RawMessage(`{"properties":{"body":{"properties":{"body":{"description":"The body of the object","type":"string"},"description":{"description":"The description of the object","type":"string"},"icon":{"description":"The icon of the object","properties":{"color":{"description":"The color of the icon","enum":["grey","yellow","orange","red","pink","purple","blue","ice","teal","lime"],"type":"string"},"emoji":{"description":"The emoji of the icon","type":"string"},"file":{"description":"The file of the icon","type":"string"},"format":{"description":"The type of the icon","enum":["emoji","file","icon"],"type":"string"},"name":{"description":"The name of the icon","type":"string"}},"type":"object"},"name":{"description":"The name of the object","type":"string"},"properties":{"description":"Properties to set on the object","type":"object"},"source":{"description":"The source url, only applicable for bookmarks","type":"string"},"template_id":{"description":"The id of the template to use","type":"string"},"type_key":{"description":"The key of the type of object to create","type":"string"}},"type":"object"}},"required":["body"],"type":"object"}`),
 			},
 		},
 		Method: "POST",
 		Path: "/spaces/{space_id}/objects",
+	},
+	{
+		Tool: openai.Tool{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name: "search_objects_within_a_space",
+				Description: "Use this endpoint to search for objects that match specific criteria. Provide a query string in the request body to perform text search. You can filter by object types and specify sorting options. This is useful when you need to find objects based on content, name, or other properties. The response includes all objects matching your search criteria.",
+				Parameters: json.RawMessage(`{"properties":{"body":{"properties":{"query":{"description":"The search term to look for in object names and snippets","type":"string"},"sort":{"description":"The sorting criteria and direction for the search results","properties":{"direction":{"description":"The direction to sort the search results","enum":["asc","desc"],"type":"string"},"property":{"description":"The property to sort the search results by","enum":["created_date","last_modified_date","last_opened_date","name"],"type":"string"}},"type":"object"},"types":{"description":"The types of objects to search for, specified by key or ID","items":{"type":"string"},"type":"array"}},"type":"object"},"limit":{"description":"The number of items to return","type":"integer"},"offset":{"description":"The number of items to skip before starting to collect the result set","type":"integer"}},"required":["body"],"type":"object"}`),
+			},
+		},
+		Method: "POST",
+		Path: "/spaces/{space_id}/search",
 	},
 }
 

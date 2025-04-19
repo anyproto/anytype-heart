@@ -12,8 +12,9 @@ import (
 // GetSpacesHandler retrieves a list of spaces
 //
 //	@Summary		List spaces
-//	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user’s workspaces.
+//	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user's workspaces.
 //	@Tags			spaces
+//	@x-ai-omit		true
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								false	"The version of the API to use"											default(2025-03-17)
 //	@Param			offset			query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
@@ -50,6 +51,7 @@ func GetSpacesHandler(s Service) gin.HandlerFunc {
 //	@Summary		Get space
 //	@Description	Fetches full details about a single space identified by its space ID. The response includes metadata such as the space name, icon, and various workspace IDs (home, archive, profile, etc.). This detailed view supports use cases such as displaying space-specific settings.
 //	@Tags			spaces
+//	@x-ai-omit		true
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			space_id		path		string					true	"Space ID"
@@ -83,8 +85,9 @@ func GetSpaceHandler(s Service) gin.HandlerFunc {
 // CreateSpaceHandler creates a new space
 //
 //	@Summary		Create space
-//	@Description	Creates a new workspace (or space) based on a supplied name in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space’s full metadata is returned, enabling the client to immediately switch context to the new space.
+//	@Description	Creates a new workspace (or space) based on a supplied name in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space's full metadata is returned, enabling the client to immediately switch context to the new space.
 //	@Tags			spaces
+//	@x-ai-omit		true
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
@@ -125,19 +128,20 @@ func CreateSpaceHandler(s Service) gin.HandlerFunc {
 
 // GetMembersHandler retrieves a list of members in a space
 //
-//	@Summary		List members
-//	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
-//	@Tags			members
-//	@Produce		json
-//	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string									true	"Space ID"
-//	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Member]	"List of members"
-//	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
-//	@Failure		500				{object}	util.ServerError						"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/members [get]
+//	@Summary			List members
+//	@Description		Returns a paginated list of members belonging to the specified space. Each member record includes the member's profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
+//	@x-ai-description	"Use this endpoint to retrieve all members with access to specific content. The response includes member details such as name, identity, and access level. This is useful when you need to display or manage who has access to content."
+//	@Tags				members
+//	@Produce			json
+//	@Param				Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string									true	"Space ID"
+//	@Param				offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param				limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success			200				{object}	pagination.PaginatedResponse[Member]	"List of members"
+//	@Failure			401				{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure			500				{object}	util.ServerError						"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/members [get]
 func GetMembersHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -162,9 +166,10 @@ func GetMembersHandler(s Service) gin.HandlerFunc {
 // GetMemberHandler retrieves a member in a space
 //
 //	@Summary		Get member
-//	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
+//	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member's identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
 //	@Tags			members
 //	@Produce		json
+//	@x-ai-omit		true
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			member_id		path		string					true	"Member ID or Identity"

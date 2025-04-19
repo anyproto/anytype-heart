@@ -11,19 +11,20 @@ import (
 
 // GetObjectsHandler retrieves a list of objects in a space
 //
-//	@Summary		List objects
-//	@Description	Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
-//	@Tags			objects
-//	@Produce		json
-//	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string									true	"Space ID"
-//	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Object]	"List of objects"
-//	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
-//	@Failure		500				{object}	util.ServerError						"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects [get]
+//	@Summary			List objects
+//	@Description		Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
+//	@x-ai-description	"Use this endpoint to retrieve all objects. You can paginate through results with offset and limit parameters. This endpoint returns basic information about each object such as ID, name, and type, making it useful when you need to list available objects before performing an action on a specific one."
+//	@Tags				objects
+//	@Produce			json
+//	@Param				Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string									true	"Space ID"
+//	@Param				offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param				limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success			200				{object}	pagination.PaginatedResponse[Object]	"List of objects"
+//	@Failure			401				{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure			500				{object}	util.ServerError						"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/objects [get]
 func GetObjectsHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -49,20 +50,21 @@ func GetObjectsHandler(s Service) gin.HandlerFunc {
 
 // GetObjectHandler retrieves an object in a space
 //
-//	@Summary		Get object
-//	@Description	Fetches the full details of a single object identified by the object ID within the specified space. The response includes not only basic metadata (ID, name, icon, type) but also the complete set of blocks (which may include text, files, properties and dataviews) and extra details (such as timestamps and linked member information). This endpoint is essential when a client needs to render or edit the full object view.
-//	@Tags			objects
-//	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			object_id		path		string					true	"Object ID"
-//	@Success		200				{object}	ObjectResponse			"The requested object"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
-//	@Failure		410				{object}	util.GoneError			"Resource deleted"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [get]
+//	@Summary			Get object
+//	@Description		Fetches the full details of a single object identified by the object ID within the specified space. The response includes not only basic metadata (ID, name, icon, type) but also the complete set of blocks (which may include text, files, properties and dataviews) and extra details (such as timestamps and linked member information). This endpoint is essential when a client needs to render or edit the full object view.
+//	@x-ai-description	"Use this endpoint to retrieve complete details of a specific object by its ID. The response includes all metadata, content blocks, and properties of the object. Use this when you need the full content and structure of an object, such as when displaying its complete details to a user."
+//	@Tags				objects
+//	@Produce			json
+//	@Param				Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string					true	"Space ID"
+//	@Param				object_id		path		string					true	"Object ID"
+//	@Success			200				{object}	ObjectResponse			"The requested object"
+//	@Failure			401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure			404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure			410				{object}	util.GoneError			"Resource deleted"
+//	@Failure			500				{object}	util.ServerError		"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/objects/{object_id} [get]
 func GetObjectHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -87,21 +89,22 @@ func GetObjectHandler(s Service) gin.HandlerFunc {
 
 // DeleteObjectHandler deletes an object in a space
 //
-//	@Summary		Delete object
-//	@Description	This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.
-//	@Tags			objects
-//	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			object_id		path		string					true	"Object ID"
-//	@Success		200				{object}	ObjectResponse			"The deleted object"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
-//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
-//	@Failure		423				{object}	util.RateLimitError		"Rate limit exceeded"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [delete]
+//	@Summary			Delete object
+//	@Description		This endpoint "deletes" an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object's details after it has been archived. Proper error handling is in place for situations such as when the object isn't found or the deletion cannot be performed because of permission issues.
+//	@x-ai-description	"Use this endpoint to delete (archive) an object. The object will be marked as archived but not permanently deleted. This operation is irreversible through the API. Use this when a user explicitly requests to remove an object from their workspace."
+//	@Tags				objects
+//	@Produce			json
+//	@Param				Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string					true	"Space ID"
+//	@Param				object_id		path		string					true	"Object ID"
+//	@Success			200				{object}	ObjectResponse			"The deleted object"
+//	@Failure			401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure			403				{object}	util.ForbiddenError		"Forbidden"
+//	@Failure			404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure			423				{object}	util.RateLimitError		"Rate limit exceeded"
+//	@Failure			500				{object}	util.ServerError		"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/objects/{object_id} [delete]
 func DeleteObjectHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -126,21 +129,22 @@ func DeleteObjectHandler(s Service) gin.HandlerFunc {
 
 // CreateObjectHandler creates a new object in a space
 //
-//	@Summary		Create object
-//	@Description	Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the type_key (which is the non-unique identifier of the type of object to create). Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
-//	@Tags			objects
-//	@Accept			json
-//	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			object			body		CreateObjectRequest		true	"Object to create"
-//	@Success		200				{object}	ObjectResponse			"The created object"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		423				{object}	util.RateLimitError		"Rate limit exceeded"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects [post]
+//	@Summary			Create object
+//	@Description		Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the type_key (which is the non-unique identifier of the type of object to create). Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
+//	@x-ai-description	"Use this endpoint to create a new object. You should first check available object types with the List types endpoint, then create the appropriate object type with this endpoint. When creating content, use structured markdown for the body field. If the content is based on a web page, include the source URL. The endpoint returns the full details of the newly created object."
+//	@Tags				objects
+//	@Accept				json
+//	@Produce			json
+//	@Param				Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string					true	"Space ID"
+//	@Param				object			body		CreateObjectRequest		true	"Object to create"
+//	@Success			200				{object}	ObjectResponse			"The created object"
+//	@Failure			400				{object}	util.ValidationError	"Bad request"
+//	@Failure			401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure			423				{object}	util.RateLimitError		"Rate limit exceeded"
+//	@Failure			500				{object}	util.ServerError		"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/objects [post]
 func CreateObjectHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -176,19 +180,20 @@ func CreateObjectHandler(s Service) gin.HandlerFunc {
 
 // GetPropertiesHandler retrieves a list of properties in a space
 //
-//	@Summary		List properties
-//	@Description	This endpoint retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
-//	@Tags			properties
-//	@Produce		json
-//	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string									true	"Space ID"
-//	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Property]	"List of properties"
-//	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
-//	@Failure		500				{object}	util.ServerError						"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties [get]
+//	@Summary			List properties
+//	@Description		This endpoint retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
+//	@x-ai-description	"Use this endpoint to get all available properties. This is useful when you need to know what properties can be used when creating or filtering objects. The response includes each property's ID, name, and format. Check this endpoint first when working with properties to understand the available options."
+//	@Tags				properties
+//	@Produce			json
+//	@Param				Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string									true	"Space ID"
+//	@Param				offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param				limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success			200				{object}	pagination.PaginatedResponse[Property]	"List of properties"
+//	@Failure			401				{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure			500				{object}	util.ServerError						"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/properties [get]
 func GetPropertiesHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -213,8 +218,9 @@ func GetPropertiesHandler(s Service) gin.HandlerFunc {
 // GetPropertyHandler retrieves a property in a space
 //
 //	@Summary		Get property
-//	@Description	Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).
+//	@Description	Fetches detailed information about one specific property by its ID. This includes the property's unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).
 //	@Tags			properties
+//	@x-ai-omit		true
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			space_id		path		string					true	"Space ID"
@@ -248,21 +254,22 @@ func GetPropertyHandler(s Service) gin.HandlerFunc {
 	}
 }
 
-// GetPropertyOptionsHandler lists all tag options for a given property id in a space
+// GetPropertyOptionsHandler retrieves available options for a property in a space
 //
-//	@Summary		List property options
-//	@Description	Lists all tag options for a given property id.
-//	@Tags			properties
-//	@Produce		json
-//	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string								true	"Space ID"
-//	@Param			property_id		path		string								true	"Property ID"
-//	@Success		200				{object}	pagination.PaginatedResponse[Tag]	"List of property options (tags)"
-//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError					"Property not found"
-//	@Failure		500				{object}	util.ServerError					"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id}/options [get]
+//	@Summary			List property options
+//	@Description		Returns a paginated list of option values that a specific property can have (applicable for select, multiselect, and status-type properties). Each option record includes its ID, name, and additional metadata (like color codes). The endpoint is critical for clients who need to populate selection dropdowns or validate property inputs.
+//	@x-ai-description	"Use this endpoint to retrieve all possible values for select, multiselect, or status properties. The response includes the option ID, name, and additional metadata for each possible value. Use this information when you need to set a property value that accepts only specific options."
+//	@Tags				properties
+//	@Produce			json
+//	@Param				Anytype-Version	header		string								false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string								true	"Space ID"
+//	@Param				property_id		path		string								true	"Property ID"
+//	@Success			200				{object}	pagination.PaginatedResponse[Tag]	"List of property options (tags)"
+//	@Failure			401				{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure			404				{object}	util.NotFoundError					"Property not found"
+//	@Failure			500				{object}	util.ServerError					"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/properties/{property_id}/options [get]
 func GetPropertyOptionsHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -285,21 +292,22 @@ func GetPropertyOptionsHandler(s Service) gin.HandlerFunc {
 	}
 }
 
-// GetTypesHandler retrieves a list of types in a space
+// GetTypesHandler retrieves a list of object types in a space
 //
-//	@Summary		List types
-//	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and a recommended layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
-//	@Tags			types
-//	@Produce		json
-//	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string								true	"Space ID"
-//	@Param			offset			query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int									false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Type]	"List of types"
-//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
-//	@Failure		500				{object}	util.ServerError					"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types [get]
+//	@Summary			List types
+//	@Description		Fetches a paginated list of object types available in the specified space. Each type record includes its unique identifier, name, and associated icon. This endpoint is essential for clients to present the range of object types a user can create.
+//	@x-ai-description	"Use this endpoint to retrieve all available object types. Before creating a new object, check this endpoint to determine what types are available and which one to use. Each type has a unique key that you'll need when creating objects of that type."
+//	@Tags				types
+//	@Produce			json
+//	@Param				Anytype-Version	header		string								false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string								true	"Space ID"
+//	@Param				offset			query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param				limit			query		int									false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success			200				{object}	pagination.PaginatedResponse[Type]	"List of types"
+//	@Failure			401				{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure			500				{object}	util.ServerError					"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/types [get]
 func GetTypesHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -324,8 +332,9 @@ func GetTypesHandler(s Service) gin.HandlerFunc {
 // GetTypeHandler retrieves a type in a space
 //
 //	@Summary		Get type
-//	@Description	Fetches detailed information about one specific object type by its ID. This includes the type’s unique key, name, icon, and recommended layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).
+//	@Description	Fetches detailed information about one specific object type by its ID. This includes the type's unique key, name, icon, and recommended layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).
 //	@Tags			types
+//	@x-ai-omit		true
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			space_id		path		string					true	"Space ID"
@@ -359,22 +368,24 @@ func GetTypeHandler(s Service) gin.HandlerFunc {
 	}
 }
 
-// GetTemplatesHandler retrieves a list of templates for a type in a space
+// GetTemplatesHandler retrieves a list of templates in a space
 //
-//	@Summary		List templates
-//	@Description	This endpoint returns a paginated list of templates that are associated with a specific object type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.
-//	@Tags			templates
-//	@Produce		json
-//	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string									true	"Space ID"
-//	@Param			type_id			path		string									true	"Type ID"
-//	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Template]	"List of templates"
-//	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
-//	@Failure		500				{object}	util.ServerError						"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types/{type_id}/templates [get]
+//	@Summary			List templates
+//	@Description		This endpoint fetches a paginated list of templates available in the specified space. Each template record includes information such as its unique identifier, name, icon, and associated type. Templates provide a starting structure for creating new objects, and this endpoint allows clients to display available templates to users.
+//	@x-ai-description	"Use this endpoint to retrieve all available templates. Templates provide pre-configured structures for creating new objects. The response includes each template's ID, name, and associated type. Use this information when you want to create a new object based on an existing template."
+//	@x-ai-omit			true
+//	@Tags				templates
+//	@Produce			json
+//	@Param				Anytype-Version	header		string									false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string									true	"Space ID"
+//	@Param				type_id			path		string									true	"Type ID"
+//	@Param				offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param				limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success			200				{object}	pagination.PaginatedResponse[Template]	"List of templates"
+//	@Failure			401				{object}	util.UnauthorizedError					"Unauthorized"
+//	@Failure			500				{object}	util.ServerError						"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/types/{type_id}/templates [get]
 func GetTemplatesHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -403,8 +414,9 @@ func GetTemplatesHandler(s Service) gin.HandlerFunc {
 // GetTemplateHandler retrieves a template for a type in a space
 //
 //	@Summary		Get template
-//	@Description	Fetches full details for one template associated with a particular object type in a space. The response provides the template’s identifier, name, icon, and any other relevant metadata. This endpoint is useful when a client needs to preview or apply a template to prefill object creation fields.
+//	@Description	Fetches full details for one template associated with a particular object type in a space. The response provides the template's identifier, name, icon, and any other relevant metadata. This endpoint is useful when a client needs to preview or apply a template to prefill object creation fields.
 //	@Tags			templates
+//	@x-ai-omit		true
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			space_id		path		string					true	"Space ID"

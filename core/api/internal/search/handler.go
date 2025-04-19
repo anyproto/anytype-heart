@@ -14,6 +14,7 @@ import (
 //	@Summary		Search objects across all spaces
 //	@Description	This endpoint executes a global search over every space the user has access to. It accepts pagination parameters (offset and limit) and a JSON body containing search criteria. The criteria include a search query string, an optional list of object types, and sort options (e.g. ascending/descending by creation, modification, or last opened dates). Internally, the endpoint aggregates results from each space, merges and sorts them (after last modified date by default), and returns a unified, paginated list of objects that match the search parameters.
 //	@Tags			search
+//	@x-ai-omit		true
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										false	"The version of the API to use"											default(2025-03-17)
@@ -54,21 +55,22 @@ func GlobalSearchHandler(s Service) gin.HandlerFunc {
 
 // SearchHandler searches and retrieves objects within a space
 //
-//	@Summary		Search objects within a space
-//	@Description	This endpoint performs a focused search within a single space (specified by the space_id path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search query, object types, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.
-//	@Tags			search
-//	@Accept			json
-//	@Produce		json
-//	@Param			Anytype-Version	header		string										false	"The version of the API to use"	default(2025-03-17)
-//	@Param			space_id		path		string										true	"Space ID"
-//	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
-//	@Param			request			body		SearchRequest								true	"Search parameters"
-//	@Success		200				{object}	pagination.PaginatedResponse[object.Object]	"List of objects"
-//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
-//	@Failure		500				{object}	util.ServerError							"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/search [post]
+//	@Summary			Search objects within a space
+//	@Description		This endpoint performs a focused search within a single space (specified by the space_id path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search query, object types, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.
+//	@x-ai-description	"Use this endpoint to search for objects that match specific criteria. Provide a query string in the request body to perform text search. You can filter by object types and specify sorting options. This is useful when you need to find objects based on content, name, or other properties. The response includes all objects matching your search criteria."
+//	@Tags				search
+//	@Accept				json
+//	@Produce			json
+//	@Param				Anytype-Version	header		string										false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string										true	"Space ID"
+//	@Param				offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param				limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
+//	@Param				request			body		SearchRequest								true	"Search parameters"
+//	@Success			200				{object}	pagination.PaginatedResponse[object.Object]	"List of objects"
+//	@Failure			401				{object}	util.UnauthorizedError						"Unauthorized"
+//	@Failure			500				{object}	util.ServerError							"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/search [post]
 func SearchHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceID := c.Param("space_id")

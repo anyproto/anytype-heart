@@ -109,7 +109,7 @@ func (c *APIClient) HandleToolCall(toolCall openai.ToolCall) (map[string]interfa
 			"content":     string(respBody),
 		}, nil
 	}
-	fmt.Printf("api request %s %s: %+v %s\n", req.Method, req.URL.String(), args["body"], string(respBody))
+	fmt.Printf("api request %s %s: %+v %s\n", req.Method, req.URL.String(), toolCall.Function.Arguments, string(respBody))
 
 	// Add status code to the result
 	result["status_code"] = resp.StatusCode
