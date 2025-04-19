@@ -543,38 +543,26 @@ func (s *service) ListProperties(ctx context.Context, spaceId string, offset int
 
 // GetProperty retrieves a single property by its ID in a specific space.
 func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error) {
-	// TODO: change to object show to return possible deleted status, after fixing id / key
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(propertyId),
-			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-			},
-		},
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyUniqueKey.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyRelationFormat.String(),
-		},
+	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: propertyId,
 	})
 
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return Property{}, ErrFailedRetrieveProperty
+	if resp.Error != nil {
+		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+			return Property{}, ErrPropertyNotFound
+		}
+
+		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
+			return Property{}, ErrPropertyDeleted
+		}
+
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return Property{}, ErrFailedRetrieveProperty
+		}
 	}
 
-	if len(resp.Records) == 0 {
-		return Property{}, ErrPropertyNotFound
-	}
-
-	uk, property := s.mapPropertyFromRecord(resp.Records[0])
+	uk, property := s.mapPropertyFromRecord(resp.ObjectView.Details[0].Details)
 	if _, isExcluded := excludedSystemProperties[uk]; isExcluded {
 		return Property{}, ErrPropertyNotFound
 	}
