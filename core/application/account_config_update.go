@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"errors"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -20,12 +19,14 @@ func (s *Service) AccountConfigUpdate(req *pb.RpcAccountConfigUpdateRequest) err
 	}
 
 	conf := s.app.MustComponent(config.CName).(*config.Config)
-	cfg := config.ConfigRequired{}
-	cfg.CustomFileStorePath = req.IPFSStorageAddr
-	err := config.WriteJsonConfig(conf.GetConfigPath(), cfg)
-	if err != nil {
-		return errors.Join(ErrFailedToWriteConfig, err)
-	}
+	return conf.UpdatePersistentConfig(func(cfg *config.ConfigPersistent) (updated bool) {
+		if cfg.CustomFileStorePath == req.IPFSStorageAddr {
+			return false
+		}
+		cfg.CustomFileStorePath = req.IPFSStorageAddr
+		return true
+	})
+
 	return nil
 }
 
