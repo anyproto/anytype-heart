@@ -80,22 +80,38 @@ type PropertyResponse struct {
 }
 
 type Property struct {
-	Id          string   `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"`                                // The id of the property
-	Key         string   `json:"key" example:"last_modified_date"`                                                                        // The key of the property
-	Name        string   `json:"name" example:"Last modified date"`                                                                       // The name of the property
-	Format      string   `json:"format" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property
-	Text        *string  `json:"text,omitempty" example:"Some text..."`                                                                   // The text value, if applicable
-	Number      *float64 `json:"number,omitempty" example:"42"`                                                                           // The number value, if applicable
-	Select      *Tag     `json:"select,omitempty"`                                                                                        // The select value, if applicable
-	MultiSelect []Tag    `json:"multi_select,omitempty"`                                                                                  // The multi-select values, if applicable
-	Date        *string  `json:"date,omitempty" example:"2025-02-14T12:34:56Z"`                                                           // The date value, if applicable
-	File        []string `json:"file,omitempty" example:"['fileId']"`                                                                     // The file references, if applicable
-	Checkbox    *bool    `json:"checkbox,omitempty" example:"true" enum:"true,false"`                                                     // The checkbox value, if applicable
-	Url         *string  `json:"url,omitempty" example:"https://example.com"`                                                             // The url value, if applicable
-	Email       *string  `json:"email,omitempty" example:"example@example.com"`                                                           // The email value, if applicable
-	Phone       *string  `json:"phone,omitempty" example:"+1234567890"`                                                                   // The phone number value, if applicable
-	Object      []string `json:"object,omitempty" example:"['objectId']"`                                                                 // The object references, if applicable
+	Id          string         `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"`                                // The id of the property
+	Key         string         `json:"key" example:"last_modified_date"`                                                                        // The key of the property
+	Name        string         `json:"name" example:"Last modified date"`                                                                       // The name of the property
+	Format      PropertyFormat `json:"format" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property
+	Text        *string        `json:"text,omitempty" example:"Some text..."`                                                                   // The text value, if applicable
+	Number      *float64       `json:"number,omitempty" example:"42"`                                                                           // The number value, if applicable
+	Select      *Tag           `json:"select,omitempty"`                                                                                        // The select value, if applicable
+	MultiSelect []Tag          `json:"multi_select,omitempty"`                                                                                  // The multi-select values, if applicable
+	Date        *string        `json:"date,omitempty" example:"2025-02-14T12:34:56Z"`                                                           // The date value, if applicable
+	File        []string       `json:"file,omitempty" example:"['fileId']"`                                                                     // The file references, if applicable
+	Checkbox    *bool          `json:"checkbox,omitempty" example:"true" enum:"true,false"`                                                     // The checkbox value, if applicable
+	Url         *string        `json:"url,omitempty" example:"https://example.com"`                                                             // The url value, if applicable
+	Email       *string        `json:"email,omitempty" example:"example@example.com"`                                                           // The email value, if applicable
+	Phone       *string        `json:"phone,omitempty" example:"+1234567890"`                                                                   // The phone number value, if applicable
+	Object      []string       `json:"object,omitempty" example:"['objectId']"`                                                                 // The object references, if applicable
 }
+
+type PropertyFormat string
+
+const (
+	PropertyFormatText        PropertyFormat = "text"
+	PropertyFormatNumber      PropertyFormat = "number"
+	PropertyFormatSelect      PropertyFormat = "select"
+	PropertyFormatMultiSelect PropertyFormat = "multi_select"
+	PropertyFormatDate        PropertyFormat = "date"
+	PropertyFormatFile        PropertyFormat = "file"
+	PropertyFormatCheckbox    PropertyFormat = "checkbox"
+	PropertyFormatUrl         PropertyFormat = "url"
+	PropertyFormatEmail       PropertyFormat = "email"
+	PropertyFormatPhone       PropertyFormat = "phone"
+	PropertyFormatObject      PropertyFormat = "object"
+)
 
 type Tag struct {
 	Id    string     `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag
