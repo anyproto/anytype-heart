@@ -54,7 +54,7 @@ func StringPtr(s string) *string {
 }
 
 // GetIcon returns the icon to use for the object, which can be builtin icon, emoji or file
-func GetIcon(accountInfo *model.AccountInfo, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
+func GetIcon(gatewayURL, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
 	if iconName != "" {
 		return Icon{
 			Format: "icon",
@@ -73,7 +73,7 @@ func GetIcon(accountInfo *model.AccountInfo, iconEmoji string, iconImage string,
 	if iconImage != "" {
 		return Icon{
 			Format: "file",
-			File:   StringPtr(fmt.Sprintf("%s/image/%s", accountInfo.GatewayUrl, iconImage)),
+			File:   StringPtr(fmt.Sprintf("%s/image/%s", gatewayURL, iconImage)),
 		}
 	}
 
