@@ -14,23 +14,8 @@ import (
 
 var (
 	ErrFailedSearchType     = errors.New("failed to search for type")
-	ErrorTypeNotFound       = errors.New("type not found")
-	ErrFailedSearchProperty = errors.New("failed to search for property")
-	ErrorPropertyNotFound   = errors.New("property not found")
+	ErrorResolveToUniqueKey = errors.New("failed to resolve to unique key")
 )
-
-var iconOptionToColor = map[float64]string{
-	1:  "grey",
-	2:  "yellow",
-	3:  "orange",
-	4:  "red",
-	5:  "pink",
-	6:  "purple",
-	7:  "blue",
-	8:  "ice",
-	9:  "teal",
-	10: "lime",
-}
 
 type IconFormat string
 
@@ -45,35 +30,79 @@ type Icon struct {
 	Emoji  *string    `json:"emoji,omitempty" example:"📄"`                                                                                       // The emoji of the icon
 	File   *string    `json:"file,omitempty" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
 	Name   *string    `json:"name,omitempty" example:"document"`                                                                                 // The name of the icon
-	Color  *string    `json:"color,omitempty" example:"red"`                                                                                     // The color of the icon
+	Color  *Color     `json:"color,omitempty" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"`                    // The color of the icon
 }
 
-// StringPtr returns a pointer to the string
+type Color string
+
+const (
+	ColorGrey   Color = "grey"
+	ColorYellow Color = "yellow"
+	ColorOrange Color = "orange"
+	ColorRed    Color = "red"
+	ColorPink   Color = "pink"
+	ColorPurple Color = "purple"
+	ColorBlue   Color = "blue"
+	ColorIce    Color = "ice"
+	ColorTeal   Color = "teal"
+	ColorLime   Color = "lime"
+)
+
+var iconOptionToColor = map[float64]Color{
+	1:  ColorGrey,
+	2:  ColorYellow,
+	3:  ColorOrange,
+	4:  ColorRed,
+	5:  ColorPink,
+	6:  ColorPurple,
+	7:  ColorBlue,
+	8:  ColorIce,
+	9:  ColorTeal,
+	10: ColorLime,
+}
+
+var ColorOptionToColor = map[string]Color{
+	"grey":   ColorGrey,
+	"yellow": ColorYellow,
+	"orange": ColorOrange,
+	"red":    ColorRed,
+	"pink":   ColorPink,
+	"purple": ColorPurple,
+	"blue":   ColorBlue,
+	"ice":    ColorIce,
+	"teal":   ColorTeal,
+	"lime":   ColorLime,
+}
+
 func StringPtr(s string) *string {
 	return &s
 }
 
+func ColorPtr(c Color) *Color {
+	return &c
+}
+
 // GetIcon returns the icon to use for the object, which can be builtin icon, emoji or file
-func GetIcon(accountInfo *model.AccountInfo, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
+func GetIcon(gatewayURL, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
 	if iconName != "" {
 		return Icon{
-			Format: "icon",
+			Format: IconFormatIcon,
 			Name:   &iconName,
-			Color:  StringPtr(iconOptionToColor[iconOption]),
+			Color:  ColorPtr(iconOptionToColor[iconOption]),
 		}
 	}
 
 	if iconEmoji != "" {
 		return Icon{
-			Format: "emoji",
+			Format: IconFormatEmoji,
 			Emoji:  &iconEmoji,
 		}
 	}
 
 	if iconImage != "" {
 		return Icon{
-			Format: "file",
-			File:   StringPtr(fmt.Sprintf("%s/image/%s", accountInfo.GatewayUrl, iconImage)),
+			Format: IconFormatFile,
+			File:   StringPtr(fmt.Sprintf("%s/image/%s", gatewayURL, iconImage)),
 		}
 	}
 
@@ -100,7 +129,7 @@ func ResolveUniqueKeyToTypeId(mw apicore.ClientCommands, spaceId string, uniqueK
 		}
 
 		if len(resp.Records) == 0 {
-			return "", ErrorTypeNotFound
+			return "", ErrorResolveToUniqueKey
 		}
 	}
 
@@ -115,38 +144,8 @@ func ResolveIdtoUniqueKey(mw apicore.ClientCommands, spaceId string, typeId stri
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return "", ErrorTypeNotFound
+		return "", ErrorResolveToUniqueKey
 	}
 
 	return resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), nil
-}
-
-// ResolveRelationKeyToPropertyName resolves the property key to the property's name
-func ResolveRelationKeyToPropertyName(mw apicore.ClientCommands, spaceId string, relationKey string) (property string, err error) {
-	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(relationKey),
-			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-			},
-		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyResolvedLayout.String()},
-	})
-
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return "", ErrFailedSearchProperty
-	}
-
-	if len(resp.Records) == 0 {
-		return "", ErrorPropertyNotFound
-	}
-
-	return resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(), nil
 }

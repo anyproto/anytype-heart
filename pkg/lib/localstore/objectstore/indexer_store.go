@@ -136,6 +136,12 @@ func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
+	var commited bool
+	defer func() {
+		if !commited {
+			txn.Rollback()
+		}
+	}()
 	iter, err := s.fulltextQueue.Find(filterIn).Iter(txn.Context())
 	if err != nil {
 		return fmt.Errorf("create iterator: %w", err)
@@ -153,6 +159,7 @@ func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
 			return fmt.Errorf("del doc: %w", err)
 		}
 	}
+	commited = true
 	return txn.Commit()
 }
 

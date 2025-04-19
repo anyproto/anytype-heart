@@ -15,12 +15,13 @@ import (
 //	@Tags			auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			app_name	query		string					true	"App name requesting the challenge"
-//	@Success		200			{object}	DisplayCodeResponse		"Challenge ID"
-//	@Failure		400			{object}	util.ValidationError	"Invalid input"
-//	@Failure		500			{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param			app_name		query		string					true	"App name requesting the challenge"
+//	@Success		200				{object}	DisplayCodeResponse		"Challenge ID"
+//	@Failure		400				{object}	util.ValidationError	"Invalid input"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/display_code [post]
-func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
+func DisplayCodeHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := c.Query("app_name")
 
@@ -41,23 +42,24 @@ func DisplayCodeHandler(s *AuthService) gin.HandlerFunc {
 
 // TokenHandler retrieves an authentication token using a code and challenge ID
 //
-//	@Summary		Retrieve token
+//	@Summary		Solve challenge
 //	@Description	After receiving a challenge ID from the display_code endpoint, the client calls this endpoint to provide the corresponding 4-digit code (also via a query parameter) along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns an ephemeral session token together with a permanent app key. These tokens are then used in subsequent API requests to authorize access. This endpoint is central to ensuring that only properly authenticated sessions can access further resources.
 //	@Tags			auth
 //	@Accept			json
 //	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param			challenge_id	query		string					true	"Challenge ID"
 //	@Param			code			query		string					true	"4-digit code retrieved from Anytype Desktop app"
 //	@Success		200				{object}	TokenResponse			"Authentication token"
 //	@Failure		400				{object}	util.ValidationError	"Invalid input"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/token [post]
-func TokenHandler(s *AuthService) gin.HandlerFunc {
+func TokenHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		challengeId := c.Query("challenge_id")
 		code := c.Query("code")
 
-		sessionToken, appKey, err := s.SolveChallenge(c.Request.Context(), challengeId, code)
+		appKey, err := s.SolveChallenge(c.Request.Context(), challengeId, code)
 		errCode := util.MapErrorCode(err,
 			util.ErrToCode(ErrInvalidInput, http.StatusBadRequest),
 			util.ErrToCode(ErrFailedAuthenticate, http.StatusInternalServerError),
@@ -69,9 +71,6 @@ func TokenHandler(s *AuthService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TokenResponse{
-			SessionToken: sessionToken,
-			AppKey:       appKey,
-		})
+		c.JSON(http.StatusOK, TokenResponse{AppKey: appKey})
 	}
 }

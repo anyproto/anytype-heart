@@ -13,16 +13,15 @@ import (
 )
 
 const (
-	mockedAppName      = "api-test"
-	mockedChallengeId  = "mocked-challenge-id"
-	mockedCode         = "mocked-mockedCode"
-	mockedSessionToken = "mocked-session-token"
-	mockedAppKey       = "mocked-app-key"
+	mockedAppName     = "api-test"
+	mockedChallengeId = "mocked-challenge-id"
+	mockedCode        = "mocked-mockedCode"
+	mockedAppKey      = "mocked-app-key"
 )
 
 type fixture struct {
-	*AuthService
-	mwMock *mock_apicore.MockClientCommands
+	service Service
+	mwMock  *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -30,8 +29,8 @@ func newFixture(t *testing.T) *fixture {
 	authService := NewService(mwMock)
 
 	return &fixture{
-		AuthService: authService,
-		mwMock:      mwMock,
+		service: authService,
+		mwMock:  mwMock,
 	}
 }
 
@@ -51,7 +50,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 			}).Once()
 
 		// when
-		challengeId, err := fx.NewChallenge(ctx, mockedAppName)
+		challengeId, err := fx.service.NewChallenge(ctx, mockedAppName)
 
 		// then
 		require.NoError(t, err)
@@ -64,7 +63,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		challengeId, err := fx.NewChallenge(ctx, "")
+		challengeId, err := fx.service.NewChallenge(ctx, "")
 
 		// then
 		require.Error(t, err)
@@ -86,7 +85,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 			}).Once()
 
 		// when
-		challengeId, err := fx.NewChallenge(ctx, mockedAppName)
+		challengeId, err := fx.service.NewChallenge(ctx, mockedAppName)
 
 		// then
 		require.Error(t, err)
@@ -106,17 +105,15 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 			Answer:      mockedCode,
 		}).
 			Return(&pb.RpcAccountLocalLinkSolveChallengeResponse{
-				SessionToken: mockedSessionToken,
-				AppKey:       mockedAppKey,
-				Error:        &pb.RpcAccountLocalLinkSolveChallengeResponseError{Code: pb.RpcAccountLocalLinkSolveChallengeResponseError_NULL},
+				AppKey: mockedAppKey,
+				Error:  &pb.RpcAccountLocalLinkSolveChallengeResponseError{Code: pb.RpcAccountLocalLinkSolveChallengeResponseError_NULL},
 			}).Once()
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallenge(ctx, mockedChallengeId, mockedCode)
+		appKey, err := fx.service.SolveChallenge(ctx, mockedChallengeId, mockedCode)
 
 		// then
 		require.NoError(t, err)
-		require.Equal(t, mockedSessionToken, sessionToken)
 		require.Equal(t, mockedAppKey, appKey)
 
 	})
@@ -127,12 +124,11 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallenge(ctx, "", "")
+		appKey, err := fx.service.SolveChallenge(ctx, "", "")
 
 		// then
 		require.Error(t, err)
 		require.Equal(t, ErrInvalidInput, err)
-		require.Empty(t, sessionToken)
 		require.Empty(t, appKey)
 	})
 
@@ -150,12 +146,11 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 			}).Once()
 
 		// when
-		sessionToken, appKey, err := fx.SolveChallenge(ctx, mockedChallengeId, mockedCode)
+		appKey, err := fx.service.SolveChallenge(ctx, mockedChallengeId, mockedCode)
 
 		// then
 		require.Error(t, err)
 		require.Equal(t, ErrFailedAuthenticate, err)
-		require.Empty(t, sessionToken)
 		require.Empty(t, appKey)
 	})
 }
