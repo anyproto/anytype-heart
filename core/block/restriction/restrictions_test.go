@@ -1,6 +1,10 @@
 package restriction
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -49,10 +53,18 @@ func givenRestrictionHolder(sbType smartblock.SmartBlockType, typeKey domain.Typ
 	if err == nil {
 		layout = t.Layout
 	}
-	uk, _ := domain.NewUniqueKey(sbType, "")
+	var uk domain.UniqueKey
+	if sbType != smartblock.SmartBlockTypePage {
+		uk, _ = domain.NewUniqueKey(sbType, "")
+	}
 	return &restrictionHolder{
 		sbType:    sbType,
 		layout:    layout,
 		uniqueKey: uk,
 	}
+}
+
+func TestService_GetRestrictions(t *testing.T) {
+	res := GetRestrictions(&restrictionHolder{sbType: smartblock.SmartBlockTypeBundledObjectType})
+	assert.NotEmpty(t, res.Object)
 }
