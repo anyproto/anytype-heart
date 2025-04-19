@@ -2,9 +2,11 @@ package migrator
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -200,4 +202,20 @@ func copyDir(srcPath string, destPath string) error {
 		}
 	}
 	return nil
+}
+
+func TestIsDiskFull(t *testing.T) {
+	for _, tc := range []struct {
+		inputErr error
+		expected bool
+	}{
+		{nil, false},
+		{syscall.ENOSPC, true},
+		{os.ErrInvalid, false},
+		{syscall.Errno(112), true},
+		{syscall.Errno(111), false},
+		{fmt.Errorf("disk is full"), true},
+	} {
+		assert.Equal(t, tc.expected, isDiskFull(tc.inputErr))
+	}
 }
