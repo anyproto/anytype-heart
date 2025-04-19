@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -61,7 +62,7 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 		// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
 		// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
 		s.mu.Lock()
-		token, exists := s.KeyToToken[key]
+		apiSession, exists := s.KeyToToken[key]
 		s.mu.Unlock()
 
 		if !exists {
@@ -71,15 +72,20 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 				return
 			}
-			token = response.Token
+			apiSession = ApiSessionEntry{
+				Token: response.Token,
+				// TODO: enable once app name is returned
+				// AppName: response.AppName,
+			}
 
 			s.mu.Lock()
-			s.KeyToToken[key] = token
+			s.KeyToToken[key] = apiSession
 			s.mu.Unlock()
 		}
 
 		// Add token to request context for downstream services (subscriptions, events, etc.)
-		c.Set("token", token)
+		c.Set("token", apiSession.Token)
+		c.Set("apiAppName", apiSession.AppName)
 		c.Next()
 	}
 }
@@ -99,6 +105,24 @@ func (s *Server) ensureAccountInfo(accountService apicore.AccountService) gin.Ha
 		s.searchService.AccountInfo = accInfo
 
 		c.Next()
+	}
+}
+
+// ensureAnalyticsEvent is a middleware that ensures broadcasting an analytics event after a successful request.
+func (s *Server) ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+
+		if c.Writer.Status() != http.StatusOK {
+			return
+		}
+
+		payload := util.NewAnalyticsEventForApi(c.Request.Context(), code)
+		eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfPayloadBroadcast{
+			PayloadBroadcast: &pb.EventPayloadBroadcast{
+				Payload: payload,
+			},
+		}))
 	}
 }
 
