@@ -9,8 +9,6 @@ import (
 	"slices"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
@@ -21,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/keyvalueservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -63,10 +62,11 @@ var (
 
 type store struct {
 	*source
-	store        *storestate.StoreState
-	onUpdateHook func()
-	onPushChange PushChangeHook
-	sbType       smartblock.SmartBlockType
+	keyValueService keyvalueservice.Service
+	store           *storestate.StoreState
+	onUpdateHook    func()
+	onPushChange    PushChangeHook
+	sbType          smartblock.SmartBlockType
 
 	diffManagers map[string]*diffManager
 }
@@ -93,17 +93,34 @@ func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []str
 }
 
 func (s *store) initDiffManagers(ctx context.Context) error {
-	for name := range s.diffManagers {
-		seenHeads, err := s.loadSeenHeads(ctx, name)
-		if err != nil {
-			return fmt.Errorf("load seen heads: %w", err)
-		}
-		err = s.InitDiffManager(ctx, name, seenHeads)
+	for name, manager := range s.diffManagers {
+		err := s.InitDiffManager(ctx, name, nil)
 		if err != nil {
 			return fmt.Errorf("init diff manager: %w", err)
 		}
+
+		vals, err := s.keyValueService.GetUserScopedKey(ctx, s.seenHeadsKey(name))
+		if err != nil {
+			return fmt.Errorf("get value: %w", err)
+		}
+		for _, val := range vals {
+			seenHeads, err := unmarshalSeenHeads(val.Data)
+			if err != nil {
+				return fmt.Errorf("unmarshal seen heads: %w", err)
+			}
+			manager.diffManager.Remove(seenHeads)
+		}
 	}
 	return nil
+}
+
+func unmarshalSeenHeads(raw []byte) ([]string, error) {
+	var seenHeads []string
+	err := json.Unmarshal(raw, &seenHeads)
+	if err != nil {
+		return nil, err
+	}
+	return seenHeads, nil
 }
 
 func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []string) (err error) {
@@ -129,6 +146,18 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 	manager.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
+	}
+
+	err = s.keyValueService.SubscribeForUserScopedKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
+		newSeenHeads, err := unmarshalSeenHeads(val.Data)
+		if err != nil {
+			log.Errorf("subscribe for seenHeads: %s: %v", name, err)
+			return
+		}
+		manager.diffManager.Remove(newSeenHeads)
+	})
+	if err != nil {
+		return fmt.Errorf("subscribe: %w", err)
 	}
 
 	return
@@ -173,10 +202,6 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	s.onUpdateHook = onUpdateHook
 	s.store = storeState
 
-	err = s.initDiffManagers(ctx)
-	if err != nil {
-		return err
-	}
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
@@ -194,7 +219,16 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)
 	}
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	err = s.initDiffManagers(ctx)
+	if err != nil {
+		return fmt.Errorf("init diff managers: %w", err)
+	}
+	return nil
 }
 
 func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error) {
@@ -296,19 +330,10 @@ func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) 
 	return nil
 }
 
-func seenHeadsCollectionName(name string) string {
-	return "seenHeads/" + name
-}
-
 func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 	manager, ok := s.diffManagers[name]
 	if !ok {
 		return nil
-	}
-
-	coll, err := s.store.Collection(ctx, seenHeadsCollectionName(name))
-	if err != nil {
-		return fmt.Errorf("get collection: %w", err)
 	}
 
 	seenHeads := manager.diffManager.SeenHeads()
@@ -317,31 +342,11 @@ func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 		return fmt.Errorf("marshal seen heads: %w", err)
 	}
 
-	arena := &anyenc.Arena{}
-	doc := arena.NewObject()
-	doc.Set("id", arena.NewString(s.id))
-	doc.Set("h", arena.NewBinary(raw))
-	return coll.UpsertOne(ctx, doc)
+	return s.keyValueService.SetUserScopedKey(ctx, s.seenHeadsKey(name), raw)
 }
 
-func (s *store) loadSeenHeads(ctx context.Context, name string) ([]string, error) {
-	coll, err := s.store.Collection(ctx, seenHeadsCollectionName(name))
-	if err != nil {
-		return nil, fmt.Errorf("get collection: %w", err)
-	}
-
-	doc, err := coll.FindId(ctx, s.id)
-	if errors.Is(err, anystore.ErrDocNotFound) {
-		return nil, nil
-	}
-
-	raw := doc.Value().GetBytes("h")
-	var seenHeads []string
-	err = json.Unmarshal(raw, &seenHeads)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal seen heads: %w", err)
-	}
-	return seenHeads, nil
+func (s *store) seenHeadsKey(diffManagerName string) string {
+	return s.id + diffManagerName
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) error {

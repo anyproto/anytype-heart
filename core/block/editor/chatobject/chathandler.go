@@ -18,7 +18,7 @@ import (
 
 type ChatHandler struct {
 	repository      *repository
-	subscription    *subscription
+	subscription    *subscriptionManager
 	currentIdentity string
 	myParticipantId string
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing

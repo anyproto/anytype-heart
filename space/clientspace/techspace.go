@@ -65,3 +65,7 @@ func (s *TechSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id 
 	}
 	return s.space.GetTypeIdByKey(ctx, key)
 }
+
+func (s *TechSpace) CommonSpace() commonspace.Space {
+	return s.space.CommonSpace()
+}
