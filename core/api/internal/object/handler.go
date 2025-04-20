@@ -13,7 +13,7 @@ import (
 //
 //	@Summary		List objects
 //	@Description	Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
-//	@Tags			objects
+//	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string									true	"Space ID"
@@ -51,7 +51,7 @@ func GetObjectsHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Get object
 //	@Description	Fetches the full details of a single object identified by the object ID within the specified space. The response includes not only basic metadata (ID, name, icon, type) but also the complete set of blocks (which may include text, files, properties and dataviews) and extra details (such as timestamps and linked member information). This endpoint is essential when a client needs to render or edit the full object view.
-//	@Tags			objects
+//	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
@@ -89,7 +89,7 @@ func GetObjectHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Delete object
 //	@Description	This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.
-//	@Tags			objects
+//	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
@@ -128,7 +128,7 @@ func DeleteObjectHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Create object
 //	@Description	Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the type_key (which is the non-unique identifier of the type of object to create). Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
-//	@Tags			objects
+//	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
@@ -214,7 +214,7 @@ func GetObjectExportHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		List properties
 //	@Description	This endpoint retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
-//	@Tags			properties
+//	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string									true	"Space ID"
@@ -250,7 +250,7 @@ func GetPropertiesHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Get property
 //	@Description	Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).
-//	@Tags			properties
+//	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
@@ -288,7 +288,7 @@ func GetPropertyHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		List property options
 //	@Description	Lists all tag options for a given property id.
-//	@Tags			properties
+//	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string								true	"Space ID"
@@ -325,7 +325,7 @@ func GetPropertyOptionsHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		List types
 //	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and a recommended layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
-//	@Tags			types
+//	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string								true	"Space ID"
@@ -361,7 +361,7 @@ func GetTypesHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Get type
 //	@Description	Fetches detailed information about one specific object type by its ID. This includes the type’s unique key, name, icon, and recommended layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).
-//	@Tags			types
+//	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
@@ -399,7 +399,7 @@ func GetTypeHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		List templates
 //	@Description	This endpoint returns a paginated list of templates that are associated with a specific object type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.
-//	@Tags			templates
+//	@Tags			Templates
 //	@Produce		json
 //	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string									true	"Space ID"
@@ -440,7 +440,7 @@ func GetTemplatesHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Get template
 //	@Description	Fetches full details for one template associated with a particular object type in a space. The response provides the template’s identifier, name, icon, and any other relevant metadata. This endpoint is useful when a client needs to preview or apply a template to prefill object creation fields.
-//	@Tags			templates
+//	@Tags			Templates
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"

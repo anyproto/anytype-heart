@@ -994,7 +994,7 @@ paths:
           description: Internal server error
       summary: Start new challenge
       tags:
-      - auth
+      - Auth
   /auth/token:
     post:
       description: After receiving a challenge ID from the display_code endpoint,
@@ -1049,7 +1049,7 @@ paths:
           description: Internal server error
       summary: Solve challenge
       tags:
-      - auth
+      - Auth
   /search:
     post:
       description: This endpoint executes a global search over every space the user
@@ -1111,7 +1111,7 @@ paths:
       - bearerauth: []
       summary: Search objects across all spaces
       tags:
-      - search
+      - Search
   /spaces:
     get:
       description: Retrieves a paginated list of all spaces that are accessible by
@@ -1162,7 +1162,7 @@ paths:
       - bearerauth: []
       summary: List spaces
       tags:
-      - spaces
+      - Spaces
     post:
       description: Creates a new workspace (or space) based on a supplied name in
         the JSON request body. The endpoint is subject to rate limiting and automatically
@@ -1219,7 +1219,7 @@ paths:
       - bearerauth: []
       summary: Create space
       tags:
-      - spaces
+      - Spaces
   /spaces/{space_id}:
     get:
       description: Fetches full details about a single space identified by its space
@@ -1268,7 +1268,7 @@ paths:
       - bearerauth: []
       summary: Get space
       tags:
-      - spaces
+      - Spaces
   /spaces/{space_id}/lists/{list_id}/{view_id}/objects:
     get:
       description: Returns a paginated list of objects associated with a specific
@@ -1343,7 +1343,7 @@ paths:
       - bearerauth: []
       summary: Get objects in list
       tags:
-      - lists
+      - Lists
   /spaces/{space_id}/lists/{list_id}/objects:
     post:
       description: Enables clients to add one or more objects to a specific list (collection
@@ -1413,7 +1413,7 @@ paths:
       - bearerauth: []
       summary: Add objects to list
       tags:
-      - lists
+      - Lists
   /spaces/{space_id}/lists/{list_id}/objects/{object_id}:
     delete:
       description: Removes a given object from the specified list (collection only)
@@ -1481,7 +1481,7 @@ paths:
       - bearerauth: []
       summary: Remove object from list
       tags:
-      - lists
+      - Lists
   /spaces/{space_id}/lists/{list_id}/views:
     get:
       description: Returns a paginated list of views defined for a specific list (query
@@ -1550,7 +1550,7 @@ paths:
       - bearerauth: []
       summary: Get list views
       tags:
-      - lists
+      - Lists
   /spaces/{space_id}/members:
     get:
       description: Returns a paginated list of members belonging to the specified
@@ -1609,7 +1609,7 @@ paths:
       - bearerauth: []
       summary: List members
       tags:
-      - members
+      - Members
   /spaces/{space_id}/members/{member_id}:
     get:
       description: Fetches detailed information about a single member within a space.
@@ -1666,7 +1666,7 @@ paths:
       - bearerauth: []
       summary: Get member
       tags:
-      - members
+      - Members
   /spaces/{space_id}/objects:
     get:
       description: Retrieves a paginated list of objects in the given space. The endpoint
@@ -1725,7 +1725,7 @@ paths:
       - bearerauth: []
       summary: List objects
       tags:
-      - objects
+      - Objects
     post:
       description: Creates a new object in the specified space using a JSON payload.
         The creation process is subject to rate limiting. The payload must include
@@ -1790,7 +1790,7 @@ paths:
       - bearerauth: []
       summary: Create object
       tags:
-      - objects
+      - Objects
   /spaces/{space_id}/objects/{object_id}:
     delete:
       description: This endpoint “deletes” an object by marking it as archived. The
@@ -1858,7 +1858,7 @@ paths:
       - bearerauth: []
       summary: Delete object
       tags:
-      - objects
+      - Objects
     get:
       description: Fetches the full details of a single object identified by the object
         ID within the specified space. The response includes not only basic metadata
@@ -1920,7 +1920,7 @@ paths:
       - bearerauth: []
       summary: Get object
       tags:
-      - objects
+      - Objects
   /spaces/{space_id}/objects/{object_id}/{format}:
     get:
       description: This endpoint exports a single object from the specified space
@@ -2041,7 +2041,7 @@ paths:
       - bearerauth: []
       summary: List properties
       tags:
-      - properties
+      - Properties
   /spaces/{space_id}/properties/{property_id}:
     get:
       description: Fetches detailed information about one specific property by its
@@ -2103,7 +2103,7 @@ paths:
       - bearerauth: []
       summary: Get property
       tags:
-      - properties
+      - Properties
   /spaces/{space_id}/properties/{property_id}/options:
     get:
       description: Lists all tag options for a given property id.
@@ -2155,7 +2155,7 @@ paths:
       - bearerauth: []
       summary: List property options
       tags:
-      - properties
+      - Properties
   /spaces/{space_id}/search:
     post:
       description: This endpoint performs a focused search within a single space (specified
@@ -2221,7 +2221,7 @@ paths:
       - bearerauth: []
       summary: Search objects within a space
       tags:
-      - search
+      - Search
   /spaces/{space_id}/types:
     get:
       description: This endpoint retrieves a paginated list of object types (e.g.
@@ -2281,7 +2281,7 @@ paths:
       - bearerauth: []
       summary: List types
       tags:
-      - types
+      - Types
   /spaces/{space_id}/types/{type_id}:
     get:
       description: Fetches detailed information about one specific object type by
@@ -2343,7 +2343,7 @@ paths:
       - bearerauth: []
       summary: Get type
       tags:
-      - types
+      - Types
   /spaces/{space_id}/types/{type_id}/templates:
     get:
       description: This endpoint returns a paginated list of templates that are associated
@@ -2407,7 +2407,7 @@ paths:
       - bearerauth: []
       summary: List templates
       tags:
-      - templates
+      - Templates
   /spaces/{space_id}/types/{type_id}/templates/{template_id}:
     get:
       description: Fetches full details for one template associated with a particular
@@ -2474,6 +2474,6 @@ paths:
       - bearerauth: []
       summary: Get template
       tags:
-      - templates
+      - Templates
 servers:
 - url: http://localhost:31009/v1

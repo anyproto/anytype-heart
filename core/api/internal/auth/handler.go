@@ -12,7 +12,7 @@ import (
 //
 //	@Summary		Start new challenge
 //	@Description	This endpoint initiates a secure authentication flow by generating a new challenge. Clients must supply the name of the application (via a query parameter) that is requesting authentication. On success, the service returns a unique challenge ID. This challenge ID must then be used with the token endpoint (see below) to solve the challenge and retrieve an authentication token. In essence, this endpoint “boots up” the login process and is the first step in a multi-phase authentication sequence.
-//	@Tags			auth
+//	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
@@ -44,7 +44,7 @@ func DisplayCodeHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Solve challenge
 //	@Description	After receiving a challenge ID from the display_code endpoint, the client calls this endpoint to provide the corresponding 4-digit code (also via a query parameter) along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns an ephemeral session token together with a permanent app key. These tokens are then used in subsequent API requests to authorize access. This endpoint is central to ensuring that only properly authenticated sessions can access further resources.
-//	@Tags			auth
+//	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
