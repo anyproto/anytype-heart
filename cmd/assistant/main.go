@@ -107,6 +107,12 @@ func run() error {
 		spaceId:              app.currentSpaceId,
 	}
 
+	sub := newSubscriber(app.config, getService[subscription.Service](app), chatter.AddTool)
+	err = sub.Run(ctx)
+	if err != nil {
+		return fmt.Errorf("subscriber run: %w", err)
+	}
+
 	err = chatter.InitializeAnytypeApi(app.config)
 	if err != nil {
 		return fmt.Errorf("initialize mcp clients: %w", err)

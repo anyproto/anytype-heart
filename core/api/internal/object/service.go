@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -271,6 +272,7 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 		})
 
 		if resp.Error.Code != pb.RpcObjectCreateBookmarkResponseError_NULL {
+			fmt.Println("Error creating object:", resp.Error)
 			return ObjectWithBlocks{}, ErrFailedCreateBookmark
 		}
 		objectId = resp.ObjectId
@@ -283,6 +285,7 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 		})
 
 		if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
+			fmt.Println("Error creating object:", resp.Error)
 			return ObjectWithBlocks{}, ErrFailedCreateObject
 		}
 		objectId = resp.ObjectId

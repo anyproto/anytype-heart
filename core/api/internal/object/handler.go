@@ -131,7 +131,7 @@ func DeleteObjectHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary			Create object
 //	@Description		Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the type_key (which is the non-unique identifier of the type of object to create). Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
-//	@x-ai-description	"Use this endpoint to create a new object. You should first check available object types with the List types endpoint, then create the appropriate object type with this endpoint. When creating content, use structured markdown for the body field. If the content is based on a web page, include the source URL. The endpoint returns the full details of the newly created object."
+//	@x-ai-description	"Use this endpoint to create a new object. You should first get suitable type key with the list_types tool. When creating content, use structured markdown for the body field. If the content is based on a web page, include the source URL"
 //	@Tags				objects
 //	@Accept				json
 //	@Produce			json

@@ -40,12 +40,22 @@ type Chatter struct {
 	client      *openai.Client
 	store       keyvaluestore.Store[string]
 
+	toolsLock    sync.Mutex
 	toolRequests []openai.Tool
 
 	// tool name => mcp client
 	toolClients map[string]ToolCaller
 	localApi    *api.APIClient
 	spaceId     string
+	sub         subscriber
+}
+
+func (c *Chatter) AddTool(tool openai.Tool, caller ToolCaller) {
+	c.toolsLock.Lock()
+	defer c.toolsLock.Unlock()
+	fmt.Println("  registered tool:", tool.Function.Name)
+	c.toolRequests = append(c.toolRequests, tool)
+	c.toolClients[tool.Function.Name] = caller
 }
 
 type ToolCaller interface {
@@ -64,6 +74,7 @@ func (c *Chatter) InitializeAnytypeApi(config *assistantConfig) error {
 		c.toolRequests = append(c.toolRequests, tool)
 		c.toolClients[tool.Function.Name] = c.localApi
 	}
+
 	return nil
 }
 
@@ -103,11 +114,12 @@ func (c *Chatter) InitializeMcpClients(config *assistantConfig) error {
 }
 
 func (c *Chatter) callTool(name string, args map[string]any) (*mcp.ToolCallResult, error) {
+	c.toolsLock.Lock()
 	cli, ok := c.toolClients[name]
 	if !ok {
 		return nil, fmt.Errorf("tool %s not found", name)
 	}
-
+	c.toolsLock.Unlock()
 	return cli.CallTool(name, args)
 }
 

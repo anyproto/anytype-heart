@@ -32,32 +32,22 @@ func NewAPIClient(baseURL string, apiKey string, spaceId string) *APIClient {
 }
 
 // HandleToolCall processes a tool call and executes the corresponding API request
-func (c *APIClient) HandleToolCall(toolCall openai.ToolCall) (map[string]interface{}, error) {
+func (c *APIClient) HandleToolCall(tool ApiTool, args map[string]interface{}) (map[string]interface{}, error) {
 	// Parse the function arguments
-	var args map[string]interface{}
-	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
-		return nil, fmt.Errorf("failed to parse function arguments: %v", err)
-	}
-
-	// Extract function name which contains method and path
-	// Format is "METHOD /path/to/resource"
-	functionName := toolCall.Function.Name
-	tool := GetToolByName(functionName)
-
 	args["space_id"] = c.SpaceId
 	// Extract path parameters and build the URL
 	url := c.buildURL(tool.Path, args)
 
 	// Create the request
 	var reqBody io.Reader
-	if body, ok := args["body"]; ok && (tool.Method == "POST" || tool.Method == "PUT" || tool.Method == "PATCH") {
-		jsonBody, err := json.Marshal(body)
+	if tool.Method == "POST" || tool.Method == "PUT" || tool.Method == "PATCH" {
+		jsonBody, err := json.Marshal(args)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal request body: %v", err)
 		}
 		reqBody = bytes.NewBuffer(jsonBody)
 		// Remove body from args so it doesn't get added as a query parameter
-		delete(args, "body")
+		args = map[string]interface{}{}
 	}
 
 	// Create HTTP request
@@ -109,7 +99,7 @@ func (c *APIClient) HandleToolCall(toolCall openai.ToolCall) (map[string]interfa
 			"content":     string(respBody),
 		}, nil
 	}
-	fmt.Printf("api request %s %s: %+v %s\n", req.Method, req.URL.String(), toolCall.Function.Arguments, string(respBody))
+	fmt.Printf("api request %s %s: %+v %s\n", req.Method, req.URL.String(), args, string(respBody))
 
 	// Add status code to the result
 	result["status_code"] = resp.StatusCode
@@ -135,8 +125,17 @@ func (c *APIClient) CallTool(name string, params any) (*mcp.ToolCallResult, erro
 		},
 	}
 
+	var args map[string]interface{}
+	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+		return nil, fmt.Errorf("failed to parse function arguments: %v", err)
+	}
+
+	// Extract function name which contains method and path
+	// Format is "METHOD /path/to/resource"
+	functionName := toolCall.Function.Name
+	tool := GetToolByName(functionName)
 	// Process the tool call using the existing handler
-	result, err := c.HandleToolCall(toolCall)
+	result, err := c.HandleToolCall(*tool, args)
 	if err != nil {
 		return &mcp.ToolCallResult{
 			IsError: true,
@@ -191,15 +190,4 @@ func (c *APIClient) buildURL(path string, args map[string]interface{}) string {
 	}
 
 	return url
-}
-
-// convertPathFormat converts underscores back to slashes in the path part
-func convertPathFormat(pathPart string) string {
-	// Replace consecutive underscores with slashes
-	path := strings.ReplaceAll(pathPart, "__", "/")
-
-	// Handle any remaining underscores (should be path parameters)
-	path = strings.ReplaceAll(path, "_", "/")
-
-	return path
 }
