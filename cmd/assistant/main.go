@@ -100,6 +100,7 @@ func run() error {
 		store:                handledMessages,
 		maxRequests:          100,
 		toolClients:          make(map[string]ToolCaller),
+		toolRequestsIndex:    make(map[string]int),
 		approvedMessages:     map[string]bool{},
 		pendingToolCalls:     map[string]*toolsCallRequest{},
 		forceUpdate:          make(chan struct{}),
@@ -107,7 +108,7 @@ func run() error {
 		spaceId:              app.currentSpaceId,
 	}
 
-	sub := newSubscriber(app.config, getService[subscription.Service](app), chatter.AddTool)
+	sub := newSubscriber(app.config, getService[subscription.Service](app), chatter.SetTool)
 	err = sub.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("subscriber run: %w", err)

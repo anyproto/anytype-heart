@@ -31,7 +31,7 @@ type subscriber struct {
 	relationJsonKeyToId map[string]string
 	options             map[string]*Option
 	service             subscription.Service
-	addTool             AddToolFunc
+	setTool             AddToolFunc
 	api                 *api.APIClient
 }
 
@@ -45,7 +45,7 @@ func newSubscriber(config *assistantConfig, service subscription.Service, tool A
 		relationJsonKeyToId: make(map[string]string),
 		options:             make(map[string]*Option),
 		service:             service,
-		addTool:             tool,
+		setTool:             tool,
 		api:                 api.NewAPIClient(apiBaseURL(config.apiListenAddr), config.apiKey, config.SpaceId),
 	}
 }
@@ -258,6 +258,7 @@ func (o *objectTypeCaller) Tool() openai.Tool {
 	for _, relId := range o.ot.RelationIds {
 		rel := o.subscriber.relations[relId]
 		if rel == nil {
+			fmt.Printf("relation %s not found for type %s\n", relId, o.ot.Name)
 			continue
 		}
 		if _, ok := properties[rel.Key]; ok {
@@ -408,14 +409,16 @@ func (s *subscriber) listTypes(ctx context.Context) error {
 					continue
 				}
 				s.typesLock.Lock()
+
 				if _, ok := s.types[ot.Key]; ok {
 					s.types[ot.Key] = &ot
 				} else {
 					s.types[ot.Key] = &ot
-					s.initTypeTool(&ot)
 				}
-
 				s.typesLock.Unlock()
+				// hack to wait for relations first
+				time.Sleep(time.Second)
+				s.initTypeTool(&ot)
 			}
 		}
 	}
@@ -429,7 +432,7 @@ func (s *subscriber) initTypeTool(ot *ObjectType) {
 		subscriber: s,
 	}
 	tool := caller.Tool()
-	s.addTool(tool, caller)
+	s.setTool(tool, caller)
 }
 
 func (s *subscriber) listRelations(ctx context.Context) error {

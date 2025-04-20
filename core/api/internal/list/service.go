@@ -3,6 +3,8 @@ package list
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/iancoleman/strcase"
@@ -11,9 +13,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -34,6 +38,7 @@ type Service interface {
 	GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error)
 	GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error)
 	AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error
+	CreateObjectsCollection(ctx context.Context, spaceId string, req CreateCollectionRequest) error
 	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 }
 
@@ -232,6 +237,75 @@ func (s *service) AddObjectsToList(ctx context.Context, spaceId string, listId s
 
 	if resp.Error.Code != pb.RpcObjectCollectionAddResponseError_NULL {
 		return ErrFailedAddObjectsToList
+	}
+
+	return nil
+}
+
+// CreateObjectsCollection creates a collection and add the objects there
+func (s *service) CreateObjectsCollection(ctx context.Context, spaceId string, req CreateCollectionRequest) error {
+	reqObject := object.CreateObjectRequest{
+		Name:        req.Name,
+		Icon:        util.Icon{Format: util.IconFormatEmoji, Emoji: &req.IconEmoji},
+		Description: req.Description,
+		TypeKey:     bundle.TypeKeyCollection.URL(),
+	}
+	collectionObject, err := s.objectService.CreateObject(ctx, spaceId, reqObject)
+	if err != nil {
+		return err
+	}
+	resp := s.mw.ObjectCollectionAdd(ctx, &pb.RpcObjectCollectionAddRequest{
+		ContextId: collectionObject.Id,
+		ObjectIds: req.ObjectIds,
+	})
+
+	if resp.Error.Code != pb.RpcObjectCollectionAddResponseError_NULL {
+		return ErrFailedAddObjectsToList
+	}
+
+	resp4 := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(req.ObjectIds),
+			},
+		},
+		Keys: nil,
+	})
+
+	var uniqueKeys = make(map[string]struct{})
+	for _, record := range resp4.Records {
+		for key, _ := range record.GetFields() {
+			if br, e := bundle.GetRelation(domain.RelationKey(key)); e == nil {
+				if br.Hidden && br.Key != bundle.RelationKeyName.String() {
+					continue
+				}
+			}
+			uniqueKeys[key] = struct{}{}
+		}
+	}
+	relationKeys := []string{
+		bundle.RelationKeyName.String(),
+		bundle.RelationKeyType.String(),
+	}
+	for key := range uniqueKeys {
+		// if not in the list, add it
+		if slices.Contains(relationKeys, key) {
+			continue
+		}
+		relationKeys = append(relationKeys, key)
+	}
+
+	resp2 := s.mw.BlockDataviewRelationSet(ctx, &pb.RpcBlockDataviewRelationSetRequest{
+		ContextId:    collectionObject.Id,
+		BlockId:      "dataview",
+		RelationKeys: relationKeys,
+	})
+
+	if resp2.Error.Code != pb.RpcBlockDataviewRelationSetResponseError_NULL {
+		fmt.Printf("failed to set collection relations: %s", resp2.Error.Description)
 	}
 
 	return nil

@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -44,18 +46,25 @@ type Chatter struct {
 	toolRequests []openai.Tool
 
 	// tool name => mcp client
-	toolClients map[string]ToolCaller
-	localApi    *api.APIClient
-	spaceId     string
-	sub         subscriber
+	toolClients       map[string]ToolCaller
+	toolRequestsIndex map[string]int
+	localApi          *api.APIClient
+	spaceId           string
+	sub               subscriber
 }
 
-func (c *Chatter) AddTool(tool openai.Tool, caller ToolCaller) {
+func (c *Chatter) SetTool(tool openai.Tool, caller ToolCaller) {
 	c.toolsLock.Lock()
 	defer c.toolsLock.Unlock()
 	fmt.Println("  registered tool:", tool.Function.Name)
+	if index, ok := c.toolRequestsIndex[tool.Function.Name]; ok {
+		c.toolRequests[index] = tool
+		c.toolClients[tool.Function.Name] = caller
+		return
+	}
 	c.toolRequests = append(c.toolRequests, tool)
 	c.toolClients[tool.Function.Name] = caller
+	c.toolRequestsIndex[tool.Function.Name] = len(c.toolRequests) - 1
 }
 
 type ToolCaller interface {
@@ -369,18 +378,44 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 
 	result := compResp.Choices[0]
 	messageText = result.Message.Content
-
+	fmt.Printf("  assistant compResp: %+v", compResp)
+	fmt.Printf("  assistant response: %+v", result)
 	// TODO Send message for tool call
 	if result.FinishReason == openai.FinishReasonToolCalls {
 		// TODO Send message and wait for approve
+		collectionId, objectIds, err := ExtractCollectionAndObjectIDs(&compResp)
+		if err != nil {
+			fmt.Printf("failed to extract collection and object ids: %s", err)
+		} else {
+			fmt.Printf("####  collectionId: %s, objectIds: %s", collectionId, objectIds)
+		}
 		if messageText != "" {
-			_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, &chatobject.Message{
+			msg := &chatobject.Message{
 				ChatMessage: &model.ChatMessage{
 					Message: &model.ChatMessageMessageContent{
 						Text: messageText,
 					},
 				},
-			})
+			}
+			if collectionId != "" {
+				msg.Attachments = append(msg.Attachments, &model.ChatMessageAttachment{
+					Target: collectionId,
+					Type:   model.ChatMessageAttachment_LINK,
+				})
+			} else if len(objectIds) > 0 {
+				// max 5 objects
+				if len(objectIds) > 5 {
+					objectIds = objectIds[:5]
+				}
+				msg.Attachments = make([]*model.ChatMessageAttachment, 0, len(objectIds))
+				for _, objectId := range objectIds {
+					msg.Attachments = append(msg.Attachments, &model.ChatMessageAttachment{
+						Target: objectId,
+						Type:   model.ChatMessageAttachment_LINK,
+					})
+				}
+			}
+			_, err = c.chatService.AddMessage(ctx, nil, c.chatObjectId, msg)
 			if err != nil {
 				return fmt.Errorf("response in chat: %w", err)
 			}
@@ -464,4 +499,66 @@ func (c *Chatter) AddReaction(messageId string, reactions map[string]bool) {
 	c.lock.Unlock()
 
 	c.forceUpdate <- struct{}{}
+}
+
+func ExtractCollectionAndObjectIDs(
+	resp *openai.ChatCompletionResponse,
+) (collectionID string, objectIDs []string, err error) {
+	if resp == nil {
+		return "", nil, errors.New("nil response")
+	}
+
+	idSet := make(map[string]struct{})
+	createObjRe := regexp.MustCompile(`^create_.*_object$`)
+
+	for _, choice := range resp.Choices {
+		for _, tc := range choice.Message.ToolCalls {
+			// first unmarshal the JSON string into a map
+			var args map[string]interface{}
+			if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+				return "", nil, fmt.Errorf("invalid arguments for %s: %w", tc.Function.Name, err)
+			}
+
+			name := tc.Function.Name
+
+			switch {
+			case name == "creates_a_collection_with_provided_object_ids":
+				if raw, ok := args["collection_id"]; ok {
+					if cid, ok := raw.(string); ok {
+						collectionID = cid
+					}
+				}
+				if raw, ok := args["object_ids"]; ok {
+					if arr, ok := raw.([]interface{}); ok {
+						for _, v := range arr {
+							if s, ok := v.(string); ok {
+								idSet[s] = struct{}{}
+							}
+						}
+					}
+				}
+
+			case createObjRe.MatchString(name):
+				if raw, ok := args["object_id"]; ok {
+					if s, ok := raw.(string); ok && s != collectionID {
+						idSet[s] = struct{}{}
+					}
+				}
+				if raw, ok := args["object_ids"]; ok {
+					if arr, ok := raw.([]interface{}); ok {
+						for _, v := range arr {
+							if s, ok := v.(string); ok && s != collectionID {
+								idSet[s] = struct{}{}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for id := range idSet {
+		objectIDs = append(objectIDs, id)
+	}
+	return collectionID, objectIDs, nil
 }

@@ -73,6 +73,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		v1.GET("/spaces/:space_id/objects/:object_id/:format", export.GetObjectExportHandler(s.exportService))
 
 		// List
+		v1.POST("/spaces/:space_id/lists", list.CreateCollectionHandler(s.listService))
 		v1.GET("/spaces/:space_id/lists/:list_id/views", list.GetListViewsHandler(s.listService))
 		v1.GET("/spaces/:space_id/lists/:list_id/:view_id/objects", list.GetObjectsInListHandler(s.listService))
 		v1.POST("/spaces/:space_id/lists/:list_id/objects", list.AddObjectsToListHandler(s.listService))

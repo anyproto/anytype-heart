@@ -23,6 +23,26 @@ components:
             ...
           type: string
       type: object
+    list.CreateCollectionRequest:
+      properties:
+        description:
+          description: The description of the collection object
+          example: This is a description of the object.
+          type: string
+        icon:
+          description: The icon of the  collection object
+          type: string
+        name:
+          description: The name of the collection object
+          example: My object
+          type: string
+        object_ids:
+          description: The list of object ids to be added to the collection
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: object
     list.Filter:
       properties:
         condition:
@@ -1240,6 +1260,73 @@ paths:
       summary: Get space
       tags:
       - spaces
+  /spaces/{space_id}/lists:
+    post:
+      description: Enables clients to create a new collection with a specified list
+        of object IDs. The endpoint accepts a JSON array of object IDs in the request
+        body. Upon successful creation, it returns a confirmation message. This is
+        useful for creating collections of objects, such as tasks or pages, in a single
+        operation.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-03-17"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/list.CreateCollectionRequest'
+        description: Collection to create
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Objects added successfully
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+        x-ai-description: Use this endpoint to create a new collection and add multiple
+          objects to it at once. You need to provide an array of object IDs in the
+          request body. This is useful for creating collections of objects, such as
+          tasks or pages, in a single operation.
+      security:
+      - bearerauth: []
+      summary: Creates a collection with provided object IDs
+      tags:
+      - lists
   /spaces/{space_id}/lists/{list_id}/{view_id}/objects:
     get:
       description: Returns a paginated list of objects associated with a specific
@@ -1782,11 +1869,10 @@ paths:
                 $ref: '#/components/schemas/util.ServerError'
           description: Internal server error
         x-ai-description: Use this endpoint to create a new object. You should first
-          check available object types with the List types endpoint, then create the
-          appropriate object type with this endpoint. When creating content, use structured
-          markdown for the body field. If the content is based on a web page, include
-          the source URL. The endpoint returns the full details of the newly created
-          object.
+          get suitable type key with the list_types tool. When creating content, use
+          structured markdown for the body field. If the content is based on a web
+          page, include the source URL
+        x-ai-omit: true
       security:
       - bearerauth: []
       summary: Create object
@@ -2441,6 +2527,7 @@ paths:
           provide pre-configured structures for creating new objects. The response
           includes each template's ID, name, and associated type. Use this information
           when you want to create a new object based on an existing template.
+        x-ai-omit: true
       security:
       - bearerauth: []
       summary: List templates

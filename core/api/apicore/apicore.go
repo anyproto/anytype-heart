@@ -43,6 +43,7 @@ type ClientCommands interface {
 	// List
 	ObjectCollectionAdd(context.Context, *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse
 	ObjectCollectionRemove(context.Context, *pb.RpcObjectCollectionRemoveRequest) *pb.RpcObjectCollectionRemoveResponse
+	BlockDataviewRelationSet(cctx context.Context, req *pb.RpcBlockDataviewRelationSetRequest) *pb.RpcBlockDataviewRelationSetResponse
 
 	// Property
 	ObjectRelationAddFeatured(context.Context, *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse

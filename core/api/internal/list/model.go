@@ -1,5 +1,12 @@
 package list
 
+type CreateCollectionRequest struct {
+	Name        string   `json:"name" example:"My object"`                                   // The name of the collection object
+	IconEmoji   string   `json:"icon"`                                                       // The icon of the  collection object
+	Description string   `json:"description" example:"This is a description of the object."` // The description of the collection object
+	ObjectIds   []string `json:"object_ids"`                                                 // The list of object ids to be added to the collection
+}
+
 type View struct {
 	Id      string   `json:"id" example:"67bf3f21cda9134102e2422c"`    // The id of the view
 	Name    string   `json:"name" example:"All"`                       // The name of the view

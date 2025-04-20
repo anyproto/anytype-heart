@@ -181,3 +181,47 @@ func RemoveObjectFromListHandler(s Service) gin.HandlerFunc {
 		c.JSON(http.StatusOK, "Objects removed successfully")
 	}
 }
+
+// CreateCollectionHandler
+//
+//	@Summary			Creates a collection with provided object IDs
+//	@Description		Enables clients to create a new collection with a specified list of object IDs. The endpoint accepts a JSON array of object IDs in the request body. Upon successful creation, it returns a confirmation message. This is useful for creating collections of objects, such as tasks or pages, in a single operation.
+//	@x-ai-description	"Use this endpoint to create a new collection and add multiple objects to it at once. You need to provide an array of object IDs in the request body. This is useful for creating collections of objects, such as tasks or pages, in a single operation."
+//	@Tags				lists
+//	@Accept				json
+//	@Produce			json
+//	@Param				Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param				space_id		path		string					true	"Space ID"
+//	@Param				object			body		CreateCollectionRequest	true	"Collection to create"
+//	@Success			200				{object}	string					"Objects added successfully"
+//	@Failure			400				{object}	util.ValidationError	"Bad request"
+//	@Failure			401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure			404				{object}	util.NotFoundError		"Not found"
+//	@Failure			500				{object}	util.ServerError		"Internal server error"
+//	@Security			bearerauth
+//	@Router				/spaces/{space_id}/lists [post]
+func CreateCollectionHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+
+		request := CreateCollectionRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		err := s.CreateObjectsCollection(c, spaceId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrFailedAddObjectsToList, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, "Objects added successfully")
+	}
+}
