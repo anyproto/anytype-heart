@@ -137,7 +137,7 @@ func (c *Chatter) callTool(name string, args map[string]any) (*mcp.ToolCallResul
 	}
 	fmt.Printf("tool %s response: %s\n", name, jsonutil.Stringify(result))
 
-	return cli.CallTool(name, args)
+	return result, nil
 }
 
 func (c *Chatter) Run(ctx context.Context) {
@@ -388,8 +388,6 @@ func (c *Chatter) sendRequest(ctx context.Context, messages []openai.ChatComplet
 
 	result := compResp.Choices[0]
 	messageText = result.Message.Content
-	fmt.Printf("  assistant compResp: %+v\n", compResp)
-	fmt.Printf("  assistant response: %+v\n", result)
 	var objectIds []string
 	objectIds, messageText = ExtractObjectIDs(messageText)
 
