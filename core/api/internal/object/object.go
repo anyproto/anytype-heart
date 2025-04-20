@@ -39,6 +39,9 @@ type Service interface {
 	GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error)
 	ListProperties(ctx context.Context, spaceId string, offset int, limit int) ([]Property, int, bool, error)
 	GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error)
+	CreateProperty(ctx context.Context, spaceId string, request CreatePropertyRequest) (Property, error)
+	UpdateProperty(ctx context.Context, spaceId string, propertyId string, request UpdatePropertyRequest) (Property, error)
+	DeleteProperty(ctx context.Context, spaceId string, propertyId string) (Property, error)
 	ListTags(ctx context.Context, spaceId string, propertyId string, offset int, limit int) ([]Tag, int, bool, error)
 	GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error)
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
@@ -413,4 +416,25 @@ func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 		Type:       s.getTypeFromStruct(details, typeMap),
 		Properties: s.getPropertiesFromStruct(details, propertyMap),
 	}
+}
+
+// isMissingObject returns true if val indicates a "_missing_object" placeholder.
+func (s *service) isMissingObject(val interface{}) bool {
+	switch v := val.(type) {
+	case string:
+		return v == "_missing_object"
+	case []interface{}:
+		if len(v) == 1 {
+			if str, ok := v[0].(string); ok {
+				return str == "_missing_object"
+			}
+		}
+	case Tag:
+		return v.Id == "_missing_object"
+	case []Tag:
+		if len(v) == 1 && v[0].Id == "_missing_object" {
+			return true
+		}
+	}
+	return false
 }

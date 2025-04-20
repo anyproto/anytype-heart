@@ -182,6 +182,15 @@ components:
           example: ot-page
           type: string
       type: object
+    object.CreatePropertyRequest:
+      properties:
+        format:
+          $ref: '#/components/schemas/object.PropertyFormat'
+        name:
+          description: The name of the property
+          example: Last modified date
+          type: string
+      type: object
     object.File:
       description: The file of the block, if applicable
       properties:
@@ -548,6 +557,17 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/object.Type'
+      type: object
+    object.UpdatePropertyRequest:
+      properties:
+        id:
+          description: Id of the property to update
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        name:
+          description: Name to set for the property
+          example: Last modified date
+          type: string
       type: object
     pagination.PaginatedResponse-list_View:
       properties:
@@ -1889,6 +1909,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
         "423":
           content:
             application/json:
@@ -2089,7 +2115,135 @@ paths:
       summary: List properties
       tags:
       - Properties
+    post:
+      description: Creates a new property in the specified space using a JSON payload.
+        The creation process is subject to rate limiting. The payload must include
+        property details such as the name and format. The endpoint then returns the
+        full property data, ready for further interactions.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/object.CreatePropertyRequest'
+        description: Property to create
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.PropertyResponse'
+          description: The created property
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Create property
+      tags:
+      - Properties
   /spaces/{space_id}/properties/{property_id}:
+    delete:
+      description: This endpoint “deletes” a property by marking it as archived. The
+        deletion process is performed safely and is subject to rate limiting. It returns
+        the property’s details after it has been archived. Proper error handling is
+        in place for situations such as when the property isn’t found or the deletion
+        cannot be performed because of permission issues.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Property ID
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.PropertyResponse'
+          description: The deleted property
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ForbiddenError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "423":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Delete property
+      tags:
+      - Properties
     get:
       description: Fetches detailed information about one specific property by its
         ID. This includes the property’s unique identifier, name and format. This
@@ -2149,6 +2303,79 @@ paths:
       security:
       - bearerauth: []
       summary: Get property
+      tags:
+      - Properties
+    patch:
+      description: This endpoint updates an existing property in the specified space
+        using a JSON payload. The update process is subject to rate limiting. The
+        payload must include the property ID and the name to be updated. The endpoint
+        then returns the full property data, ready for further interactions.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Property ID
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/object.UpdatePropertyRequest'
+        description: Property to update
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.PropertyResponse'
+          description: The updated property
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update property
       tags:
       - Properties
   /spaces/{space_id}/properties/{property_id}/tags:

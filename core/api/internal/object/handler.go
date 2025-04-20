@@ -98,6 +98,7 @@ func GetObjectHandler(s Service) gin.HandlerFunc {
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
 //	@Failure		423				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
@@ -110,6 +111,7 @@ func DeleteObjectHandler(s Service) gin.HandlerFunc {
 		object, err := s.DeleteObject(c.Request.Context(), spaceId, objectId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrObjectDeleted, http.StatusGone),
 			util.ErrToCode(ErrFailedDeleteObject, http.StatusForbidden),
 			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
@@ -271,6 +273,141 @@ func GetPropertyHandler(s Service) gin.HandlerFunc {
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrPropertyNotFound, http.StatusNotFound),
 			util.ErrToCode(ErrPropertyDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedRetrieveProperty, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+	}
+}
+
+// CreatePropertyHandler creates a new property in a space
+//
+//	@Summary		Create property
+//	@Description	Creates a new property in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include property details such as the name and format. The endpoint then returns the full property data, ready for further interactions.
+//	@Tags			Properties
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			property		body		CreatePropertyRequest	true	"Property to create"
+//	@Success		200				{object}	PropertyResponse		"The created property"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties [post]
+func CreatePropertyHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+
+		request := CreatePropertyRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		property, err := s.CreateProperty(c.Request.Context(), spaceId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(ErrFailedCreateProperty, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedRetrieveProperty, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+	}
+}
+
+// UpdatePropertyHandler updates a property in a space
+//
+//	@Summary		Update property
+//	@Description	This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the property ID and the name to be updated. The endpoint then returns the full property data, ready for further interactions.
+//	@Tags			Properties
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			property_id		path		string					true	"Property ID"
+//	@Param			property		body		UpdatePropertyRequest	true	"Property to update"
+//	@Success		200				{object}	PropertyResponse		"The updated property"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties/{property_id} [patch]
+func UpdatePropertyHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		propertyId := c.Param("property_id")
+
+		request := UpdatePropertyRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		property, err := s.UpdateProperty(c.Request.Context(), spaceId, propertyId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(ErrPropertyNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrPropertyDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedUpdateProperty, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedRetrieveProperty, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+	}
+}
+
+// DeletePropertyHandler deletes a property in a space
+//
+//	@Summary		Delete property
+//	@Description	This endpoint “deletes” a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.
+//	@Tags			Properties
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			property_id		path		string					true	"Property ID"
+//	@Success		200				{object}	PropertyResponse		"The deleted property"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		423				{object}	util.RateLimitError		"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties/{property_id} [delete]
+func DeletePropertyHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		propertyId := c.Param("property_id")
+
+		property, err := s.DeleteProperty(c.Request.Context(), spaceId, propertyId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrPropertyNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrPropertyDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedDeleteProperty, http.StatusForbidden),
 			util.ErrToCode(ErrFailedRetrieveProperty, http.StatusInternalServerError),
 		)
 

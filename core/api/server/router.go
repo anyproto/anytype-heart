@@ -88,10 +88,11 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// Property
 		v1.GET("/spaces/:space_id/properties", object.GetPropertiesHandler(s.objectService))
 		v1.GET("/spaces/:space_id/properties/:property_id", object.GetPropertyHandler(s.objectService))
-		// TODO: implement  create, delete and update property endpoints
-		// v1.POST("/spaces/:space_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.CreatePropertyHandler(s.objectService))
-		// v1.PATCH("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyHandler(s.objectService))
-		// v1.DELETE("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeletePropertyHandler(s.objectService))
+		v1.POST("/spaces/:space_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.CreatePropertyHandler(s.objectService))
+		v1.PATCH("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyHandler(s.objectService))
+		v1.DELETE("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeletePropertyHandler(s.objectService))
+
+		// Tag
 		v1.GET("/spaces/:space_id/properties/:property_id/tags", object.GetTagsHandler(s.objectService))
 		v1.GET("/spaces/:space_id/properties/:property_id/tags/:tag_id", object.GetTagHandler(s.objectService))
 		// TODO: implement create, delete and update property options endpoints

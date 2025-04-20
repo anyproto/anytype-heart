@@ -83,6 +83,16 @@ type PropertyResponse struct {
 	Property Property `json:"property"` // The property
 }
 
+type CreatePropertyRequest struct {
+	Name   string         `json:"name" example:"Last modified date"`                                                                       // The name of the property
+	Format PropertyFormat `json:"format" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property
+}
+
+type UpdatePropertyRequest struct {
+	Id   string `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"` // Id of the property to update
+	Name string `json:"name" example:"Last modified date"`                                        // Name to set for the property
+}
+
 type Property struct {
 	Id          string         `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"`                                // The id of the property
 	Key         string         `json:"key" example:"last_modified_date"`                                                                        // The key of the property
