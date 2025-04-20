@@ -294,6 +294,9 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 
 	iconFields := map[string]*types.Value{}
 	if request.Icon.Emoji != nil {
+		if !util.IsEmoji(*request.Icon.Emoji) {
+			return nil, util.ErrBadInput("icon emoji is not valid")
+		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*request.Icon.Emoji)
 	} else if request.Icon.File != nil {
 		iconFields[bundle.RelationKeyIconImage.String()] = pbtypes.String(*request.Icon.File)

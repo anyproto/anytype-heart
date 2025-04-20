@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"unicode"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/pb"
@@ -80,6 +81,16 @@ func StringPtr(s string) *string {
 
 func ColorPtr(c Color) *Color {
 	return &c
+}
+
+// isEmoji returns true if every rune in s is in the Unicode 'Symbol, Other' category.
+func IsEmoji(s string) bool {
+	for _, r := range s {
+		if !unicode.Is(unicode.So, r) {
+			return false
+		}
+	}
+	return true
 }
 
 // GetIcon returns the icon to use for the object, which can be builtin icon, emoji or file
