@@ -22,6 +22,9 @@ var (
 	ErrPropertyNotFound         = errors.New("property not found")
 	ErrPropertyDeleted          = errors.New("property deleted")
 	ErrFailedRetrieveProperty   = errors.New("failed to retrieve property")
+	ErrFailedCreateProperty     = errors.New("failed to create property")
+	ErrFailedUpdateProperty     = errors.New("failed to update property")
+	ErrFailedDeleteProperty     = errors.New("failed to delete property")
 	ErrFailedRetrieveTags       = errors.New("failed to retrieve tags")
 	ErrTagNotFound              = errors.New("tag not found")
 	ErrTagDeleted               = errors.New("tag deleted")
@@ -107,8 +110,8 @@ func (s *service) ListProperties(ctx context.Context, spaceId string, offset int
 	properties = make([]Property, 0, len(paginatedProperties))
 
 	for _, record := range paginatedProperties {
-		uk, property := s.mapPropertyFromRecord(record)
-		if _, isExcluded := excludedSystemProperties[uk]; isExcluded {
+		rk, property := s.mapPropertyFromRecord(record)
+		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
 		properties = append(properties, property)
@@ -138,18 +141,36 @@ func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId st
 		}
 	}
 
-	uk, property := s.mapPropertyFromRecord(resp.ObjectView.Details[0].Details)
-	if _, isExcluded := excludedSystemProperties[uk]; isExcluded {
+	rk, property := s.mapPropertyFromRecord(resp.ObjectView.Details[0].Details)
+	if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 		return Property{}, ErrPropertyNotFound
 	}
 	return property, nil
 }
 
+// CreateProperty creates a new property in a specific space.
+func (s *service) CreateProperty(ctx context.Context, spaceId string, request CreatePropertyRequest) (Property, error) {
+	// TODO: implement
+	return Property{}, nil
+}
+
+// UpdateProperty updates an existing property in a specific space.
+func (s *service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request UpdatePropertyRequest) (Property, error) {
+	// TODO: implement
+	return Property{}, nil
+}
+
+// DeleteProperty deletes a property in a specific space.
+func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (Property, error) {
+	// TODO: implement
+	return Property{}, nil
+}
+
 // ListTags returns all tags for a given property id in a space.
-func (s *service) ListTags(ctx context.Context, spaceId string, propertyIdOrKey string, offset int, limit int) (options []Tag, total int, hasMore bool, err error) {
-	var uk string
+func (s *service) ListTags(ctx context.Context, spaceId string, propertyIdOrKey string, offset int, limit int) (tags []Tag, total int, hasMore bool, err error) {
+	var rk string
 	if strings.HasPrefix(propertyIdOrKey, propPrefix) {
-		uk = FromPropertyApiKey(propertyIdOrKey)
+		rk = FromPropertyApiKey(propertyIdOrKey)
 	} else {
 		// TODO: clean up id vs key logic
 		// propertyKey, err := util.ResolveIdtoUniqueKey(s.mw, spaceId, propertyIdOrKey)
@@ -169,7 +190,7 @@ func (s *service) ListTags(ctx context.Context, spaceId string, propertyIdOrKey 
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(uk),
+				Value:       pbtypes.String(rk),
 			},
 		},
 		Keys: []string{
@@ -188,24 +209,69 @@ func (s *service) ListTags(ctx context.Context, spaceId string, propertyIdOrKey 
 	}
 
 	total = len(resp.Records)
-	paginatedOptions, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	options = make([]Tag, 0, len(paginatedOptions))
+	paginatedTags, hasMore := pagination.Paginate(resp.Records, offset, limit)
+	tags = make([]Tag, 0, len(paginatedTags))
 
 	for _, record := range resp.Records {
-		options = append(options, Tag{
-			Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Color: util.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
-		})
+		tags = append(tags, s.mapTagFromRecord(record))
 	}
 
-	return options, total, hasMore, nil
+	return tags, total, hasMore, nil
 }
 
 // GetTag retrieves a single tag option by its ID in a specific space.
 func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
-	// TODO: implement proper tag retrieval
-	return Tag{}, nil
+	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: tagId,
+	})
+
+	if resp.Error != nil {
+		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
+			return Tag{}, ErrTagNotFound
+		}
+
+		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
+			return Tag{}, ErrTagDeleted
+		}
+
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return Tag{}, ErrFailedRetrieveTag
+		}
+	}
+
+	return s.mapTagFromRecord(resp.ObjectView.Details[0].Details), nil
+}
+
+// TODO: remove once bug of select option not being returned in details is fixed
+func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
+	tags := make([]Tag, 0, len(tagIds))
+	for _, tagId := range tagIds {
+		if tagId == "" {
+			continue
+		}
+
+		resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+			SpaceId:  spaceId,
+			ObjectId: tagId,
+		})
+
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			continue
+		}
+
+		tags = append(tags, s.mapTagFromRecord(resp.ObjectView.Details[0].Details))
+	}
+
+	return tags
+}
+
+func (s *service) mapTagFromRecord(record *types.Struct) Tag {
+	return Tag{
+		Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Color: util.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
+	}
 }
 
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
@@ -341,33 +407,6 @@ func (s *service) MapRelationFormat(format model.RelationFormat) PropertyFormat 
 	}
 }
 
-// TODO: remove once bug of select option not being returned in details is fixed
-func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
-	tags := make([]Tag, 0, len(tagIds))
-	for _, tagId := range tagIds {
-		if tagId == "" {
-			continue
-		}
-
-		resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
-			SpaceId:  spaceId,
-			ObjectId: tagId,
-		})
-
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			continue
-		}
-
-		tags = append(tags, Tag{
-			Id:    tagId,
-			Name:  resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Color: util.ColorOptionToColor[resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
-		})
-	}
-
-	return tags
-}
-
 // GetPropertyMapsFromStore retrieves all properties for all spaces.
 func (s *service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]Property, error) {
 	spacesToProperties := make(map[string]map[string]Property, len(spaceIds))
@@ -414,20 +453,20 @@ func (s *service) GetPropertyMapFromStore(spaceId string) (map[string]Property, 
 
 	propertyMap := make(map[string]Property, len(resp.Records))
 	for _, record := range resp.Records {
-		uk, p := s.mapPropertyFromRecord(record)
-		propertyMap[uk] = p
+		rk, p := s.mapPropertyFromRecord(record)
+		propertyMap[rk] = p
 		propertyMap[p.Id] = p // add property under id as key to map as well
 	}
 
 	return propertyMap, nil
 }
 
-// mapPropertyFromRecord maps a single property record into a Property and returns its trimmed unique key.
+// mapPropertyFromRecord maps a single property record into a Property and returns its trimmed relation key.
 func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property) {
-	uk := strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-")
+	rk := strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-")
 
 	var key, name string
-	switch uk {
+	switch rk {
 	case bundle.RelationKeyCreator.String():
 		key = ToPropertyApiKey("created_by")
 		name = "Created By"
@@ -435,38 +474,36 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property)
 		key = ToPropertyApiKey("created_date")
 		name = "Created Date"
 	default:
-		key = ToPropertyApiKey(uk)
+		key = ToPropertyApiKey(rk)
 		name = record.Fields[bundle.RelationKeyName.String()].GetStringValue()
 	}
 
-	p := Property{
+	return rk, Property{
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:    key,
 		Name:   name,
 		Format: s.MapRelationFormat(model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())),
 	}
-
-	return uk, p
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
 func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]Property) []Property {
 	properties := make([]Property, 0)
-	for uk, value := range details.GetFields() {
-		if _, isExcluded := excludedSystemProperties[uk]; isExcluded {
+	for rk, value := range details.GetFields() {
+		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
 
-		key := propertyMap[uk].Key
-		format := propertyMap[uk].Format
+		key := propertyMap[rk].Key
+		format := propertyMap[rk].Format
 		convertedVal := s.convertPropertyValue(key, value, format, details)
 
 		if s.isMissingObject(convertedVal) {
 			continue
 		}
 
-		id := propertyMap[uk].Id
-		name := propertyMap[uk].Name
+		id := propertyMap[rk].Id
+		name := propertyMap[rk].Name
 		properties = append(properties, s.buildProperty(id, key, name, format, convertedVal))
 	}
 
@@ -538,7 +575,7 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 
 // buildProperty creates a Property based on the format and converted value.
 func (s *service) buildProperty(id string, key string, name string, format PropertyFormat, val interface{}) Property {
-	prop := &Property{
+	p := &Property{
 		Id:     id,
 		Key:    key,
 		Name:   name,
@@ -548,23 +585,23 @@ func (s *service) buildProperty(id string, key string, name string, format Prope
 	switch format {
 	case PropertyFormatText:
 		if str, ok := val.(string); ok {
-			prop.Text = &str
+			p.Text = &str
 		}
 	case PropertyFormatNumber:
 		if num, ok := val.(float64); ok {
-			prop.Number = &num
+			p.Number = &num
 		}
 	case PropertyFormatSelect:
 		if sel, ok := val.(Tag); ok {
-			prop.Select = &sel
+			p.Select = &sel
 		}
 	case PropertyFormatMultiSelect:
 		if ms, ok := val.([]Tag); ok {
-			prop.MultiSelect = ms
+			p.MultiSelect = ms
 		}
 	case PropertyFormatDate:
 		if dateStr, ok := val.(string); ok {
-			prop.Date = &dateStr
+			p.Date = &dateStr
 		}
 	case PropertyFormatFile:
 		if fileList, ok := val.([]interface{}); ok {
@@ -574,27 +611,27 @@ func (s *service) buildProperty(id string, key string, name string, format Prope
 					files = append(files, str)
 				}
 			}
-			prop.File = files
+			p.File = files
 		}
 	case PropertyFormatCheckbox:
 		if cb, ok := val.(bool); ok {
-			prop.Checkbox = &cb
+			p.Checkbox = &cb
 		}
 	case PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
-			prop.Url = &urlStr
+			p.Url = &urlStr
 		}
 	case PropertyFormatEmail:
 		if email, ok := val.(string); ok {
-			prop.Email = &email
+			p.Email = &email
 		}
 	case PropertyFormatPhone:
 		if phone, ok := val.(string); ok {
-			prop.Phone = &phone
+			p.Phone = &phone
 		}
 	case PropertyFormatObject:
 		if obj, ok := val.(string); ok {
-			prop.Object = []string{obj}
+			p.Object = []string{obj}
 		} else if objSlice, ok := val.([]interface{}); ok {
 			var objects []string
 			for _, v := range objSlice {
@@ -602,34 +639,13 @@ func (s *service) buildProperty(id string, key string, name string, format Prope
 					objects = append(objects, str)
 				}
 			}
-			prop.Object = objects
+			p.Object = objects
 		}
 	default:
 		if str, ok := val.(string); ok {
-			prop.Text = &str
+			p.Text = &str
 		}
 	}
 
-	return *prop
-}
-
-// isMissingObject returns true if val indicates a "_missing_object" placeholder.
-func (s *service) isMissingObject(val interface{}) bool {
-	switch v := val.(type) {
-	case string:
-		return v == "_missing_object"
-	case []interface{}:
-		if len(v) == 1 {
-			if str, ok := v[0].(string); ok {
-				return str == "_missing_object"
-			}
-		}
-	case Tag:
-		return v.Id == "_missing_object"
-	case []Tag:
-		if len(v) == 1 && v[0].Id == "_missing_object" {
-			return true
-		}
-	}
-	return false
+	return *p
 }
