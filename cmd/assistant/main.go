@@ -10,6 +10,7 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/cmd/assistant/mcp"
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -100,6 +101,7 @@ func run() error {
 		store:                handledMessages,
 		maxRequests:          100,
 		toolClients:          make(map[string]ToolCaller),
+		toolCallResponses:    make(map[string]*mcp.ToolCallResult),
 		toolRequestsIndex:    make(map[string]int),
 		approvedMessages:     map[string]bool{},
 		pendingToolCalls:     map[string]*toolsCallRequest{},

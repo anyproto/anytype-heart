@@ -6,6 +6,14 @@ import (
 	"reflect"
 )
 
+func Stringify(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
 func MarshalSafely(v any) ([]byte, error) {
 	clearStruct(v)
 	return json.Marshal(v)

@@ -352,6 +352,7 @@ func (s *subscriber) listTypes(ctx context.Context) error {
 					bundle.TypeKeySpace.URL(),
 					bundle.TypeKeyCollection.URL(),
 					bundle.TypeKeySpaceView.URL(),
+					bundle.TypeKeyNote.URL(),
 					bundle.TypeKeyParticipant.URL(),
 					bundle.TypeKeyRelation.URL(),
 					bundle.TypeKeyImage.URL(),

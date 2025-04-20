@@ -92,7 +92,7 @@ func (c *APIClient) HandleToolCall(tool ApiTool, args map[string]interface{}) (m
 	// Parse the response
 	var result map[string]interface{}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		fmt.Printf("api request %s %s: failed to parse response body: %v\n", req.Method, req.URL.String(), err)
+		fmt.Printf("api request %s %s: failed to parse response body: '%v'\n", req.Method, req.URL.String(), err, string(respBody))
 		fmt.Printf("Response body: %s\n", string(respBody))
 		// If response is not valid JSON, return as plain text
 		return map[string]interface{}{

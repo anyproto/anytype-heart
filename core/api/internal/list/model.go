@@ -7,6 +7,11 @@ type CreateCollectionRequest struct {
 	ObjectIds   []string `json:"object_ids"`                                                 // The list of object ids to be added to the collection
 }
 
+type ObjectResponse struct {
+	Name string `json:"name"`      // The name of the object
+	Id   string `json:"object_id"` // The id of the collection object
+}
+
 type View struct {
 	Id      string   `json:"id" example:"67bf3f21cda9134102e2422c"`    // The id of the view
 	Name    string   `json:"name" example:"All"`                       // The name of the view

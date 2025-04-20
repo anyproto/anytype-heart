@@ -38,7 +38,7 @@ type Service interface {
 	GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error)
 	GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error)
 	AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error
-	CreateObjectsCollection(ctx context.Context, spaceId string, req CreateCollectionRequest) error
+	CreateObjectsCollection(ctx context.Context, spaceId string, req CreateCollectionRequest) (*object.ObjectWithBlocks, error)
 	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 }
 
@@ -243,7 +243,7 @@ func (s *service) AddObjectsToList(ctx context.Context, spaceId string, listId s
 }
 
 // CreateObjectsCollection creates a collection and add the objects there
-func (s *service) CreateObjectsCollection(ctx context.Context, spaceId string, req CreateCollectionRequest) error {
+func (s *service) CreateObjectsCollection(ctx context.Context, spaceId string, req CreateCollectionRequest) (*object.ObjectWithBlocks, error) {
 	reqObject := object.CreateObjectRequest{
 		Name:        req.Name,
 		Icon:        util.Icon{Format: util.IconFormatEmoji, Emoji: &req.IconEmoji},
@@ -252,7 +252,7 @@ func (s *service) CreateObjectsCollection(ctx context.Context, spaceId string, r
 	}
 	collectionObject, err := s.objectService.CreateObject(ctx, spaceId, reqObject)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	resp := s.mw.ObjectCollectionAdd(ctx, &pb.RpcObjectCollectionAddRequest{
 		ContextId: collectionObject.Id,
@@ -260,7 +260,7 @@ func (s *service) CreateObjectsCollection(ctx context.Context, spaceId string, r
 	})
 
 	if resp.Error.Code != pb.RpcObjectCollectionAddResponseError_NULL {
-		return ErrFailedAddObjectsToList
+		return nil, ErrFailedAddObjectsToList
 	}
 
 	resp4 := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
@@ -329,7 +329,7 @@ func (s *service) CreateObjectsCollection(ctx context.Context, spaceId string, r
 		fmt.Printf("failed to set collection relations: %s", resp2.Error.Description)
 	}
 
-	return nil
+	return &collectionObject, nil
 }
 
 // RemoveObjectsFromList removes objects from a list

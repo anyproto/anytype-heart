@@ -66,6 +66,15 @@ components:
           example: Some value...
           type: string
       type: object
+    list.ObjectResponse:
+      properties:
+        name:
+          description: The name of the object
+          type: string
+        object_id:
+          description: The id of the collection object
+          type: string
+      type: object
     list.Sort:
       properties:
         format:
@@ -1292,8 +1301,8 @@ paths:
           content:
             application/json:
               schema:
-                type: string
-          description: Objects added successfully
+                $ref: '#/components/schemas/list.ObjectResponse'
+          description: The created object
         "400":
           content:
             application/json:

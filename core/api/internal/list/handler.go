@@ -193,7 +193,7 @@ func RemoveObjectFromListHandler(s Service) gin.HandlerFunc {
 //	@Param				Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param				space_id		path		string					true	"Space ID"
 //	@Param				object			body		CreateCollectionRequest	true	"Collection to create"
-//	@Success			200				{object}	string					"Objects added successfully"
+//	@Success			200				{object}	ObjectResponse			"The created object"
 //	@Failure			400				{object}	util.ValidationError	"Bad request"
 //	@Failure			401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure			404				{object}	util.NotFoundError		"Not found"
@@ -211,9 +211,9 @@ func CreateCollectionHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		err := s.CreateObjectsCollection(c, spaceId, request)
+		object, err := s.CreateObjectsCollection(c, spaceId, request)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrFailedAddObjectsToList, http.StatusInternalServerError),
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 		)
 
 		if code != http.StatusOK {
@@ -222,6 +222,9 @@ func CreateCollectionHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, "Objects added successfully")
+		c.JSON(http.StatusOK, ObjectResponse{
+			Name: object.Name,
+			Id:   object.Id,
+		})
 	}
 }
