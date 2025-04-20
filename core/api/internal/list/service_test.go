@@ -35,7 +35,8 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-	objectService := object.NewService(mwMock, gatewayUrl)
+	exportMock := mock_apicore.NewMockExportService(t)
+	objectService := object.NewService(mwMock, exportMock, gatewayUrl)
 	listService := NewService(mwMock, objectService)
 
 	return &fixture{
