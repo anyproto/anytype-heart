@@ -90,7 +90,7 @@ type Property struct {
 	MultiSelect []Tag          `json:"multi_select,omitempty"`                                                                                  // The multi-select values, if applicable
 	Date        *string        `json:"date,omitempty" example:"2025-02-14T12:34:56Z"`                                                           // The date value, if applicable
 	File        []string       `json:"file,omitempty" example:"['fileId']"`                                                                     // The file references, if applicable
-	Checkbox    *bool          `json:"checkbox,omitempty" example:"true" enum:"true,false"`                                                     // The checkbox value, if applicable
+	Checkbox    *bool          `json:"checkbox,omitempty" example:"true" enums:"true,false"`                                                    // The checkbox value, if applicable
 	Url         *string        `json:"url,omitempty" example:"https://example.com"`                                                             // The url value, if applicable
 	Email       *string        `json:"email,omitempty" example:"example@example.com"`                                                           // The email value, if applicable
 	Phone       *string        `json:"phone,omitempty" example:"+1234567890"`                                                                   // The phone number value, if applicable

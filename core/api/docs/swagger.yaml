@@ -27,12 +27,28 @@ components:
       properties:
         condition:
           description: The filter condition
+          enum:
+          - equal
+          - not_equal
+          - greater
+          - less
+          - greater_or_equal
+          - less_or_equal
+          - like
+          - not_like
+          - in
+          - not_in
+          - empty
+          - not_empty
+          - all_in
+          - not_all_in
+          - exact_in
+          - not_exact_in
+          - exists
           example: contains
           type: string
         format:
-          description: The format of the property used for filtering
-          example: text
-          type: string
+          $ref: '#/components/schemas/object.PropertyFormat'
         id:
           description: The id of the filter
           example: 67bf3f21cda9134102e2422c
@@ -49,9 +65,7 @@ components:
     list.Sort:
       properties:
         format:
-          description: The format of the property used for sorting
-          example: text
-          type: string
+          $ref: '#/components/schemas/object.PropertyFormat'
         id:
           description: The id of the sort
           example: 67bf3f21cda9134102e2422c
@@ -62,6 +76,10 @@ components:
           type: string
         sort_type:
           description: The sort direction
+          enum:
+          - asc
+          - desc
+          - custom
           example: asc
           type: string
       type: object
@@ -305,6 +323,9 @@ components:
       properties:
         checkbox:
           description: The checkbox value, if applicable
+          enum:
+          - true
+          - false
           example: true
           type: boolean
         date:
@@ -324,21 +345,7 @@ components:
           type: array
           uniqueItems: false
         format:
-          description: The format of the property
-          enum:
-          - text
-          - number
-          - select
-          - multi_select
-          - date
-          - file
-          - checkbox
-          - url
-          - email
-          - phone
-          - object
-          example: date
-          type: string
+          $ref: '#/components/schemas/object.PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -384,6 +391,34 @@ components:
           example: https://example.com
           type: string
       type: object
+    object.PropertyFormat:
+      description: The format of the property used for filtering
+      enum:
+      - text
+      - number
+      - select
+      - multi_select
+      - date
+      - file
+      - checkbox
+      - url
+      - email
+      - phone
+      - object
+      example: date
+      type: string
+      x-enum-varnames:
+      - PropertyFormatText
+      - PropertyFormatNumber
+      - PropertyFormatSelect
+      - PropertyFormatMultiSelect
+      - PropertyFormatDate
+      - PropertyFormatFile
+      - PropertyFormatCheckbox
+      - PropertyFormatUrl
+      - PropertyFormatEmail
+      - PropertyFormatPhone
+      - PropertyFormatObject
     object.PropertyResponse:
       properties:
         property:
