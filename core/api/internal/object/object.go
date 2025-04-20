@@ -36,6 +36,7 @@ type Service interface {
 	GetObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error)
+	GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error)
 	ListProperties(ctx context.Context, spaceId string, offset int, limit int) ([]Property, int, bool, error)
 	GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error)
 	ListPropertyOptions(ctx context.Context, spaceId string, propertyId string, offset int, limit int) ([]Tag, int, bool, error)
@@ -54,12 +55,13 @@ type Service interface {
 }
 
 type service struct {
-	mw         apicore.ClientCommands
-	gatewayUrl string
+	mw            apicore.ClientCommands
+	gatewayUrl    string
+	exportService apicore.ExportService
 }
 
-func NewService(mw apicore.ClientCommands, gatewayUrl string) Service {
-	return &service{mw: mw, gatewayUrl: gatewayUrl}
+func NewService(mw apicore.ClientCommands, exportService apicore.ExportService, gatewayUrl string) Service {
+	return &service{mw: mw, exportService: exportService, gatewayUrl: gatewayUrl}
 }
 
 // ListObjects retrieves a paginated list of objects in a specific space.

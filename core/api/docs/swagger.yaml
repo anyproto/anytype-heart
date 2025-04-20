@@ -15,14 +15,6 @@ components:
           example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
           type: string
       type: object
-    export.ObjectExportResponse:
-      properties:
-        markdown:
-          example: |-
-            # This is the title
-            ...
-          type: string
-      type: object
     list.Filter:
       properties:
         condition:
@@ -262,6 +254,14 @@ components:
           type: string
         type:
           $ref: '#/components/schemas/object.Type'
+      type: object
+    object.ObjectExportResponse:
+      properties:
+        markdown:
+          example: |-
+            # This is the title
+            ...
+          type: string
       type: object
     object.ObjectResponse:
       properties:
@@ -1960,7 +1960,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/export.ObjectExportResponse'
+                $ref: '#/components/schemas/object.ObjectExportResponse'
           description: Object exported successfully
         "400":
           content:
@@ -1984,7 +1984,7 @@ paths:
       - bearerauth: []
       summary: Export object
       tags:
-      - export
+      - Objects
   /spaces/{space_id}/properties:
     get:
       description: This endpoint retrieves a paginated list of properties available

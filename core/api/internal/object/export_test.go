@@ -1,9 +1,7 @@
-package export
+package object
 
 import (
 	"testing"
-
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 )
 
 const (
@@ -13,24 +11,6 @@ const (
 	unrecognizedFormat = "unrecognized"
 	exportPath         = "/some/dir/myexport"
 )
-
-type fixture struct {
-	service    Service
-	exportMock *mock_apicore.MockExportService
-	mwMock     *mock_apicore.MockClientCommands
-}
-
-func newFixture(t *testing.T) *fixture {
-	mwMock := mock_apicore.NewMockClientCommands(t)
-	exportMock := mock_apicore.NewMockExportService(t)
-	exportService := NewService(mwMock, exportMock)
-
-	return &fixture{
-		service:    exportService,
-		exportMock: exportMock,
-		mwMock:     mwMock,
-	}
-}
 
 func TestExportService_GetObjectExport(t *testing.T) {
 	// TODO: revive tests once export is finalized

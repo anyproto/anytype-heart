@@ -11,7 +11,6 @@ import (
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
 
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
-	"github.com/anyproto/anytype-heart/core/api/internal/export"
 	"github.com/anyproto/anytype-heart/core/api/internal/list"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
@@ -70,7 +69,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// v1.DELETE("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteBlockHandler(s.objectService))
 
 		// Export
-		v1.GET("/spaces/:space_id/objects/:object_id/:format", export.GetObjectExportHandler(s.exportService))
+		v1.GET("/spaces/:space_id/objects/:object_id/:format", object.GetObjectExportHandler(s.objectService))
 
 		// List
 		v1.GET("/spaces/:space_id/lists/:list_id/views", list.GetListViewsHandler(s.listService))

@@ -75,6 +75,10 @@ type File struct {
 	Style          string `json:"style"`            // The style of the file
 }
 
+type ObjectExportResponse struct {
+	Markdown string `json:"markdown" example:"# This is the title\n..."`
+}
+
 type PropertyResponse struct {
 	Property Property `json:"property"` // The property
 }

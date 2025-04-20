@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/auth"
-	"github.com/anyproto/anytype-heart/core/api/internal/export"
 	"github.com/anyproto/anytype-heart/core/api/internal/list"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/search"
@@ -20,7 +19,6 @@ type Server struct {
 	engine *gin.Engine
 
 	authService   auth.Service
-	exportService export.Service
 	listService   list.Service
 	objectService object.Service
 	spaceService  space.Service
@@ -39,8 +37,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 
 	s := &Server{
 		authService:   auth.NewService(mw),
-		exportService: export.NewService(mw, exportService),
-		objectService: object.NewService(mw, gatewayUrl),
+		objectService: object.NewService(mw, exportService, gatewayUrl),
 		spaceService:  space.NewService(mw, gatewayUrl, techSpaceId),
 	}
 
