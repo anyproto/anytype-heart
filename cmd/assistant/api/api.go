@@ -38,6 +38,7 @@ func (c *APIClient) HandleToolCall(tool ApiTool, args map[string]interface{}) (m
 	// Extract path parameters and build the URL
 	url := c.buildURL(tool.Path, args)
 
+	fmt.Printf("api request %s %s: %+v\n", tool.Method, url, args)
 	// Create the request
 	var reqBody io.Reader
 	if tool.Method == "POST" || tool.Method == "PUT" || tool.Method == "PATCH" {

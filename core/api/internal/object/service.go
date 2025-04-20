@@ -278,10 +278,11 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 		objectId = resp.ObjectId
 	} else {
 		resp := s.mw.ObjectCreate(ctx, &pb.RpcObjectCreateRequest{
-			Details:             details,
-			TemplateId:          request.TemplateId,
-			SpaceId:             spaceId,
-			ObjectTypeUniqueKey: request.TypeKey,
+			Details:                   details,
+			TemplateId:                request.TemplateId,
+			SpaceId:                   spaceId,
+			ObjectTypeUniqueKey:       request.TypeKey,
+			CreateTypeWidgetIfMissing: true,
 		})
 
 		if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
@@ -420,6 +421,21 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 			return nil, util.ErrBadInput("property '" + key + "' must be a number")
 		}
 		return num, nil
+	case "date":
+		timestamp, ok := value.(float64)
+		if ok {
+			return timestamp, nil
+		}
+
+		t, ok := value.(string)
+		if ok {
+			tm, err := time.Parse(time.RFC3339, t)
+			if err != nil {
+				return nil, util.ErrBadInput("property '" + key + "' must be a valid date string")
+			}
+			return tm.Unix(), nil
+		}
+		return nil, util.ErrBadInput("property '" + key + "' must be a number or a valid date string")
 	case "checkbox":
 		b, ok := value.(bool)
 		if !ok {
