@@ -425,7 +425,7 @@ func DeletePropertyHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		List tags
 //	@Description	Lists all tag options for a given property id.
-//	@Tags			Properties
+//	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string								true	"Space ID"
@@ -462,7 +462,7 @@ func GetTagsHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Get tag
 //	@Description	Retrieves a tag option for a given property id.
-//	@Tags			Properties
+//	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"

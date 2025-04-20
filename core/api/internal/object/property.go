@@ -26,9 +26,6 @@ var (
 	ErrFailedUpdateProperty     = errors.New("failed to update property")
 	ErrFailedDeleteProperty     = errors.New("failed to delete property")
 	ErrFailedRetrieveTags       = errors.New("failed to retrieve tags")
-	ErrTagNotFound              = errors.New("tag not found")
-	ErrTagDeleted               = errors.New("tag deleted")
-	ErrFailedRetrieveTag        = errors.New("failed to retrieve tag")
 )
 
 var excludedSystemProperties = map[string]bool{
@@ -164,114 +161,6 @@ func (s *service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (Property, error) {
 	// TODO: implement
 	return Property{}, nil
-}
-
-// ListTags returns all tags for a given property id in a space.
-func (s *service) ListTags(ctx context.Context, spaceId string, propertyIdOrKey string, offset int, limit int) (tags []Tag, total int, hasMore bool, err error) {
-	var rk string
-	if strings.HasPrefix(propertyIdOrKey, propPrefix) {
-		rk = FromPropertyApiKey(propertyIdOrKey)
-	} else {
-		// TODO: clean up id vs key logic
-		// propertyKey, err := util.ResolveIdtoUniqueKey(s.mw, spaceId, propertyIdOrKey)
-		// if err != nil {
-		// 	return nil, 0, false, err
-		// }
-	}
-
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
-			},
-			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(rk),
-			},
-		},
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyRelationOptionColor.String(),
-		},
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, 0, false, ErrFailedRetrieveTags
-	}
-
-	if len(resp.Records) == 0 {
-		return []Tag{}, 0, false, nil
-	}
-
-	total = len(resp.Records)
-	paginatedTags, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	tags = make([]Tag, 0, len(paginatedTags))
-
-	for _, record := range resp.Records {
-		tags = append(tags, s.mapTagFromRecord(record))
-	}
-
-	return tags, total, hasMore, nil
-}
-
-// GetTag retrieves a single tag option by its ID in a specific space.
-func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
-	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
-		SpaceId:  spaceId,
-		ObjectId: tagId,
-	})
-
-	if resp.Error != nil {
-		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return Tag{}, ErrTagNotFound
-		}
-
-		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return Tag{}, ErrTagDeleted
-		}
-
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return Tag{}, ErrFailedRetrieveTag
-		}
-	}
-
-	return s.mapTagFromRecord(resp.ObjectView.Details[0].Details), nil
-}
-
-// TODO: remove once bug of select option not being returned in details is fixed
-func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
-	tags := make([]Tag, 0, len(tagIds))
-	for _, tagId := range tagIds {
-		if tagId == "" {
-			continue
-		}
-
-		resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
-			SpaceId:  spaceId,
-			ObjectId: tagId,
-		})
-
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			continue
-		}
-
-		tags = append(tags, s.mapTagFromRecord(resp.ObjectView.Details[0].Details))
-	}
-
-	return tags
-}
-
-func (s *service) mapTagFromRecord(record *types.Struct) Tag {
-	return Tag{
-		Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Color: util.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
-	}
 }
 
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.

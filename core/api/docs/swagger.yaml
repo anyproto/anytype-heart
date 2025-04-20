@@ -2429,7 +2429,7 @@ paths:
       - bearerauth: []
       summary: List tags
       tags:
-      - Properties
+      - Tags
   /spaces/{space_id}/properties/{property_id}/tags/{tag_id}:
     get:
       description: Retrieves a tag option for a given property id.
@@ -2493,7 +2493,7 @@ paths:
       - bearerauth: []
       summary: Get tag
       tags:
-      - Properties
+      - Tags
   /spaces/{space_id}/search:
     post:
       description: This endpoint performs a focused search within a single space (specified
