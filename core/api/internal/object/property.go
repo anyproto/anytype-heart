@@ -18,11 +18,14 @@ import (
 )
 
 var (
-	ErrFailedRetrieveProperties      = errors.New("failed to retrieve properties")
-	ErrFailedRetrieveProperty        = errors.New("failed to retrieve property")
-	ErrPropertyNotFound              = errors.New("property not found")
-	ErrPropertyDeleted               = errors.New("property deleted")
-	ErrFailedRetrievePropertyOptions = errors.New("failed to retrieve property options")
+	ErrFailedRetrieveProperties = errors.New("failed to retrieve properties")
+	ErrPropertyNotFound         = errors.New("property not found")
+	ErrPropertyDeleted          = errors.New("property deleted")
+	ErrFailedRetrieveProperty   = errors.New("failed to retrieve property")
+	ErrFailedRetrieveTags       = errors.New("failed to retrieve tags")
+	ErrTagNotFound              = errors.New("tag not found")
+	ErrTagDeleted               = errors.New("tag deleted")
+	ErrFailedRetrieveTag        = errors.New("failed to retrieve tag")
 )
 
 var excludedSystemProperties = map[string]bool{
@@ -142,8 +145,8 @@ func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId st
 	return property, nil
 }
 
-// ListPropertyOptions returns all tag options for a given property (relation) id in a space.
-func (s *service) ListPropertyOptions(ctx context.Context, spaceId string, propertyIdOrKey string, offset int, limit int) (options []Tag, total int, hasMore bool, err error) {
+// ListTags returns all tags for a given property id in a space.
+func (s *service) ListTags(ctx context.Context, spaceId string, propertyIdOrKey string, offset int, limit int) (options []Tag, total int, hasMore bool, err error) {
 	var uk string
 	if strings.HasPrefix(propertyIdOrKey, propPrefix) {
 		uk = FromPropertyApiKey(propertyIdOrKey)
@@ -177,7 +180,7 @@ func (s *service) ListPropertyOptions(ctx context.Context, spaceId string, prope
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, 0, false, ErrFailedRetrievePropertyOptions
+		return nil, 0, false, ErrFailedRetrieveTags
 	}
 
 	if len(resp.Records) == 0 {
@@ -197,6 +200,12 @@ func (s *service) ListPropertyOptions(ctx context.Context, spaceId string, prope
 	}
 
 	return options, total, hasMore, nil
+}
+
+// GetTag retrieves a single tag option by its ID in a specific space.
+func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
+	// TODO: implement proper tag retrieval
+	return Tag{}, nil
 }
 
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
@@ -278,7 +287,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 // isValidSelectOption checks if the option id is valid for the given property.
 func (s *service) isValidSelectOption(ctx context.Context, spaceId string, property Property, optionId string) bool {
 	// TODO: refine logic
-	tags, _, _, err := s.ListPropertyOptions(ctx, spaceId, property.Key, 0, 1000) // TODO: revert to prop.ID
+	tags, _, _, err := s.ListTags(ctx, spaceId, property.Key, 0, 1000) // TODO: revert to prop.ID
 	if err != nil {
 		return false
 	}

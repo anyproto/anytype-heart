@@ -438,6 +438,11 @@ components:
           example: in-progress
           type: string
       type: object
+    object.TagResponse:
+      properties:
+        tag:
+          $ref: '#/components/schemas/object.Tag'
+      type: object
     object.Template:
       description: The template
       properties:
@@ -2146,7 +2151,7 @@ paths:
       summary: Get property
       tags:
       - Properties
-  /spaces/{space_id}/properties/{property_id}/options:
+  /spaces/{space_id}/properties/{property_id}/tags:
     get:
       description: Lists all tag options for a given property id.
       parameters:
@@ -2174,7 +2179,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-object_Tag'
-          description: List of property options (tags)
+          description: List of tags
         "401":
           content:
             application/json:
@@ -2195,7 +2200,71 @@ paths:
           description: Internal server error
       security:
       - bearerauth: []
-      summary: List property options
+      summary: List tags
+      tags:
+      - Properties
+  /spaces/{space_id}/properties/{property_id}/tags/{tag_id}:
+    get:
+      description: Retrieves a tag option for a given property id.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Property ID
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      - description: Tag ID
+        in: path
+        name: tag_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.TagResponse'
+          description: The requested tag
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Get tag
       tags:
       - Properties
   /spaces/{space_id}/search:

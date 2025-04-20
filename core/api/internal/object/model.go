@@ -117,6 +117,10 @@ const (
 	PropertyFormatObject      PropertyFormat = "object"
 )
 
+type TagResponse struct {
+	Tag Tag `json:"tag"` // The tag
+}
+
 type Tag struct {
 	Id    string     `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag
 	Name  string     `json:"name" example:"in-progress"`                                                           // The name of the tag

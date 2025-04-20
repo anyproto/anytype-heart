@@ -284,31 +284,31 @@ func GetPropertyHandler(s Service) gin.HandlerFunc {
 	}
 }
 
-// GetPropertyOptionsHandler lists all tag options for a given property id in a space
+// GetTagsHandler lists all tag options for a given property id in a space
 //
-//	@Summary		List property options
+//	@Summary		List tags
 //	@Description	Lists all tag options for a given property id.
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string								true	"Space ID"
 //	@Param			property_id		path		string								true	"Property ID"
-//	@Success		200				{object}	pagination.PaginatedResponse[Tag]	"List of property options (tags)"
+//	@Success		200				{object}	pagination.PaginatedResponse[Tag]	"List of tags"
 //	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError					"Property not found"
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id}/options [get]
-func GetPropertyOptionsHandler(s Service) gin.HandlerFunc {
+//	@Router			/spaces/{space_id}/properties/{property_id}/tags [get]
+func GetTagsHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		options, total, hasMore, err := s.ListPropertyOptions(c.Request.Context(), spaceId, propertyId, offset, limit)
+		options, total, hasMore, err := s.ListTags(c.Request.Context(), spaceId, propertyId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrFailedRetrievePropertyOptions, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedRetrieveTags, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -318,6 +318,46 @@ func GetPropertyOptionsHandler(s Service) gin.HandlerFunc {
 		}
 
 		pagination.RespondWithPagination(c, http.StatusOK, options, total, offset, limit, hasMore)
+	}
+}
+
+// GetTagHandler retrieves a tag option for a given property id in a space.
+//
+//	@Summary		Get tag
+//	@Description	Retrieves a tag option for a given property id.
+//	@Tags			Properties
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			property_id		path		string					true	"Property ID"
+//	@Param			tag_id			path		string					true	"Tag ID"
+//	@Success		200				{object}	TagResponse				"The requested tag"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [get]
+func GetTagHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		propertyId := c.Param("property_id")
+		tagId := c.Param("tag_id")
+
+		option, err := s.GetTag(c.Request.Context(), spaceId, propertyId, tagId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrTagNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrTagDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedRetrieveTag, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TagResponse{Tag: option})
 	}
 }
 

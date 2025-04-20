@@ -92,12 +92,12 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// v1.POST("/spaces/:space_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.CreatePropertyHandler(s.objectService))
 		// v1.PATCH("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyHandler(s.objectService))
 		// v1.DELETE("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeletePropertyHandler(s.objectService))
-		v1.GET("/spaces/:space_id/properties/:property_id/options", object.GetPropertyOptionsHandler(s.objectService))
+		v1.GET("/spaces/:space_id/properties/:property_id/tags", object.GetTagsHandler(s.objectService))
+		v1.GET("/spaces/:space_id/properties/:property_id/tags/:tag_id", object.GetTagHandler(s.objectService))
 		// TODO: implement create, delete and update property options endpoints
-		// v1.GET("/spaces/:space_id/properties/:property_id/options/:option_id", object.GetPropertyOptionHandler(s.objectService))
-		// v1.POST("/spaces/:space_id/properties/:property_id/options", s.rateLimit(maxWriteRequestsPerSecond), object.AddPropertyOptionHandler(s.objectService))
-		// v1.PATCH("/spaces/:space_id/properties/:property_id/options/:option_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyOptionHandler(s.objectService))
-		// v1.DELETE("/spaces/:space_id/properties/:property_id/options/:option_id", s.rateLimit(maxWriteRequestsPerSecond), object.RemovePropertyOptionHandler(s.objectService))
+		// v1.POST("/spaces/:space_id/properties/:property_id/tags", s.rateLimit(maxWriteRequestsPerSecond), object.AddPropertyOptionHandler(s.objectService))
+		// v1.PATCH("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyOptionHandler(s.objectService))
+		// v1.DELETE("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), object.RemovePropertyOptionHandler(s.objectService))
 
 		// Search
 		v1.POST("/search", search.GlobalSearchHandler(s.searchService))
