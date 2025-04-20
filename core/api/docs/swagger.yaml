@@ -830,21 +830,33 @@ components:
       - ColorLime
     util.ForbiddenError:
       properties:
-        error:
-          properties:
-            message:
-              example: Forbidden
-              type: string
-          type: object
+        code:
+          example: forbidden
+          type: string
+        message:
+          example: Forbidden
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 403
+          type: integer
       type: object
     util.GoneError:
       properties:
-        error:
-          properties:
-            message:
-              example: Resource is gone
-              type: string
-          type: object
+        code:
+          example: resource_gone
+          type: string
+        message:
+          example: Resource is gone
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 410
+          type: integer
       type: object
     util.Icon:
       description: The icon of the object
@@ -880,48 +892,78 @@ components:
       - IconFormatIcon
     util.NotFoundError:
       properties:
-        error:
-          properties:
-            message:
-              example: Resource not found
-              type: string
-          type: object
+        code:
+          example: object_not_found
+          type: string
+        message:
+          example: Resource not found
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 404
+          type: integer
       type: object
     util.RateLimitError:
       properties:
-        error:
-          properties:
-            message:
-              example: Rate limit exceeded
-              type: string
-          type: object
+        code:
+          example: rate_limit_exceeded
+          type: string
+        message:
+          example: Rate limit exceeded
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 429
+          type: integer
       type: object
     util.ServerError:
       properties:
-        error:
-          properties:
-            message:
-              example: Internal server error
-              type: string
-          type: object
+        code:
+          example: internal_server_error
+          type: string
+        message:
+          example: Internal server error
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 500
+          type: integer
       type: object
     util.UnauthorizedError:
       properties:
-        error:
-          properties:
-            message:
-              example: Unauthorized
-              type: string
-          type: object
+        code:
+          example: unauthorized
+          type: string
+        message:
+          example: Unauthorized
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 401
+          type: integer
       type: object
     util.ValidationError:
       properties:
-        error:
-          properties:
-            message:
-              example: Bad request
-              type: string
-          type: object
+        code:
+          example: bad_request
+          type: string
+        message:
+          example: Bad request
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 400
+          type: integer
       type: object
   securitySchemes:
     bearerauth:
