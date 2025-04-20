@@ -26,7 +26,7 @@ func TestEnsureMetadataHeader(t *testing.T) {
 		middleware(c)
 
 		// then
-		require.Equal(t, "2025-03-17", w.Header().Get("Anytype-Version"))
+		require.Equal(t, ApiVersion, w.Header().Get("Anytype-Version"))
 	})
 }
 

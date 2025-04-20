@@ -64,6 +64,6 @@ func TestRouter_MetadataHeader(t *testing.T) {
 		engine.ServeHTTP(w, req)
 
 		// then
-		require.Equal(t, "2025-03-17", w.Header().Get("Anytype-Version"))
+		require.Equal(t, "2025-04-22", w.Header().Get("Anytype-Version"))
 	})
 }

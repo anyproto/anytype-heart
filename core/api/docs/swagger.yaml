@@ -943,7 +943,7 @@ info:
     url: https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
   termsOfService: https://anytype.io/terms_of_use
   title: Anytype API
-  version: "2025-03-17"
+  version: "2025-04-22"
 openapi: 3.1.0
 paths:
   /auth/display_code:
@@ -960,7 +960,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: App name requesting the challenge
         in: query
@@ -1009,7 +1009,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Challenge ID
         in: query
@@ -1065,7 +1065,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: The number of items to skip before starting to collect the result
           set
@@ -1123,7 +1123,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: The number of items to skip before starting to collect the result
           set
@@ -1175,7 +1175,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       requestBody:
         content:
@@ -1231,7 +1231,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1282,7 +1282,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1355,7 +1355,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1426,7 +1426,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1495,7 +1495,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1564,7 +1564,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1623,7 +1623,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1680,7 +1680,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1740,7 +1740,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1803,7 +1803,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1871,7 +1871,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1933,7 +1933,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -1996,7 +1996,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -2054,7 +2054,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -2112,7 +2112,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -2169,7 +2169,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -2236,7 +2236,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -2294,7 +2294,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -2356,7 +2356,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path
@@ -2419,7 +2419,7 @@ paths:
         in: header
         name: Anytype-Version
         schema:
-          default: "2025-03-17"
+          default: "2025-04-22"
           type: string
       - description: Space ID
         in: path

@@ -15,7 +15,7 @@ import (
 //	@Description	Returns a paginated list of views defined for a specific list (query or collection) within a space. Each view includes configuration details such as layout, applied filters, and sorting options, enabling clients to render the list according to user preferences and context. This endpoint supports pagination parameters to control the number of views returned and the starting point of the result set.
 //	@Tags			lists
 //	@Produce		json
-//	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-03-17)
+//	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string								true	"Space ID"
 //	@Param			list_id			path		string								true	"List ID"
 //	@Param			offset			query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
@@ -55,7 +55,7 @@ func GetListViewsHandler(s Service) gin.HandlerFunc {
 //	@Description	Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.
 //	@Tags			lists
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										false	"The version of the API to use"	default(2025-03-17)
+//	@Param			Anytype-Version	header		string										false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string										true	"Space ID"
 //	@Param			list_id			path		string										true	"List ID"
 //	@Param			view_id			path		string										true	"View ID"
@@ -102,7 +102,7 @@ func GetObjectsInListHandler(s Service) gin.HandlerFunc {
 //	@Tags			lists
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			list_id			path		string					true	"List ID"
 //	@Param			objects			body		[]string				true	"List of object IDs"
@@ -146,7 +146,7 @@ func AddObjectsToListHandler(s Service) gin.HandlerFunc {
 //	@Description	Removes a given object from the specified list (collection only) in a space. The endpoint takes the space, list, and object identifiers as path parameters. It's subject to rate limiting and returns a success message on completion. It is used for dynamically managing collections without affecting the underlying object data.
 //	@Tags			lists
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			list_id			path		string					true	"List ID"
 //	@Param			object_id		path		string					true	"Object ID"

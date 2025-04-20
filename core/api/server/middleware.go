@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-const ApiVersion = "2025-03-17"
+const ApiVersion = "2025-04-22"
 
 var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")

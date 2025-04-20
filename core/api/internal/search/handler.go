@@ -16,7 +16,7 @@ import (
 //	@Tags			search
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										false	"The version of the API to use"											default(2025-03-17)
+//	@Param			Anytype-Version	header		string										false	"The version of the API to use"											default(2025-04-22)
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
 //	@Param			request			body		SearchRequest								true	"Search parameters"
@@ -59,7 +59,7 @@ func GlobalSearchHandler(s Service) gin.HandlerFunc {
 //	@Tags			search
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										false	"The version of the API to use"	default(2025-03-17)
+//	@Param			Anytype-Version	header		string										false	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string										true	"Space ID"
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
