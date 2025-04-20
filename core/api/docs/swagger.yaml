@@ -936,8 +936,8 @@ info:
     email: support@anytype.io
     name: Anytype Support
     url: https://anytype.io/contact
-  description: This API allows interaction with Anytype resources such as spaces,
-    objects and types.
+  description: This API empowers seamless interaction with Anytype's resources—spaces,
+    objects, properties, types, templates, and beyond.
   license:
     name: Any Source Available License 1.0
     url: https://github.com/anyproto/anytype-api/blob/main/LICENSE.md

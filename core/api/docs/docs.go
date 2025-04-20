@@ -20,7 +20,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "2025-04-22",
 	Title:            "Anytype API",
-	Description:      "This API allows interaction with Anytype resources such as spaces, objects and types.",
+	Description:      "This API empowers seamless interaction with Anytype's resources—spaces, objects, properties, types, templates, and beyond.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
