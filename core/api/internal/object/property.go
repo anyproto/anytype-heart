@@ -3,7 +3,6 @@ package object
 import (
 	"context"
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 
@@ -247,7 +246,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		if err != nil {
 			return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
 		}
-		return strconv.FormatInt(t.Unix(), 10), nil
+		return t.Unix(), nil
 	case PropertyFormatCheckbox:
 		b, ok := value.(bool)
 		if !ok {
@@ -255,14 +254,22 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		}
 		return b, nil
 	case PropertyFormatObject, PropertyFormatFile:
-		id, ok := value.(string)
+		ids, ok := value.([]interface{})
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be a string (object/file id)")
+			return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
 		}
-		if !s.isValidObjectReference(ctx, spaceId, id) {
-			return nil, util.ErrBadInput("invalid " + string(format) + " id for '" + key + "': " + id)
+		var validIds []string
+		for _, v := range ids {
+			id, ok := v.(string)
+			if !ok {
+				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
+			}
+			if !s.isValidObjectReference(ctx, spaceId, id) {
+				return nil, util.ErrBadInput("invalid " + string(format) + " id for '" + key + "': " + id)
+			}
+			validIds = append(validIds, id)
 		}
-		return id, nil
+		return validIds, nil
 	default:
 		return nil, util.ErrBadInput("unsupported property format: " + string(format))
 	}
