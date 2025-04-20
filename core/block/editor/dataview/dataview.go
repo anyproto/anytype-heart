@@ -162,6 +162,23 @@ func (d *sdataview) SetRelations(ctx session.Context, blockId string, relationKe
 		links = append(links, relation.RelationLink())
 	}
 	tb.SetRelations(links)
+
+	if len(tb.Model().GetDataview().Views) > 0 {
+		firstView := tb.Model().GetDataview().Views[0]
+		for _, relationKey := range relationKeys {
+			found := false
+			for _, relation := range firstView.Relations {
+				if relation.Key == relationKey {
+					found = true
+					break
+				}
+			}
+			if !found {
+				firstView.Relations = append(firstView.Relations, &model.BlockContentDataviewRelation{Key: relationKey, IsVisible: true})
+			}
+		}
+	}
+	fmt.Printf("### view count: %d\n", len(tb.Model().GetDataview().Views))
 	if showEvent {
 		return d.Apply(s)
 	} else {

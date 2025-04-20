@@ -214,7 +214,8 @@ func (c *Chatter) handleMessages(ctx context.Context) error {
 		return nil
 	}
 
-	currentSpacePrompt := "When user mention 'here', it means in anytype tool in the current space. Current space called '%s'. You have no access to other spaces of the user. You do not need to provide space_id in any request."
+	currentSpacePrompt := "When user mention 'here', it means in anytype tool in the current space. Current space called '%s'. You have no access to other spaces of the user"
+	currentSpacePrompt += fmt.Sprintf("Current datetime is %s", time.Now().Format(time.RFC3339))
 	toMarkAsRead := make([]string, 0, len(c.messages))
 	messages := make([]openai.ChatCompletionMessage, 0, len(c.messages)+1)
 	messages = append(messages, openai.ChatCompletionMessage{

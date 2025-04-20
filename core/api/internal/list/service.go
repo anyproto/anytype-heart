@@ -277,7 +277,27 @@ func (s *service) CreateObjectsCollection(ctx context.Context, spaceId string, r
 
 	var uniqueKeys = make(map[string]struct{})
 	for _, record := range resp4.Records {
-		for key, _ := range record.GetFields() {
+		for key, v := range record.GetFields() {
+			if key == bundle.RelationKeyOrigin.String() || key == bundle.RelationKeyLinks.String() {
+				continue
+			}
+
+			if v == nil {
+				continue
+			}
+
+			switch vt := v.Kind.(type) {
+			case *types.Value_StringValue:
+				if vt.StringValue == "" {
+					continue
+				}
+			case *types.Value_NullValue:
+				continue
+			case *types.Value_ListValue:
+				if vt.ListValue == nil || len(vt.ListValue.Values) == 0 {
+					continue
+				}
+			}
 			if br, e := bundle.GetRelation(domain.RelationKey(key)); e == nil {
 				if br.Hidden && br.Key != bundle.RelationKeyName.String() {
 					continue
@@ -297,6 +317,7 @@ func (s *service) CreateObjectsCollection(ctx context.Context, spaceId string, r
 		}
 		relationKeys = append(relationKeys, key)
 	}
+	fmt.Printf("### unique keys: %v\n", relationKeys)
 
 	resp2 := s.mw.BlockDataviewRelationSet(ctx, &pb.RpcBlockDataviewRelationSetRequest{
 		ContextId:    collectionObject.Id,
