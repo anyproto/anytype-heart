@@ -326,8 +326,8 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 	}
 
 	for key, val := range request.Properties {
-		uk := FromPropertyApiKey(key)
-		if _, isExcluded := excludedSystemProperties[uk]; isExcluded {
+		rk := FromPropertyApiKey(key)
+		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
 
@@ -335,12 +335,12 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly")
 		}
 
-		if prop, ok := propertyMap[uk]; ok {
+		if prop, ok := propertyMap[rk]; ok {
 			sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, val, prop)
 			if err != nil {
 				return nil, err
 			}
-			fields[uk] = pbtypes.ToValue(sanitized)
+			fields[rk] = pbtypes.ToValue(sanitized)
 		} else {
 			return nil, errors.New("unknown property '" + key + "' must be a string")
 		}

@@ -171,6 +171,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string")
 		}
+		str = strings.TrimSpace(str)
 		return str, nil
 	case PropertyFormatNumber:
 		num, ok := value.(float64)
@@ -180,6 +181,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		return num, nil
 	case PropertyFormatSelect:
 		id, ok := value.(string)
+		id = strings.TrimSpace(id)
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (option id)")
 		}
@@ -190,12 +192,16 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 	case PropertyFormatMultiSelect:
 		ids, ok := value.([]interface{})
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be an array of option ids")
+			return nil, util.ErrBadInput("property '" + key + "' must be an array of tag ids")
 		}
 		var validIds []string
 		for _, v := range ids {
 			id, ok := v.(string)
-			if !ok || !s.isValidSelectOption(ctx, spaceId, property, id) {
+			if !ok {
+				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (tag ids)")
+			}
+			id = strings.TrimSpace(id)
+			if !s.isValidSelectOption(ctx, spaceId, property, id) {
 				return nil, util.ErrBadInput("invalid multi_select option for '" + key + "': " + id)
 			}
 			validIds = append(validIds, id)
@@ -206,6 +212,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (date in RFC3339 format)")
 		}
+		dateStr = strings.TrimSpace(dateStr)
 		t, err := time.Parse(time.RFC3339, dateStr)
 		if err != nil {
 			return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
@@ -228,6 +235,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 			if !ok {
 				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
 			}
+			id = strings.TrimSpace(id)
 			if !s.isValidObjectReference(ctx, spaceId, id) {
 				return nil, util.ErrBadInput("invalid " + string(format) + " id for '" + key + "': " + id)
 			}
