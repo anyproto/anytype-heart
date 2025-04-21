@@ -502,7 +502,7 @@ func GetTagHandler(s Service) gin.HandlerFunc {
 // CreateTagHandler creates a new tag for a given property id in a space
 //
 //	@Summary		Create tag
-//	@Description	This endpoint creates a new tag for a given property id in a space. The tag is identified by its unique identifier within the specified space. The request must include the tag's name and color. The response includes the tag's details such as its ID, name, and color. This is useful for clients when users want to add new tag options to a property.
+//	@Description	This endpoint creates a new tag for a given property id in a space. The creation process is subject to rate limiting. The tag is identified by its unique identifier within the specified space. The request must include the tag's name and color. The response includes the tag's details such as its ID, name, and color. This is useful for clients when users want to add new tag options to a property.
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
@@ -548,7 +548,7 @@ func CreateTagHandler(s Service) gin.HandlerFunc {
 // UpdateTagHandler updates a tag for a given property id in a space
 //
 //	@Summary		Update tag
-//	@Description	This endpoint updates a tag for a given property id in a space. The tag is identified by its unique identifier within the specified space. The request must include the tag's name and color. The response includes the tag's details such as its ID, name, and color. This is useful for clients when users want to edit existing tags for a property.
+//	@Description	This endpoint updates a tag for a given property id in a space. The update process is subject to rate limiting. The tag is identified by its unique identifier within the specified space. The request must include the tag's name and color. The response includes the tag's details such as its ID, name, and color. This is useful for clients when users want to edit existing tags for a property.
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json

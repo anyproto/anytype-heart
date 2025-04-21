@@ -246,11 +246,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 			if property.Key == "created_date" {
 				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
 			} else if property.Key == "created_by" {
-				require.Equal(t, []string{mockedParticipantId}, property.Object)
+				require.Equal(t, []string{mockedParticipantId}, property.Objects)
 			} else if property.Key == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
 			} else if property.Key == "last_modified_by" {
-				require.Equal(t, []string{mockedParticipantId}, property.Object)
+				require.Equal(t, []string{mockedParticipantId}, property.Objects)
 			} else if property.Key == "last_opened_date" {
 				require.Equal(t, "1970-01-01T00:00:00Z", *property.Date)
 			} else if property.Key == "tag" {
@@ -460,11 +460,11 @@ func TestObjectService_GetObject(t *testing.T) {
 			if property.Key == "created_date" {
 				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
 			} else if property.Key == "created_by" {
-				require.Empty(t, property.Object)
+				require.Empty(t, property.Objects)
 			} else if property.Key == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
 			} else if property.Key == "last_modified_by" {
-				require.Empty(t, property.Object)
+				require.Empty(t, property.Objects)
 			} else if property.Key == "last_opened_date" {
 				require.Equal(t, "1970-01-01T00:00:00Z", *property.Date)
 			} else if property.Key == "tag" {

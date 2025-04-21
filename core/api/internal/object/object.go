@@ -367,6 +367,7 @@ func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 		switch content := block.Content.(type) {
 		case *model.BlockContentOfText:
 			text = &Text{
+				Object:  "text",
 				Text:    content.Text.Text,
 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 				Checked: content.Text.Checked,
@@ -375,6 +376,7 @@ func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 			}
 		case *model.BlockContentOfFile:
 			file = &File{
+				Object:         "file",
 				Hash:           content.File.Hash,
 				Name:           content.File.Name,
 				Type:           model.BlockContentFileType_name[int32(content.File.Type)],
@@ -388,12 +390,14 @@ func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 		case *model.BlockContentOfRelation:
 			property = &Property{
 				// TODO: is it sufficient to return the key only?
-				Key: content.Relation.Key,
+				Object: "property",
+				Key:    content.Relation.Key,
 			}
 		}
 		// TODO: other content types?
 
 		blocks = append(blocks, Block{
+			Object:          "block",
 			Id:              block.Id,
 			ChildrenIds:     block.ChildrenIds,
 			BackgroundColor: block.BackgroundColor,

@@ -328,9 +328,9 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			} else if property.Id == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
 			} else if property.Id == "created_by" {
-				require.Equal(t, []string{mockedParticipantId}, property.Object)
+				require.Equal(t, []string{mockedParticipantId}, property.Objects)
 			} else if property.Id == "last_modified_by" {
-				require.Equal(t, []string{mockedParticipantId}, property.Object)
+				require.Equal(t, []string{mockedParticipantId}, property.Objects)
 			}
 		}
 

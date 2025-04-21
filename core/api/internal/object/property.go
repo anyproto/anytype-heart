@@ -459,6 +459,7 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property)
 	}
 
 	return rk, Property{
+		Object: "property",
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:    key,
 		Name:   name,
@@ -484,7 +485,7 @@ func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 
 		id := propertyMap[rk].Id
 		name := propertyMap[rk].Name
-		properties = append(properties, s.buildProperty(id, key, name, format, convertedVal))
+		properties = append(properties, s.buildPropertyWithValue(id, key, name, format, convertedVal))
 	}
 
 	return properties
@@ -553,9 +554,10 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 	}
 }
 
-// buildProperty creates a Property based on the format and converted value.
-func (s *service) buildProperty(id string, key string, name string, format PropertyFormat, val interface{}) Property {
+// buildPropertyWithValue creates a Property based on the format and converted value.
+func (s *service) buildPropertyWithValue(id string, key string, name string, format PropertyFormat, val interface{}) Property {
 	p := &Property{
+		Object: "property",
 		Id:     id,
 		Key:    key,
 		Name:   name,
@@ -591,7 +593,7 @@ func (s *service) buildProperty(id string, key string, name string, format Prope
 					files = append(files, str)
 				}
 			}
-			p.File = files
+			p.Files = files
 		}
 	case PropertyFormatCheckbox:
 		if cb, ok := val.(bool); ok {
@@ -611,7 +613,7 @@ func (s *service) buildProperty(id string, key string, name string, format Prope
 		}
 	case PropertyFormatObject:
 		if obj, ok := val.(string); ok {
-			p.Object = []string{obj}
+			p.Objects = []string{obj}
 		} else if objSlice, ok := val.([]interface{}); ok {
 			var objects []string
 			for _, v := range objSlice {
@@ -619,7 +621,7 @@ func (s *service) buildProperty(id string, key string, name string, format Prope
 					objects = append(objects, str)
 				}
 			}
-			p.Object = objects
+			p.Objects = objects
 		}
 	default:
 		if str, ok := val.(string); ok {

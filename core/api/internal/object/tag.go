@@ -140,9 +140,10 @@ func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
 
 func (s *service) mapTagFromRecord(record *types.Struct) Tag {
 	return Tag{
-		Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:   ToTagApiKey(record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()),
-		Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Color: ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
+		Object: "tag",
+		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:    ToTagApiKey(record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()),
+		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Color:  ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 	}
 }

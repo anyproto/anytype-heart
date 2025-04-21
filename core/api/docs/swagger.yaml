@@ -134,6 +134,10 @@ components:
           description: The id of the block
           example: 64394517de52ad5acb89c66c
           type: string
+        object:
+          description: The data model of the object
+          example: block
+          type: string
         property:
           $ref: '#/components/schemas/object.Property'
         text:
@@ -246,6 +250,10 @@ components:
           type: string
         name:
           description: The name of the file
+          type: string
+        object:
+          description: The data model of the object
+          example: file
           type: string
         size:
           description: The size of the file
@@ -418,7 +426,7 @@ components:
           description: The email value, if applicable
           example: example@example.com
           type: string
-        file:
+        files:
           description: The file references, if applicable
           example:
           - '[''fileId'']'
@@ -451,6 +459,10 @@ components:
           example: 42
           type: number
         object:
+          description: The data model of the object
+          example: property
+          type: string
+        objects:
           description: The object references, if applicable
           example:
           - '[''objectId'']'
@@ -523,6 +535,10 @@ components:
           description: The name of the tag
           example: in-progress
           type: string
+        object:
+          description: The data model of the object
+          example: tag
+          type: string
       type: object
     object.TagResponse:
       properties:
@@ -569,6 +585,10 @@ components:
           type: string
         icon:
           $ref: '#/components/schemas/object.Icon'
+        object:
+          description: The data model of the object
+          example: text
+          type: string
         style:
           description: The style of the text
           enum:
@@ -2498,10 +2518,11 @@ paths:
       - Tags
     post:
       description: This endpoint creates a new tag for a given property id in a space.
-        The tag is identified by its unique identifier within the specified space.
-        The request must include the tag's name and color. The response includes the
-        tag's details such as its ID, name, and color. This is useful for clients
-        when users want to add new tag options to a property.
+        The creation process is subject to rate limiting. The tag is identified by
+        its unique identifier within the specified space. The request must include
+        the tag's name and color. The response includes the tag's details such as
+        its ID, name, and color. This is useful for clients when users want to add
+        new tag options to a property.
       parameters:
       - description: The version of the API to use
         in: header
@@ -2708,10 +2729,11 @@ paths:
       - Tags
     patch:
       description: This endpoint updates a tag for a given property id in a space.
-        The tag is identified by its unique identifier within the specified space.
-        The request must include the tag's name and color. The response includes the
-        tag's details such as its ID, name, and color. This is useful for clients
-        when users want to edit existing tags for a property.
+        The update process is subject to rate limiting. The tag is identified by its
+        unique identifier within the specified space. The request must include the
+        tag's name and color. The response includes the tag's details such as its
+        ID, name, and color. This is useful for clients when users want to edit existing
+        tags for a property.
       parameters:
       - description: The version of the API to use
         in: header

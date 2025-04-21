@@ -80,6 +80,7 @@ type ObjectWithBlocks struct {
 }
 
 type Block struct {
+	Object          string    `json:"object" example:"block"`                                                                                     // The data model of the object
 	Id              string    `json:"id" example:"64394517de52ad5acb89c66c"`                                                                      // The id of the block
 	ChildrenIds     []string  `json:"children_ids" example:"['6797ce8ecda913cde14b02dc']"`                                                        // The ids of the block's children
 	BackgroundColor string    `json:"background_color" example:"red"`                                                                             // The background color of the block
@@ -91,6 +92,7 @@ type Block struct {
 }
 
 type Text struct {
+	Object  string `json:"object" example:"text"`                                                                                                                            // The data model of the object
 	Text    string `json:"text" example:"Some text..."`                                                                                                                      // The text
 	Style   string `json:"style" enums:"Paragraph,Header1,Header2,Header3,Header4,Quote,Code,Title,Checkbox,Marked,Numbered,Toggle,Description,Callout" example:"Paragraph"` // The style of the text
 	Checked bool   `json:"checked" example:"true"`                                                                                                                           // Whether the text is checked
@@ -99,15 +101,16 @@ type Text struct {
 }
 
 type File struct {
-	Hash           string `json:"hash"`             // The hash of the file
-	Name           string `json:"name"`             // The name of the file
-	Type           string `json:"type"`             // The type of the file
-	Mime           string `json:"mime"`             // The mime of the file
-	Size           int    `json:"size"`             // The size of the file
-	AddedAt        int    `json:"added_at"`         // The added at of the file
-	TargetObjectId string `json:"target_object_id"` // The target object id of the file
-	State          string `json:"state"`            // The state of the file
-	Style          string `json:"style"`            // The style of the file
+	Object         string `json:"object" example:"file"` // The data model of the object
+	Hash           string `json:"hash"`                  // The hash of the file
+	Name           string `json:"name"`                  // The name of the file
+	Type           string `json:"type"`                  // The type of the file
+	Mime           string `json:"mime"`                  // The mime of the file
+	Size           int    `json:"size"`                  // The size of the file
+	AddedAt        int    `json:"added_at"`              // The added at of the file
+	TargetObjectId string `json:"target_object_id"`      // The target object id of the file
+	State          string `json:"state"`                 // The state of the file
+	Style          string `json:"style"`                 // The style of the file
 }
 
 type ObjectExportResponse struct {
@@ -129,6 +132,7 @@ type UpdatePropertyRequest struct {
 }
 
 type Property struct {
+	Object      string         `json:"object" example:"property"`                                                                               // The data model of the object
 	Id          string         `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"`                                // The id of the property
 	Key         string         `json:"key" example:"last_modified_date"`                                                                        // The key of the property
 	Name        string         `json:"name" example:"Last modified date"`                                                                       // The name of the property
@@ -138,12 +142,12 @@ type Property struct {
 	Select      *Tag           `json:"select,omitempty"`                                                                                        // The select value, if applicable
 	MultiSelect []Tag          `json:"multi_select,omitempty"`                                                                                  // The multi-select values, if applicable
 	Date        *string        `json:"date,omitempty" example:"2025-02-14T12:34:56Z"`                                                           // The date value, if applicable
-	File        []string       `json:"file,omitempty" example:"['fileId']"`                                                                     // The file references, if applicable
+	Files       []string       `json:"files,omitempty" example:"['fileId']"`                                                                    // The file references, if applicable
 	Checkbox    *bool          `json:"checkbox,omitempty" example:"true" enums:"true,false"`                                                    // The checkbox value, if applicable
 	Url         *string        `json:"url,omitempty" example:"https://example.com"`                                                             // The url value, if applicable
 	Email       *string        `json:"email,omitempty" example:"example@example.com"`                                                           // The email value, if applicable
 	Phone       *string        `json:"phone,omitempty" example:"+1234567890"`                                                                   // The phone number value, if applicable
-	Object      []string       `json:"object,omitempty" example:"['objectId']"`                                                                 // The object references, if applicable
+	Objects     []string       `json:"objects,omitempty" example:"['objectId']"`                                                                // The object references, if applicable
 }
 
 type TagResponse struct {
@@ -162,10 +166,11 @@ type UpdateTagRequest struct {
 }
 
 type Tag struct {
-	Id    string `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag
-	Key   string `json:"key" example:"67b0d3e3cda913b84c1299b1"`                                               // The key of the tag
-	Name  string `json:"name" example:"in-progress"`                                                           // The name of the tag
-	Color Color  `json:"color" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the tag
+	Object string `json:"object" example:"tag"`                                                                 // The data model of the object
+	Id     string `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag
+	Key    string `json:"key" example:"67b0d3e3cda913b84c1299b1"`                                               // The key of the tag
+	Name   string `json:"name" example:"in-progress"`                                                           // The name of the tag
+	Color  Color  `json:"color" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the tag
 }
 
 type TypeResponse struct {
