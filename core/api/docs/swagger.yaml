@@ -493,12 +493,12 @@ components:
       - select
       - multi_select
       - date
-      - file
+      - files
       - checkbox
       - url
       - email
       - phone
-      - object
+      - objects
       example: date
       type: string
       x-enum-varnames:
@@ -507,12 +507,12 @@ components:
       - PropertyFormatSelect
       - PropertyFormatMultiSelect
       - PropertyFormatDate
-      - PropertyFormatFile
+      - PropertyFormatFiles
       - PropertyFormatCheckbox
       - PropertyFormatUrl
       - PropertyFormatEmail
       - PropertyFormatPhone
-      - PropertyFormatObject
+      - PropertyFormatObjects
     object.PropertyResponse:
       properties:
         property:

@@ -277,7 +277,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 			return nil, util.ErrBadInput("property '" + key + "' must be a boolean")
 		}
 		return b, nil
-	case PropertyFormatObject, PropertyFormatFile:
+	case PropertyFormatObjects, PropertyFormatFiles:
 		ids, ok := value.([]interface{})
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
@@ -354,7 +354,7 @@ func (s *service) MapPropertyFormat(format PropertyFormat) model.RelationFormat 
 		return model.RelationFormat_tag
 	case PropertyFormatDate:
 		return model.RelationFormat_date
-	case PropertyFormatFile:
+	case PropertyFormatFiles:
 		return model.RelationFormat_file
 	case PropertyFormatCheckbox:
 		return model.RelationFormat_checkbox
@@ -364,7 +364,7 @@ func (s *service) MapPropertyFormat(format PropertyFormat) model.RelationFormat 
 		return model.RelationFormat_email
 	case PropertyFormatPhone:
 		return model.RelationFormat_phone
-	case PropertyFormatObject:
+	case PropertyFormatObjects:
 		return model.RelationFormat_object
 	default:
 		return model.RelationFormat_longtext
@@ -378,11 +378,28 @@ func (s *service) MapRelationFormat(format model.RelationFormat) PropertyFormat 
 		return PropertyFormatText
 	case model.RelationFormat_shorttext:
 		return PropertyFormatText
-	case model.RelationFormat_tag:
-		return PropertyFormatMultiSelect
+	case model.RelationFormat_number:
+		return PropertyFormatNumber
 	case model.RelationFormat_status:
 		return PropertyFormatSelect
+	case model.RelationFormat_tag:
+		return PropertyFormatMultiSelect
+	case model.RelationFormat_date:
+		return PropertyFormatDate
+	case model.RelationFormat_file:
+		return PropertyFormatFiles
+	case model.RelationFormat_checkbox:
+		return PropertyFormatCheckbox
+	case model.RelationFormat_url:
+		return PropertyFormatUrl
+	case model.RelationFormat_email:
+		return PropertyFormatEmail
+	case model.RelationFormat_phone:
+		return PropertyFormatPhone
+	case model.RelationFormat_object:
+		return PropertyFormatObjects
 	default:
+		// TODO: refactor remaining cases into error
 		return PropertyFormat(strcase.ToSnake(model.RelationFormat_name[int32(format)]))
 	}
 }
@@ -585,7 +602,7 @@ func (s *service) buildPropertyWithValue(id string, key string, name string, for
 		if dateStr, ok := val.(string); ok {
 			p.Date = &dateStr
 		}
-	case PropertyFormatFile:
+	case PropertyFormatFiles:
 		if fileList, ok := val.([]interface{}); ok {
 			var files []string
 			for _, v := range fileList {
@@ -611,7 +628,7 @@ func (s *service) buildPropertyWithValue(id string, key string, name string, for
 		if phone, ok := val.(string); ok {
 			p.Phone = &phone
 		}
-	case PropertyFormatObject:
+	case PropertyFormatObjects:
 		if obj, ok := val.(string); ok {
 			p.Objects = []string{obj}
 		} else if objSlice, ok := val.([]interface{}); ok {
