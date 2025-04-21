@@ -414,6 +414,104 @@ func (_c *MockClientCommands_ObjectCreateBookmark_Call) RunAndReturn(run func(co
 	return _c
 }
 
+// ObjectCreateRelation provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectCreateRelation(_a0 context.Context, _a1 *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectCreateRelation")
+	}
+
+	var r0 *pb.RpcObjectCreateRelationResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectCreateRelationResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectCreateRelation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectCreateRelation'
+type MockClientCommands_ObjectCreateRelation_Call struct {
+	*mock.Call
+}
+
+// ObjectCreateRelation is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectCreateRelationRequest
+func (_e *MockClientCommands_Expecter) ObjectCreateRelation(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectCreateRelation_Call {
+	return &MockClientCommands_ObjectCreateRelation_Call{Call: _e.mock.On("ObjectCreateRelation", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectCreateRelation_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectCreateRelationRequest)) *MockClientCommands_ObjectCreateRelation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectCreateRelationRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCreateRelation_Call) Return(_a0 *pb.RpcObjectCreateRelationResponse) *MockClientCommands_ObjectCreateRelation_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCreateRelation_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse) *MockClientCommands_ObjectCreateRelation_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ObjectCreateRelationOption provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectCreateRelationOption(_a0 context.Context, _a1 *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectCreateRelationOption")
+	}
+
+	var r0 *pb.RpcObjectCreateRelationOptionResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectCreateRelationOptionResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectCreateRelationOption_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectCreateRelationOption'
+type MockClientCommands_ObjectCreateRelationOption_Call struct {
+	*mock.Call
+}
+
+// ObjectCreateRelationOption is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectCreateRelationOptionRequest
+func (_e *MockClientCommands_Expecter) ObjectCreateRelationOption(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectCreateRelationOption_Call {
+	return &MockClientCommands_ObjectCreateRelationOption_Call{Call: _e.mock.On("ObjectCreateRelationOption", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectCreateRelationOption_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectCreateRelationOptionRequest)) *MockClientCommands_ObjectCreateRelationOption_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectCreateRelationOptionRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCreateRelationOption_Call) Return(_a0 *pb.RpcObjectCreateRelationOptionResponse) *MockClientCommands_ObjectCreateRelationOption_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCreateRelationOption_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse) *MockClientCommands_ObjectCreateRelationOption_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectListExport provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectListExport(_a0 context.Context, _a1 *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
 	ret := _m.Called(_a0, _a1)
@@ -753,6 +851,104 @@ func (_c *MockClientCommands_ObjectShow_Call) Return(_a0 *pb.RpcObjectShowRespon
 }
 
 func (_c *MockClientCommands_ObjectShow_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse) *MockClientCommands_ObjectShow_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RelationListRemoveOption provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) RelationListRemoveOption(_a0 context.Context, _a1 *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RelationListRemoveOption")
+	}
+
+	var r0 *pb.RpcRelationListRemoveOptionResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcRelationListRemoveOptionResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_RelationListRemoveOption_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelationListRemoveOption'
+type MockClientCommands_RelationListRemoveOption_Call struct {
+	*mock.Call
+}
+
+// RelationListRemoveOption is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcRelationListRemoveOptionRequest
+func (_e *MockClientCommands_Expecter) RelationListRemoveOption(_a0 interface{}, _a1 interface{}) *MockClientCommands_RelationListRemoveOption_Call {
+	return &MockClientCommands_RelationListRemoveOption_Call{Call: _e.mock.On("RelationListRemoveOption", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_RelationListRemoveOption_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcRelationListRemoveOptionRequest)) *MockClientCommands_RelationListRemoveOption_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcRelationListRemoveOptionRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_RelationListRemoveOption_Call) Return(_a0 *pb.RpcRelationListRemoveOptionResponse) *MockClientCommands_RelationListRemoveOption_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_RelationListRemoveOption_Call) RunAndReturn(run func(context.Context, *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse) *MockClientCommands_RelationListRemoveOption_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RelationOptions provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) RelationOptions(_a0 context.Context, _a1 *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RelationOptions")
+	}
+
+	var r0 *pb.RpcRelationOptionsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcRelationOptionsResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_RelationOptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelationOptions'
+type MockClientCommands_RelationOptions_Call struct {
+	*mock.Call
+}
+
+// RelationOptions is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcRelationOptionsRequest
+func (_e *MockClientCommands_Expecter) RelationOptions(_a0 interface{}, _a1 interface{}) *MockClientCommands_RelationOptions_Call {
+	return &MockClientCommands_RelationOptions_Call{Call: _e.mock.On("RelationOptions", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_RelationOptions_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcRelationOptionsRequest)) *MockClientCommands_RelationOptions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcRelationOptionsRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_RelationOptions_Call) Return(_a0 *pb.RpcRelationOptionsResponse) *MockClientCommands_RelationOptions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_RelationOptions_Call) RunAndReturn(run func(context.Context, *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse) *MockClientCommands_RelationOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }
