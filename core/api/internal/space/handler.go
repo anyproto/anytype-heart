@@ -15,7 +15,7 @@ import (
 //	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user’s workspaces.
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			Anytype-Version	header		string								false	"The version of the API to use"											default(2025-04-22)
+//	@Param			Anytype-Version	header		string								true	"The version of the API to use"											default(2025-04-22)
 //	@Param			offset			query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int									false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[Space]	"List of spaces"
@@ -51,7 +51,7 @@ func GetSpacesHandler(s Service) gin.HandlerFunc {
 //	@Description	Fetches full details about a single space identified by its space ID. The response includes metadata such as the space name, icon, and various workspace IDs (home, archive, profile, etc.). This detailed view supports use cases such as displaying space-specific settings.
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Success		200				{object}	SpaceResponse			"Space"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
@@ -87,7 +87,7 @@ func GetSpaceHandler(s Service) gin.HandlerFunc {
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			name			body		CreateSpaceRequest		true	"Space to create"
 //	@Success		200				{object}	SpaceResponse			"Space created successfully"
 //	@Failure		400				{object}	util.ValidationError	"Bad request"
@@ -129,7 +129,7 @@ func CreateSpaceHandler(s Service) gin.HandlerFunc {
 //	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string									false	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string									true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string									true	"Space ID"
 //	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
@@ -165,7 +165,7 @@ func GetMembersHandler(s Service) gin.HandlerFunc {
 //	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			member_id		path		string					true	"Member ID or Identity"
 //	@Success		200				{object}	MemberResponse			"Member"
@@ -203,7 +203,7 @@ func GetMemberHandler(s Service) gin.HandlerFunc {
 //	@Tags			Members
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			member_id		path		string					true	"Member ID"
 //	@Param			body			body		UpdateMemberRequest		true	"Member to update"

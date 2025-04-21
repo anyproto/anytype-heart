@@ -1065,6 +1065,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1114,6 +1115,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1170,6 +1172,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1228,6 +1231,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1280,6 +1284,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1336,6 +1341,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1387,6 +1393,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1460,6 +1467,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1531,6 +1539,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1600,6 +1609,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1669,6 +1679,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1728,6 +1739,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1785,6 +1797,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1845,6 +1858,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1908,6 +1922,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -1982,6 +1997,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2044,6 +2060,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2107,6 +2124,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2163,6 +2181,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2220,6 +2239,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2293,6 +2313,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2353,6 +2374,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2428,6 +2450,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2483,6 +2506,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           type: string
       - description: Space ID
@@ -2545,6 +2569,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2623,6 +2648,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2690,6 +2716,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2772,6 +2799,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2839,6 +2867,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2897,6 +2926,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -2959,6 +2989,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
@@ -3022,6 +3053,7 @@ paths:
       - description: The version of the API to use
         in: header
         name: Anytype-Version
+        required: true
         schema:
           default: "2025-04-22"
           type: string
