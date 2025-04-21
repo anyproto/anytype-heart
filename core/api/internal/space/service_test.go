@@ -12,7 +12,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
-	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

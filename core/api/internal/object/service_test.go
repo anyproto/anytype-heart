@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
-	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -19,7 +18,6 @@ import (
 const (
 	offset              = 0
 	limit               = 100
-	mockedTechSpaceId   = "mocked-tech-space-id"
 	gatewayUrl          = "http://localhost:31006"
 	mockedSpaceId       = "mocked-space-id"
 	mockedObjectId      = "mocked-object-id"
