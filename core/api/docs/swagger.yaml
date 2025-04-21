@@ -190,6 +190,9 @@ components:
           description: The name of the property
           example: Last modified date
           type: string
+      required:
+      - format
+      - name
       type: object
     object.File:
       description: The file of the block, if applicable
@@ -568,6 +571,9 @@ components:
           description: Name to set for the property
           example: Last modified date
           type: string
+      required:
+      - id
+      - name
       type: object
     pagination.PaginatedResponse-list_View:
       properties:

@@ -1,6 +1,41 @@
 package object
 
-import "github.com/anyproto/anytype-heart/core/api/util"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/anyproto/anytype-heart/core/api/util"
+)
+
+type PropertyFormat string
+
+const (
+	PropertyFormatText        PropertyFormat = "text"
+	PropertyFormatNumber      PropertyFormat = "number"
+	PropertyFormatSelect      PropertyFormat = "select"
+	PropertyFormatMultiSelect PropertyFormat = "multi_select"
+	PropertyFormatDate        PropertyFormat = "date"
+	PropertyFormatFile        PropertyFormat = "file"
+	PropertyFormatCheckbox    PropertyFormat = "checkbox"
+	PropertyFormatUrl         PropertyFormat = "url"
+	PropertyFormatEmail       PropertyFormat = "email"
+	PropertyFormatPhone       PropertyFormat = "phone"
+	PropertyFormatObject      PropertyFormat = "object"
+)
+
+func (pf *PropertyFormat) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	switch PropertyFormat(s) {
+	case PropertyFormatText, PropertyFormatNumber, PropertyFormatSelect, PropertyFormatMultiSelect, PropertyFormatDate, PropertyFormatFile, PropertyFormatCheckbox, PropertyFormatUrl, PropertyFormatEmail, PropertyFormatPhone, PropertyFormatObject:
+		*pf = PropertyFormat(s)
+		return nil
+	default:
+		return util.ErrBadInput(fmt.Sprintf("invalid property format: %q", s))
+	}
+}
 
 type CreateObjectRequest struct {
 	Name        string                 `json:"name" example:"My object"`                                                          // The name of the object
@@ -84,13 +119,13 @@ type PropertyResponse struct {
 }
 
 type CreatePropertyRequest struct {
-	Name   string         `json:"name" example:"Last modified date"`                                                                       // The name of the property
-	Format PropertyFormat `json:"format" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property
+	Name   string         `json:"name" binding:"required" example:"Last modified date"`                                                                       // The name of the property
+	Format PropertyFormat `json:"format" binding:"required" example:"date" enums:"text,number,select,multi_select,date,file,checkbox,url,email,phone,object"` // The format of the property
 }
 
 type UpdatePropertyRequest struct {
-	Id   string `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"` // Id of the property to update
-	Name string `json:"name" example:"Last modified date"`                                        // Name to set for the property
+	Id   string `json:"id" binding:"required" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"` // Id of the property to update
+	Name string `json:"name" binding:"required" example:"Last modified date"`                                        // Name to set for the property
 }
 
 type Property struct {
@@ -110,22 +145,6 @@ type Property struct {
 	Phone       *string        `json:"phone,omitempty" example:"+1234567890"`                                                                   // The phone number value, if applicable
 	Object      []string       `json:"object,omitempty" example:"['objectId']"`                                                                 // The object references, if applicable
 }
-
-type PropertyFormat string
-
-const (
-	PropertyFormatText        PropertyFormat = "text"
-	PropertyFormatNumber      PropertyFormat = "number"
-	PropertyFormatSelect      PropertyFormat = "select"
-	PropertyFormatMultiSelect PropertyFormat = "multi_select"
-	PropertyFormatDate        PropertyFormat = "date"
-	PropertyFormatFile        PropertyFormat = "file"
-	PropertyFormatCheckbox    PropertyFormat = "checkbox"
-	PropertyFormatUrl         PropertyFormat = "url"
-	PropertyFormatEmail       PropertyFormat = "email"
-	PropertyFormatPhone       PropertyFormat = "phone"
-	PropertyFormatObject      PropertyFormat = "object"
-)
 
 type TagResponse struct {
 	Tag Tag `json:"tag"` // The tag

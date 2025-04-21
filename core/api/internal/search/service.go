@@ -253,7 +253,7 @@ func (s *service) prepareObjectTypeFilters(spaceId string, objectTypes []string)
 	for _, objectType := range objectTypes {
 		typeId := objectType
 
-		if strings.HasPrefix(objectType, "ot-") {
+		if strings.HasPrefix(objectType, "ot-") { // TODO: replace with constant
 			var err error
 			typeId, err = util.ResolveUniqueKeyToTypeId(s.mw, spaceId, objectType)
 			if err != nil {

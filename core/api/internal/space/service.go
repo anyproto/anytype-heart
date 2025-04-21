@@ -302,7 +302,7 @@ func (s *service) GetMember(ctx context.Context, spaceId string, memberId string
 	}, nil
 }
 
-// UpdateMember approves member with defined role or removes them
+// UpdateMember approves member with a defined role or removes them
 func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error) {
 	member, err := s.GetMember(ctx, spaceId, memberId)
 	if err != nil {

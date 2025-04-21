@@ -147,20 +147,69 @@ func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId st
 
 // CreateProperty creates a new property in a specific space.
 func (s *service) CreateProperty(ctx context.Context, spaceId string, request CreatePropertyRequest) (Property, error) {
-	// TODO: implement
-	return Property{}, nil
+	details := &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyName.String():           pbtypes.String(request.Name),
+			bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(s.MapPropertyFormat(request.Format))),
+		},
+	}
+
+	resp := s.mw.ObjectCreateRelation(ctx, &pb.RpcObjectCreateRelationRequest{
+		SpaceId: spaceId,
+		Details: details,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateRelationResponseError_NULL {
+		return Property{}, ErrFailedCreateProperty
+	}
+
+	return s.GetProperty(ctx, spaceId, resp.ObjectId)
 }
 
 // UpdateProperty updates an existing property in a specific space.
 func (s *service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request UpdatePropertyRequest) (Property, error) {
-	// TODO: implement
-	return Property{}, nil
+	_, err := s.GetProperty(ctx, spaceId, propertyId)
+	if err != nil {
+		return Property{}, err
+	}
+
+	detail := model.Detail{
+		Key:   bundle.RelationKeyName.String(),
+		Value: pbtypes.String(s.sanitizedString(request.Name)),
+	}
+
+	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
+		ContextId: propertyId,
+		Details:   []*model.Detail{&detail},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
+		return Property{}, ErrFailedUpdateProperty
+	}
+
+	return s.GetProperty(ctx, spaceId, propertyId)
+}
+
+func (s *service) sanitizedString(str string) string {
+	return strings.TrimSpace(str)
 }
 
 // DeleteProperty deletes a property in a specific space.
 func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (Property, error) {
-	// TODO: implement
-	return Property{}, nil
+	property, err := s.GetProperty(ctx, spaceId, propertyId)
+	if err != nil {
+		return Property{}, err
+	}
+
+	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
+		ContextId: propertyId,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
+		return Property{}, ErrFailedDeleteProperty
+	}
+
+	return property, nil
 }
 
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
@@ -171,8 +220,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string")
 		}
-		str = strings.TrimSpace(str)
-		return str, nil
+		return s.sanitizedString(str), nil
 	case PropertyFormatNumber:
 		num, ok := value.(float64)
 		if !ok {
@@ -181,7 +229,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		return num, nil
 	case PropertyFormatSelect:
 		id, ok := value.(string)
-		id = strings.TrimSpace(id)
+		id = s.sanitizedString(id)
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (option id)")
 		}
@@ -200,7 +248,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 			if !ok {
 				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (tag ids)")
 			}
-			id = strings.TrimSpace(id)
+			id = s.sanitizedString(id)
 			if !s.isValidSelectOption(ctx, spaceId, property, id) {
 				return nil, util.ErrBadInput("invalid multi_select option for '" + key + "': " + id)
 			}
@@ -212,7 +260,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (date in RFC3339 format)")
 		}
-		dateStr = strings.TrimSpace(dateStr)
+		dateStr = s.sanitizedString(dateStr)
 		t, err := time.Parse(time.RFC3339, dateStr)
 		if err != nil {
 			return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
@@ -235,7 +283,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 			if !ok {
 				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
 			}
-			id = strings.TrimSpace(id)
+			id = s.sanitizedString(id)
 			if !s.isValidObjectReference(ctx, spaceId, id) {
 				return nil, util.ErrBadInput("invalid " + string(format) + " id for '" + key + "': " + id)
 			}
@@ -288,7 +336,37 @@ func (s *service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 	return props
 }
 
-// MapRelationFormat maps the relation format to a string.
+// MapPropertyFormat maps the property format to relation format.
+func (s *service) MapPropertyFormat(format PropertyFormat) model.RelationFormat {
+	switch format {
+	case PropertyFormatText:
+		return model.RelationFormat_longtext
+	case PropertyFormatNumber:
+		return model.RelationFormat_number
+	case PropertyFormatSelect:
+		return model.RelationFormat_status
+	case PropertyFormatMultiSelect:
+		return model.RelationFormat_tag
+	case PropertyFormatDate:
+		return model.RelationFormat_date
+	case PropertyFormatFile:
+		return model.RelationFormat_file
+	case PropertyFormatCheckbox:
+		return model.RelationFormat_checkbox
+	case PropertyFormatUrl:
+		return model.RelationFormat_url
+	case PropertyFormatEmail:
+		return model.RelationFormat_email
+	case PropertyFormatPhone:
+		return model.RelationFormat_phone
+	case PropertyFormatObject:
+		return model.RelationFormat_object
+	default:
+		return model.RelationFormat_longtext
+	}
+}
+
+// MapRelationFormat maps the relation format to API format.
 func (s *service) MapRelationFormat(format model.RelationFormat) PropertyFormat {
 	switch format {
 	case model.RelationFormat_longtext:

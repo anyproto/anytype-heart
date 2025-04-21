@@ -34,8 +34,8 @@ var (
 type Service interface {
 	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
 	GetObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
-	DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error)
+	DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error)
 	ListProperties(ctx context.Context, spaceId string, offset int, limit int) ([]Property, int, bool, error)
 	GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error)
