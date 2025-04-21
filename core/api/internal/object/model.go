@@ -39,7 +39,7 @@ func (pf *PropertyFormat) UnmarshalJSON(data []byte) error {
 
 type CreateObjectRequest struct {
 	Name        string                 `json:"name" example:"My object"`                                                          // The name of the object
-	Icon        util.Icon              `json:"icon"`                                                                              // The icon of the object
+	Icon        Icon                   `json:"icon"`                                                                              // The icon of the object
 	Description string                 `json:"description" example:"This is a description of the object."`                        // The description of the object
 	Body        string                 `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
 	Source      string                 `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
@@ -56,7 +56,7 @@ type Object struct {
 	Object     string     `json:"object" example:"object"`                                                                      // The data model of the object
 	Id         string     `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
 	Name       string     `json:"name" example:"My object"`                                                                     // The name of the object
-	Icon       util.Icon  `json:"icon"`                                                                                         // The icon of the object
+	Icon       Icon       `json:"icon"`                                                                                         // The icon of the object
 	Archived   bool       `json:"archived" example:"false"`                                                                     // Whether the object is archived
 	SpaceId    string     `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
 	Snippet    string     `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
@@ -69,7 +69,7 @@ type ObjectWithBlocks struct {
 	Object     string     `json:"object" example:"object"`                                                                      // The data model of the object
 	Id         string     `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
 	Name       string     `json:"name" example:"My object"`                                                                     // The name of the object
-	Icon       util.Icon  `json:"icon"`                                                                                         // The icon of the object
+	Icon       Icon       `json:"icon"`                                                                                         // The icon of the object
 	Archived   bool       `json:"archived" example:"false"`                                                                     // Whether the object is archived
 	SpaceId    string     `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
 	Snippet    string     `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
@@ -91,11 +91,11 @@ type Block struct {
 }
 
 type Text struct {
-	Text    string    `json:"text" example:"Some text..."`                                                                                                                      // The text
-	Style   string    `json:"style" enums:"Paragraph,Header1,Header2,Header3,Header4,Quote,Code,Title,Checkbox,Marked,Numbered,Toggle,Description,Callout" example:"Paragraph"` // The style of the text
-	Checked bool      `json:"checked" example:"true"`                                                                                                                           // Whether the text is checked
-	Color   string    `json:"color" example:"red"`                                                                                                                              // The color of the text
-	Icon    util.Icon `json:"icon" `                                                                                                                                            // The icon of the text
+	Text    string `json:"text" example:"Some text..."`                                                                                                                      // The text
+	Style   string `json:"style" enums:"Paragraph,Header1,Header2,Header3,Header4,Quote,Code,Title,Checkbox,Marked,Numbered,Toggle,Description,Callout" example:"Paragraph"` // The style of the text
+	Checked bool   `json:"checked" example:"true"`                                                                                                                           // Whether the text is checked
+	Color   string `json:"color" example:"red"`                                                                                                                              // The color of the text
+	Icon    Icon   `json:"icon" `                                                                                                                                            // The icon of the text
 }
 
 type File struct {
@@ -124,8 +124,8 @@ type CreatePropertyRequest struct {
 }
 
 type UpdatePropertyRequest struct {
-	Id   string `json:"id" binding:"required" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"` // Id of the property to update
-	Name string `json:"name" binding:"required" example:"Last modified date"`                                        // Name to set for the property
+	Id   string `json:"id" binding:"required" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"` // The id of the property to update
+	Name string `json:"name" binding:"required" example:"Last modified date"`                                        // the name to set for the property
 }
 
 type Property struct {
@@ -150,11 +150,22 @@ type TagResponse struct {
 	Tag Tag `json:"tag"` // The tag
 }
 
+type CreateTagRequest struct {
+	Name  string `json:"name" binding:"required" example:"In progress"`                                                           // The name of the tag
+	Color Color  `json:"color" binding:"required" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the tag
+}
+
+type UpdateTagRequest struct {
+	Id    string `json:"id" binding:"required" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag to update
+	Name  string `json:"name" binding:"required" example:"In progress"`                                                           // The name to set for the tag
+	Color Color  `json:"color" binding:"required" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color to set for the tag
+}
+
 type Tag struct {
-	Id    string     `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag
-	Key   string     `json:"key" example:"67b0d3e3cda913b84c1299b1"`                                               // The key of the tag
-	Name  string     `json:"name" example:"in-progress"`                                                           // The name of the tag
-	Color util.Color `json:"color" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the tag
+	Id    string `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag
+	Key   string `json:"key" example:"67b0d3e3cda913b84c1299b1"`                                               // The key of the tag
+	Name  string `json:"name" example:"in-progress"`                                                           // The name of the tag
+	Color Color  `json:"color" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the tag
 }
 
 type TypeResponse struct {
@@ -166,7 +177,7 @@ type Type struct {
 	Id         string     `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type (which is unique across spaces)
 	Key        string     `json:"key" example:"ot-page"`                                                    // The key of the type (can be the same across spaces for known types)
 	Name       string     `json:"name" example:"Page"`                                                      // The name of the type
-	Icon       util.Icon  `json:"icon"`                                                                     // The icon of the type
+	Icon       Icon       `json:"icon"`                                                                     // The icon of the type
 	Archived   bool       `json:"archived" example:"false"`                                                 // Whether the type is archived
 	Layout     string     `json:"layout" example:"todo"`                                                    // The recommended layout of the type
 	Properties []Property `json:"properties"`                                                               // The properties linked to the type
@@ -177,9 +188,9 @@ type TemplateResponse struct {
 }
 
 type Template struct {
-	Object   string    `json:"object" example:"template"`                                                // The data model of the object
-	Id       string    `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template
-	Name     string    `json:"name" example:"My template"`                                               // The name of the template
-	Icon     util.Icon `json:"icon"`                                                                     // The icon of the template
-	Archived bool      `json:"archived" example:"false"`                                                 // Whether the template is archived
+	Object   string `json:"object" example:"template"`                                                // The data model of the object
+	Id       string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template
+	Name     string `json:"name" example:"My template"`                                               // The name of the template
+	Icon     Icon   `json:"icon"`                                                                     // The icon of the template
+	Archived bool   `json:"archived" example:"false"`                                                 // Whether the template is archived
 }

@@ -318,7 +318,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, objects[0].Icon)
+		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr(mockedObjectIcon)}, objects[0].Icon)
 
 		// check details
 		for _, property := range objects[0].Properties {
@@ -343,10 +343,10 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Len(t, tags, 2)
 		require.Equal(t, mockedTagId1, tags[0].Id)
 		require.Equal(t, mockedTagValue1, tags[0].Name)
-		require.Equal(t, util.Color(mockedTagColor1), tags[0].Color)
+		require.Equal(t, object.Color(mockedTagColor1), tags[0].Color)
 		require.Equal(t, mockedTagId2, tags[1].Id)
 		require.Equal(t, mockedTagValue2, tags[1].Name)
-		require.Equal(t, util.Color(mockedTagColor2), tags[1].Color)
+		require.Equal(t, object.Color(mockedTagColor2), tags[1].Color)
 
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)

@@ -11,8 +11,8 @@ import (
 	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
+	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
-	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -241,7 +241,7 @@ func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, l
 	members = make([]Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := util.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+		icon := object.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 		member := Member{
 			Object:     "member",
@@ -288,7 +288,7 @@ func (s *service) GetMember(ctx context.Context, spaceId string, memberId string
 		return Member{}, ErrMemberNotFound
 	}
 
-	icon := util.GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := object.GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 	return Member{
 		Object:     "member",
@@ -389,7 +389,7 @@ func (s *service) getSpaceInfo(spaceId string) (space Space, err error) {
 	}
 
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := util.GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := object.GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return Space{

@@ -37,13 +37,19 @@ type Service interface {
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error)
 	DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error)
+
 	ListProperties(ctx context.Context, spaceId string, offset int, limit int) ([]Property, int, bool, error)
 	GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error)
 	CreateProperty(ctx context.Context, spaceId string, request CreatePropertyRequest) (Property, error)
 	UpdateProperty(ctx context.Context, spaceId string, propertyId string, request UpdatePropertyRequest) (Property, error)
 	DeleteProperty(ctx context.Context, spaceId string, propertyId string) (Property, error)
+
 	ListTags(ctx context.Context, spaceId string, propertyId string, offset int, limit int) ([]Tag, int, bool, error)
 	GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error)
+	CreateTag(ctx context.Context, spaceId string, propertyId string, request CreateTagRequest) (Tag, error)
+	UpdateTag(ctx context.Context, spaceId string, propertyId string, tagId string, request UpdateTagRequest) (Tag, error)
+	DeleteTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error)
+
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
 	GetType(ctx context.Context, spaceId string, typeId string) (Type, error)
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
@@ -162,7 +168,7 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 		Object:     "object",
 		Id:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       util.GetIcon(s.gatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       GetIcon(s.gatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
@@ -298,7 +304,7 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 
 	iconFields := map[string]*types.Value{}
 	if request.Icon.Emoji != nil {
-		if !util.IsEmoji(*request.Icon.Emoji) {
+		if !IsEmoji(*request.Icon.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")
 		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*request.Icon.Emoji)
@@ -365,7 +371,7 @@ func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 				Checked: content.Text.Checked,
 				Color:   content.Text.Color,
-				Icon:    util.GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
+				Icon:    GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
 			}
 		case *model.BlockContentOfFile:
 			file = &File{
@@ -408,7 +414,7 @@ func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       util.GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),

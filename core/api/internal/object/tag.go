@@ -15,10 +15,14 @@ import (
 )
 
 var (
-	ErrInvalidPropertyId = errors.New("invalid property id")
-	ErrTagNotFound       = errors.New("tag not found")
-	ErrTagDeleted        = errors.New("tag deleted")
-	ErrFailedRetrieveTag = errors.New("failed to retrieve tag")
+	ErrInvalidPropertyId  = errors.New("invalid property id")
+	ErrFailedRetrieveTags = errors.New("failed to retrieve tags")
+	ErrTagNotFound        = errors.New("tag not found")
+	ErrTagDeleted         = errors.New("tag deleted")
+	ErrFailedRetrieveTag  = errors.New("failed to retrieve tag")
+	ErrFailedCreateTag    = errors.New("failed to create tag")
+	ErrFailedUpdateTag    = errors.New("failed to update tag")
+	ErrFailedDeleteTag    = errors.New("failed to delete tag")
 )
 
 // ListTags returns all tags for a given property id in a space.
@@ -69,7 +73,7 @@ func (s *service) ListTags(ctx context.Context, spaceId string, propertyId strin
 	return tags, total, hasMore, nil
 }
 
-// GetTag retrieves a single tag option by its ID in a specific space.
+// GetTag retrieves a single tag for a given property id in a space.
 func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
 	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
@@ -91,6 +95,24 @@ func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string,
 	}
 
 	return s.mapTagFromRecord(resp.ObjectView.Details[0].Details), nil
+}
+
+// CreateTag creates a new tag option for a given property ID in a space.
+func (s *service) CreateTag(ctx context.Context, spaceId string, propertyId string, request CreateTagRequest) (Tag, error) {
+	// TODO: implement tag creation
+	return Tag{}, nil
+}
+
+// UpdateTag updates an existing tag option for a given property ID in a space.
+func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId string, tagId string, request UpdateTagRequest) (Tag, error) {
+	// TODO: implement tag update
+	return Tag{}, nil
+}
+
+// DeleteTag deletes a tag option for a given property ID in a space.
+func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
+	// TODO: implement tag deletion
+	return Tag{}, nil
 }
 
 // TODO: remove once bug of select option not being returned in details is fixed
@@ -121,6 +143,6 @@ func (s *service) mapTagFromRecord(record *types.Struct) Tag {
 		Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:   ToTagApiKey(record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()),
 		Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Color: util.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
+		Color: ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 	}
 }

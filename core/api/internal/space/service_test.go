@@ -11,6 +11,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -161,7 +162,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		require.Equal(t, "My Workspace", spaces[1].Name)
 		require.Equal(t, "my-space-id", spaces[1].Id)
 		require.Equal(t, "desc2", spaces[1].Description)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🚀")}, spaces[1].Icon)
+		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr("🚀")}, spaces[1].Icon)
 		require.Equal(t, "gateway-url-2", spaces[1].GatewayUrl)
 		require.Equal(t, "network-id-2", spaces[1].NetworkId)
 
@@ -292,7 +293,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "My Workspace", space.Name)
 		require.Equal(t, "space-id", space.Id)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🚀")}, space.Icon)
+		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr("🚀")}, space.Icon)
 		require.Equal(t, "gateway-url", space.GatewayUrl)
 		require.Equal(t, "network-id", space.NetworkId)
 	})
@@ -431,7 +432,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 		require.Equal(t, "new-space-id", space.Id)
 		require.Equal(t, "New Space", space.Name)
 		require.Equal(t, "A new space", space.Description)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🚀")}, space.Icon)
+		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr("🚀")}, space.Icon)
 	})
 
 	t.Run("failed workspace creation", func(t *testing.T) {
@@ -572,7 +573,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 
 		require.Equal(t, "member-2", members[1].Id)
 		require.Equal(t, "John Doe", members[1].Name)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("👤")}, members[1].Icon)
+		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr("👤")}, members[1].Icon)
 		require.Equal(t, "john.any", members[1].GlobalName)
 		require.Equal(t, "active", members[1].Status)
 		require.Equal(t, "owner", members[1].Role)

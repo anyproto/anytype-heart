@@ -237,11 +237,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedTypeName, objects[0].Type.Name)
 		require.Equal(t, mockedTypeKey, objects[0].Type.Key)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, objects[0].Type.Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTypeIcon)}, objects[0].Type.Icon)
 		require.Equal(t, mockedObjectId, objects[0].Id)
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, objects[0].Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedObjectIcon)}, objects[0].Icon)
 		require.Equal(t, 5, len(objects[0].Properties))
 
 		for _, property := range objects[0].Properties {
@@ -451,11 +451,11 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedTypeId, object.Type.Id)
 		require.Equal(t, mockedTypeName, object.Type.Name)
 		require.Equal(t, mockedTypeKey, object.Type.Key)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, object.Type.Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTypeIcon)}, object.Type.Icon)
 		require.Equal(t, mockedObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, object.Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedObjectIcon)}, object.Icon)
 		require.Equal(t, 3, len(object.Properties))
 
 		for _, property := range object.Properties {
@@ -636,7 +636,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		// when
 		object, err := fx.service.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name:       mockedObjectName,
-			Icon:       util.Icon{Format: util.IconFormatEmoji, Emoji: util.StringPtr(mockedObjectIcon)},
+			Icon:       Icon{Format: IconFormatEmoji, Emoji: StringPtr(mockedObjectIcon)},
 			TemplateId: mockedTemplateId,
 			TypeKey:    mockedTypeKey,
 		})
@@ -647,10 +647,10 @@ func TestObjectService_CreateObject(t *testing.T) {
 		require.Equal(t, mockedTypeId, object.Type.Id)
 		require.Equal(t, mockedTypeName, object.Type.Name)
 		require.Equal(t, mockedTypeKey, object.Type.Key)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, object.Type.Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTypeIcon)}, object.Type.Icon)
 		require.Equal(t, mockedNewObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, object.Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedObjectIcon)}, object.Icon)
 		require.Equal(t, mockedSpaceId, object.SpaceId)
 	})
 
@@ -667,7 +667,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		// when
 		object, err := fx.service.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name: "Fail Object",
-			Icon: util.Icon{},
+			Icon: Icon{},
 		})
 
 		// then
@@ -732,7 +732,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		require.Equal(t, "type-1", types[0].Id)
 		require.Equal(t, "Type One", types[0].Name)
 		require.Equal(t, "type-one-key", types[0].Key)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🗂️")}, types[0].Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr("🗂️")}, types[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -847,7 +847,7 @@ func TestObjectService_GetType(t *testing.T) {
 		require.Equal(t, mockedTypeId, objType.Id)
 		require.Equal(t, mockedTypeName, objType.Name)
 		require.Equal(t, mockedTypeKey, objType.Key)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, objType.Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTypeIcon)}, objType.Icon)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objType.Layout)
 	})
 
@@ -914,7 +914,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		require.Len(t, templates, 1)
 		require.Equal(t, "template-1", templates[0].Id)
 		require.Equal(t, "Template Name", templates[0].Name)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("📝")}, templates[0].Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr("📝")}, templates[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -974,7 +974,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, mockedTemplateId, template.Id)
 		require.Equal(t, mockedTemplateName, template.Name)
-		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTemplateIcon)}, template.Icon)
+		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTemplateIcon)}, template.Icon)
 	})
 
 	t.Run("template not found", func(t *testing.T) {

@@ -25,7 +25,6 @@ var (
 	ErrFailedCreateProperty     = errors.New("failed to create property")
 	ErrFailedUpdateProperty     = errors.New("failed to update property")
 	ErrFailedDeleteProperty     = errors.New("failed to delete property")
-	ErrFailedRetrieveTags       = errors.New("failed to retrieve tags")
 )
 
 var excludedSystemProperties = map[string]bool{

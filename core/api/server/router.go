@@ -95,10 +95,9 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// Tag
 		v1.GET("/spaces/:space_id/properties/:property_id/tags", object.GetTagsHandler(s.objectService))
 		v1.GET("/spaces/:space_id/properties/:property_id/tags/:tag_id", object.GetTagHandler(s.objectService))
-		// TODO: implement create, delete and update property options endpoints
-		// v1.POST("/spaces/:space_id/properties/:property_id/tags", s.rateLimit(maxWriteRequestsPerSecond), object.AddPropertyOptionHandler(s.objectService))
-		// v1.PATCH("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyOptionHandler(s.objectService))
-		// v1.DELETE("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), object.RemovePropertyOptionHandler(s.objectService))
+		v1.POST("/spaces/:space_id/properties/:property_id/tags", s.rateLimit(maxWriteRequestsPerSecond), object.CreateTagHandler(s.objectService))
+		v1.PATCH("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateTagHandler(s.objectService))
+		v1.DELETE("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteTagHandler(s.objectService))
 
 		// Search
 		v1.POST("/search", search.GlobalSearchHandler(s.searchService))

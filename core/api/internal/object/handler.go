@@ -421,10 +421,10 @@ func DeletePropertyHandler(s Service) gin.HandlerFunc {
 	}
 }
 
-// GetTagsHandler lists all tag options for a given property id in a space
+// GetTagsHandler lists all tags for a given property id in a space
 //
 //	@Summary		List tags
-//	@Description	Lists all tag options for a given property id.
+//	@Description	This endpoint retrieves a paginated list of tags available for a specific property within a space. Each tag record includes its unique identifier, name, and color. This information is essential for clients to display select or multi-select options to users when they are creating or editing objects. The endpoint also supports pagination through offset and limit parameters.
 //	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								false	"The version of the API to use"	default(2025-04-22)
@@ -443,8 +443,9 @@ func GetTagsHandler(s Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		options, total, hasMore, err := s.ListTags(c.Request.Context(), spaceId, propertyId, offset, limit)
+		tags, total, hasMore, err := s.ListTags(c.Request.Context(), spaceId, propertyId, offset, limit)
 		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrInvalidPropertyId, http.StatusNotFound),
 			util.ErrToCode(ErrFailedRetrieveTags, http.StatusInternalServerError),
 		)
 
@@ -454,14 +455,14 @@ func GetTagsHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		pagination.RespondWithPagination(c, http.StatusOK, options, total, offset, limit, hasMore)
+		pagination.RespondWithPagination(c, http.StatusOK, tags, total, offset, limit, hasMore)
 	}
 }
 
-// GetTagHandler retrieves a tag option for a given property id in a space.
+// GetTagHandler retrieves a tag for a given property id in a space.
 //
 //	@Summary		Get tag
-//	@Description	Retrieves a tag option for a given property id.
+//	@Description	This endpoint retrieves a tag for a given property id. The tag is identified by its unique identifier within the specified space. The response includes the tag's details such as its ID, name, and color. This is useful for clients to display or when editing a specific tag option.
 //	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
@@ -485,6 +486,147 @@ func GetTagHandler(s Service) gin.HandlerFunc {
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrTagNotFound, http.StatusNotFound),
 			util.ErrToCode(ErrTagDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedRetrieveTag, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TagResponse{Tag: option})
+	}
+}
+
+// CreateTagHandler creates a new tag for a given property id in a space
+//
+//	@Summary		Create tag
+//	@Description	This endpoint creates a new tag for a given property id in a space. The tag is identified by its unique identifier within the specified space. The request must include the tag's name and color. The response includes the tag's details such as its ID, name, and color. This is useful for clients when users want to add new tag options to a property.
+//	@Tags			Tags
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			property_id		path		string					true	"Property ID"
+//	@Param			tag				body		CreateTagRequest		true	"Tag to create"
+//	@Success		200				{object}	TagResponse				"The created tag"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties/{property_id}/tags [post]
+func CreateTagHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		propertyId := c.Param("property_id")
+
+		request := CreateTagRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		option, err := s.CreateTag(c.Request.Context(), spaceId, propertyId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(ErrFailedCreateTag, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedRetrieveTag, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TagResponse{Tag: option})
+	}
+}
+
+// UpdateTagHandler updates a tag for a given property id in a space
+//
+//	@Summary		Update tag
+//	@Description	This endpoint updates a tag for a given property id in a space. The tag is identified by its unique identifier within the specified space. The request must include the tag's name and color. The response includes the tag's details such as its ID, name, and color. This is useful for clients when users want to edit existing tags for a property.
+//	@Tags			Tags
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			property_id		path		string					true	"Property ID"
+//	@Param			tag_id			path		string					true	"Tag ID"
+//	@Param			tag				body		UpdateTagRequest		true	"Tag to update"
+//	@Success		200				{object}	TagResponse				"The updated tag"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [patch]
+func UpdateTagHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		propertyId := c.Param("property_id")
+		tagId := c.Param("tag_id")
+
+		request := UpdateTagRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		option, err := s.UpdateTag(c.Request.Context(), spaceId, propertyId, tagId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(ErrTagNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrTagDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedUpdateTag, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedRetrieveTag, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TagResponse{Tag: option})
+	}
+}
+
+// DeleteTagHandler deletes a tag for a given property id in a space
+//
+//	@Summary		Delete tag
+//	@Description	This endpoint “deletes” a tag by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the tag’s details after it has been archived. Proper error handling is in place for situations such as when the tag isn’t found or the deletion cannot be performed because of permission issues.
+//	@Tags			Tags
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					false	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			property_id		path		string					true	"Property ID"
+//	@Param			tag_id			path		string					true	"Tag ID"
+//	@Success		200				{object}	TagResponse				"The deleted tag"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		423				{object}	util.RateLimitError		"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [delete]
+func DeleteTagHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		propertyId := c.Param("property_id")
+		tagId := c.Param("tag_id")
+
+		option, err := s.DeleteTag(c.Request.Context(), spaceId, propertyId, tagId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrTagNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrTagDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedDeleteTag, http.StatusForbidden),
 			util.ErrToCode(ErrFailedRetrieveTag, http.StatusInternalServerError),
 		)
 
