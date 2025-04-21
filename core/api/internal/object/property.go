@@ -303,7 +303,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 // isValidSelectOption checks if the option id is valid for the given property.
 func (s *service) isValidSelectOption(ctx context.Context, spaceId string, property Property, optionId string) bool {
 	// TODO: refine logic
-	tags, _, _, err := s.ListTags(ctx, spaceId, property.Key, 0, 1000) // TODO: revert to prop.ID
+	tags, _, _, err := s.ListTags(ctx, spaceId, property.Id, 0, 1000)
 	if err != nil {
 		return false
 	}
