@@ -152,6 +152,7 @@ type TagResponse struct {
 
 type Tag struct {
 	Id    string     `json:"id" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag
+	Key   string     `json:"key" example:"67b0d3e3cda913b84c1299b1"`                                               // The key of the tag
 	Name  string     `json:"name" example:"in-progress"`                                                           // The name of the tag
 	Color util.Color `json:"color" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the tag
 }

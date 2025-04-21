@@ -172,11 +172,11 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 		// for queries, we search within the space for objects of the setOf type
 		setOfValues := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySetOf.String()].GetListValue().Values
 		for _, value := range setOfValues {
-			typeKey, err := util.ResolveIdtoUniqueKey(s.mw, spaceId, value.GetStringValue())
+			uk, _, err := util.ResolveIdtoUniqueKeyAndRelationKey(s.mw, spaceId, value.GetStringValue())
 			if err != nil {
 				return nil, 0, false, err
 			}
-			source = append(source, typeKey)
+			source = append(source, uk)
 		}
 	case model.ObjectType_collection:
 		// for collections, we need to search within that collection

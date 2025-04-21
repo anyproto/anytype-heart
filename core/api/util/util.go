@@ -147,16 +147,17 @@ func ResolveUniqueKeyToTypeId(mw apicore.ClientCommands, spaceId string, uniqueK
 	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
 }
 
-// ResolveIdtoUniqueKey resolves the type's ID to the unique key
-func ResolveIdtoUniqueKey(mw apicore.ClientCommands, spaceId string, typeId string) (uniqueKey string, err error) {
+// ResolveIdtoUniqueKeyAndRelationKey resolves the type's ID to the unique key
+func ResolveIdtoUniqueKeyAndRelationKey(mw apicore.ClientCommands, spaceId string, objectId string) (uk string, rk string, err error) {
 	resp := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
-		ObjectId: typeId,
+		ObjectId: objectId,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return "", ErrorResolveToUniqueKey
+		return "", "", ErrorResolveToUniqueKey
 	}
 
-	return resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), nil
+	return resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue(), nil
 }

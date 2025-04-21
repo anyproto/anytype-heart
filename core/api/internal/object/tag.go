@@ -3,7 +3,6 @@ package object
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/gogo/protobuf/types"
 
@@ -16,22 +15,17 @@ import (
 )
 
 var (
+	ErrInvalidPropertyId = errors.New("invalid property id")
 	ErrTagNotFound       = errors.New("tag not found")
 	ErrTagDeleted        = errors.New("tag deleted")
 	ErrFailedRetrieveTag = errors.New("failed to retrieve tag")
 )
 
 // ListTags returns all tags for a given property id in a space.
-func (s *service) ListTags(ctx context.Context, spaceId string, propertyIdOrKey string, offset int, limit int) (tags []Tag, total int, hasMore bool, err error) {
-	var rk string
-	if strings.HasPrefix(propertyIdOrKey, propPrefix) {
-		rk = FromPropertyApiKey(propertyIdOrKey)
-	} else {
-		// TODO: clean up id vs key logic
-		// propertyKey, err := util.ResolveIdtoUniqueKey(s.mw, spaceId, propertyIdOrKey)
-		// if err != nil {
-		// 	return nil, 0, false, err
-		// }
+func (s *service) ListTags(ctx context.Context, spaceId string, propertyId string, offset int, limit int) (tags []Tag, total int, hasMore bool, err error) {
+	_, rk, err := util.ResolveIdtoUniqueKeyAndRelationKey(s.mw, spaceId, propertyId)
+	if err != nil {
+		return nil, 0, false, ErrInvalidPropertyId
 	}
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
@@ -50,6 +44,7 @@ func (s *service) ListTags(ctx context.Context, spaceId string, propertyIdOrKey 
 		},
 		Keys: []string{
 			bundle.RelationKeyId.String(),
+			bundle.RelationKeyRelationKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 		},
@@ -124,6 +119,7 @@ func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
 func (s *service) mapTagFromRecord(record *types.Struct) Tag {
 	return Tag{
 		Id:    record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:   ToTagApiKey(record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()),
 		Name:  record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Color: util.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 	}

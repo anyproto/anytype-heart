@@ -445,6 +445,10 @@ components:
           description: The id of the tag
           example: bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
           type: string
+        key:
+          description: The key of the tag
+          example: 67b0d3e3cda913b84c1299b1
+          type: string
         name:
           description: The name of the tag
           example: in-progress
