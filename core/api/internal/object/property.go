@@ -102,15 +102,21 @@ func (s *service) ListProperties(ctx context.Context, spaceId string, offset int
 		return nil, 0, false, ErrFailedRetrieveProperties
 	}
 
-	total = len(resp.Records)
-	paginatedProperties, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	properties = make([]Property, 0, len(paginatedProperties))
-
-	for _, record := range paginatedProperties {
-		rk, property := s.mapPropertyFromRecord(record)
+	filteredRecords := make([]*types.Struct, 0, len(resp.Records))
+	for _, record := range resp.Records {
+		rk, _ := s.mapPropertyFromRecord(record)
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
+		filteredRecords = append(filteredRecords, record)
+	}
+
+	total = len(filteredRecords)
+	paginatedProperties, hasMore := pagination.Paginate(filteredRecords, offset, limit)
+	properties = make([]Property, 0, len(paginatedProperties))
+
+	for _, record := range paginatedProperties {
+		_, property := s.mapPropertyFromRecord(record)
 		properties = append(properties, property)
 	}
 
