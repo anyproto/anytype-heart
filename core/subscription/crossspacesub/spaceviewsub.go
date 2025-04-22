@@ -30,8 +30,8 @@ func (s *service) runSpaceViewSub() error {
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceAccountStatus,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(model.SpaceStatus_SpaceActive),
+				Condition:   model.BlockContentDataviewFilter_NotIn,
+				Value:       domain.Int64List([]model.SpaceStatus{model.SpaceStatus_SpaceDeleted, model.SpaceStatus_SpaceRemoving}),
 			},
 		},
 		Internal: true,

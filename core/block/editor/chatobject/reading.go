@@ -163,8 +163,12 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	if err != nil {
 		return fmt.Errorf("create tx: %w", err)
 	}
-	defer txn.Rollback()
-
+	var commited bool
+	defer func() {
+		if !commited {
+			_ = txn.Rollback()
+		}
+	}()
 	handler := newReadHandler(counterType, s.subscription)
 	messageIds, err := s.repository.getReadMessagesAfter(txn.Context(), afterOrderId, handler)
 	if err != nil {
@@ -206,6 +210,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return fmt.Errorf("store seen heads: %w", err)
 	}
 
+	commited = true
 	return txn.Commit()
 }
 
@@ -218,7 +223,12 @@ func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) 
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
-	defer txn.Rollback()
+	var commited bool
+	defer func() {
+		if !commited {
+			txn.Rollback()
+		}
+	}()
 
 	idsModified := s.repository.setReadFlag(txn.Context(), s.Id(), changeIds, handler, true)
 
@@ -228,6 +238,7 @@ func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) 
 			return fmt.Errorf("get oldest order id: %w", err)
 		}
 
+		commited = true
 		err = txn.Commit()
 		if err != nil {
 			return fmt.Errorf("commit: %w", err)

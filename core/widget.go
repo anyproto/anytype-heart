@@ -23,7 +23,7 @@ func (mw *Middleware) BlockCreateWidget(cctx context.Context, req *pb.RpcBlockCr
 		if req.Block != nil {
 			req.Block.Id = ""
 		}
-		id, err = bs.CreateWidgetBlock(ctx, req)
+		id, err = bs.CreateWidgetBlock(ctx, req, false)
 		return err
 	})
 	if err != nil {
