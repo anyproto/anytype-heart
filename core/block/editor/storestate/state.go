@@ -26,10 +26,10 @@ const (
 	IdFromChange = "$changeId"
 )
 
-var lexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
+var LexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 
 const (
-	collChangeOrders = "_change_orders"
+	CollChangeOrders = "_change_orders"
 )
 
 func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (state *StoreState, err error) {
@@ -76,21 +76,19 @@ func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (s
 }
 
 type ChangeSet struct {
-	Id          string
-	PrevOrderId string
-	Order       string
-	Creator     string
-	Changes     []*pb.StoreChangeContent
-	Timestamp   int64
+	Id        string
+	Order     string
+	Creator   string
+	Changes   []*pb.StoreChangeContent
+	Timestamp int64
 }
 
 type Change struct {
-	Id          string
-	PrevOrderId string
-	Order       string
-	Creator     string
-	Change      *pb.StoreChangeContent
-	Timestamp   int64
+	Id        string
+	Order     string
+	Creator   string
+	Change    *pb.StoreChangeContent
+	Timestamp int64
 }
 
 type StoreState struct {
@@ -105,8 +103,12 @@ type StoreState struct {
 	db anystore.DB
 }
 
+func (ss *StoreState) Id() string {
+	return ss.id
+}
+
 func (ss *StoreState) init(ctx context.Context) (err error) {
-	if ss.collChangeOrders, err = ss.Collection(ctx, collChangeOrders); err != nil {
+	if ss.collChangeOrders, err = ss.Collection(ctx, CollChangeOrders); err != nil {
 		return
 	}
 	for _, h := range ss.handlers {
@@ -124,6 +126,7 @@ func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {
 	}
 	stx := &StoreStateTx{state: ss, tx: tx, ctx: tx.Context(), arena: &anyenc.Arena{}}
 	if err = stx.init(); err != nil {
+		_ = tx.Rollback()
 		return nil, err
 	}
 	return stx, nil
@@ -136,12 +139,11 @@ func (ss *StoreState) Collection(ctx context.Context, name string) (anystore.Col
 func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet) (err error) {
 	for _, ch := range set.Changes {
 		applyErr := ss.applyChange(ctx, Change{
-			Id:          set.Id,
-			PrevOrderId: set.PrevOrderId,
-			Order:       set.Order,
-			Change:      ch,
-			Creator:     set.Creator,
-			Timestamp:   set.Timestamp,
+			Id:        set.Id,
+			Order:     set.Order,
+			Change:    ch,
+			Creator:   set.Creator,
+			Timestamp: set.Timestamp,
 		})
 		if applyErr == nil || errors.Is(applyErr, ErrIgnore) {
 			continue

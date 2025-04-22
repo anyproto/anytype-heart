@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -25,11 +27,15 @@ import (
 )
 
 var (
-	ftIndexInterval         = 1 * time.Second
-	ftIndexForceMinInterval = time.Second * 10
-	ftBatchLimit            = 1000
-	ftBlockMaxSize          = 1024 * 1024
+	ftIndexInterval              = 1 * time.Second
+	ftMaxIndexInterval           = time.Second * 32
+	ftIndexForceMinInterval      = time.Second * 10
+	ftBatchLimit            uint = 1000
+	ftBlockMaxSize               = 1024 * 1024
+	maxErrSent              atomic.Int32
 )
+
+const maxErrorsPerSession = 100
 
 func (i *indexer) ForceFTIndex() {
 	select {
@@ -41,10 +47,10 @@ func (i *indexer) ForceFTIndex() {
 // ftLoop runs full-text indexer
 // MUST NOT be called more than once
 func (i *indexer) ftLoopRoutine() {
-	ticker := time.NewTicker(ftIndexInterval)
+	tickerDuration := ftIndexInterval
+	ticker := time.NewTicker(tickerDuration)
 	ctx := i.runCtx
-
-	i.runFullTextIndexer(ctx)
+	prevError := i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
 	for {
@@ -52,58 +58,115 @@ func (i *indexer) ftLoopRoutine() {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			i.runFullTextIndexer(ctx)
+			err := i.runFullTextIndexer(ctx)
+			if err != nil {
+				if prevError != nil {
+					// we have an error in the previous run
+					// double the ticker duration, but not more than ftMaxIndexInterval
+					if tickerDuration*2 <= ftMaxIndexInterval {
+						tickerDuration *= 2
+						ticker.Reset(tickerDuration)
+					}
+				}
+			} else if tickerDuration != ftIndexInterval {
+				// reset ticker to the initial value
+				tickerDuration = ftIndexInterval
+				ticker.Reset(tickerDuration)
+			}
+			prevError = err
 		case <-i.forceFt:
 			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
-				i.runFullTextIndexer(ctx)
+				prevError = i.runFullTextIndexer(ctx)
 				lastForceIndex = time.Now()
 			}
 		}
 	}
 }
 
-func (i *indexer) runFullTextIndexer(ctx context.Context) {
+func (i *indexer) OnSpaceLoad(spaceId string) {
+	i.spacesLock.Lock()
+	defer i.spacesLock.Unlock()
+	if i.spaces == nil {
+		i.spaces = map[string]struct{}{}
+	}
+	i.spaces[spaceId] = struct{}{}
+	i.ForceFTIndex()
+}
+
+func (i *indexer) OnSpaceUnload(spaceId string) {
+	i.spacesLock.Lock()
+	defer i.spacesLock.Unlock()
+	delete(i.spaces, spaceId)
+}
+
+func (i *indexer) activeSpaces() []string {
+	i.spacesLock.RLock()
+	defer i.spacesLock.RUnlock()
+	return lo.Keys(i.spaces)
+}
+
+func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
-	err := i.store.BatchProcessFullTextQueue(ctx, ftBatchLimit, func(objectIds []string) error {
+	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) (succeedIds []string, err error) {
+		if len(objectIds) == 0 {
+			return nil, nil
+		}
+
 		for _, objectId := range objectIds {
-			objDocs, err := i.prepareSearchDocument(ctx, objectId)
-			if err != nil && !errors.Is(err, domain.ErrObjectNotFound) && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-				log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
+			objDocs, err := i.prepareSearchDocument(ctx, objectId.ObjectID)
+			if err != nil {
 				if errors.Is(err, context.Canceled) {
-					return err
+					return nil, err
 				}
-				continue
+				if !errors.Is(err, domain.ErrObjectNotFound) &&
+					!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+					// some error that doesn't mean object is no longer exists
+					log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
+					continue
+				}
 			}
 
-			objDocs, objRemovedIds, err := i.filterOutNotChangedDocuments(objectId, objDocs)
+			objDocs, objRemovedIds, err := i.filterOutNotChangedDocuments(objectId.ObjectID, objDocs)
+			if err != nil {
+				log.With("id", objectId).Errorf("filter not changed error:: %s", err)
+				// try to process the other returned values.
+				continue
+			}
 			for _, removeId := range objRemovedIds {
 				err = batcher.DeleteDoc(removeId)
 				if err != nil {
-					return fmt.Errorf("batcher delete: %w", err)
+					return nil, fmt.Errorf("batcher delete: %w", err)
 				}
 			}
 
 			for _, doc := range objDocs {
-				if err != nil {
-					return fmt.Errorf("batcher delete: %w", err)
-				}
 				err = batcher.UpdateDoc(doc)
 				if err != nil {
-					return fmt.Errorf("batcher add: %w", err)
+					return nil, fmt.Errorf("batcher add: %w", err)
 				}
 			}
+
+			succeedIds = append(succeedIds, objectId.ObjectID)
 		}
-		err := batcher.Finish()
+
+		err = batcher.Finish()
 		if err != nil {
-			return fmt.Errorf("finish batch: %w", err)
+			return nil, fmt.Errorf("finish batch failed: %w", err)
 		}
-		return nil
+
+		return succeedIds, nil
 	})
-	if err != nil {
+	if err != nil && maxErrSent.Load() < maxErrorsPerSession {
+		maxErrSent.Add(1)
 		log.Errorf("list ids from full-text queue: %v", err)
-		return
 	}
 
+	return err
 }
 
 func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.SearchDoc) (changed []ftsearch.SearchDoc, removedIds []string, err error) {
@@ -187,7 +250,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			if bundledRel, err := bundle.PickRelation(key); err == nil {
 				layout, _ := sb.Layout()
 				skip := bundledRel.ReadOnly || bundledRel.Hidden
-				if key == bundle.RelationKeyName {
+				if isName(key) {
 					skip = false
 				}
 				if layout == model.ObjectType_note && key == bundle.RelationKeySnippet {
@@ -206,7 +269,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 				Text:    val,
 			}
 
-			if key == bundle.RelationKeyName {
+			if isName(key) {
 				layout, layoutValid := sb.Layout()
 				if layoutValid {
 					if _, contains := filesLayouts[layout]; !contains {
@@ -255,12 +318,20 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 		// we need to avoid TryRemoveFromCache in this case
 		return docs, nil
 	}
+	if err != nil {
+		return nil, err
+	}
 	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
-	if cacheErr != nil {
+	if cacheErr != nil &&
+		!errors.Is(err, domain.ErrObjectNotFound) {
 		log.With("objectId", id).Errorf("object cache remove: %v", err)
 	}
 
-	return docs, err
+	return docs, nil
+}
+
+func isName(key domain.RelationKey) bool {
+	return key == bundle.RelationKeyName || key == bundle.RelationKeyPluralName
 }
 
 func (i *indexer) ftInit() error {
@@ -270,16 +341,17 @@ func (i *indexer) ftInit() error {
 			return err
 		}
 		if docCount == 0 {
-			// query objects that are existing in the store
-			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
-			ids, err := i.store.ListIdsCrossSpace()
+			// delete the remnants from the last run if any
+			err = i.store.ClearFullTextQueue(nil)
 			if err != nil {
 				return err
 			}
-			if err := i.store.AddToIndexQueue(i.runCtx, ids...); err != nil {
+			// query objects that are existing in the store
+			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
+			err = i.store.EnqueueAllForFulltextIndexing(i.runCtx)
+			if err != nil {
 				return err
 			}
-
 		}
 	}
 	return nil

@@ -111,7 +111,7 @@ func (ds *dependencyService) isRelationObject(spaceId string, key domain.Relatio
 		return isObj
 	}
 	relFormat, err := ds.s.objectStore.GetRelationFormatByKey(key)
-	if err != nil {
+	if err != nil && key != "pageCover" {
 		log.Errorf("can't get relation %s: %v", key, err)
 		return false
 	}

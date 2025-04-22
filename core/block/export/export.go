@@ -3,8 +3,10 @@ package export
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -39,6 +41,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -64,12 +67,15 @@ const (
 
 	FilesObjects = "filesObjects"
 	Files        = "files"
+
+	defaultFileName = "untitled"
 )
 
 var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
 	Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
+	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
 	app.Component
 }
 
@@ -82,6 +88,7 @@ type export struct {
 	accountService      account.Service
 	notificationService notifications.Notifications
 	processService      process.Service
+	gatewayService      gateway.Gateway
 }
 
 func New() Export {
@@ -97,6 +104,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
 	e.notificationService = app.MustComponent[notifications.Notifications](a)
+	e.gatewayService, _ = app.GetComponent[gateway.Gateway](a)
 	return
 }
 
@@ -117,6 +125,20 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	}
 	exportCtx := newExportContext(e, req)
 	return exportCtx.exportObjects(ctx, queue)
+}
+
+func (e *export) ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error) {
+	req := pb.RpcObjectListExportRequest{
+		SpaceId:         spaceId,
+		ObjectIds:       []string{objectId},
+		IncludeFiles:    true,
+		Format:          format,
+		IncludeNested:   true,
+		IncludeArchived: true,
+	}
+
+	exportCtx := newExportContext(e, req)
+	return exportCtx.exportObject(ctx, objectId)
 }
 
 func (e *export) finishWithNotification(spaceId string, exportFormat model.ExportFormat, queue process.Queue, err error) {
@@ -169,7 +191,7 @@ type exportContext struct {
 	relations        map[string]struct{}
 	setOfList        map[string]struct{}
 	objectTypes      map[string]struct{}
-
+	gatewayUrl       string
 	*export
 }
 
@@ -191,8 +213,10 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		setOfList:        make(map[string]struct{}),
 		objectTypes:      make(map[string]struct{}),
 		relations:        make(map[string]struct{}),
-
-		export: e,
+		export:           e,
+	}
+	if e.gatewayService != nil {
+		ec.gatewayUrl = "http://" + e.gatewayService.Addr()
 	}
 	return ec
 }
@@ -223,6 +247,41 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 		return e.linkStateFilters
 	}
 	return nil
+}
+
+// exportObject synchronously exports a single object and return the bytes slice
+func (e *exportContext) exportObject(ctx context.Context, objectId string) (string, error) {
+	e.reqIds = []string{objectId}
+	e.includeArchive = true
+	err := e.docsForExport(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	var docNamer Namer
+	if e.format == model.Export_Markdown && e.gatewayUrl != "" {
+		u, err := url.Parse(e.gatewayUrl)
+		if err != nil {
+			return "", err
+		}
+		docNamer = &deepLinkNamer{gatewayUrl: *u}
+	} else {
+		docNamer = newNamer()
+	}
+	inMemoryWriter := &InMemoryWriter{fn: docNamer}
+	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.transformToDetailsMap())
+	if err != nil {
+		return "", err
+	}
+
+	for _, v := range inMemoryWriter.data {
+		if e.format == model.Export_Protobuf {
+			return base64.StdEncoding.EncodeToString(v), nil
+		}
+		return string(v), nil
+	}
+
+	return "", fmt.Errorf("failed to find data in writer")
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {
@@ -1255,6 +1314,9 @@ func (fn *namer) Get(path, hash, title, ext string) (name string) {
 	title = slug.Make(strings.TrimSuffix(title, ext))
 	name = text.TruncateEllipsized(title, fileLenLimit)
 	name = strings.TrimSuffix(name, text.TruncateEllipsis)
+	if name == "" {
+		name = defaultFileName
+	}
 	var (
 		i = 0
 		b = 36

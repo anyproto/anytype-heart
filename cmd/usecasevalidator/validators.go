@@ -105,6 +105,10 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 				continue
 			}
 
+			if k == bundle.RelationKeyAutoWidgetTargets.String() && val == "bin" {
+				continue
+			}
+
 			_, found := info.objects[val]
 			if !found {
 				if isBrokenTemplate(k, val) {

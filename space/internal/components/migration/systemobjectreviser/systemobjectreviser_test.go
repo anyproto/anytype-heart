@@ -56,15 +56,6 @@ func TestMigration_Run(t *testing.T) {
 func TestReviseSystemObject(t *testing.T) {
 	ctx := context.Background()
 	log := logger.NewNamed("test")
-	marketObjects := map[string]*domain.Details{
-		"_otnote":        domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(3)}),
-		"_otpage":        domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(2)}),
-		"_otcontact":     domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(1)}),
-		"_brid":          domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(1)}),
-		"_brdescription": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(2)}),
-		"_brlyrics":      domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(1)}),
-		"_brisReadonly":  domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{revisionKey: domain.Int64(3)}),
-	}
 
 	t.Run("system object type is updated if revision is higher", func(t *testing.T) {
 		// given
@@ -300,28 +291,6 @@ func TestReviseSystemObject(t *testing.T) {
 		assert.True(t, toRevise)
 	})
 
-	t.Run("recommendedRelations list is updated by not system relations", func(t *testing.T) {
-		// given
-		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyRevision:             domain.Int64(2),
-			bundle.RelationKeySourceObject:         domain.String("_otpage"),
-			bundle.RelationKeyUniqueKey:            domain.String("ot-page"),
-			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-name"}),
-		})
-		space := mock_space.NewMockSpace(t)
-		space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
-			return addr.ObjectTypeKeyToIdPrefix + key.InternalKey(), nil
-		}).Maybe()
-
-		// when
-		marketObjects["_otpage"].SetStringList("recommendedRelations", []string{"_brname", "_brtag"})
-		toRevise, err := reviseObject(ctx, log, space, rel)
-
-		// then
-		assert.NoError(t, err)
-		assert.False(t, toRevise)
-	})
-
 	t.Run("relationFormatObjectTypes list is updated", func(t *testing.T) {
 		// given
 		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
@@ -343,5 +312,41 @@ func TestReviseSystemObject(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.True(t, toRevise)
+	})
+}
+
+func TestBuildDiffDetails(t *testing.T) {
+	t.Run("new name is applied to system types", func(t *testing.T) {
+		diff := buildDiffDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyPluralName: domain.String("Pages"),
+			bundle.RelationKeyName:       domain.String("Page"),
+		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("Page"),
+		}), true)
+
+		assert.Equal(t, "Pages", diff.GetString(bundle.RelationKeyPluralName))
+	})
+
+	t.Run("new name is applied to custom types, if name was not modified", func(t *testing.T) {
+		diff := buildDiffDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyPluralName: domain.String("Projects"),
+			bundle.RelationKeyName:       domain.String("Project"),
+		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("Project"),
+		}), false)
+
+		assert.Equal(t, "Projects", diff.GetString(bundle.RelationKeyPluralName))
+	})
+
+	t.Run("new name is NOT applied to custom types, if name was modified", func(t *testing.T) {
+		diff := buildDiffDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyPluralName: domain.String("Projects"),
+			bundle.RelationKeyName:       domain.String("Project"),
+		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("Проект"),
+		}), false)
+
+		assert.False(t, diff.Has(bundle.RelationKeyPluralName))
+		assert.False(t, diff.Has(bundle.RelationKeyName))
 	})
 }

@@ -9,25 +9,28 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/util/timeid"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ChatHandler struct {
+	repository      *repository
 	subscription    *subscription
 	currentIdentity string
+	myParticipantId string
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
 }
 
 func (d *ChatHandler) CollectionName() string {
-	return collectionName
+	return CollectionName
 }
 
 func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err error) {
-	coll, err := s.Collection(ctx, collectionName)
+	coll, err := s.Collection(ctx, CollectionName)
 	if err != nil {
 		return err
 	}
@@ -40,26 +43,66 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 	return
 }
 
-func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) (err error) {
-	msg := newMessageWrapper(ch.Arena, ch.Value)
-	msg.setCreatedAt(ch.Change.Timestamp)
-	msg.setCreator(ch.Change.Creator)
+func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
+	msg, err := unmarshalMessage(ch.Value)
+	if err != nil {
+		return fmt.Errorf("unmarshal message: %w", err)
+	}
+	msg.CreatedAt = ch.Change.Timestamp
+	msg.Creator = ch.Change.Creator
 	if d.forceNotRead {
-		msg.setRead(false)
+		msg.Read = false
+		msg.MentionRead = false
 	} else {
 		if ch.Change.Creator == d.currentIdentity {
-			msg.setRead(true)
+			msg.Read = true
+			msg.MentionRead = true
 		} else {
-			msg.setRead(false)
+			msg.Read = false
+			msg.MentionRead = false
 		}
 	}
 
-	msg.setAddedAt(timeid.NewNano())
-	model := msg.toModel()
-	model.OrderId = ch.Change.Order
-	d.subscription.add(ch.Change.PrevOrderId, model)
+	msg.StateId = bson.NewObjectId().Hex()
 
-	return
+	isMentioned, err := msg.IsCurrentUserMentioned(ctx, d.myParticipantId, d.currentIdentity, d.repository)
+	if err != nil {
+		return fmt.Errorf("check if current user is mentioned: %w", err)
+	}
+	msg.CurrentUserMentioned = isMentioned
+	msg.OrderId = ch.Change.Order
+
+	prevOrderId, err := d.repository.getPrevOrderId(ctx, ch.Change.Order)
+	if err != nil {
+		return fmt.Errorf("get prev order id: %w", err)
+	}
+
+	d.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
+		if !msg.Read {
+			if msg.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
+				state.Messages.OldestOrderId = msg.OrderId
+			}
+			state.Messages.Counter++
+
+			if isMentioned {
+				state.Mentions.Counter++
+				if msg.OrderId < state.Mentions.OldestOrderId || state.Mentions.OldestOrderId == "" {
+					state.Mentions.OldestOrderId = msg.OrderId
+				}
+			}
+
+		}
+		if msg.StateId > state.LastStateId {
+			state.LastStateId = msg.StateId
+		}
+		return state
+	})
+
+	d.subscription.add(prevOrderId, msg)
+
+	msg.MarshalAnyenc(ch.Value, ch.Arena)
+
+	return nil
 }
 
 func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
@@ -67,7 +110,7 @@ func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) 
 }
 
 func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (mode storestate.DeleteMode, err error) {
-	coll, err := ch.State.Collection(ctx, collectionName)
+	coll, err := ch.State.Collection(ctx, CollectionName)
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("get collection: %w", err)
 	}
@@ -79,12 +122,16 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
 	}
 
-	message := newMessageWrapper(ch.Arena, doc.Value())
-	if message.getCreator() != ch.Change.Creator {
+	message, err := unmarshalMessage(doc.Value())
+	if err != nil {
+		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
+	}
+	if message.Creator != ch.Change.Creator {
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
 
 	d.subscription.delete(messageId)
+
 	return storestate.DeleteModeDelete, nil
 }
 
@@ -102,8 +149,10 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 		}
 
 		if modified {
-			msg := newMessageWrapper(a, result)
-			model := msg.toModel()
+			msg, err := unmarshalMessage(result)
+			if err != nil {
+				return nil, false, fmt.Errorf("unmarshal message: %w", err)
+			}
 
 			switch path {
 			case reactionsKey:
@@ -114,15 +163,15 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				}
 				// TODO Count validation
 
-				d.subscription.updateReactions(model)
+				d.subscription.updateReactions(msg)
 			case contentKey:
-				creator := model.Creator
+				creator := msg.Creator
 				if creator != ch.Change.Creator {
 					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify someone else's message"))
 				}
-				result.Set(modifiedAtKey, a.NewNumberInt(int(ch.Change.Timestamp)))
-				model.ModifiedAt = ch.Change.Timestamp
-				d.subscription.updateFull(model)
+				msg.ModifiedAt = ch.Change.Timestamp
+				msg.MarshalAnyenc(result, a)
+				d.subscription.updateFull(msg)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 			}

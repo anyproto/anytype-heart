@@ -66,7 +66,8 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 	s := state.NewDocWithUniqueKey(v.id, nil, uk).(*state.State)
 	rels, d, err := getDetailsForBundledObjectType(v.id)
 	if err != nil {
-		return nil, err
+		// it is either not found or invalid id. We return not found for both cases
+		return nil, domain.ErrObjectNotFound
 	}
 	s.AddRelationKeys(rels...)
 	s.SetDetails(d)

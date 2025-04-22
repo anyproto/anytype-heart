@@ -8,46 +8,46 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service/mock_service"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
-	offset                    = 0
-	limit                     = 100
-	mockedTechSpaceId         = "mocked-tech-space-id"
-	gatewayUrl                = "http://localhost:31006"
-	mockedSpaceId             = "mocked-space-id"
-	mockedObjectId            = "mocked-object-id"
-	mockedObjectType          = "mocked-object-type"
-	mockedNewObjectId         = "mocked-new-object-id"
-	mockedObjectName          = "mocked-object-name"
-	mockedObjectSnippet       = "mocked-object-snippet"
-	mockedObjectIcon          = "🔍"
-	mockedObjectTypeUniqueKey = "ot-page"
-	mockedTypeId              = "mocked-type-id"
-	mockedTypeName            = "mocked-type-name"
-	mockedTypeUniqueKey       = "mocked-type-unique-key"
-	mockedTypeIcon            = "📝"
-	mockedTemplateId          = "mocked-template-id"
-	mockedTemplateName        = "mocked-template-name"
-	mockedTemplateIcon        = "📃"
+	offset              = 0
+	limit               = 100
+	mockedTechSpaceId   = "mocked-tech-space-id"
+	gatewayUrl          = "http://localhost:31006"
+	mockedSpaceId       = "mocked-space-id"
+	mockedObjectId      = "mocked-object-id"
+	mockedNewObjectId   = "mocked-new-object-id"
+	mockedObjectName    = "mocked-object-name"
+	mockedObjectSnippet = "mocked-object-snippet"
+	mockedObjectIcon    = "🔍"
+	mockedParticipantId = "mocked-participant-id"
+	mockedTypeKey       = "ot-page"
+	mockedTypeId        = "mocked-type-id"
+	mockedTypeName      = "mocked-type-name"
+	mockedTypeIcon      = "📝"
+	mockedTemplateId    = "mocked-template-id"
+	mockedTemplateName  = "mocked-template-name"
+	mockedTemplateIcon  = "📃"
 )
 
 type fixture struct {
 	*ObjectService
-	mwMock *mock_service.MockClientCommandsServer
+	mwMock *mock_apicore.MockClientCommands
 }
 
 func newFixture(t *testing.T) *fixture {
-	mw := mock_service.NewMockClientCommandsServer(t)
+	mwMock := mock_apicore.NewMockClientCommands(t)
 
-	spaceService := space.NewService(mw)
-	objectService := NewService(mw, spaceService)
+	spaceService := space.NewService(mwMock)
+	objectService := NewService(mwMock, spaceService)
 	objectService.AccountInfo = &model.AccountInfo{
 		TechSpaceId: mockedTechSpaceId,
 		GatewayUrl:  gatewayUrl,
@@ -55,7 +55,7 @@ func newFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		ObjectService: objectService,
-		mwMock:        mw,
+		mwMock:        mwMock,
 	}
 }
 
@@ -65,11 +65,12 @@ func TestObjectService_ListObjects(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
+		// Mock object search
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
 				{
-					RelationKey: bundle.RelationKeyLayout.String(),
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_In,
 					Value: pbtypes.IntList([]int{
 						int(model.ObjectType_basic),
@@ -81,6 +82,18 @@ func TestObjectService_ListObjects(t *testing.T) {
 						int(model.ObjectType_collection),
 						int(model.ObjectType_participant),
 					}...),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: "type.uniqueKey",
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String("ot-template"),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
 				},
 			},
 			Sorts: []*model.BlockContentDataviewSort{{
@@ -95,12 +108,12 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():        pbtypes.String(mockedObjectId),
-						bundle.RelationKeyName.String():      pbtypes.String(mockedObjectName),
-						bundle.RelationKeySnippet.String():   pbtypes.String(mockedObjectSnippet),
-						bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedObjectIcon),
-						bundle.RelationKeyType.String():      pbtypes.String(mockedObjectTypeUniqueKey),
-						bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_basic)),
+						bundle.RelationKeyId.String():             pbtypes.String(mockedObjectId),
+						bundle.RelationKeyName.String():           pbtypes.String(mockedObjectName),
+						bundle.RelationKeySnippet.String():        pbtypes.String(mockedObjectSnippet),
+						bundle.RelationKeyIconEmoji.String():      pbtypes.String(mockedObjectIcon),
+						bundle.RelationKeyType.String():           pbtypes.String(mockedTypeId),
+						bundle.RelationKeyResolvedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
 					},
 				},
 			},
@@ -116,73 +129,72 @@ func TestObjectService_ListObjects(t *testing.T) {
 				RootId: mockedObjectId,
 				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
 								bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
 								bundle.RelationKeySnippet.String():          pbtypes.String(mockedObjectSnippet),
 								bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
-								bundle.RelationKeyType.String():             pbtypes.String(mockedObjectTypeUniqueKey),
 								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
+								bundle.RelationKeyLastModifiedBy.String():   pbtypes.String(mockedParticipantId),
 								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
+								bundle.RelationKeyCreator.String():          pbtypes.String(mockedParticipantId),
 								bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
 								bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
+								bundle.RelationKeyType.String():             pbtypes.String(mockedTypeId),
 							},
 						},
+					},
+					{
+						Id: mockedParticipantId,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String(): pbtypes.String(mockedParticipantId),
+							},
+						},
+					},
+					{
+						Id: mockedTypeId,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),
+								bundle.RelationKeyName.String():      pbtypes.String(mockedTypeName),
+								bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedTypeKey),
+								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedTypeIcon),
+							},
+						},
+					},
+				},
+				RelationLinks: []*model.RelationLink{
+					{
+						Key:    bundle.RelationKeyLastModifiedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyLastModifiedBy.String(),
+						Format: model.RelationFormat_object,
+					},
+					{
+						Key:    bundle.RelationKeyCreatedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyCreator.String(),
+						Format: model.RelationFormat_object,
+					},
+					{
+						Key:    bundle.RelationKeyLastOpenedDate.String(),
+						Format: model.RelationFormat_date,
+					},
+					{
+						Key:    bundle.RelationKeyTag.String(),
+						Format: model.RelationFormat_tag,
 					},
 				},
 			},
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
-
-		// Mock type resolution
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyUniqueKey.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedObjectTypeUniqueKey),
-				},
-			},
-			Keys: []string{bundle.RelationKeyName.String()},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectType),
-					},
-				},
-			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Once()
-
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(""),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{
-				{},
-			},
-		}).Twice()
 
 		// when
 		objects, total, hasMore, err := fx.ListObjects(ctx, mockedSpaceId, offset, limit)
@@ -190,26 +202,29 @@ func TestObjectService_ListObjects(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, objects, 1)
-		require.Equal(t, mockedObjectType, objects[0].Type)
+		require.Equal(t, mockedTypeId, objects[0].Type.Id)
+		require.Equal(t, mockedTypeName, objects[0].Type.Name)
+		require.Equal(t, mockedTypeKey, objects[0].Type.Key)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, objects[0].Type.Icon)
 		require.Equal(t, mockedObjectId, objects[0].Id)
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
-		require.Equal(t, mockedObjectIcon, objects[0].Icon)
-		require.Equal(t, 6, len(objects[0].Details))
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, objects[0].Icon)
+		require.Equal(t, 5, len(objects[0].Properties))
 
-		for _, detail := range objects[0].Details {
+		for _, detail := range objects[0].Properties {
 			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["created_date"])
+				require.Equal(t, "1970-01-11T06:54:48Z", *detail.Date)
 			} else if detail.Id == "created_by" {
-				require.Empty(t, detail.Details["created_by"])
+				require.Equal(t, []string{mockedParticipantId}, detail.Object)
 			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
+				require.Equal(t, "1970-01-12T13:46:39Z", *detail.Date)
 			} else if detail.Id == "last_modified_by" {
-				require.Empty(t, detail.Details["last_modified_by"])
+				require.Equal(t, []string{mockedParticipantId}, detail.Object)
 			} else if detail.Id == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["last_opened_date"])
-			} else if detail.Id == "tags" {
-				require.Empty(t, detail.Details["tags"])
+				require.Equal(t, "1970-01-01T00:00:00Z", *detail.Date)
+			} else if detail.Id == "tag" {
+				require.Empty(t, detail.MultiSelect)
 			} else {
 				t.Errorf("unexpected detail id: %s", detail.Id)
 			}
@@ -224,14 +239,52 @@ func TestObjectService_ListObjects(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
-			Return(&pb.RpcObjectSearchResponse{
-				Records: []*types.Struct{},
-				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			}).Once()
+		// Mock object search
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value: pbtypes.IntList([]int{
+						int(model.ObjectType_basic),
+						int(model.ObjectType_profile),
+						int(model.ObjectType_todo),
+						int(model.ObjectType_note),
+						int(model.ObjectType_bookmark),
+						int(model.ObjectType_set),
+						int(model.ObjectType_collection),
+						int(model.ObjectType_participant),
+					}...),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: "type.uniqueKey",
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String("ot-template"),
+				},
+				{
+					Operator:    model.BlockContentDataviewFilter_No,
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Sorts: []*model.BlockContentDataviewSort{{
+				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
+				Type:           model.BlockContentDataviewSort_Desc,
+				Format:         model.RelationFormat_longtext,
+				IncludeTime:    true,
+				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+			}},
+			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.ListObjects(ctx, "empty-space", offset, limit)
+		objects, total, hasMore, err := fx.ListObjects(ctx, mockedSpaceId, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -257,13 +310,14 @@ func TestObjectService_GetObject(t *testing.T) {
 					RootId: mockedObjectId,
 					Details: []*model.ObjectViewDetailsSet{
 						{
+							Id: mockedObjectId,
 							Details: &types.Struct{
 								Fields: map[string]*types.Value{
 									bundle.RelationKeyId.String():               pbtypes.String(mockedObjectId),
 									bundle.RelationKeyName.String():             pbtypes.String(mockedObjectName),
 									bundle.RelationKeySnippet.String():          pbtypes.String(mockedObjectSnippet),
-									bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectName),
-									bundle.RelationKeyType.String():             pbtypes.String(mockedObjectTypeUniqueKey),
+									bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
+									bundle.RelationKeyType.String():             pbtypes.String(mockedTypeId),
 									bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
 									bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
 									bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
@@ -271,86 +325,78 @@ func TestObjectService_GetObject(t *testing.T) {
 								},
 							},
 						},
+						{
+							Id: mockedTypeId,
+							Details: &types.Struct{
+								Fields: map[string]*types.Value{
+									bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),
+									bundle.RelationKeyName.String():      pbtypes.String(mockedTypeName),
+									bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedTypeKey),
+									bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedTypeIcon),
+								},
+							},
+						},
+					},
+					RelationLinks: []*model.RelationLink{
+						{
+							Key:    bundle.RelationKeyLastModifiedDate.String(),
+							Format: model.RelationFormat_date,
+						},
+						{
+							Key:    bundle.RelationKeyLastModifiedBy.String(),
+							Format: model.RelationFormat_object,
+						},
+						{
+							Key:    bundle.RelationKeyCreatedDate.String(),
+							Format: model.RelationFormat_date,
+						},
+						{
+							Key:    bundle.RelationKeyCreator.String(),
+							Format: model.RelationFormat_object,
+						},
+						{
+							Key:    bundle.RelationKeyLastOpenedDate.String(),
+							Format: model.RelationFormat_date,
+						},
+						{
+							Key:    bundle.RelationKeyTag.String(),
+							Format: model.RelationFormat_tag,
+						},
 					},
 				},
 			}, nil).Once()
-
-		// Mock type resolution
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyUniqueKey.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedObjectTypeUniqueKey),
-				},
-			},
-			Keys: []string{bundle.RelationKeyName.String()},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectType),
-					},
-				},
-			},
-		}, nil).Once()
-
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(""),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{
-				{},
-			},
-		}).Twice()
 
 		// when
 		object, err := fx.GetObject(ctx, mockedSpaceId, mockedObjectId)
 
 		// then
 		require.NoError(t, err)
-		require.Equal(t, mockedObjectType, object.Type)
+		require.Equal(t, "object", object.Object)
+		require.Equal(t, mockedTypeId, object.Type.Id)
+		require.Equal(t, mockedTypeName, object.Type.Name)
+		require.Equal(t, mockedTypeKey, object.Type.Key)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, object.Type.Icon)
 		require.Equal(t, mockedObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
-		require.Equal(t, mockedObjectName, object.Icon)
-		require.Equal(t, 6, len(object.Details))
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, object.Icon)
+		require.Equal(t, 3, len(object.Properties))
 
-		for _, detail := range object.Details {
-			if detail.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", detail.Details["created_date"])
-			} else if detail.Id == "created_by" {
-				require.Empty(t, detail.Details["created_by"])
-			} else if detail.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", detail.Details["last_modified_date"])
-			} else if detail.Id == "last_modified_by" {
-				require.Empty(t, detail.Details["last_modified_by"])
-			} else if detail.Id == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", detail.Details["last_opened_date"])
-			} else if detail.Id == "tags" {
-				require.Empty(t, detail.Details["tags"])
+		for _, property := range object.Properties {
+			if property.Id == "created_date" {
+				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
+			} else if property.Id == "created_by" {
+				require.Empty(t, property.Object)
+			} else if property.Id == "last_modified_date" {
+				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
+			} else if property.Id == "last_modified_by" {
+				require.Empty(t, property.Object)
+			} else if property.Id == "last_opened_date" {
+				require.Equal(t, "1970-01-01T00:00:00Z", *property.Date)
+			} else if property.Id == "tag" {
+				require.Empty(t, property.MultiSelect)
 			} else {
-				t.Errorf("unexpected detail id: %s", detail.Id)
+				t.Errorf("unexpected property id: %s", property.Id)
 			}
 		}
 	})
@@ -390,9 +436,9 @@ func TestObjectService_CreateObject(t *testing.T) {
 					bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
 				},
 			},
-			TemplateId:          "",
+			TemplateId:          mockedTemplateId,
 			SpaceId:             mockedSpaceId,
-			ObjectTypeUniqueKey: mockedObjectTypeUniqueKey,
+			ObjectTypeUniqueKey: mockedTypeKey,
 			WithChat:            false,
 		}).Return(&pb.RpcObjectCreateResponse{
 			ObjectId: mockedNewObjectId,
@@ -416,14 +462,26 @@ func TestObjectService_CreateObject(t *testing.T) {
 				RootId: mockedNewObjectId,
 				Details: []*model.ObjectViewDetailsSet{
 					{
+						Id: mockedNewObjectId,
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								bundle.RelationKeyId.String():        pbtypes.String(mockedNewObjectId),
-								bundle.RelationKeyName.String():      pbtypes.String(mockedObjectName),
-								bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_basic)),
-								bundle.RelationKeyType.String():      pbtypes.String(mockedObjectTypeUniqueKey),
-								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedObjectIcon),
-								bundle.RelationKeySpaceId.String():   pbtypes.String(mockedSpaceId),
+								bundle.RelationKeyId.String():             pbtypes.String(mockedNewObjectId),
+								bundle.RelationKeyName.String():           pbtypes.String(mockedObjectName),
+								bundle.RelationKeyResolvedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
+								bundle.RelationKeyType.String():           pbtypes.String(mockedTypeId),
+								bundle.RelationKeyIconEmoji.String():      pbtypes.String(mockedObjectIcon),
+								bundle.RelationKeySpaceId.String():        pbtypes.String(mockedSpaceId),
+							},
+						},
+					},
+					{
+						Id: mockedTypeId,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),
+								bundle.RelationKeyName.String():      pbtypes.String(mockedTypeName),
+								bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedTypeKey),
+								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedTypeIcon),
 							},
 						},
 					},
@@ -432,70 +490,24 @@ func TestObjectService_CreateObject(t *testing.T) {
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
 
-		// Mock type resolution
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyUniqueKey.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(mockedObjectTypeUniqueKey),
-				},
-			},
-			Keys: []string{bundle.RelationKeyName.String()},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyName.String(): pbtypes.String(mockedObjectType),
-					},
-				},
-			},
-		}).Once()
-
-		// Mock participant details
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator:    model.BlockContentDataviewFilter_No,
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(""),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{
-				{},
-			},
-		}).Twice()
-
 		// when
 		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
-			Name: mockedObjectName,
-			Icon: mockedObjectIcon,
-			// TODO: use actual values
-			TemplateId:          "",
-			ObjectTypeUniqueKey: mockedObjectTypeUniqueKey,
+			Name:       mockedObjectName,
+			Icon:       util.Icon{Format: util.IconFormatEmoji, Emoji: util.StringPtr(mockedObjectIcon)},
+			TemplateId: mockedTemplateId,
+			TypeKey:    mockedTypeKey,
 		})
 
 		// then
 		require.NoError(t, err)
-		require.Equal(t, mockedObjectType, object.Type)
+		require.Equal(t, "object", object.Object)
+		require.Equal(t, mockedTypeId, object.Type.Id)
+		require.Equal(t, mockedTypeName, object.Type.Name)
+		require.Equal(t, mockedTypeKey, object.Type.Key)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, object.Type.Icon)
 		require.Equal(t, mockedNewObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
-		require.Equal(t, mockedObjectIcon, object.Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedObjectIcon)}, object.Icon)
 		require.Equal(t, mockedSpaceId, object.SpaceId)
 	})
 
@@ -512,7 +524,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		// when
 		object, err := fx.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
 			Name: "Fail Object",
-			Icon: "",
+			Icon: util.Icon{},
 		})
 
 		// then
@@ -550,8 +562,8 @@ func TestObjectService_ListTypes(t *testing.T) {
 		require.Len(t, types, 1)
 		require.Equal(t, "type-1", types[0].Id)
 		require.Equal(t, "Type One", types[0].Name)
-		require.Equal(t, "type-one-key", types[0].UniqueKey)
-		require.Equal(t, "🗂️", types[0].Icon)
+		require.Equal(t, "type-one-key", types[0].Key)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("🗂️")}, types[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -596,7 +608,7 @@ func TestObjectService_GetType(t *testing.T) {
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyId.String():                pbtypes.String(mockedTypeId),
 								bundle.RelationKeyName.String():              pbtypes.String(mockedTypeName),
-								bundle.RelationKeyUniqueKey.String():         pbtypes.String(mockedTypeUniqueKey),
+								bundle.RelationKeyUniqueKey.String():         pbtypes.String(mockedTypeKey),
 								bundle.RelationKeyIconEmoji.String():         pbtypes.String(mockedTypeIcon),
 								bundle.RelationKeyRecommendedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
 							},
@@ -613,8 +625,8 @@ func TestObjectService_GetType(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, mockedTypeId, objType.Id)
 		require.Equal(t, mockedTypeName, objType.Name)
-		require.Equal(t, mockedTypeUniqueKey, objType.UniqueKey)
-		require.Equal(t, mockedTypeIcon, objType.Icon)
+		require.Equal(t, mockedTypeKey, objType.Key)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTypeIcon)}, objType.Icon)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objType.RecommendedLayout)
 	})
 
@@ -696,7 +708,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		require.Len(t, templates, 1)
 		require.Equal(t, "template-1", templates[0].Id)
 		require.Equal(t, "Template Name", templates[0].Name)
-		require.Equal(t, "📝", templates[0].Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr("📝")}, templates[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -750,13 +762,13 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		}).Once()
 
 		// when
-		template, err := fx.GetTemplate(ctx, mockedSpaceId, mockedObjectType, mockedTemplateId)
+		template, err := fx.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
 
 		// then
 		require.NoError(t, err)
 		require.Equal(t, mockedTemplateId, template.Id)
 		require.Equal(t, mockedTemplateName, template.Name)
-		require.Equal(t, mockedTemplateIcon, template.Icon)
+		require.Equal(t, util.Icon{Format: "emoji", Emoji: util.StringPtr(mockedTemplateIcon)}, template.Icon)
 	})
 
 	t.Run("template not found", func(t *testing.T) {

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -23,12 +24,15 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
+	"github.com/anyproto/anytype-heart/util/encode"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 const CName = "client.space"
@@ -60,6 +64,7 @@ type Service interface {
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
+	AddStreamable(ctx context.Context, id string, guestKey crypto.PrivKey) (err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
 	PersonalSpaceId() string
@@ -83,11 +88,16 @@ type NotificationSender interface {
 	CreateAndSend(notification *model.Notification) error
 }
 
+type AclJoiner interface {
+	Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
+}
+
 type service struct {
 	techSpace           *clientspace.TechSpace
 	techSpaceReady      chan struct{}
 	factory             spacefactory.SpaceFactory
 	spaceCore           spacecore.SpaceCoreService
+	aclJoiner           AclJoiner
 	accountService      accountservice.Service
 	config              *config.Config
 	notificationService NotificationSender
@@ -97,11 +107,13 @@ type service struct {
 	personalSpaceId        string
 	techSpaceId            string
 	newAccount             bool
+	autoJoinStreamSpace    string
 	spaceControllers       map[string]spacecontroller.SpaceController
 	waiting                map[string]controllerWaiter
 	accountMetadataSymKey  crypto.SymKey
 	accountMetadataPayload []byte
 	repKey                 uint64
+	spaceLoaderListener    aclobjectmanager.SpaceLoaderListener
 
 	mu        sync.Mutex
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
@@ -138,11 +150,14 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.config = app.MustComponent[*config.Config](a)
+	s.aclJoiner = app.MustComponent[AclJoiner](a)
 	s.newAccount = s.config.IsNewAccount()
+	s.autoJoinStreamSpace = s.config.AutoJoinStream
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
 	s.notificationService = app.MustComponent[NotificationSender](a)
 	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
+	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
@@ -176,6 +191,8 @@ func (s *service) Run(ctx context.Context) (err error) {
 	defer s.updater.UpdateCoordinatorStatus()
 	if s.newAccount {
 		return s.createAccount(ctx)
+	} else {
+		s.tryToJoinSpaceStream()
 	}
 	return s.initAccount(ctx)
 }
@@ -206,6 +223,7 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
+	s.spaceLoaderListener.OnSpaceLoad(addr.AnytypeMarketplaceWorkspace)
 	timeoutCtx, cancel := context.WithTimeout(ctx, loadTechSpaceDeadline)
 	err = s.loadTechSpace(timeoutCtx)
 	cancel()
@@ -259,20 +277,24 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	firstSpace, err := s.create(ctx)
-	if err != nil {
-		if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
-			err = ErrSpaceNotExists
+	if s.autoJoinStreamSpace == "" {
+		firstSpace, err := s.create(ctx)
+		if err != nil {
+			if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
+				err = ErrSpaceNotExists
+			}
+			// fix for the users that have wrong network id stored in the folder
+			err2 := s.config.ResetStoredNetworkId()
+			if err2 != nil {
+				log.Error("reset network id", zap.Error(err2))
+			}
+			return fmt.Errorf("init personal space: %w", err)
 		}
-		// fix for the users that have wrong network id stored in the folder
-		err2 := s.config.ResetStoredNetworkId()
-		if err2 != nil {
-			log.Error("reset network id", zap.Error(err2))
-		}
-		return fmt.Errorf("init personal space: %w", err)
-	}
 
-	s.firstCreatedSpaceId = firstSpace.Id()
+		s.firstCreatedSpaceId = firstSpace.Id()
+	} else {
+		s.tryToJoinSpaceStream()
+	}
 
 	s.techSpace.WakeUpViews()
 	// only persist networkId after successful space init
@@ -466,4 +488,73 @@ func (s *service) getTechSpace(ctx context.Context) (*clientspace.TechSpace, err
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+// tryToJoinSpaceStream tries to join space stream if autoJoinStreamSpace is set
+// it runs in a goroutine and retries with increasing delay
+// stops when service is closed
+func (s *service) tryToJoinSpaceStream() {
+	if s.autoJoinStreamSpace == "" {
+		return
+	}
+	// retry with increasing delay
+	go func() {
+		delay := time.Second
+		for {
+			err := joinSpaceStream(s.ctx, s, s.aclJoiner, s.autoJoinStreamSpace)
+			if err == nil {
+				return
+			}
+			if s.ctx.Err() != nil {
+				return
+			}
+			log.Warn("failed to join stream", zap.Error(err))
+			select {
+			case <-time.After(delay):
+				delay *= 2
+			case <-s.ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+func joinSpaceStream(ctx context.Context, spaceService *service, aclJoiner AclJoiner, inviteUrl string) error {
+	if inviteUrl == "" {
+		return nil
+	}
+
+	if aclJoiner == nil {
+		return fmt.Errorf("aclJoiner is nil")
+	}
+
+	inviteId, inviteKey, spaceId, networkId, err := uri.ParseInviteUrl(inviteUrl)
+	if err != nil {
+		return err
+	}
+	if spaceId == "" {
+		return fmt.Errorf("spaceId is empty")
+	}
+	inviteCid, err := cid.Parse(inviteId)
+	if err != nil {
+		return err
+	}
+	inviteSymKey, err := encode.DecodeKeyFromBase58(inviteKey)
+	if err != nil {
+		return err
+	}
+
+	techSpace, err := spaceService.getTechSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("get tech space: %w", err)
+	}
+
+	if exists, err := techSpace.SpaceViewExists(ctx, spaceId); err != nil {
+		return err
+	} else if exists {
+		// do not try to join stream if space already joined or removed
+		return nil
+	}
+
+	return aclJoiner.Join(ctx, spaceId, networkId, inviteCid, inviteSymKey)
 }

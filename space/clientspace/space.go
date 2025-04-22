@@ -54,6 +54,7 @@ type Space interface {
 
 	IsReadOnly() bool
 	IsPersonal() bool
+	GetAclIdentity() crypto.PubKey
 
 	Close(ctx context.Context) error
 }
@@ -83,8 +84,8 @@ type space struct {
 	spaceCore       spacecore.SpaceCoreService
 	personalSpaceId string
 
-	myIdentity crypto.PubKey
-	common     commonspace.Space
+	aclIdentity crypto.PubKey
+	common      commonspace.Space
 
 	loadMandatoryObjectsCh  chan struct{}
 	loadMandatoryObjectsErr error
@@ -113,9 +114,16 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		common:                 deps.CommonSpace,
 		personalSpaceId:        deps.PersonalSpaceId,
 		spaceCore:              deps.SpaceCore,
-		myIdentity:             deps.AccountService.Account().SignKey.GetPublic(),
+		aclIdentity:            deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
+
+	if res, ok := ctx.Value(spacecore.OptsKey).(spacecore.Opts); ok && res.SignKey != nil {
+		// override acl identity with the provided key
+		sp.aclIdentity = res.SignKey.GetPublic()
+		// todo: fixme we pass the real account service in case of streamable space to the objectcache
+	}
+
 	sp.loadMissingBundledObjectsCtx, sp.loadMissingBundledObjectsCtxCancel = context.WithCancel(context.Background())
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
 	sp.ObjectProvider = objectprovider.NewObjectProvider(deps.CommonSpace.Id(), deps.PersonalSpaceId, sp.Cache)
@@ -156,11 +164,10 @@ func (s *space) tryLoadBundledAndInstallIfMissing(disableRemoteLoad bool) {
 		if errors.Is(err, context.Canceled) {
 			return // we are closing, skip installation,
 		}
-		log.Error("failed to load bundled objects", zap.Error(err))
+		log.Warn("failed to load bundled objects", zap.Error(err))
 	}
-	_, _, err = s.installer.InstallBundledObjects(s.loadMissingBundledObjectsCtx, s, missingSourceIds, true)
-	if err != nil {
-		log.Error("failed to install bundled objects", zap.Error(err))
+	if len(missingSourceIds) > 0 {
+		log.Warn("missing bundled objects", zap.Strings("ids", missingSourceIds))
 	}
 }
 
@@ -179,9 +186,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 		return
 	}
 	go s.tryLoadBundledAndInstallIfMissing(disableRemoteLoad)
-	if s.loadMandatoryObjectsErr != nil {
-		return
-	}
+
 	err := s.migrationProfileObject(ctx)
 	if err != nil {
 		log.Error("failed to migrate profile object", zap.Error(err))
@@ -264,6 +269,10 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 
 func (s *space) IsPersonal() bool {
 	return s.Id() == s.personalSpaceId
+}
+
+func (s *space) GetAclIdentity() crypto.PubKey {
+	return s.aclIdentity
 }
 
 func (s *space) Close(ctx context.Context) error {
@@ -388,5 +397,5 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 }
 
 func (s *space) IsReadOnly() bool {
-	return !s.CommonSpace().Acl().AclState().Permissions(s.myIdentity).CanWrite()
+	return !s.CommonSpace().Acl().AclState().Permissions(s.aclIdentity).CanWrite()
 }

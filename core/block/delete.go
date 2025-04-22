@@ -90,7 +90,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, sbType coresb.SmartBlock
 			return fmt.Errorf("failed to delete relation options of deleted relation: %w", err)
 		}
 	case coresb.SmartBlockTypeTemplate:
-		if err = s.resetDefaultTemplateId(id, targetTypeId, spc); err != nil {
+		if err = s.unsetDefaultTemplateId(id.ObjectID, targetTypeId, spc); err != nil {
 			return fmt.Errorf("failed to reset default template id: %w", err)
 		}
 	}
@@ -124,56 +124,22 @@ func (s *Service) deleteRelationOptions(spaceId string, relationKey string) erro
 	return nil
 }
 
-func (s *Service) resetDefaultTemplateId(templateId domain.FullID, typeId string, spc clientspace.Space) error {
-	spaceId := templateId.SpaceID
-	records, err := s.objectStore.SpaceIndex(spaceId).QueryByIds([]string{typeId})
+func (s *Service) unsetDefaultTemplateId(templateId, typeId string, spc clientspace.Space) error {
+	records, err := s.objectStore.SpaceIndex(spc.Id()).QueryByIds([]string{typeId})
 	if err != nil {
 		return fmt.Errorf("failed to query type object: %w", err)
 	}
 	if len(records) != 1 {
 		return fmt.Errorf("failed to query type object: 1 record expected")
 	}
-	if records[0].Details.GetString(bundle.RelationKeyDefaultTemplateId) != templateId.ObjectID {
+	if records[0].Details.GetString(bundle.RelationKeyDefaultTemplateId) != templateId {
 		// template that is about to be deleted was not set as default for type, so we do nothing
 		return nil
 	}
 
-	ctx := context.Background()
-	templateTypeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to derive template type id from space: %w", err)
-	}
-
-	if records, err = s.objectStore.SpaceIndex(spaceId).Query(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyType,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(templateTypeId),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(typeId),
-			},
-		},
-		Sorts: []database.SortRequest{{
-			RelationKey: bundle.RelationKeyLastModifiedDate,
-			Type:        model.BlockContentDataviewSort_Desc,
-		}},
-	}); err != nil {
-		return fmt.Errorf("failed to query templates: %w", err)
-	}
-
-	// in case no templates were found we explicitly set empty default template id to type object
-	newTemplateId := ""
-	if len(records) != 0 {
-		newTemplateId = records[0].Details.GetString(bundle.RelationKeyId)
-	}
-
 	return spc.Do(typeId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		st.SetDetail(bundle.RelationKeyDefaultTemplateId, domain.String(newTemplateId))
+		st.SetDetail(bundle.RelationKeyDefaultTemplateId, domain.String(""))
 		return sb.Apply(st)
 	})
 }

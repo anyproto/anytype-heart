@@ -12,6 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
@@ -21,14 +22,16 @@ type spaceIndexer struct {
 	spaceIndex  spaceindex.Store
 	objectStore objectstore.ObjectStore
 	batcher     *mb.MB[indexTask]
+	isTechSpace bool
 }
 
-func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore) *spaceIndexer {
+func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, isTechSpace bool) *spaceIndexer {
 	ind := &spaceIndexer{
 		runCtx:      runCtx,
 		spaceIndex:  spaceIndex,
 		objectStore: objectStore,
 		batcher:     mb.New[indexTask](100),
+		isTechSpace: isTechSpace,
 	}
 	go ind.indexBatchLoop()
 	return ind
@@ -76,24 +79,17 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 		}
 	}
 
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			if err = tx.Commit(); err != nil {
-				closeTasks(err)
-			} else {
-				closeTasks(nil)
-			}
-			log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
-		}
-	}()
-
 	for _, task := range tasks {
 		if iErr := i.index(tx.Context(), task.info, task.options...); iErr != nil {
 			task.done <- iErr
 		}
 	}
+	if err = tx.Commit(); err != nil {
+		closeTasks(err)
+	} else {
+		closeTasks(nil)
+	}
+	log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
 	return
 }
 
@@ -186,8 +182,8 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			// Use component's context because ctx from parameter contains transaction
 			fulltext, _, _ := info.SmartblockType.Indexable()
-			if fulltext {
-				if err := i.objectStore.AddToIndexQueue(i.runCtx, info.Id); err != nil {
+			if fulltext && !i.isTechSpace {
+				if err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
 					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 				}
 			}

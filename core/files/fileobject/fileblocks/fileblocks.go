@@ -22,14 +22,14 @@ func InitEmptyFileState(st *state.State) {
 }
 
 func AddFileBlocks(st *state.State, details *domain.Details, objectId string) error {
-	fname := details.GetString(bundle.RelationKeyName)
-	fileType := fileblock.DetectTypeByMIME(fname, details.GetString(bundle.RelationKeyFileMimeType))
+	name := details.GetString(bundle.RelationKeyName)
+	fileType := fileblock.DetectTypeByMIME(name, details.GetString(bundle.RelationKeyFileMimeType))
 
 	if fileType == model.BlockContentFile_Image {
 		st.SetDetail(bundle.RelationKeyIconImage, domain.String(objectId))
 	}
 
-	blocks := buildFileBlocks(details, objectId, fname, fileType)
+	blocks := buildFileBlocks(details, objectId, name, fileType)
 
 	for _, b := range blocks {
 		if st.Exists(b.Id) {
@@ -46,13 +46,13 @@ func AddFileBlocks(st *state.State, details *domain.Details, objectId string) er
 	return nil
 }
 
-func buildFileBlocks(details *domain.Details, objectId, fname string, fileType model.BlockContentFileType) []*model.Block {
+func buildFileBlocks(details *domain.Details, objectId, name string, fileType model.BlockContentFileType) []*model.Block {
 	var blocks []*model.Block
 	blocks = append(blocks, &model.Block{
 		Id: "file",
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				Name:           fname,
+				Name:           name,
 				Mime:           details.GetString(bundle.RelationKeyFileMimeType),
 				TargetObjectId: objectId,
 				Type:           fileType,
@@ -60,7 +60,7 @@ func buildFileBlocks(details *domain.Details, objectId, fname string, fileType m
 				State:          model.BlockContentFile_Done,
 				AddedAt:        details.GetInt64(bundle.RelationKeyAddedDate),
 			},
-		}}, makeFileInfoBlock(), makeRelationBlock(bundle.RelationKeyFileExt))
+		}}, makeFileInfoBlock(), makeRelationBlock(bundle.RelationKeyDescription), makeRelationBlock(bundle.RelationKeyFileExt))
 
 	switch fileType {
 	case model.BlockContentFile_Image:

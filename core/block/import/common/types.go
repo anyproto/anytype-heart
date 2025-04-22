@@ -138,3 +138,67 @@ type Response struct {
 	Snapshots        []*Snapshot
 	RootCollectionID string
 }
+
+type SnapshotContext struct {
+	snapshots         []*Snapshot
+	widget, workspace *Snapshot
+}
+
+func NewSnapshotContext() *SnapshotContext {
+	return &SnapshotContext{
+		snapshots: []*Snapshot{},
+	}
+}
+
+func (sl *SnapshotContext) List() []*Snapshot {
+	if sl == nil {
+		return nil
+	}
+	return sl.snapshots
+}
+
+func (sl *SnapshotContext) Len() int {
+	if sl == nil {
+		return 0
+	}
+	return len(sl.snapshots)
+}
+
+func (sl *SnapshotContext) Add(snapshots ...*Snapshot) *SnapshotContext {
+	sl.snapshots = append(sl.snapshots, snapshots...)
+	return sl
+}
+
+func (sl *SnapshotContext) GetWorkspace() *Snapshot {
+	if sl == nil {
+		return nil
+	}
+	return sl.workspace
+}
+
+func (sl *SnapshotContext) SetWorkspace(w *Snapshot) *SnapshotContext {
+	sl.workspace = w
+	return sl
+}
+
+func (sl *SnapshotContext) GetWidget() *Snapshot {
+	if sl == nil {
+		return nil
+	}
+	return sl.widget
+}
+
+func (sl *SnapshotContext) SetWidget(w *Snapshot) *SnapshotContext {
+	sl.widget = w
+	return sl
+}
+
+func (sl *SnapshotContext) Merge(sl2 *SnapshotContext) {
+	sl.snapshots = append(sl.snapshots, sl2.snapshots...)
+	if sl2.widget != nil {
+		sl.widget = sl2.widget
+	}
+	if sl2.workspace != nil {
+		sl.workspace = sl2.workspace
+	}
+}

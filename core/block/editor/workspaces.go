@@ -82,7 +82,6 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 		template.WithLayout(model.ObjectType_space),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
-		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 	)
 }
 
@@ -116,6 +115,20 @@ func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
 	newState := w.NewState()
 	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
 	return fileCid, w.Apply(newState)
+}
+
+func (w *Workspaces) SetGuestInviteFileInfo(fileCid string, fileKey string) (err error) {
+	st := w.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteGuestFileCid, domain.String(fileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteGuestFileKey, domain.String(fileKey))
+	return w.Apply(st)
+}
+
+func (w *Workspaces) GetExistingGuestInviteInfo() (fileCid string, fileKey string) {
+	details := w.CombinedDetails()
+	fileCid = details.GetString(bundle.RelationKeySpaceInviteGuestFileCid)
+	fileKey = details.GetString(bundle.RelationKeySpaceInviteGuestFileKey)
+	return
 }
 
 func (w *Workspaces) StateMigrations() migration.Migrations {

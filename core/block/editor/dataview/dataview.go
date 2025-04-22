@@ -39,6 +39,7 @@ type Dataview interface {
 	CreateView(ctx session.Context, blockID string,
 		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) error
+	SetRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
 	AddRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
 	DeleteRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
 	UpdateView(ctx session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
@@ -144,6 +145,28 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 	flags.AddToState(s)
 
 	return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
+}
+
+func (d *sdataview) SetRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+	var links []*model.RelationLink
+	for _, key := range relationKeys {
+		relation, err2 := d.objectStore.FetchRelationByKey(key)
+		if err2 != nil {
+			return err2
+		}
+		links = append(links, relation.RelationLink())
+	}
+	tb.SetRelations(links)
+	if showEvent {
+		return d.Apply(s)
+	} else {
+		return d.Apply(s, smartblock.NoEvent)
+	}
 }
 
 func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {

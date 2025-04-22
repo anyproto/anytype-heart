@@ -181,6 +181,12 @@ func TestQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		err = s.fts.Index(ftsearch.SearchDoc{
+			Id:    "id1/r/pluralName",
+			Title: "mynames",
+		})
+		require.NoError(t, err)
+
+		err = s.fts.Index(ftsearch.SearchDoc{
 			Id:    "id2/b/321",
 			Title: "some important note",
 		})
@@ -212,6 +218,19 @@ func TestQuery(t *testing.T) {
 			})
 			require.NoError(t, err)
 
+			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
+			assertRecordsMatch(t, []TestObject{
+				obj1,
+			}, recs)
+		})
+
+		t.Run("fulltext by plural name relation", func(t *testing.T) {
+			recs, err := s.Query(database.Query{
+				TextQuery: "mynames",
+			})
+			require.NoError(t, err)
+
+			assert.Equal(t, "pluralName", recs[0].Meta.RelationKey)
 			// Full-text engine has its own ordering, so just don't rely on it here and check only the content.
 			assertRecordsMatch(t, []TestObject{
 				obj1,
@@ -1243,4 +1262,68 @@ func TestDsObjectStore_QueryAndProcess(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"id3"}, ids)
 	})
+}
+
+func TestNestedFilters(t *testing.T) {
+	t.Run("not in", func(t *testing.T) {
+		store := NewStoreFixture(t)
+
+		store.AddObjects(t, []TestObject{
+			{
+				bundle.RelationKeyId:   domain.String("id1"),
+				bundle.RelationKeyType: domain.String("templateType"),
+			},
+			{
+				bundle.RelationKeyId:   domain.String("id2"),
+				bundle.RelationKeyType: domain.String("pageType"),
+			},
+			{
+				bundle.RelationKeyId:   domain.String("id3"),
+				bundle.RelationKeyType: domain.String("pageType"),
+			},
+			{
+				bundle.RelationKeyId:   domain.String("id4"),
+				bundle.RelationKeyType: domain.String("hiddenType"),
+			},
+			{
+				bundle.RelationKeyId:        domain.String("templateType"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-template"),
+			},
+			{
+				bundle.RelationKeyId:        domain.String("pageType"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-page"),
+			},
+			{
+				bundle.RelationKeyId:        domain.String("hiddenType"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-hidden"),
+			},
+		})
+
+		got, err := store.Query(database.Query{
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: "type.uniqueKey",
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       domain.StringList([]string{"ot-hidden", "ot-template"}),
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assertRecordsHaveIds(t, got, []string{"id2", "id3", "templateType", "pageType", "hiddenType"})
+	})
+}
+
+func assertRecordsHaveIds(t *testing.T, records []database.Record, wantIds []string) {
+	require.Equal(t, len(wantIds), len(records))
+
+	gotIds := map[string]struct{}{}
+	for _, r := range records {
+		gotIds[r.Details.GetString(bundle.RelationKeyId)] = struct{}{}
+	}
+
+	for _, id := range wantIds {
+		_, ok := gotIds[id]
+		require.True(t, ok)
+	}
 }
