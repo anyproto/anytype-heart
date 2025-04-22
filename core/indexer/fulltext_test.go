@@ -189,12 +189,8 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyPluralName.String(),
-		Format: model.RelationFormat_shorttext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyPluralName: domain.String("Plural title Text"),
 	}))

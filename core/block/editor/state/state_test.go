@@ -2127,7 +2127,7 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.True(t, st.Details().Has("relationKey"))
+		assert.False(t, st.Details().Has("relationKey"))
 	})
 }
 

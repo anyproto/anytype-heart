@@ -119,8 +119,8 @@ func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
 
 func (w *Workspaces) SetGuestInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteGuestFileCid, domain.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteGuestFileKey, domain.String(fileKey))
+	st.SetDetail(bundle.RelationKeySpaceInviteGuestFileCid, domain.String(fileCid))
+	st.SetDetail(bundle.RelationKeySpaceInviteGuestFileKey, domain.String(fileKey))
 	return w.Apply(st)
 }
 

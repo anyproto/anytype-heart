@@ -49,7 +49,7 @@ func (s *Set) Remove(flag model.InternalFlagValue) {
 
 func (s *Set) AddToState(st *state.State) {
 	if len(s.flags) == 0 {
-		st.SetDetailAndBundledRelation(relationKey, domain.Float64List([]float64{}))
+		st.SetDetail(relationKey, domain.Float64List([]float64{}))
 		return
 	}
 	st.SetDetail(relationKey, domain.Float64List(s.flags))
