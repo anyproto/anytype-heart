@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -27,7 +28,7 @@ type NotEnoughFreeSpaceError struct {
 	Required uint64
 }
 
-func (e NotEnoughFreeSpaceError) Error() string {
+func (e *NotEnoughFreeSpaceError) Error() string {
 	if e.Required == 0 {
 		return fmt.Sprintf("not enough free space: %d", e.Free)
 	}
@@ -74,6 +75,29 @@ func (m *migrator) Name() (name string) {
 	return CName
 }
 
+func isDiskFull(err error) bool {
+	if err == nil {
+		return false
+	}
+	// From sqlite
+	if strings.Contains(err.Error(), "disk is full") {
+		return true
+	}
+
+	// For unix systems
+	if errors.Is(err, syscall.ENOSPC) {
+		return true
+	}
+	// For windows
+	var syscallErrno syscall.Errno
+	if errors.As(err, &syscallErrno) {
+		// See https://pkg.go.dev/golang.org/x/sys/windows
+		// ERROR_DISK_FULL syscall.Errno = 112
+		return syscallErrno == 112
+	}
+	return false
+}
+
 func (m *migrator) Run(ctx context.Context) (err error) {
 	oldSize, err := m.oldStorage.EstimateSize()
 	if err != nil {
@@ -85,7 +109,7 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	}
 	requiredDiskSpace := oldSize * 15 / 10
 	if requiredDiskSpace > free {
-		return NotEnoughFreeSpaceError{
+		return &NotEnoughFreeSpaceError{
 			Free:     free,
 			Required: requiredDiskSpace,
 		}
@@ -93,9 +117,10 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 
 	err = m.run(ctx)
 	if err != nil {
-		if strings.Contains(err.Error(), "disk is full") {
-			return NotEnoughFreeSpaceError{
-				Free: free,
+		if isDiskFull(err) {
+			return &NotEnoughFreeSpaceError{
+				Free:     free,
+				Required: requiredDiskSpace,
 			}
 		}
 		return err
