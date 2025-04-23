@@ -211,7 +211,7 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 	}
 	data, dataType, err := MarshalStoreChange(change)
 	if err != nil {
-		return "", fmt.Errorf("marshal change: %w", err)
+		return "", rollback(fmt.Errorf("marshal change: %w", err))
 	}
 
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
