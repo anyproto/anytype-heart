@@ -3,8 +3,10 @@ package keyvalueservice
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace"
@@ -23,6 +25,7 @@ var log = logging.Logger(CName).Desugar()
 type ObserverFunc func(key string, val Value)
 
 type Value struct {
+	Key            string
 	Data           []byte
 	TimestampMilli int
 }
@@ -34,6 +37,19 @@ type subscription struct {
 
 type derivedKey string
 
+// Service provides convenient wrapper for using per-space key-value store.
+// It automatically hashes keys for security reasons: no one except you can see actual value of a key. How it works:
+// - A key (client key) is hashed using a salt. Salt is the first read key from the space. Call it derived key
+// - Then we use derived key as actual key for storing the value
+// - And we put the original client key inside encrypted value
+//
+// Finally, key value pair looks like this:
+// hash(key) -> (key, value)
+//
+// Why use hash of keys instead of AES encryption? Because the output of hash function is much more compact,
+// and we're still able to get the original key because we already encrypt value.
+//
+// The maximum length of a key is 65535
 type Service interface {
 	Get(ctx context.Context, key string) ([]Value, error)
 	Set(ctx context.Context, key string, value []byte) error
@@ -52,7 +68,6 @@ type service struct {
 	keysLock        sync.Mutex
 	spaceSalt       []byte
 	keyToDerivedKey map[string]derivedKey
-	derivedKeyToKey map[derivedKey]string
 }
 
 func New(spaceCore commonspace.Space, observer keyvalueobserver.Observer) (Service, error) {
@@ -62,7 +77,6 @@ func New(spaceCore commonspace.Space, observer keyvalueobserver.Observer) (Servi
 		keyValueStore:   spaceCore.KeyValue().DefaultStore(),
 		subscriptions:   make(map[derivedKey]map[string]subscription),
 		keyToDerivedKey: make(map[string]derivedKey),
-		derivedKeyToKey: make(map[derivedKey]string),
 	}
 	err := s.initSpaceSalt()
 	if err != nil {
@@ -100,28 +114,38 @@ func (s *service) initSpaceSalt() error {
 	return nil
 }
 
-func (s *service) observeChanges(decryptFunc keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) {
+func (s *service) observeChanges(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) {
 	for _, kv := range kvs {
 		s.lock.RLock()
 		byKey := s.subscriptions[derivedKey(kv.Key)]
 		for _, sub := range byKey {
-			data, err := decryptFunc(kv)
+			value, err := decodeKeyValue(decryptor, kv)
 			if err != nil {
-				log.Error("can't decrypt value", zap.Error(err))
+				log.Warn("decode key-value", zap.Error(err))
 				continue
 			}
-
-			key, ok := s.getKeyFromDerived(derivedKey(kv.Key))
-			if !ok {
-				log.Error("can't get key from derived key", zap.String("subName", sub.name))
-				continue
-			}
-
-			sub.observerFunc(key, Value{Data: data, TimestampMilli: kv.TimestampMilli})
+			sub.observerFunc(value.Key, value)
 		}
 		s.lock.RUnlock()
 
 	}
+}
+
+func decodeKeyValue(decryptor keyvaluestorage.Decryptor, kv innerstorage.KeyValue) (Value, error) {
+	data, err := decryptor(kv)
+	if err != nil {
+		return Value{}, fmt.Errorf("decrypt value: %w", err)
+	}
+
+	clientKey, value, err := decodeKeyValuePair(data)
+	if err != nil {
+		return Value{}, fmt.Errorf("decode key-value pair: %w", err)
+	}
+	return Value{
+		Key:            clientKey,
+		Data:           value,
+		TimestampMilli: kv.TimestampMilli,
+	}, nil
 }
 
 func (s *service) Get(ctx context.Context, key string) ([]Value, error) {
@@ -133,14 +157,11 @@ func (s *service) Get(ctx context.Context, key string) ([]Value, error) {
 	err = s.keyValueStore.GetAll(ctx, string(derived), func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) error {
 		result = make([]Value, 0, len(kvs))
 		for _, kv := range kvs {
-			data, err := decryptor(kv)
+			value, err := decodeKeyValue(decryptor, kv)
 			if err != nil {
-				return fmt.Errorf("decrypt: %w", err)
+				return fmt.Errorf("decode key-value pair: %w", err)
 			}
-			result = append(result, Value{
-				Data:           data,
-				TimestampMilli: kv.TimestampMilli,
-			})
+			result = append(result, value)
 		}
 		return nil
 	})
@@ -155,7 +176,14 @@ func (s *service) Set(ctx context.Context, key string, value []byte) error {
 	if err != nil {
 		return fmt.Errorf("getDerivedKey: %w", err)
 	}
-	return s.keyValueStore.Set(ctx, string(derived), value)
+
+	// Encode value as key + value, so we can use hashing for keys and still able to retrieve original key from client code
+	encoded, err := encodeKeyValuePair(key, value)
+	if err != nil {
+		return fmt.Errorf("encode value: %w", err)
+	}
+
+	return s.keyValueStore.Set(ctx, string(derived), encoded)
 }
 
 func (s *service) getDerivedKey(key string) (derivedKey, error) {
@@ -177,16 +205,7 @@ func (s *service) getDerivedKey(key string) (derivedKey, error) {
 	derived = derivedKey(hex.EncodeToString(result))
 
 	s.keyToDerivedKey[key] = derived
-	s.derivedKeyToKey[derived] = key
 	return derived, nil
-}
-
-func (s *service) getKeyFromDerived(derived derivedKey) (string, bool) {
-	s.keysLock.Lock()
-	defer s.keysLock.Unlock()
-
-	key, ok := s.derivedKeyToKey[derived]
-	return key, ok
 }
 
 func (s *service) SubscribeForKey(key string, subscriptionName string, observerFunc ObserverFunc) error {
@@ -225,4 +244,33 @@ func (s *service) UnsubscribeFromKey(key string, subscriptionName string) error 
 		delete(byKey, subscriptionName)
 	}
 	return nil
+}
+
+// use 2 as we use uint16
+const sizePrefixLen = 2
+
+func encodeKeyValuePair(key string, value []byte) ([]byte, error) {
+	keySize := len(key)
+	if keySize > math.MaxUint16 {
+		return nil, fmt.Errorf("key is too long: %d", keySize)
+	}
+	buf := make([]byte, sizePrefixLen+len(key)+len(value))
+	binary.BigEndian.PutUint16(buf, uint16(keySize))
+	copy(buf[sizePrefixLen:], key)
+	copy(buf[sizePrefixLen+len(key):], value)
+	return buf, nil
+}
+
+func decodeKeyValuePair(raw []byte) (string, []byte, error) {
+	if len(raw) < sizePrefixLen {
+		return "", nil, fmt.Errorf("raw value is too small: no key size prefix")
+	}
+	keySize := int(binary.BigEndian.Uint16(raw))
+	if len(raw) < sizePrefixLen+keySize {
+		return "", nil, fmt.Errorf("raw value is too small: no key")
+	}
+	key := make([]byte, keySize)
+	copy(key, raw[sizePrefixLen:sizePrefixLen+keySize])
+	value := raw[sizePrefixLen+keySize:]
+	return string(key), value, nil
 }

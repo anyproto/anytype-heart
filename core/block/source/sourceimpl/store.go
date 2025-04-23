@@ -80,12 +80,14 @@ func (s *store) initDiffManagers(ctx context.Context) error {
 
 		vals, err := s.getTechSpace().KeyValueService().Get(ctx, s.seenHeadsKey(name))
 		if err != nil {
-			return fmt.Errorf("get value: %w", err)
+			log.With("error", err).Error("init diff manager: get value")
+			continue
 		}
 		for _, val := range vals {
 			seenHeads, err := unmarshalSeenHeads(val.Data)
 			if err != nil {
-				return fmt.Errorf("unmarshal seen heads: %w", err)
+				log.With("error", err).Error("init diff manager: unmarshal seen heads")
+				continue
 			}
 			manager.diffManager.Remove(seenHeads)
 		}
