@@ -149,6 +149,9 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 	}
 
 	err = s.keyValueService.SubscribeForUserScopedKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
+		s.ObjectTree.Lock()
+		defer s.ObjectTree.Unlock()
+
 		newSeenHeads, err := unmarshalSeenHeads(val.Data)
 		if err != nil {
 			log.Errorf("subscribe for seenHeads: %s: %v", name, err)
