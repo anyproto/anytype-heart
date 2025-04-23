@@ -48,20 +48,13 @@ const (
 	CName            = "builtinobjects"
 	injectionTimeout = 30 * time.Second
 
-	migrationUseCase       = -1
-	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
-	defaultDashboardId     = "lastOpened"
+	migrationUseCase   = -1
+	defaultDashboardId = "lastOpened"
 
 	contentLengthHeader        = "Content-Length"
 	archiveDownloadingPercents = 30
 	archiveCopyingPercents     = 10
 )
-
-type widgetParameters struct {
-	layout            model.BlockContentWidgetLayout
-	objectID, viewID  string
-	isObjectIDChanged bool
-}
 
 //go:embed data/start_guide.zip
 var startGuideZip []byte
@@ -75,13 +68,21 @@ var migrationDashboardZip []byte
 //go:embed data/empty.zip
 var emptyZip []byte
 
+//go:embed data/get_started_mobile.zip
+var getStartedMobileZip []byte
+
+//go:embed data/empty_mobile.zip
+var emptyMobileZip []byte
+
 var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
-		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:  startGuideZip,
-		pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED:        getStartedZip,
+		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:         startGuideZip,
+		pb.RpcObjectImportUseCaseRequest_EMPTY:              emptyZip,
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED_MOBILE: getStartedMobileZip,
+		pb.RpcObjectImportUseCaseRequest_EMPTY_MOBILE:       emptyMobileZip,
 	}
 )
 
