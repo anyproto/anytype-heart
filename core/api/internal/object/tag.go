@@ -75,7 +75,7 @@ func (s *service) ListTags(ctx context.Context, spaceId string, propertyId strin
 
 // GetTag retrieves a single tag for a given property id in a space.
 func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
-	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: tagId,
 	})
@@ -99,20 +99,82 @@ func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string,
 
 // CreateTag creates a new tag option for a given property ID in a space.
 func (s *service) CreateTag(ctx context.Context, spaceId string, propertyId string, request CreateTagRequest) (Tag, error) {
-	// TODO: implement tag creation
-	return Tag{}, nil
+	_, rk, err := util.ResolveIdtoUniqueKeyAndRelationKey(s.mw, spaceId, propertyId)
+	if err != nil {
+		return Tag{}, ErrInvalidPropertyId
+	}
+
+	details := &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyRelationKey.String():         pbtypes.String(rk),
+			bundle.RelationKeyName.String():                pbtypes.String(s.sanitizedString(request.Name)),
+			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(ColorToColorOption[request.Color]),
+		},
+	}
+
+	resp := s.mw.ObjectCreateRelationOption(ctx, &pb.RpcObjectCreateRelationOptionRequest{
+		SpaceId: spaceId,
+		Details: details,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateRelationOptionResponseError_NULL {
+		return Tag{}, ErrFailedCreateTag
+	}
+
+	return s.GetTag(ctx, spaceId, propertyId, resp.ObjectId)
 }
 
 // UpdateTag updates an existing tag option for a given property ID in a space.
 func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId string, tagId string, request UpdateTagRequest) (Tag, error) {
-	// TODO: implement tag update
-	return Tag{}, nil
+	_, err := s.GetTag(ctx, spaceId, propertyId, tagId)
+	if err != nil {
+		return Tag{}, err
+	}
+
+	var details []*model.Detail
+	if request.Name != nil {
+		details = append(details, &model.Detail{
+			Key:   bundle.RelationKeyName.String(),
+			Value: pbtypes.String(s.sanitizedString(*request.Name)),
+		})
+	}
+	if request.Color != nil {
+		details = append(details, &model.Detail{
+			Key:   bundle.RelationKeyRelationOptionColor.String(),
+			Value: pbtypes.String(ColorToColorOption[*request.Color]),
+		})
+	}
+
+	if len(details) > 0 {
+		resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
+			ContextId: tagId,
+			Details:   details,
+		})
+
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
+			return Tag{}, ErrFailedUpdateTag
+		}
+	}
+
+	return s.GetTag(ctx, spaceId, propertyId, tagId)
 }
 
 // DeleteTag deletes a tag option for a given property ID in a space.
 func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
-	// TODO: implement tag deletion
-	return Tag{}, nil
+	tag, err := s.GetTag(ctx, spaceId, propertyId, tagId)
+	if err != nil {
+		return Tag{}, err
+	}
+
+	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
+		ContextId: tagId,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
+		return Tag{}, ErrFailedDeleteTag
+	}
+
+	return tag, nil
 }
 
 // TODO: remove once bug of select option not being returned in details is fixed

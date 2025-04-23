@@ -93,6 +93,19 @@ var ColorOptionToColor = map[string]Color{
 	"lime":   ColorLime,
 }
 
+var ColorToColorOption = map[Color]string{
+	ColorGrey:   "grey",
+	ColorYellow: "yellow",
+	ColorOrange: "orange",
+	ColorRed:    "red",
+	ColorPink:   "pink",
+	ColorPurple: "purple",
+	ColorBlue:   "blue",
+	ColorIce:    "ice",
+	ColorTeal:   "teal",
+	ColorLime:   "lime",
+}
+
 func StringPtr(s string) *string {
 	return &s
 }

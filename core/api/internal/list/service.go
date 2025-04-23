@@ -78,7 +78,7 @@ func (s *service) GetListViews(ctx context.Context, spaceId string, listId strin
 				filters = append(filters, Filter{
 					Id:          f.Id,
 					PropertyKey: f.RelationKey,
-					Format:      s.objectService.MapRelationFormat(f.Format),
+					Format:      object.RelationFormatToPropertyFormat[f.Format],
 					Condition:   strcase.ToSnake(model.BlockContentDataviewFilterCondition_name[int32(f.Condition)]),
 					Value:       f.Value.GetStringValue(),
 				})
@@ -88,7 +88,7 @@ func (s *service) GetListViews(ctx context.Context, spaceId string, listId strin
 				sorts = append(sorts, Sort{
 					Id:          srt.Id,
 					PropertyKey: srt.RelationKey,
-					Format:      s.objectService.MapRelationFormat(srt.Format),
+					Format:      object.RelationFormatToPropertyFormat[srt.Format],
 					SortType:    strcase.ToSnake(model.BlockContentDataviewSortType_name[int32(srt.Type)]),
 				})
 			}

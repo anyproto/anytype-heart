@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -71,6 +70,35 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyParticipantPermissions.String(): true,
 	bundle.RelationKeyIconOption.String():             true,
 	bundle.RelationKeyIconName.String():               true,
+}
+
+var PropertyFormatToRelationFormat = map[PropertyFormat]model.RelationFormat{
+	PropertyFormatText:        model.RelationFormat_longtext,
+	PropertyFormatNumber:      model.RelationFormat_number,
+	PropertyFormatSelect:      model.RelationFormat_status,
+	PropertyFormatMultiSelect: model.RelationFormat_tag,
+	PropertyFormatDate:        model.RelationFormat_date,
+	PropertyFormatFiles:       model.RelationFormat_file,
+	PropertyFormatCheckbox:    model.RelationFormat_checkbox,
+	PropertyFormatUrl:         model.RelationFormat_url,
+	PropertyFormatEmail:       model.RelationFormat_email,
+	PropertyFormatPhone:       model.RelationFormat_phone,
+	PropertyFormatObjects:     model.RelationFormat_object,
+}
+
+var RelationFormatToPropertyFormat = map[model.RelationFormat]PropertyFormat{
+	model.RelationFormat_longtext:  PropertyFormatText,
+	model.RelationFormat_shorttext: PropertyFormatText,
+	model.RelationFormat_number:    PropertyFormatNumber,
+	model.RelationFormat_status:    PropertyFormatSelect,
+	model.RelationFormat_tag:       PropertyFormatMultiSelect,
+	model.RelationFormat_date:      PropertyFormatDate,
+	model.RelationFormat_file:      PropertyFormatFiles,
+	model.RelationFormat_checkbox:  PropertyFormatCheckbox,
+	model.RelationFormat_url:       PropertyFormatUrl,
+	model.RelationFormat_email:     PropertyFormatEmail,
+	model.RelationFormat_phone:     PropertyFormatPhone,
+	model.RelationFormat_object:    PropertyFormatObjects,
 }
 
 // ListProperties returns a list of properties for a specific space.
@@ -155,7 +183,7 @@ func (s *service) CreateProperty(ctx context.Context, spaceId string, request Cr
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():           pbtypes.String(request.Name),
-			bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(s.MapPropertyFormat(request.Format))),
+			bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(PropertyFormatToRelationFormat[request.Format])),
 		},
 	}
 
@@ -341,69 +369,6 @@ func (s *service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 	return props
 }
 
-// MapPropertyFormat maps the property format to relation format.
-func (s *service) MapPropertyFormat(format PropertyFormat) model.RelationFormat {
-	switch format {
-	case PropertyFormatText:
-		return model.RelationFormat_longtext
-	case PropertyFormatNumber:
-		return model.RelationFormat_number
-	case PropertyFormatSelect:
-		return model.RelationFormat_status
-	case PropertyFormatMultiSelect:
-		return model.RelationFormat_tag
-	case PropertyFormatDate:
-		return model.RelationFormat_date
-	case PropertyFormatFiles:
-		return model.RelationFormat_file
-	case PropertyFormatCheckbox:
-		return model.RelationFormat_checkbox
-	case PropertyFormatUrl:
-		return model.RelationFormat_url
-	case PropertyFormatEmail:
-		return model.RelationFormat_email
-	case PropertyFormatPhone:
-		return model.RelationFormat_phone
-	case PropertyFormatObjects:
-		return model.RelationFormat_object
-	default:
-		return model.RelationFormat_longtext
-	}
-}
-
-// MapRelationFormat maps the relation format to API format.
-func (s *service) MapRelationFormat(format model.RelationFormat) PropertyFormat {
-	switch format {
-	case model.RelationFormat_longtext:
-		return PropertyFormatText
-	case model.RelationFormat_shorttext:
-		return PropertyFormatText
-	case model.RelationFormat_number:
-		return PropertyFormatNumber
-	case model.RelationFormat_status:
-		return PropertyFormatSelect
-	case model.RelationFormat_tag:
-		return PropertyFormatMultiSelect
-	case model.RelationFormat_date:
-		return PropertyFormatDate
-	case model.RelationFormat_file:
-		return PropertyFormatFiles
-	case model.RelationFormat_checkbox:
-		return PropertyFormatCheckbox
-	case model.RelationFormat_url:
-		return PropertyFormatUrl
-	case model.RelationFormat_email:
-		return PropertyFormatEmail
-	case model.RelationFormat_phone:
-		return PropertyFormatPhone
-	case model.RelationFormat_object:
-		return PropertyFormatObjects
-	default:
-		// TODO: refactor remaining cases into error
-		return PropertyFormat(strcase.ToSnake(model.RelationFormat_name[int32(format)]))
-	}
-}
-
 // GetPropertyMapsFromStore retrieves all properties for all spaces.
 func (s *service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]Property, error) {
 	spacesToProperties := make(map[string]map[string]Property, len(spaceIds))
@@ -480,7 +445,7 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property)
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:    key,
 		Name:   name,
-		Format: s.MapRelationFormat(model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())),
+		Format: RelationFormatToPropertyFormat[model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
 	}
 }
 
