@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -52,7 +51,7 @@ type AccountObject interface {
 
 type TechSpace interface {
 	app.Component
-	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, kvObserver keyvalueobserver.Observer, create bool) (err error)
+	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error)
 	Close(ctx context.Context) (err error)
 
 	WakeUpViews()
@@ -97,10 +96,9 @@ func New() TechSpace {
 }
 
 type techSpace struct {
-	techCore         commonspace.Space
-	objectCache      objectcache.Cache
-	keyvalueObserver keyvalueobserver.Observer
-	accountObjectId  string
+	techCore        commonspace.Space
+	objectCache     objectcache.Cache
+	accountObjectId string
 
 	mu sync.Mutex
 
@@ -119,10 +117,9 @@ func (s *techSpace) Name() (name string) {
 	return CName
 }
 
-func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, kvObserver keyvalueobserver.Observer, create bool) (err error) {
+func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
-	s.keyvalueObserver = kvObserver
 	if !create {
 		exists, err := s.accountObjectExists(s.ctx)
 		if err != nil {
