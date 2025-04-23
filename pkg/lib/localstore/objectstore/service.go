@@ -494,7 +494,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 		return err
 	})
 	if err != nil {
-		// todo: we should not rollback here?
+		_ = txn.Rollback()
 		return err
 	}
 	return txn.Commit()
