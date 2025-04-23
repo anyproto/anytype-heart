@@ -1,9 +1,8 @@
-package source
+package sourceimpl
 
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -22,6 +21,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -47,9 +47,6 @@ var (
 	log = logging.Logger("anytype-mw-source")
 
 	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
-
-	ErrReadOnly      = errors.New("object is read only")
-	ErrBigChangeSize = errors.New("change size is above the limit")
 )
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
@@ -130,41 +127,12 @@ func UnmarshalChangeWithDataType(dataType string, decrypted []byte) (res any, er
 	return UnmarshalChange(&objecttree.Change{DataType: dataType}, decrypted)
 }
 
-type ChangeReceiver interface {
-	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
-	StateRebuild(d state.Doc) (err error)
-}
-
-type Source interface {
-	Id() string
-	SpaceID() string
-	Type() smartblock.SmartBlockType
-	Heads() []string
-	GetFileKeysSnapshot() []*pb.ChangeFileKeys
-	ReadOnly() bool
-	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
-	PushChange(params PushChangeParams) (id string, err error)
-	Close() (err error)
-	GetCreationInfo() (creatorObjectId string, createdDate int64, err error)
-}
-
 type SourceIdEndodedDetails interface {
 	Id() string
 	DetailsFromId() (*domain.Details, error)
 }
 
-type IDsLister interface {
-	ListIds() ([]string, error)
-}
-
-type SourceWithType interface {
-	Source
-	IDsLister
-}
-
-var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
-
-func (s *service) newTreeSource(ctx context.Context, space Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (Source, error) {
+func (s *service) newTreeSource(ctx context.Context, space source.Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (source.Source, error) {
 	treeBuilder := space.TreeBuilder()
 	if treeBuilder == nil {
 		return nil, fmt.Errorf("space doesn't have tree builder")
@@ -179,7 +147,7 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		return nil, err
 	}
 
-	src := &source{
+	src := &treeSource{
 		ObjectTree:         ot,
 		id:                 id,
 		space:              space,
@@ -193,30 +161,26 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
-		return &store{source: src, sbType: sbt, diffManagers: map[string]*diffManager{}}, nil
+		return &store{treeSource: src, sbType: sbt, diffManagers: map[string]*diffManager{}, spaceService: s.spaceService}, nil
 	}
 
 	return src, nil
 }
 
-type ObjectTreeProvider interface {
-	Tree() objecttree.ObjectTree
-}
-
 type fileObjectMigrator interface {
-	MigrateFiles(st *state.State, spc Space, keysChanges []*pb.ChangeFileKeys)
-	MigrateFileIdsInDetails(st *state.State, spc Space)
+	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
+	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 }
 
-type source struct {
+type treeSource struct {
 	objecttree.ObjectTree
 	id                   string
-	space                Space
+	space                source.Space
 	spaceID              string
 	smartblockType       smartblock.SmartBlockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
-	receiver             ChangeReceiver
+	receiver             source.ChangeReceiver
 	unsubscribe          func()
 	closed               chan struct{}
 
@@ -228,13 +192,13 @@ type source struct {
 	fileObjectMigrator fileObjectMigrator
 }
 
-var _ updatelistener.UpdateListener = (*source)(nil)
+var _ updatelistener.UpdateListener = (*treeSource)(nil)
 
-func (s *source) Tree() objecttree.ObjectTree {
+func (s *treeSource) Tree() objecttree.ObjectTree {
 	return s.ObjectTree
 }
 
-func (s *source) Update(ot objecttree.ObjectTree) error {
+func (s *treeSource) Update(ot objecttree.ObjectTree) error {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
 	prevSnapshot := s.lastSnapshotId
@@ -259,7 +223,7 @@ func (s *source) Update(ot objecttree.ObjectTree) error {
 	return nil
 }
 
-func (s *source) Rebuild(ot objecttree.ObjectTree) error {
+func (s *treeSource) Rebuild(ot objecttree.ObjectTree) error {
 	if s.ObjectTree == nil {
 		return nil
 	}
@@ -277,27 +241,27 @@ func (s *source) Rebuild(ot objecttree.ObjectTree) error {
 	return nil
 }
 
-func (s *source) ReadOnly() bool {
+func (s *treeSource) ReadOnly() bool {
 	return false
 }
 
-func (s *source) Id() string {
+func (s *treeSource) Id() string {
 	return s.id
 }
 
-func (s *source) SpaceID() string {
+func (s *treeSource) SpaceID() string {
 	return s.spaceID
 }
 
-func (s *source) Type() smartblock.SmartBlockType {
+func (s *treeSource) Type() smartblock.SmartBlockType {
 	return s.smartblockType
 }
 
-func (s *source) ReadDoc(_ context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+func (s *treeSource) ReadDoc(_ context.Context, receiver source.ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	return s.readDoc(receiver)
 }
 
-func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
+func (s *treeSource) readDoc(receiver source.ChangeReceiver) (doc state.Doc, err error) {
 	s.receiver = receiver
 	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
 	if !ok {
@@ -308,7 +272,7 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 	return s.buildState()
 }
 
-func (s *source) buildState() (doc state.Doc, err error) {
+func (s *treeSource) buildState() (doc state.Doc, err error) {
 	st, _, changesAppliedSinceSnapshot, err := BuildState(s.spaceID, nil, s.ObjectTree, true)
 	if err != nil {
 		return
@@ -360,7 +324,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	return st, nil
 }
 
-func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+func (s *treeSource) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	header := s.ObjectTree.UnmarshalledHeader()
 	createdDate = header.Timestamp
 	if header.Identity != nil {
@@ -369,15 +333,7 @@ func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, e
 	return
 }
 
-type PushChangeParams struct {
-	State             *state.State
-	Changes           []*pb.ChangeContent
-	FileChangedHashes []string
-	Time              time.Time // used to derive the lastModifiedDate; Default is time.Now()
-	DoSnapshot        bool
-}
-
-func (s *source) PushChange(params PushChangeParams) (id string, err error) {
+func (s *treeSource) PushChange(params source.PushChangeParams) (id string, err error) {
 	for _, change := range params.Changes {
 		name := reflection.GetChangeContent(change.Value)
 		if name == "" {
@@ -431,7 +387,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	return
 }
 
-func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
+func (s *treeSource) buildChange(params source.PushChangeParams) (c *pb.Change) {
 	c = &pb.Change{
 		Timestamp: params.Time.Unix(),
 		Version:   params.State.MigrationVersion(),
@@ -459,12 +415,12 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 func checkChangeSize(data []byte, maxSize int) error {
 	log.Debugf("Change size is %d bytes", len(data))
 	if len(data) > maxSize {
-		return ErrBigChangeSize
+		return source.ErrBigChangeSize
 	}
 	return nil
 }
 
-func (s *source) ListIds() (ids []string, err error) {
+func (s *treeSource) ListIds() (ids []string, err error) {
 	if s.space == nil {
 		return
 	}
@@ -498,18 +454,18 @@ func snapshotChance(changesSinceSnapshot int) bool {
 	return false
 }
 
-func (s *source) needSnapshot() bool {
+func (s *treeSource) needSnapshot() bool {
 	if s.ObjectTree.Heads()[0] == s.ObjectTree.Id() {
 		return true
 	}
 	return snapshotChance(s.changesSinceSnapshot)
 }
 
-func (s *source) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
+func (s *treeSource) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return s.getFileHashesForSnapshot(nil)
 }
 
-func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFileKeys {
+func (s *treeSource) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFileKeys {
 	fileKeys := s.getFileKeysByHashes(changeHashes)
 	var uniqKeys = make(map[string]struct{})
 	for _, fk := range fileKeys {
@@ -542,7 +498,7 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 	return fileKeys
 }
 
-func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
+func (s *treeSource) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
 		fk, err := s.fileService.FileGetKeys(domain.FileId(h))
@@ -560,7 +516,7 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	return fileKeys
 }
 
-func (s *source) Heads() []string {
+func (s *treeSource) Heads() []string {
 	if s.ObjectTree == nil {
 		return nil
 	}
@@ -570,7 +526,7 @@ func (s *source) Heads() []string {
 	return headsCopy
 }
 
-func (s *source) Close() (err error) {
+func (s *treeSource) Close() (err error) {
 	if s.unsubscribe != nil {
 		s.unsubscribe()
 		<-s.closed

@@ -1,4 +1,4 @@
-package source
+package sourceimpl
 
 import (
 	"math/rand"

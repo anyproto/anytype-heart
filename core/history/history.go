@@ -24,7 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -144,7 +144,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int, no
 		}
 		var data []*pb.RpcHistoryVersion
 
-		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
+		e = tree.IterateFrom(tree.Root().Id, sourceimpl.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
 			data = h.fillVersionData(c, curHeads, participantId, data, hasher)
 			return true
@@ -405,7 +405,7 @@ func (h *history) GetBlocksParticipants(id domain.FullID, versionId string, bloc
 	}
 
 	blocksParticipantsMap := make(map[string]string, 0)
-	err = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
+	err = tree.IterateFrom(tree.Root().Id, sourceimpl.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 		h.fillBlockParticipantMap(c, id, blocksParticipantsMap, existingBlocks)
 		return true
 	})
@@ -555,7 +555,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 		return
 	}
 
-	st, _, _, err = source.BuildState(id.SpaceID, nil, tree, true)
+	st, _, _, err = sourceimpl.BuildState(id.SpaceID, nil, tree, true)
 	if err != nil {
 		return
 	}

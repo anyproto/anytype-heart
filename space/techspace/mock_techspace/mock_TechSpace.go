@@ -12,8 +12,6 @@ import (
 
 	keyvalueobserver "github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 
-	keyvaluestorage "github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
-
 	mock "github.com/stretchr/testify/mock"
 
 	objectcache "github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -333,100 +331,6 @@ func (_c *MockTechSpace_Init_Call) Return(err error) *MockTechSpace_Init_Call {
 }
 
 func (_c *MockTechSpace_Init_Call) RunAndReturn(run func(*app.App) error) *MockTechSpace_Init_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// KeyValueObserver provides a mock function with given fields:
-func (_m *MockTechSpace) KeyValueObserver() keyvalueobserver.Observer {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for KeyValueObserver")
-	}
-
-	var r0 keyvalueobserver.Observer
-	if rf, ok := ret.Get(0).(func() keyvalueobserver.Observer); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(keyvalueobserver.Observer)
-		}
-	}
-
-	return r0
-}
-
-// MockTechSpace_KeyValueObserver_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'KeyValueObserver'
-type MockTechSpace_KeyValueObserver_Call struct {
-	*mock.Call
-}
-
-// KeyValueObserver is a helper method to define mock.On call
-func (_e *MockTechSpace_Expecter) KeyValueObserver() *MockTechSpace_KeyValueObserver_Call {
-	return &MockTechSpace_KeyValueObserver_Call{Call: _e.mock.On("KeyValueObserver")}
-}
-
-func (_c *MockTechSpace_KeyValueObserver_Call) Run(run func()) *MockTechSpace_KeyValueObserver_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockTechSpace_KeyValueObserver_Call) Return(_a0 keyvalueobserver.Observer) *MockTechSpace_KeyValueObserver_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockTechSpace_KeyValueObserver_Call) RunAndReturn(run func() keyvalueobserver.Observer) *MockTechSpace_KeyValueObserver_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// KeyValueStore provides a mock function with given fields:
-func (_m *MockTechSpace) KeyValueStore() keyvaluestorage.Storage {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for KeyValueStore")
-	}
-
-	var r0 keyvaluestorage.Storage
-	if rf, ok := ret.Get(0).(func() keyvaluestorage.Storage); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(keyvaluestorage.Storage)
-		}
-	}
-
-	return r0
-}
-
-// MockTechSpace_KeyValueStore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'KeyValueStore'
-type MockTechSpace_KeyValueStore_Call struct {
-	*mock.Call
-}
-
-// KeyValueStore is a helper method to define mock.On call
-func (_e *MockTechSpace_Expecter) KeyValueStore() *MockTechSpace_KeyValueStore_Call {
-	return &MockTechSpace_KeyValueStore_Call{Call: _e.mock.On("KeyValueStore")}
-}
-
-func (_c *MockTechSpace_KeyValueStore_Call) Run(run func()) *MockTechSpace_KeyValueStore_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockTechSpace_KeyValueStore_Call) Return(_a0 keyvaluestorage.Storage) *MockTechSpace_KeyValueStore_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockTechSpace_KeyValueStore_Call) RunAndReturn(run func() keyvaluestorage.Storage) *MockTechSpace_KeyValueStore_Call {
 	_c.Call.Return(run)
 	return _c
 }

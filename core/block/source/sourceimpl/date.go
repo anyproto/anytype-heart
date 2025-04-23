@@ -1,4 +1,4 @@
-package source
+package sourceimpl
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -21,7 +22,7 @@ type DateSourceParams struct {
 	DateObjectTypeId string
 }
 
-func NewDate(params DateSourceParams) (s Source) {
+func NewDate(params DateSourceParams) (s source.Source) {
 	return &date{
 		id:      params.Id.ObjectID,
 		spaceId: params.Id.SpaceID,
@@ -80,7 +81,7 @@ func (d *date) DetailsFromId() (*domain.Details, error) {
 	return d.getDetails()
 }
 
-func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, err error) {
+func (d *date) ReadDoc(context.Context, source.ChangeReceiver, bool) (doc state.Doc, err error) {
 	details, err := d.getDetails()
 	if err != nil {
 		return
@@ -96,7 +97,7 @@ func (d *date) ReadDoc(context.Context, ChangeReceiver, bool) (doc state.Doc, er
 	return s, nil
 }
 
-func (d *date) PushChange(PushChangeParams) (id string, err error) {
+func (d *date) PushChange(source.PushChangeParams) (id string, err error) {
 	return "", nil
 }
 

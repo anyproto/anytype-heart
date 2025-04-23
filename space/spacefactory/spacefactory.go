@@ -115,18 +115,22 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 	if err != nil {
 		return nil, fmt.Errorf("derive tech space: %w", err)
 	}
-	deps := clientspace.TechSpaceDeps{
-		CommonSpace:     techCoreSpace,
-		ObjectFactory:   s.objectFactory,
-		AccountService:  s.accountService,
-		PersonalSpaceId: s.personalSpaceId,
-		Indexer:         s.indexer,
-		Installer:       s.installer,
-		TechSpace:       techSpace,
-	}
-	ts := clientspace.NewTechSpace(deps)
-
 	kvObserver := techCoreSpace.KeyValueObserver()
+	deps := clientspace.TechSpaceDeps{
+		CommonSpace:      techCoreSpace,
+		ObjectFactory:    s.objectFactory,
+		AccountService:   s.accountService,
+		PersonalSpaceId:  s.personalSpaceId,
+		Indexer:          s.indexer,
+		Installer:        s.installer,
+		TechSpace:        techSpace,
+		KeyValueObserver: kvObserver,
+	}
+	ts, err := clientspace.NewTechSpace(deps)
+	if err != nil {
+		return nil, fmt.Errorf("build tech space: %w", err)
+	}
+
 	s.techSpace = ts
 	s.app = s.app.ChildApp()
 	s.app.Register(s.techSpace)
@@ -148,18 +152,22 @@ func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.Te
 	if err != nil {
 		return nil, fmt.Errorf("derive tech space: %w", err)
 	}
-	deps := clientspace.TechSpaceDeps{
-		CommonSpace:     techCoreSpace,
-		ObjectFactory:   s.objectFactory,
-		AccountService:  s.accountService,
-		PersonalSpaceId: s.personalSpaceId,
-		Indexer:         s.indexer,
-		Installer:       s.installer,
-		TechSpace:       techSpace,
-	}
-	ts := clientspace.NewTechSpace(deps)
-
 	kvObserver := techCoreSpace.KeyValueObserver()
+	deps := clientspace.TechSpaceDeps{
+		CommonSpace:      techCoreSpace,
+		ObjectFactory:    s.objectFactory,
+		AccountService:   s.accountService,
+		PersonalSpaceId:  s.personalSpaceId,
+		Indexer:          s.indexer,
+		Installer:        s.installer,
+		TechSpace:        techSpace,
+		KeyValueObserver: kvObserver,
+	}
+	ts, err := clientspace.NewTechSpace(deps)
+	if err != nil {
+		return nil, fmt.Errorf("build tech space: %w", err)
+	}
+
 	s.techSpace = ts
 	s.app = s.app.ChildApp()
 	s.app.Register(s.techSpace)

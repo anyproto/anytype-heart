@@ -1,4 +1,4 @@
-package source
+package sourceimpl
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
@@ -18,54 +17,30 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
 )
 
-type PushChangeHook func(params PushChangeParams) (id string, err error)
-
 var _ updatelistener.UpdateListener = (*store)(nil)
-
-type Store interface {
-	Source
-	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
-	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
-	SetPushChangeHook(onPushChange PushChangeHook)
-
-	// RegisterDiffManager sets a hook that will be called when a change is removed (marked as read) from the diff manager
-	// must be called before ReadStoreDoc.
-	//
-	// If a head is marked as read in the diff manager, all earlier heads for that branch marked as read as well
-	RegisterDiffManager(name string, onRemoveHook func(removed []string))
-	// MarkSeenHeads marks heads as seen in a diff manager. Then the diff manager will call a hook from SetDiffManagerOnRemoveHook
-	MarkSeenHeads(ctx context.Context, name string, heads []string) error
-	// StoreSeenHeads persists current seen heads in any-store
-	StoreSeenHeads(ctx context.Context, name string) error
-	// InitDiffManager initializes a diff manager with specified seen heads
-	InitDiffManager(ctx context.Context, name string, seenHeads []string) error
-}
-
-type PushStoreChangeParams struct {
-	State   *storestate.StoreState
-	Changes []*pb.StoreChangeContent
-	Time    time.Time // used to derive the lastModifiedDate; Default is time.Now()
-}
 
 var (
 	_ updatelistener.UpdateListener = (*store)(nil)
-	_ Store                         = (*store)(nil)
+	_ source.Store                  = (*store)(nil)
 )
 
 type store struct {
-	*source
-	techSpace    Space
+	*treeSource
+	spaceService space.Service
 	store        *storestate.StoreState
 	onUpdateHook func()
-	onPushChange PushChangeHook
+	onPushChange source.PushChangeHook
 	sbType       smartblock.SmartBlockType
 
 	diffManagers map[string]*diffManager
@@ -76,11 +51,15 @@ type diffManager struct {
 	onRemove    func(removed []string)
 }
 
+func (s *store) getTechSpace() clientspace.Space {
+	return s.spaceService.TechSpace()
+}
+
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
+func (s *store) SetPushChangeHook(onPushChange source.PushChangeHook) {
 	s.onPushChange = onPushChange
 }
 
@@ -99,7 +78,7 @@ func (s *store) initDiffManagers(ctx context.Context) error {
 			return fmt.Errorf("init diff manager: %w", err)
 		}
 
-		vals, err := s.techSpace.KeyValueService().Get(ctx, s.seenHeadsKey(name))
+		vals, err := s.getTechSpace().KeyValueService().Get(ctx, s.seenHeadsKey(name))
 		if err != nil {
 			return fmt.Errorf("get value: %w", err)
 		}
@@ -129,7 +108,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 		return nil
 	}
 
-	curTreeHeads := s.source.Tree().Heads()
+	curTreeHeads := s.treeSource.Tree().Heads()
 
 	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
 		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
@@ -148,7 +127,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 		return fmt.Errorf("init diff manager: %w", err)
 	}
 
-	err = s.techSpace.KeyValueService().SubscribeForKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
+	err = s.getTechSpace().KeyValueService().SubscribeForKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
 		s.ObjectTree.Lock()
 		defer s.ObjectTree.Unlock()
 
@@ -166,7 +145,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 	return
 }
 
-func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (s *store) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s.receiver = receiver
 	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
 	if !ok {
@@ -194,7 +173,7 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 	return st, nil
 }
 
-func (s *store) PushChange(params PushChangeParams) (id string, err error) {
+func (s *store) PushChange(params source.PushChangeParams) (id string, err error) {
 	if s.onPushChange != nil {
 		return s.onPushChange(params)
 	}
@@ -234,7 +213,7 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	return nil
 }
 
-func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error) {
+func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChangeParams) (changeId string, err error) {
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
@@ -354,7 +333,7 @@ func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 		return fmt.Errorf("marshal seen heads: %w", err)
 	}
 
-	return s.techSpace.KeyValueService().Set(ctx, s.seenHeadsKey(name), raw)
+	return s.getTechSpace().KeyValueService().Set(ctx, s.seenHeadsKey(name), raw)
 }
 
 func (s *store) seenHeadsKey(diffManagerName string) string {
