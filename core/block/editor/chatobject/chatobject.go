@@ -2,6 +2,7 @@ package chatobject
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,7 +110,14 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
-	collection, err := s.crdtDb.Collection(ctx.Ctx, storeSource.Id()+CollectionName)
+	collectionName := storeSource.Id() + CollectionName
+	collection, err := s.crdtDb.OpenCollection(ctx.Ctx, collectionName)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		collection, err = s.crdtDb.CreateCollection(ctx.Ctx, collectionName)
+		if err != nil {
+			return fmt.Errorf("create collection: %w", err)
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
