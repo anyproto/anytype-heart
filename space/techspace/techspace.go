@@ -68,9 +68,6 @@ type TechSpace interface {
 	SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) (err error)
 	SpaceViewId(id string) (string, error)
 	AccountObjectId() (string, error)
-
-	KeyValueObserver() keyvalueobserver.Observer
-	KeyValueStore() keyvaluestorage.Storage
 }
 
 type SpaceView interface {
@@ -396,10 +393,6 @@ func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId
 
 func (s *techSpace) KeyValueStore() keyvaluestorage.Storage {
 	return s.techCore.KeyValue().DefaultStore()
-}
-
-func (s *techSpace) KeyValueObserver() keyvalueobserver.Observer {
-	return s.keyvalueObserver
 }
 
 func (s *techSpace) Close(ctx context.Context) (err error) {

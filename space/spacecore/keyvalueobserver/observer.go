@@ -16,13 +16,11 @@ const CName = keyvaluestorage.IndexerCName
 type ObserverFunc func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue)
 
 type Observer interface {
-	app.ComponentRunnable
 	keyvaluestorage.Indexer
 	SetObserver(observerFunc ObserverFunc)
 }
 
 func New() Observer {
-
 	return &observer{}
 }
 

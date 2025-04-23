@@ -18,11 +18,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/keyvalueservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -47,6 +47,7 @@ type Space interface {
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 	StoredIds() []string
 	IsPersonal() bool
+	KeyValueService() keyvalueservice.Service
 }
 
 type Service interface {
@@ -68,7 +69,6 @@ type service struct {
 	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
 	idDeriver          idderiver.Deriver
-	keyValueService    keyvalueservice.Service
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -83,7 +83,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.idDeriver = app.MustComponent[idderiver.Deriver](a)
-	s.keyValueService = app.MustComponent[keyvalueservice.Service](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)

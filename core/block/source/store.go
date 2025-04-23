@@ -19,11 +19,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/keyvalueservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
 )
 
 type PushChangeHook func(params PushChangeParams) (id string, err error)
@@ -62,11 +62,11 @@ var (
 
 type store struct {
 	*source
-	keyValueService keyvalueservice.Service
-	store           *storestate.StoreState
-	onUpdateHook    func()
-	onPushChange    PushChangeHook
-	sbType          smartblock.SmartBlockType
+	techSpace    Space
+	store        *storestate.StoreState
+	onUpdateHook func()
+	onPushChange PushChangeHook
+	sbType       smartblock.SmartBlockType
 
 	diffManagers map[string]*diffManager
 }
@@ -99,7 +99,7 @@ func (s *store) initDiffManagers(ctx context.Context) error {
 			return fmt.Errorf("init diff manager: %w", err)
 		}
 
-		vals, err := s.keyValueService.GetUserScopedKey(ctx, s.seenHeadsKey(name))
+		vals, err := s.techSpace.KeyValueService().Get(ctx, s.seenHeadsKey(name))
 		if err != nil {
 			return fmt.Errorf("get value: %w", err)
 		}
@@ -148,7 +148,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 		return fmt.Errorf("init diff manager: %w", err)
 	}
 
-	err = s.keyValueService.SubscribeForUserScopedKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
+	err = s.techSpace.KeyValueService().SubscribeForKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
 		s.ObjectTree.Lock()
 		defer s.ObjectTree.Unlock()
 
@@ -287,16 +287,20 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 		return "", err
 	}
 
-	for _, m := range s.diffManagers {
-		if m.diffManager != nil {
-			m.diffManager.Add(&objecttree.Change{
-				Id:          changeId,
-				PreviousIds: ch.PreviousIds,
-			})
-		}
-	}
+	s.addToDiffManagers(&objecttree.Change{
+		Id:          changeId,
+		PreviousIds: ch.PreviousIds,
+	})
 
 	return changeId, err
+}
+
+func (s *store) addToDiffManagers(change *objecttree.Change) {
+	for _, m := range s.diffManagers {
+		if m.diffManager != nil {
+			m.diffManager.Add(change)
+		}
+	}
 }
 
 func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
@@ -313,15 +317,20 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return errors.Join(tx.Rollback(), err)
 	}
 	err = tx.Commit()
+
+	s.updateInDiffManagers(tree)
+	if err == nil {
+		s.onUpdateHook()
+	}
+	return err
+}
+
+func (s *store) updateInDiffManagers(tree objecttree.ObjectTree) {
 	for _, m := range s.diffManagers {
 		if m.diffManager != nil {
 			m.diffManager.Update(tree)
 		}
 	}
-	if err == nil {
-		s.onUpdateHook()
-	}
-	return err
 }
 
 func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) error {
@@ -345,7 +354,7 @@ func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 		return fmt.Errorf("marshal seen heads: %w", err)
 	}
 
-	return s.keyValueService.SetUserScopedKey(ctx, s.seenHeadsKey(name), raw)
+	return s.techSpace.KeyValueService().Set(ctx, s.seenHeadsKey(name), raw)
 }
 
 func (s *store) seenHeadsKey(diffManagerName string) string {

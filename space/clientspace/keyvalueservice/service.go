@@ -1,4 +1,4 @@
-package keyvalueserviceimpl
+package keyvalueservice
 
 import (
 	"context"
@@ -7,86 +7,85 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
 	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage/innerstorage"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/keyvalueservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 )
 
 const CName = "core.keyvalueservice"
 
 var log = logging.Logger(CName).Desugar()
 
+type ObserverFunc func(key string, val Value)
+
+type Value struct {
+	Data           []byte
+	TimestampMilli int
+}
+
 type subscription struct {
 	name         string
-	observerFunc keyvalueservice.ObserverFunc
+	observerFunc ObserverFunc
 }
 
 type derivedKey string
+
+type Service interface {
+	Get(ctx context.Context, key string) ([]Value, error)
+	Set(ctx context.Context, key string, value []byte) error
+	SubscribeForKey(key string, subscriptionName string, observerFunc ObserverFunc) error
+	UnsubscribeFromKey(key string, subscriptionName string) error
+}
 
 type service struct {
 	lock          sync.RWMutex
 	subscriptions map[derivedKey]map[string]subscription
 
-	spaceService space.Service
-	techSpace    *clientspace.TechSpace
-
-	techSpaceSalt []byte
+	keyValueStore keyvaluestorage.Storage
+	spaceCore     commonspace.Space
+	observer      keyvalueobserver.Observer
 
 	keysLock        sync.Mutex
+	spaceSalt       []byte
 	keyToDerivedKey map[string]derivedKey
 	derivedKeyToKey map[derivedKey]string
 }
 
-func New() keyvalueservice.Service {
-	return &service{
+func New(spaceCore commonspace.Space, observer keyvalueobserver.Observer) (Service, error) {
+	s := &service{
+		spaceCore:       spaceCore,
+		observer:        observer,
+		keyValueStore:   spaceCore.KeyValue().DefaultStore(),
 		subscriptions:   make(map[derivedKey]map[string]subscription),
 		keyToDerivedKey: make(map[string]derivedKey),
 		derivedKeyToKey: make(map[derivedKey]string),
 	}
-}
-
-func (s *service) Init(a *app.App) (err error) {
-	s.spaceService = app.MustComponent[space.Service](a)
-	return nil
-}
-
-func (s *service) Name() (name string) {
-	return CName
-}
-
-func (s *service) Run(ctx context.Context) error {
-	s.techSpace = s.spaceService.TechSpace()
-
-	err := s.initTechSpaceSalt()
+	err := s.initSpaceSalt()
 	if err != nil {
-		return fmt.Errorf("init tech salt: %w", err)
+		return nil, fmt.Errorf("init tech salt: %w", err)
 	}
 
-	s.techSpace.KeyValueObserver().SetObserver(s.observeChanges)
-
-	return nil
+	s.observer.SetObserver(s.observeChanges)
+	return s, nil
 }
 
-func (s *service) initTechSpaceSalt() error {
-	commonSpace := s.techSpace.CommonSpace()
-	records := commonSpace.Acl().Records()
+func (s *service) initSpaceSalt() error {
+	records := s.spaceCore.Acl().Records()
 	if len(records) == 0 {
 		return fmt.Errorf("empty acl")
 	}
 	first := records[0]
 
-	readKeyId, err := commonSpace.Acl().AclState().ReadKeyForAclId(first.Id)
+	readKeyId, err := s.spaceCore.Acl().AclState().ReadKeyForAclId(first.Id)
 	if err != nil {
 		return fmt.Errorf("find read key id: %w", err)
 	}
 
-	readKeys := commonSpace.Acl().AclState().Keys()
+	readKeys := s.spaceCore.Acl().AclState().Keys()
 	key, ok := readKeys[readKeyId]
 	if !ok {
 		return fmt.Errorf("read key not found")
@@ -97,7 +96,7 @@ func (s *service) initTechSpaceSalt() error {
 		return fmt.Errorf("get raw bytes: %w", err)
 	}
 
-	s.techSpaceSalt = rawReadKey
+	s.spaceSalt = rawReadKey
 	return nil
 }
 
@@ -118,31 +117,27 @@ func (s *service) observeChanges(decryptFunc keyvaluestorage.Decryptor, kvs []in
 				continue
 			}
 
-			sub.observerFunc(key, keyvalueservice.Value{Data: data, TimestampMilli: kv.TimestampMilli})
+			sub.observerFunc(key, Value{Data: data, TimestampMilli: kv.TimestampMilli})
 		}
 		s.lock.RUnlock()
 
 	}
 }
 
-func (s *service) Close(ctx context.Context) (err error) {
-	return nil
-}
-
-func (s *service) GetUserScopedKey(ctx context.Context, key string) ([]keyvalueservice.Value, error) {
+func (s *service) Get(ctx context.Context, key string) ([]Value, error) {
 	derived, err := s.getDerivedKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("getDerivedKey: %w", err)
 	}
-	var result []keyvalueservice.Value
-	err = s.techSpace.KeyValueStore().GetAll(ctx, string(derived), func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) error {
-		result = make([]keyvalueservice.Value, 0, len(kvs))
+	var result []Value
+	err = s.keyValueStore.GetAll(ctx, string(derived), func(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) error {
+		result = make([]Value, 0, len(kvs))
 		for _, kv := range kvs {
 			data, err := decryptor(kv)
 			if err != nil {
 				return fmt.Errorf("decrypt: %w", err)
 			}
-			result = append(result, keyvalueservice.Value{
+			result = append(result, Value{
 				Data:           data,
 				TimestampMilli: kv.TimestampMilli,
 			})
@@ -155,12 +150,12 @@ func (s *service) GetUserScopedKey(ctx context.Context, key string) ([]keyvalues
 	return result, nil
 }
 
-func (s *service) SetUserScopedKey(ctx context.Context, key string, value []byte) error {
+func (s *service) Set(ctx context.Context, key string, value []byte) error {
 	derived, err := s.getDerivedKey(key)
 	if err != nil {
 		return fmt.Errorf("getDerivedKey: %w", err)
 	}
-	return s.techSpace.KeyValueStore().Set(ctx, string(derived), value)
+	return s.keyValueStore.Set(ctx, string(derived), value)
 }
 
 func (s *service) getDerivedKey(key string) (derivedKey, error) {
@@ -174,7 +169,7 @@ func (s *service) getDerivedKey(key string) (derivedKey, error) {
 
 	hasher := sha256.New()
 	// Salt
-	hasher.Write(s.techSpaceSalt)
+	hasher.Write(s.spaceSalt)
 	// User key
 	hasher.Write([]byte(key))
 	result := hasher.Sum(nil)
@@ -194,7 +189,7 @@ func (s *service) getKeyFromDerived(derived derivedKey) (string, bool) {
 	return key, ok
 }
 
-func (s *service) SubscribeForUserScopedKey(key string, name string, observerFunc keyvalueservice.ObserverFunc) error {
+func (s *service) SubscribeForKey(key string, subscriptionName string, observerFunc ObserverFunc) error {
 	derived, err := s.getDerivedKey(key)
 	if err != nil {
 		return fmt.Errorf("getDerivedKey: %w", err)
@@ -209,14 +204,14 @@ func (s *service) SubscribeForUserScopedKey(key string, name string, observerFun
 		s.subscriptions[derived] = byKey
 	}
 
-	byKey[name] = subscription{
-		name:         name,
+	byKey[subscriptionName] = subscription{
+		name:         subscriptionName,
 		observerFunc: observerFunc,
 	}
 	return nil
 }
 
-func (s *service) UnsubscribeFromUserScopedKey(key string, name string) error {
+func (s *service) UnsubscribeFromKey(key string, subscriptionName string) error {
 	derived, err := s.getDerivedKey(key)
 	if err != nil {
 		return fmt.Errorf("getDerivedKey: %w", err)
@@ -227,7 +222,7 @@ func (s *service) UnsubscribeFromUserScopedKey(key string, name string) error {
 
 	byKey, ok := s.subscriptions[derived]
 	if ok {
-		delete(byKey, name)
+		delete(byKey, subscriptionName)
 	}
 	return nil
 }
