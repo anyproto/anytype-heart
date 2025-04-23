@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -61,7 +62,7 @@ func TestSource_CheckChangeSize(t *testing.T) {
 		err := checkChangeSize(data, len(data)-1)
 
 		// then
-		assert.ErrorIs(t, err, ErrBigChangeSize)
+		assert.ErrorIs(t, err, source.ErrBigChangeSize)
 	})
 
 	t.Run("small change", func(t *testing.T) {

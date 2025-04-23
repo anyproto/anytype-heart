@@ -284,16 +284,6 @@ func (s *treeSource) buildState() (doc state.Doc, err error) {
 	}
 	st.BlocksInit(st)
 
-	// This is temporary migration. We will move it to persistent migration later after several releases.
-	// The reason is to minimize the number of glitches for users of both old and new versions of Anytype.
-	// For example, if we persist this migration for Dataview block now, user will see "No query selected"
-	// error in the old version of Anytype. We want to avoid this as much as possible by making this migration
-	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
-	// compatibility. But in many cases we expect that users update object not so often as they just view them.
-	// TODO: we can skip migration for non-personal spaces
-	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.objectStore)
-	migration.Migrate(st)
-
 	// we need to have required internal relations for all objects, including system
 	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
