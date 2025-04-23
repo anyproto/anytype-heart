@@ -55,7 +55,6 @@ type Service interface {
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
 	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error)
 
-	MapRelationFormat(format model.RelationFormat) PropertyFormat
 	GetObjectFromStruct(details *types.Struct, propertyMap map[string]Property, typeMap map[string]Type) Object
 	GetPropertyMapFromStore(spaceId string) (map[string]Property, error)
 	GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]Property, error)
