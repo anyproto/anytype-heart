@@ -19,7 +19,7 @@ import (
 
 const LastMessageSubscriptionId = "lastMessage"
 
-type subscription struct {
+type subscriptionManager struct {
 	componentCtx context.Context
 
 	spaceId         string
@@ -43,8 +43,8 @@ type subscription struct {
 	repository  *repository
 }
 
-func (s *storeObject) newSubscription(fullId domain.FullID, myIdentity string, myParticipantId string) *subscription {
-	return &subscription{
+func (s *storeObject) newSubscriptionManager(fullId domain.FullID, myIdentity string, myParticipantId string) *subscriptionManager {
+	return &subscriptionManager{
 		componentCtx:    s.componentCtx,
 		spaceId:         fullId.SpaceID,
 		chatId:          fullId.ObjectID,
@@ -57,8 +57,8 @@ func (s *storeObject) newSubscription(fullId domain.FullID, myIdentity string, m
 	}
 }
 
-// subscribe subscribes to messages. It returns true if there was no subscription with provided id
-func (s *subscription) subscribe(subId string) bool {
+// subscribe subscribes to messages. It returns true if there was no subscriptionManager with provided id
+func (s *subscriptionManager) subscribe(subId string) bool {
 	if !slices.Contains(s.ids, subId) {
 		s.ids = append(s.ids, subId)
 		s.chatStateUpdated = false
@@ -67,24 +67,24 @@ func (s *subscription) subscribe(subId string) bool {
 	return false
 }
 
-func (s *subscription) unsubscribe(subId string) {
+func (s *subscriptionManager) unsubscribe(subId string) {
 	s.ids = slice.Remove(s.ids, subId)
 }
 
-func (s *subscription) isActive() bool {
+func (s *subscriptionManager) isActive() bool {
 	return len(s.ids) > 0
 }
 
-func (s *subscription) withDeps() bool {
+func (s *subscriptionManager) withDeps() bool {
 	return slices.Equal(s.ids, []string{LastMessageSubscriptionId})
 }
 
 // setSessionContext sets the session context for the current operation
-func (s *subscription) setSessionContext(ctx session.Context) {
+func (s *subscriptionManager) setSessionContext(ctx session.Context) {
 	s.sessionContext = ctx
 }
 
-func (s *subscription) loadChatState(ctx context.Context) error {
+func (s *subscriptionManager) loadChatState(ctx context.Context) error {
 	state, err := s.repository.loadChatState(ctx)
 	if err != nil {
 		return err
@@ -93,17 +93,17 @@ func (s *subscription) loadChatState(ctx context.Context) error {
 	return nil
 }
 
-func (s *subscription) getChatState() *model.ChatState {
+func (s *subscriptionManager) getChatState() *model.ChatState {
 	return copyChatState(s.chatState)
 }
 
-func (s *subscription) updateChatState(updater func(*model.ChatState) *model.ChatState) {
+func (s *subscriptionManager) updateChatState(updater func(*model.ChatState) *model.ChatState) {
 	s.chatState = updater(s.chatState)
 	s.chatStateUpdated = true
 }
 
 // flush is called after commiting changes
-func (s *subscription) flush() {
+func (s *subscriptionManager) flush() {
 	if !s.canSend() {
 		return
 	}
@@ -136,7 +136,6 @@ func (s *subscription) flush() {
 		ContextId: s.chatId,
 		Messages:  events,
 	}
-
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, events)
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
@@ -146,7 +145,7 @@ func (s *subscription) flush() {
 	}
 }
 
-func (s *subscription) getIdentityDetails(identity string) (*domain.Details, error) {
+func (s *subscriptionManager) getIdentityDetails(identity string) (*domain.Details, error) {
 	cached, ok := s.identityCache.Get(identity)
 	if ok {
 		return cached, nil
@@ -159,7 +158,7 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 	return details, nil
 }
 
-func (s *subscription) add(prevOrderId string, message *Message) {
+func (s *subscriptionManager) add(prevOrderId string, message *Message) {
 	if !s.canSend() {
 		return
 	}
@@ -194,7 +193,7 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 	}))
 }
 
-func (s *subscription) delete(messageId string) {
+func (s *subscriptionManager) delete(messageId string) {
 	ev := &pb.EventChatDelete{
 		Id:     messageId,
 		SubIds: slices.Clone(s.ids),
@@ -207,7 +206,7 @@ func (s *subscription) delete(messageId string) {
 	s.needReloadState = true
 }
 
-func (s *subscription) updateFull(message *Message) {
+func (s *subscriptionManager) updateFull(message *Message) {
 	if !s.canSend() {
 		return
 	}
@@ -221,7 +220,7 @@ func (s *subscription) updateFull(message *Message) {
 	}))
 }
 
-func (s *subscription) updateReactions(message *Message) {
+func (s *subscriptionManager) updateReactions(message *Message) {
 	if !s.canSend() {
 		return
 	}
@@ -237,7 +236,7 @@ func (s *subscription) updateReactions(message *Message) {
 
 // updateMessageRead updates the read status of the messages with the given ids
 // read ids should ONLY contain ids if they were actually modified in the DB
-func (s *subscription) updateMessageRead(ids []string, read bool) {
+func (s *subscriptionManager) updateMessageRead(ids []string, read bool) {
 	s.updateChatState(func(state *model.ChatState) *model.ChatState {
 		if read {
 			state.Messages.Counter -= int32(len(ids))
@@ -259,7 +258,7 @@ func (s *subscription) updateMessageRead(ids []string, read bool) {
 	}))
 }
 
-func (s *subscription) updateMentionRead(ids []string, read bool) {
+func (s *subscriptionManager) updateMentionRead(ids []string, read bool) {
 	s.updateChatState(func(state *model.ChatState) *model.ChatState {
 		if read {
 			state.Mentions.Counter -= int32(len(ids))
@@ -281,7 +280,7 @@ func (s *subscription) updateMentionRead(ids []string, read bool) {
 	}))
 }
 
-func (s *subscription) canSend() bool {
+func (s *subscriptionManager) canSend() bool {
 	if s.sessionContext != nil {
 		return true
 	}

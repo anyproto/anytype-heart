@@ -1,9 +1,10 @@
-package source
+package sourceimpl
 
 import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -14,7 +15,7 @@ import (
 type missingObject struct {
 }
 
-func NewMissingObject() (s Source) {
+func NewMissingObject() (s source.Source) {
 	return &missingObject{}
 }
 
@@ -48,7 +49,7 @@ func (m *missingObject) getDetails() (p *domain.Details) {
 	return det
 }
 
-func (m *missingObject) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (m *missingObject) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(addr.MissingObject, nil).(*state.State)
 
 	d := m.getDetails()
@@ -70,7 +71,7 @@ func (m *missingObject) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (m *missingObject) PushChange(params PushChangeParams) (id string, err error) {
+func (m *missingObject) PushChange(params source.PushChangeParams) (id string, err error) {
 	return
 }
 

@@ -1,4 +1,4 @@
-package source
+package sourceimpl
 
 import (
 	"bytes"
@@ -7,10 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"time"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
@@ -20,52 +17,30 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
 )
-
-type PushChangeHook func(params PushChangeParams) (id string, err error)
 
 var _ updatelistener.UpdateListener = (*store)(nil)
 
-type Store interface {
-	Source
-	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
-	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
-	SetPushChangeHook(onPushChange PushChangeHook)
-
-	// RegisterDiffManager sets a hook that will be called when a change is removed (marked as read) from the diff manager
-	// must be called before ReadStoreDoc.
-	//
-	// If a head is marked as read in the diff manager, all earlier heads for that branch marked as read as well
-	RegisterDiffManager(name string, onRemoveHook func(removed []string))
-	// MarkSeenHeads marks heads as seen in a diff manager. Then the diff manager will call a hook from SetDiffManagerOnRemoveHook
-	MarkSeenHeads(ctx context.Context, name string, heads []string) error
-	// StoreSeenHeads persists current seen heads in any-store
-	StoreSeenHeads(ctx context.Context, name string) error
-	// InitDiffManager initializes a diff manager with specified seen heads
-	InitDiffManager(ctx context.Context, name string, seenHeads []string) error
-}
-
-type PushStoreChangeParams struct {
-	State   *storestate.StoreState
-	Changes []*pb.StoreChangeContent
-	Time    time.Time // used to derive the lastModifiedDate; Default is time.Now()
-}
-
 var (
 	_ updatelistener.UpdateListener = (*store)(nil)
-	_ Store                         = (*store)(nil)
+	_ source.Store                  = (*store)(nil)
 )
 
 type store struct {
-	*source
+	*treeSource
+	spaceService space.Service
 	store        *storestate.StoreState
 	onUpdateHook func()
-	onPushChange PushChangeHook
+	onPushChange source.PushChangeHook
 	sbType       smartblock.SmartBlockType
 
 	diffManagers map[string]*diffManager
@@ -76,11 +51,15 @@ type diffManager struct {
 	onRemove    func(removed []string)
 }
 
+func (s *store) getTechSpace() clientspace.Space {
+	return s.spaceService.TechSpace()
+}
+
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *store) SetPushChangeHook(onPushChange PushChangeHook) {
+func (s *store) SetPushChangeHook(onPushChange source.PushChangeHook) {
 	s.onPushChange = onPushChange
 }
 
@@ -93,17 +72,36 @@ func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []str
 }
 
 func (s *store) initDiffManagers(ctx context.Context) error {
-	for name := range s.diffManagers {
-		seenHeads, err := s.loadSeenHeads(ctx, name)
-		if err != nil {
-			return fmt.Errorf("load seen heads: %w", err)
-		}
-		err = s.InitDiffManager(ctx, name, seenHeads)
+	for name, manager := range s.diffManagers {
+		err := s.InitDiffManager(ctx, name, nil)
 		if err != nil {
 			return fmt.Errorf("init diff manager: %w", err)
 		}
+
+		vals, err := s.getTechSpace().KeyValueService().Get(ctx, s.seenHeadsKey(name))
+		if err != nil {
+			log.With("error", err).Error("init diff manager: get value")
+			continue
+		}
+		for _, val := range vals {
+			seenHeads, err := unmarshalSeenHeads(val.Data)
+			if err != nil {
+				log.With("error", err).Error("init diff manager: unmarshal seen heads")
+				continue
+			}
+			manager.diffManager.Remove(seenHeads)
+		}
 	}
 	return nil
+}
+
+func unmarshalSeenHeads(raw []byte) ([]string, error) {
+	var seenHeads []string
+	err := json.Unmarshal(raw, &seenHeads)
+	if err != nil {
+		return nil, err
+	}
+	return seenHeads, nil
 }
 
 func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []string) (err error) {
@@ -112,7 +110,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 		return nil
 	}
 
-	curTreeHeads := s.source.Tree().Heads()
+	curTreeHeads := s.treeSource.Tree().Heads()
 
 	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
 		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
@@ -131,10 +129,25 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 		return fmt.Errorf("init diff manager: %w", err)
 	}
 
+	err = s.getTechSpace().KeyValueService().SubscribeForKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
+		s.ObjectTree.Lock()
+		defer s.ObjectTree.Unlock()
+
+		newSeenHeads, err := unmarshalSeenHeads(val.Data)
+		if err != nil {
+			log.Errorf("subscribe for seenHeads: %s: %v", name, err)
+			return
+		}
+		manager.diffManager.Remove(newSeenHeads)
+	})
+	if err != nil {
+		return fmt.Errorf("subscribe: %w", err)
+	}
+
 	return
 }
 
-func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (s *store) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s.receiver = receiver
 	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
 	if !ok {
@@ -162,7 +175,7 @@ func (s *store) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool
 	return st, nil
 }
 
-func (s *store) PushChange(params PushChangeParams) (id string, err error) {
+func (s *store) PushChange(params source.PushChangeParams) (id string, err error) {
 	if s.onPushChange != nil {
 		return s.onPushChange(params)
 	}
@@ -173,10 +186,6 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	s.onUpdateHook = onUpdateHook
 	s.store = storeState
 
-	err = s.initDiffManagers(ctx)
-	if err != nil {
-		return err
-	}
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
@@ -194,10 +203,19 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)
 	}
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	err = s.initDiffManagers(ctx)
+	if err != nil {
+		return fmt.Errorf("init diff managers: %w", err)
+	}
+	return nil
 }
 
-func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error) {
+func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChangeParams) (changeId string, err error) {
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
@@ -250,16 +268,20 @@ func (s *store) PushStoreChange(ctx context.Context, params PushStoreChangeParam
 		return "", err
 	}
 
-	for _, m := range s.diffManagers {
-		if m.diffManager != nil {
-			m.diffManager.Add(&objecttree.Change{
-				Id:          changeId,
-				PreviousIds: ch.PreviousIds,
-			})
-		}
-	}
+	s.addToDiffManagers(&objecttree.Change{
+		Id:          changeId,
+		PreviousIds: ch.PreviousIds,
+	})
 
 	return changeId, err
+}
+
+func (s *store) addToDiffManagers(change *objecttree.Change) {
+	for _, m := range s.diffManagers {
+		if m.diffManager != nil {
+			m.diffManager.Add(change)
+		}
+	}
 }
 
 func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
@@ -276,15 +298,20 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return errors.Join(tx.Rollback(), err)
 	}
 	err = tx.Commit()
+
+	s.updateInDiffManagers(tree)
+	if err == nil {
+		s.onUpdateHook()
+	}
+	return err
+}
+
+func (s *store) updateInDiffManagers(tree objecttree.ObjectTree) {
 	for _, m := range s.diffManagers {
 		if m.diffManager != nil {
 			m.diffManager.Update(tree)
 		}
 	}
-	if err == nil {
-		s.onUpdateHook()
-	}
-	return err
 }
 
 func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) error {
@@ -296,19 +323,10 @@ func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) 
 	return nil
 }
 
-func seenHeadsCollectionName(name string) string {
-	return "seenHeads/" + name
-}
-
 func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 	manager, ok := s.diffManagers[name]
 	if !ok {
 		return nil
-	}
-
-	coll, err := s.store.Collection(ctx, seenHeadsCollectionName(name))
-	if err != nil {
-		return fmt.Errorf("get collection: %w", err)
 	}
 
 	seenHeads := manager.diffManager.SeenHeads()
@@ -317,31 +335,11 @@ func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 		return fmt.Errorf("marshal seen heads: %w", err)
 	}
 
-	arena := &anyenc.Arena{}
-	doc := arena.NewObject()
-	doc.Set("id", arena.NewString(s.id))
-	doc.Set("h", arena.NewBinary(raw))
-	return coll.UpsertOne(ctx, doc)
+	return s.getTechSpace().KeyValueService().Set(ctx, s.seenHeadsKey(name), raw)
 }
 
-func (s *store) loadSeenHeads(ctx context.Context, name string) ([]string, error) {
-	coll, err := s.store.Collection(ctx, seenHeadsCollectionName(name))
-	if err != nil {
-		return nil, fmt.Errorf("get collection: %w", err)
-	}
-
-	doc, err := coll.FindId(ctx, s.id)
-	if errors.Is(err, anystore.ErrDocNotFound) {
-		return nil, nil
-	}
-
-	raw := doc.Value().GetBytes("h")
-	var seenHeads []string
-	err = json.Unmarshal(raw, &seenHeads)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal seen heads: %w", err)
-	}
-	return seenHeads, nil
+func (s *store) seenHeadsKey(diffManagerName string) string {
+	return s.id + diffManagerName
 }
 
 func (s *store) Update(tree objecttree.ObjectTree) error {
