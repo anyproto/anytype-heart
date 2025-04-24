@@ -18,7 +18,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/chats/push"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -187,7 +187,7 @@ func (a *aclObjectManager) process() {
 func (a *aclObjectManager) subscribeToPushNotifications(acl syncacl.SyncAcl) {
 	aclState := acl.AclState()
 	if !aclState.Permissions(aclState.AccountKey().GetPublic()).IsOwner() {
-		a.pushNotificationService.SubscribeToTopics(a.ctx, a.sp.Id(), []string{push.ChatsTopicName})
+		a.pushNotificationService.SubscribeToTopics(a.ctx, a.sp.Id(), []string{chatpush.ChatsTopicName})
 	}
 }
 

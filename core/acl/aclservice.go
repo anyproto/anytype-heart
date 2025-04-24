@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block/chats/push"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -128,7 +128,7 @@ func (a *aclService) subscribeToPushNotifications(err error, spaceId string) {
 	if err != nil {
 		log.Error("create space for push message", zap.Error(err))
 	} else {
-		a.pushService.SubscribeToTopics(context.Background(), spaceId, []string{push.ChatsTopicName})
+		a.pushService.SubscribeToTopics(context.Background(), spaceId, []string{chatpush.ChatsTopicName})
 	}
 }
 

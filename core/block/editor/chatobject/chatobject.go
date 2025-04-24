@@ -2,6 +2,7 @@ package chatobject
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -77,7 +78,7 @@ type storeObject struct {
 	storeSource        source.Store
 	store              *storestate.StoreState
 	eventSender        event.Sender
-	subscription       *subscription
+	subscription       *subscriptionManager
 	crdtDb             anystore.DB
 	spaceIndex         spaceindex.Store
 	chatHandler        *ChatHandler
@@ -109,7 +110,14 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
-	collection, err := s.crdtDb.Collection(ctx.Ctx, storeSource.Id()+CollectionName)
+	collectionName := storeSource.Id() + CollectionName
+	collection, err := s.crdtDb.OpenCollection(ctx.Ctx, collectionName)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		collection, err = s.crdtDb.CreateCollection(ctx.Ctx, collectionName)
+		if err != nil {
+			return fmt.Errorf("create collection: %w", err)
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
@@ -120,7 +128,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
-	s.subscription = s.newSubscription(
+	s.subscription = s.newSubscriptionManager(
 		domain.FullID{ObjectID: ctx.Source.Id(), SpaceID: ctx.Source.SpaceID()},
 		s.accountService.AccountID(),
 		myParticipantId,
@@ -220,7 +228,10 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	message.Read = true
+
+	// Normalize message
+	message.Read = false
+	message.MentionRead = false
 
 	obj := arena.NewObject()
 	message.MarshalAnyenc(obj, arena)
@@ -240,6 +251,18 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	if err != nil {
 		return "", fmt.Errorf("push change: %w", err)
 	}
+
+	if !s.chatHandler.forceNotRead {
+		for _, counterType := range []CounterType{CounterTypeMessage, CounterTypeMention} {
+			handler := newReadHandler(counterType, s.subscription)
+
+			err = s.storeSource.MarkSeenHeads(ctx, handler.getDiffManagerName(), []string{messageId})
+			if err != nil {
+				return "", fmt.Errorf("mark read: %w", err)
+			}
+		}
+	}
+
 	return messageId, nil
 }
 

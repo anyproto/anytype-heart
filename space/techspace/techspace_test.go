@@ -358,7 +358,7 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 		return nil, nil
 	}).Times(1)
 	require.NoError(t, fx.a.Start(ctx))
-	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
+	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, nil, false)
 	require.NoError(t, err)
 
 	// do not cancel wakeUpIds func
