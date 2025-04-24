@@ -11,11 +11,6 @@ import "google/protobuf/struct.proto";
 
 import "google/protobuf/descriptor.proto";
 
-// To disable authorization in specific method use no_auth option inside Request of that method
-extend google.protobuf.MessageOptions {
-    bool no_auth = 7777;
-}
-
 /*
  * Rpc is a namespace, that agregates all of the service commands between client and middleware.
  * Structure: Topic > Subtopic > Subsub... > Action > (Request, Response).
@@ -26,7 +21,6 @@ message Rpc {
     message App {
         message GetVersion {
             message Request {
-                option (no_auth) = true;
             }
             message Response {
                 Error error = 1;
@@ -573,7 +567,6 @@ message Rpc {
             * Front-end-to-middleware request to create a new wallet
             */
             message Request {
-                option (no_auth) = true;
                 string rootPath = 1; // Path to a wallet directory
                 string fulltextPrimaryLanguage = 2; // optional, default fts language
             }
@@ -606,8 +599,6 @@ message Rpc {
             * Front end to middleware request-to-recover-a wallet with this mnemonic and a rootPath
             */
             message Request {
-                option (no_auth) = true;
-
                 string rootPath = 1; // Path to a wallet directory
                 string mnemonic = 2; // Mnemonic of a wallet to recover
                 string fulltextPrimaryLanguage = 3; // optional, default fts language
@@ -660,7 +651,6 @@ message Rpc {
 
         message CreateSession {
             message Request {
-                option (no_auth) = true;
                 oneof auth {
                     string mnemonic = 1; // cold auth
                     string appKey = 2; // persistent app key, that can be used to restore session
@@ -725,8 +715,6 @@ message Rpc {
             * Front end to middleware request-to-create-an account
             */
             message Request {
-                option (no_auth) = true;
-
                 string name = 1; // Account name
                 oneof avatar {//TODO: Remove if not needed, GO-1926
                     string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
@@ -849,7 +837,6 @@ message Rpc {
 
         message Migrate {
             message Request {
-                option (no_auth) = true;
                 string id = 1; // Id of a selected account
                 string rootPath = 2;
                 string fulltextPrimaryLanguage = 3; // optional, default fts language
@@ -878,7 +865,6 @@ message Rpc {
 
         message MigrateCancel {
             message Request {
-                option (no_auth) = true;
                 string id = 1; // Id of a selected account
             }
 
@@ -903,7 +889,6 @@ message Rpc {
             * User can select an account from those, that came with an AccountAdd events
             */
             message Request {
-                option (no_auth) = true;
                 string id = 1; // Id of a selected account
                 string rootPath = 2; // Root path is optional, set if this is a first request
                 bool disableLocalNetworkSync = 3; // Disable local network discovery
@@ -1077,7 +1062,6 @@ message Rpc {
 
         message RecoverFromLegacyExport {
             message Request {
-                option (no_auth) = true;
                 string path = 1;
                 string rootPath = 2;
                 int64 icon = 3;
@@ -1184,7 +1168,6 @@ message Rpc {
         message LocalLink {
             message NewChallenge {
                 message Request {
-                    option (no_auth) = true;
                     string appName = 1; // just for info, not secure to rely on
                     model.Account.Auth.LocalApiScope scope = 2;
                 }
@@ -1209,7 +1192,6 @@ message Rpc {
             }
             message SolveChallenge {
                 message Request {
-                    option (no_auth) = true;
                     string challengeId = 1;
                     string answer = 2;
                 }
@@ -2942,7 +2924,6 @@ message Rpc {
 
         message Import {
             message Request {
-                option (no_auth) = true;
                 string spaceId = 14;
                 oneof params {
                     NotionParams notionParams = 1;
@@ -7121,7 +7102,6 @@ message Rpc {
 
         message RunProfiler {
             message Request {
-                option (no_auth) = true;
                 int32 durationInSeconds = 1;
             }
 
@@ -7143,7 +7123,6 @@ message Rpc {
         }
         message AccountSelectTrace {
             message Request {
-                option (no_auth) = true;
                 string dir = 1; // empty means using OS-provided temp dir
             }
 
@@ -7166,7 +7145,6 @@ message Rpc {
 
         message ExportLog {
             message Request {
-                option (no_auth) = true;
                 string dir = 1; // empty means using OS-provided temp dir
             }
 
@@ -7273,7 +7251,6 @@ message Rpc {
     message Initial {
         message SetParameters {
             message Request {
-                option (no_auth) = true;
                 string platform = 1;
                 string version = 2;
                 string workdir = 3;
