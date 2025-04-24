@@ -59,7 +59,7 @@ type Service interface {
 
 type service struct {
 	lock          sync.RWMutex
-	subscriptions map[derivedKey]map[string]subscription
+	subscriptions map[string]map[string]subscription
 
 	keyValueStore keyvaluestorage.Storage
 	spaceCore     commonspace.Space
@@ -75,7 +75,7 @@ func New(spaceCore commonspace.Space, observer keyvalueobserver.Observer) (Servi
 		spaceCore:       spaceCore,
 		observer:        observer,
 		keyValueStore:   spaceCore.KeyValue().DefaultStore(),
-		subscriptions:   make(map[derivedKey]map[string]subscription),
+		subscriptions:   make(map[string]map[string]subscription),
 		keyToDerivedKey: make(map[string]derivedKey),
 	}
 	s.observer.SetObserver(s.observeChanges)
@@ -121,15 +121,15 @@ func (s *service) getSalt() ([]byte, error) {
 
 func (s *service) observeChanges(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) {
 	for _, kv := range kvs {
+		value, err := decodeKeyValue(decryptor, kv)
+		if err != nil {
+			log.Warn("decode key-value", zap.Error(err))
+			continue
+		}
+
 		s.lock.RLock()
-		// TODO Rewrite subscriptions to use REAL key
-		byKey := s.subscriptions[derivedKey(kv.Key)]
+		byKey := s.subscriptions[value.Key]
 		for _, sub := range byKey {
-			value, err := decodeKeyValue(decryptor, kv)
-			if err != nil {
-				log.Warn("decode key-value", zap.Error(err))
-				continue
-			}
 			sub.observerFunc(value.Key, value)
 		}
 		s.lock.RUnlock()
@@ -219,18 +219,13 @@ func (s *service) getDerivedKey(key string) (derivedKey, error) {
 }
 
 func (s *service) SubscribeForKey(key string, subscriptionName string, observerFunc ObserverFunc) error {
-	derived, err := s.getDerivedKey(key)
-	if err != nil {
-		return fmt.Errorf("getDerivedKey: %w", err)
-	}
-
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	byKey, ok := s.subscriptions[derived]
+	byKey, ok := s.subscriptions[key]
 	if !ok {
 		byKey = make(map[string]subscription)
-		s.subscriptions[derived] = byKey
+		s.subscriptions[key] = byKey
 	}
 
 	byKey[subscriptionName] = subscription{
@@ -241,15 +236,10 @@ func (s *service) SubscribeForKey(key string, subscriptionName string, observerF
 }
 
 func (s *service) UnsubscribeFromKey(key string, subscriptionName string) error {
-	derived, err := s.getDerivedKey(key)
-	if err != nil {
-		return fmt.Errorf("getDerivedKey: %w", err)
-	}
-
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	byKey, ok := s.subscriptions[derived]
+	byKey, ok := s.subscriptions[key]
 	if ok {
 		delete(byKey, subscriptionName)
 	}
