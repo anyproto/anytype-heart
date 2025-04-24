@@ -1059,10 +1059,6 @@
     - [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request)
     - [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response)
     - [Rpc.Object.SubscribeIds.Response.Error](#anytype-Rpc-Object-SubscribeIds-Response-Error)
-    - [Rpc.Object.ToBookmark](#anytype-Rpc-Object-ToBookmark)
-    - [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request)
-    - [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response)
-    - [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error)
     - [Rpc.Object.ToCollection](#anytype-Rpc-Object-ToCollection)
     - [Rpc.Object.ToCollection.Request](#anytype-Rpc-Object-ToCollection-Request)
     - [Rpc.Object.ToCollection.Response](#anytype-Rpc-Object-ToCollection-Response)
@@ -1601,7 +1597,6 @@
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype-Rpc-Object-ShareByLink-Response-Error-Code)
     - [Rpc.Object.Show.Response.Error.Code](#anytype-Rpc-Object-Show-Response-Error-Code)
     - [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code)
-    - [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code)
     - [Rpc.Object.ToCollection.Response.Error.Code](#anytype-Rpc-Object-ToCollection-Response-Error-Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype-Rpc-Object-ToSet-Response-Error-Code)
     - [Rpc.Object.Undo.Response.Error.Code](#anytype-Rpc-Object-Undo-Response-Error-Code)
@@ -2196,7 +2191,6 @@
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
 | ObjectExport | [Rpc.Object.Export.Request](#anytype-Rpc-Object-Export-Request) | [Rpc.Object.Export.Response](#anytype-Rpc-Object-Export-Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
-| ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request) | [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response) |  |
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
@@ -17820,64 +17814,6 @@ DEPRECATED, GO-1926 |
 
 
 
-<a name="anytype-Rpc-Object-ToBookmark"></a>
-
-### Rpc.Object.ToBookmark
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ToBookmark-Request"></a>
-
-### Rpc.Object.ToBookmark.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| url | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ToBookmark-Response"></a>
-
-### Rpc.Object.ToBookmark.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error) |  |  |
-| objectId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-ToBookmark-Response-Error"></a>
-
-### Rpc.Object.ToBookmark.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Object-ToCollection"></a>
 
 ### Rpc.Object.ToCollection
@@ -25415,19 +25351,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Object-ToBookmark-Response-Error-Code"></a>
-
-### Rpc.Object.ToBookmark.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype-Rpc-Object-ToCollection-Response-Error-Code"></a>
 
 ### Rpc.Object.ToCollection.Response.Error.Code
@@ -31572,8 +31495,8 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blocks | [Block](#anytype-model-Block) | repeated | dependent simple blocks (descendants) |
 | details | [ObjectView.DetailsSet](#anytype-model-ObjectView-DetailsSet) | repeated | details for the current and dependent objects |
 | type | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
-| relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED, use relationLinks instead |
-| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
+| relations | [Relation](#anytype-model-Relation) | repeated | **Deprecated.** DEPRECATED, use details instead |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated | **Deprecated.** DEPRECATED, use details instead |
 | restrictions | [Restrictions](#anytype-model-Restrictions) |  | object restrictions |
 | history | [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize) |  |  |
 | blockParticipants | [ObjectView.BlockParticipant](#anytype-model-ObjectView-BlockParticipant) | repeated |  |
@@ -31890,7 +31813,7 @@ stored |
 | objectTypes | [string](#string) | repeated |  |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
-| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
+| relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated | **Deprecated.**  |
 | key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
 | originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
 | fileInfo | [FileInfo](#anytype-model-FileInfo) |  |  |
