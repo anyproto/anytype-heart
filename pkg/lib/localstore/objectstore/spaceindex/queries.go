@@ -579,7 +579,8 @@ func (s *dsObjectStore) IterateAll(proc func(doc *anyenc.Value) error) error {
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return fmt.Errorf("get doc: %w", err)
+			log.With("error", err).Error("IterateAll: get doc")
+			continue
 		}
 		err = proc(doc.Value())
 		if err != nil {

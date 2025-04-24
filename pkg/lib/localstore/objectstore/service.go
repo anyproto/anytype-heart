@@ -478,17 +478,19 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 	}()
 
 	err = collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
-		err = store.IterateAll(func(doc *anyenc.Value) error {
+		err := store.IterateAll(func(doc *anyenc.Value) error {
 			id := doc.GetString(idKey)
 			spaceId := doc.GetString(spaceIdKey)
+
+			arena.Reset()
 			obj := arena.NewObject()
 			obj.Set(idKey, arena.NewString(id))
 			obj.Set(spaceIdKey, arena.NewString(spaceId))
-			err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
 			if err != nil {
-				return err
+				log.With("error", err).Warnf("EnqueueAllForFulltextIndexing: upsert")
+				return nil
 			}
-			arena.Reset()
 			return nil
 		})
 		return err
