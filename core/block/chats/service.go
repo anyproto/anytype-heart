@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -56,7 +55,6 @@ type service struct {
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
-	eventSender         event.Sender
 	chatObjectsSubQueue *mb.MB[*pb.EventMessage]
 
 	lock                      sync.Mutex
@@ -78,7 +76,6 @@ func (s *service) Name() string {
 func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
-	s.eventSender = app.MustComponent[event.Sender](a)
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 
 	return nil
