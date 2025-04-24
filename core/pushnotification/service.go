@@ -12,7 +12,7 @@ import (
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/pushnotification/client"
+	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -42,7 +42,7 @@ func New() Service {
 }
 
 type service struct {
-	pushClient              client.Client
+	pushClient              pushclient.Client
 	wallet                  wallet.Wallet
 	cfg                     *config.Config
 	started                 bool
@@ -84,7 +84,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.cfg = app.MustComponent[*config.Config](a)
-	s.pushClient = app.MustComponent[client.Client](a)
+	s.pushClient = app.MustComponent[pushclient.Client](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.batcher = mb.New[newSubscription](0)
 	s.spaceService = app.MustComponent[space.Service](a)
@@ -102,7 +102,7 @@ func (s *service) RegisterToken(ctx context.Context, req *pb.RpcPushNotification
 	if req.Token == "" {
 		return fmt.Errorf("token is empty")
 	}
-	_, err = s.pushClient.SetToken(ctx, &pushapi.SetTokenRequest{
+	err = s.pushClient.SetToken(ctx, &pushapi.SetTokenRequest{
 		Platform: pushapi.Platform(req.Platform),
 		Token:    req.Token,
 	})
@@ -114,7 +114,7 @@ func (s *service) subscribeAll(ctx context.Context) error {
 		return nil
 	}
 	topics := s.buildPushTopics()
-	_, err := s.pushClient.SubscribeAll(ctx, &pushapi.SubscribeAllRequest{
+	err := s.pushClient.SubscribeAll(ctx, &pushapi.SubscribeAllRequest{
 		Topics: &pushapi.Topics{Topics: topics},
 	})
 	return err
@@ -182,7 +182,7 @@ func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 	if err != nil {
 		return err
 	}
-	_, err = s.pushClient.CreateSpace(ctx, &pushapi.CreateSpaceRequest{
+	err = s.pushClient.CreateSpace(ctx, &pushapi.CreateSpaceRequest{
 		SpaceKey:         rawKey,
 		AccountSignature: signature,
 	})
@@ -223,7 +223,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 		Payload:   encryptedJson,
 		Signature: signature,
 	}
-	_, err = s.pushClient.Notify(ctx, &pushapi.NotifyRequest{
+	err = s.pushClient.Notify(ctx, &pushapi.NotifyRequest{
 		Topics:  &pushapi.Topics{Topics: topics},
 		Message: p,
 	})
