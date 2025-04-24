@@ -463,6 +463,15 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "duration",
+    "maxCount": 1,
+    "name": "Duration",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "1 emoji(can contains multiple UTF symbols) used as an icon",
     "format": "emoji",
     "hidden": true,
@@ -1508,7 +1517,57 @@
     "source": "details"
   },
   {
-    "description": "Automatically generated widget. Used to avoid creating widget if was removed by user",
+    "description": "Total cooking time in text format",
+    "format": "longtext",
+    "hidden": false,
+    "key": "cookingTime",
+    "maxCount": 1,
+    "name": "Cooking Time",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Number of servings the recipe yields",
+    "format": "number",
+    "hidden": false,
+    "key": "servings",
+    "maxCount": 1,
+    "name": "Servings",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Cuisine type associated with the recipe (e.g., Italian, Chinese)",
+    "format": "longtext",
+    "hidden": false,
+    "key": "cuisine",
+    "maxCount": 1,
+    "name": "Cuisine",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Course type (e.g., appetizer, main course, dessert)",
+    "format": "longtext",
+    "hidden": false,
+    "key": "courseType",
+    "maxCount": 1,
+    "name": "Course Type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Difficulty level of the recipe (e.g., easy, medium, hard)",
+    "format": "longtext",
+    "hidden": false,
+    "key": "difficulty",
+    "maxCount": 1,
+    "name": "Difficulty",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Automatically generated widget targets. Used to avoid creating widget if was removed by user",
     "format": "object",
     "hidden": true,
     "key": "autoWidgetTargets",

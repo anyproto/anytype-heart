@@ -138,7 +138,7 @@ func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle, fie
 }
 
 func (r *blocksRenderer) GetBlocks() []*model.Block {
-	r.blocks = preprocessBlocks(r.blocks)
+	r.blocks, r.rootBlockIDs = preprocessBlocks(r.blocks)
 	return r.blocks
 }
 

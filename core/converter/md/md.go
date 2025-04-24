@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
 
@@ -28,8 +29,8 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(s *state.State, fn FileNamer) converter.Converter {
-	return &MD{s: s, fn: fn}
+func NewMDConverter(s *state.State, fn FileNamer, includeRelations bool) converter.Converter {
+	return &MD{s: s, fn: fn, includeRelations: includeRelations}
 }
 
 type MD struct {
@@ -38,10 +39,12 @@ type MD struct {
 	fileHashes  []string
 	imageHashes []string
 
-	knownDocs map[string]*domain.Details
+	knownDocs       map[string]*domain.Details
+	relationDetails map[string]*domain.Details
 
-	mw *marksWriter
-	fn FileNamer
+	includeRelations bool
+	mw               *marksWriter
+	fn               FileNamer
 }
 
 func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
@@ -53,15 +56,77 @@ func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 	}
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
+	h.renderRelations(buf)
 	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
 	result = buf.Bytes()
 	buf.Reset()
 	return
 }
 
+func (h *MD) renderRelations(buf writer) {
+	if !h.includeRelations {
+		return
+	}
+	for k, v := range h.s.CombinedDetails().Iterate() {
+		var (
+			name   string
+			format model.RelationFormat
+		)
+		if d, exists := h.relationDetails[k.String()]; exists {
+			name = d.GetString(bundle.RelationKeyName)
+			if d.GetBool(bundle.RelationKeyIsHidden) {
+				continue
+			}
+			format = model.RelationFormat(d.GetInt64(bundle.RelationKeyRelationFormat))
+		} else if rel, err := bundle.GetRelation(k); err == nil {
+			if rel.Hidden {
+				continue
+			}
+			name = rel.Name
+			format = rel.Format
+		} else {
+			continue
+		}
+		if format == model.RelationFormat_object || format == model.RelationFormat_tag || format == model.RelationFormat_status {
+			ids := v.StringList()
+			var names = make([]string, 0, len(ids))
+			for _, id := range ids {
+				if d, exists := h.knownDocs[id]; exists {
+					v = d.Get(bundle.RelationKeyName)
+					names = append(names, v.String())
+				}
+			}
+			if len(names) > 0 {
+				_, _ = fmt.Fprintf(buf, "%s: %v\n", name, strings.Join(names, ", "))
+			}
+		} else if format == model.RelationFormat_date {
+			ts := v.Int64()
+			if ts > 0 {
+				_, _ = fmt.Fprintf(buf, "%s: %v\n", name, time.Unix(ts, 0).Format(time.RFC3339))
+			}
+		} else if format == model.RelationFormat_number {
+			_, _ = fmt.Fprintf(buf, "%s: %v\n", name, v.Float64())
+		} else if format == model.RelationFormat_checkbox {
+			_, _ = fmt.Fprintf(buf, "%s: ", name)
+			if v.Bool() {
+				_, _ = fmt.Fprint(buf, "[x]\n")
+			} else {
+				_, _ = fmt.Fprint(buf, "[ ]\n")
+			}
+		} else {
+			str := v.String()
+			if len(str) > 0 {
+				_, _ = fmt.Fprintf(buf, "%s: %v\n", name, v.String())
+			}
+		}
+	}
+
+}
 func (h *MD) Export() (result string) {
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
+	h.renderRelations(buf)
+
 	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
 	return buf.String()
 }
@@ -389,6 +454,15 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 
 func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	h.knownDocs = docs
+	for _, d := range docs {
+		relKey := d.GetString(bundle.RelationKeyRelationKey)
+		if relKey != "" {
+			if h.relationDetails == nil {
+				h.relationDetails = make(map[string]*domain.Details)
+			}
+			h.relationDetails[relKey] = d
+		}
+	}
 	return h
 }
 

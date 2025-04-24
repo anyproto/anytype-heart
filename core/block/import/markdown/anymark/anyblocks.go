@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
+func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block, rootBlockIDs []string) {
 	accum := make([]*model.Block, 0)
 	for _, b := range blocks {
 		if t := b.GetText(); t != nil && t.Style == model.BlockContentText_Code {
@@ -30,14 +30,22 @@ func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 		result := combineCodeBlocks(accum)
 		blocksOut = append(blocksOut, result...)
 	}
+	var blockHasParent = make(map[string]struct{})
 	for _, b := range blocks {
 		for i, cId := range b.ChildrenIds {
+			blockHasParent[cId] = struct{}{}
 			if cId == "" {
 				b.ChildrenIds = append(b.ChildrenIds[:i], b.ChildrenIds[i+1:]...)
 			}
 		}
 	}
-	return blocksOut
+	for _, b := range blocks {
+		if _, ok := blockHasParent[b.Id]; !ok {
+			rootBlockIDs = append(rootBlockIDs, b.Id)
+		}
+	}
+
+	return blocksOut, rootBlockIDs
 }
 
 func combineCodeBlocks(accum []*model.Block) []*model.Block {

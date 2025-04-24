@@ -752,7 +752,7 @@ type ClientCommandsClient interface {
 	ChatSubscribeToMessagePreviews(ctx context.Context, in *pb.RpcChatSubscribeToMessagePreviewsRequest, opts ...grpc.CallOption) (*pb.RpcChatSubscribeToMessagePreviewsResponse, error)
 	ChatUnsubscribeFromMessagePreviews(ctx context.Context, in *pb.RpcChatUnsubscribeFromMessagePreviewsRequest, opts ...grpc.CallOption) (*pb.RpcChatUnsubscribeFromMessagePreviewsResponse, error)
 	ObjectChatAdd(ctx context.Context, in *pb.RpcObjectChatAddRequest, opts ...grpc.CallOption) (*pb.RpcObjectChatAddResponse, error)
-	// mock AI RPCs for compatibility between branches. Not implemented in main
+	// AI
 	AIWritingTools(ctx context.Context, in *pb.RpcAIWritingToolsRequest, opts ...grpc.CallOption) (*pb.RpcAIWritingToolsResponse, error)
 	AIAutofill(ctx context.Context, in *pb.RpcAIAutofillRequest, opts ...grpc.CallOption) (*pb.RpcAIAutofillResponse, error)
 	AIListSummary(ctx context.Context, in *pb.RpcAIListSummaryRequest, opts ...grpc.CallOption) (*pb.RpcAIListSummaryResponse, error)
@@ -3781,7 +3781,7 @@ type ClientCommandsServer interface {
 	ChatSubscribeToMessagePreviews(context.Context, *pb.RpcChatSubscribeToMessagePreviewsRequest) *pb.RpcChatSubscribeToMessagePreviewsResponse
 	ChatUnsubscribeFromMessagePreviews(context.Context, *pb.RpcChatUnsubscribeFromMessagePreviewsRequest) *pb.RpcChatUnsubscribeFromMessagePreviewsResponse
 	ObjectChatAdd(context.Context, *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse
-	// mock AI RPCs for compatibility between branches. Not implemented in main
+	// AI
 	AIWritingTools(context.Context, *pb.RpcAIWritingToolsRequest) *pb.RpcAIWritingToolsResponse
 	AIAutofill(context.Context, *pb.RpcAIAutofillRequest) *pb.RpcAIAutofillResponse
 	AIListSummary(context.Context, *pb.RpcAIListSummaryRequest) *pb.RpcAIListSummaryResponse

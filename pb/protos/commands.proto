@@ -2881,6 +2881,7 @@ message Rpc {
                 StateFilters linksStateFilters = 12;
                 bool includeBacklinks = 13;
                 bool includeSpace = 14;
+                bool includeRelationsHeaderInMarkdown = 15;
             }
             message StateFilters {
                 repeated RelationsWhiteList relationsWhiteList = 1;

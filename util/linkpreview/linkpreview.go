@@ -141,6 +141,7 @@ func (l *linkPreview) findContent(data []byte) (content string) {
 	if err != nil {
 		return
 	}
+
 	content = article.TextContent
 	content = strings.TrimSpace(l.bmPolicy.Sanitize(content))
 	content = strings.Join(strings.Fields(content), " ") // removes repetitive whitespaces

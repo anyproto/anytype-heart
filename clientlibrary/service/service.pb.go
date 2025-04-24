@@ -746,7 +746,7 @@ type ClientCommandsHandler interface {
 	ChatSubscribeToMessagePreviews(context.Context, *pb.RpcChatSubscribeToMessagePreviewsRequest) *pb.RpcChatSubscribeToMessagePreviewsResponse
 	ChatUnsubscribeFromMessagePreviews(context.Context, *pb.RpcChatUnsubscribeFromMessagePreviewsRequest) *pb.RpcChatUnsubscribeFromMessagePreviewsResponse
 	ObjectChatAdd(context.Context, *pb.RpcObjectChatAddRequest) *pb.RpcObjectChatAddResponse
-	// mock AI RPCs for compatibility between branches. Not implemented in main
+	// AI
 	AIWritingTools(context.Context, *pb.RpcAIWritingToolsRequest) *pb.RpcAIWritingToolsResponse
 	AIAutofill(context.Context, *pb.RpcAIAutofillRequest) *pb.RpcAIAutofillResponse
 	AIListSummary(context.Context, *pb.RpcAIListSummaryRequest) *pb.RpcAIListSummaryResponse
