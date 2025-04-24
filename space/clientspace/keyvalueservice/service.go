@@ -78,45 +78,51 @@ func New(spaceCore commonspace.Space, observer keyvalueobserver.Observer) (Servi
 		subscriptions:   make(map[derivedKey]map[string]subscription),
 		keyToDerivedKey: make(map[string]derivedKey),
 	}
-	err := s.initSpaceSalt()
-	if err != nil {
-		return nil, fmt.Errorf("init tech salt: %w", err)
-	}
-
 	s.observer.SetObserver(s.observeChanges)
 	return s, nil
 }
 
-func (s *service) initSpaceSalt() error {
+func (s *service) initSpaceSalt() ([]byte, error) {
 	records := s.spaceCore.Acl().Records()
 	if len(records) == 0 {
-		return fmt.Errorf("empty acl")
+		return nil, fmt.Errorf("empty acl")
 	}
 	first := records[0]
 
 	readKeyId, err := s.spaceCore.Acl().AclState().ReadKeyForAclId(first.Id)
 	if err != nil {
-		return fmt.Errorf("find read key id: %w", err)
+		return nil, fmt.Errorf("find read key id: %w", err)
 	}
 
 	readKeys := s.spaceCore.Acl().AclState().Keys()
 	key, ok := readKeys[readKeyId]
 	if !ok {
-		return fmt.Errorf("read key not found")
+		return nil, fmt.Errorf("read key not found")
 	}
 
 	rawReadKey, err := key.ReadKey.Raw()
 	if err != nil {
-		return fmt.Errorf("get raw bytes: %w", err)
+		return nil, fmt.Errorf("get raw bytes: %w", err)
 	}
+	return rawReadKey, nil
+}
 
-	s.spaceSalt = rawReadKey
-	return nil
+func (s *service) getSalt() ([]byte, error) {
+	if s.spaceSalt == nil {
+		salt, err := s.initSpaceSalt()
+		if err != nil {
+			return nil, err
+		}
+		s.spaceSalt = salt
+		return s.spaceSalt, nil
+	}
+	return s.spaceSalt, nil
 }
 
 func (s *service) observeChanges(decryptor keyvaluestorage.Decryptor, kvs []innerstorage.KeyValue) {
 	for _, kv := range kvs {
 		s.lock.RLock()
+		// TODO Rewrite subscriptions to use REAL key
 		byKey := s.subscriptions[derivedKey(kv.Key)]
 		for _, sub := range byKey {
 			value, err := decodeKeyValue(decryptor, kv)
@@ -195,9 +201,13 @@ func (s *service) getDerivedKey(key string) (derivedKey, error) {
 		return derived, nil
 	}
 
+	salt, err := s.getSalt()
+	if err != nil {
+		return derived, fmt.Errorf("get salt: %w", err)
+	}
 	hasher := sha256.New()
 	// Salt
-	hasher.Write(s.spaceSalt)
+	hasher.Write(salt)
 	// User key
 	hasher.Write([]byte(key))
 	result := hasher.Sum(nil)
