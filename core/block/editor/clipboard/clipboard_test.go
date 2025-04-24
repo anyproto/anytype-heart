@@ -1087,7 +1087,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	t.Run("do not paste if Blocks restriction is set to smartblock", func(t *testing.T) {
 		// given
 		sb := smarttest.New("test")
-		sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks}}
+		sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks: {}}}
 		cb := newFixture(t, sb)
 
 		// when

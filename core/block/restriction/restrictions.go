@@ -1,6 +1,35 @@
 package restriction
 
-import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+import (
+	"errors"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+var ErrRestricted = errors.New("restricted")
+
+type RestrictionHolder interface {
+	Type() smartblock.SmartBlockType
+	Layout() (model.ObjectTypeLayout, bool)
+	UniqueKey() domain.UniqueKey
+}
+
+func GetRestrictions(rh RestrictionHolder) (r Restrictions) {
+	return Restrictions{
+		Object:   getObjectRestrictions(rh),
+		Dataview: getDataviewRestrictions(rh),
+	}
+}
+
+func CheckRestrictions(rh RestrictionHolder, cr ...model.RestrictionsObjectRestriction) error {
+	r := getObjectRestrictions(rh)
+	if err := r.Check(cr...); err != nil {
+		return err
+	}
+	return nil
+}
 
 type Restrictions struct {
 	Object   ObjectRestrictions
@@ -9,7 +38,7 @@ type Restrictions struct {
 
 func (r Restrictions) Proto() *model.Restrictions {
 	res := &model.Restrictions{
-		Object: r.Object,
+		Object: r.Object.ToProto(),
 	}
 	if len(r.Dataview) > 0 {
 		res.Dataview = make([]*model.RestrictionsDataviewRestrictions, 0, len(r.Dataview))
