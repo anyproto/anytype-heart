@@ -477,6 +477,9 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 		s.arenaPool.Put(arena)
 	}()
 
+	const maxErrorsToLog = 5
+	var loggedErrors int
+
 	err = collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
 		err := store.IterateAll(func(doc *anyenc.Value) error {
 			id := doc.GetString(idKey)
@@ -488,7 +491,10 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 			obj.Set(spaceIdKey, arena.NewString(spaceId))
 			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
 			if err != nil {
-				log.With("error", err).Warnf("EnqueueAllForFulltextIndexing: upsert")
+				if loggedErrors < maxErrorsToLog {
+					log.With("error", err).Warnf("EnqueueAllForFulltextIndexing: upsert")
+					loggedErrors++
+				}
 				return nil
 			}
 			return nil
