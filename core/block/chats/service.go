@@ -56,16 +56,18 @@ type service struct {
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
-	eventSender event.Sender
-
-	lock                sync.Mutex
+	eventSender         event.Sender
 	chatObjectsSubQueue *mb.MB[*pb.EventMessage]
-	chatObjectIds       map[string]struct{}
+
+	lock                      sync.Mutex
+	isMessagePreviewSubActive bool
+	chatObjectIds             map[string]struct{}
 }
 
 func New() Service {
 	return &service{
-		chatObjectIds: map[string]struct{}{},
+		chatObjectIds:       map[string]struct{}{},
+		chatObjectsSubQueue: mb.New[*pb.EventMessage](0),
 	}
 }
 
@@ -88,18 +90,15 @@ const (
 
 func (s *service) SubscribeToMessagePreviews(ctx context.Context) (string, error) {
 	s.lock.Lock()
-	if s.chatObjectsSubQueue != nil {
-		s.lock.Unlock()
+	defer s.lock.Unlock()
 
-		err := s.UnsubscribeFromMessagePreviews()
+	if s.isMessagePreviewSubActive {
+		err := s.unsubscribeFromMessagePreviews()
 		if err != nil {
 			return "", fmt.Errorf("stop previous subscription: %w", err)
 		}
-
-		s.lock.Lock()
 	}
-	s.chatObjectsSubQueue = mb.New[*pb.EventMessage](0)
-	s.lock.Unlock()
+	s.isMessagePreviewSubActive = true
 
 	resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
 		SubId:             allChatsSubscriptionId,
@@ -123,28 +122,28 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context) (string, error
 			log.Error("init lastMessage subscription", zap.Error(err))
 		}
 	}
-	go s.monitorChats()
 
 	return chatobject.LastMessageSubscriptionId, nil
 }
 
 func (s *service) UnsubscribeFromMessagePreviews() error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return s.unsubscribeFromMessagePreviews()
+}
+
+func (s *service) unsubscribeFromMessagePreviews() error {
 	err := s.crossSpaceSubService.Unsubscribe(allChatsSubscriptionId)
 	if err != nil {
 		return fmt.Errorf("unsubscribe from cross-space sub: %w", err)
 	}
 
-	s.lock.Lock()
-	err = s.chatObjectsSubQueue.Close()
-	if err != nil {
-		log.Error("close cross-space chat objects queue", zap.Error(err))
-	}
-	s.chatObjectsSubQueue = nil
+	s.isMessagePreviewSubActive = false
 	chatIds := lo.Keys(s.chatObjectIds)
 	for key := range s.chatObjectIds {
 		delete(s.chatObjectIds, key)
 	}
-	s.lock.Unlock()
 
 	for _, chatId := range chatIds {
 		err := s.Unsubscribe(chatId, chatobject.LastMessageSubscriptionId)
@@ -156,18 +155,31 @@ func (s *service) UnsubscribeFromMessagePreviews() error {
 }
 
 func (s *service) Run(ctx context.Context) error {
+	go s.monitorMessagePreviews()
 	return nil
 }
 
-func (s *service) monitorChats() {
+func (s *service) monitorMessagePreviews() {
 	matcher := subscriptionservice.EventMatcher{
 		OnAdd: func(add *pb.EventObjectSubscriptionAdd) {
+			s.lock.Lock()
+			defer s.lock.Unlock()
+			if !s.isMessagePreviewSubActive {
+				return
+			}
+
 			err := s.onChatAdded(add.Id)
 			if err != nil {
 				log.Error("init last message subscription", zap.Error(err))
 			}
 		},
 		OnRemove: func(remove *pb.EventObjectSubscriptionRemove) {
+			s.lock.Lock()
+			defer s.lock.Unlock()
+			if !s.isMessagePreviewSubActive {
+				return
+			}
+
 			err := s.onChatRemoved(remove.Id)
 			if err != nil {
 				log.Error("unsubscribe from the last message", zap.Error(err))
@@ -188,13 +200,11 @@ func (s *service) monitorChats() {
 }
 
 func (s *service) onChatAdded(chatObjectId string) error {
-	s.lock.Lock()
 	if _, ok := s.chatObjectIds[chatObjectId]; ok {
-		s.lock.Unlock()
 		return nil
 	}
 	s.chatObjectIds[chatObjectId] = struct{}{}
-	s.lock.Unlock()
+
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		_, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.LastMessageSubscriptionId, 1, true)
@@ -206,9 +216,7 @@ func (s *service) onChatAdded(chatObjectId string) error {
 }
 
 func (s *service) onChatRemoved(chatObjectId string) error {
-	s.lock.Lock()
 	delete(s.chatObjectIds, chatObjectId)
-	s.lock.Unlock()
 
 	err := s.Unsubscribe(chatObjectId, chatobject.LastMessageSubscriptionId)
 	if err != nil && !errors.Is(err, domain.ErrObjectNotFound) {
@@ -222,9 +230,7 @@ func (s *service) Close(ctx context.Context) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if s.chatObjectsSubQueue != nil {
-		err = s.chatObjectsSubQueue.Close()
-	}
+	err = s.chatObjectsSubQueue.Close()
 
 	s.componentCtxCancel()
 
