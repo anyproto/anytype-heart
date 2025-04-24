@@ -477,24 +477,32 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 		s.arenaPool.Put(arena)
 	}()
 
+	const maxErrorsToLog = 5
+	var loggedErrors int
+
 	err = collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
-		err = store.IterateAll(func(doc *anyenc.Value) error {
+		err := store.IterateAll(func(doc *anyenc.Value) error {
 			id := doc.GetString(idKey)
 			spaceId := doc.GetString(spaceIdKey)
+
+			arena.Reset()
 			obj := arena.NewObject()
 			obj.Set(idKey, arena.NewString(id))
 			obj.Set(spaceIdKey, arena.NewString(spaceId))
-			err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
 			if err != nil {
-				return err
+				if loggedErrors < maxErrorsToLog {
+					log.With("error", err).Warnf("EnqueueAllForFulltextIndexing: upsert")
+					loggedErrors++
+				}
+				return nil
 			}
-			arena.Reset()
 			return nil
 		})
 		return err
 	})
 	if err != nil {
-		// todo: we should not rollback here?
+		_ = txn.Rollback()
 		return err
 	}
 	return txn.Commit()

@@ -25054,6 +25054,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | GET_STARTED | 1 |  |
 | EMPTY | 2 |  |
 | GUIDE_ONLY | 3 | only the guide without other tables |
+| GET_STARTED_MOBILE | 4 |  |
+| EMPTY_MOBILE | 5 |  |
 
 
 
