@@ -1,4 +1,4 @@
-package spacekey
+package pushnotification
 
 import (
 	"github.com/anyproto/any-sync/util/crypto"
@@ -13,7 +13,7 @@ const (
 	spacePath    = "m/SLIP-0021/anytype/space/key"
 )
 
-func DeriveSpaceKey(firstMetadataKey crypto.PrivKey) (string, crypto.PrivKey, error) {
+func deriveSpaceKey(firstMetadataKey crypto.PrivKey) (string, crypto.PrivKey, error) {
 	key, err := privkey.DeriveFromPrivKey(spaceKeyPath, firstMetadataKey)
 	if err != nil {
 		return "", nil, err
@@ -29,7 +29,7 @@ func DeriveSpaceKey(firstMetadataKey crypto.PrivKey) (string, crypto.PrivKey, er
 	return encodedKey, key, nil
 }
 
-func DeriveSymmetricKey(readKey crypto.SymKey) (crypto.SymKey, error) {
+func deriveSymmetricKey(readKey crypto.SymKey) (crypto.SymKey, error) {
 	raw, err := readKey.Raw()
 	if err != nil {
 		return nil, err

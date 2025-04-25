@@ -33,6 +33,25 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
+type pushNotificationServiceDummy struct {
+}
+
+func (s *pushNotificationServiceDummy) Init(a *app.App) (err error) {
+	return nil
+}
+
+func (s *pushNotificationServiceDummy) Name() (name string) {
+	return "pushNotificationServiceDummy"
+}
+
+func (s *pushNotificationServiceDummy) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
+
+}
+
+func (s pushNotificationServiceDummy) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error {
+	return nil
+}
+
 func TestAclObjectManager(t *testing.T) {
 	t.Run("owner", func(t *testing.T) {
 		a := list.NewAclExecutor("spaceId")
@@ -205,7 +224,8 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAclNotification)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
 		Register(fx.spaceLoaderListener).
-		Register(fx)
+		Register(fx).
+		Register(&pushNotificationServiceDummy{})
 	return fx
 }
 

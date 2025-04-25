@@ -2,6 +2,7 @@ package pushnotification
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"sync"
 
@@ -12,12 +13,12 @@ import (
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacekey"
 )
 
 const CName = "core.pushnotification.service"
@@ -42,16 +43,18 @@ func New() Service {
 }
 
 type service struct {
-	pushClient              pushclient.Client
-	wallet                  wallet.Wallet
-	cfg                     *config.Config
+	pushClient   pushclient.Client
+	wallet       wallet.Wallet
+	cfg          *config.Config
+	spaceService space.Service
+	eventSender  event.Sender
+
 	started                 bool
-	activeSubscriptions     map[string]TopicSet
 	activeSubscriptionsLock sync.Mutex
+	activeSubscriptions     map[string]TopicSet
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	batcher                 *mb.MB[newSubscription]
-	spaceService            space.Service
 }
 
 func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
@@ -88,6 +91,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.batcher = mb.New[newSubscription](0)
 	s.spaceService = app.MustComponent[space.Service](a)
+	s.eventSender = app.MustComponent[event.Sender](a)
 	return
 }
 
@@ -145,7 +149,7 @@ func (s *service) createTopicsForSpace(spaceId string, topicNames []string) ([]*
 	if err != nil {
 		return nil, err
 	}
-	_, signKey, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	_, signKey, err := deriveSpaceKey(firstMetadataKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key for space %s: %w", spaceId, err)
 	}
@@ -169,7 +173,7 @@ func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 	if err != nil {
 		return err
 	}
-	_, signKey, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	_, signKey, err := deriveSpaceKey(firstMetadataKey)
 	if err != nil {
 		return err
 	}
@@ -202,7 +206,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 	if err != nil {
 		return err
 	}
-	spaceKeyId, signKey, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	spaceKeyId, signKey, err := deriveSpaceKey(firstMetadataKey)
 	if err != nil {
 		return err
 	}
@@ -235,7 +239,7 @@ func (s *service) prepareEncryptedPayload(state *list.AclState, payload []byte) 
 	if err != nil {
 		return nil, err
 	}
-	encryptionKey, err := spacekey.DeriveSymmetricKey(symKey)
+	encryptionKey, err := deriveSymmetricKey(symKey)
 	if err != nil {
 		return nil, err
 	}
@@ -348,4 +352,41 @@ func (s *service) addNewSubscription(sub newSubscription) (shouldUpdate bool, er
 	}
 	s.activeSubscriptions[sub.SpaceId] = activeTopics
 	return shouldUpdate, nil
+}
+
+func (a *service) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error {
+	firstMetadataKey, err := aclState.FirstMetadataKey()
+	if err != nil {
+		return err
+	}
+	readKey, err := aclState.CurrentReadKey()
+	if err != nil {
+		return err
+	}
+	spaceKeyId, _, err := deriveSpaceKey(firstMetadataKey)
+	if err != nil {
+		return err
+	}
+	encryptionKey, err := deriveSymmetricKey(readKey)
+	if err != nil {
+		return err
+	}
+	raw, err := encryptionKey.Raw()
+	if err != nil {
+		return err
+	}
+	encodedKey := base64.StdEncoding.EncodeToString(raw)
+	a.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				SpaceId: spaceId,
+				Value: &pb.EventMessageValueOfKeyUpdate{KeyUpdate: &pb.EventKeyUpdate{
+					SpaceKeyId:      spaceKeyId,
+					EncryptionKeyId: aclState.CurrentReadKeyId(),
+					EncryptionKey:   encodedKey,
+				}},
+			},
+		},
+	})
+	return nil
 }
