@@ -78,7 +78,7 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:        viewId,
-					Type:      model.BlockContentDataviewView_Table,
+					Type:      model.BlockContentDataviewView_List,
 					Name:      defaultViewName,
 					Sorts:     sorts,
 					Filters:   nil,

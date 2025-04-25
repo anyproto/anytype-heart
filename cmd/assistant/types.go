@@ -251,10 +251,15 @@ func (o *objectTypeCaller) Tool() openai.Tool {
 		},
 		"source": map[string]interface{}{
 			"type":        "string",
-			"description": "The source url",
+			"description": "The source URL",
 		}}
 
 	o.subscriber.typesLock.Lock()
+	var required = []string{"body"}
+	if o.ot.Layout != model.ObjectType_note {
+		required = append(required, "name")
+	}
+
 	for _, relId := range o.ot.RelationIds {
 		rel := o.subscriber.relations[relId]
 		if rel == nil {
@@ -266,6 +271,12 @@ func (o *objectTypeCaller) Tool() openai.Tool {
 		}
 
 		jsonKey := relationNameCleaner(rel.Name)
+		if jsonKey == "" {
+			continue
+		}
+		if _, ok := properties[jsonKey]; ok {
+			continue
+		}
 		if rel.Format == model.RelationFormat_longtext || rel.Format == model.RelationFormat_shorttext || rel.Format == model.RelationFormat_email || rel.Format == model.RelationFormat_url || rel.Format == model.RelationFormat_phone {
 			relationNames = append(relationNames, jsonKey)
 			properties[jsonKey] = map[string]interface{}{
@@ -292,11 +303,9 @@ func (o *objectTypeCaller) Tool() openai.Tool {
 			}
 		}
 	}
-	var required = []string{"body"}
-	if o.ot.Layout != model.ObjectType_note {
-		required = append(required, "name")
-	}
+	// required = append(required, relationNames...)
 	fmt.Printf("create object type %s properties: %+v, %v\n", o.ot.Key, properties, required)
+
 	o.subscriber.typesLock.Unlock()
 	cleanName := strings.ToLower(strings.ReplaceAll(o.ot.Name, " ", "_"))
 	desc := ""
@@ -309,7 +318,7 @@ func (o *objectTypeCaller) Tool() openai.Tool {
 		Type: openai.ToolTypeFunction,
 		Function: &openai.FunctionDefinition{
 			Name:        "create_" + cleanName + "_object",
-			Description: "Create a new object of type " + o.ot.Name + desc + ". Populate as many properties (" + strings.Join(relationNames, ", ") + ") as possible with accurate information. Provide detailed content in the 'body' property formatted in Markdown. Do not include the title or description in the 'body'",
+			Description: "Create a new object of type " + o.ot.Name + desc + ". Populate as many properties (" + strings.Join(relationNames, ", ") + ") as possible with accurate information. Provide detailed content in the 'body' property formatted in beautiful Markdown, including images. Do not include the title or description in the 'body'",
 			Parameters: map[string]interface{}{
 				"type":       "object",
 				"properties": properties,
@@ -397,30 +406,24 @@ func (s *subscriber) listTypes(ctx context.Context) error {
 		for _, ot := range ots {
 			s.initTypeTool(ot)
 		}
-	} else {
-		for {
-			msg, err := typesSub.WaitOne(ctx)
-			if err != nil {
-				return fmt.Errorf("wait: %w", err)
-			}
+	}
+	for {
+		msg, err := typesSub.WaitOne(ctx)
+		if err != nil {
+			return fmt.Errorf("wait: %w", err)
+		}
+		if ev := msg.GetObjectDetailsSet(); ev != nil {
 			log.Warn("wait for types: handling", zap.Any("event", msg))
-			if ev := msg.GetObjectDetailsSet(); ev != nil {
-				ot := detailsToObjectType(domain.NewDetailsFromProto(ev.Details))
-				if ot.Hidden {
-					continue
-				}
-				s.typesLock.Lock()
-
-				if _, ok := s.types[ot.Key]; ok {
-					s.types[ot.Key] = &ot
-				} else {
-					s.types[ot.Key] = &ot
-				}
-				s.typesLock.Unlock()
-				// hack to wait for relations first
-				time.Sleep(time.Second)
-				s.initTypeTool(&ot)
+			ot := detailsToObjectType(domain.NewDetailsFromProto(ev.Details))
+			if ot.Hidden {
+				continue
 			}
+			s.typesLock.Lock()
+			s.types[ot.Key] = &ot
+			s.typesLock.Unlock()
+			// hack to wait for relations first
+			time.Sleep(time.Second * 3)
+			s.initTypeTool(&ot)
 		}
 	}
 	return nil
@@ -489,22 +492,22 @@ func (s *subscriber) listRelations(ctx context.Context) error {
 		}
 		s.typesLock.Unlock()
 		fmt.Printf("Got %d relations: %v\n", len(s.relations), s.relations)
-	} else {
-		for {
-			msg, err := typesSub.WaitOne(ctx)
-			if err != nil {
-				return fmt.Errorf("wait: %w", err)
-			}
+	}
+	for {
+		msg, err := typesSub.WaitOne(ctx)
+		if err != nil {
+			return fmt.Errorf("wait: %w", err)
+		}
+		if ev := msg.GetObjectDetailsSet(); ev != nil {
 			log.Warn("wait for types: handling", zap.Any("event", msg))
-			if ev := msg.GetObjectDetailsSet(); ev != nil {
-				rel := detailsToRelation(domain.NewDetailsFromProto(ev.Details))
+			rel := detailsToRelation(domain.NewDetailsFromProto(ev.Details))
 
-				s.typesLock.Lock()
-				s.relations[rel.Id] = &rel
-				s.relationJsonKeyToId[relationNameCleaner(rel.Name)] = rel.Id
-				s.typesLock.Unlock()
-			}
+			s.typesLock.Lock()
+			s.relations[rel.Id] = &rel
+			s.relationJsonKeyToId[relationNameCleaner(rel.Name)] = rel.Id
+			s.typesLock.Unlock()
 		}
 	}
+
 	return nil
 }

@@ -1,6 +1,8 @@
 package list
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -108,7 +110,7 @@ func GetObjectsInListHandler(s Service) gin.HandlerFunc {
 //	@Param				Anytype-Version	header		string					false	"The version of the API to use"	default(2025-03-17)
 //	@Param				space_id		path		string					true	"Space ID"
 //	@Param				list_id			path		string					true	"List ID"
-//	@Param				objects			body		[]string				true	"List of object IDs"
+//	@Param				objects			body		StringArray				true	"List of object IDs"
 //	@Success			200				{object}	string					"Objects added successfully"
 //	@Failure			400				{object}	util.ValidationError	"Bad request"
 //	@Failure			401				{object}	util.UnauthorizedError	"Unauthorized"
@@ -122,13 +124,21 @@ func AddObjectsToListHandler(s Service) gin.HandlerFunc {
 		listId := c.Param("list_id")
 
 		objects := []string{}
-		if err := c.ShouldBindJSON(&objects); err != nil {
+		respBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			apiErr := util.CodeToAPIError(http.StatusInternalServerError, err.Error())
+			c.JSON(http.StatusInternalServerError, apiErr)
+			return
+		}
+		if err := c.ShouldBindJSON(respBody); err != nil {
+			fmt.Println("Failed to bind JSON:", err)
+			fmt.Println("Request body:", string(respBody))
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 
-		err := s.AddObjectsToList(c, spaceId, listId, objects)
+		err = s.AddObjectsToList(c, spaceId, listId, objects)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrFailedAddObjectsToList, http.StatusInternalServerError),
 		)

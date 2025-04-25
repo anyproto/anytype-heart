@@ -1,5 +1,9 @@
 package list
 
+// StringArray is just a slice of strings.
+// swagger:model StringArray
+type StringArray []string
+
 type CreateCollectionRequest struct {
 	Name        string   `json:"name" example:"My object"`                                   // The name of the collection object
 	IconEmoji   string   `json:"icon"`                                                       // The icon of the  collection object
