@@ -167,9 +167,9 @@ type CreateTagRequest struct {
 }
 
 type UpdateTagRequest struct {
-	Id    string  `json:"id" binding:"required" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`     // The id of the tag to update
-	Name  *string `json:"name,omitempty"  example:"In progress"`                                                           // The name to set for the tag
-	Color *Color  `json:"color,omitempty"  example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color to set for the tag
+	Id    string `json:"id" binding:"required" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"` // The id of the tag to update
+	Name  string `json:"name"  example:"In progress"`                                                                 // The name to set for the tag
+	Color Color  `json:"color"  example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"`       // The color to set for the tag
 }
 
 type Tag struct {

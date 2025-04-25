@@ -132,16 +132,16 @@ func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 	}
 
 	var details []*model.Detail
-	if request.Name != nil {
+	if request.Name != "" {
 		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyName.String(),
-			Value: pbtypes.String(s.sanitizedString(*request.Name)),
+			Value: pbtypes.String(s.sanitizedString(request.Name)),
 		})
 	}
-	if request.Color != nil {
+	if request.Color != "" {
 		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyRelationOptionColor.String(),
-			Value: pbtypes.String(ColorToColorOption[*request.Color]),
+			Value: pbtypes.String(ColorToColorOption[request.Color]),
 		})
 	}
 
