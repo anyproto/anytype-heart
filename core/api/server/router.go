@@ -68,9 +68,6 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// v1.PATCH("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateBlockHandler(s.objectService))
 		// v1.DELETE("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteBlockHandler(s.objectService))
 
-		// Export
-		v1.GET("/spaces/:space_id/objects/:object_id/:format", object.GetObjectExportHandler(s.objectService))
-
 		// List
 		v1.GET("/spaces/:space_id/lists/:list_id/views", list.GetListViewsHandler(s.listService))
 		v1.GET("/spaces/:space_id/lists/:list_id/:view_id/objects", list.GetObjectsInListHandler(s.listService))
@@ -80,9 +77,9 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// Object
 		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
 		v1.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
+		v1.GET("/spaces/:space_id/objects/:object_id/:format", object.ExportObjectHandler(s.objectService))
 		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), object.CreateObjectHandler(s.objectService))
-		// TODO: implement update object properties endpoint
-		// v1.PATCH("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateObjectHandler(s.objectService))
+		v1.PATCH("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateObjectHandler(s.objectService))
 		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteObjectHandler(s.objectService))
 
 		// Property

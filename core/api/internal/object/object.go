@@ -29,12 +29,14 @@ var (
 	ErrFailedCreateBookmark      = errors.New("failed to fetch bookmark")
 	ErrFailedCreateBlock         = errors.New("failed to create block")
 	ErrFailedPasteBody           = errors.New("failed to paste body")
+	ErrFailedUpdateObject        = errors.New("failed to update object")
 )
 
 type Service interface {
 	ListObjects(ctx context.Context, spaceId string, offset int, limit int) ([]Object, int, bool, error)
 	GetObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error)
+	UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (ObjectWithBlocks, error)
 	DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error)
 	GetObjectExport(ctx context.Context, spaceId string, objectId string, format string) (string, error)
 
@@ -199,6 +201,35 @@ func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId str
 	return object, nil
 }
 
+// UpdateObject updates an existing object in a specific space.
+func (s *service) UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (ObjectWithBlocks, error) {
+	// TODO: implement details build & validation
+	details := &types.Struct{}
+	// details, err := s.buildObjectDetails(ctx, spaceId, request)
+	// if err != nil {
+	// 	return ObjectWithBlocks{}, err
+	// }
+
+	var detailList []*model.Detail
+	for k, v := range details.Fields {
+		detailList = append(detailList, &model.Detail{
+			Key:   k,
+			Value: v,
+		})
+	}
+
+	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
+		ContextId: objectId,
+		Details:   detailList,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
+		return ObjectWithBlocks{}, ErrFailedUpdateObject
+	}
+
+	return s.GetObject(ctx, spaceId, objectId)
+}
+
 // CreateObject creates a new object in a specific space.
 func (s *service) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error) {
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
@@ -312,9 +343,9 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 	}
 
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(request.Name),
-		bundle.RelationKeyDescription.String(): pbtypes.String(request.Description),
-		bundle.RelationKeySource.String():      pbtypes.String(request.Source),
+		bundle.RelationKeyName.String():        pbtypes.String(s.sanitizedString(request.Name)),
+		bundle.RelationKeyDescription.String(): pbtypes.String(s.sanitizedString(request.Description)),
+		bundle.RelationKeySource.String():      pbtypes.String(s.sanitizedString(request.Source)),
 		bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 	for k, v := range iconFields {

@@ -176,7 +176,57 @@ func CreateObjectHandler(s Service) gin.HandlerFunc {
 	}
 }
 
-// GetObjectExportHandler exports an object in specified format
+// UpdateObjectHandler updates an existing object in a space
+//
+//	@Summary		Update object
+//	@Description	This endpoint updates an existing object in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the object ID and the details to be updated. The endpoint then returns the full object data, ready for further interactions.
+//	@Tags			Objects
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			object_id		path		string					true	"Object ID"
+//	@Param			object			body		UpdateObjectRequest		true	"Object to update"
+//	@Success		200				{object}	ObjectResponse			"The updated object"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/objects/{object_id} [patch]
+func UpdateObjectHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		objectId := c.Param("object_id")
+
+		request := UpdateObjectRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		object, err := s.UpdateObject(c.Request.Context(), spaceId, objectId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrObjectDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedUpdateObject, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedRetrieveObject, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, ObjectResponse{Object: object})
+	}
+}
+
+// ExportObjectHandler exports an object in specified format
 //
 //	@Summary		Export object
 //	@Description	This endpoint exports a single object from the specified space into a desired format. The export format is provided as a path parameter (currently supporting “markdown” only). The endpoint calls the export service which converts the object’s content into the requested format. It is useful for sharing, or displaying the markdown representation of the objecte externally.
@@ -192,7 +242,7 @@ func CreateObjectHandler(s Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id}/{format} [get]
-func GetObjectExportHandler(s Service) gin.HandlerFunc {
+func ExportObjectHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")

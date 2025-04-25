@@ -195,7 +195,7 @@ components:
           type: string
         properties:
           additionalProperties: {}
-          description: Properties to set on the object
+          description: The properties to set on the object
           example:
             '{"property_key"': ' "value"}'
           type: object
@@ -211,6 +211,9 @@ components:
           description: The key of the type of object to create
           example: ot-page
           type: string
+      required:
+      - name
+      - type_key
       type: object
     object.CreatePropertyRequest:
       properties:
@@ -655,6 +658,29 @@ components:
         type:
           $ref: '#/components/schemas/object.Type'
       type: object
+    object.UpdateObjectRequest:
+      properties:
+        description:
+          description: The description of the object
+          example: This is a description of the object.
+          type: string
+        id:
+          description: The id of the object to update
+          example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
+          type: string
+        name:
+          description: The name of the object
+          example: My object
+          type: string
+        properties:
+          additionalProperties: {}
+          description: The properties to update on the object
+          example:
+            '{"property_key"': ' "value"}'
+          type: object
+      required:
+      - id
+      type: object
     object.UpdatePropertyRequest:
       properties:
         id:
@@ -682,9 +708,7 @@ components:
           example: In progress
           type: string
       required:
-      - color
       - id
-      - name
       type: object
     pagination.PaginatedResponse-list_View:
       properties:
@@ -2067,6 +2091,80 @@ paths:
       security:
       - bearerauth: []
       summary: Get object
+      tags:
+      - Objects
+    patch:
+      description: This endpoint updates an existing object in the specified space
+        using a JSON payload. The update process is subject to rate limiting. The
+        payload must include the object ID and the details to be updated. The endpoint
+        then returns the full object data, ready for further interactions.
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/object.UpdateObjectRequest'
+        description: Object to update
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.ObjectResponse'
+          description: The updated object
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update object
       tags:
       - Objects
   /spaces/{space_id}/objects/{object_id}/{format}:

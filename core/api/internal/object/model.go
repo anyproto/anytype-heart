@@ -38,14 +38,21 @@ func (pf *PropertyFormat) UnmarshalJSON(data []byte) error {
 }
 
 type CreateObjectRequest struct {
-	Name        string                 `json:"name" example:"My object"`                                                          // The name of the object
+	Name        string                 `json:"name" binding:"required" example:"My object"`                                       // The name of the object
 	Icon        Icon                   `json:"icon"`                                                                              // The icon of the object
 	Description string                 `json:"description" example:"This is a description of the object."`                        // The description of the object
 	Body        string                 `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
 	Source      string                 `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
 	TemplateId  string                 `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
-	TypeKey     string                 `json:"type_key" example:"ot-page"`                                                        // The key of the type of object to create
-	Properties  map[string]interface{} `json:"properties" example:"{\"property_key\": \"value\"}"`                                // Properties to set on the object
+	TypeKey     string                 `json:"type_key" binding:"required" example:"ot-page"`                                     // The key of the type of object to create
+	Properties  map[string]interface{} `json:"properties" example:"{\"property_key\": \"value\"}"`                                // The properties to set on the object
+}
+
+type UpdateObjectRequest struct {
+	Id          string                 `json:"id" binding:"required" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The id of the object to update
+	Name        string                 `json:"name" example:"My object"`                                                                    // The name of the object
+	Description string                 `json:"description" example:"This is a description of the object."`                                  // The description of the object
+	Properties  map[string]interface{} `json:"properties" example:"{\"property_key\": \"value\"}"`                                          // The properties to update on the object
 }
 
 type ObjectResponse struct {
@@ -160,9 +167,9 @@ type CreateTagRequest struct {
 }
 
 type UpdateTagRequest struct {
-	Id    string `json:"id" binding:"required" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`             // The id of the tag to update
-	Name  string `json:"name" binding:"required" example:"In progress"`                                                           // The name to set for the tag
-	Color Color  `json:"color" binding:"required" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color to set for the tag
+	Id    string  `json:"id" binding:"required" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"`     // The id of the tag to update
+	Name  *string `json:"name,omitempty"  example:"In progress"`                                                           // The name to set for the tag
+	Color *Color  `json:"color,omitempty"  example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color to set for the tag
 }
 
 type Tag struct {
