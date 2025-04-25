@@ -283,11 +283,11 @@ func (a *aclObjectManager) broadcastKeyUpdate(aclState *list.AclState, common co
 	if err != nil {
 		return err
 	}
-	spaceKey, _, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	spaceKeyId, _, err := spacekey.DeriveSpaceKey(firstMetadataKey)
 	if err != nil {
 		return err
 	}
-	encryptionKey, err := spacekey.DeriveEncryptionKey(readKey)
+	encryptionKey, err := spacekey.DeriveSymmetricKey(readKey)
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ func (a *aclObjectManager) broadcastKeyUpdate(aclState *list.AclState, common co
 			{
 				SpaceId: common.Id(),
 				Value: &pb.EventMessageValueOfKeyUpdate{KeyUpdate: &pb.EventKeyUpdate{
-					SpaceKeyId:      spaceKey,
+					SpaceKeyId:      spaceKeyId,
 					EncryptionKeyId: aclState.CurrentReadKeyId(),
 					EncryptionKey:   encodedKey,
 				}},

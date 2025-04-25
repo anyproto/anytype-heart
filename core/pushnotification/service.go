@@ -202,7 +202,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 	if err != nil {
 		return err
 	}
-	keyId, signKey, err := spacekey.DeriveSpaceKey(firstMetadataKey)
+	spaceKeyId, signKey, err := spacekey.DeriveSpaceKey(firstMetadataKey)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 		return err
 	}
 	p := &pushapi.Message{
-		KeyId:     keyId,
+		KeyId:     spaceKeyId,
 		Payload:   encryptedJson,
 		Signature: signature,
 	}
@@ -235,7 +235,7 @@ func (s *service) prepareEncryptedPayload(state *list.AclState, payload []byte) 
 	if err != nil {
 		return nil, err
 	}
-	encryptionKey, err := spacekey.DeriveEncryptionKey(symKey)
+	encryptionKey, err := spacekey.DeriveSymmetricKey(symKey)
 	if err != nil {
 		return nil, err
 	}
