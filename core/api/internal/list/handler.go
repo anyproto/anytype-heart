@@ -13,6 +13,7 @@ import (
 //
 //	@Summary		Get list views
 //	@Description	Returns a paginated list of views defined for a specific list (query or collection) within a space. Each view includes configuration details such as layout, applied filters, and sorting options, enabling clients to render the list according to user preferences and context. This endpoint supports pagination parameters to control the number of views returned and the starting point of the result set.
+//	@Id				getListViews
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-04-22)
@@ -53,6 +54,7 @@ func GetListViewsHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Get objects in list
 //	@Description	Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.
+//	@Id				getListObjects
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
@@ -99,6 +101,7 @@ func GetObjectsInListHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Add objects to list
 //	@Description	Enables clients to add one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag‑and‑drop or multi‑select additions to collections.
+//	@Id				addListObjects
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
@@ -144,6 +147,7 @@ func AddObjectsToListHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Remove object from list
 //	@Description	Removes a given object from the specified list (collection only) in a space. The endpoint takes the space, list, and object identifiers as path parameters. It's subject to rate limiting and returns a success message on completion. It is used for dynamically managing collections without affecting the underlying object data.
+//	@Id				removeListObject
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)

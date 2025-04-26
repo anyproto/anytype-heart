@@ -75,7 +75,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		v1.DELETE("/spaces/:space_id/lists/:list_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), list.RemoveObjectFromListHandler(s.listService))
 
 		// Object
-		v1.GET("/spaces/:space_id/objects", object.GetObjectsHandler(s.objectService))
+		v1.GET("/spaces/:space_id/objects", object.ListObjectsHandler(s.objectService))
 		v1.GET("/spaces/:space_id/objects/:object_id", object.GetObjectHandler(s.objectService))
 		v1.GET("/spaces/:space_id/objects/:object_id/:format", object.ExportObjectHandler(s.objectService))
 		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), object.CreateObjectHandler(s.objectService))
@@ -83,14 +83,14 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteObjectHandler(s.objectService))
 
 		// Property
-		v1.GET("/spaces/:space_id/properties", object.GetPropertiesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/properties", object.ListPropertiesHandler(s.objectService))
 		v1.GET("/spaces/:space_id/properties/:property_id", object.GetPropertyHandler(s.objectService))
 		v1.POST("/spaces/:space_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.CreatePropertyHandler(s.objectService))
 		v1.PATCH("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdatePropertyHandler(s.objectService))
 		v1.DELETE("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeletePropertyHandler(s.objectService))
 
 		// Tag
-		v1.GET("/spaces/:space_id/properties/:property_id/tags", object.GetTagsHandler(s.objectService))
+		v1.GET("/spaces/:space_id/properties/:property_id/tags", object.ListTagsHandler(s.objectService))
 		v1.GET("/spaces/:space_id/properties/:property_id/tags/:tag_id", object.GetTagHandler(s.objectService))
 		v1.POST("/spaces/:space_id/properties/:property_id/tags", s.rateLimit(maxWriteRequestsPerSecond), object.CreateTagHandler(s.objectService))
 		v1.PATCH("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateTagHandler(s.objectService))
@@ -101,23 +101,23 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		v1.POST("/spaces/:space_id/search", search.SearchHandler(s.searchService))
 
 		// Space
-		v1.GET("/spaces", space.GetSpacesHandler(s.spaceService))
+		v1.GET("/spaces", space.ListSpacesHandler(s.spaceService))
 		v1.GET("/spaces/:space_id", space.GetSpaceHandler(s.spaceService))
-		v1.GET("/spaces/:space_id/members", space.GetMembersHandler(s.spaceService))
+		v1.GET("/spaces/:space_id/members", space.ListMembersHandler(s.spaceService))
 		v1.GET("/spaces/:space_id/members/:member_id", space.GetMemberHandler(s.spaceService))
 		// TODO: renable when granular permissions are implementeds
 		// v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond), space.UpdateMemberHandler(s.spaceService))
 		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), space.CreateSpaceHandler(s.spaceService))
 
 		// Type
-		v1.GET("/spaces/:space_id/types", object.GetTypesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types", object.ListTypesHandler(s.objectService))
 		v1.GET("/spaces/:space_id/types/:type_id", object.GetTypeHandler(s.objectService))
 		// TODO: implement add and remove type properties endpoints
 		// v1.POST("/spaces/:space_id/types/:type_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.AddTypePropertyHandler(s.objectService))
 		// v1.DELETE("/spaces/:space_id/types/:type_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteTypePropertyHandler(s.objectService))
 
 		// Template
-		v1.GET("/spaces/:space_id/types/:type_id/templates", object.GetTemplatesHandler(s.objectService))
+		v1.GET("/spaces/:space_id/types/:type_id/templates", object.ListTemplatesHandler(s.objectService))
 		v1.GET("/spaces/:space_id/types/:type_id/templates/:template_id", object.GetTemplateHandler(s.objectService))
 	}
 

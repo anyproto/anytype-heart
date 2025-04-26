@@ -13,6 +13,7 @@ import (
 //
 //	@Summary		Search objects across all spaces
 //	@Description	This endpoint executes a global search over every space the user has access to. It accepts pagination parameters (offset and limit) and a JSON body containing search criteria. The criteria include a search query string, an optional list of object types, and sort options (e.g. ascending/descending by creation, modification, or last opened dates). Internally, the endpoint aggregates results from each space, merges and sorts them (after last modified date by default), and returns a unified, paginated list of objects that match the search parameters.
+//	@Id				searchGlobal
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
@@ -56,6 +57,7 @@ func GlobalSearchHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Search objects within a space
 //	@Description	This endpoint performs a focused search within a single space (specified by the space_id path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search query, object types, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.
+//	@Id				searchSpace
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json

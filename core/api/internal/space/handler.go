@@ -9,10 +9,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
-// GetSpacesHandler retrieves a list of spaces
+// ListSpacesHandler retrieves a list of spaces
 //
 //	@Summary		List spaces
 //	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user’s workspaces.
+//	@Id				listSpaces
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								true	"The version of the API to use"											default(2025-04-22)
@@ -23,7 +24,7 @@ import (
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces [get]
-func GetSpacesHandler(s Service) gin.HandlerFunc {
+func ListSpacesHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
@@ -49,6 +50,7 @@ func GetSpacesHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Get space
 //	@Description	Fetches full details about a single space identified by its space ID. The response includes metadata such as the space name, icon, and various workspace IDs (home, archive, profile, etc.). This detailed view supports use cases such as displaying space-specific settings.
+//	@Id				getSpace
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
@@ -84,6 +86,7 @@ func GetSpaceHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Create space
 //	@Description	Creates a new workspace (or space) based on a supplied name in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space’s full metadata is returned, enabling the client to immediately switch context to the new space.
+//	@Id				createSpace
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
@@ -123,10 +126,11 @@ func CreateSpaceHandler(s Service) gin.HandlerFunc {
 	}
 }
 
-// GetMembersHandler retrieves a list of members in a space
+// ListMembersHandler retrieves a list of members in a space
 //
 //	@Summary		List members
 //	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
+//	@Id				listMembers
 //	@Tags			Members
 //	@Produce		json
 //	@Param			Anytype-Version	header		string									true	"The version of the API to use"	default(2025-04-22)
@@ -138,7 +142,7 @@ func CreateSpaceHandler(s Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/members [get]
-func GetMembersHandler(s Service) gin.HandlerFunc {
+func ListMembersHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -163,6 +167,7 @@ func GetMembersHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Get member
 //	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
+//	@Id				getMember
 //	@Tags			Members
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
@@ -200,6 +205,7 @@ func GetMemberHandler(s Service) gin.HandlerFunc {
 //
 //	@Summary		Update member
 //	@Description	Modifies a member's status and role in a space. Use this endpoint to approve a joining member by setting the status to `active` and specifying a role (`reader` or `writer`), reject a joining member by setting the status to `declined`, remove a member by setting the status to `removed`, or update an active member's role. This endpoint enables fine-grained control over member access and permissions.
+//	@Id				updateMember
 //	@Tags			Members
 //	@Accept			json
 //	@Produce		json

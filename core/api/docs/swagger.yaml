@@ -1105,6 +1105,7 @@ paths:
         endpoint (see below) to solve the challenge and retrieve an authentication
         token. In essence, this endpoint “boots up” the login process and is the first
         step in a multi-phase authentication sequence.
+      operationId: createAuthChallenge
       parameters:
       - description: The version of the API to use
         in: header
@@ -1155,6 +1156,7 @@ paths:
         session token together with a permanent app key. These tokens are then used
         in subsequent API requests to authorize access. This endpoint is central to
         ensuring that only properly authenticated sessions can access further resources.
+      operationId: solveAuthChallenge
       parameters:
       - description: The version of the API to use
         in: header
@@ -1212,6 +1214,7 @@ paths:
         aggregates results from each space, merges and sorts them (after last modified
         date by default), and returns a unified, paginated list of objects that match
         the search parameters.
+      operationId: searchGlobal
       parameters:
       - description: The version of the API to use
         in: header
@@ -1271,6 +1274,7 @@ paths:
         the authenticated user. Each space record contains detailed information such
         as the space ID, name, icon (derived either from an emoji or image URL), and
         additional metadata. This endpoint is key to displaying a user’s workspaces.
+      operationId: listSpaces
       parameters:
       - description: The version of the API to use
         in: header
@@ -1324,6 +1328,7 @@ paths:
         the workspace with default settings (for example, a default dashboard or home
         page). On success, the new space’s full metadata is returned, enabling the
         client to immediately switch context to the new space.
+      operationId: createSpace
       parameters:
       - description: The version of the API to use
         in: header
@@ -1381,6 +1386,7 @@ paths:
         ID. The response includes metadata such as the space name, icon, and various
         workspace IDs (home, archive, profile, etc.). This detailed view supports
         use cases such as displaying space-specific settings.
+      operationId: getSpace
       parameters:
       - description: The version of the API to use
         in: header
@@ -1433,6 +1439,7 @@ paths:
         no view ID is specified, all list objects are returned without filtering and
         sorting. This endpoint helps clients to manage grouped objects (for example,
         tasks within a list) by returning information for each item of the list.
+      operationId: getListObjects
       parameters:
       - description: The version of the API to use
         in: header
@@ -1507,6 +1514,7 @@ paths:
         only) by submitting a JSON array of object IDs. Upon success, the endpoint
         returns a confirmation message. This endpoint is vital for building user interfaces
         that allow drag‑and‑drop or multi‑select additions to collections.
+      operationId: addListObjects
       parameters:
       - description: The version of the API to use
         in: header
@@ -1579,6 +1587,7 @@ paths:
         path parameters. It's subject to rate limiting and returns a success message
         on completion. It is used for dynamically managing collections without affecting
         the underlying object data.
+      operationId: removeListObject
       parameters:
       - description: The version of the API to use
         in: header
@@ -1649,6 +1658,7 @@ paths:
         the list according to user preferences and context. This endpoint supports
         pagination parameters to control the number of views returned and the starting
         point of the result set.
+      operationId: getListViews
       parameters:
       - description: The version of the API to use
         in: header
@@ -1719,6 +1729,7 @@ paths:
         (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint
         supports collaborative features by allowing clients to show who is in a space
         and manage access rights.
+      operationId: listMembers
       parameters:
       - description: The version of the API to use
         in: header
@@ -1779,6 +1790,7 @@ paths:
         the member's ID (starting  with `_participant`) or the member's identity.
         This is useful for user profile pages, permission management, and displaying
         member-specific information in collaborative environments.
+      operationId: getMember
       parameters:
       - description: The version of the API to use
         in: header
@@ -1837,6 +1849,7 @@ paths:
         of the content (if applicable), layout, space ID, blocks and details. It is
         intended for building views where users can see all objects in a space at
         a glance.
+      operationId: listObjects
       parameters:
       - description: The version of the API to use
         in: header
@@ -1898,6 +1911,7 @@ paths:
         of object to create). Post-creation, additional operations (like setting featured
         properties or fetching bookmark metadata) may occur. The endpoint then returns
         the full object data, ready for further interactions.
+      operationId: createObject
       parameters:
       - description: The version of the API to use
         in: header
@@ -1962,6 +1976,7 @@ paths:
         the object’s details after it has been archived. Proper error handling is
         in place for situations such as when the object isn’t found or the deletion
         cannot be performed because of permission issues.
+      operationId: deleteObject
       parameters:
       - description: The version of the API to use
         in: header
@@ -2037,6 +2052,7 @@ paths:
         text, files, properties and dataviews) and extra details (such as timestamps
         and linked member information). This endpoint is essential when a client needs
         to render or edit the full object view.
+      operationId: getObject
       parameters:
       - description: The version of the API to use
         in: header
@@ -2098,6 +2114,7 @@ paths:
         using a JSON payload. The update process is subject to rate limiting. The
         payload must include the object ID and the details to be updated. The endpoint
         then returns the full object data, ready for further interactions.
+      operationId: updateObject
       parameters:
       - description: The version of the API to use
         in: header
@@ -2174,6 +2191,7 @@ paths:
         supporting “markdown” only). The endpoint calls the export service which converts
         the object’s content into the requested format. It is useful for sharing,
         or displaying the markdown representation of the objecte externally.
+      operationId: exportObject
       parameters:
       - description: The version of the API to use
         in: header
@@ -2238,6 +2256,7 @@ paths:
         within a specific space. Each property record includes its unique identifier,
         name and format. This information is essential for clients to understand the
         available properties for filtering or creating objects.
+      operationId: listProperties
       parameters:
       - description: The version of the API to use
         in: header
@@ -2295,6 +2314,7 @@ paths:
         The creation process is subject to rate limiting. The payload must include
         property details such as the name and format. The endpoint then returns the
         full property data, ready for further interactions.
+      operationId: createProperty
       parameters:
       - description: The version of the API to use
         in: header
@@ -2353,6 +2373,7 @@ paths:
         the property’s details after it has been archived. Proper error handling is
         in place for situations such as when the property isn’t found or the deletion
         cannot be performed because of permission issues.
+      operationId: deleteProperty
       parameters:
       - description: The version of the API to use
         in: header
@@ -2427,6 +2448,7 @@ paths:
         detailed view assists clients in showing property options to users and in
         guiding the user interface (such as displaying appropriate input fields or
         selection options).
+      operationId: getProperty
       parameters:
       - description: The version of the API to use
         in: header
@@ -2488,6 +2510,7 @@ paths:
         using a JSON payload. The update process is subject to rate limiting. The
         payload must include the property ID and the name to be updated. The endpoint
         then returns the full property data, ready for further interactions.
+      operationId: updateProperty
       parameters:
       - description: The version of the API to use
         in: header
@@ -2564,6 +2587,7 @@ paths:
         name, and color. This information is essential for clients to display select
         or multi-select options to users when they are creating or editing objects.
         The endpoint also supports pagination through offset and limit parameters.
+      operationId: listTags
       parameters:
       - description: The version of the API to use
         in: header
@@ -2621,6 +2645,7 @@ paths:
         the tag's name and color. The response includes the tag's details such as
         its ID, name, and color. This is useful for clients when users want to add
         new tag options to a property.
+      operationId: createTag
       parameters:
       - description: The version of the API to use
         in: header
@@ -2684,6 +2709,7 @@ paths:
         tag’s details after it has been archived. Proper error handling is in place
         for situations such as when the tag isn’t found or the deletion cannot be
         performed because of permission issues.
+      operationId: deleteTag
       parameters:
       - description: The version of the API to use
         in: header
@@ -2763,6 +2789,7 @@ paths:
         is identified by its unique identifier within the specified space. The response
         includes the tag's details such as its ID, name, and color. This is useful
         for clients to display or when editing a specific tag option.
+      operationId: getTag
       parameters:
       - description: The version of the API to use
         in: header
@@ -2832,6 +2859,7 @@ paths:
         tag's name and color. The response includes the tag's details such as its
         ID, name, and color. This is useful for clients when users want to edit existing
         tags for a property.
+      operationId: updateTag
       parameters:
       - description: The version of the API to use
         in: header
@@ -2915,6 +2943,7 @@ paths:
         sorting preferences. The search is limited to the provided space and returns
         a list of objects that match the query. This allows clients to implement space‑specific
         filtering without having to process extraneous results.
+      operationId: searchSpace
       parameters:
       - description: The version of the API to use
         in: header
@@ -2983,6 +3012,7 @@ paths:
         the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients
         use this information when offering choices for object creation or for filtering
         objects by type through search.
+      operationId: listTypes
       parameters:
       - description: The version of the API to use
         in: header
@@ -3042,6 +3072,7 @@ paths:
         This detailed view assists clients in understanding the expected structure
         and style for objects of that type and in guiding the user interface (such
         as displaying appropriate icons or layout hints).
+      operationId: getType
       parameters:
       - description: The version of the API to use
         in: header
@@ -3105,6 +3136,7 @@ paths:
         structures for creating new objects. Each template record contains its identifier,
         name, and icon, so that clients can offer users a selection of templates when
         creating objects.
+      operationId: listTemplates
       parameters:
       - description: The version of the API to use
         in: header
@@ -3169,6 +3201,7 @@ paths:
         object type in a space. The response provides the template’s identifier, name,
         icon, and any other relevant metadata. This endpoint is useful when a client
         needs to preview or apply a template to prefill object creation fields.
+      operationId: getTemplate
       parameters:
       - description: The version of the API to use
         in: header
