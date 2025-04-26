@@ -98,7 +98,7 @@ func (s *service) GlobalSearch(ctx context.Context, request SearchRequest, offse
 	total = len(combinedRecords)
 	paginatedRecords, hasMore := pagination.Paginate(combinedRecords, offset, limit)
 
-	// pre-fetch properties and types to fill the objects
+	// pre-fetch properties, types and tags to fill the objects
 	propertyMaps, err := s.objectService.GetPropertyMapsFromStore(spaceIds)
 	if err != nil {
 		return nil, 0, false, err
@@ -107,10 +107,14 @@ func (s *service) GlobalSearch(ctx context.Context, request SearchRequest, offse
 	if err != nil {
 		return nil, 0, false, err
 	}
+	tagMap, err := s.objectService.GetTagMapsFromStore(spaceIds)
+	if err != nil {
+		return nil, 0, false, err
+	}
 
 	results := make([]object.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.objectService.GetObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
+		results = append(results, s.objectService.GetObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
 	}
 
 	return results, total, hasMore, nil
@@ -151,10 +155,14 @@ func (s *service) Search(ctx context.Context, spaceId string, request SearchRequ
 	if err != nil {
 		return nil, 0, false, err
 	}
+	tagMap, err := s.objectService.GetTagMapFromStore(spaceId)
+	if err != nil {
+		return nil, 0, false, err
+	}
 
 	results := make([]object.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap))
+		results = append(results, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return results, total, hasMore, nil

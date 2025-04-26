@@ -57,12 +57,14 @@ type Service interface {
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
 	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error)
 
-	GetObjectFromStruct(details *types.Struct, propertyMap map[string]Property, typeMap map[string]Type) Object
+	GetObjectFromStruct(details *types.Struct, propertyMap map[string]Property, typeMap map[string]Type, tagMap map[string]Tag) Object
 	GetPropertyMapFromStore(spaceId string) (map[string]Property, error)
 	GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]Property, error)
 	GetTypeMapFromStore(spaceId string, propertyMap map[string]Property) (map[string]Type, error)
 	GetTypeMapsFromStore(spaceIds []string, propertyMap map[string]map[string]Property) (map[string]map[string]Type, error)
 	GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string, propertyMap map[string]Property) Type
+	GetTagMapFromStore(spaceId string) (map[string]Tag, error)
+	GetTagMapsFromStore(spaceIds []string) (map[string]map[string]Tag, error)
 }
 
 type service struct {
@@ -122,7 +124,7 @@ func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, l
 	paginatedObjects, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	objects = make([]Object, 0, len(paginatedObjects))
 
-	// pre-fetch properties and types to fill the objects
+	// pre-fetch properties, types and tags to fill the objects
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
@@ -131,9 +133,13 @@ func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, l
 	if err != nil {
 		return nil, 0, false, err
 	}
+	tagMap, err := s.GetTagMapFromStore(spaceId)
+	if err != nil {
+		return nil, 0, false, err
+	}
 
 	for _, record := range paginatedObjects {
-		objects = append(objects, s.GetObjectFromStruct(record, propertyMap, typeMap))
+		objects = append(objects, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 	return objects, total, hasMore, nil
 }
@@ -164,6 +170,10 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 	if err != nil {
 		return ObjectWithBlocks{}, err
 	}
+	tagMap, err := s.GetTagMapFromStore(spaceId)
+	if err != nil {
+		return ObjectWithBlocks{}, err
+	}
 
 	object := ObjectWithBlocks{
 		Object:     "object",
@@ -175,7 +185,7 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 		Snippet:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
 		Type:       s.GetTypeFromDetails(resp.ObjectView.Details, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), propertyMap),
-		Properties: s.getPropertiesFromStruct(resp.ObjectView.Details[0].Details, propertyMap),
+		Properties: s.getPropertiesFromStruct(resp.ObjectView.Details[0].Details, propertyMap, tagMap),
 		Blocks:     s.getBlocksFromDetails(resp),
 	}
 
@@ -443,7 +453,7 @@ func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 }
 
 // GetObjectFromStruct creates an ObjectWithBlocks without blocks from the details.
-func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[string]Property, typeMap map[string]Type) Object {
+func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[string]Property, typeMap map[string]Type, tagMap map[string]Tag) Object {
 	return Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -454,7 +464,7 @@ func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     model.ObjectTypeLayout_name[int32(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
 		Type:       s.getTypeFromStruct(details, typeMap),
-		Properties: s.getPropertiesFromStruct(details, propertyMap),
+		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
 	}
 }
 

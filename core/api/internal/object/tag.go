@@ -177,27 +177,49 @@ func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 	return tag, nil
 }
 
-// TODO: remove once bug of select option not being returned in details is fixed
-func (s *service) getTagsFromStore(spaceId string, tagIds []string) []Tag {
-	tags := make([]Tag, 0, len(tagIds))
-	for _, tagId := range tagIds {
-		if tagId == "" {
-			continue
+// GetTagMapsFromStore retrieves all tags for all spaces.
+func (s *service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]Tag, error) {
+	spacesToTags := make(map[string]map[string]Tag)
+	for _, spaceId := range spaceIds {
+		tagMap, err := s.GetTagMapFromStore(spaceId)
+		if err != nil {
+			return nil, err
 		}
+		spacesToTags[spaceId] = tagMap
+	}
+	return spacesToTags, nil
+}
 
-		resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
-			SpaceId:  spaceId,
-			ObjectId: tagId,
-		})
+// GetTagMapFromStore retrieves all tags for a specific space.
+func (s *service) GetTagMapFromStore(spaceId string) (map[string]Tag, error) {
+	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+		},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyRelationKey.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyRelationOptionColor.String(),
+		},
+	})
 
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			continue
-		}
-
-		tags = append(tags, s.mapTagFromRecord(resp.ObjectView.Details[0].Details))
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, ErrFailedRetrieveTags
 	}
 
-	return tags
+	tags := make(map[string]Tag)
+	for _, record := range resp.Records {
+		tag := s.mapTagFromRecord(record)
+		tags[tag.Id] = tag
+	}
+
+	return tags, nil
 }
 
 func (s *service) mapTagFromRecord(record *types.Struct) Tag {
@@ -208,4 +230,22 @@ func (s *service) mapTagFromRecord(record *types.Struct) Tag {
 		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Color:  ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 	}
+}
+
+func (s *service) getTagsFromStruct(tagIds []string, tagMap map[string]Tag) []Tag {
+	tags := make([]Tag, 0, len(tagIds))
+	for _, tagId := range tagIds {
+		if tagId == "" {
+			continue
+		}
+
+		tag, ok := tagMap[tagId]
+		if !ok {
+			continue
+		}
+
+		tags = append(tags, tag)
+	}
+
+	return tags
 }

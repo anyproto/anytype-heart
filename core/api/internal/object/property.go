@@ -450,7 +450,7 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property)
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
-func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]Property) []Property {
+func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]Property, tagMap map[string]Tag) []Property {
 	properties := make([]Property, 0)
 	for rk, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
@@ -459,7 +459,7 @@ func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 
 		key := propertyMap[rk].Key
 		format := propertyMap[rk].Format
-		convertedVal := s.convertPropertyValue(key, value, format, details)
+		convertedVal := s.convertPropertyValue(key, value, format, details, tagMap)
 
 		if s.isMissingObject(convertedVal) {
 			continue
@@ -474,7 +474,7 @@ func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 }
 
 // convertPropertyValue converts a protobuf types.Value into a native Go value.
-func (s *service) convertPropertyValue(key string, value *types.Value, format PropertyFormat, details *types.Struct) interface{} {
+func (s *service) convertPropertyValue(key string, value *types.Value, format PropertyFormat, details *types.Struct, tagMap map[string]Tag) interface{} {
 	switch kind := value.Kind.(type) {
 	case *types.Value_NullValue:
 		return nil
@@ -486,14 +486,14 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 	case *types.Value_StringValue:
 		// TODO: investigate how this is possible? select option not list and not returned in further details
 		if format == PropertyFormatSelect {
-			tags := s.getTagsFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), []string{kind.StringValue})
+			tags := s.getTagsFromStruct([]string{kind.StringValue}, tagMap)
 			if len(tags) > 0 {
 				return tags[0]
 			}
 			return nil
 		}
 		if format == PropertyFormatMultiSelect {
-			return s.getTagsFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), []string{kind.StringValue})
+			return s.getTagsFromStruct([]string{kind.StringValue}, tagMap)
 		}
 		return kind.StringValue
 	case *types.Value_BoolValue:
@@ -501,14 +501,14 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 	case *types.Value_StructValue:
 		m := make(map[string]interface{})
 		for k, v := range kind.StructValue.Fields {
-			m[k] = s.convertPropertyValue(key, v, format, details)
+			m[k] = s.convertPropertyValue(key, v, format, details, tagMap)
 		}
 		return m
 	case *types.Value_ListValue:
 		if format == PropertyFormatSelect {
 			listValues := kind.ListValue.Values
 			if len(listValues) > 0 {
-				tags := s.getTagsFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), []string{listValues[0].GetStringValue()})
+				tags := s.getTagsFromStruct([]string{listValues[0].GetStringValue()}, tagMap)
 				if len(tags) > 0 {
 					return tags[0]
 				}
@@ -522,13 +522,13 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 				for i, v := range listValues {
 					listStringValues[i] = v.GetStringValue()
 				}
-				return s.getTagsFromStore(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), listStringValues)
+				return s.getTagsFromStruct(listStringValues, tagMap)
 			}
 			return nil
 		}
 		var list []interface{}
 		for _, v := range kind.ListValue.Values {
-			list = append(list, s.convertPropertyValue(key, v, format, details))
+			list = append(list, s.convertPropertyValue(key, v, format, details, tagMap))
 		}
 		return list
 	default:

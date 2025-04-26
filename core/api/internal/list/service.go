@@ -214,10 +214,13 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	if err != nil {
 		return nil, 0, false, err
 	}
-
+	tagMap, err := s.objectService.GetTagMapFromStore(spaceId)
+	if err != nil {
+		return nil, 0, false, err
+	}
 	objects := make([]object.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		objects = append(objects, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap))
+		objects = append(objects, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return objects, total, hasMore, nil
