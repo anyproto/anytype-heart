@@ -134,8 +134,7 @@ type CreatePropertyRequest struct {
 }
 
 type UpdatePropertyRequest struct {
-	Id   string `json:"id" binding:"required" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"` // The id of the property to update
-	Name string `json:"name" binding:"required" example:"Last modified date"`                                        // the name to set for the property
+	Name string `json:"name" binding:"required" example:"Last modified date"` // the name to set for the property
 }
 
 type Property struct {
@@ -167,9 +166,8 @@ type CreateTagRequest struct {
 }
 
 type UpdateTagRequest struct {
-	Id    string `json:"id" binding:"required" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq"` // The id of the tag to update
-	Name  string `json:"name"  example:"In progress"`                                                                 // The name to set for the tag
-	Color Color  `json:"color"  example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"`       // The color to set for the tag
+	Name  string `json:"name"  example:"In progress"`                                                           // The name to set for the tag
+	Color Color  `json:"color"  example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color to set for the tag
 }
 
 type Tag struct {
