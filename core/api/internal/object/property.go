@@ -235,7 +235,8 @@ func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
-		ContextId: propertyId,
+		ContextId:  propertyId,
+		IsArchived: true,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {

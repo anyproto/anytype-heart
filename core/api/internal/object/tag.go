@@ -167,7 +167,8 @@ func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
-		ContextId: tagId,
+		ContextId:  tagId,
+		IsArchived: true,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
