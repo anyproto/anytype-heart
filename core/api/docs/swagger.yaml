@@ -240,14 +240,7 @@ components:
         icon:
           $ref: '#/components/schemas/object.Icon'
         layout:
-          description: The layout of the type
-          example: todo
-          type: string
-          x-enum-varnames:
-          - ObjectLayoutBasic
-          - ObjectLayoutProfile
-          - ObjectLayoutTodo
-          - ObjectLayoutNote
+          $ref: '#/components/schemas/object.TypeLayout'
         name:
           description: The name of the type
           example: Page
@@ -333,19 +326,6 @@ components:
       - IconFormatEmoji
       - IconFormatFile
       - IconFormatIcon
-    object.Layout:
-      description: The layout of the object
-      example: basic
-      type: string
-      x-enum-varnames:
-      - LayoutBasic
-      - LayoutProfile
-      - LayoutTodo
-      - LayoutNote
-      - LayoutBookmark
-      - LayoutSet
-      - LayoutCollection
-      - LayoutParticipant
     object.Object:
       properties:
         archived:
@@ -359,7 +339,7 @@ components:
           example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
           type: string
         layout:
-          $ref: '#/components/schemas/object.Layout'
+          $ref: '#/components/schemas/object.ObjectLayout'
         name:
           description: The name of the object
           example: My object
@@ -395,14 +375,18 @@ components:
           type: string
       type: object
     object.ObjectLayout:
-      description: The layout of the type
-      example: todo
+      description: The layout of the object
+      example: basic
       type: string
       x-enum-varnames:
       - ObjectLayoutBasic
       - ObjectLayoutProfile
       - ObjectLayoutTodo
       - ObjectLayoutNote
+      - ObjectLayoutBookmark
+      - ObjectLayoutSet
+      - ObjectLayoutCollection
+      - ObjectLayoutParticipant
     object.ObjectResponse:
       properties:
         object:
@@ -433,14 +417,14 @@ components:
           example: basic
           type: string
           x-enum-varnames:
-          - LayoutBasic
-          - LayoutProfile
-          - LayoutTodo
-          - LayoutNote
-          - LayoutBookmark
-          - LayoutSet
-          - LayoutCollection
-          - LayoutParticipant
+          - ObjectLayoutBasic
+          - ObjectLayoutProfile
+          - ObjectLayoutTodo
+          - ObjectLayoutNote
+          - ObjectLayoutBookmark
+          - ObjectLayoutSet
+          - ObjectLayoutCollection
+          - ObjectLayoutParticipant
         name:
           description: The name of the object
           example: My object
@@ -754,7 +738,18 @@ components:
           example: ot-page
           type: string
         layout:
-          $ref: '#/components/schemas/object.ObjectLayout'
+          description: The layout of the object
+          example: todo
+          type: string
+          x-enum-varnames:
+          - ObjectLayoutBasic
+          - ObjectLayoutProfile
+          - ObjectLayoutTodo
+          - ObjectLayoutNote
+          - ObjectLayoutBookmark
+          - ObjectLayoutSet
+          - ObjectLayoutCollection
+          - ObjectLayoutParticipant
         name:
           description: The name of the type
           example: Page
@@ -770,6 +765,15 @@ components:
           type: array
           uniqueItems: false
       type: object
+    object.TypeLayout:
+      description: The layout of the type
+      example: todo
+      type: string
+      x-enum-varnames:
+      - TypeLayoutBasic
+      - TypeLayoutProfile
+      - TypeLayoutTodo
+      - TypeLayoutNote
     object.TypeResponse:
       properties:
         type:
@@ -817,10 +821,10 @@ components:
           example: todo
           type: string
           x-enum-varnames:
-          - ObjectLayoutBasic
-          - ObjectLayoutProfile
-          - ObjectLayoutTodo
-          - ObjectLayoutNote
+          - TypeLayoutBasic
+          - TypeLayoutProfile
+          - TypeLayoutTodo
+          - TypeLayoutNote
         name:
           description: The name to set for the type
           example: Page

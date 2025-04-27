@@ -82,7 +82,7 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:       GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-			Layout:     s.objectTypeLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
+			Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
 		})
 	}
@@ -124,7 +124,7 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (T
 		Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:       GetIcon(s.gatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		Layout:     s.objectTypeLayoutToObjectLayout(model.ObjectTypeLayout(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
+		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
 	}, nil
 }
@@ -230,7 +230,7 @@ func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]Pro
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:       GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-			Layout:     s.objectTypeLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
+			Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
 		}
 	}
@@ -248,7 +248,7 @@ func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request 
 
 	fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
 	fields[bundle.RelationKeyPluralName.String()] = pbtypes.String(s.sanitizedString(request.PluralName))
-	fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.objectLayoutToObjectTypeLayout(request.Layout)))
+	fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(request.Layout)))
 
 	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
 	if err != nil {
@@ -311,52 +311,6 @@ func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	return &types.Struct{Fields: fields}, nil
 }
 
-func (s *service) layoutToObjectTypeLayout(layout Layout) model.ObjectTypeLayout {
-	switch layout {
-	case LayoutBasic:
-		return model.ObjectType_basic
-	case LayoutProfile:
-		return model.ObjectType_profile
-	case LayoutTodo:
-		return model.ObjectType_todo
-	case LayoutNote:
-		return model.ObjectType_note
-	case LayoutBookmark:
-		return model.ObjectType_bookmark
-	case LayoutSet:
-		return model.ObjectType_set
-	case LayoutCollection:
-		return model.ObjectType_collection
-	case LayoutParticipant:
-		return model.ObjectType_participant
-	default:
-		return model.ObjectType_basic
-	}
-}
-
-func (s *service) objectTypeLayoutToLayout(objectTypeLayout model.ObjectTypeLayout) Layout {
-	switch objectTypeLayout {
-	case model.ObjectType_basic:
-		return LayoutBasic
-	case model.ObjectType_profile:
-		return LayoutProfile
-	case model.ObjectType_todo:
-		return LayoutTodo
-	case model.ObjectType_note:
-		return LayoutNote
-	case model.ObjectType_bookmark:
-		return LayoutBookmark
-	case model.ObjectType_set:
-		return LayoutSet
-	case model.ObjectType_collection:
-		return LayoutCollection
-	case model.ObjectType_participant:
-		return LayoutParticipant
-	default:
-		return LayoutBasic
-	}
-}
-
 func (s *service) objectLayoutToObjectTypeLayout(objectLayout ObjectLayout) model.ObjectTypeLayout {
 	switch objectLayout {
 	case ObjectLayoutBasic:
@@ -367,12 +321,20 @@ func (s *service) objectLayoutToObjectTypeLayout(objectLayout ObjectLayout) mode
 		return model.ObjectType_todo
 	case ObjectLayoutNote:
 		return model.ObjectType_note
+	case ObjectLayoutBookmark:
+		return model.ObjectType_bookmark
+	case ObjectLayoutSet:
+		return model.ObjectType_set
+	case ObjectLayoutCollection:
+		return model.ObjectType_collection
+	case ObjectLayoutParticipant:
+		return model.ObjectType_participant
 	default:
 		return model.ObjectType_basic
 	}
 }
 
-func (s *service) objectTypeLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) ObjectLayout {
+func (s *service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) ObjectLayout {
 	switch objectTypeLayout {
 	case model.ObjectType_basic:
 		return ObjectLayoutBasic
@@ -382,7 +344,45 @@ func (s *service) objectTypeLayoutToObjectLayout(objectTypeLayout model.ObjectTy
 		return ObjectLayoutTodo
 	case model.ObjectType_note:
 		return ObjectLayoutNote
+	case model.ObjectType_bookmark:
+		return ObjectLayoutBookmark
+	case model.ObjectType_set:
+		return ObjectLayoutSet
+	case model.ObjectType_collection:
+		return ObjectLayoutCollection
+	case model.ObjectType_participant:
+		return ObjectLayoutParticipant
 	default:
 		return ObjectLayoutBasic
+	}
+}
+
+func (s *service) typeLayoutToObjectTypeLayout(typeLayout TypeLayout) model.ObjectTypeLayout {
+	switch typeLayout {
+	case TypeLayoutBasic:
+		return model.ObjectType_basic
+	case TypeLayoutProfile:
+		return model.ObjectType_profile
+	case TypeLayoutTodo:
+		return model.ObjectType_todo
+	case TypeLayoutNote:
+		return model.ObjectType_note
+	default:
+		return model.ObjectType_basic
+	}
+}
+
+func (s *service) otLayoutToTypeLayout(objectTypeLayout model.ObjectTypeLayout) TypeLayout {
+	switch objectTypeLayout {
+	case model.ObjectType_basic:
+		return TypeLayoutBasic
+	case model.ObjectType_profile:
+		return TypeLayoutProfile
+	case model.ObjectType_todo:
+		return TypeLayoutTodo
+	case model.ObjectType_note:
+		return TypeLayoutNote
+	default:
+		return TypeLayoutBasic
 	}
 }

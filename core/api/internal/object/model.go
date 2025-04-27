@@ -37,40 +37,17 @@ func (pf *PropertyFormat) UnmarshalJSON(data []byte) error {
 	}
 }
 
-type Layout string
-
-const (
-	LayoutBasic       Layout = "basic"
-	LayoutProfile     Layout = "profile"
-	LayoutTodo        Layout = "todo"
-	LayoutNote        Layout = "note"
-	LayoutBookmark    Layout = "bookmark"
-	LayoutSet         Layout = "set"
-	LayoutCollection  Layout = "collection"
-	LayoutParticipant Layout = "participant"
-)
-
-func (l *Layout) UnmarshalJSON(data []byte) error {
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	switch Layout(s) {
-	case LayoutBasic, LayoutProfile, LayoutTodo, LayoutNote, LayoutBookmark, LayoutSet, LayoutCollection, LayoutParticipant:
-		*l = Layout(s)
-		return nil
-	default:
-		return util.ErrBadInput(fmt.Sprintf("invalid layout: %q", s))
-	}
-}
-
 type ObjectLayout string
 
 const (
-	ObjectLayoutBasic   ObjectLayout = "basic"
-	ObjectLayoutProfile ObjectLayout = "profile"
-	ObjectLayoutTodo    ObjectLayout = "todo"
-	ObjectLayoutNote    ObjectLayout = "note"
+	ObjectLayoutBasic       ObjectLayout = "basic"
+	ObjectLayoutProfile     ObjectLayout = "profile"
+	ObjectLayoutTodo        ObjectLayout = "todo"
+	ObjectLayoutNote        ObjectLayout = "note"
+	ObjectLayoutBookmark    ObjectLayout = "bookmark"
+	ObjectLayoutSet         ObjectLayout = "set"
+	ObjectLayoutCollection  ObjectLayout = "collection"
+	ObjectLayoutParticipant ObjectLayout = "participant"
 )
 
 func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
@@ -79,8 +56,31 @@ func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch ObjectLayout(s) {
-	case ObjectLayoutBasic, ObjectLayoutProfile, ObjectLayoutTodo, ObjectLayoutNote:
+	case ObjectLayoutBasic, ObjectLayoutProfile, ObjectLayoutTodo, ObjectLayoutNote, ObjectLayoutBookmark, ObjectLayoutSet, ObjectLayoutCollection, ObjectLayoutParticipant:
 		*ol = ObjectLayout(s)
+		return nil
+	default:
+		return util.ErrBadInput(fmt.Sprintf("invalid layout: %q", s))
+	}
+}
+
+type TypeLayout string
+
+const (
+	TypeLayoutBasic   TypeLayout = "basic"
+	TypeLayoutProfile TypeLayout = "profile"
+	TypeLayoutTodo    TypeLayout = "todo"
+	TypeLayoutNote    TypeLayout = "note"
+)
+
+func (tl *TypeLayout) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	switch TypeLayout(s) {
+	case TypeLayoutBasic, TypeLayoutProfile, TypeLayoutTodo, TypeLayoutNote:
+		*tl = TypeLayout(s)
 		return nil
 	default:
 		return util.ErrBadInput(fmt.Sprintf("invalid object layout: %q", s))
@@ -115,7 +115,7 @@ type Object struct {
 	Archived   bool                `json:"archived" example:"false"`                                                                     // Whether the object is archived
 	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
 	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout     Layout              `json:"layout" example:"basic"`                                                                       // The layout of the object
+	Layout     ObjectLayout        `json:"layout" example:"basic"`                                                                       // The layout of the object
 	Type       Type                `json:"type"`                                                                                         // The type of the object
 	Properties []PropertyWithValue `json:"properties"`                                                                                   // The properties of the object
 }
@@ -128,7 +128,7 @@ type ObjectWithBlocks struct {
 	Archived   bool                `json:"archived" example:"false"`                                                                     // Whether the object is archived
 	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
 	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout     Layout              `json:"layout" example:"basic"`                                                                       // The layout of the object
+	Layout     ObjectLayout        `json:"layout" example:"basic"`                                                                       // The layout of the object
 	Type       Type                `json:"type"`                                                                                         // The type of the object
 	Properties []PropertyWithValue `json:"properties"`                                                                                   // The properties of the object
 	Blocks     []Block             `json:"blocks"`                                                                                       // The blocks of the object. Omitted in endpoints for searching or listing objects, only included when getting single object.
@@ -263,7 +263,7 @@ type CreateTypeRequest struct {
 	Name       string         `json:"name" binding:"required" example:"Page"`   // The name of the type
 	PluralName string         `json:"plural_name" example:"Pages"`              // The plural name of the type
 	Icon       Icon           `json:"icon"`                                     // The icon of the type
-	Layout     ObjectLayout   `json:"layout" binding:"required" example:"todo"` // The layout of the type
+	Layout     TypeLayout     `json:"layout" binding:"required" example:"todo"` // The layout of the type
 	Properties []PropertyLink `json:"properties"`                               // The properties linked to the type
 }
 
@@ -271,7 +271,7 @@ type UpdateTypeRequest struct {
 	Name       string         `json:"name" example:"Page"`         // The name to set for the type
 	PluralName string         `json:"plural_name" example:"Pages"` // The plural name to set for the type
 	Icon       Icon           `json:"icon"`                        // The icon to set for the type
-	Layout     ObjectLayout   `json:"layout" example:"todo"`       // The layout to set for the type
+	Layout     TypeLayout     `json:"layout" example:"todo"`       // The layout to set for the type
 	Properties []PropertyLink `json:"properties"`                  // The properties to set for the type
 }
 
