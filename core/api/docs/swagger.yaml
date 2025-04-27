@@ -183,10 +183,6 @@ components:
           description: The body of the object
           example: This is the body of the object. Markdown syntax is supported here.
           type: string
-        description:
-          description: The description of the object
-          example: This is a description of the object.
-          type: string
         icon:
           $ref: '#/components/schemas/object.Icon'
         name:
@@ -194,11 +190,11 @@ components:
           example: My object
           type: string
         properties:
-          additionalProperties: {}
           description: The properties to set on the object
-          example:
-            '{"property_key"': ' "value"}'
-          type: object
+          items:
+            $ref: '#/components/schemas/object.PropertyEntry'
+          type: array
+          uniqueItems: false
         source:
           description: The source url, only applicable for bookmarks
           example: https://bookmark-source.com
@@ -300,7 +296,7 @@ components:
           type: string
         file:
           description: The file of the icon
-          example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
+          example: bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
           type: string
         format:
           $ref: '#/components/schemas/object.IconFormat'
@@ -503,6 +499,69 @@ components:
           example: https://example.com
           type: string
       type: object
+    object.PropertyEntry:
+      properties:
+        checkbox:
+          description: The checkbox value, if applicable
+          enum:
+          - true
+          - false
+          example: true
+          type: boolean
+        date:
+          description: The date value, if applicable
+          example: "2025-02-14T12:34:56Z"
+          type: string
+        email:
+          description: The email value, if applicable
+          example: example@example.com
+          type: string
+        files:
+          description: The file references, if applicable
+          example:
+          - '[''fileId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        key:
+          description: The key of the property
+          example: last_modified_date
+          type: string
+        multi_select:
+          description: The multi-select values, if applicable
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        number:
+          description: The number value, if applicable
+          example: 42
+          type: number
+        objects:
+          description: The object references, if applicable
+          example:
+          - '[''objectId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        phone:
+          description: The phone number value, if applicable
+          example: "+1234567890"
+          type: string
+        select:
+          description: The select value, if applicable
+          type: string
+        text:
+          description: The text value, if applicable
+          example: Some text...
+          type: string
+        url:
+          description: The url value, if applicable
+          example: https://example.com
+          type: string
+      type: object
     object.PropertyFormat:
       description: The format of the property used for filtering
       enum:
@@ -653,10 +712,6 @@ components:
       type: object
     object.UpdateObjectRequest:
       properties:
-        description:
-          description: The description to set for the object
-          example: This is a description of the object.
-          type: string
         icon:
           $ref: '#/components/schemas/object.Icon'
         name:
@@ -664,11 +719,11 @@ components:
           example: My object
           type: string
         properties:
-          additionalProperties: {}
-          description: The properties to update on the object
-          example:
-            '{"property_key"': ' "value"}'
-          type: object
+          description: The properties to set on the object
+          items:
+            $ref: '#/components/schemas/object.PropertyEntry'
+          type: array
+          uniqueItems: false
       type: object
     object.UpdatePropertyRequest:
       properties:

@@ -60,11 +60,11 @@ func (c *Color) UnmarshalJSON(data []byte) error {
 }
 
 type Icon struct {
-	Format IconFormat `json:"format" enums:"emoji,file,icon" example:"emoji"`                                                                    // The type of the icon
-	Emoji  *string    `json:"emoji,omitempty" example:"📄"`                                                                                       // The emoji of the icon
-	File   *string    `json:"file,omitempty" example:"http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
-	Name   *string    `json:"name,omitempty" example:"document"`                                                                                 // The name of the icon
-	Color  *Color     `json:"color,omitempty" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"`                    // The color of the icon
+	Format IconFormat `json:"format" enums:"emoji,file,icon" example:"emoji"`                                                 // The type of the icon
+	Emoji  *string    `json:"emoji,omitempty" example:"📄"`                                                                    // The emoji of the icon
+	File   *string    `json:"file,omitempty" example:"bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"`           // The file of the icon
+	Name   *string    `json:"name,omitempty" example:"document"`                                                              // The name of the icon
+	Color  *Color     `json:"color,omitempty" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the icon
 }
 
 var iconOptionToColor = map[float64]Color{
@@ -114,10 +114,14 @@ func ColorPtr(c Color) *Color {
 	return &c
 }
 
-// isEmoji returns true if every rune in s is in the Unicode 'Symbol, Other' category.
 func IsEmoji(s string) bool {
+	if s == "" {
+		return false
+	}
 	for _, r := range s {
-		if !unicode.Is(unicode.So, r) {
+		if unicode.Is(unicode.Cf, r) || unicode.Is(unicode.So, r) || unicode.Is(unicode.Sk, r) {
+			continue
+		} else {
 			return false
 		}
 	}

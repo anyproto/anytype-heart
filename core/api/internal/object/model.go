@@ -38,21 +38,19 @@ func (pf *PropertyFormat) UnmarshalJSON(data []byte) error {
 }
 
 type CreateObjectRequest struct {
-	Name        string                 `json:"name" binding:"required" example:"My object"`                                       // The name of the object
-	Icon        Icon                   `json:"icon"`                                                                              // The icon of the object
-	Description string                 `json:"description" example:"This is a description of the object."`                        // The description of the object
-	Body        string                 `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
-	Source      string                 `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
-	TemplateId  string                 `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
-	TypeKey     string                 `json:"type_key" binding:"required" example:"ot-page"`                                     // The key of the type of object to create
-	Properties  map[string]interface{} `json:"properties" example:"{\"property_key\": \"value\"}"`                                // The properties to set on the object
+	Name       string          `json:"name" binding:"required" example:"My object"`                                       // The name of the object
+	Icon       Icon            `json:"icon"`                                                                              // The icon of the object
+	Body       string          `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
+	Source     string          `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
+	TemplateId string          `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
+	TypeKey    string          `json:"type_key" binding:"required" example:"ot-page"`                                     // The key of the type of object to create
+	Properties []PropertyEntry `json:"properties"`                                                                        // The properties to set on the object
 }
 
 type UpdateObjectRequest struct {
-	Name        string                 `json:"name" example:"My object"`                                   // The name of the object
-	Icon        Icon                   `json:"icon"`                                                       // The icon to set for the object
-	Description string                 `json:"description" example:"This is a description of the object."` // The description to set for the object
-	Properties  map[string]interface{} `json:"properties" example:"{\"property_key\": \"value\"}"`         // The properties to update on the object
+	Name       string          `json:"name" example:"My object"` // The name of the object
+	Icon       Icon            `json:"icon"`                     // The icon to set for the object
+	Properties []PropertyEntry `json:"properties"`               // The properties to set for the object
 }
 
 type ObjectResponse struct {
@@ -154,6 +152,21 @@ type Property struct {
 	Email       *string        `json:"email,omitempty" example:"example@example.com"`                                                             // The email value, if applicable
 	Phone       *string        `json:"phone,omitempty" example:"+1234567890"`                                                                     // The phone number value, if applicable
 	Objects     []string       `json:"objects,omitempty" example:"['objectId']"`                                                                  // The object references, if applicable
+}
+
+type PropertyEntry struct {
+	Key         string   `json:"key" example:"last_modified_date"`                     // The key of the property
+	Text        *string  `json:"text,omitempty" example:"Some text..."`                // The text value, if applicable
+	Number      *float64 `json:"number,omitempty" example:"42"`                        // The number value, if applicable
+	Select      *string  `json:"select,omitempty"`                                     // The select value, if applicable
+	MultiSelect []string `json:"multi_select,omitempty"`                               // The multi-select values, if applicable
+	Date        *string  `json:"date,omitempty" example:"2025-02-14T12:34:56Z"`        // The date value, if applicable
+	Files       []string `json:"files,omitempty" example:"['fileId']"`                 // The file references, if applicable
+	Checkbox    *bool    `json:"checkbox,omitempty" example:"true" enums:"true,false"` // The checkbox value, if applicable
+	Url         *string  `json:"url,omitempty" example:"https://example.com"`          // The url value, if applicable
+	Email       *string  `json:"email,omitempty" example:"example@example.com"`        // The email value, if applicable
+	Phone       *string  `json:"phone,omitempty" example:"+1234567890"`                // The phone number value, if applicable
+	Objects     []string `json:"objects,omitempty" example:"['objectId']"`             // The object references, if applicable
 }
 
 type TagResponse struct {

@@ -217,7 +217,7 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 	}
 
 	// ObjectRelationAddFeatured if description was set
-	if request.Description != "" {
+	if details.Fields[bundle.RelationKeyDescription.String()] != nil {
 		relAddFeatResp := s.mw.ObjectRelationAddFeatured(ctx, &pb.RpcObjectRelationAddFeaturedRequest{
 			ContextId: objectId,
 			Relations: []string{bundle.RelationKeyDescription.String()},
@@ -287,7 +287,7 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 
 	iconFields := map[string]*types.Value{}
 	if request.Icon.Emoji != nil {
-		if !IsEmoji(*request.Icon.Emoji) {
+		if len(*request.Icon.Emoji) > 0 && !IsEmoji(*request.Icon.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")
 		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*request.Icon.Emoji)
@@ -296,16 +296,15 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 	}
 
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(s.sanitizedString(request.Name)),
-		bundle.RelationKeyDescription.String(): pbtypes.String(s.sanitizedString(request.Description)),
-		bundle.RelationKeySource.String():      pbtypes.String(s.sanitizedString(request.Source)),
-		bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
+		bundle.RelationKeyName.String():   pbtypes.String(s.sanitizedString(request.Name)),
+		bundle.RelationKeySource.String(): pbtypes.String(s.sanitizedString(request.Source)),
+		bundle.RelationKeyOrigin.String(): pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 	for k, v := range iconFields {
 		fields[k] = v
 	}
 
-	if request.Properties == nil {
+	if len(request.Properties) == 0 {
 		return &types.Struct{Fields: fields}, nil
 	}
 
@@ -314,25 +313,89 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 		return nil, err
 	}
 
-	for key, val := range request.Properties {
+	for _, entry := range request.Properties {
+		key := entry.Key
 		rk := FromPropertyApiKey(key)
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
-
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
 			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly")
 		}
-
-		if prop, ok := propertyMap[rk]; ok {
-			sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, val, prop)
-			if err != nil {
-				return nil, err
-			}
-			fields[rk] = pbtypes.ToValue(sanitized)
-		} else {
-			return nil, errors.New("unknown property '" + key + "' must be a string")
+		prop, ok := propertyMap[rk]
+		if !ok {
+			return nil, errors.New("unknown property '" + key + "'")
 		}
+
+		var raw interface{}
+		switch prop.Format {
+		case PropertyFormatText:
+			if entry.Text == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a text value")
+			}
+			raw = *entry.Text
+		case PropertyFormatNumber:
+			if entry.Number == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a number value")
+			}
+			raw = *entry.Number
+		case PropertyFormatSelect:
+			if entry.Select == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a select value")
+			}
+			raw = *entry.Select
+		case PropertyFormatMultiSelect:
+			ids := make([]interface{}, len(entry.MultiSelect))
+			for i, tagId := range entry.MultiSelect {
+				ids[i] = tagId
+			}
+			raw = ids
+		case PropertyFormatDate:
+			if entry.Date == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a date value")
+			}
+			raw = *entry.Date
+		case PropertyFormatCheckbox:
+			if entry.Checkbox == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a boolean value")
+			}
+			raw = *entry.Checkbox
+		case PropertyFormatUrl:
+			if entry.Url == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a URL value")
+			}
+			raw = *entry.Url
+		case PropertyFormatEmail:
+			if entry.Email == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires an email value")
+			}
+			raw = *entry.Email
+		case PropertyFormatPhone:
+			if entry.Phone == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a phone value")
+			}
+			raw = *entry.Phone
+		case PropertyFormatObjects, PropertyFormatFiles:
+			var list []string
+			if prop.Format == PropertyFormatFiles {
+				list = entry.Files
+			} else {
+				list = entry.Objects
+			}
+			ids := make([]interface{}, len(list))
+			for i, id := range list {
+				ids[i] = id
+			}
+			raw = ids
+		default:
+			return nil, util.ErrBadInput("unsupported property format: " + string(prop.Format))
+		}
+
+		sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, raw, prop)
+		if err != nil {
+			return nil, err
+		}
+		fields[rk] = pbtypes.ToValue(sanitized)
 	}
 
 	return &types.Struct{Fields: fields}, nil
