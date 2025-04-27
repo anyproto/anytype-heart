@@ -3,13 +3,11 @@ package object
 import (
 	"context"
 	"errors"
-	"slices"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -135,54 +133,6 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, resp.ObjectView.Blocks, propertyMap, typeMap, tagMap), nil
 }
 
-// DeleteObject deletes an existing object in a specific space.
-func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error) {
-	object, err := s.GetObject(ctx, spaceId, objectId)
-	if err != nil {
-		return ObjectWithBlocks{}, err
-	}
-
-	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
-		ContextId:  objectId,
-		IsArchived: true,
-	})
-
-	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return ObjectWithBlocks{}, ErrFailedDeleteObject
-	}
-
-	return object, nil
-}
-
-// UpdateObject updates an existing object in a specific space.
-func (s *service) UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (ObjectWithBlocks, error) {
-	// TODO: implement details build & validation
-	details := &types.Struct{}
-	// details, err := s.buildObjectDetails(ctx, spaceId, request)
-	// if err != nil {
-	// 	return ObjectWithBlocks{}, err
-	// }
-
-	detailList := make([]*model.Detail, 0, len(details.Fields))
-	for k, v := range details.Fields {
-		detailList = append(detailList, &model.Detail{
-			Key:   k,
-			Value: v,
-		})
-	}
-
-	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
-		ContextId: objectId,
-		Details:   detailList,
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-		return ObjectWithBlocks{}, ErrFailedUpdateObject
-	}
-
-	return s.GetObject(ctx, spaceId, objectId)
-}
-
 // CreateObject creates a new object in a specific space.
 func (s *service) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error) {
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
@@ -273,26 +223,56 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 	return s.GetObject(ctx, spaceId, objectId)
 }
 
+// UpdateObject updates an existing object in a specific space.
+func (s *service) UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (ObjectWithBlocks, error) {
+	details, err := s.buildUpdatedObjectDetails(ctx, spaceId, request)
+	if err != nil {
+		return ObjectWithBlocks{}, err
+	}
+
+	detailList := make([]*model.Detail, 0, len(details.Fields))
+	for k, v := range details.Fields {
+		detailList = append(detailList, &model.Detail{
+			Key:   k,
+			Value: v,
+		})
+	}
+
+	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
+		ContextId: objectId,
+		Details:   detailList,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
+		return ObjectWithBlocks{}, ErrFailedUpdateObject
+	}
+
+	return s.GetObject(ctx, spaceId, objectId)
+}
+
+// DeleteObject deletes an existing object in a specific space.
+func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error) {
+	object, err := s.GetObject(ctx, spaceId, objectId)
+	if err != nil {
+		return ObjectWithBlocks{}, err
+	}
+
+	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
+		ContextId:  objectId,
+		IsArchived: true,
+	})
+
+	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
+		return ObjectWithBlocks{}, ErrFailedDeleteObject
+	}
+
+	return object, nil
+}
+
 // buildObjectDetails extracts the details structure from the CreateObjectRequest.
 func (s *service) buildObjectDetails(ctx context.Context, spaceId string, request CreateObjectRequest) (*types.Struct, error) {
-	// Validate bookmark source
 	if request.TypeKey == "ot-bookmark" && request.Source == "" {
 		return nil, util.ErrBadInput("source is missing for bookmark")
-	}
-
-	// Validate icon: only allow either emoji or file, and disallow name and color fields.
-	if request.Icon.Name != nil || request.Icon.Color != nil {
-		return nil, util.ErrBadInput("icon name and color are not supported for object")
-	}
-
-	iconFields := map[string]*types.Value{}
-	if request.Icon.Emoji != nil {
-		if len(*request.Icon.Emoji) > 0 && !IsEmoji(*request.Icon.Emoji) {
-			return nil, util.ErrBadInput("icon emoji is not valid")
-		}
-		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*request.Icon.Emoji)
-	} else if request.Icon.File != nil {
-		iconFields[bundle.RelationKeyIconImage.String()] = pbtypes.String(*request.Icon.File)
 	}
 
 	fields := map[string]*types.Value{
@@ -300,105 +280,70 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 		bundle.RelationKeySource.String(): pbtypes.String(s.sanitizedString(request.Source)),
 		bundle.RelationKeyOrigin.String(): pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
+
+	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
+	if err != nil {
+		return nil, err
+	}
 	for k, v := range iconFields {
 		fields[k] = v
 	}
 
-	if len(request.Properties) == 0 {
-		return &types.Struct{Fields: fields}, nil
-	}
-
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propFields, err := s.processProperties(ctx, spaceId, request.Properties)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, entry := range request.Properties {
-		key := entry.Key
-		rk := FromPropertyApiKey(key)
-		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
-			continue
-		}
-		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
-			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly")
-		}
-		prop, ok := propertyMap[rk]
-		if !ok {
-			return nil, errors.New("unknown property '" + key + "'")
-		}
-
-		var raw interface{}
-		switch prop.Format {
-		case PropertyFormatText:
-			if entry.Text == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a text value")
-			}
-			raw = *entry.Text
-		case PropertyFormatNumber:
-			if entry.Number == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a number value")
-			}
-			raw = *entry.Number
-		case PropertyFormatSelect:
-			if entry.Select == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a select value")
-			}
-			raw = *entry.Select
-		case PropertyFormatMultiSelect:
-			ids := make([]interface{}, len(entry.MultiSelect))
-			for i, tagId := range entry.MultiSelect {
-				ids[i] = tagId
-			}
-			raw = ids
-		case PropertyFormatDate:
-			if entry.Date == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a date value")
-			}
-			raw = *entry.Date
-		case PropertyFormatCheckbox:
-			if entry.Checkbox == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a boolean value")
-			}
-			raw = *entry.Checkbox
-		case PropertyFormatUrl:
-			if entry.Url == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a URL value")
-			}
-			raw = *entry.Url
-		case PropertyFormatEmail:
-			if entry.Email == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires an email value")
-			}
-			raw = *entry.Email
-		case PropertyFormatPhone:
-			if entry.Phone == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a phone value")
-			}
-			raw = *entry.Phone
-		case PropertyFormatObjects, PropertyFormatFiles:
-			var list []string
-			if prop.Format == PropertyFormatFiles {
-				list = entry.Files
-			} else {
-				list = entry.Objects
-			}
-			ids := make([]interface{}, len(list))
-			for i, id := range list {
-				ids[i] = id
-			}
-			raw = ids
-		default:
-			return nil, util.ErrBadInput("unsupported property format: " + string(prop.Format))
-		}
-
-		sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, raw, prop)
-		if err != nil {
-			return nil, err
-		}
-		fields[rk] = pbtypes.ToValue(sanitized)
+	for k, v := range propFields {
+		fields[k] = v
 	}
 
 	return &types.Struct{Fields: fields}, nil
+}
+
+// buildUpdatedObjectDetails extracts the details structure from the UpdateObjectRequest.
+func (s *service) buildUpdatedObjectDetails(ctx context.Context, spaceId string, request UpdateObjectRequest) (*types.Struct, error) {
+	fields := make(map[string]*types.Value)
+	if request.Name != "" {
+		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
+	}
+
+	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range iconFields {
+		fields[k] = v
+	}
+
+	propFields, err := s.processProperties(ctx, spaceId, request.Properties)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range propFields {
+		fields[k] = v
+	}
+
+	return &types.Struct{Fields: fields}, nil
+}
+
+// processIconFields returns the detail fields corresponding to the given icon.
+func (s *service) processIconFields(ctx context.Context, spaceId string, icon Icon) (map[string]*types.Value, error) {
+	if icon.Name != nil || icon.Color != nil {
+		return nil, util.ErrBadInput("icon name and color are not supported for object")
+	}
+	iconFields := make(map[string]*types.Value)
+	if icon.Emoji != nil {
+		if len(*icon.Emoji) > 0 && !IsEmoji(*icon.Emoji) {
+			return nil, util.ErrBadInput("icon emoji is not valid")
+		}
+		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*icon.Emoji)
+	} else if icon.File != nil {
+		if !s.isValidFileReference(ctx, spaceId, s.sanitizedString(*icon.File)) {
+			return nil, util.ErrBadInput("icon file is not valid")
+		}
+		iconFields[bundle.RelationKeyIconImage.String()] = pbtypes.String(*icon.File)
+	}
+	return iconFields, nil
 }
 
 // getBlocksFromDetails returns the list of blocks from the ObjectShowResponse.

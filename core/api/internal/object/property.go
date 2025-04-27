@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -246,6 +248,102 @@ func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 	return property, nil
 }
 
+// processProperties builds detail fields for the given property entries, applying sanitization and validation for each.
+func (s *service) processProperties(ctx context.Context, spaceId string, entries []PropertyEntry) (map[string]*types.Value, error) {
+	fields := make(map[string]*types.Value)
+	if len(entries) == 0 {
+		return fields, nil
+	}
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		key := entry.Key
+		rk := FromPropertyApiKey(key)
+		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
+			continue
+		}
+		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
+			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly")
+		}
+		prop, ok := propertyMap[rk]
+		if !ok {
+			return nil, errors.New("unknown property '" + key + "'")
+		}
+		var raw interface{}
+		switch prop.Format {
+		case PropertyFormatText:
+			if entry.Text == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a text value")
+			}
+			raw = *entry.Text
+		case PropertyFormatNumber:
+			if entry.Number == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a number value")
+			}
+			raw = *entry.Number
+		case PropertyFormatSelect:
+			if entry.Select == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a select value")
+			}
+			raw = *entry.Select
+		case PropertyFormatMultiSelect:
+			ids := make([]interface{}, len(entry.MultiSelect))
+			for i, id := range entry.MultiSelect {
+				ids[i] = id
+			}
+			raw = ids
+		case PropertyFormatDate:
+			if entry.Date == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a date value")
+			}
+			raw = *entry.Date
+		case PropertyFormatCheckbox:
+			if entry.Checkbox == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a boolean value")
+			}
+			raw = *entry.Checkbox
+		case PropertyFormatUrl:
+			if entry.Url == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a URL value")
+			}
+			raw = *entry.Url
+		case PropertyFormatEmail:
+			if entry.Email == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires an email value")
+			}
+			raw = *entry.Email
+		case PropertyFormatPhone:
+			if entry.Phone == nil {
+				return nil, util.ErrBadInput("property '" + key + "' requires a phone value")
+			}
+			raw = *entry.Phone
+		case PropertyFormatObjects, PropertyFormatFiles:
+			var list []string
+			if prop.Format == PropertyFormatFiles {
+				list = entry.Files
+			} else {
+				list = entry.Objects
+			}
+			ids := make([]interface{}, len(list))
+			for i, id := range list {
+				ids[i] = id
+			}
+			raw = ids
+		default:
+			return nil, util.ErrBadInput("unsupported property format: " + string(prop.Format))
+		}
+
+		sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, raw, prop)
+		if err != nil {
+			return nil, err
+		}
+		fields[rk] = pbtypes.ToValue(sanitized)
+	}
+	return fields, nil
+}
+
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
 func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId string, key string, format PropertyFormat, value interface{}, property Property) (interface{}, error) {
 	switch format {
@@ -345,6 +443,11 @@ func (s *service) isValidSelectOption(ctx context.Context, spaceId string, prope
 }
 
 func (s *service) isValidObjectReference(ctx context.Context, spaceId string, objectId string) bool {
+	// TODO: implement proper validation
+	return true
+}
+
+func (s *service) isValidFileReference(ctx context.Context, spaceId string, fileId string) bool {
 	// TODO: implement proper validation
 	return true
 }
