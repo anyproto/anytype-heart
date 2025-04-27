@@ -58,30 +58,30 @@ type ObjectResponse struct {
 }
 
 type Object struct {
-	Object     string     `json:"object" example:"object"`                                                                      // The data model of the object
-	Id         string     `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
-	Name       string     `json:"name" example:"My object"`                                                                     // The name of the object
-	Icon       Icon       `json:"icon"`                                                                                         // The icon of the object
-	Archived   bool       `json:"archived" example:"false"`                                                                     // Whether the object is archived
-	SpaceId    string     `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
-	Snippet    string     `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout     string     `json:"layout" example:"basic"`                                                                       // The layout of the object
-	Type       Type       `json:"type"`                                                                                         // The type of the object
-	Properties []Property `json:"properties"`                                                                                   // The properties of the object
+	Object     string              `json:"object" example:"object"`                                                                      // The data model of the object
+	Id         string              `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
+	Name       string              `json:"name" example:"My object"`                                                                     // The name of the object
+	Icon       Icon                `json:"icon"`                                                                                         // The icon of the object
+	Archived   bool                `json:"archived" example:"false"`                                                                     // Whether the object is archived
+	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
+	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
+	Layout     string              `json:"layout" example:"basic"`                                                                       // The layout of the object
+	Type       Type                `json:"type"`                                                                                         // The type of the object
+	Properties []PropertyWithValue `json:"properties"`                                                                                   // The properties of the object
 }
 
 type ObjectWithBlocks struct {
-	Object     string     `json:"object" example:"object"`                                                                      // The data model of the object
-	Id         string     `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
-	Name       string     `json:"name" example:"My object"`                                                                     // The name of the object
-	Icon       Icon       `json:"icon"`                                                                                         // The icon of the object
-	Archived   bool       `json:"archived" example:"false"`                                                                     // Whether the object is archived
-	SpaceId    string     `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
-	Snippet    string     `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout     string     `json:"layout" example:"basic"`                                                                       // The layout of the object
-	Type       Type       `json:"type"`                                                                                         // The type of the object
-	Properties []Property `json:"properties"`                                                                                   // The properties of the object
-	Blocks     []Block    `json:"blocks"`                                                                                       // The blocks of the object. Omitted in endpoints for searching or listing objects, only included when getting single object.
+	Object     string              `json:"object" example:"object"`                                                                      // The data model of the object
+	Id         string              `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
+	Name       string              `json:"name" example:"My object"`                                                                     // The name of the object
+	Icon       Icon                `json:"icon"`                                                                                         // The icon of the object
+	Archived   bool                `json:"archived" example:"false"`                                                                     // Whether the object is archived
+	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
+	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
+	Layout     string              `json:"layout" example:"basic"`                                                                       // The layout of the object
+	Type       Type                `json:"type"`                                                                                         // The type of the object
+	Properties []PropertyWithValue `json:"properties"`                                                                                   // The properties of the object
+	Blocks     []Block             `json:"blocks"`                                                                                       // The blocks of the object. Omitted in endpoints for searching or listing objects, only included when getting single object.
 }
 
 type Block struct {
@@ -136,6 +136,14 @@ type UpdatePropertyRequest struct {
 }
 
 type Property struct {
+	Object string         `json:"object" example:"property"`                                                                                 // The data model of the object
+	Id     string         `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"`                                  // The id of the property
+	Key    string         `json:"key" example:"last_modified_date"`                                                                          // The key of the property
+	Name   string         `json:"name" example:"Last modified date"`                                                                         // The name of the property
+	Format PropertyFormat `json:"format" example:"date" enums:"text,number,select,multi_select,date,files,checkbox,url,email,phone,objects"` // The format of the property
+}
+
+type PropertyWithValue struct {
 	Object      string         `json:"object" example:"property"`                                                                                 // The data model of the object
 	Id          string         `json:"id" example:"bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a"`                                  // The id of the property
 	Key         string         `json:"key" example:"last_modified_date"`                                                                          // The key of the property

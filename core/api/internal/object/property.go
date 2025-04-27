@@ -451,8 +451,8 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property)
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
-func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]Property, tagMap map[string]Tag) []Property {
-	properties := make([]Property, 0)
+func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]Property, tagMap map[string]Tag) []PropertyWithValue {
+	properties := make([]PropertyWithValue, 0)
 	for rk, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
@@ -538,8 +538,8 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 }
 
 // buildPropertyWithValue creates a Property based on the format and converted value.
-func (s *service) buildPropertyWithValue(id string, key string, name string, format PropertyFormat, val interface{}) Property {
-	p := &Property{
+func (s *service) buildPropertyWithValue(id string, key string, name string, format PropertyFormat, val interface{}) PropertyWithValue {
+	p := &PropertyWithValue{
 		Object: "property",
 		Id:     id,
 		Key:    key,

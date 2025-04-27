@@ -344,7 +344,7 @@ components:
         properties:
           description: The properties of the object
           items:
-            $ref: '#/components/schemas/object.Property'
+            $ref: '#/components/schemas/object.PropertyWithValue'
           type: array
           uniqueItems: false
         snippet:
@@ -407,7 +407,7 @@ components:
         properties:
           description: The properties of the object
           items:
-            $ref: '#/components/schemas/object.Property'
+            $ref: '#/components/schemas/object.PropertyWithValue'
           type: array
           uniqueItems: false
         snippet:
@@ -425,29 +425,6 @@ components:
     object.Property:
       description: The property block, if applicable
       properties:
-        checkbox:
-          description: The checkbox value, if applicable
-          enum:
-          - true
-          - false
-          example: true
-          type: boolean
-        date:
-          description: The date value, if applicable
-          example: "2025-02-14T12:34:56Z"
-          type: string
-        email:
-          description: The email value, if applicable
-          example: example@example.com
-          type: string
-        files:
-          description: The file references, if applicable
-          example:
-          - '[''fileId'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
         format:
           $ref: '#/components/schemas/object.PropertyFormat'
         id:
@@ -458,45 +435,13 @@ components:
           description: The key of the property
           example: last_modified_date
           type: string
-        multi_select:
-          description: The multi-select values, if applicable
-          items:
-            $ref: '#/components/schemas/object.Tag'
-          type: array
-          uniqueItems: false
         name:
           description: The name of the property
           example: Last modified date
           type: string
-        number:
-          description: The number value, if applicable
-          example: 42
-          type: number
         object:
           description: The data model of the object
           example: property
-          type: string
-        objects:
-          description: The object references, if applicable
-          example:
-          - '[''objectId'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        phone:
-          description: The phone number value, if applicable
-          example: "+1234567890"
-          type: string
-        select:
-          $ref: '#/components/schemas/object.Tag'
-        text:
-          description: The text value, if applicable
-          example: Some text...
-          type: string
-        url:
-          description: The url value, if applicable
-          example: https://example.com
           type: string
       type: object
     object.PropertyEntry:
@@ -594,6 +539,82 @@ components:
       properties:
         property:
           $ref: '#/components/schemas/object.Property'
+      type: object
+    object.PropertyWithValue:
+      properties:
+        checkbox:
+          description: The checkbox value, if applicable
+          enum:
+          - true
+          - false
+          example: true
+          type: boolean
+        date:
+          description: The date value, if applicable
+          example: "2025-02-14T12:34:56Z"
+          type: string
+        email:
+          description: The email value, if applicable
+          example: example@example.com
+          type: string
+        files:
+          description: The file references, if applicable
+          example:
+          - '[''fileId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        format:
+          $ref: '#/components/schemas/object.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: last_modified_date
+          type: string
+        multi_select:
+          description: The multi-select values, if applicable
+          items:
+            $ref: '#/components/schemas/object.Tag'
+          type: array
+          uniqueItems: false
+        name:
+          description: The name of the property
+          example: Last modified date
+          type: string
+        number:
+          description: The number value, if applicable
+          example: 42
+          type: number
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+        objects:
+          description: The object references, if applicable
+          example:
+          - '[''objectId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        phone:
+          description: The phone number value, if applicable
+          example: "+1234567890"
+          type: string
+        select:
+          $ref: '#/components/schemas/object.Tag'
+        text:
+          description: The text value, if applicable
+          example: Some text...
+          type: string
+        url:
+          description: The url value, if applicable
+          example: https://example.com
+          type: string
       type: object
     object.Tag:
       description: The select value, if applicable
@@ -719,7 +740,7 @@ components:
           example: My object
           type: string
         properties:
-          description: The properties to set on the object
+          description: The properties to set for the object
           items:
             $ref: '#/components/schemas/object.PropertyEntry'
           type: array
