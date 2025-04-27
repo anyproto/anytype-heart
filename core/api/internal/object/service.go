@@ -30,6 +30,10 @@ type Service interface {
 
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
 	GetType(ctx context.Context, spaceId string, typeId string) (Type, error)
+	CreateType(ctx context.Context, spaceId string, request CreateTypeRequest) (Type, error)
+	UpdateType(ctx context.Context, spaceId string, typeId string, request UpdateTypeRequest) (Type, error)
+	DeleteType(ctx context.Context, spaceId string, typeId string) (Type, error)
+
 	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Object, int, bool, error)
 	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (ObjectWithBlocks, error)
 

@@ -112,9 +112,9 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// Type
 		v1.GET("/spaces/:space_id/types", object.ListTypesHandler(s.objectService))
 		v1.GET("/spaces/:space_id/types/:type_id", object.GetTypeHandler(s.objectService))
-		// TODO: implement add and remove type properties endpoints
-		// v1.POST("/spaces/:space_id/types/:type_id/properties", s.rateLimit(maxWriteRequestsPerSecond), object.AddTypePropertyHandler(s.objectService))
-		// v1.DELETE("/spaces/:space_id/types/:type_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteTypePropertyHandler(s.objectService))
+		v1.POST("/spaces/:space_id/types", s.rateLimit(maxWriteRequestsPerSecond), object.CreateTypeHandler(s.objectService))
+		v1.PATCH("/spaces/:space_id/types/:type_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateTypeHandler(s.objectService))
+		v1.DELETE("/spaces/:space_id/types/:type_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteTypeHandler(s.objectService))
 
 		// Template
 		v1.GET("/spaces/:space_id/types/:type_id/templates", object.ListTemplatesHandler(s.objectService))

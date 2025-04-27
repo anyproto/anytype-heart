@@ -20,6 +20,9 @@ var (
 	ErrFailedRetrieveType         = errors.New("failed to retrieve type")
 	ErrFailedRetrieveTemplateType = errors.New("failed to retrieve template type")
 	ErrTemplateTypeNotFound       = errors.New("template type not found")
+	ErrFailedCreateType           = errors.New("failed to create type")
+	ErrFailedUpdateType           = errors.New("failed to update type")
+	ErrFailedDeleteType           = errors.New("failed to delete object")
 	ErrFailedRetrieveTemplate     = errors.New("failed to retrieve template")
 	ErrFailedRetrieveTemplates    = errors.New("failed to retrieve templates")
 	ErrTemplateNotFound           = errors.New("template not found")
@@ -127,6 +130,37 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (T
 		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
 		Properties: s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
 	}, nil
+}
+
+// CreateType creates a new type in a specific space.
+func (s *service) CreateType(ctx context.Context, spaceId string, request CreateTypeRequest) (Type, error) {
+	// TODO
+	return Type{}, nil
+}
+
+// UpdateType updates an existing type in a specific space.
+func (s *service) UpdateType(ctx context.Context, spaceId string, typeId string, request UpdateTypeRequest) (Type, error) {
+	// TODO
+	return Type{}, nil
+}
+
+// DeleteType deletes a type by its ID in a specific space.
+func (s *service) DeleteType(ctx context.Context, spaceId string, typeId string) (Type, error) {
+	t, err := s.GetType(ctx, spaceId, typeId)
+	if err != nil {
+		return Type{}, err
+	}
+
+	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
+		ContextId:  typeId,
+		IsArchived: true,
+	})
+
+	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
+		return Type{}, ErrFailedDeleteObject
+	}
+
+	return t, nil
 }
 
 // ListTemplates returns a paginated list of templates in a specific space.

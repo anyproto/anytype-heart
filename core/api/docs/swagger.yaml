@@ -239,6 +239,21 @@ components:
       - color
       - name
       type: object
+    object.CreateTypeRequest:
+      properties:
+        icon:
+          $ref: '#/components/schemas/object.Icon'
+        layout:
+          description: The layout of the type
+          example: todo
+          type: string
+        name:
+          description: The name of the type
+          example: Page
+          type: string
+      required:
+      - name
+      type: object
     object.File:
       description: The file of the block, if applicable
       properties:
@@ -613,7 +628,7 @@ components:
           example: ot-page
           type: string
         layout:
-          description: The recommended layout of the type
+          description: The layout of the type
           example: todo
           type: string
         name:
@@ -672,6 +687,8 @@ components:
           description: The name to set for the tag
           example: In progress
           type: string
+      type: object
+    object.UpdateTypeRequest:
       type: object
     pagination.PaginatedResponse-list_View:
       properties:
@@ -2064,8 +2081,8 @@ paths:
     patch:
       description: This endpoint updates an existing object in the specified space
         using a JSON payload. The update process is subject to rate limiting. The
-        payload must include the object ID and the details to be updated. The endpoint
-        then returns the full object data, ready for further interactions.
+        payload must include the details to be updated. The endpoint then returns
+        the full object data, ready for further interactions.
       operationId: updateObject
       parameters:
       - description: The version of the API to use
@@ -2460,8 +2477,8 @@ paths:
     patch:
       description: This endpoint updates an existing property in the specified space
         using a JSON payload. The update process is subject to rate limiting. The
-        payload must include the property ID and the name to be updated. The endpoint
-        then returns the full property data, ready for further interactions.
+        payload must include the name to be updated. The endpoint then returns the
+        full property data, ready for further interactions.
       operationId: updateProperty
       parameters:
       - description: The version of the API to use
@@ -2959,11 +2976,11 @@ paths:
     get:
       description: This endpoint retrieves a paginated list of object types (e.g.
         'Page', 'Note', 'Task') available within the specified space. Each type’s
-        record includes its unique identifier, type key, display name, icon, and a
-        recommended layout. While a type's id is truly unique, a type's key can be
-        the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients
-        use this information when offering choices for object creation or for filtering
-        objects by type through search.
+        record includes its unique identifier, type key, display name, icon, and layout.
+        While a type's id is truly unique, a type's key can be the same across spaces
+        for known types, e.g. 'ot-page' for 'Page'. Clients use this information when
+        offering choices for object creation or for filtering objects by type through
+        search.
       operationId: listTypes
       parameters:
       - description: The version of the API to use
@@ -3017,13 +3034,145 @@ paths:
       summary: List types
       tags:
       - Types
+    post:
+      description: Creates a new object type in the specified space using a JSON payload.
+        The creation process is subject to rate limiting. The payload must include
+        type details such as the name, icon, and layout. The endpoint then returns
+        the full type data, ready to be used for creating objects.
+      operationId: createType
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/object.CreateTypeRequest'
+        description: Type to create
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.TypeResponse'
+          description: The created type
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Create type
+      tags:
+      - Types
   /spaces/{space_id}/types/{type_id}:
+    delete:
+      description: This endpoint “deletes” an object type by marking it as archived.
+        The deletion process is performed safely and is subject to rate limiting.
+        It returns the type’s details after it has been archived. Proper error handling
+        is in place for situations such as when the type isn’t found or the deletion
+        cannot be performed because of permission issues.
+      operationId: deleteType
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Type ID
+        in: path
+        name: type_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.TypeResponse'
+          description: The deleted type
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ForbiddenError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "423":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Delete type
+      tags:
+      - Types
     get:
       description: Fetches detailed information about one specific object type by
-        its ID. This includes the type’s unique key, name, icon, and recommended layout.
-        This detailed view assists clients in understanding the expected structure
-        and style for objects of that type and in guiding the user interface (such
-        as displaying appropriate icons or layout hints).
+        its ID. This includes the type’s unique key, name, icon, and layout. This
+        detailed view assists clients in understanding the expected structure and
+        style for objects of that type and in guiding the user interface (such as
+        displaying appropriate icons or layout hints).
       operationId: getType
       parameters:
       - description: The version of the API to use
@@ -3079,6 +3228,81 @@ paths:
       security:
       - bearerauth: []
       summary: Get type
+      tags:
+      - Types
+    patch:
+      description: This endpoint updates an existing object type in the specified
+        space using a JSON payload. The update process is subject to rate limiting.
+        The payload must include the name and properties to be updated. The endpoint
+        then returns the full type data, ready for further interactions.
+      operationId: updateType
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Type ID
+        in: path
+        name: type_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/object.UpdateTypeRequest'
+        description: Type to update
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/object.TypeResponse'
+          description: The updated type
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update type
       tags:
       - Types
   /spaces/{space_id}/types/{type_id}/templates:

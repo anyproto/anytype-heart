@@ -22,13 +22,13 @@ var (
 	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
 	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
 	ErrFailedRetrievePropertyMap = errors.New("failed to retrieve property  map")
-	ErrFailedDeleteObject        = errors.New("failed to delete object")
 	ErrFailedCreateObject        = errors.New("failed to create object")
 	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
 	ErrFailedCreateBookmark      = errors.New("failed to fetch bookmark")
 	ErrFailedCreateBlock         = errors.New("failed to create block")
 	ErrFailedPasteBody           = errors.New("failed to paste body")
 	ErrFailedUpdateObject        = errors.New("failed to update object")
+	ErrFailedDeleteObject        = errors.New("failed to delete object")
 )
 
 // ListObjects retrieves a paginated list of objects in a specific space.

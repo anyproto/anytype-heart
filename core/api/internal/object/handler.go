@@ -183,7 +183,7 @@ func CreateObjectHandler(s Service) gin.HandlerFunc {
 // UpdateObjectHandler updates an existing object in a space
 //
 //	@Summary		Update object
-//	@Description	This endpoint updates an existing object in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the object ID and the details to be updated. The endpoint then returns the full object data, ready for further interactions.
+//	@Description	This endpoint updates an existing object in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the details to be updated. The endpoint then returns the full object data, ready for further interactions.
 //	@Id				updateObject
 //	@Tags			Objects
 //	@Accept			json
@@ -392,7 +392,7 @@ func CreatePropertyHandler(s Service) gin.HandlerFunc {
 // UpdatePropertyHandler updates a property in a space
 //
 //	@Summary		Update property
-//	@Description	This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the property ID and the name to be updated. The endpoint then returns the full property data, ready for further interactions.
+//	@Description	This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name to be updated. The endpoint then returns the full property data, ready for further interactions.
 //	@Id				updateProperty
 //	@Tags			Properties
 //	@Accept			json
@@ -709,7 +709,7 @@ func DeleteTagHandler(s Service) gin.HandlerFunc {
 // ListTypesHandler retrieves a list of types in a space
 //
 //	@Summary		List types
-//	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and a recommended layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
+//	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
 //	@Id				listTypes
 //	@Tags			Types
 //	@Produce		json
@@ -746,7 +746,7 @@ func ListTypesHandler(s Service) gin.HandlerFunc {
 // GetTypeHandler retrieves a type in a space
 //
 //	@Summary		Get type
-//	@Description	Fetches detailed information about one specific object type by its ID. This includes the type’s unique key, name, icon, and recommended layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).
+//	@Description	Fetches detailed information about one specific object type by its ID. This includes the type’s unique key, name, icon, and layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).
 //	@Id				getType
 //	@Tags			Types
 //	@Produce		json
@@ -769,6 +769,144 @@ func GetTypeHandler(s Service) gin.HandlerFunc {
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrTypeNotFound, http.StatusNotFound),
 			util.ErrToCode(ErrTypeDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedRetrieveType, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TypeResponse{Type: object})
+	}
+}
+
+// CreateTypeHandler creates a new type in a space
+//
+//	@Summary		Create type
+//	@Description	Creates a new object type in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include type details such as the name, icon, and layout. The endpoint then returns the full type data, ready to be used for creating objects.
+//	@Id				createType
+//	@Tags			Types
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			type			body		CreateTypeRequest		true	"Type to create"
+//	@Success		200				{object}	TypeResponse			"The created type"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/types [post]
+func CreateTypeHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+
+		request := CreateTypeRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		object, err := s.CreateType(c.Request.Context(), spaceId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(ErrFailedCreateType, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedRetrieveType, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TypeResponse{Type: object})
+	}
+}
+
+// UpdateTypeHandler updates a type in a space
+//
+//	@Summary		Update type
+//	@Description	This endpoint updates an existing object type in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name and properties to be updated. The endpoint then returns the full type data, ready for further interactions.
+//	@Id				updateType
+//	@Tags			Types
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			type_id			path		string					true	"Type ID"
+//	@Param			type			body		UpdateTypeRequest		true	"Type to update"
+//	@Success		200				{object}	TypeResponse			"The updated type"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/types/{type_id} [patch]
+func UpdateTypeHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		typeId := c.Param("type_id")
+
+		request := UpdateTypeRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		object, err := s.UpdateType(c.Request.Context(), spaceId, typeId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(ErrTypeNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrTypeDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedUpdateType, http.StatusInternalServerError),
+			util.ErrToCode(ErrFailedRetrieveType, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, TypeResponse{Type: object})
+	}
+}
+
+// DeleteTypeHandler deletes a type in a space
+//
+//	@Summary		Delete type
+//	@Description	This endpoint “deletes” an object type by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the type’s details after it has been archived. Proper error handling is in place for situations such as when the type isn’t found or the deletion cannot be performed because of permission issues.
+//	@Id				deleteType
+//	@Tags			Types
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"Space ID"
+//	@Param			type_id			path		string					true	"Type ID"
+//	@Success		200				{object}	TypeResponse			"The deleted type"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		423				{object}	util.RateLimitError		"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id}/types/{type_id} [delete]
+func DeleteTypeHandler(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		typeId := c.Param("type_id")
+
+		object, err := s.DeleteType(c.Request.Context(), spaceId, typeId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(ErrTypeNotFound, http.StatusNotFound),
+			util.ErrToCode(ErrTypeDeleted, http.StatusGone),
+			util.ErrToCode(ErrFailedDeleteType, http.StatusForbidden),
 			util.ErrToCode(ErrFailedRetrieveType, http.StatusInternalServerError),
 		)
 

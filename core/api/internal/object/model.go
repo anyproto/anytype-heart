@@ -182,6 +182,17 @@ type TypeResponse struct {
 	Type Type `json:"type"` // The type
 }
 
+type CreateTypeRequest struct {
+	Name   string `json:"name" binding:"required" example:"Page"` // The name of the type
+	Icon   Icon   `json:"icon"`                                   // The icon of the type
+	Layout string `json:"layout" example:"todo"`                  // The layout of the type
+	// TODO: complete
+}
+
+type UpdateTypeRequest struct {
+	// TODO: complete
+}
+
 type Type struct {
 	Object     string     `json:"object" example:"type"`                                                    // The data model of the object
 	Id         string     `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type (which is unique across spaces)
@@ -189,7 +200,7 @@ type Type struct {
 	Name       string     `json:"name" example:"Page"`                                                      // The name of the type
 	Icon       Icon       `json:"icon"`                                                                     // The icon of the type
 	Archived   bool       `json:"archived" example:"false"`                                                 // Whether the type is archived
-	Layout     string     `json:"layout" example:"todo"`                                                    // The recommended layout of the type
+	Layout     string     `json:"layout" example:"todo"`                                                    // The layout of the type
 	Properties []Property `json:"properties"`                                                               // The properties linked to the type
 }
 
