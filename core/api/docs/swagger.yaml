@@ -548,32 +548,10 @@ components:
         tag:
           $ref: '#/components/schemas/object.Tag'
       type: object
-    object.Template:
-      description: The template
-      properties:
-        archived:
-          description: Whether the template is archived
-          example: false
-          type: boolean
-        icon:
-          $ref: '#/components/schemas/object.Icon'
-        id:
-          description: The id of the template
-          example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
-          type: string
-        name:
-          description: The name of the template
-          example: My template
-          type: string
-        object:
-          description: The data model of the object
-          example: template
-          type: string
-      type: object
     object.TemplateResponse:
       properties:
         template:
-          $ref: '#/components/schemas/object.Template'
+          $ref: '#/components/schemas/object.ObjectWithBlocks'
       type: object
     object.Text:
       description: The text of the block, if applicable
@@ -661,13 +639,11 @@ components:
     object.UpdateObjectRequest:
       properties:
         description:
-          description: The description of the object
+          description: The description to set for the object
           example: This is a description of the object.
           type: string
-        id:
-          description: The id of the object to update
-          example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
-          type: string
+        icon:
+          $ref: '#/components/schemas/object.Icon'
         name:
           description: The name of the object
           example: My object
@@ -678,37 +654,24 @@ components:
           example:
             '{"property_key"': ' "value"}'
           type: object
-      required:
-      - id
       type: object
     object.UpdatePropertyRequest:
       properties:
-        id:
-          description: The id of the property to update
-          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
-          type: string
         name:
-          description: the name to set for the property
+          description: The name to set for the property
           example: Last modified date
           type: string
       required:
-      - id
       - name
       type: object
     object.UpdateTagRequest:
       properties:
         color:
           $ref: '#/components/schemas/object.Color'
-        id:
-          description: The id of the tag to update
-          example: bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
-          type: string
         name:
           description: The name to set for the tag
           example: In progress
           type: string
-      required:
-      - id
       type: object
     pagination.PaginatedResponse-list_View:
       properties:
@@ -749,17 +712,6 @@ components:
           description: The list of items in the current result set
           items:
             $ref: '#/components/schemas/object.Tag'
-          type: array
-          uniqueItems: false
-        pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
-      type: object
-    pagination.PaginatedResponse-object_Template:
-      properties:
-        data:
-          description: The list of items in the current result set
-          items:
-            $ref: '#/components/schemas/object.Template'
           type: array
           uniqueItems: false
         pagination:
@@ -3176,7 +3128,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Template'
+                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Object'
           description: List of templates
         "401":
           content:

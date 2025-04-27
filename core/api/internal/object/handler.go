@@ -794,7 +794,7 @@ func GetTypeHandler(s Service) gin.HandlerFunc {
 //	@Param			type_id			path		string									true	"Type ID"
 //	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Template]	"List of templates"
+//	@Success		200				{object}	pagination.PaginatedResponse[Object]	"List of templates"
 //	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
 //	@Failure		500				{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
@@ -848,7 +848,7 @@ func GetTemplateHandler(s Service) gin.HandlerFunc {
 		typeId := c.Param("type_id")
 		templateId := c.Param("template_id")
 
-		object, err := s.GetTemplate(c.Request.Context(), spaceId, typeId, templateId)
+		template, err := s.GetTemplate(c.Request.Context(), spaceId, typeId, templateId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(ErrTemplateNotFound, http.StatusNotFound),
 			util.ErrToCode(ErrTemplateDeleted, http.StatusGone),
@@ -861,6 +861,6 @@ func GetTemplateHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TemplateResponse{Template: object})
+		c.JSON(http.StatusOK, TemplateResponse{Template: template})
 	}
 }

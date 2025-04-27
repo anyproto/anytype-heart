@@ -49,10 +49,10 @@ type CreateObjectRequest struct {
 }
 
 type UpdateObjectRequest struct {
-	Id          string                 `json:"id" binding:"required" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The id of the object to update
-	Name        string                 `json:"name" example:"My object"`                                                                    // The name of the object
-	Description string                 `json:"description" example:"This is a description of the object."`                                  // The description of the object
-	Properties  map[string]interface{} `json:"properties" example:"{\"property_key\": \"value\"}"`                                          // The properties to update on the object
+	Name        string                 `json:"name" example:"My object"`                                   // The name of the object
+	Icon        Icon                   `json:"icon"`                                                       // The icon to set for the object
+	Description string                 `json:"description" example:"This is a description of the object."` // The description to set for the object
+	Properties  map[string]interface{} `json:"properties" example:"{\"property_key\": \"value\"}"`         // The properties to update on the object
 }
 
 type ObjectResponse struct {
@@ -134,7 +134,7 @@ type CreatePropertyRequest struct {
 }
 
 type UpdatePropertyRequest struct {
-	Name string `json:"name" binding:"required" example:"Last modified date"` // the name to set for the property
+	Name string `json:"name" binding:"required" example:"Last modified date"` // The name to set for the property
 }
 
 type Property struct {
@@ -194,13 +194,5 @@ type Type struct {
 }
 
 type TemplateResponse struct {
-	Template Template `json:"template"` // The template
-}
-
-type Template struct {
-	Object   string `json:"object" example:"template"`                                                // The data model of the object
-	Id       string `json:"id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template
-	Name     string `json:"name" example:"My template"`                                               // The name of the template
-	Icon     Icon   `json:"icon"`                                                                     // The icon of the template
-	Archived bool   `json:"archived" example:"false"`                                                 // Whether the template is archived
+	Template ObjectWithBlocks `json:"template"` // The template
 }

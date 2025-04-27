@@ -119,8 +119,11 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
-	// pre-fetch properties to fill the object
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	if err != nil {
+		return ObjectWithBlocks{}, err
+	}
+	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
 		return ObjectWithBlocks{}, err
 	}
@@ -129,21 +132,7 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 		return ObjectWithBlocks{}, err
 	}
 
-	object := ObjectWithBlocks{
-		Object:     "object",
-		Id:         resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:       resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		Archived:   resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
-		Snippet:    resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     model.ObjectTypeLayout_name[int32(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
-		Type:       s.GetTypeFromDetails(resp.ObjectView.Details, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyType.String()].GetStringValue(), propertyMap),
-		Properties: s.getPropertiesFromStruct(resp.ObjectView.Details[0].Details, propertyMap, tagMap),
-		Blocks:     s.getBlocksFromDetails(resp),
-	}
-
-	return object, nil
+	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, resp.ObjectView.Blocks, propertyMap, typeMap, tagMap), nil
 }
 
 // DeleteObject deletes an existing object in a specific space.
@@ -350,10 +339,10 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 }
 
 // getBlocksFromDetails returns the list of blocks from the ObjectShowResponse.
-func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
-	blocks := []Block{}
+func (s *service) getBlocksFromDetails(blocks []*model.Block) []Block {
+	b := make([]Block, 0, len(blocks))
 
-	for _, block := range resp.ObjectView.Blocks {
+	for _, block := range blocks {
 		var text *Text
 		var file *File
 		var property *Property
@@ -390,7 +379,7 @@ func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 		}
 		// TODO: other content types?
 
-		blocks = append(blocks, Block{
+		b = append(b, Block{
 			Object:          "block",
 			Id:              block.Id,
 			ChildrenIds:     block.ChildrenIds,
@@ -403,10 +392,10 @@ func (s *service) getBlocksFromDetails(resp *pb.RpcObjectShowResponse) []Block {
 		})
 	}
 
-	return blocks
+	return b
 }
 
-// GetObjectFromStruct creates an ObjectWithBlocks without blocks from the details.
+// GetObjectFromStruct creates an Object without blocks from the details.
 func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[string]Property, typeMap map[string]Type, tagMap map[string]Tag) Object {
 	return Object{
 		Object:     "object",
@@ -419,6 +408,23 @@ func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 		Layout:     model.ObjectTypeLayout_name[int32(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
 		Type:       s.getTypeFromStruct(details, typeMap),
 		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
+	}
+}
+
+// GetObjectWithBlocksFromStruct creates an ObjectWithBlocks from the details.
+func (s *service) GetObjectWithBlocksFromStruct(details *types.Struct, blocks []*model.Block, propertyMap map[string]Property, typeMap map[string]Type, tagMap map[string]Tag) ObjectWithBlocks {
+	return ObjectWithBlocks{
+		Object:     "object",
+		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:     model.ObjectTypeLayout_name[int32(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+		Type:       s.getTypeFromStruct(details, typeMap),
+		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
+		Blocks:     s.getBlocksFromDetails(blocks),
 	}
 }
 

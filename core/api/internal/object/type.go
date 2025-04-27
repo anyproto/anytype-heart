@@ -130,7 +130,7 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (T
 }
 
 // ListTemplates returns a paginated list of templates in a specific space.
-func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []Template, total int, hasMore bool, err error) {
+func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []Object, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -168,7 +168,6 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 				Value:       pbtypes.String(typeId),
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIsArchived.String()},
 	})
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -177,24 +176,30 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 
 	total = len(templateObjectsResp.Records)
 	paginatedTemplates, hasMore := pagination.Paginate(templateObjectsResp.Records, offset, limit)
-	templates = make([]Template, 0, len(paginatedTemplates))
+	templates = make([]Object, 0, len(paginatedTemplates))
 
-	// Finally, open each template and populate the response
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	tagMap, err := s.GetTagMapFromStore(spaceId)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
 	for _, record := range paginatedTemplates {
-		templates = append(templates, Template{
-			Object:   "template",
-			Id:       record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			Name:     record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:     GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
-			Archived: record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		})
+		templates = append(templates, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return templates, total, hasMore, nil
 }
 
 // GetTemplate returns a single template by its ID in a specific space.
-func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (Template, error) {
+func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (ObjectWithBlocks, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: templateId,
@@ -202,25 +207,32 @@ func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return Template{}, ErrTemplateNotFound
+			return ObjectWithBlocks{}, ErrTemplateNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return Template{}, ErrTemplateDeleted
+			return ObjectWithBlocks{}, ErrTemplateDeleted
 		}
 
 		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return Template{}, ErrFailedRetrieveTemplate
+			return ObjectWithBlocks{}, ErrFailedRetrieveTemplate
 		}
 	}
 
-	return Template{
-		Object:   "template",
-		Id:       templateId,
-		Name:     resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:     GetIcon(s.gatewayUrl, resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", "", 0),
-		Archived: resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-	}, nil
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	if err != nil {
+		return ObjectWithBlocks{}, err
+	}
+	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	if err != nil {
+		return ObjectWithBlocks{}, err
+	}
+	tagMap, err := s.GetTagMapFromStore(spaceId)
+	if err != nil {
+		return ObjectWithBlocks{}, err
+	}
+
+	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, resp.ObjectView.Blocks, propertyMap, typeMap, tagMap), nil
 }
 
 // GetTypeMapsFromStore retrieves all types from all spaces.
@@ -285,31 +297,6 @@ func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]Pro
 		}
 	}
 	return typeMap, nil
-}
-
-// GetTypeFromDetails retrieves the type from the details.
-func (s *service) GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string, propertyMap map[string]Property) Type {
-	var objectTypeDetail *types.Struct
-	for _, detail := range details {
-		if detail.Id == typeId {
-			objectTypeDetail = detail.GetDetails()
-			break
-		}
-	}
-
-	if objectTypeDetail == nil {
-		return Type{}
-	}
-
-	return Type{
-		Object:     "type",
-		Id:         typeId,
-		Key:        objectTypeDetail.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-		Name:       objectTypeDetail.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, objectTypeDetail.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", objectTypeDetail.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), objectTypeDetail.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		Layout:     model.ObjectTypeLayout_name[int32(objectTypeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
-		Properties: s.getRecommendedPropertiesFromLists(objectTypeDetail.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), objectTypeDetail.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
-	}
 }
 
 // getTypeFromStruct retrieves the type from the details.

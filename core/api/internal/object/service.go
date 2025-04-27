@@ -6,7 +6,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type Service interface {
@@ -31,15 +30,14 @@ type Service interface {
 
 	ListTypes(ctx context.Context, spaceId string, offset int, limit int) ([]Type, int, bool, error)
 	GetType(ctx context.Context, spaceId string, typeId string) (Type, error)
-	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Template, int, bool, error)
-	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (Template, error)
+	ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) ([]Object, int, bool, error)
+	GetTemplate(ctx context.Context, spaceId string, typeId string, templateId string) (ObjectWithBlocks, error)
 
 	GetObjectFromStruct(details *types.Struct, propertyMap map[string]Property, typeMap map[string]Type, tagMap map[string]Tag) Object
 	GetPropertyMapFromStore(spaceId string) (map[string]Property, error)
 	GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]Property, error)
 	GetTypeMapFromStore(spaceId string, propertyMap map[string]Property) (map[string]Type, error)
 	GetTypeMapsFromStore(spaceIds []string, propertyMap map[string]map[string]Property) (map[string]map[string]Type, error)
-	GetTypeFromDetails(details []*model.ObjectViewDetailsSet, typeId string, propertyMap map[string]Property) Type
 	GetTagMapFromStore(spaceId string) (map[string]Tag, error)
 	GetTagMapsFromStore(spaceIds []string) (map[string]map[string]Tag, error)
 }
