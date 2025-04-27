@@ -213,13 +213,13 @@ type PropertyWithValue struct {
 }
 
 type PropertyLink struct {
-	Key    string         `json:"key" example:"last_modified_date"`  // The key of the property
-	Name   string         `json:"name" example:"Last modified date"` // The name of the property
-	Format PropertyFormat `json:"format" example:"date"`             // The format of the property
+	Key    string         `json:"key" binding:"required"  example:"last_modified_date"` // The key of the property
+	Name   string         `json:"name" binding:"required" example:"Last modified date"` // The name of the property
+	Format PropertyFormat `json:"format" binding:"required" example:"date"`             // The format of the property
 }
 
 type PropertyLinkWithValue struct {
-	Key         string   `json:"key" example:"last_modified_date"`                     // The key of the property
+	Key         string   `json:"key" binding:"required" example:"last_modified_date"`  // The key of the property
 	Text        *string  `json:"text,omitempty" example:"Some text..."`                // The text value, if applicable
 	Number      *float64 `json:"number,omitempty" example:"42"`                        // The number value, if applicable
 	Select      *string  `json:"select,omitempty"`                                     // The select value, if applicable
