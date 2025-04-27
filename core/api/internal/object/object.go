@@ -163,7 +163,7 @@ func (s *service) UpdateObject(ctx context.Context, spaceId string, objectId str
 	// 	return ObjectWithBlocks{}, err
 	// }
 
-	var detailList []*model.Detail
+	detailList := make([]*model.Detail, 0, len(details.Fields))
 	for k, v := range details.Fields {
 		detailList = append(detailList, &model.Detail{
 			Key:   k,
