@@ -192,7 +192,7 @@ components:
         properties:
           description: The properties to set on the object
           items:
-            $ref: '#/components/schemas/object.PropertyEntry'
+            $ref: '#/components/schemas/object.PropertyLinkWithValue'
           type: array
           uniqueItems: false
         source:
@@ -243,11 +243,27 @@ components:
           description: The layout of the type
           example: todo
           type: string
+          x-enum-varnames:
+          - ObjectLayoutBasic
+          - ObjectLayoutProfile
+          - ObjectLayoutTodo
+          - ObjectLayoutNote
         name:
           description: The name of the type
           example: Page
           type: string
+        plural_name:
+          description: The plural name of the type
+          example: Pages
+          type: string
+        properties:
+          description: The properties linked to the type
+          items:
+            $ref: '#/components/schemas/object.PropertyLink'
+          type: array
+          uniqueItems: false
       required:
+      - layout
       - name
       type: object
     object.File:
@@ -317,6 +333,19 @@ components:
       - IconFormatEmoji
       - IconFormatFile
       - IconFormatIcon
+    object.Layout:
+      description: The layout of the object
+      example: basic
+      type: string
+      x-enum-varnames:
+      - LayoutBasic
+      - LayoutProfile
+      - LayoutTodo
+      - LayoutNote
+      - LayoutBookmark
+      - LayoutSet
+      - LayoutCollection
+      - LayoutParticipant
     object.Object:
       properties:
         archived:
@@ -330,9 +359,7 @@ components:
           example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
           type: string
         layout:
-          description: The layout of the object
-          example: basic
-          type: string
+          $ref: '#/components/schemas/object.Layout'
         name:
           description: The name of the object
           example: My object
@@ -367,6 +394,15 @@ components:
             ...
           type: string
       type: object
+    object.ObjectLayout:
+      description: The layout of the type
+      example: todo
+      type: string
+      x-enum-varnames:
+      - ObjectLayoutBasic
+      - ObjectLayoutProfile
+      - ObjectLayoutTodo
+      - ObjectLayoutNote
     object.ObjectResponse:
       properties:
         object:
@@ -396,6 +432,15 @@ components:
           description: The layout of the object
           example: basic
           type: string
+          x-enum-varnames:
+          - LayoutBasic
+          - LayoutProfile
+          - LayoutTodo
+          - LayoutNote
+          - LayoutBookmark
+          - LayoutSet
+          - LayoutCollection
+          - LayoutParticipant
         name:
           description: The name of the object
           example: My object
@@ -444,7 +489,36 @@ components:
           example: property
           type: string
       type: object
-    object.PropertyEntry:
+    object.PropertyFormat:
+      description: The format of the property used for filtering
+      example: date
+      type: string
+      x-enum-varnames:
+      - PropertyFormatText
+      - PropertyFormatNumber
+      - PropertyFormatSelect
+      - PropertyFormatMultiSelect
+      - PropertyFormatDate
+      - PropertyFormatFiles
+      - PropertyFormatCheckbox
+      - PropertyFormatUrl
+      - PropertyFormatEmail
+      - PropertyFormatPhone
+      - PropertyFormatObjects
+    object.PropertyLink:
+      properties:
+        format:
+          $ref: '#/components/schemas/object.PropertyFormat'
+        key:
+          description: The key of the property
+          example: last_modified_date
+          type: string
+        name:
+          description: The name of the property
+          example: Last modified date
+          type: string
+      type: object
+    object.PropertyLinkWithValue:
       properties:
         checkbox:
           description: The checkbox value, if applicable
@@ -507,34 +581,6 @@ components:
           example: https://example.com
           type: string
       type: object
-    object.PropertyFormat:
-      description: The format of the property used for filtering
-      enum:
-      - text
-      - number
-      - select
-      - multi_select
-      - date
-      - files
-      - checkbox
-      - url
-      - email
-      - phone
-      - objects
-      example: date
-      type: string
-      x-enum-varnames:
-      - PropertyFormatText
-      - PropertyFormatNumber
-      - PropertyFormatSelect
-      - PropertyFormatMultiSelect
-      - PropertyFormatDate
-      - PropertyFormatFiles
-      - PropertyFormatCheckbox
-      - PropertyFormatUrl
-      - PropertyFormatEmail
-      - PropertyFormatPhone
-      - PropertyFormatObjects
     object.PropertyResponse:
       properties:
         property:
@@ -708,9 +754,7 @@ components:
           example: ot-page
           type: string
         layout:
-          description: The layout of the type
-          example: todo
-          type: string
+          $ref: '#/components/schemas/object.ObjectLayout'
         name:
           description: The name of the type
           example: Page
@@ -742,7 +786,7 @@ components:
         properties:
           description: The properties to set for the object
           items:
-            $ref: '#/components/schemas/object.PropertyEntry'
+            $ref: '#/components/schemas/object.PropertyLinkWithValue'
           type: array
           uniqueItems: false
       type: object
@@ -765,6 +809,32 @@ components:
           type: string
       type: object
     object.UpdateTypeRequest:
+      properties:
+        icon:
+          $ref: '#/components/schemas/object.Icon'
+        layout:
+          description: The layout of the type
+          example: todo
+          type: string
+          x-enum-varnames:
+          - ObjectLayoutBasic
+          - ObjectLayoutProfile
+          - ObjectLayoutTodo
+          - ObjectLayoutNote
+        name:
+          description: The name to set for the type
+          example: Page
+          type: string
+        plural_name:
+          description: The plural name to set for the type
+          example: Pages
+          type: string
+        properties:
+          description: The properties to set for the type
+          items:
+            $ref: '#/components/schemas/object.PropertyLink'
+          type: array
+          uniqueItems: false
       type: object
     pagination.PaginatedResponse-list_View:
       properties:

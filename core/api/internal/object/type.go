@@ -7,6 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -23,10 +24,6 @@ var (
 	ErrFailedCreateType           = errors.New("failed to create type")
 	ErrFailedUpdateType           = errors.New("failed to update type")
 	ErrFailedDeleteType           = errors.New("failed to delete object")
-	ErrFailedRetrieveTemplate     = errors.New("failed to retrieve template")
-	ErrFailedRetrieveTemplates    = errors.New("failed to retrieve templates")
-	ErrTemplateNotFound           = errors.New("template not found")
-	ErrTemplateDeleted            = errors.New("template deleted")
 )
 
 // ListTypes returns a paginated list of types in a specific space.
@@ -85,7 +82,7 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:       GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-			Layout:     model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+			Layout:     s.objectTypeLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
 		})
 	}
@@ -127,15 +124,28 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (T
 		Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:       GetIcon(s.gatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		Layout:     model.ObjectTypeLayout_name[int32(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+		Layout:     s.objectTypeLayoutToObjectLayout(model.ObjectTypeLayout(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
 	}, nil
 }
 
 // CreateType creates a new type in a specific space.
 func (s *service) CreateType(ctx context.Context, spaceId string, request CreateTypeRequest) (Type, error) {
-	// TODO
-	return Type{}, nil
+	details, err := s.buildTypeDetails(ctx, spaceId, request)
+	if err != nil {
+		return Type{}, err
+	}
+
+	resp := s.mw.ObjectCreateObjectType(ctx, &pb.RpcObjectCreateObjectTypeRequest{
+		SpaceId: spaceId,
+		Details: details,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateObjectTypeResponseError_NULL {
+		return Type{}, ErrFailedCreateType
+	}
+
+	return s.GetType(ctx, spaceId, resp.ObjectId)
 }
 
 // UpdateType updates an existing type in a specific space.
@@ -161,112 +171,6 @@ func (s *service) DeleteType(ctx context.Context, spaceId string, typeId string)
 	}
 
 	return t, nil
-}
-
-// ListTemplates returns a paginated list of templates in a specific space.
-func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []Object, total int, hasMore bool, err error) {
-	// First, determine the type ID of "ot-template" in the space
-	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String("ot-template"),
-			},
-		},
-		Keys: []string{bundle.RelationKeyId.String()},
-	})
-
-	if templateTypeIdResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, 0, false, ErrFailedRetrieveTemplateType
-	}
-
-	if len(templateTypeIdResp.Records) == 0 {
-		return nil, 0, false, ErrTemplateTypeNotFound
-	}
-
-	// Then, search all objects of the template type and filter by the target object type
-	templateTypeId := templateTypeIdResp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue()
-	templateObjectsResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(templateTypeId),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeId),
-			},
-		},
-	})
-
-	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, 0, false, ErrFailedRetrieveTemplates
-	}
-
-	total = len(templateObjectsResp.Records)
-	paginatedTemplates, hasMore := pagination.Paginate(templateObjectsResp.Records, offset, limit)
-	templates = make([]Object, 0, len(paginatedTemplates))
-
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
-	for _, record := range paginatedTemplates {
-		templates = append(templates, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
-	}
-
-	return templates, total, hasMore, nil
-}
-
-// GetTemplate returns a single template by its ID in a specific space.
-func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (ObjectWithBlocks, error) {
-	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
-		SpaceId:  spaceId,
-		ObjectId: templateId,
-	})
-
-	if resp.Error != nil {
-		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return ObjectWithBlocks{}, ErrTemplateNotFound
-		}
-
-		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return ObjectWithBlocks{}, ErrTemplateDeleted
-		}
-
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return ObjectWithBlocks{}, ErrFailedRetrieveTemplate
-		}
-	}
-
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
-	if err != nil {
-		return ObjectWithBlocks{}, err
-	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
-	if err != nil {
-		return ObjectWithBlocks{}, err
-	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
-	if err != nil {
-		return ObjectWithBlocks{}, err
-	}
-
-	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, resp.ObjectView.Blocks, propertyMap, typeMap, tagMap), nil
 }
 
 // GetTypeMapsFromStore retrieves all types from all spaces.
@@ -326,7 +230,7 @@ func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]Pro
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 			Icon:       GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-			Layout:     model.ObjectTypeLayout_name[int32(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())],
+			Layout:     s.objectTypeLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
 		}
 	}
@@ -336,4 +240,149 @@ func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]Pro
 // getTypeFromStruct retrieves the type from the details.
 func (s *service) getTypeFromStruct(details *types.Struct, typeMap map[string]Type) Type {
 	return typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]
+}
+
+// buildTypeDetails builds the type details from the CreateTypeRequest.
+func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request CreateTypeRequest) (*types.Struct, error) {
+	fields := make(map[string]*types.Value)
+
+	fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
+	fields[bundle.RelationKeyPluralName.String()] = pbtypes.String(s.sanitizedString(request.PluralName))
+	fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.objectLayoutToObjectTypeLayout(request.Layout)))
+
+	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range iconFields {
+		fields[k] = v
+	}
+
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	var relationIds []string
+	for _, propLink := range request.Properties {
+		rk := FromPropertyApiKey(propLink.Key)
+		if propDef, exists := propertyMap[rk]; exists {
+			relationIds = append(relationIds, propDef.Id)
+		} else {
+			newProp, err2 := s.CreateProperty(ctx, spaceId, CreatePropertyRequest{
+				Name:   propLink.Name,
+				Format: propLink.Format,
+			})
+			if err2 != nil {
+				return nil, err2
+			}
+			relationIds = append(relationIds, newProp.Id)
+		}
+	}
+
+	fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relationIds)
+
+	featuredKeys := []domain.RelationKey{
+		bundle.RelationKeyType,
+		bundle.RelationKeyTag,
+		bundle.RelationKeyBacklinks,
+	}
+	var featuredIds []string
+	for _, rk := range featuredKeys {
+		if propDef, exists := propertyMap[rk.String()]; exists {
+			featuredIds = append(featuredIds, propDef.Id)
+		}
+	}
+	fields[bundle.RelationKeyRecommendedFeaturedRelations.String()] = pbtypes.StringList(featuredIds)
+
+	hiddenKeys := []domain.RelationKey{
+		bundle.RelationKeyLastModifiedDate,
+		bundle.RelationKeyLastModifiedBy,
+		bundle.RelationKeyLastOpenedDate,
+	}
+	var hiddenIds []string
+	for _, rk := range hiddenKeys {
+		if propDef, exists := propertyMap[rk.String()]; exists {
+			hiddenIds = append(hiddenIds, propDef.Id)
+		}
+	}
+	fields[bundle.RelationKeyRecommendedHiddenRelations.String()] = pbtypes.StringList(hiddenIds)
+
+	return &types.Struct{Fields: fields}, nil
+}
+
+func (s *service) layoutToObjectTypeLayout(layout Layout) model.ObjectTypeLayout {
+	switch layout {
+	case LayoutBasic:
+		return model.ObjectType_basic
+	case LayoutProfile:
+		return model.ObjectType_profile
+	case LayoutTodo:
+		return model.ObjectType_todo
+	case LayoutNote:
+		return model.ObjectType_note
+	case LayoutBookmark:
+		return model.ObjectType_bookmark
+	case LayoutSet:
+		return model.ObjectType_set
+	case LayoutCollection:
+		return model.ObjectType_collection
+	case LayoutParticipant:
+		return model.ObjectType_participant
+	default:
+		return model.ObjectType_basic
+	}
+}
+
+func (s *service) objectTypeLayoutToLayout(objectTypeLayout model.ObjectTypeLayout) Layout {
+	switch objectTypeLayout {
+	case model.ObjectType_basic:
+		return LayoutBasic
+	case model.ObjectType_profile:
+		return LayoutProfile
+	case model.ObjectType_todo:
+		return LayoutTodo
+	case model.ObjectType_note:
+		return LayoutNote
+	case model.ObjectType_bookmark:
+		return LayoutBookmark
+	case model.ObjectType_set:
+		return LayoutSet
+	case model.ObjectType_collection:
+		return LayoutCollection
+	case model.ObjectType_participant:
+		return LayoutParticipant
+	default:
+		return LayoutBasic
+	}
+}
+
+func (s *service) objectLayoutToObjectTypeLayout(objectLayout ObjectLayout) model.ObjectTypeLayout {
+	switch objectLayout {
+	case ObjectLayoutBasic:
+		return model.ObjectType_basic
+	case ObjectLayoutProfile:
+		return model.ObjectType_profile
+	case ObjectLayoutTodo:
+		return model.ObjectType_todo
+	case ObjectLayoutNote:
+		return model.ObjectType_note
+	default:
+		return model.ObjectType_basic
+	}
+}
+
+func (s *service) objectTypeLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) ObjectLayout {
+	switch objectTypeLayout {
+	case model.ObjectType_basic:
+		return ObjectLayoutBasic
+	case model.ObjectType_profile:
+		return ObjectLayoutProfile
+	case model.ObjectType_todo:
+		return ObjectLayoutTodo
+	case model.ObjectType_note:
+		return ObjectLayoutNote
+	default:
+		return ObjectLayoutBasic
+	}
 }

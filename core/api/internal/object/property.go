@@ -249,7 +249,7 @@ func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 }
 
 // processProperties builds detail fields for the given property entries, applying sanitization and validation for each.
-func (s *service) processProperties(ctx context.Context, spaceId string, entries []PropertyEntry) (map[string]*types.Value, error) {
+func (s *service) processProperties(ctx context.Context, spaceId string, entries []PropertyLinkWithValue) (map[string]*types.Value, error) {
 	fields := make(map[string]*types.Value)
 	if len(entries) == 0 {
 		return fields, nil

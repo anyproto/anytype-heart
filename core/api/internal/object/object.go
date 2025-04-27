@@ -413,7 +413,7 @@ func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     model.ObjectTypeLayout_name[int32(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+		Layout:     s.objectTypeLayoutToLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
 		Type:       s.getTypeFromStruct(details, typeMap),
 		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
 	}
@@ -429,7 +429,7 @@ func (s *service) GetObjectWithBlocksFromStruct(details *types.Struct, blocks []
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     model.ObjectTypeLayout_name[int32(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())],
+		Layout:     s.objectTypeLayoutToLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
 		Type:       s.getTypeFromStruct(details, typeMap),
 		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
 		Blocks:     s.getBlocksFromDetails(blocks),

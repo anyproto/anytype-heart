@@ -37,20 +37,70 @@ func (pf *PropertyFormat) UnmarshalJSON(data []byte) error {
 	}
 }
 
+type Layout string
+
+const (
+	LayoutBasic       Layout = "basic"
+	LayoutProfile     Layout = "profile"
+	LayoutTodo        Layout = "todo"
+	LayoutNote        Layout = "note"
+	LayoutBookmark    Layout = "bookmark"
+	LayoutSet         Layout = "set"
+	LayoutCollection  Layout = "collection"
+	LayoutParticipant Layout = "participant"
+)
+
+func (l *Layout) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	switch Layout(s) {
+	case LayoutBasic, LayoutProfile, LayoutTodo, LayoutNote, LayoutBookmark, LayoutSet, LayoutCollection, LayoutParticipant:
+		*l = Layout(s)
+		return nil
+	default:
+		return util.ErrBadInput(fmt.Sprintf("invalid layout: %q", s))
+	}
+}
+
+type ObjectLayout string
+
+const (
+	ObjectLayoutBasic   ObjectLayout = "basic"
+	ObjectLayoutProfile ObjectLayout = "profile"
+	ObjectLayoutTodo    ObjectLayout = "todo"
+	ObjectLayoutNote    ObjectLayout = "note"
+)
+
+func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	switch ObjectLayout(s) {
+	case ObjectLayoutBasic, ObjectLayoutProfile, ObjectLayoutTodo, ObjectLayoutNote:
+		*ol = ObjectLayout(s)
+		return nil
+	default:
+		return util.ErrBadInput(fmt.Sprintf("invalid object layout: %q", s))
+	}
+}
+
 type CreateObjectRequest struct {
-	Name       string          `json:"name" binding:"required" example:"My object"`                                       // The name of the object
-	Icon       Icon            `json:"icon"`                                                                              // The icon of the object
-	Body       string          `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
-	Source     string          `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
-	TemplateId string          `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
-	TypeKey    string          `json:"type_key" binding:"required" example:"ot-page"`                                     // The key of the type of object to create
-	Properties []PropertyEntry `json:"properties"`                                                                        // The properties to set on the object
+	Name       string                  `json:"name" binding:"required" example:"My object"`                                       // The name of the object
+	Icon       Icon                    `json:"icon"`                                                                              // The icon of the object
+	Body       string                  `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
+	Source     string                  `json:"source" example:"https://bookmark-source.com"`                                      // The source url, only applicable for bookmarks
+	TemplateId string                  `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
+	TypeKey    string                  `json:"type_key" binding:"required" example:"ot-page"`                                     // The key of the type of object to create
+	Properties []PropertyLinkWithValue `json:"properties"`                                                                        // The properties to set on the object
 }
 
 type UpdateObjectRequest struct {
-	Name       string          `json:"name" example:"My object"` // The name of the object
-	Icon       Icon            `json:"icon"`                     // The icon to set for the object
-	Properties []PropertyEntry `json:"properties"`               // The properties to set for the object
+	Name       string                  `json:"name" example:"My object"` // The name of the object
+	Icon       Icon                    `json:"icon"`                     // The icon to set for the object
+	Properties []PropertyLinkWithValue `json:"properties"`               // The properties to set for the object
 }
 
 type ObjectResponse struct {
@@ -65,7 +115,7 @@ type Object struct {
 	Archived   bool                `json:"archived" example:"false"`                                                                     // Whether the object is archived
 	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
 	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout     string              `json:"layout" example:"basic"`                                                                       // The layout of the object
+	Layout     Layout              `json:"layout" example:"basic"`                                                                       // The layout of the object
 	Type       Type                `json:"type"`                                                                                         // The type of the object
 	Properties []PropertyWithValue `json:"properties"`                                                                                   // The properties of the object
 }
@@ -78,7 +128,7 @@ type ObjectWithBlocks struct {
 	Archived   bool                `json:"archived" example:"false"`                                                                     // Whether the object is archived
 	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
 	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout     string              `json:"layout" example:"basic"`                                                                       // The layout of the object
+	Layout     Layout              `json:"layout" example:"basic"`                                                                       // The layout of the object
 	Type       Type                `json:"type"`                                                                                         // The type of the object
 	Properties []PropertyWithValue `json:"properties"`                                                                                   // The properties of the object
 	Blocks     []Block             `json:"blocks"`                                                                                       // The blocks of the object. Omitted in endpoints for searching or listing objects, only included when getting single object.
@@ -162,7 +212,13 @@ type PropertyWithValue struct {
 	Objects     []string       `json:"objects,omitempty" example:"['objectId']"`                                                                  // The object references, if applicable
 }
 
-type PropertyEntry struct {
+type PropertyLink struct {
+	Key    string         `json:"key" example:"last_modified_date"`  // The key of the property
+	Name   string         `json:"name" example:"Last modified date"` // The name of the property
+	Format PropertyFormat `json:"format" example:"date"`             // The format of the property
+}
+
+type PropertyLinkWithValue struct {
 	Key         string   `json:"key" example:"last_modified_date"`                     // The key of the property
 	Text        *string  `json:"text,omitempty" example:"Some text..."`                // The text value, if applicable
 	Number      *float64 `json:"number,omitempty" example:"42"`                        // The number value, if applicable
@@ -204,25 +260,30 @@ type TypeResponse struct {
 }
 
 type CreateTypeRequest struct {
-	Name   string `json:"name" binding:"required" example:"Page"` // The name of the type
-	Icon   Icon   `json:"icon"`                                   // The icon of the type
-	Layout string `json:"layout" example:"todo"`                  // The layout of the type
-	// TODO: complete
+	Name       string         `json:"name" binding:"required" example:"Page"`   // The name of the type
+	PluralName string         `json:"plural_name" example:"Pages"`              // The plural name of the type
+	Icon       Icon           `json:"icon"`                                     // The icon of the type
+	Layout     ObjectLayout   `json:"layout" binding:"required" example:"todo"` // The layout of the type
+	Properties []PropertyLink `json:"properties"`                               // The properties linked to the type
 }
 
 type UpdateTypeRequest struct {
-	// TODO: complete
+	Name       string         `json:"name" example:"Page"`         // The name to set for the type
+	PluralName string         `json:"plural_name" example:"Pages"` // The plural name to set for the type
+	Icon       Icon           `json:"icon"`                        // The icon to set for the type
+	Layout     ObjectLayout   `json:"layout" example:"todo"`       // The layout to set for the type
+	Properties []PropertyLink `json:"properties"`                  // The properties to set for the type
 }
 
 type Type struct {
-	Object     string     `json:"object" example:"type"`                                                    // The data model of the object
-	Id         string     `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type (which is unique across spaces)
-	Key        string     `json:"key" example:"ot-page"`                                                    // The key of the type (can be the same across spaces for known types)
-	Name       string     `json:"name" example:"Page"`                                                      // The name of the type
-	Icon       Icon       `json:"icon"`                                                                     // The icon of the type
-	Archived   bool       `json:"archived" example:"false"`                                                 // Whether the type is archived
-	Layout     string     `json:"layout" example:"todo"`                                                    // The layout of the type
-	Properties []Property `json:"properties"`                                                               // The properties linked to the type
+	Object     string       `json:"object" example:"type"`                                                    // The data model of the object
+	Id         string       `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type (which is unique across spaces)
+	Key        string       `json:"key" example:"ot-page"`                                                    // The key of the type (can be the same across spaces for known types)
+	Name       string       `json:"name" example:"Page"`                                                      // The name of the type
+	Icon       Icon         `json:"icon"`                                                                     // The icon of the type
+	Archived   bool         `json:"archived" example:"false"`                                                 // Whether the type is archived
+	Layout     ObjectLayout `json:"layout" example:"todo"`                                                    // The layout of the type
+	Properties []Property   `json:"properties"`                                                               // The properties linked to the type
 }
 
 type TemplateResponse struct {
