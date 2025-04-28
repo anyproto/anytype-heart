@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
@@ -180,11 +181,17 @@ func (mw *Middleware) ChatSubscribeToMessagePreviews(cctx context.Context, req *
 		if preview.Message != nil {
 			message = preview.Message.ChatMessage
 		}
+
+		deps := make([]*types.Struct, 0, len(preview.Dependencies))
+		for _, dep := range preview.Dependencies {
+			deps = append(deps, dep.ToProto())
+		}
 		previews = append(previews, &pb.RpcChatSubscribeToMessagePreviewsResponseChatPreview{
 			SpaceId:      preview.SpaceId,
 			ChatObjectId: preview.ChatObjectId,
 			Message:      message,
 			State:        preview.State,
+			Dependencies: deps,
 		})
 	}
 	sort.Slice(previews, func(i, j int) bool {

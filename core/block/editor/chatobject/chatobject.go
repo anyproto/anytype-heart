@@ -354,6 +354,8 @@ type SubscribeLastMessagesRequest struct {
 type SubscribeLastMessagesResponse struct {
 	Messages  []*Message
 	ChatState *model.ChatState
+	// Dependencies per message id
+	Dependencies map[string][]*domain.Details
 }
 
 func (s *storeObject) SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error) {
@@ -388,9 +390,17 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, req SubscribeLa
 		s.subscription.flush()
 		return nil, nil
 	} else {
+		depsPerMessage := map[string][]*domain.Details{}
+		if req.WithDependencies {
+			for _, message := range messages {
+				deps := s.subscription.collectMessageDependencies(message)
+				depsPerMessage[message.Id] = deps
+			}
+		}
 		return &SubscribeLastMessagesResponse{
-			Messages:  messages,
-			ChatState: s.subscription.getChatState(),
+			Messages:     messages,
+			ChatState:    s.subscription.getChatState(),
+			Dependencies: depsPerMessage,
 		}, nil
 	}
 }

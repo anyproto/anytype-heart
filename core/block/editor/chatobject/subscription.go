@@ -193,25 +193,35 @@ func (s *subscriptionManager) add(prevOrderId string, message *Message) {
 	}
 
 	if s.withDeps() {
-		identityDetails, err := s.getIdentityDetails(message.Creator)
-		if err != nil {
-			log.Error("get identity details", zap.Error(err))
-		} else if identityDetails.Len() > 0 {
-			ev.Dependencies = append(ev.Dependencies, identityDetails.ToProto())
-		}
-
-		for _, attachment := range message.Attachments {
-			attachmentDetails, err := s.spaceIndex.GetDetails(attachment.Target)
-			if err != nil {
-				log.Error("get attachment details", zap.Error(err))
-			} else if attachmentDetails.Len() > 0 {
-				ev.Dependencies = append(ev.Dependencies, attachmentDetails.ToProto())
-			}
+		deps := s.collectMessageDependencies(message)
+		for _, dep := range deps {
+			ev.Dependencies = append(ev.Dependencies, dep.ToProto())
 		}
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
 		ChatAdd: ev,
 	}))
+}
+
+func (s *subscriptionManager) collectMessageDependencies(message *Message) []*domain.Details {
+	var result []*domain.Details
+
+	identityDetails, err := s.getIdentityDetails(message.Creator)
+	if err != nil {
+		log.Error("get identity details", zap.Error(err))
+	} else if identityDetails.Len() > 0 {
+		result = append(result, identityDetails)
+	}
+
+	for _, attachment := range message.Attachments {
+		attachmentDetails, err := s.spaceIndex.GetDetails(attachment.Target)
+		if err != nil {
+			log.Error("get attachment details", zap.Error(err))
+		} else if attachmentDetails.Len() > 0 {
+			result = append(result, attachmentDetails)
+		}
+	}
+	return result
 }
 
 func (s *subscriptionManager) delete(messageId string) {

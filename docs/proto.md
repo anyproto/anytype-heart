@@ -11020,6 +11020,7 @@ Get marks list in the selected range in text block.
 | chatObjectId | [string](#string) |  |  |
 | message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
 | state | [model.ChatState](#anytype-model-ChatState) |  |  |
+| dependencies | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
 
 
 

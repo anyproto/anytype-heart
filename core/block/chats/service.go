@@ -94,6 +94,7 @@ type ChatPreview struct {
 	ChatObjectId string
 	State        *model.ChatState
 	Message      *chatobject.Message
+	Dependencies []*domain.Details
 }
 
 type SubscribeToMessagePreviewsResponse struct {
@@ -122,14 +123,19 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context, subId string) 
 			log.Error("init lastMessage subscription", zap.Error(err))
 			continue
 		}
-		var message *chatobject.Message
+		var (
+			message      *chatobject.Message
+			dependencies []*domain.Details
+		)
 		if len(chatAddResp.Messages) > 0 {
 			message = chatAddResp.Messages[0]
+			dependencies = chatAddResp.Dependencies[message.Id]
 		}
 		result.Previews = append(result.Previews, &ChatPreview{
 			ChatObjectId: chatObjectId,
 			State:        chatAddResp.ChatState,
 			Message:      message,
+			Dependencies: dependencies,
 		})
 	}
 	return result, nil
