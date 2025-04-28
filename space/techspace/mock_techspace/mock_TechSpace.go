@@ -10,6 +10,8 @@ import (
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
+	keyvalueobserver "github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
+
 	mock "github.com/stretchr/testify/mock"
 
 	objectcache "github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -378,17 +380,17 @@ func (_c *MockTechSpace_Name_Call) RunAndReturn(run func() string) *MockTechSpac
 	return _c
 }
 
-// Run provides a mock function with given fields: techCoreSpace, objectCache, create
-func (_m *MockTechSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) error {
-	ret := _m.Called(techCoreSpace, objectCache, create)
+// Run provides a mock function with given fields: techCoreSpace, objectCache, kvObserver, create
+func (_m *MockTechSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, kvObserver keyvalueobserver.Observer, create bool) error {
+	ret := _m.Called(techCoreSpace, objectCache, kvObserver, create)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(commonspace.Space, objectcache.Cache, bool) error); ok {
-		r0 = rf(techCoreSpace, objectCache, create)
+	if rf, ok := ret.Get(0).(func(commonspace.Space, objectcache.Cache, keyvalueobserver.Observer, bool) error); ok {
+		r0 = rf(techCoreSpace, objectCache, kvObserver, create)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -404,14 +406,15 @@ type MockTechSpace_Run_Call struct {
 // Run is a helper method to define mock.On call
 //   - techCoreSpace commonspace.Space
 //   - objectCache objectcache.Cache
+//   - kvObserver keyvalueobserver.Observer
 //   - create bool
-func (_e *MockTechSpace_Expecter) Run(techCoreSpace interface{}, objectCache interface{}, create interface{}) *MockTechSpace_Run_Call {
-	return &MockTechSpace_Run_Call{Call: _e.mock.On("Run", techCoreSpace, objectCache, create)}
+func (_e *MockTechSpace_Expecter) Run(techCoreSpace interface{}, objectCache interface{}, kvObserver interface{}, create interface{}) *MockTechSpace_Run_Call {
+	return &MockTechSpace_Run_Call{Call: _e.mock.On("Run", techCoreSpace, objectCache, kvObserver, create)}
 }
 
-func (_c *MockTechSpace_Run_Call) Run(run func(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool)) *MockTechSpace_Run_Call {
+func (_c *MockTechSpace_Run_Call) Run(run func(techCoreSpace commonspace.Space, objectCache objectcache.Cache, kvObserver keyvalueobserver.Observer, create bool)) *MockTechSpace_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(commonspace.Space), args[1].(objectcache.Cache), args[2].(bool))
+		run(args[0].(commonspace.Space), args[1].(objectcache.Cache), args[2].(keyvalueobserver.Observer), args[3].(bool))
 	})
 	return _c
 }
@@ -421,7 +424,7 @@ func (_c *MockTechSpace_Run_Call) Return(err error) *MockTechSpace_Run_Call {
 	return _c
 }
 
-func (_c *MockTechSpace_Run_Call) RunAndReturn(run func(commonspace.Space, objectcache.Cache, bool) error) *MockTechSpace_Run_Call {
+func (_c *MockTechSpace_Run_Call) RunAndReturn(run func(commonspace.Space, objectcache.Cache, keyvalueobserver.Observer, bool) error) *MockTechSpace_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

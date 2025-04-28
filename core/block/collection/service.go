@@ -107,13 +107,14 @@ func (s *Service) Sort(ctx session.Context, req *pb.RpcObjectCollectionSortReque
 }
 
 func (s *Service) updateCollection(ctx session.Context, contextID string, modifier func(src []string) []string) error {
-	return cache.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
-		lst := s.GetStoreSlice(template.CollectionStoreKey)
+	return cache.DoStateCtx(s.picker, ctx, contextID, func(st *state.State, sb smartblock.SmartBlock) error {
+		s.collectionAddHookOnce(sb)
+		lst := st.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)
-		s.UpdateStoreSlice(template.CollectionStoreKey, lst)
+		st.UpdateStoreSlice(template.CollectionStoreKey, lst)
 		// TODO why we're adding empty list of flags?
 		flags := internalflag.Set{}
-		flags.AddToState(s)
+		flags.AddToState(st)
 		return nil
 	}, smartblock.KeepInternalFlags)
 }

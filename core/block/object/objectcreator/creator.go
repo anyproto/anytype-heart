@@ -10,7 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -219,7 +219,7 @@ func buildDateObject(space clientspace.Space, details *domain.Details) (string, 
 		return "", nil, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 	}
 
-	dateSource := source.NewDate(source.DateSourceParams{
+	dateSource := sourceimpl.NewDate(sourceimpl.DateSourceParams{
 		Id: domain.FullID{
 			ObjectID: dateObject.Id(),
 			SpaceID:  space.Id(),
@@ -227,7 +227,7 @@ func buildDateObject(space clientspace.Space, details *domain.Details) (string, 
 		DateObjectTypeId: typeId,
 	})
 
-	detailsGetter, ok := dateSource.(source.SourceIdEndodedDetails)
+	detailsGetter, ok := dateSource.(sourceimpl.SourceIdEndodedDetails)
 	if !ok {
 		return "", nil, fmt.Errorf("date object does not implement DetailsFromId")
 	}

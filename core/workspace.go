@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 
@@ -61,8 +63,14 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		}
 		return m
 	}
-	info, err := mustService[account.Service](mw).GetSpaceInfo(cctx, req.SpaceId)
+
+	ctx, cancel := context.WithTimeout(cctx, time.Second*10)
+	defer cancel()
+	info, err := mustService[account.Service](mw).GetSpaceInfo(ctx, req.SpaceId)
 	if err != nil {
+		if errors.Is(context.DeadlineExceeded, err) {
+			return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("space is not ready: check your internet connection and try again later"))
+		}
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
 	}
 

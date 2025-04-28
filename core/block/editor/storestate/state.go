@@ -126,6 +126,7 @@ func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {
 	}
 	stx := &StoreStateTx{state: ss, tx: tx, ctx: tx.Context(), arena: &anyenc.Arena{}}
 	if err = stx.init(); err != nil {
+		_ = tx.Rollback()
 		return nil, err
 	}
 	return stx, nil

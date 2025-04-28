@@ -55,7 +55,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
@@ -263,7 +263,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileoffloader.New()).
 		Register(fileacl.New()).
 		Register(chats.New()).
-		Register(source.New()).
+		Register(sourceimpl.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
 		Register(idderiverimpl.New()).

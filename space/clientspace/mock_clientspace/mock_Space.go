@@ -15,6 +15,8 @@ import (
 
 	headsync "github.com/anyproto/any-sync/commonspace/headsync"
 
+	keyvalueservice "github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
+
 	mock "github.com/stretchr/testify/mock"
 
 	objectcache "github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -1427,6 +1429,53 @@ func (_c *MockSpace_IsReadOnly_Call) Return(_a0 bool) *MockSpace_IsReadOnly_Call
 }
 
 func (_c *MockSpace_IsReadOnly_Call) RunAndReturn(run func() bool) *MockSpace_IsReadOnly_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// KeyValueService provides a mock function with given fields:
+func (_m *MockSpace) KeyValueService() keyvalueservice.Service {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for KeyValueService")
+	}
+
+	var r0 keyvalueservice.Service
+	if rf, ok := ret.Get(0).(func() keyvalueservice.Service); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(keyvalueservice.Service)
+		}
+	}
+
+	return r0
+}
+
+// MockSpace_KeyValueService_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'KeyValueService'
+type MockSpace_KeyValueService_Call struct {
+	*mock.Call
+}
+
+// KeyValueService is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) KeyValueService() *MockSpace_KeyValueService_Call {
+	return &MockSpace_KeyValueService_Call{Call: _e.mock.On("KeyValueService")}
+}
+
+func (_c *MockSpace_KeyValueService_Call) Run(run func()) *MockSpace_KeyValueService_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_KeyValueService_Call) Return(_a0 keyvalueservice.Service) *MockSpace_KeyValueService_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_KeyValueService_Call) RunAndReturn(run func() keyvalueservice.Service) *MockSpace_KeyValueService_Call {
 	_c.Call.Return(run)
 	return _c
 }
