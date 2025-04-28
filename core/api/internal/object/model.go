@@ -60,7 +60,7 @@ func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
 		*ol = ObjectLayout(s)
 		return nil
 	default:
-		return util.ErrBadInput(fmt.Sprintf("invalid layout: %q", s))
+		return util.ErrBadInput(fmt.Sprintf("invalid object layout: %q", s))
 	}
 }
 
@@ -83,7 +83,7 @@ func (tl *TypeLayout) UnmarshalJSON(data []byte) error {
 		*tl = TypeLayout(s)
 		return nil
 	default:
-		return util.ErrBadInput(fmt.Sprintf("invalid object layout: %q", s))
+		return util.ErrBadInput(fmt.Sprintf("invalid type layout: %q", s))
 	}
 }
 
