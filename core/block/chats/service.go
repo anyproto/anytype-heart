@@ -238,7 +238,12 @@ func (s *service) onChatAdded(chatObjectId string, subId string, asyncInit bool)
 	var resp *chatobject.SubscribeLastMessagesResponse
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		resp, err = sb.SubscribeLastMessages(s.componentCtx, subId, 1, asyncInit)
+		resp, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.SubscribeLastMessagesRequest{
+			SubId:            subId,
+			Limit:            1,
+			AsyncInit:        asyncInit,
+			WithDependencies: true,
+		})
 		if err != nil {
 			return err
 		}
@@ -329,7 +334,12 @@ func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string
 	var resp *chatobject.SubscribeLastMessagesResponse
 	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
-		resp, err = sb.SubscribeLastMessages(ctx, subId, limit, false)
+		resp, err = sb.SubscribeLastMessages(ctx, chatobject.SubscribeLastMessagesRequest{
+			SubId:            subId,
+			Limit:            limit,
+			AsyncInit:        false,
+			WithDependencies: false,
+		})
 		if err != nil {
 			return err
 		}
