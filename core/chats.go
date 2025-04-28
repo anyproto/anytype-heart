@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"sort"
 
 	anystore "github.com/anyproto/any-store"
 
@@ -161,7 +162,7 @@ func (mw *Middleware) ChatUnsubscribe(cctx context.Context, req *pb.RpcChatUnsub
 func (mw *Middleware) ChatSubscribeToMessagePreviews(cctx context.Context, req *pb.RpcChatSubscribeToMessagePreviewsRequest) *pb.RpcChatSubscribeToMessagePreviewsResponse {
 	chatService := mustService[chats.Service](mw)
 
-	subId, err := chatService.SubscribeToMessagePreviews(cctx)
+	resp, err := chatService.SubscribeToMessagePreviews(cctx, req.SubId)
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatSubscribeToMessagePreviewsResponseErrorCode](err)
 		return &pb.RpcChatSubscribeToMessagePreviewsResponse{
@@ -171,15 +172,34 @@ func (mw *Middleware) ChatSubscribeToMessagePreviews(cctx context.Context, req *
 			},
 		}
 	}
+
+	previews := make([]*pb.RpcChatSubscribeToMessagePreviewsResponseChatPreview, 0, len(resp.Previews))
+
+	for _, preview := range resp.Previews {
+		var message *model.ChatMessage
+		if preview.Message != nil {
+			message = preview.Message.ChatMessage
+		}
+		previews = append(previews, &pb.RpcChatSubscribeToMessagePreviewsResponseChatPreview{
+			SpaceId:      preview.SpaceId,
+			ChatObjectId: preview.ChatObjectId,
+			Message:      message,
+			State:        preview.State,
+		})
+	}
+	sort.Slice(previews, func(i, j int) bool {
+		return previews[i].ChatObjectId < previews[j].ChatObjectId
+	})
+
 	return &pb.RpcChatSubscribeToMessagePreviewsResponse{
-		SubId: subId,
+		Previews: previews,
 	}
 }
 
 func (mw *Middleware) ChatUnsubscribeFromMessagePreviews(cctx context.Context, req *pb.RpcChatUnsubscribeFromMessagePreviewsRequest) *pb.RpcChatUnsubscribeFromMessagePreviewsResponse {
 	chatService := mustService[chats.Service](mw)
 
-	err := chatService.UnsubscribeFromMessagePreviews()
+	err := chatService.UnsubscribeFromMessagePreviews(req.SubId)
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatUnsubscribeFromMessagePreviewsResponseErrorCode](err)
 		return &pb.RpcChatUnsubscribeFromMessagePreviewsResponse{

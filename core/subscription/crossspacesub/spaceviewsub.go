@@ -92,14 +92,14 @@ func (s *service) monitorSpaceViewSub(queue *mb.MB[*pb.EventMessage]) {
 	}
 }
 
-func (s *service) onSpaceViewSet(msg *pb.EventObjectDetailsSet) {
+func (s *service) onSpaceViewSet(techSpaceId string, msg *pb.EventObjectDetailsSet) {
 	details := domain.NewDetailsFromProto(msg.Details)
 	s.spaceViewDetails[details.GetString(bundle.RelationKeyId)] = details
 
 	s.handleSpaceViewDetails(details)
 }
 
-func (s *service) onSpaceViewAmend(msg *pb.EventObjectDetailsAmend) {
+func (s *service) onSpaceViewAmend(techSpaceId string, msg *pb.EventObjectDetailsAmend) {
 	details, ok := s.spaceViewDetails[msg.Id]
 	if !ok {
 		log.Error("amend space view: details not found", zap.String("id", msg.Id))
@@ -112,7 +112,7 @@ func (s *service) onSpaceViewAmend(msg *pb.EventObjectDetailsAmend) {
 	s.handleSpaceViewDetails(details)
 }
 
-func (s *service) onSpaceViewRemove(msg *pb.EventObjectSubscriptionRemove) {
+func (s *service) onSpaceViewRemove(techSpaceId string, msg *pb.EventObjectSubscriptionRemove) {
 	s.removeSpaceView(msg.Id)
 }
 

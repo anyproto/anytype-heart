@@ -360,7 +360,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 		return nil, fmt.Errorf("query messages: %w", err)
 	}
 
-	s.subscription.subscribe(subId)
+	s.subscription.subscribe(subId, false)
 
 	if asyncInit {
 		var previousOrderId string
