@@ -18,13 +18,13 @@ import (
 //	@Id				listTags
 //	@Tags			Tags
 //	@Produce		json
-//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string								true	"Space ID"
-//	@Param			property_id		path		string								true	"Property ID"
-//	@Success		200				{object}	pagination.PaginatedResponse[Tag]	"List of tags"
-//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError					"Property not found"
-//	@Failure		500				{object}	util.ServerError					"Internal server error"
+//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string										true	"Space ID"
+//	@Param			property_id		path		string										true	"Property ID"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Tag]	"List of tags"
+//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError							"Property not found"
+//	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id}/tags [get]
 func ListTagsHandler(s *internal.Service) gin.HandlerFunc {
@@ -61,7 +61,7 @@ func ListTagsHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			property_id		path		string					true	"Property ID"
 //	@Param			tag_id			path		string					true	"Tag ID"
-//	@Success		200				{object}	TagResponse				"The requested tag"
+//	@Success		200				{object}	apimodel.TagResponse	"The requested tag"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
@@ -99,14 +99,14 @@ func GetTagHandler(s *internal.Service) gin.HandlerFunc {
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			property_id		path		string					true	"Property ID"
-//	@Param			tag				body		CreateTagRequest		true	"Tag to create"
-//	@Success		200				{object}	TagResponse				"The created tag"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22
+//	@Param			space_id		path		string						true	"Space ID"
+//	@Param			property_id		path		string						true	"Property ID"
+//	@Param			tag				body		apimodel.CreateTagRequest	true	"Tag to create"
+//	@Success		200				{object}	apimodel.TagResponse		"The created tag"
+//	@Failure		400				{object}	util.ValidationError		"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id}/tags [post]
 func CreateTagHandler(s *internal.Service) gin.HandlerFunc {
@@ -146,18 +146,18 @@ func CreateTagHandler(s *internal.Service) gin.HandlerFunc {
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			property_id		path		string					true	"Property ID"
-//	@Param			tag_id			path		string					true	"Tag ID"
-//	@Param			tag				body		UpdateTagRequest		true	"Tag to update"
-//	@Success		200				{object}	TagResponse				"The updated tag"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
-//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
-//	@Failure		410				{object}	util.GoneError			"Resource deleted"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string						true	"Space ID"
+//	@Param			property_id		path		string						true	"Property ID"
+//	@Param			tag_id			path		string						true	"Tag ID"
+//	@Param			tag				body		apimodel.UpdateTagRequest	true	"Tag to update"
+//	@Success		200				{object}	apimodel.TagResponse		"The updated tag"
+//	@Failure		400				{object}	util.ValidationError		"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError			"Forbidden"
+//	@Failure		404				{object}	util.NotFoundError			"Resource not found"
+//	@Failure		410				{object}	util.GoneError				"Resource deleted"
+//	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [patch]
 func UpdateTagHandler(s *internal.Service) gin.HandlerFunc {
@@ -203,7 +203,7 @@ func UpdateTagHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			property_id		path		string					true	"Property ID"
 //	@Param			tag_id			path		string					true	"Tag ID"
-//	@Success		200				{object}	TagResponse				"The deleted tag"
+//	@Success		200				{object}	apimodel.TagResponse	"The deleted tag"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"

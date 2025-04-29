@@ -18,13 +18,13 @@ import (
 //	@Id				listTypes
 //	@Tags			Types
 //	@Produce		json
-//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string								true	"Space ID"
-//	@Param			offset			query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int									false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Type]	"List of types"
-//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
-//	@Failure		500				{object}	util.ServerError					"Internal server error"
+//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string										true	"Space ID"
+//	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Type]	"List of types"
+//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
+//	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types [get]
 func ListTypesHandler(s *internal.Service) gin.HandlerFunc {
@@ -58,7 +58,7 @@ func ListTypesHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			type_id			path		string					true	"Type ID"
-//	@Success		200				{object}	TypeResponse			"The requested type"
+//	@Success		200				{object}	apimodel.TypeResponse	"The requested type"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
@@ -95,13 +95,13 @@ func GetTypeHandler(s *internal.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			type			body		CreateTypeRequest		true	"Type to create"
-//	@Success		200				{object}	TypeResponse			"The created type"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string						true	"Space ID"
+//	@Param			type			body		apimodel.CreateTypeRequest	true	"Type to create"
+//	@Success		200				{object}	apimodel.TypeResponse		"The created type"
+//	@Failure		400				{object}	util.ValidationError		"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types [post]
 func CreateTypeHandler(s *internal.Service) gin.HandlerFunc {
@@ -140,16 +140,16 @@ func CreateTypeHandler(s *internal.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			type_id			path		string					true	"Type ID"
-//	@Param			type			body		UpdateTypeRequest		true	"Type to update"
-//	@Success		200				{object}	TypeResponse			"The updated type"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
-//	@Failure		410				{object}	util.GoneError			"Resource deleted"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string						true	"Space ID"
+//	@Param			type_id			path		string						true	"Type ID"
+//	@Param			type			body		apimodel.UpdateTypeRequest	true	"Type to update"
+//	@Success		200				{object}	apimodel.TypeResponse		"The updated type"
+//	@Failure		400				{object}	util.ValidationError		"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError			"Resource not found"
+//	@Failure		410				{object}	util.GoneError				"Resource deleted"
+//	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id} [patch]
 func UpdateTypeHandler(s *internal.Service) gin.HandlerFunc {
@@ -193,7 +193,7 @@ func UpdateTypeHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			type_id			path		string					true	"Type ID"
-//	@Success		200				{object}	TypeResponse			"The deleted type"
+//	@Success		200				{object}	apimodel.TypeResponse	"The deleted type"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"

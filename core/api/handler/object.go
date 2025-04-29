@@ -18,13 +18,13 @@ import (
 //	@Id				listObjects
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string									true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string									true	"Space ID"
-//	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Object]	"List of objects"
-//	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
-//	@Failure		500				{object}	util.ServerError						"Internal server error"
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string											true	"Space ID"
+//	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of objects"
+//	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
+//	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects [get]
 func ListObjectsHandler(s *internal.Service) gin.HandlerFunc {
@@ -60,7 +60,7 @@ func ListObjectsHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			object_id		path		string					true	"Object ID"
-//	@Success		200				{object}	ObjectResponse			"The requested object"
+//	@Success		200				{object}	apimodel.ObjectResponse	"The requested object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
@@ -99,7 +99,7 @@ func GetObjectHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			object_id		path		string					true	"Object ID"
-//	@Success		200				{object}	ObjectResponse			"The deleted object"
+//	@Success		200				{object}	apimodel.ObjectResponse	"The deleted object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
@@ -139,14 +139,14 @@ func DeleteObjectHandler(s *internal.Service) gin.HandlerFunc {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			object			body		CreateObjectRequest		true	"Object to create"
-//	@Success		200				{object}	ObjectResponse			"The created object"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		423				{object}	util.RateLimitError		"Rate limit exceeded"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string							true	"Space ID"
+//	@Param			object			body		apimodel.CreateObjectRequest	true	"Object to create"
+//	@Success		200				{object}	apimodel.ObjectResponse			"The created object"
+//	@Failure		400				{object}	util.ValidationError			"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
+//	@Failure		423				{object}	util.RateLimitError				"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects [post]
 func CreateObjectHandler(s *internal.Service) gin.HandlerFunc {
@@ -190,16 +190,16 @@ func CreateObjectHandler(s *internal.Service) gin.HandlerFunc {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			object_id		path		string					true	"Object ID"
-//	@Param			object			body		UpdateObjectRequest		true	"Object to update"
-//	@Success		200				{object}	ObjectResponse			"The updated object"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
-//	@Failure		410				{object}	util.GoneError			"Resource deleted"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string							true	"Space ID"
+//	@Param			object_id		path		string							true	"Object ID"
+//	@Param			object			body		apimodel.UpdateObjectRequest	true	"Object to update"
+//	@Success		200				{object}	apimodel.ObjectResponse			"The updated object"
+//	@Failure		400				{object}	util.ValidationError			"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError				"Resource not found"
+//	@Failure		410				{object}	util.GoneError					"Resource deleted"
+//	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id} [patch]
 func UpdateObjectHandler(s *internal.Service) gin.HandlerFunc {
@@ -240,14 +240,14 @@ func UpdateObjectHandler(s *internal.Service) gin.HandlerFunc {
 //	@Id				exportObject
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			object_id		path		string					true	"Object ID"
-//	@Param			format			path		string					true	"Export format"	Enums(markdown)
-//	@Success		200				{object}	ObjectExportResponse	"Object exported successfully"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string							true	"Space ID"
+//	@Param			object_id		path		string							true	"Object ID"
+//	@Param			format			path		string							true	"Export format"	Enums(markdown)
+//	@Success		200				{object}	apimodel.ObjectExportResponse	"Object exported successfully"
+//	@Failure		400				{object}	util.ValidationError			"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
+//	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id}/{format} [get]
 func ExportObjectHandler(s *internal.Service) gin.HandlerFunc {

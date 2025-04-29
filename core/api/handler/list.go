@@ -17,15 +17,15 @@ import (
 //	@Id				getListViews
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string								true	"Space ID"
-//	@Param			list_id			path		string								true	"List ID"
-//	@Param			offset			query		int									false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int									false	"The number of items to return"
-//	@Success		200				{object}	pagination.PaginatedResponse[View]	"List of views"
-//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError					"Not found"
-//	@Failure		500				{object}	util.ServerError					"Internal server error"
+//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string										true	"Space ID"
+//	@Param			list_id			path		string										true	"List ID"
+//	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int											false	"The number of items to return"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.View]	"List of views"
+//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError							"Not found"
+//	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/views [get]
 func GetListViewsHandler(s *internal.Service) gin.HandlerFunc {
@@ -58,16 +58,16 @@ func GetListViewsHandler(s *internal.Service) gin.HandlerFunc {
 //	@Id				getListObjects
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string										true	"Space ID"
-//	@Param			list_id			path		string										true	"List ID"
-//	@Param			view_id			path		string										true	"View ID"
-//	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int											false	"The number of items to return"
-//	@Success		200				{object}	pagination.PaginatedResponse[object.Object]	"List of objects"
-//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError							"Not found"
-//	@Failure		500				{object}	util.ServerError							"Internal server error"
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string											true	"Space ID"
+//	@Param			list_id			path		string											true	"List ID"
+//	@Param			view_id			path		string											true	"View ID"
+//	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int												false	"The number of items to return"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of objects"
+//	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError								"Not found"
+//	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/{view_id}/objects [get]
 func GetObjectsInListHandler(s *internal.Service) gin.HandlerFunc {

@@ -19,13 +19,13 @@ import (
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										true	"The version of the API to use"											default(2025-04-22)
-//	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
-//	@Param			request			body		SearchRequest								true	"Search parameters"
-//	@Success		200				{object}	pagination.PaginatedResponse[object.Object]	"List of objects"
-//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
-//	@Failure		500				{object}	util.ServerError							"Internal server error"
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-04-22)
+//	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
+//	@Param			request			body		apimodel.SearchRequest							true	"Search parameters"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of objects"
+//	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
+//	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
 //	@Router			/search [post]
 func GlobalSearchHandler(s *internal.Service) gin.HandlerFunc {
@@ -63,14 +63,14 @@ func GlobalSearchHandler(s *internal.Service) gin.HandlerFunc {
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string										true	"Space ID"
-//	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
-//	@Param			request			body		SearchRequest								true	"Search parameters"
-//	@Success		200				{object}	pagination.PaginatedResponse[object.Object]	"List of objects"
-//	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
-//	@Failure		500				{object}	util.ServerError							"Internal server error"
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string											true	"Space ID"
+//	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
+//	@Param			request			body		apimodel.SearchRequest							true	"Search parameters"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of objects"
+//	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
+//	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/search [post]
 func SearchHandler(s *internal.Service) gin.HandlerFunc {

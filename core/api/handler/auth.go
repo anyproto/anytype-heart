@@ -18,11 +18,11 @@ import (
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			app_name		query		string					true	"App name requesting the challenge"
-//	@Success		200				{object}	DisplayCodeResponse		"Challenge ID"
-//	@Failure		400				{object}	util.ValidationError	"Invalid input"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
+//	@Param			app_name		query		string							true	"App name requesting the challenge"
+//	@Success		200				{object}	apimodel.DisplayCodeResponse	"Challenge ID"
+//	@Failure		400				{object}	util.ValidationError			"Invalid input"
+//	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Router			/auth/display_code [post]
 func DisplayCodeHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -54,7 +54,7 @@ func DisplayCodeHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			challenge_id	query		string					true	"Challenge ID"
 //	@Param			code			query		string					true	"4-digit code retrieved from Anytype Desktop app"
-//	@Success		200				{object}	TokenResponse			"Authentication token"
+//	@Success		200				{object}	apimodel.TokenResponse	"Authentication token"
 //	@Failure		400				{object}	util.ValidationError	"Invalid input"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/token [post]

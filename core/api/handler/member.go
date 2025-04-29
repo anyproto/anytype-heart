@@ -18,13 +18,13 @@ import (
 //	@Id				listMembers
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string									true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string									true	"Space ID"
-//	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Member]	"List of members"
-//	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
-//	@Failure		500				{object}	util.ServerError						"Internal server error"
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string											true	"Space ID"
+//	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Member]	"List of members"
+//	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
+//	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/members [get]
 func ListMembersHandler(s *internal.Service) gin.HandlerFunc {
@@ -58,7 +58,7 @@ func ListMembersHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			member_id		path		string					true	"Member ID or Identity"
-//	@Success		200				{object}	MemberResponse			"Member"
+//	@Success		200				{object}	apimodel.MemberResponse	"Member"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Member not found"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
@@ -97,8 +97,8 @@ func GetMemberHandler(s *internal.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"Space ID"
 //	@Param			member_id		path		string					true	"Member ID"
-//	@Param			body			body		UpdateMemberRequest		true	"Member to update"
-//	@Success		200				{object}	MemberResponse			"Member updated successfully"
+//	@Param			body			body		apimodel.UpdateMemberRequest		true	"Member to update"
+//	@Success		200				{object}	apimodel.MemberResponse			"Member updated successfully"
 //	@Failure		400				{object}	util.ValidationError	"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Member not found"

@@ -18,14 +18,14 @@ import (
 //	@Id				listTemplates
 //	@Tags			Templates
 //	@Produce		json
-//	@Param			Anytype-Version	header		string									true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string									true	"Space ID"
-//	@Param			type_id			path		string									true	"Type ID"
-//	@Param			offset			query		int										false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int										false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[Object]	"List of templates"
-//	@Failure		401				{object}	util.UnauthorizedError					"Unauthorized"
-//	@Failure		500				{object}	util.ServerError						"Internal server error"
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string											true	"Space ID"
+//	@Param			type_id			path		string											true	"Type ID"
+//	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of templates"
+//	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
+//	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id}/templates [get]
 func ListTemplatesHandler(s *internal.Service) gin.HandlerFunc {
@@ -60,15 +60,15 @@ func ListTemplatesHandler(s *internal.Service) gin.HandlerFunc {
 //	@Id				getTemplate
 //	@Tags			Templates
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			type_id			path		string					true	"Type ID"
-//	@Param			template_id		path		string					true	"Template ID"
-//	@Success		200				{object}	TemplateResponse		"The requested template"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
-//	@Failure		410				{object}	util.GoneError			"Resource deleted"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string						true	"Space ID"
+//	@Param			type_id			path		string						true	"Type ID"
+//	@Param			template_id		path		string						true	"Template ID"
+//	@Success		200				{object}	apimodel.TemplateResponse	"The requested template"
+//	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError			"Resource not found"
+//	@Failure		410				{object}	util.GoneError				"Resource deleted"
+//	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id}/templates/{template_id} [get]
 func GetTemplateHandler(s *internal.Service) gin.HandlerFunc {
