@@ -298,7 +298,6 @@ func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId s
 	}
 
 	jsonPayload, err := json.Marshal(payload)
-	log.Debug("sendPushNotification payload", zap.String("payload", string(jsonPayload)))
 
 	if err != nil {
 		log.Error("marshal push payload", zap.Error(err))
