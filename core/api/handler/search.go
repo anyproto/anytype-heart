@@ -1,4 +1,4 @@
-package search
+package handler
 
 import (
 	"net/http"
@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
+	"github.com/anyproto/anytype-heart/core/api/internal/search"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -27,7 +28,7 @@ import (
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/search [post]
-func GlobalSearchHandler(s Service) gin.HandlerFunc {
+func GlobalSearchHandler(s search.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
@@ -41,7 +42,7 @@ func GlobalSearchHandler(s Service) gin.HandlerFunc {
 
 		objects, total, hasMore, err := s.GlobalSearch(c, request, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(search.ErrFailedSearchObjects, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -72,7 +73,7 @@ func GlobalSearchHandler(s Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/search [post]
-func SearchHandler(s Service) gin.HandlerFunc {
+func SearchHandler(s search.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceID := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -87,7 +88,7 @@ func SearchHandler(s Service) gin.HandlerFunc {
 
 		objects, total, hasMore, err := s.Search(c, spaceID, request, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(search.ErrFailedSearchObjects, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
