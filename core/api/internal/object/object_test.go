@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -256,11 +257,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedTypeName, objects[0].Type.Name)
 		require.Equal(t, mockedTypeKey, objects[0].Type.Key)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTypeIcon)}, objects[0].Type.Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTypeIcon)}, objects[0].Type.Icon)
 		require.Equal(t, mockedObjectId, objects[0].Id)
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedObjectIcon)}, objects[0].Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, objects[0].Icon)
 		require.Equal(t, 5, len(objects[0].Properties))
 
 		for _, property := range objects[0].Properties {
@@ -534,11 +535,11 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedTypeId, object.Type.Id)
 		require.Equal(t, mockedTypeName, object.Type.Name)
 		require.Equal(t, mockedTypeKey, object.Type.Key)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTypeIcon)}, object.Type.Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTypeIcon)}, object.Type.Icon)
 		require.Equal(t, mockedObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedObjectIcon)}, object.Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, object.Icon)
 		require.Equal(t, 3, len(object.Properties))
 
 		for _, property := range object.Properties {
@@ -656,9 +657,9 @@ func TestObjectService_CreateObject(t *testing.T) {
 		}).Times(3)
 
 		// when
-		object, err := fx.service.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
+		object, err := fx.service.CreateObject(ctx, mockedSpaceId, apimodel.CreateObjectRequest{
 			Name:       mockedObjectName,
-			Icon:       Icon{Format: IconFormatEmoji, Emoji: StringPtr(mockedObjectIcon)},
+			Icon:       apimodel.Icon{Format: apimodel.IconFormatEmoji, Emoji: apimodel.StringPtr(mockedObjectIcon)},
 			TemplateId: mockedTemplateId,
 			TypeKey:    mockedTypeKey,
 		})
@@ -668,7 +669,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		require.Equal(t, "object", object.Object)
 		require.Equal(t, mockedNewObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedObjectIcon)}, object.Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, object.Icon)
 		require.Equal(t, mockedSpaceId, object.SpaceId)
 	})
 
@@ -683,9 +684,9 @@ func TestObjectService_CreateObject(t *testing.T) {
 			}).Once()
 
 		// when
-		object, err := fx.service.CreateObject(ctx, mockedSpaceId, CreateObjectRequest{
+		object, err := fx.service.CreateObject(ctx, mockedSpaceId, apimodel.CreateObjectRequest{
 			Name: "Fail Object",
-			Icon: Icon{},
+			Icon: apimodel.Icon{},
 		})
 
 		// then

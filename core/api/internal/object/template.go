@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -19,7 +20,7 @@ var (
 )
 
 // ListTemplates returns a paginated list of templates in a specific space.
-func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []Object, total int, hasMore bool, err error) {
+func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []apimodel.Object, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -65,7 +66,7 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 
 	total = len(templateObjectsResp.Records)
 	paginatedTemplates, hasMore := pagination.Paginate(templateObjectsResp.Records, offset, limit)
-	templates = make([]Object, 0, len(paginatedTemplates))
+	templates = make([]apimodel.Object, 0, len(paginatedTemplates))
 
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
@@ -88,7 +89,7 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 }
 
 // GetTemplate returns a single template by its ID in a specific space.
-func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (ObjectWithBlocks, error) {
+func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (apimodel.ObjectWithBlocks, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: templateId,
@@ -96,29 +97,29 @@ func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return ObjectWithBlocks{}, ErrTemplateNotFound
+			return apimodel.ObjectWithBlocks{}, ErrTemplateNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return ObjectWithBlocks{}, ErrTemplateDeleted
+			return apimodel.ObjectWithBlocks{}, ErrTemplateDeleted
 		}
 
 		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return ObjectWithBlocks{}, ErrFailedRetrieveTemplate
+			return apimodel.ObjectWithBlocks{}, ErrFailedRetrieveTemplate
 		}
 	}
 
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 	tagMap, err := s.GetTagMapFromStore(spaceId)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 
 	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, resp.ObjectView.Blocks, propertyMap, typeMap, tagMap), nil

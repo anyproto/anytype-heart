@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -31,7 +32,7 @@ func GlobalSearchHandler(s Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		request := SearchRequest{}
+		request := apimodel.SearchRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -77,7 +78,7 @@ func SearchHandler(s Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		request := SearchRequest{}
+		request := apimodel.SearchRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)

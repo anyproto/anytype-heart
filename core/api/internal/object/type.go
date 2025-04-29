@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -27,7 +28,7 @@ var (
 )
 
 // ListTypes returns a paginated list of types in a specific space.
-func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []Type, total int, hasMore bool, err error) {
+func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []apimodel.Type, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -67,7 +68,7 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 
 	total = len(resp.Records)
 	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	types = make([]Type, 0, len(paginatedTypes))
+	types = make([]apimodel.Type, 0, len(paginatedTypes))
 
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
@@ -75,12 +76,12 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 	}
 
 	for _, record := range paginatedTypes {
-		types = append(types, Type{
+		types = append(types, apimodel.Type{
 			Object:     "type",
 			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Key:        record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:       GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+			Icon:       apimodel.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 			Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
@@ -90,7 +91,7 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 }
 
 // GetType returns a single type by its ID in a specific space.
-func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (Type, error) {
+func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (apimodel.Type, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: typeId,
@@ -98,31 +99,31 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (T
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return Type{}, ErrTypeNotFound
+			return apimodel.Type{}, ErrTypeNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return Type{}, ErrTypeDeleted
+			return apimodel.Type{}, ErrTypeDeleted
 		}
 
 		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return Type{}, ErrFailedRetrieveType
+			return apimodel.Type{}, ErrFailedRetrieveType
 		}
 	}
 
 	// pre-fetch properties to fill the type
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
-		return Type{}, err
+		return apimodel.Type{}, err
 	}
 
 	details := resp.ObjectView.Details[0].Details.Fields
-	return Type{
+	return apimodel.Type{
 		Object:     "type",
 		Id:         typeId,
 		Key:        details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       apimodel.GetIcon(s.gatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
@@ -130,10 +131,10 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (T
 }
 
 // CreateType creates a new type in a specific space.
-func (s *service) CreateType(ctx context.Context, spaceId string, request CreateTypeRequest) (Type, error) {
+func (s *service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (apimodel.Type, error) {
 	details, err := s.buildTypeDetails(ctx, spaceId, request)
 	if err != nil {
-		return Type{}, err
+		return apimodel.Type{}, err
 	}
 
 	resp := s.mw.ObjectCreateObjectType(ctx, &pb.RpcObjectCreateObjectTypeRequest{
@@ -142,23 +143,23 @@ func (s *service) CreateType(ctx context.Context, spaceId string, request Create
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateObjectTypeResponseError_NULL {
-		return Type{}, ErrFailedCreateType
+		return apimodel.Type{}, ErrFailedCreateType
 	}
 
 	return s.GetType(ctx, spaceId, resp.ObjectId)
 }
 
 // UpdateType updates an existing type in a specific space.
-func (s *service) UpdateType(ctx context.Context, spaceId string, typeId string, request UpdateTypeRequest) (Type, error) {
+func (s *service) UpdateType(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (apimodel.Type, error) {
 	// TODO
-	return Type{}, nil
+	return apimodel.Type{}, nil
 }
 
 // DeleteType deletes a type by its ID in a specific space.
-func (s *service) DeleteType(ctx context.Context, spaceId string, typeId string) (Type, error) {
+func (s *service) DeleteType(ctx context.Context, spaceId string, typeId string) (apimodel.Type, error) {
 	t, err := s.GetType(ctx, spaceId, typeId)
 	if err != nil {
-		return Type{}, err
+		return apimodel.Type{}, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -167,15 +168,15 @@ func (s *service) DeleteType(ctx context.Context, spaceId string, typeId string)
 	})
 
 	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return Type{}, ErrFailedDeleteObject
+		return apimodel.Type{}, ErrFailedDeleteObject
 	}
 
 	return t, nil
 }
 
 // GetTypeMapsFromStore retrieves all types from all spaces.
-func (s *service) GetTypeMapsFromStore(spaceIds []string, propertyMap map[string]map[string]Property) (map[string]map[string]Type, error) {
-	spacesToTypes := make(map[string]map[string]Type, len(spaceIds))
+func (s *service) GetTypeMapsFromStore(spaceIds []string, propertyMap map[string]map[string]apimodel.Property) (map[string]map[string]apimodel.Type, error) {
+	spacesToTypes := make(map[string]map[string]apimodel.Type, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
 		typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap[spaceId])
@@ -189,7 +190,7 @@ func (s *service) GetTypeMapsFromStore(spaceIds []string, propertyMap map[string
 }
 
 // GetTypeMapFromStore retrieves all types for a specific space.
-func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]Property) (map[string]Type, error) {
+func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]apimodel.Property) (map[string]apimodel.Type, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -221,14 +222,14 @@ func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]Pro
 		return nil, ErrFailedRetrieveTypes
 	}
 
-	typeMap := make(map[string]Type, len(resp.Records))
+	typeMap := make(map[string]apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
-		typeMap[record.Fields[bundle.RelationKeyId.String()].GetStringValue()] = Type{
+		typeMap[record.Fields[bundle.RelationKeyId.String()].GetStringValue()] = apimodel.Type{
 			Object:     "type",
 			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Key:        record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:       GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+			Icon:       apimodel.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 			Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
@@ -238,12 +239,12 @@ func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]Pro
 }
 
 // getTypeFromStruct retrieves the type from the details.
-func (s *service) getTypeFromStruct(details *types.Struct, typeMap map[string]Type) Type {
+func (s *service) getTypeFromStruct(details *types.Struct, typeMap map[string]apimodel.Type) apimodel.Type {
 	return typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]
 }
 
 // buildTypeDetails builds the type details from the CreateTypeRequest.
-func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request CreateTypeRequest) (*types.Struct, error) {
+func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (*types.Struct, error) {
 	fields := make(map[string]*types.Value)
 
 	fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
@@ -269,7 +270,7 @@ func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		if propDef, exists := propertyMap[rk]; exists {
 			relationIds = append(relationIds, propDef.Id)
 		} else {
-			newProp, err2 := s.CreateProperty(ctx, spaceId, CreatePropertyRequest{
+			newProp, err2 := s.CreateProperty(ctx, spaceId, apimodel.CreatePropertyRequest{
 				Name:   propLink.Name,
 				Format: propLink.Format,
 			})
@@ -311,78 +312,78 @@ func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	return &types.Struct{Fields: fields}, nil
 }
 
-func (s *service) objectLayoutToObjectTypeLayout(objectLayout ObjectLayout) model.ObjectTypeLayout {
+func (s *service) objectLayoutToObjectTypeLayout(objectLayout apimodel.ObjectLayout) model.ObjectTypeLayout {
 	switch objectLayout {
-	case ObjectLayoutBasic:
+	case apimodel.ObjectLayoutBasic:
 		return model.ObjectType_basic
-	case ObjectLayoutProfile:
+	case apimodel.ObjectLayoutProfile:
 		return model.ObjectType_profile
-	case ObjectLayoutTodo:
+	case apimodel.ObjectLayoutTodo:
 		return model.ObjectType_todo
-	case ObjectLayoutNote:
+	case apimodel.ObjectLayoutNote:
 		return model.ObjectType_note
-	case ObjectLayoutBookmark:
+	case apimodel.ObjectLayoutBookmark:
 		return model.ObjectType_bookmark
-	case ObjectLayoutSet:
+	case apimodel.ObjectLayoutSet:
 		return model.ObjectType_set
-	case ObjectLayoutCollection:
+	case apimodel.ObjectLayoutCollection:
 		return model.ObjectType_collection
-	case ObjectLayoutParticipant:
+	case apimodel.ObjectLayoutParticipant:
 		return model.ObjectType_participant
 	default:
 		return model.ObjectType_basic
 	}
 }
 
-func (s *service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) ObjectLayout {
+func (s *service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.ObjectLayout {
 	switch objectTypeLayout {
 	case model.ObjectType_basic:
-		return ObjectLayoutBasic
+		return apimodel.ObjectLayoutBasic
 	case model.ObjectType_profile:
-		return ObjectLayoutProfile
+		return apimodel.ObjectLayoutProfile
 	case model.ObjectType_todo:
-		return ObjectLayoutTodo
+		return apimodel.ObjectLayoutTodo
 	case model.ObjectType_note:
-		return ObjectLayoutNote
+		return apimodel.ObjectLayoutNote
 	case model.ObjectType_bookmark:
-		return ObjectLayoutBookmark
+		return apimodel.ObjectLayoutBookmark
 	case model.ObjectType_set:
-		return ObjectLayoutSet
+		return apimodel.ObjectLayoutSet
 	case model.ObjectType_collection:
-		return ObjectLayoutCollection
+		return apimodel.ObjectLayoutCollection
 	case model.ObjectType_participant:
-		return ObjectLayoutParticipant
+		return apimodel.ObjectLayoutParticipant
 	default:
-		return ObjectLayoutBasic
+		return apimodel.ObjectLayoutBasic
 	}
 }
 
-func (s *service) typeLayoutToObjectTypeLayout(typeLayout TypeLayout) model.ObjectTypeLayout {
+func (s *service) typeLayoutToObjectTypeLayout(typeLayout apimodel.TypeLayout) model.ObjectTypeLayout {
 	switch typeLayout {
-	case TypeLayoutBasic:
+	case apimodel.TypeLayoutBasic:
 		return model.ObjectType_basic
-	case TypeLayoutProfile:
+	case apimodel.TypeLayoutProfile:
 		return model.ObjectType_profile
-	case TypeLayoutTodo:
+	case apimodel.TypeLayoutTodo:
 		return model.ObjectType_todo
-	case TypeLayoutNote:
+	case apimodel.TypeLayoutNote:
 		return model.ObjectType_note
 	default:
 		return model.ObjectType_basic
 	}
 }
 
-func (s *service) otLayoutToTypeLayout(objectTypeLayout model.ObjectTypeLayout) TypeLayout {
+func (s *service) otLayoutToTypeLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.TypeLayout {
 	switch objectTypeLayout {
 	case model.ObjectType_basic:
-		return TypeLayoutBasic
+		return apimodel.TypeLayoutBasic
 	case model.ObjectType_profile:
-		return TypeLayoutProfile
+		return apimodel.TypeLayoutProfile
 	case model.ObjectType_todo:
-		return TypeLayoutTodo
+		return apimodel.TypeLayoutTodo
 	case model.ObjectType_note:
-		return TypeLayoutNote
+		return apimodel.TypeLayoutNote
 	default:
-		return TypeLayoutBasic
+		return apimodel.TypeLayoutBasic
 	}
 }

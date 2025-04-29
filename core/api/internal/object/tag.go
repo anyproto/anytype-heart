@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
@@ -26,7 +27,7 @@ var (
 )
 
 // ListTags returns all tags for a given property id in a space.
-func (s *service) ListTags(ctx context.Context, spaceId string, propertyId string, offset int, limit int) (tags []Tag, total int, hasMore bool, err error) {
+func (s *service) ListTags(ctx context.Context, spaceId string, propertyId string, offset int, limit int) (tags []apimodel.Tag, total int, hasMore bool, err error) {
 	_, rk, err := util.ResolveIdtoUniqueKeyAndRelationKey(s.mw, spaceId, propertyId)
 	if err != nil {
 		return nil, 0, false, ErrInvalidPropertyId
@@ -59,12 +60,12 @@ func (s *service) ListTags(ctx context.Context, spaceId string, propertyId strin
 	}
 
 	if len(resp.Records) == 0 {
-		return []Tag{}, 0, false, nil
+		return []apimodel.Tag{}, 0, false, nil
 	}
 
 	total = len(resp.Records)
 	paginatedTags, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	tags = make([]Tag, 0, len(paginatedTags))
+	tags = make([]apimodel.Tag, 0, len(paginatedTags))
 
 	for _, record := range resp.Records {
 		tags = append(tags, s.mapTagFromRecord(record))
@@ -74,7 +75,7 @@ func (s *service) ListTags(ctx context.Context, spaceId string, propertyId strin
 }
 
 // GetTag retrieves a single tag for a given property id in a space.
-func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
+func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (apimodel.Tag, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: tagId,
@@ -82,15 +83,15 @@ func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string,
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return Tag{}, ErrTagNotFound
+			return apimodel.Tag{}, ErrTagNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return Tag{}, ErrTagDeleted
+			return apimodel.Tag{}, ErrTagDeleted
 		}
 
 		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return Tag{}, ErrFailedRetrieveTag
+			return apimodel.Tag{}, ErrFailedRetrieveTag
 		}
 	}
 
@@ -98,17 +99,17 @@ func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string,
 }
 
 // CreateTag creates a new tag option for a given property ID in a space.
-func (s *service) CreateTag(ctx context.Context, spaceId string, propertyId string, request CreateTagRequest) (Tag, error) {
+func (s *service) CreateTag(ctx context.Context, spaceId string, propertyId string, request apimodel.CreateTagRequest) (apimodel.Tag, error) {
 	_, rk, err := util.ResolveIdtoUniqueKeyAndRelationKey(s.mw, spaceId, propertyId)
 	if err != nil {
-		return Tag{}, ErrInvalidPropertyId
+		return apimodel.Tag{}, ErrInvalidPropertyId
 	}
 
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyRelationKey.String():         pbtypes.String(rk),
 			bundle.RelationKeyName.String():                pbtypes.String(s.sanitizedString(request.Name)),
-			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(ColorToColorOption[request.Color]),
+			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(apimodel.ColorToColorOption[request.Color]),
 		},
 	}
 
@@ -118,17 +119,17 @@ func (s *service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateRelationOptionResponseError_NULL {
-		return Tag{}, ErrFailedCreateTag
+		return apimodel.Tag{}, ErrFailedCreateTag
 	}
 
 	return s.GetTag(ctx, spaceId, propertyId, resp.ObjectId)
 }
 
 // UpdateTag updates an existing tag option for a given property ID in a space.
-func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId string, tagId string, request UpdateTagRequest) (Tag, error) {
+func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId string, tagId string, request apimodel.UpdateTagRequest) (apimodel.Tag, error) {
 	_, err := s.GetTag(ctx, spaceId, propertyId, tagId)
 	if err != nil {
-		return Tag{}, err
+		return apimodel.Tag{}, err
 	}
 
 	var details []*model.Detail
@@ -141,7 +142,7 @@ func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 	if request.Color != "" {
 		details = append(details, &model.Detail{
 			Key:   bundle.RelationKeyRelationOptionColor.String(),
-			Value: pbtypes.String(ColorToColorOption[request.Color]),
+			Value: pbtypes.String(apimodel.ColorToColorOption[request.Color]),
 		})
 	}
 
@@ -152,7 +153,7 @@ func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-			return Tag{}, ErrFailedUpdateTag
+			return apimodel.Tag{}, ErrFailedUpdateTag
 		}
 	}
 
@@ -160,10 +161,10 @@ func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 }
 
 // DeleteTag deletes a tag option for a given property ID in a space.
-func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId string, tagId string) (Tag, error) {
+func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId string, tagId string) (apimodel.Tag, error) {
 	tag, err := s.GetTag(ctx, spaceId, propertyId, tagId)
 	if err != nil {
-		return Tag{}, err
+		return apimodel.Tag{}, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -172,15 +173,15 @@ func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return Tag{}, ErrFailedDeleteTag
+		return apimodel.Tag{}, ErrFailedDeleteTag
 	}
 
 	return tag, nil
 }
 
 // GetTagMapsFromStore retrieves all tags for all spaces.
-func (s *service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]Tag, error) {
-	spacesToTags := make(map[string]map[string]Tag)
+func (s *service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Tag, error) {
+	spacesToTags := make(map[string]map[string]apimodel.Tag)
 	for _, spaceId := range spaceIds {
 		tagMap, err := s.GetTagMapFromStore(spaceId)
 		if err != nil {
@@ -192,7 +193,7 @@ func (s *service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]
 }
 
 // GetTagMapFromStore retrieves all tags for a specific space.
-func (s *service) GetTagMapFromStore(spaceId string) (map[string]Tag, error) {
+func (s *service) GetTagMapFromStore(spaceId string) (map[string]apimodel.Tag, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -214,7 +215,7 @@ func (s *service) GetTagMapFromStore(spaceId string) (map[string]Tag, error) {
 		return nil, ErrFailedRetrieveTags
 	}
 
-	tags := make(map[string]Tag)
+	tags := make(map[string]apimodel.Tag)
 	for _, record := range resp.Records {
 		tag := s.mapTagFromRecord(record)
 		tags[tag.Id] = tag
@@ -223,18 +224,18 @@ func (s *service) GetTagMapFromStore(spaceId string) (map[string]Tag, error) {
 	return tags, nil
 }
 
-func (s *service) mapTagFromRecord(record *types.Struct) Tag {
-	return Tag{
+func (s *service) mapTagFromRecord(record *types.Struct) apimodel.Tag {
+	return apimodel.Tag{
 		Object: "tag",
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:    ToTagApiKey(record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()),
 		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Color:  ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
+		Color:  apimodel.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 	}
 }
 
-func (s *service) getTagsFromStruct(tagIds []string, tagMap map[string]Tag) []Tag {
-	tags := make([]Tag, 0, len(tagIds))
+func (s *service) getTagsFromStruct(tagIds []string, tagMap map[string]apimodel.Tag) []apimodel.Tag {
+	tags := make([]apimodel.Tag, 0, len(tagIds))
 	for _, tagId := range tagIds {
 		if tagId == "" {
 			continue

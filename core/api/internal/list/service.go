@@ -8,6 +8,7 @@ import (
 	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -31,8 +32,8 @@ var (
 )
 
 type Service interface {
-	GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error)
-	GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error)
+	GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]apimodel.View, int, bool, error)
+	GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]apimodel.Object, int, bool, error)
 	AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
 }
@@ -47,7 +48,7 @@ func NewService(mw apicore.ClientCommands, objectService object.Service) Service
 }
 
 // GetListViews retrieves views of a list
-func (s *service) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]View, int, bool, error) {
+func (s *service) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]apimodel.View, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -69,13 +70,13 @@ func (s *service) GetListViews(ctx context.Context, spaceId string, listId strin
 		return nil, 0, false, ErrFailedGetListDataview
 	}
 
-	var views []View
+	var views []apimodel.View
 	switch content := dataviewBlock.Content.(type) {
 	case *model.BlockContentOfDataview:
 		for _, view := range content.Dataview.Views {
-			var filters []Filter
+			var filters []apimodel.Filter
 			for _, f := range view.Filters {
-				filters = append(filters, Filter{
+				filters = append(filters, apimodel.Filter{
 					Id:          f.Id,
 					PropertyKey: f.RelationKey,
 					Format:      object.RelationFormatToPropertyFormat[f.Format],
@@ -83,16 +84,16 @@ func (s *service) GetListViews(ctx context.Context, spaceId string, listId strin
 					Value:       f.Value.GetStringValue(),
 				})
 			}
-			var sorts []Sort
+			var sorts []apimodel.Sort
 			for _, srt := range view.Sorts {
-				sorts = append(sorts, Sort{
+				sorts = append(sorts, apimodel.Sort{
 					Id:          srt.Id,
 					PropertyKey: srt.RelationKey,
 					Format:      object.RelationFormatToPropertyFormat[srt.Format],
 					SortType:    strcase.ToSnake(model.BlockContentDataviewSortType_name[int32(srt.Type)]),
 				})
 			}
-			views = append(views, View{
+			views = append(views, apimodel.View{
 				Id:      view.Id,
 				Name:    view.Name,
 				Layout:  s.mapDataviewTypeName(view.Type),
@@ -111,7 +112,7 @@ func (s *service) GetListViews(ctx context.Context, spaceId string, listId strin
 }
 
 // GetObjectsInList retrieves objects in a list
-func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]object.Object, int, bool, error) {
+func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]apimodel.Object, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -218,7 +219,7 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	if err != nil {
 		return nil, 0, false, err
 	}
-	objects := make([]object.Object, 0, len(searchResp.Records))
+	objects := make([]apimodel.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
 		objects = append(objects, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -83,7 +84,7 @@ func GetObjectHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
 	}
 }
 
@@ -125,7 +126,7 @@ func DeleteObjectHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
 	}
 }
 
@@ -151,7 +152,7 @@ func CreateObjectHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
-		request := CreateObjectRequest{}
+		request := apimodel.CreateObjectRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -176,7 +177,7 @@ func CreateObjectHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
 	}
 }
 
@@ -205,7 +206,7 @@ func UpdateObjectHandler(s Service) gin.HandlerFunc {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
 
-		request := UpdateObjectRequest{}
+		request := apimodel.UpdateObjectRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -227,7 +228,7 @@ func UpdateObjectHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
 	}
 }
 
@@ -264,7 +265,7 @@ func ExportObjectHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, ObjectExportResponse{Markdown: markdown})
+		c.JSON(http.StatusOK, apimodel.ObjectExportResponse{Markdown: markdown})
 	}
 }
 
@@ -340,7 +341,7 @@ func GetPropertyHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: property})
 	}
 }
 
@@ -365,7 +366,7 @@ func CreatePropertyHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
-		request := CreatePropertyRequest{}
+		request := apimodel.CreatePropertyRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -385,7 +386,7 @@ func CreatePropertyHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: property})
 	}
 }
 
@@ -414,7 +415,7 @@ func UpdatePropertyHandler(s Service) gin.HandlerFunc {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
 
-		request := UpdatePropertyRequest{}
+		request := apimodel.UpdatePropertyRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -436,7 +437,7 @@ func UpdatePropertyHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: property})
 	}
 }
 
@@ -478,7 +479,7 @@ func DeletePropertyHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, PropertyResponse{Property: property})
+		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: property})
 	}
 }
 
@@ -558,7 +559,7 @@ func GetTagHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TagResponse{Tag: option})
+		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: option})
 	}
 }
 
@@ -585,7 +586,7 @@ func CreateTagHandler(s Service) gin.HandlerFunc {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
 
-		request := CreateTagRequest{}
+		request := apimodel.CreateTagRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -605,7 +606,7 @@ func CreateTagHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TagResponse{Tag: option})
+		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: option})
 	}
 }
 
@@ -636,7 +637,7 @@ func UpdateTagHandler(s Service) gin.HandlerFunc {
 		propertyId := c.Param("property_id")
 		tagId := c.Param("tag_id")
 
-		request := UpdateTagRequest{}
+		request := apimodel.UpdateTagRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -658,7 +659,7 @@ func UpdateTagHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TagResponse{Tag: option})
+		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: option})
 	}
 }
 
@@ -702,7 +703,7 @@ func DeleteTagHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TagResponse{Tag: option})
+		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: option})
 	}
 }
 
@@ -778,7 +779,7 @@ func GetTypeHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
 	}
 }
 
@@ -803,7 +804,7 @@ func CreateTypeHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
-		request := CreateTypeRequest{}
+		request := apimodel.CreateTypeRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -823,7 +824,7 @@ func CreateTypeHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
 	}
 }
 
@@ -852,7 +853,7 @@ func UpdateTypeHandler(s Service) gin.HandlerFunc {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
 
-		request := UpdateTypeRequest{}
+		request := apimodel.UpdateTypeRequest{}
 		if err := c.BindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -874,7 +875,7 @@ func UpdateTypeHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
 	}
 }
 
@@ -916,7 +917,7 @@ func DeleteTypeHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
 	}
 }
 
@@ -999,6 +1000,6 @@ func GetTemplateHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TemplateResponse{Template: template})
+		c.JSON(http.StatusOK, apimodel.TemplateResponse{Template: template})
 	}
 }

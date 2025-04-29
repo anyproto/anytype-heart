@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
@@ -30,7 +31,7 @@ var (
 )
 
 // ListObjects retrieves a paginated list of objects in a specific space.
-func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []Object, total int, hasMore bool, err error) {
+func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -74,7 +75,7 @@ func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, l
 
 	total = len(resp.Records)
 	paginatedObjects, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	objects = make([]Object, 0, len(paginatedObjects))
+	objects = make([]apimodel.Object, 0, len(paginatedObjects))
 
 	// pre-fetch properties, types and tags to fill the objects
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
@@ -97,7 +98,7 @@ func (s *service) ListObjects(ctx context.Context, spaceId string, offset int, l
 }
 
 // GetObject retrieves a single object by its ID in a specific space.
-func (s *service) GetObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error) {
+func (s *service) GetObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBlocks, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -105,39 +106,39 @@ func (s *service) GetObject(ctx context.Context, spaceId string, objectId string
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return ObjectWithBlocks{}, ErrObjectNotFound
+			return apimodel.ObjectWithBlocks{}, ErrObjectNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return ObjectWithBlocks{}, ErrObjectDeleted
+			return apimodel.ObjectWithBlocks{}, ErrObjectDeleted
 		}
 
 		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return ObjectWithBlocks{}, ErrFailedRetrieveObject
+			return apimodel.ObjectWithBlocks{}, ErrFailedRetrieveObject
 		}
 	}
 
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 	tagMap, err := s.GetTagMapFromStore(spaceId)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 
 	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, resp.ObjectView.Blocks, propertyMap, typeMap, tagMap), nil
 }
 
 // CreateObject creates a new object in a specific space.
-func (s *service) CreateObject(ctx context.Context, spaceId string, request CreateObjectRequest) (ObjectWithBlocks, error) {
+func (s *service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (apimodel.ObjectWithBlocks, error) {
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 
 	var objectId string
@@ -149,7 +150,7 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 		})
 
 		if resp.Error.Code != pb.RpcObjectCreateBookmarkResponseError_NULL {
-			return ObjectWithBlocks{}, ErrFailedCreateBookmark
+			return apimodel.ObjectWithBlocks{}, ErrFailedCreateBookmark
 		}
 		objectId = resp.ObjectId
 	} else {
@@ -161,7 +162,7 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 		})
 
 		if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
-			return ObjectWithBlocks{}, ErrFailedCreateObject
+			return apimodel.ObjectWithBlocks{}, ErrFailedCreateObject
 		}
 		objectId = resp.ObjectId
 	}
@@ -224,10 +225,10 @@ func (s *service) CreateObject(ctx context.Context, spaceId string, request Crea
 }
 
 // UpdateObject updates an existing object in a specific space.
-func (s *service) UpdateObject(ctx context.Context, spaceId string, objectId string, request UpdateObjectRequest) (ObjectWithBlocks, error) {
+func (s *service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (apimodel.ObjectWithBlocks, error) {
 	details, err := s.buildUpdatedObjectDetails(ctx, spaceId, request)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 
 	detailList := make([]*model.Detail, 0, len(details.Fields))
@@ -244,17 +245,17 @@ func (s *service) UpdateObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-		return ObjectWithBlocks{}, ErrFailedUpdateObject
+		return apimodel.ObjectWithBlocks{}, ErrFailedUpdateObject
 	}
 
 	return s.GetObject(ctx, spaceId, objectId)
 }
 
 // DeleteObject deletes an existing object in a specific space.
-func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId string) (ObjectWithBlocks, error) {
+func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBlocks, error) {
 	object, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
-		return ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBlocks{}, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -263,14 +264,14 @@ func (s *service) DeleteObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return ObjectWithBlocks{}, ErrFailedDeleteObject
+		return apimodel.ObjectWithBlocks{}, ErrFailedDeleteObject
 	}
 
 	return object, nil
 }
 
 // buildObjectDetails extracts the details structure from the CreateObjectRequest.
-func (s *service) buildObjectDetails(ctx context.Context, spaceId string, request CreateObjectRequest) (*types.Struct, error) {
+func (s *service) buildObjectDetails(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (*types.Struct, error) {
 	if request.TypeKey == "ot-bookmark" && request.Source == "" {
 		return nil, util.ErrBadInput("source is missing for bookmark")
 	}
@@ -301,7 +302,7 @@ func (s *service) buildObjectDetails(ctx context.Context, spaceId string, reques
 }
 
 // buildUpdatedObjectDetails extracts the details structure from the UpdateObjectRequest.
-func (s *service) buildUpdatedObjectDetails(ctx context.Context, spaceId string, request UpdateObjectRequest) (*types.Struct, error) {
+func (s *service) buildUpdatedObjectDetails(ctx context.Context, spaceId string, request apimodel.UpdateObjectRequest) (*types.Struct, error) {
 	fields := make(map[string]*types.Value)
 	if request.Name != "" {
 		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
@@ -327,13 +328,13 @@ func (s *service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 }
 
 // processIconFields returns the detail fields corresponding to the given icon.
-func (s *service) processIconFields(ctx context.Context, spaceId string, icon Icon) (map[string]*types.Value, error) {
+func (s *service) processIconFields(ctx context.Context, spaceId string, icon apimodel.Icon) (map[string]*types.Value, error) {
 	if icon.Name != nil || icon.Color != nil {
 		return nil, util.ErrBadInput("icon name and color are not supported for object")
 	}
 	iconFields := make(map[string]*types.Value)
 	if icon.Emoji != nil {
-		if len(*icon.Emoji) > 0 && !IsEmoji(*icon.Emoji) {
+		if len(*icon.Emoji) > 0 && !apimodel.IsEmoji(*icon.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")
 		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*icon.Emoji)
@@ -347,26 +348,26 @@ func (s *service) processIconFields(ctx context.Context, spaceId string, icon Ic
 }
 
 // getBlocksFromDetails returns the list of blocks from the ObjectShowResponse.
-func (s *service) getBlocksFromDetails(blocks []*model.Block) []Block {
-	b := make([]Block, 0, len(blocks))
+func (s *service) getBlocksFromDetails(blocks []*model.Block) []apimodel.Block {
+	b := make([]apimodel.Block, 0, len(blocks))
 
 	for _, block := range blocks {
-		var text *Text
-		var file *File
-		var property *Property
+		var text *apimodel.Text
+		var file *apimodel.File
+		var property *apimodel.Property
 
 		switch content := block.Content.(type) {
 		case *model.BlockContentOfText:
-			text = &Text{
+			text = &apimodel.Text{
 				Object:  "text",
 				Text:    content.Text.Text,
 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 				Checked: content.Text.Checked,
 				Color:   content.Text.Color,
-				Icon:    GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
+				Icon:    apimodel.GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
 			}
 		case *model.BlockContentOfFile:
-			file = &File{
+			file = &apimodel.File{
 				Object:         "file",
 				Hash:           content.File.Hash,
 				Name:           content.File.Name,
@@ -379,7 +380,7 @@ func (s *service) getBlocksFromDetails(blocks []*model.Block) []Block {
 				Style:          model.BlockContentFileStyle_name[int32(content.File.Style)],
 			}
 		case *model.BlockContentOfRelation:
-			property = &Property{
+			property = &apimodel.Property{
 				// TODO: is it sufficient to return the key only?
 				Object: "property",
 				Key:    content.Relation.Key,
@@ -387,7 +388,7 @@ func (s *service) getBlocksFromDetails(blocks []*model.Block) []Block {
 		}
 		// TODO: other content types?
 
-		b = append(b, Block{
+		b = append(b, apimodel.Block{
 			Object:          "block",
 			Id:              block.Id,
 			ChildrenIds:     block.ChildrenIds,
@@ -404,12 +405,12 @@ func (s *service) getBlocksFromDetails(blocks []*model.Block) []Block {
 }
 
 // GetObjectFromStruct creates an Object without blocks from the details.
-func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[string]Property, typeMap map[string]Type, tagMap map[string]Tag) Object {
-	return Object{
+func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
+	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       apimodel.GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
@@ -420,12 +421,12 @@ func (s *service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 }
 
 // GetObjectWithBlocksFromStruct creates an ObjectWithBlocks from the details.
-func (s *service) GetObjectWithBlocksFromStruct(details *types.Struct, blocks []*model.Block, propertyMap map[string]Property, typeMap map[string]Type, tagMap map[string]Tag) ObjectWithBlocks {
-	return ObjectWithBlocks{
+func (s *service) GetObjectWithBlocksFromStruct(details *types.Struct, blocks []*model.Block, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBlocks {
+	return apimodel.ObjectWithBlocks{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       apimodel.GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
@@ -447,9 +448,9 @@ func (s *service) isMissingObject(val interface{}) bool {
 				return str == "_missing_object"
 			}
 		}
-	case Tag:
+	case apimodel.Tag:
 		return v.Id == "_missing_object"
-	case []Tag:
+	case []apimodel.Tag:
 		if len(v) == 1 && v[0].Id == "_missing_object" {
 			return true
 		}

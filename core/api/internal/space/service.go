@@ -11,7 +11,7 @@ import (
 	"github.com/iancoleman/strcase"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -36,12 +36,12 @@ var (
 )
 
 type Service interface {
-	ListSpaces(ctx context.Context, offset int, limit int) ([]Space, int, bool, error)
-	GetSpace(ctx context.Context, spaceId string) (Space, error)
-	CreateSpace(ctx context.Context, request CreateSpaceRequest) (Space, error)
-	ListMembers(ctx context.Context, spaceId string, offset int, limit int) ([]Member, int, bool, error)
-	GetMember(ctx context.Context, spaceId string, memberId string) (Member, error)
-	UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error)
+	ListSpaces(ctx context.Context, offset int, limit int) ([]apimodel.Space, int, bool, error)
+	GetSpace(ctx context.Context, spaceId string) (apimodel.Space, error)
+	CreateSpace(ctx context.Context, request apimodel.CreateSpaceRequest) (apimodel.Space, error)
+	ListMembers(ctx context.Context, spaceId string, offset int, limit int) ([]apimodel.Member, int, bool, error)
+	GetMember(ctx context.Context, spaceId string, memberId string) (apimodel.Member, error)
+	UpdateMember(ctx context.Context, spaceId string, memberId string, request apimodel.UpdateMemberRequest) (apimodel.Member, error)
 	GetAllSpaceIds() ([]string, error)
 }
 
@@ -56,7 +56,7 @@ func NewService(mw apicore.ClientCommands, gatewayUrl string, techSpaceId string
 }
 
 // ListSpaces returns a paginated list of spaces for the account.
-func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []Space, total int, hasMore bool, err error) {
+func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -88,7 +88,7 @@ func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces
 
 	total = len(resp.Records)
 	paginatedRecords, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	spaces = make([]Space, 0, len(paginatedRecords))
+	spaces = make([]apimodel.Space, 0, len(paginatedRecords))
 
 	for _, record := range paginatedRecords {
 		workspace, err := s.getSpaceInfo(record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue())
@@ -103,7 +103,7 @@ func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces
 }
 
 // GetSpace returns the space info for the space with the given ID.
-func (s *service) GetSpace(ctx context.Context, spaceId string) (Space, error) {
+func (s *service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space, error) {
 	// Check if the workspace exists and is active
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
@@ -123,22 +123,22 @@ func (s *service) GetSpace(ctx context.Context, spaceId string) (Space, error) {
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return Space{}, ErrFailedOpenWorkspace
+		return apimodel.Space{}, ErrFailedOpenWorkspace
 	}
 
 	if len(resp.Records) == 0 {
-		return Space{}, ErrWorkspaceNotFound
+		return apimodel.Space{}, ErrWorkspaceNotFound
 	}
 
 	return s.getSpaceInfo(spaceId)
 }
 
 // CreateSpace creates a new space with the given name and returns the space info.
-func (s *service) CreateSpace(ctx context.Context, request CreateSpaceRequest) (Space, error) {
+func (s *service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceRequest) (apimodel.Space, error) {
 	name := request.Name
 	iconOption, err := rand.Int(rand.Reader, big.NewInt(13))
 	if err != nil {
-		return Space{}, ErrFailedGenerateRandomIcon
+		return apimodel.Space{}, ErrFailedGenerateRandomIcon
 	}
 
 	resp := s.mw.WorkspaceCreate(ctx, &pb.RpcWorkspaceCreateRequest{
@@ -154,7 +154,7 @@ func (s *service) CreateSpace(ctx context.Context, request CreateSpaceRequest) (
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcWorkspaceCreateResponseError_NULL {
-		return Space{}, ErrFailedCreateSpace
+		return apimodel.Space{}, ErrFailedCreateSpace
 	}
 
 	description := request.Description
@@ -169,7 +169,7 @@ func (s *service) CreateSpace(ctx context.Context, request CreateSpaceRequest) (
 		})
 
 		if infoResp.Error != nil && infoResp.Error.Code != pb.RpcWorkspaceSetInfoResponseError_NULL {
-			return Space{}, ErrFailedSetSpaceInfo
+			return apimodel.Space{}, ErrFailedSetSpaceInfo
 		}
 	}
 
@@ -177,7 +177,7 @@ func (s *service) CreateSpace(ctx context.Context, request CreateSpaceRequest) (
 }
 
 // ListMembers returns a paginated list of members in the space with the given ID.
-func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []Member, total int, hasMore bool, err error) {
+func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []apimodel.Member, total int, hasMore bool, err error) {
 	activeResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -238,12 +238,12 @@ func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, l
 
 	total = len(combinedRecords)
 	paginatedMembers, hasMore := pagination.Paginate(combinedRecords, offset, limit)
-	members = make([]Member, 0, len(paginatedMembers))
+	members = make([]apimodel.Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := object.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+		icon := apimodel.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
-		member := Member{
+		member := apimodel.Member{
 			Object:     "member",
 			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -261,7 +261,7 @@ func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, l
 }
 
 // GetMember returns the member with the given ID in the space with the given ID.
-func (s *service) GetMember(ctx context.Context, spaceId string, memberId string) (Member, error) {
+func (s *service) GetMember(ctx context.Context, spaceId string, memberId string) (apimodel.Member, error) {
 	// Member ID can be either a participant ID or an identity.
 	relationKey := bundle.RelationKeyId
 	if !strings.HasPrefix(memberId, "_participant") {
@@ -281,16 +281,16 @@ func (s *service) GetMember(ctx context.Context, spaceId string, memberId string
 	})
 
 	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return Member{}, ErrFailedGetMember
+		return apimodel.Member{}, ErrFailedGetMember
 	}
 
 	if len(resp.Records) == 0 {
-		return Member{}, ErrMemberNotFound
+		return apimodel.Member{}, ErrMemberNotFound
 	}
 
-	icon := object.GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := apimodel.GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
-	return Member{
+	return apimodel.Member{
 		Object:     "member",
 		Id:         resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -303,20 +303,20 @@ func (s *service) GetMember(ctx context.Context, spaceId string, memberId string
 }
 
 // UpdateMember approves member with a defined role or removes them
-func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId string, request UpdateMemberRequest) (Member, error) {
+func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId string, request apimodel.UpdateMemberRequest) (apimodel.Member, error) {
 	member, err := s.GetMember(ctx, spaceId, memberId)
 	if err != nil {
-		return Member{}, err
+		return apimodel.Member{}, err
 	}
 
 	if request.Status != "active" && request.Status != "removed" && request.Status != "declined" {
-		return Member{}, ErrInvalidApproveMemberStatus
+		return apimodel.Member{}, ErrInvalidApproveMemberStatus
 	}
 
 	switch request.Status {
 	case "active":
 		if request.Role != "viewer" && request.Role != "editor" {
-			return Member{}, ErrInvalidApproveMemberRole
+			return apimodel.Member{}, ErrInvalidApproveMemberRole
 		}
 
 		if member.Status == "joining" {
@@ -327,7 +327,7 @@ func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId str
 				Permissions: s.mapMemberRole(request.Role),
 			})
 			if approveResp.Error.Code != pb.RpcSpaceRequestApproveResponseError_NULL {
-				return Member{}, ErrFailedUpdateMember
+				return apimodel.Member{}, ErrFailedUpdateMember
 			}
 		} else {
 			// Update the member's role.
@@ -336,7 +336,7 @@ func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId str
 				Changes: []*model.ParticipantPermissionChange{{Identity: memberId, Perms: s.mapMemberRole(request.Role)}},
 			})
 			if resp.Error.Code != pb.RpcSpaceParticipantPermissionsChangeResponseError_NULL {
-				return Member{}, ErrFailedUpdateMember
+				return apimodel.Member{}, ErrFailedUpdateMember
 			}
 		}
 	case "declined":
@@ -346,7 +346,7 @@ func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId str
 			Identity: memberId,
 		})
 		if rejectResp.Error.Code != pb.RpcSpaceRequestDeclineResponseError_NULL {
-			return Member{}, ErrFailedUpdateMember
+			return apimodel.Member{}, ErrFailedUpdateMember
 		}
 	case "removed":
 		// Remove the member from the space.
@@ -355,28 +355,28 @@ func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId str
 			Identities: []string{memberId},
 		})
 		if removeResp.Error.Code != pb.RpcSpaceParticipantRemoveResponseError_NULL {
-			return Member{}, ErrFailedUpdateMember
+			return apimodel.Member{}, ErrFailedUpdateMember
 		}
 	default:
-		return Member{}, ErrInvalidApproveMemberStatus
+		return apimodel.Member{}, ErrInvalidApproveMemberStatus
 	}
 
 	member, err = s.GetMember(ctx, spaceId, memberId)
 	if err != nil {
-		return Member{}, err
+		return apimodel.Member{}, err
 	}
 
 	return member, nil
 }
 
 // getSpaceInfo returns the workspace info for the space with the given ID.
-func (s *service) getSpaceInfo(spaceId string) (space Space, err error) {
+func (s *service) getSpaceInfo(spaceId string) (space apimodel.Space, err error) {
 	workspaceResponse := s.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
 		SpaceId: spaceId,
 	})
 
 	if workspaceResponse.Error != nil && workspaceResponse.Error.Code != pb.RpcWorkspaceOpenResponseError_NULL {
-		return Space{}, ErrFailedOpenWorkspace
+		return apimodel.Space{}, ErrFailedOpenWorkspace
 	}
 
 	spaceResp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
@@ -385,14 +385,14 @@ func (s *service) getSpaceInfo(spaceId string) (space Space, err error) {
 	})
 
 	if spaceResp.Error != nil && spaceResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return Space{}, ErrFailedOpenSpace
+		return apimodel.Space{}, ErrFailedOpenSpace
 	}
 
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := object.GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := apimodel.GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
-	return Space{
+	return apimodel.Space{
 		Object:      "space",
 		Id:          spaceId,
 		Name:        name,

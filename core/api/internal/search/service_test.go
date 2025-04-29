@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/pb"
@@ -305,7 +306,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -315,7 +316,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
-		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr(mockedObjectIcon)}, objects[0].Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, objects[0].Icon)
 
 		// check details
 		for _, property := range objects[0].Properties {
@@ -331,7 +332,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}
 
 		// check tags
-		tags := []object.Tag{}
+		tags := []apimodel.Tag{}
 		for _, detail := range objects[0].Properties {
 			for _, tag := range detail.MultiSelect {
 				tags = append(tags, tag)
@@ -340,10 +341,10 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Len(t, tags, 2)
 		require.Equal(t, mockedTagId1, tags[0].Id)
 		require.Equal(t, mockedTagValue1, tags[0].Name)
-		require.Equal(t, object.Color(mockedTagColor1), tags[0].Color)
+		require.Equal(t, apimodel.Color(mockedTagColor1), tags[0].Color)
 		require.Equal(t, mockedTagId2, tags[1].Id)
 		require.Equal(t, mockedTagValue2, tags[1].Name)
-		require.Equal(t, object.Color(mockedTagColor2), tags[1].Color)
+		require.Equal(t, apimodel.Color(mockedTagColor2), tags[1].Color)
 
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
@@ -359,7 +360,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -378,7 +379,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.Error(t, err)
@@ -585,7 +586,7 @@ func TestSearchService_Search(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -612,7 +613,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Times(4)
 
 		// when
-		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -631,7 +632,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: SortOptions{Property: LastModifiedDate, Direction: Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.Error(t, err)

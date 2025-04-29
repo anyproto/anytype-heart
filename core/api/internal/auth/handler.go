@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
@@ -37,7 +38,7 @@ func DisplayCodeHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, DisplayCodeResponse{ChallengeId: challengeId})
+		c.JSON(http.StatusOK, apimodel.DisplayCodeResponse{ChallengeId: challengeId})
 	}
 }
 
@@ -73,6 +74,6 @@ func TokenHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, TokenResponse{AppKey: appKey})
+		c.JSON(http.StatusOK, apimodel.TokenResponse{AppKey: appKey})
 	}
 }

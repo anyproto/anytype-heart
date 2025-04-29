@@ -11,7 +11,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -161,7 +161,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		require.Equal(t, "My Workspace", spaces[1].Name)
 		require.Equal(t, "my-space-id", spaces[1].Id)
 		require.Equal(t, "desc2", spaces[1].Description)
-		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr("🚀")}, spaces[1].Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("🚀")}, spaces[1].Icon)
 		require.Equal(t, "gateway-url-2", spaces[1].GatewayUrl)
 		require.Equal(t, "network-id-2", spaces[1].NetworkId)
 
@@ -292,7 +292,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "My Workspace", space.Name)
 		require.Equal(t, "space-id", space.Id)
-		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr("🚀")}, space.Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("🚀")}, space.Icon)
 		require.Equal(t, "gateway-url", space.GatewayUrl)
 		require.Equal(t, "network-id", space.NetworkId)
 	})
@@ -326,7 +326,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, ErrWorkspaceNotFound)
-		require.Equal(t, Space{}, space)
+		require.Equal(t, apimodel.Space{}, space)
 	})
 
 	t.Run("failed workspace open", func(t *testing.T) {
@@ -369,7 +369,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, ErrFailedOpenWorkspace)
-		require.Equal(t, Space{}, space)
+		require.Equal(t, apimodel.Space{}, space)
 	})
 }
 
@@ -424,14 +424,14 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		space, err := fx.service.CreateSpace(nil, CreateSpaceRequest{Name: "New Space", Description: "A new space"})
+		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: "New Space", Description: "A new space"})
 
 		// then
 		require.NoError(t, err)
 		require.Equal(t, "new-space-id", space.Id)
 		require.Equal(t, "New Space", space.Name)
 		require.Equal(t, "A new space", space.Description)
-		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr("🚀")}, space.Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("🚀")}, space.Icon)
 	})
 
 	t.Run("failed workspace creation", func(t *testing.T) {
@@ -443,11 +443,11 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 			}).Once()
 
 		// when
-		space, err := fx.service.CreateSpace(nil, CreateSpaceRequest{Name: "New Space"})
+		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: "New Space"})
 
 		// then
 		require.ErrorIs(t, err, ErrFailedCreateSpace)
-		require.Equal(t, Space{}, space)
+		require.Equal(t, apimodel.Space{}, space)
 	})
 }
 
@@ -572,7 +572,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 
 		require.Equal(t, "member-2", members[1].Id)
 		require.Equal(t, "John Doe", members[1].Name)
-		require.Equal(t, object.Icon{Format: "emoji", Emoji: object.StringPtr("👤")}, members[1].Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("👤")}, members[1].Icon)
 		require.Equal(t, "john.any", members[1].GlobalName)
 		require.Equal(t, "active", members[1].Status)
 		require.Equal(t, "owner", members[1].Role)
@@ -696,7 +696,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, ErrMemberNotFound)
-		require.Equal(t, Member{}, member)
+		require.Equal(t, apimodel.Member{}, member)
 	})
 	t.Run("failed get member", func(t *testing.T) {
 		// given
@@ -744,7 +744,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetMember)
-		require.Equal(t, Member{}, member)
+		require.Equal(t, apimodel.Member{}, member)
 	})
 
 	t.Run("successful retrieval of member with participant id", func(t *testing.T) {
@@ -896,7 +896,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		member, err := fx.service.UpdateMember(ctx, "space-id", "member-1", UpdateMemberRequest{
+		member, err := fx.service.UpdateMember(ctx, "space-id", "member-1", apimodel.UpdateMemberRequest{
 			Status: "active",
 			Role:   "viewer",
 		})
@@ -1002,7 +1002,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		member, err := fx.service.UpdateMember(ctx, "space-id", "member-2", UpdateMemberRequest{
+		member, err := fx.service.UpdateMember(ctx, "space-id", "member-2", apimodel.UpdateMemberRequest{
 			Status: "active",
 			Role:   "editor",
 		})
@@ -1103,7 +1103,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		member, err := fx.service.UpdateMember(ctx, "space-id", "member-3", UpdateMemberRequest{
+		member, err := fx.service.UpdateMember(ctx, "space-id", "member-3", apimodel.UpdateMemberRequest{
 			Status: "declined",
 		})
 
@@ -1202,7 +1202,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		member, err := fx.service.UpdateMember(ctx, "space-id", "member-4", UpdateMemberRequest{
+		member, err := fx.service.UpdateMember(ctx, "space-id", "member-4", apimodel.UpdateMemberRequest{
 			Status: "removed",
 		})
 
@@ -1255,7 +1255,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		_, err := fx.service.UpdateMember(ctx, "space-id", "member-5", UpdateMemberRequest{
+		_, err := fx.service.UpdateMember(ctx, "space-id", "member-5", apimodel.UpdateMemberRequest{
 			Status: "invalid",
 			Role:   "viewer",
 		})
@@ -1308,7 +1308,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		_, err := fx.service.UpdateMember(ctx, "space-id", "member-6", UpdateMemberRequest{
+		_, err := fx.service.UpdateMember(ctx, "space-id", "member-6", apimodel.UpdateMemberRequest{
 			Status: "active",
 			Role:   "invalid",
 		})
@@ -1370,7 +1370,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		_, err := fx.service.UpdateMember(ctx, "space-id", "member-7", UpdateMemberRequest{
+		_, err := fx.service.UpdateMember(ctx, "space-id", "member-7", apimodel.UpdateMemberRequest{
 			Status: "active",
 			Role:   "viewer",
 		})
@@ -1409,7 +1409,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		_, err := fx.service.UpdateMember(ctx, "space-id", "member-8", UpdateMemberRequest{
+		_, err := fx.service.UpdateMember(ctx, "space-id", "member-8", apimodel.UpdateMemberRequest{
 			Status: "active",
 			Role:   "viewer",
 		})

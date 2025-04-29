@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -74,37 +75,37 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyIconName.String():               true,
 }
 
-var PropertyFormatToRelationFormat = map[PropertyFormat]model.RelationFormat{
-	PropertyFormatText:        model.RelationFormat_longtext,
-	PropertyFormatNumber:      model.RelationFormat_number,
-	PropertyFormatSelect:      model.RelationFormat_status,
-	PropertyFormatMultiSelect: model.RelationFormat_tag,
-	PropertyFormatDate:        model.RelationFormat_date,
-	PropertyFormatFiles:       model.RelationFormat_file,
-	PropertyFormatCheckbox:    model.RelationFormat_checkbox,
-	PropertyFormatUrl:         model.RelationFormat_url,
-	PropertyFormatEmail:       model.RelationFormat_email,
-	PropertyFormatPhone:       model.RelationFormat_phone,
-	PropertyFormatObjects:     model.RelationFormat_object,
+var PropertyFormatToRelationFormat = map[apimodel.PropertyFormat]model.RelationFormat{
+	apimodel.PropertyFormatText:        model.RelationFormat_longtext,
+	apimodel.PropertyFormatNumber:      model.RelationFormat_number,
+	apimodel.PropertyFormatSelect:      model.RelationFormat_status,
+	apimodel.PropertyFormatMultiSelect: model.RelationFormat_tag,
+	apimodel.PropertyFormatDate:        model.RelationFormat_date,
+	apimodel.PropertyFormatFiles:       model.RelationFormat_file,
+	apimodel.PropertyFormatCheckbox:    model.RelationFormat_checkbox,
+	apimodel.PropertyFormatUrl:         model.RelationFormat_url,
+	apimodel.PropertyFormatEmail:       model.RelationFormat_email,
+	apimodel.PropertyFormatPhone:       model.RelationFormat_phone,
+	apimodel.PropertyFormatObjects:     model.RelationFormat_object,
 }
 
-var RelationFormatToPropertyFormat = map[model.RelationFormat]PropertyFormat{
-	model.RelationFormat_longtext:  PropertyFormatText,
-	model.RelationFormat_shorttext: PropertyFormatText,
-	model.RelationFormat_number:    PropertyFormatNumber,
-	model.RelationFormat_status:    PropertyFormatSelect,
-	model.RelationFormat_tag:       PropertyFormatMultiSelect,
-	model.RelationFormat_date:      PropertyFormatDate,
-	model.RelationFormat_file:      PropertyFormatFiles,
-	model.RelationFormat_checkbox:  PropertyFormatCheckbox,
-	model.RelationFormat_url:       PropertyFormatUrl,
-	model.RelationFormat_email:     PropertyFormatEmail,
-	model.RelationFormat_phone:     PropertyFormatPhone,
-	model.RelationFormat_object:    PropertyFormatObjects,
+var RelationFormatToPropertyFormat = map[model.RelationFormat]apimodel.PropertyFormat{
+	model.RelationFormat_longtext:  apimodel.PropertyFormatText,
+	model.RelationFormat_shorttext: apimodel.PropertyFormatText,
+	model.RelationFormat_number:    apimodel.PropertyFormatNumber,
+	model.RelationFormat_status:    apimodel.PropertyFormatSelect,
+	model.RelationFormat_tag:       apimodel.PropertyFormatMultiSelect,
+	model.RelationFormat_date:      apimodel.PropertyFormatDate,
+	model.RelationFormat_file:      apimodel.PropertyFormatFiles,
+	model.RelationFormat_checkbox:  apimodel.PropertyFormatCheckbox,
+	model.RelationFormat_url:       apimodel.PropertyFormatUrl,
+	model.RelationFormat_email:     apimodel.PropertyFormatEmail,
+	model.RelationFormat_phone:     apimodel.PropertyFormatPhone,
+	model.RelationFormat_object:    apimodel.PropertyFormatObjects,
 }
 
 // ListProperties returns a list of properties for a specific space.
-func (s *service) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []Property, total int, hasMore bool, err error) {
+func (s *service) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []apimodel.Property, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -142,7 +143,7 @@ func (s *service) ListProperties(ctx context.Context, spaceId string, offset int
 
 	total = len(filteredRecords)
 	paginatedProperties, hasMore := pagination.Paginate(filteredRecords, offset, limit)
-	properties = make([]Property, 0, len(paginatedProperties))
+	properties = make([]apimodel.Property, 0, len(paginatedProperties))
 
 	for _, record := range paginatedProperties {
 		_, property := s.mapPropertyFromRecord(record)
@@ -153,7 +154,7 @@ func (s *service) ListProperties(ctx context.Context, spaceId string, offset int
 }
 
 // GetProperty retrieves a single property by its ID in a specific space.
-func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId string) (Property, error) {
+func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
 	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: propertyId,
@@ -161,27 +162,27 @@ func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId st
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return Property{}, ErrPropertyNotFound
+			return apimodel.Property{}, ErrPropertyNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return Property{}, ErrPropertyDeleted
+			return apimodel.Property{}, ErrPropertyDeleted
 		}
 
 		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return Property{}, ErrFailedRetrieveProperty
+			return apimodel.Property{}, ErrFailedRetrieveProperty
 		}
 	}
 
 	rk, property := s.mapPropertyFromRecord(resp.ObjectView.Details[0].Details)
 	if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
-		return Property{}, ErrPropertyNotFound
+		return apimodel.Property{}, ErrPropertyNotFound
 	}
 	return property, nil
 }
 
 // CreateProperty creates a new property in a specific space.
-func (s *service) CreateProperty(ctx context.Context, spaceId string, request CreatePropertyRequest) (Property, error) {
+func (s *service) CreateProperty(ctx context.Context, spaceId string, request apimodel.CreatePropertyRequest) (apimodel.Property, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():           pbtypes.String(request.Name),
@@ -195,17 +196,17 @@ func (s *service) CreateProperty(ctx context.Context, spaceId string, request Cr
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateRelationResponseError_NULL {
-		return Property{}, ErrFailedCreateProperty
+		return apimodel.Property{}, ErrFailedCreateProperty
 	}
 
 	return s.GetProperty(ctx, spaceId, resp.ObjectId)
 }
 
 // UpdateProperty updates an existing property in a specific space.
-func (s *service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request UpdatePropertyRequest) (Property, error) {
+func (s *service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request apimodel.UpdatePropertyRequest) (apimodel.Property, error) {
 	_, err := s.GetProperty(ctx, spaceId, propertyId)
 	if err != nil {
-		return Property{}, err
+		return apimodel.Property{}, err
 	}
 
 	detail := model.Detail{
@@ -219,7 +220,7 @@ func (s *service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-		return Property{}, ErrFailedUpdateProperty
+		return apimodel.Property{}, ErrFailedUpdateProperty
 	}
 
 	return s.GetProperty(ctx, spaceId, propertyId)
@@ -230,10 +231,10 @@ func (s *service) sanitizedString(str string) string {
 }
 
 // DeleteProperty deletes a property in a specific space.
-func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (Property, error) {
+func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
 	property, err := s.GetProperty(ctx, spaceId, propertyId)
 	if err != nil {
-		return Property{}, err
+		return apimodel.Property{}, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -242,14 +243,14 @@ func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return Property{}, ErrFailedDeleteProperty
+		return apimodel.Property{}, ErrFailedDeleteProperty
 	}
 
 	return property, nil
 }
 
 // processProperties builds detail fields for the given property entries, applying sanitization and validation for each.
-func (s *service) processProperties(ctx context.Context, spaceId string, entries []PropertyLinkWithValue) (map[string]*types.Value, error) {
+func (s *service) processProperties(ctx context.Context, spaceId string, entries []apimodel.PropertyLinkWithValue) (map[string]*types.Value, error) {
 	fields := make(map[string]*types.Value)
 	if len(entries) == 0 {
 		return fields, nil
@@ -273,55 +274,55 @@ func (s *service) processProperties(ctx context.Context, spaceId string, entries
 		}
 		var raw interface{}
 		switch prop.Format {
-		case PropertyFormatText:
+		case apimodel.PropertyFormatText:
 			if entry.Text == nil {
 				return nil, util.ErrBadInput("property '" + key + "' requires a text value")
 			}
 			raw = *entry.Text
-		case PropertyFormatNumber:
+		case apimodel.PropertyFormatNumber:
 			if entry.Number == nil {
 				return nil, util.ErrBadInput("property '" + key + "' requires a number value")
 			}
 			raw = *entry.Number
-		case PropertyFormatSelect:
+		case apimodel.PropertyFormatSelect:
 			if entry.Select == nil {
 				return nil, util.ErrBadInput("property '" + key + "' requires a select value")
 			}
 			raw = *entry.Select
-		case PropertyFormatMultiSelect:
+		case apimodel.PropertyFormatMultiSelect:
 			ids := make([]interface{}, len(entry.MultiSelect))
 			for i, id := range entry.MultiSelect {
 				ids[i] = id
 			}
 			raw = ids
-		case PropertyFormatDate:
+		case apimodel.PropertyFormatDate:
 			if entry.Date == nil {
 				return nil, util.ErrBadInput("property '" + key + "' requires a date value")
 			}
 			raw = *entry.Date
-		case PropertyFormatCheckbox:
+		case apimodel.PropertyFormatCheckbox:
 			if entry.Checkbox == nil {
 				return nil, util.ErrBadInput("property '" + key + "' requires a boolean value")
 			}
 			raw = *entry.Checkbox
-		case PropertyFormatUrl:
+		case apimodel.PropertyFormatUrl:
 			if entry.Url == nil {
 				return nil, util.ErrBadInput("property '" + key + "' requires a URL value")
 			}
 			raw = *entry.Url
-		case PropertyFormatEmail:
+		case apimodel.PropertyFormatEmail:
 			if entry.Email == nil {
 				return nil, util.ErrBadInput("property '" + key + "' requires an email value")
 			}
 			raw = *entry.Email
-		case PropertyFormatPhone:
+		case apimodel.PropertyFormatPhone:
 			if entry.Phone == nil {
 				return nil, util.ErrBadInput("property '" + key + "' requires a phone value")
 			}
 			raw = *entry.Phone
-		case PropertyFormatObjects, PropertyFormatFiles:
+		case apimodel.PropertyFormatObjects, apimodel.PropertyFormatFiles:
 			var list []string
-			if prop.Format == PropertyFormatFiles {
+			if prop.Format == apimodel.PropertyFormatFiles {
 				list = entry.Files
 			} else {
 				list = entry.Objects
@@ -345,21 +346,21 @@ func (s *service) processProperties(ctx context.Context, spaceId string, entries
 }
 
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
-func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId string, key string, format PropertyFormat, value interface{}, property Property) (interface{}, error) {
+func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property apimodel.Property) (interface{}, error) {
 	switch format {
-	case PropertyFormatText, PropertyFormatUrl, PropertyFormatEmail, PropertyFormatPhone:
+	case apimodel.PropertyFormatText, apimodel.PropertyFormatUrl, apimodel.PropertyFormatEmail, apimodel.PropertyFormatPhone:
 		str, ok := value.(string)
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string")
 		}
 		return s.sanitizedString(str), nil
-	case PropertyFormatNumber:
+	case apimodel.PropertyFormatNumber:
 		num, ok := value.(float64)
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a number")
 		}
 		return num, nil
-	case PropertyFormatSelect:
+	case apimodel.PropertyFormatSelect:
 		id, ok := value.(string)
 		id = s.sanitizedString(id)
 		if !ok {
@@ -369,7 +370,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 			return nil, util.ErrBadInput("invalid select option for '" + key + "': " + id)
 		}
 		return id, nil
-	case PropertyFormatMultiSelect:
+	case apimodel.PropertyFormatMultiSelect:
 		ids, ok := value.([]interface{})
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be an array of tag ids")
@@ -387,7 +388,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 			validIds = append(validIds, id)
 		}
 		return validIds, nil
-	case PropertyFormatDate:
+	case apimodel.PropertyFormatDate:
 		dateStr, ok := value.(string)
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (date in RFC3339 format)")
@@ -398,13 +399,13 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 			return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
 		}
 		return t.Unix(), nil
-	case PropertyFormatCheckbox:
+	case apimodel.PropertyFormatCheckbox:
 		b, ok := value.(bool)
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a boolean")
 		}
 		return b, nil
-	case PropertyFormatObjects, PropertyFormatFiles:
+	case apimodel.PropertyFormatObjects, apimodel.PropertyFormatFiles:
 		ids, ok := value.([]interface{})
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
@@ -428,7 +429,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 }
 
 // isValidSelectOption checks if the option id is valid for the given property.
-func (s *service) isValidSelectOption(ctx context.Context, spaceId string, property Property, optionId string) bool {
+func (s *service) isValidSelectOption(ctx context.Context, spaceId string, property apimodel.Property, optionId string) bool {
 	// TODO: refine logic
 	tags, _, _, err := s.ListTags(ctx, spaceId, property.Id, 0, 1000)
 	if err != nil {
@@ -453,8 +454,8 @@ func (s *service) isValidFileReference(ctx context.Context, spaceId string, file
 }
 
 // getRecommendedPropertiesFromLists combines featured and regular properties into a list of Properties.
-func (s *service) getRecommendedPropertiesFromLists(featured, regular *types.ListValue, propertyMap map[string]Property) []Property {
-	var props []Property
+func (s *service) getRecommendedPropertiesFromLists(featured, regular *types.ListValue, propertyMap map[string]apimodel.Property) []apimodel.Property {
+	var props []apimodel.Property
 	lists := []*types.ListValue{featured, regular}
 	for _, lst := range lists {
 		if lst == nil {
@@ -474,8 +475,8 @@ func (s *service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 }
 
 // GetPropertyMapsFromStore retrieves all properties for all spaces.
-func (s *service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]Property, error) {
-	spacesToProperties := make(map[string]map[string]Property, len(spaceIds))
+func (s *service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Property, error) {
+	spacesToProperties := make(map[string]map[string]apimodel.Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
 		propertyMap, err := s.GetPropertyMapFromStore(spaceId)
@@ -490,7 +491,7 @@ func (s *service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[st
 
 // GetPropertyMapFromStore retrieves all properties for a specific space
 // Property entries are also keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *service) GetPropertyMapFromStore(spaceId string) (map[string]Property, error) {
+func (s *service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.Property, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -517,7 +518,7 @@ func (s *service) GetPropertyMapFromStore(spaceId string) (map[string]Property, 
 		return nil, ErrFailedRetrievePropertyMap
 	}
 
-	propertyMap := make(map[string]Property, len(resp.Records))
+	propertyMap := make(map[string]apimodel.Property, len(resp.Records))
 	for _, record := range resp.Records {
 		rk, p := s.mapPropertyFromRecord(record)
 		propertyMap[rk] = p
@@ -528,7 +529,7 @@ func (s *service) GetPropertyMapFromStore(spaceId string) (map[string]Property, 
 }
 
 // mapPropertyFromRecord maps a single property record into a Property and returns its trimmed relation key.
-func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property) {
+func (s *service) mapPropertyFromRecord(record *types.Struct) (string, apimodel.Property) {
 	rk := strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-")
 
 	var key, name string
@@ -544,7 +545,7 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property)
 		name = record.Fields[bundle.RelationKeyName.String()].GetStringValue()
 	}
 
-	return rk, Property{
+	return rk, apimodel.Property{
 		Object: "property",
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:    key,
@@ -554,8 +555,8 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, Property)
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
-func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]Property, tagMap map[string]Tag) []PropertyWithValue {
-	properties := make([]PropertyWithValue, 0)
+func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, tagMap map[string]apimodel.Tag) []apimodel.PropertyWithValue {
+	properties := make([]apimodel.PropertyWithValue, 0)
 	for rk, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
@@ -578,25 +579,25 @@ func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 }
 
 // convertPropertyValue converts a protobuf types.Value into a native Go value.
-func (s *service) convertPropertyValue(key string, value *types.Value, format PropertyFormat, details *types.Struct, tagMap map[string]Tag) interface{} {
+func (s *service) convertPropertyValue(key string, value *types.Value, format apimodel.PropertyFormat, details *types.Struct, tagMap map[string]apimodel.Tag) interface{} {
 	switch kind := value.Kind.(type) {
 	case *types.Value_NullValue:
 		return nil
 	case *types.Value_NumberValue:
-		if format == PropertyFormatDate {
+		if format == apimodel.PropertyFormatDate {
 			return time.Unix(int64(kind.NumberValue), 0).UTC().Format(time.RFC3339)
 		}
 		return kind.NumberValue
 	case *types.Value_StringValue:
 		// TODO: investigate how this is possible? select option not list and not returned in further details
-		if format == PropertyFormatSelect {
+		if format == apimodel.PropertyFormatSelect {
 			tags := s.getTagsFromStruct([]string{kind.StringValue}, tagMap)
 			if len(tags) > 0 {
 				return tags[0]
 			}
 			return nil
 		}
-		if format == PropertyFormatMultiSelect {
+		if format == apimodel.PropertyFormatMultiSelect {
 			return s.getTagsFromStruct([]string{kind.StringValue}, tagMap)
 		}
 		return kind.StringValue
@@ -609,7 +610,7 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 		}
 		return m
 	case *types.Value_ListValue:
-		if format == PropertyFormatSelect {
+		if format == apimodel.PropertyFormatSelect {
 			listValues := kind.ListValue.Values
 			if len(listValues) > 0 {
 				tags := s.getTagsFromStruct([]string{listValues[0].GetStringValue()}, tagMap)
@@ -619,7 +620,7 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 			}
 			return nil
 		}
-		if format == PropertyFormatMultiSelect {
+		if format == apimodel.PropertyFormatMultiSelect {
 			listValues := kind.ListValue.Values
 			if len(listValues) > 0 {
 				listStringValues := make([]string, len(listValues))
@@ -641,8 +642,8 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format Pr
 }
 
 // buildPropertyWithValue creates a Property based on the format and converted value.
-func (s *service) buildPropertyWithValue(id string, key string, name string, format PropertyFormat, val interface{}) PropertyWithValue {
-	p := &PropertyWithValue{
+func (s *service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) apimodel.PropertyWithValue {
+	p := &apimodel.PropertyWithValue{
 		Object: "property",
 		Id:     id,
 		Key:    key,
@@ -651,27 +652,27 @@ func (s *service) buildPropertyWithValue(id string, key string, name string, for
 	}
 
 	switch format {
-	case PropertyFormatText:
+	case apimodel.PropertyFormatText:
 		if str, ok := val.(string); ok {
 			p.Text = &str
 		}
-	case PropertyFormatNumber:
+	case apimodel.PropertyFormatNumber:
 		if num, ok := val.(float64); ok {
 			p.Number = &num
 		}
-	case PropertyFormatSelect:
-		if sel, ok := val.(Tag); ok {
+	case apimodel.PropertyFormatSelect:
+		if sel, ok := val.(apimodel.Tag); ok {
 			p.Select = &sel
 		}
-	case PropertyFormatMultiSelect:
-		if ms, ok := val.([]Tag); ok {
+	case apimodel.PropertyFormatMultiSelect:
+		if ms, ok := val.([]apimodel.Tag); ok {
 			p.MultiSelect = ms
 		}
-	case PropertyFormatDate:
+	case apimodel.PropertyFormatDate:
 		if dateStr, ok := val.(string); ok {
 			p.Date = &dateStr
 		}
-	case PropertyFormatFiles:
+	case apimodel.PropertyFormatFiles:
 		if fileList, ok := val.([]interface{}); ok {
 			var files []string
 			for _, v := range fileList {
@@ -681,23 +682,23 @@ func (s *service) buildPropertyWithValue(id string, key string, name string, for
 			}
 			p.Files = files
 		}
-	case PropertyFormatCheckbox:
+	case apimodel.PropertyFormatCheckbox:
 		if cb, ok := val.(bool); ok {
 			p.Checkbox = &cb
 		}
-	case PropertyFormatUrl:
+	case apimodel.PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
 			p.Url = &urlStr
 		}
-	case PropertyFormatEmail:
+	case apimodel.PropertyFormatEmail:
 		if email, ok := val.(string); ok {
 			p.Email = &email
 		}
-	case PropertyFormatPhone:
+	case apimodel.PropertyFormatPhone:
 		if phone, ok := val.(string); ok {
 			p.Phone = &phone
 		}
-	case PropertyFormatObjects:
+	case apimodel.PropertyFormatObjects:
 		if obj, ok := val.(string); ok {
 			p.Objects = []string{obj}
 		} else if objSlice, ok := val.([]interface{}); ok {

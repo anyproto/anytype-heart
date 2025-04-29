@@ -1,4 +1,4 @@
-package object
+package apimodel
 
 import (
 	"encoding/json"

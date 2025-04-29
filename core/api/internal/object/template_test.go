@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -62,7 +63,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		require.Len(t, templates, 1)
 		require.Equal(t, "template-1", templates[0].Id)
 		require.Equal(t, "Template Name", templates[0].Name)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr("📝")}, templates[0].Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("📝")}, templates[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -128,7 +129,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, mockedTemplateId, template.Id)
 		require.Equal(t, mockedTemplateName, template.Name)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTemplateIcon)}, template.Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTemplateIcon)}, template.Icon)
 	})
 
 	t.Run("template not found", func(t *testing.T) {

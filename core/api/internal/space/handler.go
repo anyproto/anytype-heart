@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -78,7 +79,7 @@ func GetSpaceHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, SpaceResponse{Space: space})
+		c.JSON(http.StatusOK, apimodel.SpaceResponse{Space: space})
 	}
 }
 
@@ -101,7 +102,7 @@ func GetSpaceHandler(s Service) gin.HandlerFunc {
 //	@Router			/spaces [post]
 func CreateSpaceHandler(s Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req CreateSpaceRequest
+		var req apimodel.CreateSpaceRequest
 		if err := c.BindJSON(&req); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
@@ -122,7 +123,7 @@ func CreateSpaceHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, SpaceResponse{Space: space})
+		c.JSON(http.StatusOK, apimodel.SpaceResponse{Space: space})
 	}
 }
 
@@ -196,7 +197,7 @@ func GetMemberHandler(s Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, MemberResponse{Member: member})
+		c.JSON(http.StatusOK, apimodel.MemberResponse{Member: member})
 	}
 }
 

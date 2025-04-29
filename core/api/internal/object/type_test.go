@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -70,7 +71,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		require.Equal(t, "type-1", types[0].Id)
 		require.Equal(t, "Type One", types[0].Name)
 		require.Equal(t, "type-one-key", types[0].Key)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr("🗂️")}, types[0].Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("🗂️")}, types[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -185,7 +186,7 @@ func TestObjectService_GetType(t *testing.T) {
 		require.Equal(t, mockedTypeId, objType.Id)
 		require.Equal(t, mockedTypeName, objType.Name)
 		require.Equal(t, mockedTypeKey, objType.Key)
-		require.Equal(t, Icon{Format: "emoji", Emoji: StringPtr(mockedTypeIcon)}, objType.Icon)
+		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTypeIcon)}, objType.Icon)
 		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objType.Layout)
 	})
 
