@@ -1,4 +1,4 @@
-package list
+package internal
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -17,33 +15,11 @@ import (
 )
 
 const (
-	gatewayUrl        = "http://localhost:31006"
-	mockedSpaceId     = "mocked-space-id"
 	mockedListId      = "mocked-list-id"
-	mockedTypeId      = "mocked-type-id"
 	mockedSetOfTypeId = "mocked-set-of-type-id"
 	mockedUniqueKey   = "mocked-unique-key"
 	mockedViewId      = "view-1"
-	offset            = 0
-	limit             = 100
 )
-
-type fixture struct {
-	service Service
-	mwMock  *mock_apicore.MockClientCommands
-}
-
-func newFixture(t *testing.T) *fixture {
-	mwMock := mock_apicore.NewMockClientCommands(t)
-	exportMock := mock_apicore.NewMockExportService(t)
-	objectService := object.NewService(mwMock, exportMock, gatewayUrl)
-	listService := NewService(mwMock, objectService)
-
-	return &fixture{
-		service: listService,
-		mwMock:  mwMock,
-	}
-}
 
 func TestListService_GetListViews(t *testing.T) {
 	ctx := context.Background()
@@ -976,7 +952,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, "", offset, limit)
 
 		// then
-		require.ErrorIs(t, err, object.ErrFailedRetrievePropertyMap)
+		require.ErrorIs(t, err, ErrFailedRetrievePropertyMap)
 	})
 }
 

@@ -1,4 +1,4 @@
-package object
+package internal
 
 import (
 	"context"
@@ -27,7 +27,7 @@ var (
 )
 
 // ListTags returns all tags for a given property id in a space.
-func (s *service) ListTags(ctx context.Context, spaceId string, propertyId string, offset int, limit int) (tags []apimodel.Tag, total int, hasMore bool, err error) {
+func (s *Service) ListTags(ctx context.Context, spaceId string, propertyId string, offset int, limit int) (tags []apimodel.Tag, total int, hasMore bool, err error) {
 	_, rk, err := util.ResolveIdtoUniqueKeyAndRelationKey(s.mw, spaceId, propertyId)
 	if err != nil {
 		return nil, 0, false, ErrInvalidPropertyId
@@ -75,7 +75,7 @@ func (s *service) ListTags(ctx context.Context, spaceId string, propertyId strin
 }
 
 // GetTag retrieves a single tag for a given property id in a space.
-func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (apimodel.Tag, error) {
+func (s *Service) GetTag(ctx context.Context, spaceId string, propertyId string, tagId string) (apimodel.Tag, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: tagId,
@@ -99,7 +99,7 @@ func (s *service) GetTag(ctx context.Context, spaceId string, propertyId string,
 }
 
 // CreateTag creates a new tag option for a given property ID in a space.
-func (s *service) CreateTag(ctx context.Context, spaceId string, propertyId string, request apimodel.CreateTagRequest) (apimodel.Tag, error) {
+func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId string, request apimodel.CreateTagRequest) (apimodel.Tag, error) {
 	_, rk, err := util.ResolveIdtoUniqueKeyAndRelationKey(s.mw, spaceId, propertyId)
 	if err != nil {
 		return apimodel.Tag{}, ErrInvalidPropertyId
@@ -126,7 +126,7 @@ func (s *service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 }
 
 // UpdateTag updates an existing tag option for a given property ID in a space.
-func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId string, tagId string, request apimodel.UpdateTagRequest) (apimodel.Tag, error) {
+func (s *Service) UpdateTag(ctx context.Context, spaceId string, propertyId string, tagId string, request apimodel.UpdateTagRequest) (apimodel.Tag, error) {
 	_, err := s.GetTag(ctx, spaceId, propertyId, tagId)
 	if err != nil {
 		return apimodel.Tag{}, err
@@ -161,7 +161,7 @@ func (s *service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 }
 
 // DeleteTag deletes a tag option for a given property ID in a space.
-func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId string, tagId string) (apimodel.Tag, error) {
+func (s *Service) DeleteTag(ctx context.Context, spaceId string, propertyId string, tagId string) (apimodel.Tag, error) {
 	tag, err := s.GetTag(ctx, spaceId, propertyId, tagId)
 	if err != nil {
 		return apimodel.Tag{}, err
@@ -180,7 +180,7 @@ func (s *service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 }
 
 // GetTagMapsFromStore retrieves all tags for all spaces.
-func (s *service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Tag, error) {
+func (s *Service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Tag, error) {
 	spacesToTags := make(map[string]map[string]apimodel.Tag)
 	for _, spaceId := range spaceIds {
 		tagMap, err := s.GetTagMapFromStore(spaceId)
@@ -193,7 +193,7 @@ func (s *service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]
 }
 
 // GetTagMapFromStore retrieves all tags for a specific space.
-func (s *service) GetTagMapFromStore(spaceId string) (map[string]apimodel.Tag, error) {
+func (s *Service) GetTagMapFromStore(spaceId string) (map[string]apimodel.Tag, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -224,7 +224,7 @@ func (s *service) GetTagMapFromStore(spaceId string) (map[string]apimodel.Tag, e
 	return tags, nil
 }
 
-func (s *service) mapTagFromRecord(record *types.Struct) apimodel.Tag {
+func (s *Service) mapTagFromRecord(record *types.Struct) apimodel.Tag {
 	return apimodel.Tag{
 		Object: "tag",
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -234,7 +234,7 @@ func (s *service) mapTagFromRecord(record *types.Struct) apimodel.Tag {
 	}
 }
 
-func (s *service) getTagsFromStruct(tagIds []string, tagMap map[string]apimodel.Tag) []apimodel.Tag {
+func (s *Service) getTagsFromStruct(tagIds []string, tagMap map[string]apimodel.Tag) []apimodel.Tag {
 	tags := make([]apimodel.Tag, 0, len(tagIds))
 	for _, tagId := range tagIds {
 		if tagId == "" {

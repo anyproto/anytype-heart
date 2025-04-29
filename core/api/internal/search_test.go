@@ -1,4 +1,4 @@
-package search
+package internal
 
 import (
 	"context"
@@ -8,10 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
-	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -19,42 +16,14 @@ import (
 )
 
 const (
-	offset              = 0
-	limit               = 100
-	techSpaceId         = "tech-space-id"
-	gatewayUrl          = "http://localhost:31006"
-	mockedSpaceId       = "mocked-space-id"
-	mockedSearchTerm    = "mocked-search-term"
-	mockedObjectId      = "mocked-object-id"
-	mockedObjectName    = "mocked-object-name"
-	mockedObjectIcon    = "🌐"
-	mockedParticipantId = "mocked-participant-id"
-	mockedTypeId        = "mocked-type-id"
-	mockedTagId1        = "mocked-tag-id-1"
-	mockedTagValue1     = "mocked-tag-value-1"
-	mockedTagColor1     = "red"
-	mockedTagId2        = "mocked-tag-id-2"
-	mockedTagValue2     = "mocked-tag-value-2"
-	mockedTagColor2     = "blue"
+	mockedSearchTerm = "mocked-search-term"
+	mockedTagId1     = "mocked-tag-id-1"
+	mockedTagValue1  = "mocked-tag-value-1"
+	mockedTagColor1  = "red"
+	mockedTagId2     = "mocked-tag-id-2"
+	mockedTagValue2  = "mocked-tag-value-2"
+	mockedTagColor2  = "blue"
 )
-
-type fixture struct {
-	service Service
-	mwMock  *mock_apicore.MockClientCommands
-}
-
-func newFixture(t *testing.T) *fixture {
-	mwMock := mock_apicore.NewMockClientCommands(t)
-	exportMock := mock_apicore.NewMockExportService(t)
-	spaceService := space.NewService(mwMock, gatewayUrl, techSpaceId)
-	objectService := object.NewService(mwMock, exportMock, gatewayUrl)
-	searchService := NewService(mwMock, spaceService, objectService)
-
-	return &fixture{
-		service: searchService,
-		mwMock:  mwMock,
-	}
-}
 
 func TestSearchService_GlobalSearch(t *testing.T) {
 	t.Run("objects found globally", func(t *testing.T) {
@@ -315,7 +284,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
-		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
+		require.Equal(t, apimodel.ObjectLayoutBasic, objects[0].Layout)
 		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, objects[0].Icon)
 
 		// check details
@@ -595,7 +564,7 @@ func TestSearchService_Search(t *testing.T) {
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
-		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objects[0].Layout)
+		require.Equal(t, apimodel.ObjectLayoutBasic, objects[0].Layout)
 
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)

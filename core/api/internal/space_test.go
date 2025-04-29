@@ -1,4 +1,4 @@
-package space
+package internal
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -19,27 +18,8 @@ import (
 )
 
 const (
-	offset      = 0
-	limit       = 100
-	techSpaceId = "tech-space-id"
-	gatewayUrl  = "http://localhost:31006"
-	iconImage   = "bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"
+	iconImage = "bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"
 )
-
-type fixture struct {
-	service Service
-	mwMock  *mock_apicore.MockClientCommands
-}
-
-func newFixture(t *testing.T) *fixture {
-	mwMock := mock_apicore.NewMockClientCommands(t)
-	spaceService := NewService(mwMock, gatewayUrl, techSpaceId)
-
-	return &fixture{
-		service: spaceService,
-		mwMock:  mwMock,
-	}
-}
 
 func TestSpaceService_ListSpaces(t *testing.T) {
 	t.Run("successful retrieval of spaces", func(t *testing.T) {

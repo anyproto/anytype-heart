@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
+	"github.com/anyproto/anytype-heart/core/api/internal"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -28,7 +28,7 @@ import (
 //	@Failure		500				{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id}/templates [get]
-func ListTemplatesHandler(s object.Service) gin.HandlerFunc {
+func ListTemplatesHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
@@ -37,10 +37,10 @@ func ListTemplatesHandler(s object.Service) gin.HandlerFunc {
 
 		templates, total, hasMore, err := s.ListTemplates(c.Request.Context(), spaceId, typeId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(object.ErrFailedRetrieveTemplateType, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrTemplateTypeNotFound, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedRetrieveTemplates, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedRetrieveTemplate, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedRetrieveTemplateType, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrTemplateTypeNotFound, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedRetrieveTemplates, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedRetrieveTemplate, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -71,7 +71,7 @@ func ListTemplatesHandler(s object.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id}/templates/{template_id} [get]
-func GetTemplateHandler(s object.Service) gin.HandlerFunc {
+func GetTemplateHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
@@ -79,9 +79,9 @@ func GetTemplateHandler(s object.Service) gin.HandlerFunc {
 
 		template, err := s.GetTemplate(c.Request.Context(), spaceId, typeId, templateId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(object.ErrTemplateNotFound, http.StatusNotFound),
-			util.ErrToCode(object.ErrTemplateDeleted, http.StatusGone),
-			util.ErrToCode(object.ErrFailedRetrieveTemplate, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrTemplateNotFound, http.StatusNotFound),
+			util.ErrToCode(internal.ErrTemplateDeleted, http.StatusGone),
+			util.ErrToCode(internal.ErrFailedRetrieveTemplate, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

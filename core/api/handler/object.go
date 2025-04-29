@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
+	"github.com/anyproto/anytype-heart/core/api/internal"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -27,7 +27,7 @@ import (
 //	@Failure		500				{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects [get]
-func ListObjectsHandler(s object.Service) gin.HandlerFunc {
+func ListObjectsHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -35,9 +35,9 @@ func ListObjectsHandler(s object.Service) gin.HandlerFunc {
 
 		objects, total, hasMore, err := s.ListObjects(c.Request.Context(), spaceId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(object.ErrFailedRetrieveObjects, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrObjectNotFound, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedRetrieveObject, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedRetrieveObjects, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrObjectNotFound, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -67,16 +67,16 @@ func ListObjectsHandler(s object.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id} [get]
-func GetObjectHandler(s object.Service) gin.HandlerFunc {
+func GetObjectHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
 
 		object, err := s.GetObject(c.Request.Context(), spaceId, objectId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(object.ErrObjectNotFound, http.StatusNotFound),
-			util.ErrToCode(object.ErrObjectDeleted, http.StatusGone),
-			util.ErrToCode(object.ErrFailedRetrieveObject, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(internal.ErrObjectDeleted, http.StatusGone),
+			util.ErrToCode(internal.ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -108,17 +108,17 @@ func GetObjectHandler(s object.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id} [delete]
-func DeleteObjectHandler(s object.Service) gin.HandlerFunc {
+func DeleteObjectHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
 
 		object, err := s.DeleteObject(c.Request.Context(), spaceId, objectId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(object.ErrObjectNotFound, http.StatusNotFound),
-			util.ErrToCode(object.ErrObjectDeleted, http.StatusGone),
-			util.ErrToCode(object.ErrFailedDeleteObject, http.StatusForbidden),
-			util.ErrToCode(object.ErrFailedRetrieveObject, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(internal.ErrObjectDeleted, http.StatusGone),
+			util.ErrToCode(internal.ErrFailedDeleteObject, http.StatusForbidden),
+			util.ErrToCode(internal.ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -149,7 +149,7 @@ func DeleteObjectHandler(s object.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects [post]
-func CreateObjectHandler(s object.Service) gin.HandlerFunc {
+func CreateObjectHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
@@ -163,13 +163,13 @@ func CreateObjectHandler(s object.Service) gin.HandlerFunc {
 		object, err := s.CreateObject(c.Request.Context(), spaceId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
-			util.ErrToCode(object.ErrFailedCreateBookmark, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedCreateObject, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedSetPropertyFeatured, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedCreateBlock, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedPasteBody, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrObjectNotFound, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedRetrieveObject, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedCreateBookmark, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedCreateObject, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedSetPropertyFeatured, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedCreateBlock, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedPasteBody, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrObjectNotFound, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -202,7 +202,7 @@ func CreateObjectHandler(s object.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id} [patch]
-func UpdateObjectHandler(s object.Service) gin.HandlerFunc {
+func UpdateObjectHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
@@ -217,10 +217,10 @@ func UpdateObjectHandler(s object.Service) gin.HandlerFunc {
 		object, err := s.UpdateObject(c.Request.Context(), spaceId, objectId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
-			util.ErrToCode(object.ErrObjectNotFound, http.StatusNotFound),
-			util.ErrToCode(object.ErrObjectDeleted, http.StatusGone),
-			util.ErrToCode(object.ErrFailedUpdateObject, http.StatusInternalServerError),
-			util.ErrToCode(object.ErrFailedRetrieveObject, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(internal.ErrObjectDeleted, http.StatusGone),
+			util.ErrToCode(internal.ErrFailedUpdateObject, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -250,7 +250,7 @@ func UpdateObjectHandler(s object.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/objects/{object_id}/{format} [get]
-func ExportObjectHandler(s object.Service) gin.HandlerFunc {
+func ExportObjectHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
@@ -258,7 +258,7 @@ func ExportObjectHandler(s object.Service) gin.HandlerFunc {
 
 		markdown, err := s.GetObjectExport(c.Request.Context(), spaceId, objectId, format)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(object.ErrInvalidExportFormat, http.StatusInternalServerError))
+			util.ErrToCode(internal.ErrInvalidExportFormat, http.StatusInternalServerError))
 
 		if code != http.StatusOK {
 			apiErr := util.CodeToAPIError(code, err.Error())

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal/auth"
+	"github.com/anyproto/anytype-heart/core/api/internal"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
@@ -24,14 +24,14 @@ import (
 //	@Failure		400				{object}	util.ValidationError	"Invalid input"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/display_code [post]
-func DisplayCodeHandler(s auth.Service) gin.HandlerFunc {
+func DisplayCodeHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := c.Query("app_name")
 
 		challengeId, err := s.NewChallenge(c.Request.Context(), appName)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(auth.ErrMissingAppName, http.StatusBadRequest),
-			util.ErrToCode(auth.ErrFailedGenerateChallenge, http.StatusInternalServerError))
+			util.ErrToCode(internal.ErrMissingAppName, http.StatusBadRequest),
+			util.ErrToCode(internal.ErrFailedGenerateChallenge, http.StatusInternalServerError))
 
 		if code != http.StatusOK {
 			apiErr := util.CodeToAPIError(code, err.Error())
@@ -58,15 +58,15 @@ func DisplayCodeHandler(s auth.Service) gin.HandlerFunc {
 //	@Failure		400				{object}	util.ValidationError	"Invalid input"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/token [post]
-func TokenHandler(s auth.Service) gin.HandlerFunc {
+func TokenHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		challengeId := c.Query("challenge_id")
 		code := c.Query("code")
 
 		appKey, err := s.SolveChallenge(c.Request.Context(), challengeId, code)
 		errCode := util.MapErrorCode(err,
-			util.ErrToCode(auth.ErrInvalidInput, http.StatusBadRequest),
-			util.ErrToCode(auth.ErrFailedAuthenticate, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrInvalidInput, http.StatusBadRequest),
+			util.ErrToCode(internal.ErrFailedAuthenticate, http.StatusInternalServerError),
 		)
 
 		if errCode != http.StatusOK {

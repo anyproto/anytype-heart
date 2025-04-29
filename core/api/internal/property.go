@@ -1,4 +1,4 @@
-package object
+package internal
 
 import (
 	"context"
@@ -105,7 +105,7 @@ var RelationFormatToPropertyFormat = map[model.RelationFormat]apimodel.PropertyF
 }
 
 // ListProperties returns a list of properties for a specific space.
-func (s *service) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []apimodel.Property, total int, hasMore bool, err error) {
+func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []apimodel.Property, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -154,7 +154,7 @@ func (s *service) ListProperties(ctx context.Context, spaceId string, offset int
 }
 
 // GetProperty retrieves a single property by its ID in a specific space.
-func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
+func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
 	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: propertyId,
@@ -182,7 +182,7 @@ func (s *service) GetProperty(ctx context.Context, spaceId string, propertyId st
 }
 
 // CreateProperty creates a new property in a specific space.
-func (s *service) CreateProperty(ctx context.Context, spaceId string, request apimodel.CreatePropertyRequest) (apimodel.Property, error) {
+func (s *Service) CreateProperty(ctx context.Context, spaceId string, request apimodel.CreatePropertyRequest) (apimodel.Property, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():           pbtypes.String(request.Name),
@@ -203,7 +203,7 @@ func (s *service) CreateProperty(ctx context.Context, spaceId string, request ap
 }
 
 // UpdateProperty updates an existing property in a specific space.
-func (s *service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request apimodel.UpdatePropertyRequest) (apimodel.Property, error) {
+func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request apimodel.UpdatePropertyRequest) (apimodel.Property, error) {
 	_, err := s.GetProperty(ctx, spaceId, propertyId)
 	if err != nil {
 		return apimodel.Property{}, err
@@ -226,12 +226,12 @@ func (s *service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	return s.GetProperty(ctx, spaceId, propertyId)
 }
 
-func (s *service) sanitizedString(str string) string {
+func (s *Service) sanitizedString(str string) string {
 	return strings.TrimSpace(str)
 }
 
 // DeleteProperty deletes a property in a specific space.
-func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
+func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
 	property, err := s.GetProperty(ctx, spaceId, propertyId)
 	if err != nil {
 		return apimodel.Property{}, err
@@ -250,7 +250,7 @@ func (s *service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 }
 
 // processProperties builds detail fields for the given property entries, applying sanitization and validation for each.
-func (s *service) processProperties(ctx context.Context, spaceId string, entries []apimodel.PropertyLinkWithValue) (map[string]*types.Value, error) {
+func (s *Service) processProperties(ctx context.Context, spaceId string, entries []apimodel.PropertyLinkWithValue) (map[string]*types.Value, error) {
 	fields := make(map[string]*types.Value)
 	if len(entries) == 0 {
 		return fields, nil
@@ -346,7 +346,7 @@ func (s *service) processProperties(ctx context.Context, spaceId string, entries
 }
 
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
-func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property apimodel.Property) (interface{}, error) {
+func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property apimodel.Property) (interface{}, error) {
 	switch format {
 	case apimodel.PropertyFormatText, apimodel.PropertyFormatUrl, apimodel.PropertyFormatEmail, apimodel.PropertyFormatPhone:
 		str, ok := value.(string)
@@ -429,7 +429,7 @@ func (s *service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 }
 
 // isValidSelectOption checks if the option id is valid for the given property.
-func (s *service) isValidSelectOption(ctx context.Context, spaceId string, property apimodel.Property, optionId string) bool {
+func (s *Service) isValidSelectOption(ctx context.Context, spaceId string, property apimodel.Property, optionId string) bool {
 	// TODO: refine logic
 	tags, _, _, err := s.ListTags(ctx, spaceId, property.Id, 0, 1000)
 	if err != nil {
@@ -443,18 +443,18 @@ func (s *service) isValidSelectOption(ctx context.Context, spaceId string, prope
 	return false
 }
 
-func (s *service) isValidObjectReference(ctx context.Context, spaceId string, objectId string) bool {
+func (s *Service) isValidObjectReference(ctx context.Context, spaceId string, objectId string) bool {
 	// TODO: implement proper validation
 	return true
 }
 
-func (s *service) isValidFileReference(ctx context.Context, spaceId string, fileId string) bool {
+func (s *Service) isValidFileReference(ctx context.Context, spaceId string, fileId string) bool {
 	// TODO: implement proper validation
 	return true
 }
 
 // getRecommendedPropertiesFromLists combines featured and regular properties into a list of Properties.
-func (s *service) getRecommendedPropertiesFromLists(featured, regular *types.ListValue, propertyMap map[string]apimodel.Property) []apimodel.Property {
+func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.ListValue, propertyMap map[string]apimodel.Property) []apimodel.Property {
 	var props []apimodel.Property
 	lists := []*types.ListValue{featured, regular}
 	for _, lst := range lists {
@@ -475,7 +475,7 @@ func (s *service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 }
 
 // GetPropertyMapsFromStore retrieves all properties for all spaces.
-func (s *service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Property, error) {
+func (s *Service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Property, error) {
 	spacesToProperties := make(map[string]map[string]apimodel.Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
@@ -491,7 +491,7 @@ func (s *service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[st
 
 // GetPropertyMapFromStore retrieves all properties for a specific space
 // Property entries are also keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.Property, error) {
+func (s *Service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.Property, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -529,7 +529,7 @@ func (s *service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.P
 }
 
 // mapPropertyFromRecord maps a single property record into a Property and returns its trimmed relation key.
-func (s *service) mapPropertyFromRecord(record *types.Struct) (string, apimodel.Property) {
+func (s *Service) mapPropertyFromRecord(record *types.Struct) (string, apimodel.Property) {
 	rk := strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-")
 
 	var key, name string
@@ -555,7 +555,7 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, apimodel.
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
-func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, tagMap map[string]apimodel.Tag) []apimodel.PropertyWithValue {
+func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, tagMap map[string]apimodel.Tag) []apimodel.PropertyWithValue {
 	properties := make([]apimodel.PropertyWithValue, 0)
 	for rk, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
@@ -579,7 +579,7 @@ func (s *service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 }
 
 // convertPropertyValue converts a protobuf types.Value into a native Go value.
-func (s *service) convertPropertyValue(key string, value *types.Value, format apimodel.PropertyFormat, details *types.Struct, tagMap map[string]apimodel.Tag) interface{} {
+func (s *Service) convertPropertyValue(key string, value *types.Value, format apimodel.PropertyFormat, details *types.Struct, tagMap map[string]apimodel.Tag) interface{} {
 	switch kind := value.Kind.(type) {
 	case *types.Value_NullValue:
 		return nil
@@ -642,7 +642,7 @@ func (s *service) convertPropertyValue(key string, value *types.Value, format ap
 }
 
 // buildPropertyWithValue creates a Property based on the format and converted value.
-func (s *service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) apimodel.PropertyWithValue {
+func (s *Service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) apimodel.PropertyWithValue {
 	p := &apimodel.PropertyWithValue{
 		Object: "property",
 		Id:     id,

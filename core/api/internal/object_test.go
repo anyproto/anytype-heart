@@ -1,4 +1,4 @@
-package object
+package internal
 
 import (
 	"context"
@@ -8,50 +8,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-const (
-	offset              = 0
-	limit               = 100
-	gatewayUrl          = "http://localhost:31006"
-	mockedSpaceId       = "mocked-space-id"
-	mockedObjectId      = "mocked-object-id"
-	mockedNewObjectId   = "mocked-new-object-id"
-	mockedObjectName    = "mocked-object-name"
-	mockedObjectSnippet = "mocked-object-snippet"
-	mockedObjectIcon    = "🔍"
-	mockedParticipantId = "mocked-participant-id"
-	mockedTypeKey       = "ot-page"
-	mockedTypeId        = "mocked-type-id"
-	mockedTypeName      = "mocked-type-name"
-	mockedTypeIcon      = "📝"
-	mockedTemplateId    = "mocked-template-id"
-	mockedTemplateName  = "mocked-template-name"
-	mockedTemplateIcon  = "📃"
-)
-
-type fixture struct {
-	service       Service
-	mwMock        *mock_apicore.MockClientCommands
-	exportService *mock_apicore.MockExportService
-}
-
-func newFixture(t *testing.T) *fixture {
-	mwMock := mock_apicore.NewMockClientCommands(t)
-	exportMock := mock_apicore.NewMockExportService(t)
-	objectService := NewService(mwMock, exportMock, gatewayUrl)
-
-	return &fixture{
-		service: objectService,
-		mwMock:  mwMock,
-	}
-}
 
 func TestObjectService_ListObjects(t *testing.T) {
 	t.Run("successfully get objects for a space", func(t *testing.T) {

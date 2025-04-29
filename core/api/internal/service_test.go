@@ -1,0 +1,45 @@
+package internal
+
+import (
+	"testing"
+
+	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
+)
+
+const (
+	offset              = 0
+	limit               = 100
+	gatewayUrl          = "http://localhost:31006"
+	techSpaceId         = "tech-space-id"
+	mockedSpaceId       = "mocked-space-id"
+	mockedObjectId      = "mocked-object-id"
+	mockedNewObjectId   = "mocked-new-object-id"
+	mockedObjectName    = "mocked-object-name"
+	mockedObjectSnippet = "mocked-object-snippet"
+	mockedObjectIcon    = "🔍"
+	mockedParticipantId = "mocked-participant-id"
+	mockedTypeKey       = "ot-page"
+	mockedTypeId        = "mocked-type-id"
+	mockedTypeName      = "mocked-type-name"
+	mockedTypeIcon      = "📝"
+	mockedTemplateId    = "mocked-template-id"
+	mockedTemplateName  = "mocked-template-name"
+	mockedTemplateIcon  = "📃"
+)
+
+type fixture struct {
+	service       *Service
+	mwMock        *mock_apicore.MockClientCommands
+	exportService *mock_apicore.MockExportService
+}
+
+func newFixture(t *testing.T) *fixture {
+	mwMock := mock_apicore.NewMockClientCommands(t)
+	exportMock := mock_apicore.NewMockExportService(t)
+	objectService := NewService(mwMock, exportMock, gatewayUrl, techSpaceId)
+
+	return &fixture{
+		service: objectService,
+		mwMock:  mwMock,
+	}
+}

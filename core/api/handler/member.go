@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal/space"
+	"github.com/anyproto/anytype-heart/core/api/internal"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -27,7 +27,7 @@ import (
 //	@Failure		500				{object}	util.ServerError						"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/members [get]
-func ListMembersHandler(s space.Service) gin.HandlerFunc {
+func ListMembersHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -35,7 +35,7 @@ func ListMembersHandler(s space.Service) gin.HandlerFunc {
 
 		members, total, hasMore, err := s.ListMembers(c.Request.Context(), spaceId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(space.ErrFailedListMembers, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedListMembers, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -64,15 +64,15 @@ func ListMembersHandler(s space.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/members/{member_id} [get]
-func GetMemberHandler(s space.Service) gin.HandlerFunc {
+func GetMemberHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		memberId := c.Param("member_id")
 
 		member, err := s.GetMember(c.Request.Context(), spaceId, memberId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(space.ErrMemberNotFound, http.StatusNotFound),
-			util.ErrToCode(space.ErrFailedGetMember, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrMemberNotFound, http.StatusNotFound),
+			util.ErrToCode(internal.ErrFailedGetMember, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

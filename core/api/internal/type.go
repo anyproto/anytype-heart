@@ -1,4 +1,4 @@
-package object
+package internal
 
 import (
 	"context"
@@ -29,7 +29,7 @@ var (
 )
 
 // ListTypes returns a paginated list of types in a specific space.
-func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []apimodel.Type, total int, hasMore bool, err error) {
+func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []apimodel.Type, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -92,7 +92,7 @@ func (s *service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 }
 
 // GetType returns a single type by its ID in a specific space.
-func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (apimodel.Type, error) {
+func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (apimodel.Type, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: typeId,
@@ -132,7 +132,7 @@ func (s *service) GetType(ctx context.Context, spaceId string, typeId string) (a
 }
 
 // CreateType creates a new type in a specific space.
-func (s *service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (apimodel.Type, error) {
+func (s *Service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (apimodel.Type, error) {
 	details, err := s.buildTypeDetails(ctx, spaceId, request)
 	if err != nil {
 		return apimodel.Type{}, err
@@ -151,13 +151,13 @@ func (s *service) CreateType(ctx context.Context, spaceId string, request apimod
 }
 
 // UpdateType updates an existing type in a specific space.
-func (s *service) UpdateType(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (apimodel.Type, error) {
+func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (apimodel.Type, error) {
 	// TODO
 	return apimodel.Type{}, nil
 }
 
 // DeleteType deletes a type by its ID in a specific space.
-func (s *service) DeleteType(ctx context.Context, spaceId string, typeId string) (apimodel.Type, error) {
+func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string) (apimodel.Type, error) {
 	t, err := s.GetType(ctx, spaceId, typeId)
 	if err != nil {
 		return apimodel.Type{}, err
@@ -176,7 +176,7 @@ func (s *service) DeleteType(ctx context.Context, spaceId string, typeId string)
 }
 
 // GetTypeMapsFromStore retrieves all types from all spaces.
-func (s *service) GetTypeMapsFromStore(spaceIds []string, propertyMap map[string]map[string]apimodel.Property) (map[string]map[string]apimodel.Type, error) {
+func (s *Service) GetTypeMapsFromStore(spaceIds []string, propertyMap map[string]map[string]apimodel.Property) (map[string]map[string]apimodel.Type, error) {
 	spacesToTypes := make(map[string]map[string]apimodel.Type, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
@@ -191,7 +191,7 @@ func (s *service) GetTypeMapsFromStore(spaceIds []string, propertyMap map[string
 }
 
 // GetTypeMapFromStore retrieves all types for a specific space.
-func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]apimodel.Property) (map[string]apimodel.Type, error) {
+func (s *Service) GetTypeMapFromStore(spaceId string, propertyMap map[string]apimodel.Property) (map[string]apimodel.Type, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -240,12 +240,12 @@ func (s *service) GetTypeMapFromStore(spaceId string, propertyMap map[string]api
 }
 
 // getTypeFromStruct retrieves the type from the details.
-func (s *service) getTypeFromStruct(details *types.Struct, typeMap map[string]apimodel.Type) apimodel.Type {
+func (s *Service) getTypeFromStruct(details *types.Struct, typeMap map[string]apimodel.Type) apimodel.Type {
 	return typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]
 }
 
 // buildTypeDetails builds the type details from the CreateTypeRequest.
-func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (*types.Struct, error) {
+func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (*types.Struct, error) {
 	fields := make(map[string]*types.Value)
 
 	fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
@@ -313,7 +313,7 @@ func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	return &types.Struct{Fields: fields}, nil
 }
 
-func (s *service) objectLayoutToObjectTypeLayout(objectLayout apimodel.ObjectLayout) model.ObjectTypeLayout {
+func (s *Service) objectLayoutToObjectTypeLayout(objectLayout apimodel.ObjectLayout) model.ObjectTypeLayout {
 	switch objectLayout {
 	case apimodel.ObjectLayoutBasic:
 		return model.ObjectType_basic
@@ -336,7 +336,7 @@ func (s *service) objectLayoutToObjectTypeLayout(objectLayout apimodel.ObjectLay
 	}
 }
 
-func (s *service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.ObjectLayout {
+func (s *Service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.ObjectLayout {
 	switch objectTypeLayout {
 	case model.ObjectType_basic:
 		return apimodel.ObjectLayoutBasic
@@ -359,7 +359,7 @@ func (s *service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout
 	}
 }
 
-func (s *service) typeLayoutToObjectTypeLayout(typeLayout apimodel.TypeLayout) model.ObjectTypeLayout {
+func (s *Service) typeLayoutToObjectTypeLayout(typeLayout apimodel.TypeLayout) model.ObjectTypeLayout {
 	switch typeLayout {
 	case apimodel.TypeLayoutBasic:
 		return model.ObjectType_basic
@@ -374,7 +374,7 @@ func (s *service) typeLayoutToObjectTypeLayout(typeLayout apimodel.TypeLayout) m
 	}
 }
 
-func (s *service) otLayoutToTypeLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.TypeLayout {
+func (s *Service) otLayoutToTypeLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.TypeLayout {
 	switch objectTypeLayout {
 	case model.ObjectType_basic:
 		return apimodel.TypeLayoutBasic

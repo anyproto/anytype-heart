@@ -1,4 +1,4 @@
-package auth
+package internal
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -18,21 +17,6 @@ const (
 	mockedCode        = "mocked-mockedCode"
 	mockedAppKey      = "mocked-app-key"
 )
-
-type fixture struct {
-	service Service
-	mwMock  *mock_apicore.MockClientCommands
-}
-
-func newFixture(t *testing.T) *fixture {
-	mwMock := mock_apicore.NewMockClientCommands(t)
-	authService := NewService(mwMock)
-
-	return &fixture{
-		service: authService,
-		mwMock:  mwMock,
-	}
-}
 
 func TestAuthService_GenerateNewChallenge(t *testing.T) {
 	t.Run("successful challenge creation", func(t *testing.T) {

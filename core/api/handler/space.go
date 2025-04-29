@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal/space"
+	"github.com/anyproto/anytype-heart/core/api/internal"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -26,16 +26,16 @@ import (
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces [get]
-func ListSpacesHandler(s space.Service) gin.HandlerFunc {
+func ListSpacesHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
 		spaces, total, hasMore, err := s.ListSpaces(c.Request.Context(), offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(space.ErrFailedListSpaces, http.StatusInternalServerError),
-			util.ErrToCode(space.ErrFailedOpenWorkspace, http.StatusInternalServerError),
-			util.ErrToCode(space.ErrFailedOpenSpace, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedListSpaces, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedOpenWorkspace, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedOpenSpace, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -63,15 +63,15 @@ func ListSpacesHandler(s space.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id} [get]
-func GetSpaceHandler(s space.Service) gin.HandlerFunc {
+func GetSpaceHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
 		space, err := s.GetSpace(c.Request.Context(), spaceId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(space.ErrWorkspaceNotFound, http.StatusNotFound),
-			util.ErrToCode(space.ErrFailedOpenWorkspace, http.StatusInternalServerError),
-			util.ErrToCode(space.ErrFailedOpenSpace, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrWorkspaceNotFound, http.StatusNotFound),
+			util.ErrToCode(internal.ErrFailedOpenWorkspace, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedOpenSpace, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -87,7 +87,7 @@ func GetSpaceHandler(s space.Service) gin.HandlerFunc {
 // CreateSpaceHandler creates a new space
 //
 //	@Summary		Create space
-//	@Description	Creates a new workspace (or space) based on a supplied name in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space’s full metadata is returned, enabling the client to immediately switch context to the new space.
+//	@Description	Creates a new workspace (or space) based on a supplied name in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space’s full metadata is returned, enabling the client to immediately switch context to the new internal.
 //	@Id				createSpace
 //	@Tags			Spaces
 //	@Accept			json
@@ -101,7 +101,7 @@ func GetSpaceHandler(s space.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces [post]
-func CreateSpaceHandler(s space.Service) gin.HandlerFunc {
+func CreateSpaceHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req apimodel.CreateSpaceRequest
 		if err := c.BindJSON(&req); err != nil {
@@ -112,10 +112,10 @@ func CreateSpaceHandler(s space.Service) gin.HandlerFunc {
 
 		space, err := s.CreateSpace(c.Request.Context(), req)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(space.ErrFailedCreateSpace, http.StatusInternalServerError),
-			util.ErrToCode(space.ErrFailedSetSpaceInfo, http.StatusInternalServerError),
-			util.ErrToCode(space.ErrFailedOpenWorkspace, http.StatusInternalServerError),
-			util.ErrToCode(space.ErrFailedOpenSpace, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedCreateSpace, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedSetSpaceInfo, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedOpenWorkspace, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedOpenSpace, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

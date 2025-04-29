@@ -1,4 +1,4 @@
-package search
+package internal
 
 import (
 	"context"
@@ -8,10 +8,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
-	"github.com/anyproto/anytype-heart/core/api/internal/space"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
@@ -24,24 +21,9 @@ var (
 	ErrFailedSearchObjects = errors.New("failed to retrieve objects from space")
 )
 
-type Service interface {
-	GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error)
-	Search(ctx context.Context, spaceId string, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error)
-}
-
-type service struct {
-	mw            apicore.ClientCommands
-	spaceService  space.Service
-	objectService object.Service
-}
-
-func NewService(mw apicore.ClientCommands, spaceService space.Service, objectService object.Service) Service {
-	return &service{mw: mw, spaceService: spaceService, objectService: objectService}
-}
-
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
-func (s *service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
-	spaceIds, err := s.spaceService.GetAllSpaceIds()
+func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+	spaceIds, err := s.GetAllSpaceIds()
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -100,29 +82,33 @@ func (s *service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	paginatedRecords, hasMore := pagination.Paginate(combinedRecords, offset, limit)
 
 	// pre-fetch properties, types and tags to fill the objects
-	propertyMaps, err := s.objectService.GetPropertyMapsFromStore(spaceIds)
+	propertyMaps, err := s.
+		GetPropertyMapsFromStore(spaceIds)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMaps, err := s.objectService.GetTypeMapsFromStore(spaceIds, propertyMaps)
+	typeMaps, err := s.
+		GetTypeMapsFromStore(spaceIds, propertyMaps)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.objectService.GetTagMapsFromStore(spaceIds)
+	tagMap, err := s.
+		GetTagMapsFromStore(spaceIds)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.objectService.GetObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
+		results = append(results, s.
+			GetObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
 	}
 
 	return results, total, hasMore, nil
 }
 
 // Search retrieves a paginated list of objects from a specific space that match the search parameters.
-func (s *service) Search(ctx context.Context, spaceId string, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
 	baseFilters := s.prepareBaseFilters()
 	templateFilter := s.prepareTemplateFilter()
 	queryFilters := s.prepareQueryFilter(request.Query)
@@ -148,29 +134,33 @@ func (s *service) Search(ctx context.Context, spaceId string, request apimodel.S
 	paginatedRecords, hasMore := pagination.Paginate(resp.Records, offset, limit)
 
 	// pre-fetch properties and types to fill the objects
-	propertyMap, err := s.objectService.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.
+		GetPropertyMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.objectService.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.
+		GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.objectService.GetTagMapFromStore(spaceId)
+	tagMap, err := s.
+		GetTagMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		results = append(results, s.
+			GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return results, total, hasMore, nil
 }
 
 // makeAndCondition combines multiple filter groups with the given operator.
-func (s *service) combineFilters(operator model.BlockContentDataviewFilterOperator, filterGroups ...[]*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+func (s *Service) combineFilters(operator model.BlockContentDataviewFilterOperator, filterGroups ...[]*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
 	nestedFilters := make([]*model.BlockContentDataviewFilter, 0)
 	for _, group := range filterGroups {
 		if len(group) > 0 {
@@ -191,7 +181,7 @@ func (s *service) combineFilters(operator model.BlockContentDataviewFilterOperat
 }
 
 // prepareBaseFilters returns a list of default filters that should be applied to all search queries.
-func (s *service) prepareBaseFilters() []*model.BlockContentDataviewFilter {
+func (s *Service) prepareBaseFilters() []*model.BlockContentDataviewFilter {
 	return []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout.String(),
@@ -216,7 +206,7 @@ func (s *service) prepareBaseFilters() []*model.BlockContentDataviewFilter {
 }
 
 // prepareTemplateFilter returns a filter that excludes templates from the search results.
-func (s *service) prepareTemplateFilter() []*model.BlockContentDataviewFilter {
+func (s *Service) prepareTemplateFilter() []*model.BlockContentDataviewFilter {
 	return []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: "type.uniqueKey",
@@ -227,7 +217,7 @@ func (s *service) prepareTemplateFilter() []*model.BlockContentDataviewFilter {
 }
 
 // prepareQueryFilter combines object name and snippet filters with an OR condition.
-func (s *service) prepareQueryFilter(searchQuery string) []*model.BlockContentDataviewFilter {
+func (s *Service) prepareQueryFilter(searchQuery string) []*model.BlockContentDataviewFilter {
 	if searchQuery == "" {
 		return nil
 	}
@@ -252,7 +242,7 @@ func (s *service) prepareQueryFilter(searchQuery string) []*model.BlockContentDa
 }
 
 // prepareObjectTypeFilters combines object type filters with an OR condition.
-func (s *service) prepareObjectTypeFilters(spaceId string, objectTypes []string) []*model.BlockContentDataviewFilter {
+func (s *Service) prepareObjectTypeFilters(spaceId string, objectTypes []string) []*model.BlockContentDataviewFilter {
 	if len(objectTypes) == 0 || objectTypes[0] == "" {
 		return nil
 	}
@@ -291,7 +281,7 @@ func (s *service) prepareObjectTypeFilters(spaceId string, objectTypes []string)
 }
 
 // prepareSorts returns a sort filter based on the given sort parameters
-func (s *service) prepareSorts(sort apimodel.SortOptions) []*model.BlockContentDataviewSort {
+func (s *Service) prepareSorts(sort apimodel.SortOptions) []*model.BlockContentDataviewSort {
 	primarySort := &model.BlockContentDataviewSort{
 		RelationKey:    s.getSortRelationKey(sort.Property),
 		Type:           s.getSortDirection(sort.Direction),
@@ -316,7 +306,7 @@ func (s *service) prepareSorts(sort apimodel.SortOptions) []*model.BlockContentD
 }
 
 // getSortRelationKey returns the relation key for the given sort timestamp
-func (s *service) getSortRelationKey(timestamp apimodel.SortProperty) string {
+func (s *Service) getSortRelationKey(timestamp apimodel.SortProperty) string {
 	switch timestamp {
 	case apimodel.CreatedDate:
 		return bundle.RelationKeyCreatedDate.String()
@@ -332,7 +322,7 @@ func (s *service) getSortRelationKey(timestamp apimodel.SortProperty) string {
 }
 
 // getSortDirection returns the sort direction for the given string
-func (s *service) getSortDirection(direction apimodel.SortDirection) model.BlockContentDataviewSortType {
+func (s *Service) getSortDirection(direction apimodel.SortDirection) model.BlockContentDataviewSortType {
 	switch direction {
 	case apimodel.Asc:
 		return model.BlockContentDataviewSort_Asc
@@ -344,7 +334,7 @@ func (s *service) getSortDirection(direction apimodel.SortDirection) model.Block
 }
 
 // getSortFormat returns the sort format for the given timestamp
-func (s *service) getSortFormat(timestamp apimodel.SortProperty) model.RelationFormat {
+func (s *Service) getSortFormat(timestamp apimodel.SortProperty) model.RelationFormat {
 	switch timestamp {
 	case apimodel.CreatedDate, apimodel.LastModifiedDate, apimodel.LastOpenedDate:
 		return model.RelationFormat_date

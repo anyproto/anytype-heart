@@ -1,4 +1,4 @@
-package list
+package internal
 
 import (
 	"context"
@@ -7,9 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/iancoleman/strcase"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
@@ -31,24 +29,8 @@ var (
 	ErrFailedRemoveObjectsFromList = errors.New("failed to remove objects from list")
 )
 
-type Service interface {
-	GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]apimodel.View, int, bool, error)
-	GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]apimodel.Object, int, bool, error)
-	AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error
-	RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error
-}
-
-type service struct {
-	mw            apicore.ClientCommands
-	objectService object.Service
-}
-
-func NewService(mw apicore.ClientCommands, objectService object.Service) Service {
-	return &service{mw: mw, objectService: objectService}
-}
-
 // GetListViews retrieves views of a list
-func (s *service) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]apimodel.View, int, bool, error) {
+func (s *Service) GetListViews(ctx context.Context, spaceId string, listId string, offset, limit int) ([]apimodel.View, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -79,7 +61,7 @@ func (s *service) GetListViews(ctx context.Context, spaceId string, listId strin
 				filters = append(filters, apimodel.Filter{
 					Id:          f.Id,
 					PropertyKey: f.RelationKey,
-					Format:      object.RelationFormatToPropertyFormat[f.Format],
+					Format:      RelationFormatToPropertyFormat[f.Format],
 					Condition:   strcase.ToSnake(model.BlockContentDataviewFilterCondition_name[int32(f.Condition)]),
 					Value:       f.Value.GetStringValue(),
 				})
@@ -89,7 +71,7 @@ func (s *service) GetListViews(ctx context.Context, spaceId string, listId strin
 				sorts = append(sorts, apimodel.Sort{
 					Id:          srt.Id,
 					PropertyKey: srt.RelationKey,
-					Format:      object.RelationFormatToPropertyFormat[srt.Format],
+					Format:      RelationFormatToPropertyFormat[srt.Format],
 					SortType:    strcase.ToSnake(model.BlockContentDataviewSortType_name[int32(srt.Type)]),
 				})
 			}
@@ -112,7 +94,7 @@ func (s *service) GetListViews(ctx context.Context, spaceId string, listId strin
 }
 
 // GetObjectsInList retrieves objects in a list
-func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]apimodel.Object, int, bool, error) {
+func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]apimodel.Object, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -186,7 +168,7 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 		return nil, 0, false, ErrUnsupportedListType
 	}
 
-	// TODO: use subscription service with internal: 'true' to not send events to clients
+	// TODO: use subscription Service with internal: 'true' to not send events to clients
 	searchResp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
 		SpaceId: spaceId,
 		SubId:   subId,
@@ -207,28 +189,28 @@ func (s *service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
-	propertyMap, err := s.objectService.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.objectService.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.objectService.GetTagMapFromStore(spaceId)
+	tagMap, err := s.GetTagMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
 	objects := make([]apimodel.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		objects = append(objects, s.objectService.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return objects, total, hasMore, nil
 }
 
 // AddObjectsToList adds objects to a list
-func (s *service) AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+func (s *Service) AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
 	resp := s.mw.ObjectCollectionAdd(ctx, &pb.RpcObjectCollectionAddRequest{
 		ContextId: listId,
 		ObjectIds: objectIds,
@@ -242,7 +224,7 @@ func (s *service) AddObjectsToList(ctx context.Context, spaceId string, listId s
 }
 
 // RemoveObjectsFromList removes objects from a list
-func (s *service) RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+func (s *Service) RemoveObjectsFromList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
 	resp := s.mw.ObjectCollectionRemove(ctx, &pb.RpcObjectCollectionRemoveRequest{
 		ContextId: listId,
 		ObjectIds: objectIds,
@@ -256,7 +238,7 @@ func (s *service) RemoveObjectsFromList(ctx context.Context, spaceId string, lis
 }
 
 // mapDataviewTypeName maps the dataview type to a string.
-func (s *service) mapDataviewTypeName(dataviewType model.BlockContentDataviewViewType) string {
+func (s *Service) mapDataviewTypeName(dataviewType model.BlockContentDataviewViewType) string {
 	switch dataviewType {
 	case model.BlockContentDataviewView_Table:
 		return "grid"

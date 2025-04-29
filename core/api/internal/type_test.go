@@ -1,4 +1,4 @@
-package object
+package internal
 
 import (
 	"context"
@@ -187,7 +187,7 @@ func TestObjectService_GetType(t *testing.T) {
 		require.Equal(t, mockedTypeName, objType.Name)
 		require.Equal(t, mockedTypeKey, objType.Key)
 		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTypeIcon)}, objType.Icon)
-		require.Equal(t, model.ObjectTypeLayout_name[int32(model.ObjectType_basic)], objType.Layout)
+		require.Equal(t, apimodel.ObjectLayoutBasic, objType.Layout)
 	})
 
 	t.Run("type not found", func(t *testing.T) {

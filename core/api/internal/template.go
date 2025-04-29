@@ -1,4 +1,4 @@
-package object
+package internal
 
 import (
 	"context"
@@ -20,7 +20,7 @@ var (
 )
 
 // ListTemplates returns a paginated list of templates in a specific space.
-func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []apimodel.Object, total int, hasMore bool, err error) {
+func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []apimodel.Object, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -89,7 +89,7 @@ func (s *service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 }
 
 // GetTemplate returns a single template by its ID in a specific space.
-func (s *service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (apimodel.ObjectWithBlocks, error) {
+func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (apimodel.ObjectWithBlocks, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: templateId,

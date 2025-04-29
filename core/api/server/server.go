@@ -7,22 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/apicore"
-	"github.com/anyproto/anytype-heart/core/api/internal/auth"
-	"github.com/anyproto/anytype-heart/core/api/internal/list"
-	"github.com/anyproto/anytype-heart/core/api/internal/object"
-	"github.com/anyproto/anytype-heart/core/api/internal/search"
-	"github.com/anyproto/anytype-heart/core/api/internal/space"
+	"github.com/anyproto/anytype-heart/core/api/internal"
 )
 
 // Server wraps the HTTP server and service logic.
 type Server struct {
-	engine *gin.Engine
-
-	authService   auth.Service
-	listService   list.Service
-	objectService object.Service
-	spaceService  space.Service
-	searchService search.Service
+	engine  *gin.Engine
+	service *internal.Service
 
 	mu         sync.Mutex
 	KeyToToken map[string]string // appKey -> token
@@ -35,14 +26,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		panic(err)
 	}
 
-	s := &Server{
-		authService:   auth.NewService(mw),
-		objectService: object.NewService(mw, exportService, gatewayUrl),
-		spaceService:  space.NewService(mw, gatewayUrl, techSpaceId),
-	}
-
-	s.listService = list.NewService(mw, s.objectService)
-	s.searchService = search.NewService(mw, s.spaceService, s.objectService)
+	s := &Server{service: internal.NewService(mw, exportService, gatewayUrl, techSpaceId)}
 	s.engine = s.NewRouter(mw)
 	s.KeyToToken = make(map[string]string)
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/internal/list"
+	"github.com/anyproto/anytype-heart/core/api/internal"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -28,7 +28,7 @@ import (
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/views [get]
-func GetListViewsHandler(s list.Service) gin.HandlerFunc {
+func GetListViewsHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
@@ -37,8 +37,8 @@ func GetListViewsHandler(s list.Service) gin.HandlerFunc {
 
 		views, total, hasMore, err := s.GetListViews(c, spaceId, listId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(list.ErrFailedGetList, http.StatusNotFound),
-			util.ErrToCode(list.ErrFailedGetListDataview, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedGetList, http.StatusNotFound),
+			util.ErrToCode(internal.ErrFailedGetListDataview, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -70,7 +70,7 @@ func GetListViewsHandler(s list.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/{view_id}/objects [get]
-func GetObjectsInListHandler(s list.Service) gin.HandlerFunc {
+func GetObjectsInListHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
@@ -80,11 +80,11 @@ func GetObjectsInListHandler(s list.Service) gin.HandlerFunc {
 
 		objects, total, hasMore, err := s.GetObjectsInList(c, spaceId, listId, viewId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(list.ErrFailedGetList, http.StatusNotFound),
-			util.ErrToCode(list.ErrFailedGetListDataview, http.StatusInternalServerError),
-			util.ErrToCode(list.ErrFailedGetListDataviewView, http.StatusInternalServerError),
-			util.ErrToCode(list.ErrUnsupportedListType, http.StatusInternalServerError),
-			util.ErrToCode(list.ErrFailedGetObjectsInList, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedGetList, http.StatusNotFound),
+			util.ErrToCode(internal.ErrFailedGetListDataview, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedGetListDataviewView, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrUnsupportedListType, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedGetObjectsInList, http.StatusInternalServerError),
 			util.ErrToCode(util.ErrorResolveToUniqueKey, http.StatusInternalServerError),
 		)
 
@@ -117,7 +117,7 @@ func GetObjectsInListHandler(s list.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/objects [post]
-func AddObjectsToListHandler(s list.Service) gin.HandlerFunc {
+func AddObjectsToListHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
@@ -131,7 +131,7 @@ func AddObjectsToListHandler(s list.Service) gin.HandlerFunc {
 
 		err := s.AddObjectsToList(c, spaceId, listId, objects)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(list.ErrFailedAddObjectsToList, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedAddObjectsToList, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -162,7 +162,7 @@ func AddObjectsToListHandler(s list.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/objects/{object_id} [delete]
-func RemoveObjectFromListHandler(s list.Service) gin.HandlerFunc {
+func RemoveObjectFromListHandler(s *internal.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
@@ -170,7 +170,7 @@ func RemoveObjectFromListHandler(s list.Service) gin.HandlerFunc {
 
 		err := s.RemoveObjectsFromList(c, spaceId, listId, []string{objectId})
 		code := util.MapErrorCode(err,
-			util.ErrToCode(list.ErrFailedRemoveObjectsFromList, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedRemoveObjectsFromList, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

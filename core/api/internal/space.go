@@ -1,4 +1,4 @@
-package space
+package internal
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/iancoleman/strcase"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore"
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/pb"
@@ -35,28 +34,8 @@ var (
 	ErrFailedUpdateMember         = errors.New("failed to update member")
 )
 
-type Service interface {
-	ListSpaces(ctx context.Context, offset int, limit int) ([]apimodel.Space, int, bool, error)
-	GetSpace(ctx context.Context, spaceId string) (apimodel.Space, error)
-	CreateSpace(ctx context.Context, request apimodel.CreateSpaceRequest) (apimodel.Space, error)
-	ListMembers(ctx context.Context, spaceId string, offset int, limit int) ([]apimodel.Member, int, bool, error)
-	GetMember(ctx context.Context, spaceId string, memberId string) (apimodel.Member, error)
-	UpdateMember(ctx context.Context, spaceId string, memberId string, request apimodel.UpdateMemberRequest) (apimodel.Member, error)
-	GetAllSpaceIds() ([]string, error)
-}
-
-type service struct {
-	mw          apicore.ClientCommands
-	gatewayUrl  string
-	techSpaceId string
-}
-
-func NewService(mw apicore.ClientCommands, gatewayUrl string, techSpaceId string) Service {
-	return &service{mw: mw, gatewayUrl: gatewayUrl, techSpaceId: techSpaceId}
-}
-
 // ListSpaces returns a paginated list of spaces for the account.
-func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
+func (s *Service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -103,7 +82,7 @@ func (s *service) ListSpaces(ctx context.Context, offset int, limit int) (spaces
 }
 
 // GetSpace returns the space info for the space with the given ID.
-func (s *service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space, error) {
+func (s *Service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space, error) {
 	// Check if the workspace exists and is active
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
@@ -134,7 +113,7 @@ func (s *service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space,
 }
 
 // CreateSpace creates a new space with the given name and returns the space info.
-func (s *service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceRequest) (apimodel.Space, error) {
+func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceRequest) (apimodel.Space, error) {
 	name := request.Name
 	iconOption, err := rand.Int(rand.Reader, big.NewInt(13))
 	if err != nil {
@@ -177,7 +156,7 @@ func (s *service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 }
 
 // ListMembers returns a paginated list of members in the space with the given ID.
-func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []apimodel.Member, total int, hasMore bool, err error) {
+func (s *Service) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []apimodel.Member, total int, hasMore bool, err error) {
 	activeResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -261,7 +240,7 @@ func (s *service) ListMembers(ctx context.Context, spaceId string, offset int, l
 }
 
 // GetMember returns the member with the given ID in the space with the given ID.
-func (s *service) GetMember(ctx context.Context, spaceId string, memberId string) (apimodel.Member, error) {
+func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string) (apimodel.Member, error) {
 	// Member ID can be either a participant ID or an identity.
 	relationKey := bundle.RelationKeyId
 	if !strings.HasPrefix(memberId, "_participant") {
@@ -303,7 +282,7 @@ func (s *service) GetMember(ctx context.Context, spaceId string, memberId string
 }
 
 // UpdateMember approves member with a defined role or removes them
-func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId string, request apimodel.UpdateMemberRequest) (apimodel.Member, error) {
+func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId string, request apimodel.UpdateMemberRequest) (apimodel.Member, error) {
 	member, err := s.GetMember(ctx, spaceId, memberId)
 	if err != nil {
 		return apimodel.Member{}, err
@@ -370,7 +349,7 @@ func (s *service) UpdateMember(ctx context.Context, spaceId string, memberId str
 }
 
 // getSpaceInfo returns the workspace info for the space with the given ID.
-func (s *service) getSpaceInfo(spaceId string) (space apimodel.Space, err error) {
+func (s *Service) getSpaceInfo(spaceId string) (space apimodel.Space, err error) {
 	workspaceResponse := s.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
 		SpaceId: spaceId,
 	})
@@ -404,7 +383,7 @@ func (s *service) getSpaceInfo(spaceId string) (space apimodel.Space, err error)
 }
 
 // GetAllSpaceIds effectively retrieves all space IDs from the tech space.
-func (s *service) GetAllSpaceIds() ([]string, error) {
+func (s *Service) GetAllSpaceIds() ([]string, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -437,7 +416,7 @@ func (s *service) GetAllSpaceIds() ([]string, error) {
 }
 
 // mapMemberPermissions maps participant permissions to a role
-func (s *service) mapMemberPermissions(permissions model.ParticipantPermissions) string {
+func (s *Service) mapMemberPermissions(permissions model.ParticipantPermissions) string {
 	switch permissions {
 	case model.ParticipantPermissions_Reader:
 		return "viewer"
@@ -449,7 +428,7 @@ func (s *service) mapMemberPermissions(permissions model.ParticipantPermissions)
 }
 
 // mapMemberPermissions maps a role to participant permissions
-func (s *service) mapMemberRole(role string) model.ParticipantPermissions {
+func (s *Service) mapMemberRole(role string) model.ParticipantPermissions {
 	switch role {
 	case "viewer":
 		return model.ParticipantPermissions_Reader
