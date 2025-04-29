@@ -38,11 +38,6 @@ type NodeConfGetter interface {
 	GetNodeConf() (conf nodeconf.Configuration)
 }
 
-type pushService interface {
-	CreateSpace(ctx context.Context, spaceId string) (err error)
-	SubscribeToTopics(ctx context.Context, spaceId string, topic []string)
-}
-
 type AccountPermissions struct {
 	Account     crypto.PubKey
 	Permissions model.ParticipantPermissions
