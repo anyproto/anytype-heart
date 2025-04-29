@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/apimodel"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -266,7 +267,7 @@ func (s *service) buildTypeDetails(ctx context.Context, spaceId string, request 
 
 	var relationIds []string
 	for _, propLink := range request.Properties {
-		rk := FromPropertyApiKey(propLink.Key)
+		rk := util.FromPropertyApiKey(propLink.Key)
 		if propDef, exists := propertyMap[rk]; exists {
 			relationIds = append(relationIds, propDef.Id)
 		} else {

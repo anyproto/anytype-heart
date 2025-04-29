@@ -228,7 +228,7 @@ func (s *service) mapTagFromRecord(record *types.Struct) apimodel.Tag {
 	return apimodel.Tag{
 		Object: "tag",
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:    ToTagApiKey(record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()),
+		Key:    util.ToTagApiKey(record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()),
 		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Color:  apimodel.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 	}

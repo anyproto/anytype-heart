@@ -261,7 +261,7 @@ func (s *service) processProperties(ctx context.Context, spaceId string, entries
 	}
 	for _, entry := range entries {
 		key := entry.Key
-		rk := FromPropertyApiKey(key)
+		rk := util.FromPropertyApiKey(key)
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
@@ -535,13 +535,13 @@ func (s *service) mapPropertyFromRecord(record *types.Struct) (string, apimodel.
 	var key, name string
 	switch rk {
 	case bundle.RelationKeyCreator.String():
-		key = ToPropertyApiKey("created_by")
+		key = util.ToPropertyApiKey("created_by")
 		name = "Created By"
 	case bundle.RelationKeyCreatedDate.String():
-		key = ToPropertyApiKey("created_date")
+		key = util.ToPropertyApiKey("created_date")
 		name = "Created Date"
 	default:
-		key = ToPropertyApiKey(rk)
+		key = util.ToPropertyApiKey(rk)
 		name = record.Fields[bundle.RelationKeyName.String()].GetStringValue()
 	}
 
