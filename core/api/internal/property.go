@@ -377,7 +377,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (tag id)")
 		}
-		if !s.isValidSelectOption(ctx, spaceId, property, id) {
+		if id != "" && !s.isValidSelectOption(ctx, spaceId, property, id) {
 			return nil, util.ErrBadInput("invalid select option for '" + key + "': " + id)
 		}
 		return id, nil
