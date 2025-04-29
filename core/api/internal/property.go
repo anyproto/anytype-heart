@@ -25,6 +25,7 @@ var (
 	ErrPropertyDeleted          = errors.New("property deleted")
 	ErrFailedRetrieveProperty   = errors.New("failed to retrieve property")
 	ErrFailedCreateProperty     = errors.New("failed to create property")
+	ErrPropertyCannotBeUpdated  = errors.New("property cannot be updated")
 	ErrFailedUpdateProperty     = errors.New("failed to update property")
 	ErrFailedDeleteProperty     = errors.New("failed to delete property")
 )
@@ -128,7 +129,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 		},
 		Keys: []string{
 			bundle.RelationKeyId.String(),
-			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyRelationKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationFormat.String(),
 		},
@@ -210,9 +211,13 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 
 // UpdateProperty updates an existing property in a specific space.
 func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request apimodel.UpdatePropertyRequest) (apimodel.Property, error) {
-	_, err := s.GetProperty(ctx, spaceId, propertyId)
+	prop, err := s.GetProperty(ctx, spaceId, propertyId)
 	if err != nil {
 		return apimodel.Property{}, err
+	}
+
+	if bundle.HasRelation(domain.RelationKey(util.FromPropertyApiKey(prop.Key))) {
+		return apimodel.Property{}, ErrPropertyCannotBeUpdated
 	}
 
 	detail := model.Detail{
@@ -514,7 +519,7 @@ func (s *Service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.P
 		},
 		Keys: []string{
 			bundle.RelationKeyId.String(),
-			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyRelationKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationFormat.String(),
 		},
@@ -536,26 +541,12 @@ func (s *Service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.P
 
 // mapPropertyFromRecord maps a single property record into a Property and returns its trimmed relation key.
 func (s *Service) mapPropertyFromRecord(record *types.Struct) (string, apimodel.Property) {
-	rk := strings.TrimPrefix(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(), "rel-")
-
-	var key, name string
-	switch rk {
-	case bundle.RelationKeyCreator.String():
-		key = util.ToPropertyApiKey("created_by")
-		name = "Created By"
-	case bundle.RelationKeyCreatedDate.String():
-		key = util.ToPropertyApiKey("created_date")
-		name = "Created Date"
-	default:
-		key = util.ToPropertyApiKey(rk)
-		name = record.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	}
-
+	rk := record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
 	return rk, apimodel.Property{
 		Object: "property",
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:    key,
-		Name:   name,
+		Key:    util.ToPropertyApiKey(rk),
+		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Format: RelationFormatToPropertyFormat[model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
 	}
 }

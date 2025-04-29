@@ -23,27 +23,27 @@ const (
 )
 
 func ToPropertyApiKey(internalKey string) string {
-	return ToApiKey(propPrefix, internalRelationPrefix, internalKey)
+	return toApiKey(propPrefix, internalRelationPrefix, internalKey)
 }
 
 func FromPropertyApiKey(apiKey string) string {
-	return FromApiKey(propPrefix, "", apiKey) // interally, we don't prefix relation keys
+	return fromApiKey(propPrefix, "", apiKey) // interally, we don't prefix relation keys
 }
 
 func ToTypeApiKey(internalKey string) string {
-	return ToApiKey(typePrefix, internalObjectTypePrefix, internalKey)
+	return toApiKey(typePrefix, internalObjectTypePrefix, internalKey)
 }
 
 func FromTypeApiKey(apiKey string) string {
-	return FromApiKey(typePrefix, internalObjectTypePrefix, apiKey)
+	return fromApiKey(typePrefix, internalObjectTypePrefix, apiKey)
 }
 
 func ToTagApiKey(internalKey string) string {
-	return ToApiKey(tagPrefix, internalRelationOptionPrefix, internalKey)
+	return toApiKey(tagPrefix, internalRelationOptionPrefix, internalKey)
 }
 
 func FromTagApiKey(apiKey string) string {
-	return FromApiKey(tagPrefix, internalRelationOptionPrefix, apiKey)
+	return fromApiKey(tagPrefix, internalRelationOptionPrefix, apiKey)
 }
 
 // IsCustomPropertyKey returns true if key is exactly 24 letters and contains at least a digit.
@@ -55,8 +55,8 @@ func IsCustomPropertyKey(key string) bool {
 	return true
 }
 
-// ToApiKey converts an internal key into API format by stripping any existing internal prefixes and adding the API prefix.
-func ToApiKey(prefix, internalPrefix, internalKey string) string {
+// toApiKey converts an internal key into API format by stripping any existing internal prefixes and adding the API prefix.
+func toApiKey(prefix, internalPrefix, internalKey string) string {
 	var k string
 	internalKey = strings.TrimPrefix(internalKey, internalPrefix)
 	if IsCustomPropertyKey(internalKey) {
@@ -67,8 +67,8 @@ func ToApiKey(prefix, internalPrefix, internalKey string) string {
 	return prefix + k
 }
 
-// FromApiKey converts an API key back into internal format by stripping the API prefix and re-adding the internal prefix.
-func FromApiKey(prefix, internalPrefix, apiKey string) string {
+// fromApiKey converts an API key back into internal format by stripping the API prefix and re-adding the internal prefix.
+func fromApiKey(prefix, internalPrefix, apiKey string) string {
 	k := strings.TrimPrefix(apiKey, prefix)
 	if IsCustomPropertyKey(k) {
 		return internalPrefix + k

@@ -154,6 +154,7 @@ func CreateTagHandler(s *internal.Service) gin.HandlerFunc {
 //	@Success		200				{object}	TagResponse				"The updated tag"
 //	@Failure		400				{object}	util.ValidationError	"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
@@ -177,7 +178,7 @@ func UpdateTagHandler(s *internal.Service) gin.HandlerFunc {
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 			util.ErrToCode(internal.ErrTagNotFound, http.StatusNotFound),
 			util.ErrToCode(internal.ErrTagDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedUpdateTag, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrFailedUpdateTag, http.StatusForbidden),
 			util.ErrToCode(internal.ErrFailedRetrieveTag, http.StatusInternalServerError),
 		)
 

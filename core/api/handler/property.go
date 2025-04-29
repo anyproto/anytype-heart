@@ -147,6 +147,7 @@ func CreatePropertyHandler(s *internal.Service) gin.HandlerFunc {
 //	@Success		200				{object}	PropertyResponse		"The updated property"
 //	@Failure		400				{object}	util.ValidationError	"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
@@ -169,7 +170,8 @@ func UpdatePropertyHandler(s *internal.Service) gin.HandlerFunc {
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 			util.ErrToCode(internal.ErrPropertyNotFound, http.StatusNotFound),
 			util.ErrToCode(internal.ErrPropertyDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedUpdateProperty, http.StatusInternalServerError),
+			util.ErrToCode(internal.ErrPropertyCannotBeUpdated, http.StatusForbidden),
+			util.ErrToCode(internal.ErrFailedUpdateProperty, http.StatusForbidden),
 			util.ErrToCode(internal.ErrFailedRetrieveProperty, http.StatusInternalServerError),
 		)
 
