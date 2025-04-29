@@ -64,7 +64,7 @@ type service struct {
 type spaceKeyType string
 
 func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
-	err := s.requestsQueue.Add(ctx, requestSubscribe{spaceId, topics})
+	err := s.requestsQueue.Add(ctx, requestSubscribe{spaceId: spaceId, topics: topics})
 	if err != nil {
 		log.Error("add topic", zap.Error(err))
 	}
@@ -152,20 +152,15 @@ func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 	if err != nil {
 		return err
 	}
-	pubKey := keys.signKey.GetPublic()
-	rawKey, err := pubKey.Raw()
-	if err != nil {
-		return err
-	}
 	err = s.pushClient.CreateSpace(ctx, &pushapi.CreateSpaceRequest{
-		// TODO use correct key (probably the same we send to client)
-		SpaceKey:         rawKey,
+		SpaceKey:         []byte(keys.spaceKey),
 		AccountSignature: signature,
 	})
 	return err
 }
 
 type spaceKeys struct {
+	// spaceKey is a public part of signKey
 	spaceKey spaceKeyType
 	signKey  crypto.PrivKey
 
@@ -371,13 +366,18 @@ func (s *service) getSpaceKeysFromAcl(state *list.AclState) (*spaceKeys, error) 
 	if err != nil {
 		return nil, fmt.Errorf("get first metadata key: %w", err)
 	}
-	spaceKey, signKey, err := deriveSpaceKey(firstMetadataKey)
+	signKey, err := deriveSpaceKey(firstMetadataKey)
 	if err != nil {
 		return nil, fmt.Errorf("derive space key: %w", err)
 	}
 	symKey, err := state.CurrentReadKey()
 	if err != nil {
 		return nil, fmt.Errorf("get current read key: %w", err)
+	}
+
+	spaceKey, err := signKey.GetPublic().Raw()
+	if err != nil {
+		return nil, fmt.Errorf("get raw space public key: %w", err)
 	}
 
 	readKeyId := state.CurrentReadKeyId()
