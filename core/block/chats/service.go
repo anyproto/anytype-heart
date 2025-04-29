@@ -75,7 +75,7 @@ type service struct {
 	isMessagePreviewSubActive bool
 	chatObjectIds             map[string]struct{}
 
-	store           objectstore.ObjectStore
+	objectStore     objectstore.ObjectStore
 	identityService identity.Service
 }
 
@@ -96,7 +96,7 @@ func (s *service) Init(a *app.App) error {
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 	s.pushService = app.MustComponent[pushService](a)
 	s.accountService = app.MustComponent[accountService](a)
-	s.store = app.MustComponent[objectstore.ObjectStore](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.identityService = app.MustComponent[identity.Service](a)
 
 	return nil
@@ -268,25 +268,25 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		return err
 	})
 	if err == nil {
-		spaceName := s.store.GetSpaceName(spaceId)
-		_, _, details := s.identityService.GetMyProfileDetails(ctx)
-		var senderName string
-		if details != nil {
-			senderName = details.GetString(bundle.RelationKeyName)
-		} else {
-			log.Error("chats/AddMessage: failed to get profile name, details are empty")
-		}
-
-		go s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text, spaceName, senderName)
+		go s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text)
 	}
 	return messageId, err
 }
 
-func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId string, messageText string, spaceName string, senderName string) {
+func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId string, messageText string) {
+	accountId := s.accountService.AccountID()
+	spaceName := s.objectStore.GetSpaceName(spaceId)
+	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(domain.NewParticipantId(spaceId, accountId))
+	var senderName string
+	if err != nil {
+		log.Error("sendPushNotification: failed to get profile name, details are empty", zap.Error(err))
+	} else {
+		senderName = details.GetString(bundle.RelationKeyName)
+	}
 
 	payload := &chatpush.Payload{
 		SpaceId:  spaceId,
-		SenderId: s.accountService.AccountID(),
+		SenderId: accountId,
 		Type:     chatpush.ChatMessage,
 		NewMessagePayload: &chatpush.NewMessagePayload{
 			ChatId:     chatObjectId,
@@ -298,7 +298,7 @@ func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId s
 	}
 
 	jsonPayload, err := json.Marshal(payload)
-	log.Debug("sendPushNotification payload: %v ", zap.String("payload", string(jsonPayload)))
+	log.Debug("sendPushNotification payload", zap.String("payload", string(jsonPayload)))
 
 	if err != nil {
 		log.Error("marshal push payload", zap.Error(err))
