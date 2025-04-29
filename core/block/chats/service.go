@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -75,8 +74,7 @@ type service struct {
 	isMessagePreviewSubActive bool
 	chatObjectIds             map[string]struct{}
 
-	objectStore     objectstore.ObjectStore
-	identityService identity.Service
+	objectStore objectstore.ObjectStore
 }
 
 func New() Service {
@@ -97,7 +95,6 @@ func (s *service) Init(a *app.App) error {
 	s.pushService = app.MustComponent[pushService](a)
 	s.accountService = app.MustComponent[accountService](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.identityService = app.MustComponent[identity.Service](a)
 
 	return nil
 }
