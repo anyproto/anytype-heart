@@ -106,6 +106,11 @@ type DebugAPIConfig struct {
 	IsEnabled bool
 }
 
+type PushConfig struct {
+	PeerId string
+	Addr   []string
+}
+
 const (
 	ConfigFileName = "config.json"
 )
@@ -501,5 +506,22 @@ func (c *Config) GetPublishServer() publishclient.Config {
 				Addrs:  []string{"yamux://" + publishAddr},
 			},
 		},
+	}
+}
+
+func (c *Config) GetPushConfig() PushConfig {
+	pushPeerId := "12D3KooWR8Ci1XidFCCXoZppGrUmiy4D1Mjoux9xK6QoZrpbQC3J"
+	pushAddr := "stage1-anytype-push-server1.toolpad.org:4940"
+
+	if peerId := os.Getenv("ANYTYPE_PUSH_PEERID"); peerId != "" {
+		if addr := os.Getenv("ANYTYPE_PUSH_ADDRESS"); addr != "" {
+			pushPeerId = peerId
+			pushAddr = addr
+		}
+	}
+
+	return PushConfig{
+		PeerId: pushPeerId,
+		Addr:   []string{"yamux://" + pushAddr},
 	}
 }
