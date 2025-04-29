@@ -2,7 +2,9 @@ package pushnotification
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"sync"
 
@@ -40,7 +42,7 @@ type Service interface {
 }
 
 func New() Service {
-	return &service{topicSubscriptions: make(map[spaceKeyId]map[string]*pushapi.Topic)}
+	return &service{topicSubscriptions: make(map[spaceKeyType]map[string]*pushapi.Topic)}
 }
 
 type service struct {
@@ -53,13 +55,13 @@ type service struct {
 	started                 bool
 	activeSubscriptionsLock sync.Mutex
 
-	topicSubscriptions map[spaceKeyId]map[string]*pushapi.Topic
+	topicSubscriptions map[spaceKeyType]map[string]*pushapi.Topic
 	ctx                context.Context
 	cancel             context.CancelFunc
 	requestsQueue      *mb.MB[requestSubscribe]
 }
 
-type spaceKeyId string
+type spaceKeyType string
 
 func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
 	err := s.requestsQueue.Add(ctx, requestSubscribe{spaceId, topics})
@@ -164,9 +166,12 @@ func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 }
 
 type spaceKeys struct {
-	spaceKeyId    spaceKeyId
-	signKey       crypto.PrivKey
-	encryptionKey crypto.SymKey
+	spaceKey spaceKeyType
+	signKey  crypto.PrivKey
+
+	// id of current encryption key
+	encryptionKeyId string
+	encryptionKey   crypto.SymKey
 }
 
 func (s *service) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
@@ -191,7 +196,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 		return err
 	}
 	p := &pushapi.Message{
-		KeyId:     string(keys.spaceKeyId),
+		KeyId:     keys.encryptionKeyId,
 		Payload:   encryptedJson,
 		Signature: signature,
 	}
@@ -215,7 +220,7 @@ func (s *service) loadSubscriptions(ctx context.Context) (err error) {
 	}
 	s.activeSubscriptionsLock.Lock()
 	for _, topic := range subscriptions.Topics.Topics {
-		s.putTopicSubscription(spaceKeyId(topic.SpaceKey), topic)
+		s.putTopicSubscription(spaceKeyType(topic.SpaceKey), topic)
 	}
 	s.activeSubscriptionsLock.Unlock()
 	return nil
@@ -225,23 +230,23 @@ func (s *service) addPendingTopicSubscription(spaceKeys *spaceKeys, topic string
 	s.activeSubscriptionsLock.Lock()
 	defer s.activeSubscriptionsLock.Unlock()
 
-	if s.hasTopicSubscription(spaceKeys.spaceKeyId, topic) {
+	if s.hasTopicSubscription(spaceKeys.spaceKey, topic) {
 		return false, nil
 	}
 	signature, err := spaceKeys.signKey.Sign([]byte(topic))
 	if err != nil {
 		return false, fmt.Errorf("sign topic: %w", err)
 	}
-	s.putTopicSubscription(spaceKeys.spaceKeyId, &pushapi.Topic{
+	s.putTopicSubscription(spaceKeys.spaceKey, &pushapi.Topic{
 		Topic:     topic,
-		SpaceKey:  []byte(spaceKeys.spaceKeyId),
+		SpaceKey:  []byte(spaceKeys.spaceKey),
 		Signature: signature,
 	})
 	return true, nil
 }
 
-func (s *service) hasTopicSubscription(spaceKeyId spaceKeyId, topic string) bool {
-	topics, ok := s.topicSubscriptions[spaceKeyId]
+func (s *service) hasTopicSubscription(spaceKey spaceKeyType, topic string) bool {
+	topics, ok := s.topicSubscriptions[spaceKey]
 	if !ok {
 		return false
 	}
@@ -251,11 +256,11 @@ func (s *service) hasTopicSubscription(spaceKeyId spaceKeyId, topic string) bool
 	return true
 }
 
-func (s *service) putTopicSubscription(spaceKeyId spaceKeyId, topic *pushapi.Topic) bool {
-	topics, ok := s.topicSubscriptions[spaceKeyId]
+func (s *service) putTopicSubscription(spaceKey spaceKeyType, topic *pushapi.Topic) bool {
+	topics, ok := s.topicSubscriptions[spaceKey]
 	if !ok {
 		topics = map[string]*pushapi.Topic{}
-		s.topicSubscriptions[spaceKeyId] = topics
+		s.topicSubscriptions[spaceKey] = topics
 	}
 	if _, ok := topics[topic.Topic]; ok {
 		return false
@@ -340,11 +345,12 @@ func (s *service) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) er
 		Messages: []*pb.EventMessage{
 			{
 				SpaceId: spaceId,
-				Value: &pb.EventMessageValueOfKeyUpdate{KeyUpdate: &pb.EventKeyUpdate{
-					SpaceKeyId:      string(keys.spaceKeyId),
-					EncryptionKeyId: aclState.CurrentReadKeyId(),
-					EncryptionKey:   encodedKey,
-				}},
+				Value: &pb.EventMessageValueOfPushEncryptionKeyUpdate{
+					PushEncryptionKeyUpdate: &pb.EventPushEncryptionKeyUpdate{
+						EncryptionKeyId: keys.encryptionKeyId,
+						EncryptionKey:   encodedKey,
+					},
+				},
 			},
 		},
 	})
@@ -373,13 +379,19 @@ func (s *service) getSpaceKeysFromAcl(state *list.AclState) (*spaceKeys, error) 
 	if err != nil {
 		return nil, fmt.Errorf("get current read key: %w", err)
 	}
+
+	readKeyId := state.CurrentReadKeyId()
+	hasher := sha256.New()
+	encryptionKeyId := hex.EncodeToString(hasher.Sum([]byte(readKeyId)))
+
 	encryptionKey, err := deriveSymmetricKey(symKey)
 	if err != nil {
 		return nil, err
 	}
 	return &spaceKeys{
-		spaceKeyId:    spaceKeyId(spaceKey),
-		encryptionKey: encryptionKey,
-		signKey:       signKey,
+		spaceKey:        spaceKeyType(spaceKey),
+		encryptionKey:   encryptionKey,
+		encryptionKeyId: encryptionKeyId,
+		signKey:         signKey,
 	}, nil
 }

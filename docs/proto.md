@@ -1834,8 +1834,6 @@
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Import](#anytype-Event-Import)
     - [Event.Import.Finish](#anytype-Event-Import-Finish)
-    - [Event.Key](#anytype-Event-Key)
-    - [Event.Key.Update](#anytype-Event-Key-Update)
     - [Event.Membership](#anytype-Event-Membership)
     - [Event.Membership.Update](#anytype-Event-Membership-Update)
     - [Event.Message](#anytype-Event-Message)
@@ -1870,6 +1868,8 @@
     - [Event.Process.Done](#anytype-Event-Process-Done)
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
+    - [Event.PushEncryptionKey](#anytype-Event-PushEncryptionKey)
+    - [Event.PushEncryptionKey.Update](#anytype-Event-PushEncryptionKey-Update)
     - [Event.Space](#anytype-Event-Space)
     - [Event.Space.AutoWidgetAdded](#anytype-Event-Space-AutoWidgetAdded)
     - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
@@ -28950,33 +28950,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype-Event-Key"></a>
-
-### Event.Key
-
-
-
-
-
-
-
-<a name="anytype-Event-Key-Update"></a>
-
-### Event.Key.Update
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceKeyId | [string](#string) |  |  |
-| encryptionKeyId | [string](#string) |  |  |
-| encryptionKey | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Event-Membership"></a>
 
 ### Event.Membership
@@ -29090,7 +29063,7 @@ Precondition: user A opened a block
 | chatUpdateMentionReadStatus | [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus) |  | received to update per-message mention read status (if needed to highlight the unread mentions in the UI) |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed (e.g. message read on another device) |
-| keyUpdate | [Event.Key.Update](#anytype-Event-Key-Update) |  |  |
+| pushEncryptionKeyUpdate | [Event.PushEncryptionKey.Update](#anytype-Event-PushEncryptionKey-Update) |  |  |
 
 
 
@@ -29533,6 +29506,32 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | process | [Model.Process](#anytype-Model-Process) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-PushEncryptionKey"></a>
+
+### Event.PushEncryptionKey
+
+
+
+
+
+
+
+<a name="anytype-Event-PushEncryptionKey-Update"></a>
+
+### Event.PushEncryptionKey.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| encryptionKeyId | [string](#string) |  |  |
+| encryptionKey | [string](#string) |  |  |
 
 
 
