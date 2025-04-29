@@ -268,18 +268,24 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		return err
 	})
 	if err == nil {
-		go s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text)
+		go func() {
+			err := s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text)
+			if err != nil {
+				log.Error("sendPushNotification: ", zap.Error(err))
+			}
+		}()
+
 	}
 	return messageId, err
 }
 
-func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId string, messageText string) {
+func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId string, messageText string) (err error) {
 	accountId := s.accountService.AccountID()
 	spaceName := s.objectStore.GetSpaceName(spaceId)
 	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(domain.NewParticipantId(spaceId, accountId))
 	var senderName string
 	if err != nil {
-		log.Error("sendPushNotification: failed to get profile name, details are empty", zap.Error(err))
+		log.Warn("sendPushNotification: failed to get profile name, details are empty", zap.Error(err))
 	} else {
 		senderName = details.GetString(bundle.RelationKeyName)
 	}
@@ -300,12 +306,17 @@ func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId s
 	jsonPayload, err := json.Marshal(payload)
 
 	if err != nil {
-		log.Error("marshal push payload", zap.Error(err))
+		err = fmt.Errorf("marshal push payload: %w", err)
+		return
 	}
+
 	err = s.pushService.Notify(s.componentCtx, spaceId, []string{chatpush.ChatsTopicName}, jsonPayload)
 	if err != nil {
-		log.Error("notify push message", zap.Error(err))
+		err = fmt.Errorf("pushService.Notify: %w", err)
+		return
 	}
+
+	return
 }
 
 func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatobject.Message) error {
