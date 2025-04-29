@@ -24,7 +24,7 @@ import (
 
 const CName = "core.pushnotification.service"
 
-var log = logging.Logger(CName)
+var log = logging.Logger(CName).Desugar()
 
 type requestSubscribe struct {
 	spaceId string
@@ -64,7 +64,7 @@ type spaceKeyId string
 func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
 	err := s.requestsQueue.Add(ctx, requestSubscribe{spaceId, topics})
 	if err != nil {
-		log.Errorf("add topic err: %v", err)
+		log.Error("add topic", zap.Error(err))
 	}
 	return
 }
@@ -288,7 +288,7 @@ func (s *service) makeTopics(spaceKey crypto.PrivKey, topics []string) ([]*pusha
 func (s *service) run() {
 	err := s.loadSubscriptions(s.ctx)
 	if err != nil {
-		log.Error("failed to load subscriptions: ", err)
+		log.Error("failed to load subscriptions", zap.Error(err))
 	}
 
 	for {
@@ -301,7 +301,7 @@ func (s *service) run() {
 		for _, req := range requests {
 			keys, err := s.getSpaceKeys(req.spaceId)
 			if err != nil {
-				log.Error("failed to get space keys: ", err)
+				log.Error("failed to get space keys", zap.Error(err))
 			}
 
 			for _, topic := range req.topics {
@@ -320,7 +320,7 @@ func (s *service) run() {
 		}
 		err = s.subscribeAll(s.ctx)
 		if err != nil {
-			log.Errorf("failed to subscribe to topic: %v", err)
+			log.Error("failed to subscribe to topic", zap.Error(err))
 		}
 	}
 }
