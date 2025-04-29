@@ -414,6 +414,55 @@ func (_c *MockClientCommands_ObjectCreateBookmark_Call) RunAndReturn(run func(co
 	return _c
 }
 
+// ObjectCreateObjectType provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectCreateObjectType(_a0 context.Context, _a1 *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectCreateObjectType")
+	}
+
+	var r0 *pb.RpcObjectCreateObjectTypeResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectCreateObjectTypeResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectCreateObjectType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectCreateObjectType'
+type MockClientCommands_ObjectCreateObjectType_Call struct {
+	*mock.Call
+}
+
+// ObjectCreateObjectType is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectCreateObjectTypeRequest
+func (_e *MockClientCommands_Expecter) ObjectCreateObjectType(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectCreateObjectType_Call {
+	return &MockClientCommands_ObjectCreateObjectType_Call{Call: _e.mock.On("ObjectCreateObjectType", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectCreateObjectType_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectCreateObjectTypeRequest)) *MockClientCommands_ObjectCreateObjectType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectCreateObjectTypeRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCreateObjectType_Call) Return(_a0 *pb.RpcObjectCreateObjectTypeResponse) *MockClientCommands_ObjectCreateObjectType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCreateObjectType_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse) *MockClientCommands_ObjectCreateObjectType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectCreateRelation provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectCreateRelation(_a0 context.Context, _a1 *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
 	ret := _m.Called(_a0, _a1)
