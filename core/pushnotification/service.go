@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
 	"github.com/cheggaaa/mb/v3"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -39,7 +40,7 @@ type Service interface {
 }
 
 func New() Service {
-	return &service{activeSubscriptions: make(map[string]TopicSet)}
+	return &service{topicSubscriptions: make(map[spaceKeyId]map[string]*pushapi.Topic)}
 }
 
 type service struct {
@@ -51,11 +52,14 @@ type service struct {
 
 	started                 bool
 	activeSubscriptionsLock sync.Mutex
-	activeSubscriptions     map[string]TopicSet
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	requestsQueue           *mb.MB[requestSubscribe]
+
+	topicSubscriptions map[spaceKeyId]map[string]*pushapi.Topic
+	ctx                context.Context
+	cancel             context.CancelFunc
+	requestsQueue      *mb.MB[requestSubscribe]
 }
+
+type spaceKeyId string
 
 func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
 	err := s.requestsQueue.Add(ctx, requestSubscribe{spaceId, topics})
@@ -117,105 +121,68 @@ func (s *service) subscribeAll(ctx context.Context) error {
 	if !s.started {
 		return nil
 	}
-	topics := s.buildPushTopics()
-	// TODO Subscribe for new topics only
+
+	s.activeSubscriptionsLock.Lock()
+	var allTopics []*pushapi.Topic
+	for _, topics := range s.topicSubscriptions {
+		for _, topic := range topics {
+			allTopics = append(allTopics, topic)
+		}
+	}
+	s.activeSubscriptionsLock.Unlock()
+
 	err := s.pushClient.SubscribeAll(ctx, &pushapi.SubscribeAllRequest{
-		Topics: &pushapi.Topics{Topics: topics},
+		Topics: &pushapi.Topics{Topics: allTopics},
 	})
 	return err
-}
-
-func (s *service) buildPushTopics() []*pushapi.Topic {
-	s.activeSubscriptionsLock.Lock()
-	defer s.activeSubscriptionsLock.Unlock()
-
-	var allTopics []*pushapi.Topic
-	for spaceId, topicsSet := range s.activeSubscriptions {
-		spaceTopics, err := s.makeTopicsForSpace(spaceId, topicsSet.Slice())
-		if err != nil {
-			continue
-		}
-		allTopics = append(allTopics, spaceTopics...)
-	}
-	return allTopics
-}
-
-func (s *service) makeTopicsForSpace(spaceId string, topicNames []string) ([]*pushapi.Topic, error) {
-	space, err := s.spaceService.Get(s.ctx, spaceId)
-	if err != nil {
-		return nil, err
-	}
-	state := space.CommonSpace().Acl().AclState()
-	firstMetadataKey, err := state.FirstMetadataKey()
-	if err != nil {
-		return nil, err
-	}
-	_, signKey, err := deriveSpaceKey(firstMetadataKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get key for space %s: %w", spaceId, err)
-	}
-	topics, err := s.makeTopics(signKey, topicNames)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make topics for space %s: %w", spaceId, err)
-	}
-	return topics, nil
 }
 
 func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 	if !s.started {
 		return nil
 	}
-	space, err := s.spaceService.Get(s.ctx, spaceId)
+	keys, err := s.getSpaceKeys(spaceId)
+	if err != nil {
+		return fmt.Errorf("get space keys: %w", err)
+	}
+
+	signature, err := keys.signKey.Sign([]byte(s.wallet.GetAccountPrivkey().GetPublic().Account()))
 	if err != nil {
 		return err
 	}
-	state := space.CommonSpace().Acl().AclState()
-	firstMetadataKey, err := state.FirstMetadataKey()
-	if err != nil {
-		return err
-	}
-	_, signKey, err := deriveSpaceKey(firstMetadataKey)
-	if err != nil {
-		return err
-	}
-	signature, err := signKey.Sign([]byte(s.wallet.GetAccountPrivkey().GetPublic().Account()))
-	if err != nil {
-		return err
-	}
-	pubKey := signKey.GetPublic()
+	pubKey := keys.signKey.GetPublic()
 	rawKey, err := pubKey.Raw()
 	if err != nil {
 		return err
 	}
 	err = s.pushClient.CreateSpace(ctx, &pushapi.CreateSpaceRequest{
+		// TODO use correct key (probably the same we send to client)
 		SpaceKey:         rawKey,
 		AccountSignature: signature,
 	})
 	return err
 }
 
+type spaceKeys struct {
+	spaceKeyId    spaceKeyId
+	signKey       crypto.PrivKey
+	encryptionKey crypto.SymKey
+}
+
 func (s *service) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
 	if !s.started {
 		return nil
 	}
-	space, err := s.spaceService.Get(s.ctx, spaceId)
+
+	keys, err := s.getSpaceKeys(spaceId)
+	if err != nil {
+		return fmt.Errorf("get space keys: %w", err)
+	}
+	topics, err := s.makeTopics(keys.signKey, topic)
 	if err != nil {
 		return err
 	}
-	state := space.CommonSpace().Acl().AclState()
-	firstMetadataKey, err := state.FirstMetadataKey()
-	if err != nil {
-		return err
-	}
-	spaceKeyId, signKey, err := deriveSpaceKey(firstMetadataKey)
-	if err != nil {
-		return err
-	}
-	topics, err := s.makeTopics(signKey, topic)
-	if err != nil {
-		return err
-	}
-	encryptedJson, err := s.prepareEncryptedPayload(state, payload)
+	encryptedJson, err := keys.encryptionKey.Encrypt(payload)
 	if err != nil {
 		return err
 	}
@@ -224,7 +191,7 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 		return err
 	}
 	p := &pushapi.Message{
-		KeyId:     spaceKeyId,
+		KeyId:     string(keys.spaceKeyId),
 		Payload:   encryptedJson,
 		Signature: signature,
 	}
@@ -233,22 +200,6 @@ func (s *service) Notify(ctx context.Context, spaceId string, topic []string, pa
 		Message: p,
 	})
 	return err
-}
-
-func (s *service) prepareEncryptedPayload(state *list.AclState, payload []byte) ([]byte, error) {
-	symKey, err := state.CurrentReadKey()
-	if err != nil {
-		return nil, err
-	}
-	encryptionKey, err := deriveSymmetricKey(symKey)
-	if err != nil {
-		return nil, err
-	}
-	encryptedJson, err := encryptionKey.Encrypt(payload)
-	if err != nil {
-		return nil, err
-	}
-	return encryptedJson, nil
 }
 
 func (s *service) loadSubscriptions(ctx context.Context) (err error) {
@@ -264,15 +215,53 @@ func (s *service) loadSubscriptions(ctx context.Context) (err error) {
 	}
 	s.activeSubscriptionsLock.Lock()
 	for _, topic := range subscriptions.Topics.Topics {
-		spaceKey := string(topic.SpaceKey)
-		if _, ok := s.activeSubscriptions[spaceKey]; !ok {
-			s.activeSubscriptions[spaceKey] = NewTopicSet()
-		}
-		topicSet := s.activeSubscriptions[spaceKey]
-		topicSet.Add(topic.Topic)
+		s.putTopicSubscription(spaceKeyId(topic.SpaceKey), topic)
 	}
 	s.activeSubscriptionsLock.Unlock()
 	return nil
+}
+
+func (s *service) addPendingTopicSubscription(spaceKeys *spaceKeys, topic string) (bool, error) {
+	s.activeSubscriptionsLock.Lock()
+	defer s.activeSubscriptionsLock.Unlock()
+
+	if s.hasTopicSubscription(spaceKeys.spaceKeyId, topic) {
+		return false, nil
+	}
+	signature, err := spaceKeys.signKey.Sign([]byte(topic))
+	if err != nil {
+		return false, fmt.Errorf("sign topic: %w", err)
+	}
+	s.putTopicSubscription(spaceKeys.spaceKeyId, &pushapi.Topic{
+		Topic:     topic,
+		SpaceKey:  []byte(spaceKeys.spaceKeyId),
+		Signature: signature,
+	})
+	return true, nil
+}
+
+func (s *service) hasTopicSubscription(spaceKeyId spaceKeyId, topic string) bool {
+	topics, ok := s.topicSubscriptions[spaceKeyId]
+	if !ok {
+		return false
+	}
+	if _, ok := topics[topic]; ok {
+		return false
+	}
+	return true
+}
+
+func (s *service) putTopicSubscription(spaceKeyId spaceKeyId, topic *pushapi.Topic) bool {
+	topics, ok := s.topicSubscriptions[spaceKeyId]
+	if !ok {
+		topics = map[string]*pushapi.Topic{}
+		s.topicSubscriptions[spaceKeyId] = topics
+	}
+	if _, ok := topics[topic.Topic]; ok {
+		return false
+	}
+	topics[topic.Topic] = topic
+	return true
 }
 
 func (s *service) makeTopics(spaceKey crypto.PrivKey, topics []string) ([]*pushapi.Topic, error) {
@@ -299,24 +288,31 @@ func (s *service) makeTopics(spaceKey crypto.PrivKey, topics []string) ([]*pusha
 func (s *service) run() {
 	err := s.loadSubscriptions(s.ctx)
 	if err != nil {
-		log.Error("failed to fill subscriptions: ", err)
-		return
+		log.Error("failed to load subscriptions: ", err)
 	}
 
 	for {
-		msgs, err := s.requestsQueue.Wait(s.ctx)
+		requests, err := s.requestsQueue.Wait(s.ctx)
 		if err != nil {
 			return
 		}
+
 		var shouldUpdateSubscriptions bool
-		for _, sub := range msgs {
-			shouldUpdate, err := s.addNewSubscription(sub)
+		for _, req := range requests {
+			keys, err := s.getSpaceKeys(req.spaceId)
 			if err != nil {
-				log.Errorf("failed to get space key from keystore for space %s: %v", sub.spaceId, err)
-				continue
+				log.Error("failed to get space keys: ", err)
 			}
-			if shouldUpdate {
-				shouldUpdateSubscriptions = true
+
+			for _, topic := range req.topics {
+				shouldUpdate, err := s.addPendingTopicSubscription(keys, topic)
+				if err != nil {
+					log.Error("failed to add pending topic subscription: ", zap.Error(err))
+					continue
+				}
+				if shouldUpdate {
+					shouldUpdateSubscriptions = true
+				}
 			}
 		}
 		if !shouldUpdateSubscriptions {
@@ -329,40 +325,13 @@ func (s *service) run() {
 	}
 }
 
-func (s *service) addNewSubscription(sub requestSubscribe) (shouldUpdate bool, err error) {
-	s.activeSubscriptionsLock.Lock()
-	defer s.activeSubscriptionsLock.Unlock()
-	activeTopics, ok := s.activeSubscriptions[sub.spaceId]
-	if !ok {
-		activeTopics = NewTopicSet()
-	}
-	for _, topic := range sub.topics {
-		if activeTopics.Add(topic) {
-			shouldUpdate = true
-		}
-	}
-	s.activeSubscriptions[sub.spaceId] = activeTopics
-	return shouldUpdate, nil
-}
-
 func (s *service) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error {
-	firstMetadataKey, err := aclState.FirstMetadataKey()
+	keys, err := s.getSpaceKeysFromAcl(aclState)
 	if err != nil {
-		return err
+		return fmt.Errorf("get space keys: %w", err)
 	}
-	readKey, err := aclState.CurrentReadKey()
-	if err != nil {
-		return err
-	}
-	spaceKeyId, _, err := deriveSpaceKey(firstMetadataKey)
-	if err != nil {
-		return err
-	}
-	encryptionKey, err := deriveSymmetricKey(readKey)
-	if err != nil {
-		return err
-	}
-	raw, err := encryptionKey.Raw()
+
+	raw, err := keys.encryptionKey.Raw()
 	if err != nil {
 		return err
 	}
@@ -372,7 +341,7 @@ func (s *service) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) er
 			{
 				SpaceId: spaceId,
 				Value: &pb.EventMessageValueOfKeyUpdate{KeyUpdate: &pb.EventKeyUpdate{
-					SpaceKeyId:      spaceKeyId,
+					SpaceKeyId:      string(keys.spaceKeyId),
 					EncryptionKeyId: aclState.CurrentReadKeyId(),
 					EncryptionKey:   encodedKey,
 				}},
@@ -380,4 +349,37 @@ func (s *service) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) er
 		},
 	})
 	return nil
+}
+
+func (s *service) getSpaceKeys(spaceId string) (*spaceKeys, error) {
+	space, err := s.spaceService.Get(s.ctx, spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	state := space.CommonSpace().Acl().AclState()
+	return s.getSpaceKeysFromAcl(state)
+}
+
+func (s *service) getSpaceKeysFromAcl(state *list.AclState) (*spaceKeys, error) {
+	firstMetadataKey, err := state.FirstMetadataKey()
+	if err != nil {
+		return nil, fmt.Errorf("get first metadata key: %w", err)
+	}
+	spaceKey, signKey, err := deriveSpaceKey(firstMetadataKey)
+	if err != nil {
+		return nil, fmt.Errorf("derive space key: %w", err)
+	}
+	symKey, err := state.CurrentReadKey()
+	if err != nil {
+		return nil, fmt.Errorf("get current read key: %w", err)
+	}
+	encryptionKey, err := deriveSymmetricKey(symKey)
+	if err != nil {
+		return nil, err
+	}
+	return &spaceKeys{
+		spaceKeyId:    spaceKeyId(spaceKey),
+		encryptionKey: encryptionKey,
+		signKey:       signKey,
+	}, nil
 }
