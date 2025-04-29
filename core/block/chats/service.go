@@ -16,12 +16,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -72,6 +74,9 @@ type service struct {
 	lock                      sync.Mutex
 	isMessagePreviewSubActive bool
 	chatObjectIds             map[string]struct{}
+
+	store           objectstore.ObjectStore
+	identityService identity.Service
 }
 
 func New() Service {
@@ -91,6 +96,9 @@ func (s *service) Init(a *app.App) error {
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 	s.pushService = app.MustComponent[pushService](a)
 	s.accountService = app.MustComponent[accountService](a)
+	s.store = app.MustComponent[objectstore.ObjectStore](a)
+	s.identityService = app.MustComponent[identity.Service](a)
+
 	return nil
 }
 
@@ -260,14 +268,38 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		return err
 	})
 	if err == nil {
-		go s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text)
+		spaceName := s.store.GetSpaceName(spaceId)
+		_, _, details := s.identityService.GetMyProfileDetails(ctx)
+		var senderName string
+		if details != nil {
+			senderName = details.GetString(bundle.RelationKeyName)
+		} else {
+			log.Error("chats/AddMessage: failed to get profile name, details are empty")
+		}
+
+		go s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text, spaceName, senderName)
 	}
 	return messageId, err
 }
 
-func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId string, messageText string) {
-	payload := chatpush.MakePushPayload(spaceId, s.accountService.AccountID(), chatObjectId, messageId, messageText)
+func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId string, messageText string, spaceName string, senderName string) {
+
+	payload := &chatpush.Payload{
+		SpaceId:  spaceId,
+		SenderId: s.accountService.AccountID(),
+		Type:     chatpush.ChatMessage,
+		NewMessagePayload: &chatpush.NewMessagePayload{
+			ChatId:     chatObjectId,
+			MsgId:      messageId,
+			SpaceName:  spaceName,
+			SenderName: senderName,
+			Text:       messageText,
+		},
+	}
+
 	jsonPayload, err := json.Marshal(payload)
+	log.Debug("sendPushNotification payload: %v ", zap.String("payload", string(jsonPayload)))
+
 	if err != nil {
 		log.Error("marshal push payload", zap.Error(err))
 	}

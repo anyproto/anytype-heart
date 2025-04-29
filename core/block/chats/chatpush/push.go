@@ -13,21 +13,10 @@ type Payload struct {
 	NewMessagePayload *NewMessagePayload `json:"newMessage,omitempty"`
 }
 
-func MakePushPayload(spaceId, accountId, chatId string, messageId string, messageText string) *Payload {
-	return &Payload{
-		SpaceId:  spaceId,
-		SenderId: accountId,
-		Type:     ChatMessage,
-		NewMessagePayload: &NewMessagePayload{
-			ChatId: chatId,
-			MsgId:  messageId,
-			Text:   messageText,
-		},
-	}
-}
-
 type NewMessagePayload struct {
-	ChatId string `json:"chatId"`
-	MsgId  string `json:"msgId"`
-	Text   string `json:"text"`
+	ChatId     string `json:"chatId"`
+	MsgId      string `json:"msgId"`
+	SpaceName  string `json:"spaceName"`
+	SenderName string `json:"senderName"`
+	Text       string `json:"text"`
 }
