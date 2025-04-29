@@ -120,6 +120,12 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 				Value:       pbtypes.Bool(true),
 			},
 		},
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: bundle.RelationKeyName.String(),
+				Type:        model.BlockContentDataviewSort_Asc,
+			},
+		},
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),
