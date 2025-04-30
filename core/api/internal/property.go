@@ -63,8 +63,6 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyTargetObjectType.String():       true,
 	bundle.RelationKeyFeaturedRelations.String():      true,
 	bundle.RelationKeySetOf.String():                  true,
-	bundle.RelationKeyLinks.String():                  true,
-	bundle.RelationKeyBacklinks.String():              true,
 	bundle.RelationKeySourceObject.String():           true,
 	bundle.RelationKeyLayoutAlign.String():            true,
 	bundle.RelationKeyIsHiddenDiscovery.String():      true,
@@ -287,17 +285,20 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 		switch prop.Format {
 		case apimodel.PropertyFormatText:
 			if entry.Text == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a text value")
+				fields[rk] = pbtypes.ToValue(nil)
+				continue
 			}
 			raw = *entry.Text
 		case apimodel.PropertyFormatNumber:
 			if entry.Number == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a number value")
+				fields[rk] = pbtypes.ToValue(nil)
+				continue
 			}
 			raw = *entry.Number
 		case apimodel.PropertyFormatSelect:
 			if entry.Select == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a select value")
+				fields[rk] = pbtypes.ToValue(nil)
+				continue
 			}
 			raw = *entry.Select
 		case apimodel.PropertyFormatMultiSelect:
@@ -308,27 +309,32 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			raw = ids
 		case apimodel.PropertyFormatDate:
 			if entry.Date == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a date value")
+				fields[rk] = pbtypes.ToValue(nil)
+				continue
 			}
 			raw = *entry.Date
 		case apimodel.PropertyFormatCheckbox:
 			if entry.Checkbox == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a boolean value")
+				fields[rk] = pbtypes.ToValue(nil)
+				continue
 			}
 			raw = *entry.Checkbox
 		case apimodel.PropertyFormatUrl:
 			if entry.Url == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a URL value")
+				fields[rk] = pbtypes.ToValue(nil)
+				continue
 			}
 			raw = *entry.Url
 		case apimodel.PropertyFormatEmail:
 			if entry.Email == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires an email value")
+				fields[rk] = pbtypes.ToValue(nil)
+				continue
 			}
 			raw = *entry.Email
 		case apimodel.PropertyFormatPhone:
 			if entry.Phone == nil {
-				return nil, util.ErrBadInput("property '" + key + "' requires a phone value")
+				fields[rk] = pbtypes.ToValue(nil)
+				continue
 			}
 			raw = *entry.Phone
 		case apimodel.PropertyFormatObjects, apimodel.PropertyFormatFiles:
@@ -377,7 +383,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (tag id)")
 		}
-		if id != "" && !s.isValidSelectOption(ctx, spaceId, property, id) {
+		if !s.isValidSelectOption(ctx, spaceId, property, id) {
 			return nil, util.ErrBadInput("invalid select option for '" + key + "': " + id)
 		}
 		return id, nil
