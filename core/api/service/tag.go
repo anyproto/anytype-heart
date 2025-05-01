@@ -90,7 +90,7 @@ func (s *Service) GetTag(ctx context.Context, spaceId string, propertyId string,
 			return apimodel.Tag{}, ErrTagDeleted
 		}
 
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return apimodel.Tag{}, ErrFailedRetrieveTag
 		}
 	}

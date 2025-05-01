@@ -118,7 +118,7 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 		Sorts:   sorts,
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return nil, 0, false, ErrFailedSearchObjects
 	}
 

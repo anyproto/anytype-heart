@@ -31,7 +31,7 @@ func ResolveUniqueKeyToTypeId(mw apicore.ClientCommands, spaceId string, uniqueK
 	})
 
 	if resp.Error != nil {
-		if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 			return "", ErrFailedSearchType
 		}
 

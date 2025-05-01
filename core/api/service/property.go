@@ -174,7 +174,7 @@ func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId st
 			return apimodel.Property{}, ErrPropertyDeleted
 		}
 
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return apimodel.Property{}, ErrFailedRetrieveProperty
 		}
 	}

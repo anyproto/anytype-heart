@@ -26,7 +26,7 @@ func (s *Service) NewChallenge(ctx context.Context, appName string) (string, err
 		Scope:   model.AccountAuth_JsonAPI,
 	})
 
-	if resp.Error.Code != pb.RpcAccountLocalLinkNewChallengeResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcAccountLocalLinkNewChallengeResponseError_NULL {
 		return "", ErrFailedGenerateChallenge
 	}
 
@@ -45,7 +45,7 @@ func (s *Service) SolveChallenge(ctx context.Context, challengeId string, code s
 		Answer:      code,
 	})
 
-	if resp.Error.Code != pb.RpcAccountLocalLinkSolveChallengeResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcAccountLocalLinkSolveChallengeResponseError_NULL {
 		return "", ErrFailedAuthenticate
 	}
 

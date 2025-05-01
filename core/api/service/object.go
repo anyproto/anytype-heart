@@ -69,7 +69,7 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, l
 		}},
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return nil, 0, false, ErrFailedRetrieveObjects
 	}
 
@@ -113,7 +113,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 			return apimodel.ObjectWithBlocks{}, ErrObjectDeleted
 		}
 
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return apimodel.ObjectWithBlocks{}, ErrFailedRetrieveObject
 		}
 	}
@@ -149,7 +149,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 			TemplateId: request.TemplateId,
 		})
 
-		if resp.Error.Code != pb.RpcObjectCreateBookmarkResponseError_NULL {
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateBookmarkResponseError_NULL {
 			return apimodel.ObjectWithBlocks{}, ErrFailedCreateBookmark
 		}
 		objectId = resp.ObjectId
@@ -161,7 +161,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 			ObjectTypeUniqueKey: request.TypeKey,
 		})
 
-		if resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
 			return apimodel.ObjectWithBlocks{}, ErrFailedCreateObject
 		}
 		objectId = resp.ObjectId
@@ -263,7 +263,7 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId str
 		IsArchived: true,
 	})
 
-	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
 		return apimodel.ObjectWithBlocks{}, ErrFailedDeleteObject
 	}
 

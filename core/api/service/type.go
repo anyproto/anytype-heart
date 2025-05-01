@@ -63,7 +63,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 			bundle.RelationKeyRecommendedRelations.String()},
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return nil, 0, false, ErrFailedRetrieveTypes
 	}
 
@@ -107,7 +107,7 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 			return apimodel.Type{}, ErrTypeDeleted
 		}
 
-		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return apimodel.Type{}, ErrFailedRetrieveType
 		}
 	}
@@ -168,7 +168,7 @@ func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string)
 		IsArchived: true,
 	})
 
-	if resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
 		return apimodel.Type{}, ErrFailedDeleteObject
 	}
 

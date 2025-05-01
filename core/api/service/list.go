@@ -228,7 +228,7 @@ func (s *Service) AddObjectsToList(ctx context.Context, spaceId string, listId s
 		ObjectIds: objectIds,
 	})
 
-	if resp.Error.Code != pb.RpcObjectCollectionAddResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCollectionAddResponseError_NULL {
 		return ErrFailedAddObjectsToList
 	}
 
@@ -242,7 +242,7 @@ func (s *Service) RemoveObjectsFromList(ctx context.Context, spaceId string, lis
 		ObjectIds: objectIds,
 	})
 
-	if resp.Error.Code != pb.RpcObjectCollectionRemoveResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCollectionRemoveResponseError_NULL {
 		return ErrFailedRemoveObjectsFromList
 	}
 

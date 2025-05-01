@@ -61,7 +61,7 @@ func (s *Service) ListSpaces(ctx context.Context, offset int, limit int) (spaces
 		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return nil, 0, false, ErrFailedListSpaces
 	}
 
@@ -101,7 +101,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space,
 		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return apimodel.Space{}, ErrFailedOpenWorkspace
 	}
 
@@ -259,7 +259,7 @@ func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String(), bundle.RelationKeyIdentity.String(), bundle.RelationKeyGlobalName.String(), bundle.RelationKeyParticipantPermissions.String(), bundle.RelationKeyParticipantStatus.String()},
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return apimodel.Member{}, ErrFailedGetMember
 	}
 
@@ -314,7 +314,7 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 				SpaceId: spaceId,
 				Changes: []*model.ParticipantPermissionChange{{Identity: memberId, Perms: s.mapMemberRole(request.Role)}},
 			})
-			if resp.Error.Code != pb.RpcSpaceParticipantPermissionsChangeResponseError_NULL {
+			if resp.Error != nil && resp.Error.Code != pb.RpcSpaceParticipantPermissionsChangeResponseError_NULL {
 				return apimodel.Member{}, ErrFailedUpdateMember
 			}
 		}
