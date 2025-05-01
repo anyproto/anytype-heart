@@ -57,7 +57,6 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyCoverY.String():                 true,
 	bundle.RelationKeyMentions.String():               true,
 	bundle.RelationKeyOldAnytypeID.String():           true,
-	bundle.RelationKeySource.String():                 true,
 	bundle.RelationKeySourceFilePath.String():         true,
 	bundle.RelationKeyImportType.String():             true,
 	bundle.RelationKeyTargetObjectType.String():       true,
@@ -72,6 +71,7 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyParticipantPermissions.String(): true,
 	bundle.RelationKeyIconOption.String():             true,
 	bundle.RelationKeyIconName.String():               true,
+	bundle.RelationKeyPicture.String():                true,
 }
 
 var PropertyFormatToRelationFormat = map[apimodel.PropertyFormat]model.RelationFormat{

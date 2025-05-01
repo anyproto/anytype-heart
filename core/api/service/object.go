@@ -272,13 +272,8 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId str
 
 // buildObjectDetails extracts the details structure from the CreateObjectRequest.
 func (s *Service) buildObjectDetails(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (*types.Struct, error) {
-	if request.TypeKey == "ot-bookmark" && request.Source == "" {
-		return nil, util.ErrBadInput("source is missing for bookmark")
-	}
-
 	fields := map[string]*types.Value{
 		bundle.RelationKeyName.String():   pbtypes.String(s.sanitizedString(request.Name)),
-		bundle.RelationKeySource.String(): pbtypes.String(s.sanitizedString(request.Source)),
 		bundle.RelationKeyOrigin.String(): pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 

@@ -90,10 +90,6 @@ components:
             $ref: '#/components/schemas/apimodel.PropertyLinkWithValue'
           type: array
           uniqueItems: false
-        source:
-          description: The source url, only applicable for bookmarks
-          example: https://bookmark-source.com
-          type: string
         template_id:
           description: The id of the template to use
           example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
@@ -103,7 +99,6 @@ components:
           example: ot-page
           type: string
       required:
-      - name
       - type_key
       type: object
     apimodel.CreatePropertyRequest:
