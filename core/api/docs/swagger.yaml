@@ -922,6 +922,17 @@ components:
       required:
       - name
       type: object
+    apimodel.UpdateSpaceRequest:
+      properties:
+        description:
+          description: The description of the space
+          example: The local-first wiki
+          type: string
+        name:
+          description: The name of the space
+          example: New Space
+          type: string
+      type: object
     apimodel.UpdateTagRequest:
       properties:
         color:
@@ -1549,6 +1560,69 @@ paths:
       security:
       - bearerauth: []
       summary: Get space
+      tags:
+      - Spaces
+    patch:
+      description: Updates the name or description of an existing space. The request
+        body should contain the new name and/or description in JSON format. This endpoint
+        is useful for renaming or rebranding a workspace without needing to recreate
+        it. The updated space’s metadata is returned in the response.
+      operationId: updateSpace
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: Space ID
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apimodel.UpdateSpaceRequest'
+        description: Space to update
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.SpaceResponse'
+          description: Space updated successfully
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Space not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update space
       tags:
       - Spaces
   /spaces/{space_id}/lists/{list_id}/{view_id}/objects:

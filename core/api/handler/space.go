@@ -127,3 +127,49 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 		c.JSON(http.StatusOK, apimodel.SpaceResponse{Space: space})
 	}
 }
+
+// UpdateSpaceHandler updates a space
+//
+//	@Summary		Update space
+//	@Description	Updates the name or description of an existing space. The request body should contain the new name and/or description in JSON format. This endpoint is useful for renaming or rebranding a workspace without needing to recreate it. The updated space’s metadata is returned in the response.
+//	@Id				updateSpace
+//	@Tags			Spaces
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string						true	"Space ID"
+//	@Param			name			body		apimodel.UpdateSpaceRequest	true	"Space to update"
+//	@Success		200				{object}	apimodel.SpaceResponse		"Space updated successfully"
+//	@Failure		400				{object}	util.ValidationError		"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError			"Space not found"
+//	@Failure		500				{object}	util.ServerError			"Internal server error"
+//	@Security		bearerauth
+//	@Router			/spaces/{space_id} [patch]
+func UpdateSpaceHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+
+		var req apimodel.UpdateSpaceRequest
+		if err := c.BindJSON(&req); err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		space, err := s.UpdateSpace(c.Request.Context(), spaceId, req)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrFailedSetSpaceInfo, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedOpenWorkspace, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedOpenSpace, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToAPIError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, apimodel.SpaceResponse{Space: space})
+	}
+}

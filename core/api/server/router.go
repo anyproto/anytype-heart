@@ -99,11 +99,14 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// Space
 		v1.GET("/spaces", handler.ListSpacesHandler(s.service))
 		v1.GET("/spaces/:space_id", handler.GetSpaceHandler(s.service))
+		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), handler.CreateSpaceHandler(s.service))
+		v1.PATCH("/spaces/:space_id", s.rateLimit(maxWriteRequestsPerSecond), handler.UpdateSpaceHandler(s.service))
+
+		// Member
 		v1.GET("/spaces/:space_id/members", handler.ListMembersHandler(s.service))
 		v1.GET("/spaces/:space_id/members/:member_id", handler.GetMemberHandler(s.service))
 		// TODO: renable when granular permissions are implementeds
 		// v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond), space.UpdateMemberHandler(s.service))
-		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), handler.CreateSpaceHandler(s.service))
 
 		// Type
 		v1.GET("/spaces/:space_id/types", handler.ListTypesHandler(s.service))
