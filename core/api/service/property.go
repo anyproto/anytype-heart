@@ -567,16 +567,22 @@ func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 			continue
 		}
 
-		key := propertyMap[rk].Key
-		format := propertyMap[rk].Format
+		prop, ok := propertyMap[rk]
+		if !ok {
+			// Relation key present in details but missing from propertyMap; skip it
+			continue
+		}
+
+		key := prop.Key
+		format := prop.Format
 		convertedVal := s.convertPropertyValue(key, value, format, details, tagMap)
 
 		if s.isMissingObject(convertedVal) {
 			continue
 		}
 
-		id := propertyMap[rk].Id
-		name := propertyMap[rk].Name
+		id := prop.Id
+		name := prop.Name
 		properties = append(properties, s.buildPropertyWithValue(id, key, name, format, convertedVal))
 	}
 
