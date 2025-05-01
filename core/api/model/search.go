@@ -23,6 +23,6 @@ type SearchRequest struct {
 }
 
 type SortOptions struct {
-	Property  SortProperty  `json:"property" enums:"created_date,last_modified_date,last_opened_date,name" default:"last_modified_date"` // The property to sort the search results by
-	Direction SortDirection `json:"direction" enums:"asc,desc" default:"desc"`                                                           // The direction to sort the search results
+	PropertyKey SortProperty  `json:"property_key" enums:"created_date,last_modified_date,last_opened_date,name" default:"last_modified_date"` // The property to sort the search results by
+	Direction   SortDirection `json:"direction" enums:"asc,desc" default:"desc"`                                                               // The direction to sort the search results
 }

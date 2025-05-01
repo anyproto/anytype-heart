@@ -711,7 +711,7 @@ components:
       properties:
         direction:
           $ref: '#/components/schemas/apimodel.SortDirection'
-        property:
+        property_key:
           $ref: '#/components/schemas/apimodel.SortProperty'
       type: object
     apimodel.SortProperty:
