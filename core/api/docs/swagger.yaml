@@ -123,6 +123,8 @@ components:
           description: The name of the space
           example: New Space
           type: string
+      required:
+      - name
       type: object
     apimodel.CreateTagRequest:
       properties:
@@ -261,6 +263,8 @@ components:
           description: The name of the icon
           example: document
           type: string
+      required:
+      - format
       type: object
     apimodel.IconFormat:
       description: The type of the icon

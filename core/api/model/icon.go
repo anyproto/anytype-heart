@@ -60,7 +60,7 @@ func (c *Color) UnmarshalJSON(data []byte) error {
 }
 
 type Icon struct {
-	Format IconFormat `json:"format" enums:"emoji,file,icon" example:"emoji"`                                                 // The type of the icon
+	Format IconFormat `json:"format" binding:"required" enums:"emoji,file,icon" example:"emoji"`                              // The type of the icon
 	Emoji  *string    `json:"emoji,omitempty" example:"📄"`                                                                    // The emoji of the icon
 	File   *string    `json:"file,omitempty" example:"bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"`           // The file of the icon
 	Name   *string    `json:"name,omitempty" example:"document"`                                                              // The name of the icon

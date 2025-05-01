@@ -44,9 +44,9 @@ type CreateObjectRequest struct {
 }
 
 type UpdateObjectRequest struct {
-	Name       string                  `json:"name" example:"My object"` // The name of the object
-	Icon       Icon                    `json:"icon"`                     // The icon to set for the object
-	Properties []PropertyLinkWithValue `json:"properties"`               // The properties to set for the object
+	Name       *string                 `json:"name,omitempty" example:"My object"` // The name of the object
+	Icon       Icon                    `json:"icon"`                               // The icon to set for the object
+	Properties []PropertyLinkWithValue `json:"properties"`                         // The properties to set for the object
 }
 
 type ObjectResponse struct {

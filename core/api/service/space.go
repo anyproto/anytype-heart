@@ -112,7 +112,6 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space,
 
 // CreateSpace creates a new space with the given name and returns the space info.
 func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceRequest) (apimodel.Space, error) {
-	name := request.Name
 	iconOption, err := rand.Int(rand.Reader, big.NewInt(13))
 	if err != nil {
 		return apimodel.Space{}, ErrFailedGenerateRandomIcon
@@ -121,7 +120,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 	resp := s.mw.WorkspaceCreate(ctx, &pb.RpcWorkspaceCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():             pbtypes.String(name),
+				bundle.RelationKeyName.String():             pbtypes.String(s.sanitizedString(*request.Name)),
 				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(iconOption.Int64())),
 				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
 			},
@@ -134,12 +133,12 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 		return apimodel.Space{}, ErrFailedCreateSpace
 	}
 
-	if request.Description != "" {
+	if request.Description != nil {
 		infoResp := s.mw.WorkspaceSetInfo(ctx, &pb.RpcWorkspaceSetInfoRequest{
 			SpaceId: resp.SpaceId,
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
-					bundle.RelationKeyDescription.String(): pbtypes.String(s.sanitizedString(request.Description)),
+					bundle.RelationKeyDescription.String(): pbtypes.String(s.sanitizedString(*request.Description)),
 				},
 			},
 		})

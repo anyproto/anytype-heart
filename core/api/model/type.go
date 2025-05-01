@@ -43,11 +43,11 @@ type CreateTypeRequest struct {
 }
 
 type UpdateTypeRequest struct {
-	Name       string         `json:"name" example:"Page"`         // The name to set for the type
-	PluralName string         `json:"plural_name" example:"Pages"` // The plural name to set for the type
-	Icon       Icon           `json:"icon"`                        // The icon to set for the type
-	Layout     TypeLayout     `json:"layout" example:"todo"`       // The layout to set for the type
-	Properties []PropertyLink `json:"properties"`                  // The properties to set for the type
+	Name       *string        `json:"name,omitempty" example:"Page"`         // The name to set for the type
+	PluralName *string        `json:"plural_name,omitempty" example:"Pages"` // The plural name to set for the type
+	Icon       Icon           `json:"icon"`                                  // The icon to set for the type
+	Layout     *TypeLayout    `json:"layout,omitempty" example:"todo"`       // The layout to set for the type
+	Properties []PropertyLink `json:"properties"`                            // The properties to set for the type
 }
 
 type Type struct {

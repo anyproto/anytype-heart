@@ -47,7 +47,7 @@ type CreatePropertyRequest struct {
 }
 
 type UpdatePropertyRequest struct {
-	Name string `json:"name" binding:"required" example:"Last modified date"` // The name to set for the property
+	Name *string `json:"name,omitempty" binding:"required" example:"Last modified date"` // The name to set for the property
 }
 
 type Property struct {

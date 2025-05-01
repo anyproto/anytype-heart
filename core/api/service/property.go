@@ -218,18 +218,20 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		return apimodel.Property{}, ErrPropertyCannotBeUpdated
 	}
 
-	detail := model.Detail{
-		Key:   bundle.RelationKeyName.String(),
-		Value: pbtypes.String(s.sanitizedString(request.Name)),
-	}
+	if request.Name != nil {
+		detail := model.Detail{
+			Key:   bundle.RelationKeyName.String(),
+			Value: pbtypes.String(s.sanitizedString(*request.Name)),
+		}
 
-	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
-		ContextId: propertyId,
-		Details:   []*model.Detail{&detail},
-	})
+		resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
+			ContextId: propertyId,
+			Details:   []*model.Detail{&detail},
+		})
 
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-		return apimodel.Property{}, ErrFailedUpdateProperty
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
+			return apimodel.Property{}, ErrFailedUpdateProperty
+		}
 	}
 
 	return s.GetProperty(ctx, spaceId, propertyId)

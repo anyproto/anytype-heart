@@ -299,8 +299,8 @@ func (s *Service) buildObjectDetails(ctx context.Context, spaceId string, reques
 // buildUpdatedObjectDetails extracts the details structure from the UpdateObjectRequest.
 func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string, request apimodel.UpdateObjectRequest) (*types.Struct, error) {
 	fields := make(map[string]*types.Value)
-	if request.Name != "" {
-		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
+	if request.Name != nil {
+		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(*request.Name))
 	}
 
 	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
