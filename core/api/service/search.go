@@ -30,11 +30,7 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(request.Query)
-	sorts := s.prepareSorts(request.Sort)
-	if len(sorts) == 0 {
-		return nil, 0, false, errors.New("no sort criteria provided")
-	}
-	criterionToSortAfter := sorts[0].RelationKey
+	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
 
 	var combinedRecords []*types.Struct
 	for _, spaceId := range spaceIds {
@@ -114,11 +110,7 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	queryFilters := s.prepareQueryFilter(request.Query)
 	typeFilters := s.prepareObjectTypeFilters(spaceId, request.Types)
 	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
-
-	sorts := s.prepareSorts(request.Sort)
-	if len(sorts) == 0 {
-		return nil, 0, false, errors.New("no sort criteria provided")
-	}
+	sorts, _ := s.prepareSorts(request.Sort)
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -281,7 +273,7 @@ func (s *Service) prepareObjectTypeFilters(spaceId string, objectTypes []string)
 }
 
 // prepareSorts returns a sort filter based on the given sort parameters
-func (s *Service) prepareSorts(sort apimodel.SortOptions) []*model.BlockContentDataviewSort {
+func (s *Service) prepareSorts(sort apimodel.SortOptions) (sorts []*model.BlockContentDataviewSort, criterionToSortAfter string) {
 	primarySort := &model.BlockContentDataviewSort{
 		RelationKey:    s.getSortRelationKey(sort.PropertyKey),
 		Type:           s.getSortDirection(sort.Direction),
@@ -299,10 +291,10 @@ func (s *Service) prepareSorts(sort apimodel.SortOptions) []*model.BlockContentD
 			IncludeTime:    true,
 			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
 		}
-		return []*model.BlockContentDataviewSort{primarySort, secondarySort}
+		return []*model.BlockContentDataviewSort{primarySort, secondarySort}, primarySort.RelationKey
 	}
 
-	return []*model.BlockContentDataviewSort{primarySort}
+	return []*model.BlockContentDataviewSort{primarySort}, primarySort.RelationKey
 }
 
 // getSortRelationKey returns the relation key for the given sort timestamp
