@@ -275,7 +275,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -329,7 +329,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -348,7 +348,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.Error(t, err)
@@ -555,7 +555,7 @@ func TestSearchService_Search(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -582,7 +582,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Times(4)
 
 		// when
-		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -601,7 +601,7 @@ func TestSearchService_Search(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{Property: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.Error(t, err)

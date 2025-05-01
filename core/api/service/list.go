@@ -174,8 +174,20 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 		SubId:   subId,
 		Limit:   int64(limit),  // nolint: gosec
 		Offset:  int64(offset), // nolint: gosec
-		// TODO: fix not all keys being returned
-		// Keys:         []string{bundle.RelationKeyId.String()},
+		// TODO: can't explicitly name all keys, find alternative solution
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyIconEmoji.String(),
+			bundle.RelationKeyIconImage.String(),
+			bundle.RelationKeyIconName.String(),
+			bundle.RelationKeyIconOption.String(),
+			bundle.RelationKeyIsArchived.String(),
+			bundle.RelationKeySpaceId.String(),
+			bundle.RelationKeySnippet.String(),
+			bundle.RelationKeyResolvedLayout.String(),
+			bundle.RelationKeyType.String(),
+		},
 		Sorts:        sorts,
 		Filters:      filters,
 		Source:       source,
