@@ -14,15 +14,15 @@ import (
 // ListPropertiesHandler retrieves a list of properties in a space
 //
 //	@Summary		List properties
-//	@Description	This endpoint retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
+//	@Description	Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
 //	@Id				listProperties
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string											true	"Space ID"
+//	@Param			space_id		path		string											true	"The ID of the space to list properties for"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Property]	"List of properties"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Property]	"The list of properties in the specified space"
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
@@ -56,8 +56,8 @@ func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string						true	"Space ID"
-//	@Param			property_id		path		string						true	"Property ID"
+//	@Param			space_id		path		string						true	"The ID of the space to which the property belongs"
+//	@Param			property_id		path		string						true	"The ID of the property to retrieve"
 //	@Success		200				{object}	apimodel.PropertyResponse	"The requested property"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError			"Resource not found"
@@ -96,11 +96,12 @@ func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string							true	"Space ID"
-//	@Param			property		body		apimodel.CreatePropertyRequest	true	"Property to create"
+//	@Param			space_id		path		string							true	"The ID of the space to create the property in"
+//	@Param			property		body		apimodel.CreatePropertyRequest	true	"The property to create"
 //	@Success		200				{object}	apimodel.PropertyResponse		"The created property"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
+//	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties [post]
@@ -141,15 +142,16 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string							true	"Space ID"
-//	@Param			property_id		path		string							true	"Property ID"
-//	@Param			property		body		apimodel.UpdatePropertyRequest	true	"Property to update"
+//	@Param			space_id		path		string							true	"The ID of the space to which the property belongs"
+//	@Param			property_id		path		string							true	"The ID of the property to update"
+//	@Param			property		body		apimodel.UpdatePropertyRequest	true	"The property to update"
 //	@Success		200				{object}	apimodel.PropertyResponse		"The updated property"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError				"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError				"Resource not found"
 //	@Failure		410				{object}	util.GoneError					"Resource deleted"
+//	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id} [patch]
@@ -193,14 +195,14 @@ func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string						true	"Space ID"
-//	@Param			property_id		path		string						true	"Property ID"
+//	@Param			space_id		path		string						true	"The ID of the space to which the property belongs"
+//	@Param			property_id		path		string						true	"The ID of the property to delete"
 //	@Success		200				{object}	apimodel.PropertyResponse	"The deleted property"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError			"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError			"Resource not found"
 //	@Failure		410				{object}	util.GoneError				"Resource deleted"
-//	@Failure		423				{object}	util.RateLimitError			"Rate limit exceeded"
+//	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id} [delete]

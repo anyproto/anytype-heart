@@ -13,16 +13,16 @@ import (
 // GetListViewsHandler
 //
 //	@Summary		Get list views
-//	@Description	Returns a paginated list of views defined for a specific list (query or collection) within a space. Each view includes configuration details such as layout, applied filters, and sorting options, enabling clients to render the list according to user preferences and context. This endpoint supports pagination parameters to control the number of views returned and the starting point of the result set.
+//	@Description	Returns a paginated list of views defined for a specific list (query or collection) within a space. Each view includes details such as layout, applied filters, and sorting options, enabling clients to render the list according to user preferences and context. This endpoint is essential for applications that need to display lists in various formats (e.g., grid, table) or with different sorting/filtering criteria.
 //	@Id				getListViews
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string										true	"Space ID"
-//	@Param			list_id			path		string										true	"List ID"
+//	@Param			space_id		path		string										true	"The ID of the space to which the list belongs"
+//	@Param			list_id			path		string										true	"The ID of the list to retrieve views for"
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int											false	"The number of items to return"
-//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.View]	"List of views"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.View]	"The list of views associated with the specified list"
 //	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError							"Not found"
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
@@ -59,12 +59,12 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string											true	"Space ID"
-//	@Param			list_id			path		string											true	"List ID"
-//	@Param			view_id			path		string											true	"View ID"
+//	@Param			space_id		path		string											true	"The ID of the space to which the list belongs"
+//	@Param			list_id			path		string											true	"The ID of the list to retrieve objects for"
+//	@Param			view_id			path		string											true	"The ID of the view to retrieve objects for"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"
-//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of objects"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"The list of objects associated with the specified list"
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError								"Not found"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
@@ -101,19 +101,20 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 // AddObjectsToListHandler
 //
 //	@Summary		Add objects to list
-//	@Description	Enables clients to add one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag‑and‑drop or multi‑select additions to collections.
+//	@Description	Adds one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag‑and‑drop or multi‑select additions to collections, enabling users to dynamically manage their collections without needing to modify the underlying object data.
 //	@Id				addListObjects
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			list_id			path		string					true	"List ID"
-//	@Param			objects			body		[]string				true	"List of object IDs"
+//	@Param			space_id		path		string					true	"The ID of the space to which the list belongs"
+//	@Param			list_id			path		string					true	"The ID of the list to which objects will be added"
+//	@Param			objects			body		[]string				true	"The list of object IDs to add to the list"
 //	@Success		200				{object}	string					"Objects added successfully"
 //	@Failure		400				{object}	util.ValidationError	"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Not found"
+//	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/objects [post]
@@ -147,18 +148,19 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 // RemoveObjectFromListHandler
 //
 //	@Summary		Remove object from list
-//	@Description	Removes a given object from the specified list (collection only) in a space. The endpoint takes the space, list, and object identifiers as path parameters. It's subject to rate limiting and returns a success message on completion. It is used for dynamically managing collections without affecting the underlying object data.
+//	@Description	Removes a given object from the specified list (collection only) in a space. The endpoint takes the space, list, and object identifiers as path parameters and is subject to rate limiting. It is used for dynamically managing collections without affecting the underlying object data.
 //	@Id				removeListObject
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			list_id			path		string					true	"List ID"
-//	@Param			object_id		path		string					true	"Object ID"
+//	@Param			space_id		path		string					true	"The ID of the space to which the list belongs"
+//	@Param			list_id			path		string					true	"The ID of the list from which the object will be removed"
+//	@Param			object_id		path		string					true	"The ID of the object to remove from the list"
 //	@Success		200				{object}	string					"Objects removed successfully"
 //	@Failure		400				{object}	util.ValidationError	"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Not found"
+//	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/lists/{list_id}/objects/{object_id} [delete]

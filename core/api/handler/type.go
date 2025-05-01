@@ -19,10 +19,10 @@ import (
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string										true	"Space ID"
+//	@Param			space_id		path		string										true	"The ID of the space to retrieve types from"
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Type]	"List of types"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Type]	"The list of types"
 //	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
@@ -56,8 +56,8 @@ func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			type_id			path		string					true	"Type ID"
+//	@Param			space_id		path		string					true	"The ID of the space from which to retrieve the type"
+//	@Param			type_id			path		string					true	"The ID of the type to retrieve"
 //	@Success		200				{object}	apimodel.TypeResponse	"The requested type"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
@@ -96,11 +96,12 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string						true	"Space ID"
-//	@Param			type			body		apimodel.CreateTypeRequest	true	"Type to create"
+//	@Param			space_id		path		string						true	"The ID of the space in which to create the type"
+//	@Param			type			body		apimodel.CreateTypeRequest	true	"The type to create"
 //	@Success		200				{object}	apimodel.TypeResponse		"The created type"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types [post]
@@ -141,14 +142,15 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string						true	"Space ID"
-//	@Param			type_id			path		string						true	"Type ID"
-//	@Param			type			body		apimodel.UpdateTypeRequest	true	"Type to update"
+//	@Param			space_id		path		string						true	"The ID of the space in which the type exists"
+//	@Param			type_id			path		string						true	"The ID of the type to update"
+//	@Param			type			body		apimodel.UpdateTypeRequest	true	"The type details to update"
 //	@Success		200				{object}	apimodel.TypeResponse		"The updated type"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError			"Resource not found"
 //	@Failure		410				{object}	util.GoneError				"Resource deleted"
+//	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id} [patch]
@@ -191,14 +193,14 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Param			type_id			path		string					true	"Type ID"
+//	@Param			space_id		path		string					true	"The ID of the space from which to delete the type"
+//	@Param			type_id			path		string					true	"The ID of the type to delete"
 //	@Success		200				{object}	apimodel.TypeResponse	"The deleted type"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
-//	@Failure		423				{object}	util.RateLimitError		"Rate limit exceeded"
+//	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id} [delete]

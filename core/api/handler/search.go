@@ -14,7 +14,7 @@ import (
 // GlobalSearchHandler searches and retrieves objects across all spaces
 //
 //	@Summary		Search objects across all spaces
-//	@Description	This endpoint executes a global search over every space the user has access to. It accepts pagination parameters (offset and limit) and a JSON body containing search criteria. The criteria include a search query string, an optional list of object types, and sort options (e.g. ascending/descending by creation, modification, or last opened dates). Internally, the endpoint aggregates results from each space, merges and sorts them (after last modified date by default), and returns a unified, paginated list of objects that match the search parameters.
+//	@Description	Executes a global search over every space accessible by the authenticated user. The request body must specify the `query` text, optional filters on object types (e.g., "page", "task"), and sort directives (default: descending by last updated timestamp). Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.
 //	@Id				searchGlobal
 //	@Tags			Search
 //	@Accept			json
@@ -22,8 +22,8 @@ import (
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-04-22)
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
-//	@Param			request			body		apimodel.SearchRequest							true	"Search parameters"
-//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of objects"
+//	@Param			request			body		apimodel.SearchRequest							true	"The search parameters used to filter and sort the results"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"The list of objects matching the search criteria"
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
@@ -58,17 +58,17 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 // SearchHandler searches and retrieves objects within a space
 //
 //	@Summary		Search objects within a space
-//	@Description	This endpoint performs a focused search within a single space (specified by the space_id path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search query, object types, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.
+//	@Description	Performs a focused search within a single space (specified by the space_id path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search query, object types, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.
 //	@Id				searchSpace
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string											true	"Space ID"
+//	@Param			space_id		path		string											true	"The ID of the space to search in"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
-//	@Param			request			body		apimodel.SearchRequest							true	"Search parameters"
-//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of objects"
+//	@Param			request			body		apimodel.SearchRequest							true	"The search parameters used to filter and sort the results"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"The list of objects matching the search criteria"
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth

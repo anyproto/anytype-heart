@@ -13,14 +13,14 @@ import (
 // DisplayCodeHandler starts a new challenge and returns the challenge ID
 //
 //	@Summary		Start new challenge
-//	@Description	This endpoint initiates a secure authentication flow by generating a new challenge. Clients must supply the name of the application (via a query parameter) that is requesting authentication. On success, the service returns a unique challenge ID. This challenge ID must then be used with the token endpoint (see below) to solve the challenge and retrieve an authentication token. In essence, this endpoint “boots up” the login process and is the first step in a multi-phase authentication sequence.
+//	@Description	Generates a one-time authentication challenge for granting API access to the user's vault. Upon providing a valid `app_name`, the server issues a unique `challenge_id` and displays a short code within the Anytype Desktop On success, the service returns a unique challenge ID. This challenge ID must then be used with the token endpoint (see below) to solve the challenge and retrieve an authentication token. This mechanism ensures that only trusted applications and authorized users gain access.
 //	@ID				createAuthChallenge
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
-//	@Param			app_name		query		string							true	"App name requesting the challenge"
-//	@Success		200				{object}	apimodel.DisplayCodeResponse	"Challenge ID"
+//	@Param			app_name		query		string							true	"The name of the app requesting API access"
+//	@Success		200				{object}	apimodel.DisplayCodeResponse	"The challenge ID associated with the started challenge"
 //	@Failure		400				{object}	util.ValidationError			"Invalid input"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Router			/auth/display_code [post]
@@ -46,15 +46,15 @@ func DisplayCodeHandler(s *service.Service) gin.HandlerFunc {
 // TokenHandler retrieves an authentication token using a code and challenge ID
 //
 //	@Summary		Solve challenge
-//	@Description	After receiving a challenge ID from the display_code endpoint, the client calls this endpoint to provide the corresponding 4-digit code (also via a query parameter) along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns an ephemeral session token together with a permanent app key. These tokens are then used in subsequent API requests to authorize access. This endpoint is central to ensuring that only properly authenticated sessions can access further resources.
+//	@Description	After receiving a challenge ID from the display_code endpoint, the client calls this endpoint to provide the corresponding 4-digit code (also via a query parameter) along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns a permanent app key. This endpoint is central to the authentication process, as it validates the user's identity and issues a token that can be used for further interactions with the API.
 //	@ID				solveAuthChallenge
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			challenge_id	query		string					true	"Challenge ID"
+//	@Param			challenge_id	query		string					true	"The ID of the challenge to solve"
 //	@Param			code			query		string					true	"4-digit code retrieved from Anytype Desktop app"
-//	@Success		200				{object}	apimodel.TokenResponse	"Authentication token"
+//	@Success		200				{object}	apimodel.TokenResponse	"The app key that can be used in the Authorization header for subsequent requests"
 //	@Failure		400				{object}	util.ValidationError	"Invalid input"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/token [post]

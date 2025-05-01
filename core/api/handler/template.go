@@ -19,8 +19,8 @@ import (
 //	@Tags			Templates
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string											true	"Space ID"
-//	@Param			type_id			path		string											true	"Type ID"
+//	@Param			space_id		path		string											true	"The ID of the space to which the type belongs"
+//	@Param			type_id			path		string											true	"The ID of the object type to retrieve templates for"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"List of templates"
@@ -61,9 +61,9 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Templates
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string						true	"Space ID"
-//	@Param			type_id			path		string						true	"Type ID"
-//	@Param			template_id		path		string						true	"Template ID"
+//	@Param			space_id		path		string						true	"The ID of the space to which the template belongs"
+//	@Param			type_id			path		string						true	"The ID of the object type to which the template belongs"
+//	@Param			template_id		path		string						true	"The ID of the template to retrieve"
 //	@Success		200				{object}	apimodel.TemplateResponse	"The requested template"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError			"Resource not found"

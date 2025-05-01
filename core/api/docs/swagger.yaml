@@ -1233,13 +1233,13 @@ openapi: 3.1.0
 paths:
   /auth/display_code:
     post:
-      description: This endpoint initiates a secure authentication flow by generating
-        a new challenge. Clients must supply the name of the application (via a query
-        parameter) that is requesting authentication. On success, the service returns
-        a unique challenge ID. This challenge ID must then be used with the token
-        endpoint (see below) to solve the challenge and retrieve an authentication
-        token. In essence, this endpoint “boots up” the login process and is the first
-        step in a multi-phase authentication sequence.
+      description: Generates a one-time authentication challenge for granting API
+        access to the user's vault. Upon providing a valid `app_name`, the server
+        issues a unique `challenge_id` and displays a short code within the Anytype
+        Desktop On success, the service returns a unique challenge ID. This challenge
+        ID must then be used with the token endpoint (see below) to solve the challenge
+        and retrieve an authentication token. This mechanism ensures that only trusted
+        applications and authorized users gain access.
       operationId: createAuthChallenge
       parameters:
       - description: The version of the API to use
@@ -1249,7 +1249,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: App name requesting the challenge
+      - description: The name of the app requesting API access
         in: query
         name: app_name
         required: true
@@ -1266,7 +1266,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.DisplayCodeResponse'
-          description: Challenge ID
+          description: The challenge ID associated with the started challenge
         "400":
           content:
             application/json:
@@ -1287,10 +1287,10 @@ paths:
       description: After receiving a challenge ID from the display_code endpoint,
         the client calls this endpoint to provide the corresponding 4-digit code (also
         via a query parameter) along with the challenge ID. The endpoint verifies
-        that the challenge solution is correct and, if it is, returns an ephemeral
-        session token together with a permanent app key. These tokens are then used
-        in subsequent API requests to authorize access. This endpoint is central to
-        ensuring that only properly authenticated sessions can access further resources.
+        that the challenge solution is correct and, if it is, returns a permanent
+        app key. This endpoint is central to the authentication process, as it validates
+        the user's identity and issues a token that can be used for further interactions
+        with the API.
       operationId: solveAuthChallenge
       parameters:
       - description: The version of the API to use
@@ -1300,7 +1300,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Challenge ID
+      - description: The ID of the challenge to solve
         in: query
         name: challenge_id
         required: true
@@ -1323,7 +1323,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.TokenResponse'
-          description: Authentication token
+          description: The app key that can be used in the Authorization header for
+            subsequent requests
         "400":
           content:
             application/json:
@@ -1341,14 +1342,12 @@ paths:
       - Auth
   /search:
     post:
-      description: This endpoint executes a global search over every space the user
-        has access to. It accepts pagination parameters (offset and limit) and a JSON
-        body containing search criteria. The criteria include a search query string,
-        an optional list of object types, and sort options (e.g. ascending/descending
-        by creation, modification, or last opened dates). Internally, the endpoint
-        aggregates results from each space, merges and sorts them (after last modified
-        date by default), and returns a unified, paginated list of objects that match
-        the search parameters.
+      description: 'Executes a global search over every space accessible by the authenticated
+        user. The request body must specify the `query` text, optional filters on
+        object types (e.g., "page", "task"), and sort directives (default: descending
+        by last updated timestamp). Pagination is controlled via `offset` and `limit`
+        query parameters to facilitate lazy loading in client UIs. The response returns
+        a unified list of matched objects with their metadata and properties.'
       operationId: searchGlobal
       parameters:
       - description: The version of the API to use
@@ -1377,7 +1376,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.SearchRequest'
-        description: Search parameters
+        description: The search parameters used to filter and sort the results
         required: true
       responses:
         "200":
@@ -1385,7 +1384,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
-          description: List of objects
+          description: The list of objects matching the search criteria
         "401":
           content:
             application/json:
@@ -1438,7 +1437,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Space'
-          description: List of spaces
+          description: The list of spaces accessible by the authenticated user
         "401":
           content:
             application/json:
@@ -1457,7 +1456,7 @@ paths:
       tags:
       - Spaces
     post:
-      description: Creates a new workspace (or space) based on a supplied name in
+      description: Creates a new space based on a supplied name and description in
         the JSON request body. The endpoint is subject to rate limiting and automatically
         applies default configurations such as generating a random icon and initializing
         the workspace with default settings (for example, a default dashboard or home
@@ -1477,7 +1476,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.CreateSpaceRequest'
-        description: Space to create
+        description: The space to create
         required: true
       responses:
         "200":
@@ -1485,7 +1484,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.SpaceResponse'
-          description: Space created successfully
+          description: The created space
         "400":
           content:
             application/json:
@@ -1498,7 +1497,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.UnauthorizedError'
           description: Unauthorized
-        "423":
+        "429":
           content:
             application/json:
               schema:
@@ -1530,7 +1529,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to retrieve
         in: path
         name: space_id
         required: true
@@ -1542,7 +1541,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.SpaceResponse'
-          description: Space
+          description: The space details
         "401":
           content:
             application/json:
@@ -1580,7 +1579,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to update
         in: path
         name: space_id
         required: true
@@ -1591,7 +1590,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.UpdateSpaceRequest'
-        description: Space to update
+        description: The space details to update
         required: true
       responses:
         "200":
@@ -1599,7 +1598,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.SpaceResponse'
-          description: Space updated successfully
+          description: The updated space
         "400":
           content:
             application/json:
@@ -1624,6 +1623,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Space not found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -1652,19 +1657,19 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the list belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: List ID
+      - description: The ID of the list to retrieve objects for
         in: path
         name: list_id
         required: true
         schema:
           type: string
-      - description: View ID
+      - description: The ID of the view to retrieve objects for
         in: path
         name: view_id
         required: true
@@ -1688,7 +1693,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
-          description: List of objects
+          description: The list of objects associated with the specified list
         "401":
           content:
             application/json:
@@ -1714,10 +1719,12 @@ paths:
       - Lists
   /spaces/{space_id}/lists/{list_id}/objects:
     post:
-      description: Enables clients to add one or more objects to a specific list (collection
-        only) by submitting a JSON array of object IDs. Upon success, the endpoint
-        returns a confirmation message. This endpoint is vital for building user interfaces
-        that allow drag‑and‑drop or multi‑select additions to collections.
+      description: Adds one or more objects to a specific list (collection only) by
+        submitting a JSON array of object IDs. Upon success, the endpoint returns
+        a confirmation message. This endpoint is vital for building user interfaces
+        that allow drag‑and‑drop or multi‑select additions to collections, enabling
+        users to dynamically manage their collections without needing to modify the
+        underlying object data.
       operationId: addListObjects
       parameters:
       - description: The version of the API to use
@@ -1727,13 +1734,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the list belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: List ID
+      - description: The ID of the list to which objects will be added
         in: path
         name: list_id
         required: true
@@ -1746,7 +1753,7 @@ paths:
               items:
                 type: string
               type: array
-        description: List of object IDs
+        description: The list of object IDs to add to the list
         required: true
       responses:
         "200":
@@ -1773,6 +1780,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Not found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -1788,9 +1801,8 @@ paths:
     delete:
       description: Removes a given object from the specified list (collection only)
         in a space. The endpoint takes the space, list, and object identifiers as
-        path parameters. It's subject to rate limiting and returns a success message
-        on completion. It is used for dynamically managing collections without affecting
-        the underlying object data.
+        path parameters and is subject to rate limiting. It is used for dynamically
+        managing collections without affecting the underlying object data.
       operationId: removeListObject
       parameters:
       - description: The version of the API to use
@@ -1800,19 +1812,19 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the list belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: List ID
+      - description: The ID of the list from which the object will be removed
         in: path
         name: list_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to remove from the list
         in: path
         name: object_id
         required: true
@@ -1843,6 +1855,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Not found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -1857,11 +1875,11 @@ paths:
   /spaces/{space_id}/lists/{list_id}/views:
     get:
       description: Returns a paginated list of views defined for a specific list (query
-        or collection) within a space. Each view includes configuration details such
-        as layout, applied filters, and sorting options, enabling clients to render
-        the list according to user preferences and context. This endpoint supports
-        pagination parameters to control the number of views returned and the starting
-        point of the result set.
+        or collection) within a space. Each view includes details such as layout,
+        applied filters, and sorting options, enabling clients to render the list
+        according to user preferences and context. This endpoint is essential for
+        applications that need to display lists in various formats (e.g., grid, table)
+        or with different sorting/filtering criteria.
       operationId: getListViews
       parameters:
       - description: The version of the API to use
@@ -1871,13 +1889,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the list belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: List ID
+      - description: The ID of the list to retrieve views for
         in: path
         name: list_id
         required: true
@@ -1901,7 +1919,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_View'
-          description: List of views
+          description: The list of views associated with the specified list
         "401":
           content:
             application/json:
@@ -1942,7 +1960,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to list members for
         in: path
         name: space_id
         required: true
@@ -1968,7 +1986,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Member'
-          description: List of members
+          description: The list of members in the space
         "401":
           content:
             application/json:
@@ -2003,7 +2021,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to get the member from
         in: path
         name: space_id
         required: true
@@ -2021,7 +2039,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.MemberResponse'
-          description: Member
+          description: The member details
         "401":
           content:
             application/json:
@@ -2062,7 +2080,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space in which to list objects
         in: path
         name: space_id
         required: true
@@ -2088,7 +2106,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
-          description: List of objects
+          description: The list of objects in the specified space
         "401":
           content:
             application/json:
@@ -2124,7 +2142,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space in which to create the object
         in: path
         name: space_id
         required: true
@@ -2135,7 +2153,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.CreateObjectRequest'
-        description: Object to create
+        description: The object to create
         required: true
       responses:
         "200":
@@ -2156,7 +2174,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.UnauthorizedError'
           description: Unauthorized
-        "423":
+        "429":
           content:
             application/json:
               schema:
@@ -2189,13 +2207,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space in which the object exists
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to delete
         in: path
         name: object_id
         required: true
@@ -2232,7 +2250,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.GoneError'
           description: Resource deleted
-        "423":
+        "429":
           content:
             application/json:
               schema:
@@ -2265,13 +2283,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space in which the object exists
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to retrieve
         in: path
         name: object_id
         required: true
@@ -2283,7 +2301,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.ObjectResponse'
-          description: The requested object
+          description: The retrieved object
         "401":
           content:
             application/json:
@@ -2327,13 +2345,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space in which the object exists
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to update
         in: path
         name: object_id
         required: true
@@ -2344,7 +2362,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.UpdateObjectRequest'
-        description: Object to update
+        description: The details of the object to update
         required: true
       responses:
         "200":
@@ -2377,6 +2395,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.GoneError'
           description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -2404,25 +2428,24 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space in which the object exists
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to export
         in: path
         name: object_id
         required: true
         schema:
           type: string
-      - description: Export format
+      - description: The format to export the object to
         in: path
         name: format
         required: true
         schema:
-          enum:
-          - markdown
+          default: markdown
           type: string
       responses:
         "200":
@@ -2430,7 +2453,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.ObjectExportResponse'
-          description: Object exported successfully
+          description: The exported object in the specified format
         "400":
           content:
             application/json:
@@ -2456,10 +2479,10 @@ paths:
       - Objects
   /spaces/{space_id}/properties:
     get:
-      description: This endpoint retrieves a paginated list of properties available
-        within a specific space. Each property record includes its unique identifier,
-        name and format. This information is essential for clients to understand the
-        available properties for filtering or creating objects.
+      description: Retrieves a paginated list of properties available within a specific
+        space. Each property record includes its unique identifier, name and format.
+        This information is essential for clients to understand the available properties
+        for filtering or creating objects.
       operationId: listProperties
       parameters:
       - description: The version of the API to use
@@ -2469,7 +2492,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to list properties for
         in: path
         name: space_id
         required: true
@@ -2495,7 +2518,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Property'
-          description: List of properties
+          description: The list of properties in the specified space
         "401":
           content:
             application/json:
@@ -2527,7 +2550,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to create the property in
         in: path
         name: space_id
         required: true
@@ -2538,7 +2561,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.CreatePropertyRequest'
-        description: Property to create
+        description: The property to create
         required: true
       responses:
         "200":
@@ -2559,6 +2582,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.UnauthorizedError'
           description: Unauthorized
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -2586,13 +2615,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the property belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property ID
+      - description: The ID of the property to delete
         in: path
         name: property_id
         required: true
@@ -2629,7 +2658,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.GoneError'
           description: Resource deleted
-        "423":
+        "429":
           content:
             application/json:
               schema:
@@ -2661,13 +2690,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the property belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property ID
+      - description: The ID of the property to retrieve
         in: path
         name: property_id
         required: true
@@ -2723,13 +2752,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the property belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property ID
+      - description: The ID of the property to update
         in: path
         name: property_id
         required: true
@@ -2740,7 +2769,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.UpdatePropertyRequest'
-        description: Property to update
+        description: The property to update
         required: true
       responses:
         "200":
@@ -2779,6 +2808,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.GoneError'
           description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -2806,13 +2841,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to list tags for
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property ID
+      - description: The ID of the property to list tags for
         in: path
         name: property_id
         required: true
@@ -2824,7 +2859,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Tag'
-          description: List of tags
+          description: The list of tags
         "401":
           content:
             application/json:
@@ -2862,14 +2897,15 @@ paths:
         name: Anytype-Version
         required: true
         schema:
+          default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to create the tag in
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property ID
+      - description: The ID of the property to create the tag for
         in: path
         name: property_id
         required: true
@@ -2880,7 +2916,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.CreateTagRequest'
-        description: Tag to create
+        description: The tag to create
         required: true
       responses:
         "200":
@@ -2901,6 +2937,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.UnauthorizedError'
           description: Unauthorized
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -2928,19 +2970,19 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to delete the tag from
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property ID
+      - description: The ID of the property to delete the tag for
         in: path
         name: property_id
         required: true
         schema:
           type: string
-      - description: Tag ID
+      - description: The ID of the tag to delete
         in: path
         name: tag_id
         required: true
@@ -2977,7 +3019,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.GoneError'
           description: Resource deleted
-        "423":
+        "429":
           content:
             application/json:
               schema:
@@ -3008,19 +3050,19 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to retrieve the tag from
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property ID
+      - description: The ID of the property to retrieve the tag for
         in: path
         name: property_id
         required: true
         schema:
           type: string
-      - description: Tag ID
+      - description: The ID of the tag to retrieve
         in: path
         name: tag_id
         required: true
@@ -3032,7 +3074,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apimodel.TagResponse'
-          description: The requested tag
+          description: The retrieved tag
         "401":
           content:
             application/json:
@@ -3078,19 +3120,19 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to update the tag in
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property ID
+      - description: The ID of the property to update the tag for
         in: path
         name: property_id
         required: true
         schema:
           type: string
-      - description: Tag ID
+      - description: The ID of the tag to update
         in: path
         name: tag_id
         required: true
@@ -3101,7 +3143,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.UpdateTagRequest'
-        description: Tag to update
+        description: The tag to update
         required: true
       responses:
         "200":
@@ -3140,6 +3182,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.GoneError'
           description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -3153,11 +3201,11 @@ paths:
       - Tags
   /spaces/{space_id}/search:
     post:
-      description: This endpoint performs a focused search within a single space (specified
-        by the space_id path parameter). Like the global search, it accepts pagination
-        parameters and a JSON payload containing the search query, object types, and
-        sorting preferences. The search is limited to the provided space and returns
-        a list of objects that match the query. This allows clients to implement space‑specific
+      description: Performs a focused search within a single space (specified by the
+        space_id path parameter). Like the global search, it accepts pagination parameters
+        and a JSON payload containing the search query, object types, and sorting
+        preferences. The search is limited to the provided space and returns a list
+        of objects that match the query. This allows clients to implement space‑specific
         filtering without having to process extraneous results.
       operationId: searchSpace
       parameters:
@@ -3168,7 +3216,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to search in
         in: path
         name: space_id
         required: true
@@ -3193,7 +3241,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.SearchRequest'
-        description: Search parameters
+        description: The search parameters used to filter and sort the results
         required: true
       responses:
         "200":
@@ -3201,7 +3249,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
-          description: List of objects
+          description: The list of objects matching the search criteria
         "401":
           content:
             application/json:
@@ -3237,7 +3285,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to retrieve types from
         in: path
         name: space_id
         required: true
@@ -3263,7 +3311,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Type'
-          description: List of types
+          description: The list of types
         "401":
           content:
             application/json:
@@ -3295,7 +3343,7 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space in which to create the type
         in: path
         name: space_id
         required: true
@@ -3306,7 +3354,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.CreateTypeRequest'
-        description: Type to create
+        description: The type to create
         required: true
       responses:
         "200":
@@ -3327,6 +3375,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.UnauthorizedError'
           description: Unauthorized
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -3354,13 +3408,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space from which to delete the type
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type ID
+      - description: The ID of the type to delete
         in: path
         name: type_id
         required: true
@@ -3397,7 +3451,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.GoneError'
           description: Resource deleted
-        "423":
+        "429":
           content:
             application/json:
               schema:
@@ -3429,13 +3483,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space from which to retrieve the type
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type ID
+      - description: The ID of the type to retrieve
         in: path
         name: type_id
         required: true
@@ -3491,13 +3545,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space in which the type exists
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type ID
+      - description: The ID of the type to update
         in: path
         name: type_id
         required: true
@@ -3508,7 +3562,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/apimodel.UpdateTypeRequest'
-        description: Type to update
+        description: The type details to update
         required: true
       responses:
         "200":
@@ -3541,6 +3595,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.GoneError'
           description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -3568,13 +3628,13 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the type belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type ID
+      - description: The ID of the object type to retrieve templates for
         in: path
         name: type_id
         required: true
@@ -3633,19 +3693,19 @@ paths:
         schema:
           default: "2025-04-22"
           type: string
-      - description: Space ID
+      - description: The ID of the space to which the template belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type ID
+      - description: The ID of the object type to which the template belongs
         in: path
         name: type_id
         required: true
         schema:
           type: string
-      - description: Template ID
+      - description: The ID of the template to retrieve
         in: path
         name: template_id
         required: true

@@ -21,7 +21,7 @@ import (
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-04-22)
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
-//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Space]	"List of spaces"
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Space]	"The list of spaces accessible by the authenticated user"
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
@@ -56,8 +56,8 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"Space ID"
-//	@Success		200				{object}	apimodel.SpaceResponse	"Space"
+//	@Param			space_id		path		string					true	"The ID of the space to retrieve"
+//	@Success		200				{object}	apimodel.SpaceResponse	"The space details"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Space not found"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
@@ -87,17 +87,17 @@ func GetSpaceHandler(s *service.Service) gin.HandlerFunc {
 // CreateSpaceHandler creates a new space
 //
 //	@Summary		Create space
-//	@Description	Creates a new workspace (or space) based on a supplied name in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space’s full metadata is returned, enabling the client to immediately switch context to the new internal.
+//	@Description	Creates a new space based on a supplied name and description in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space’s full metadata is returned, enabling the client to immediately switch context to the new internal.
 //	@Id				createSpace
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
-//	@Param			name			body		apimodel.CreateSpaceRequest	true	"Space to create"
-//	@Success		200				{object}	apimodel.SpaceResponse		"Space created successfully"
+//	@Param			name			body		apimodel.CreateSpaceRequest	true	"The space to create"
+//	@Success		200				{object}	apimodel.SpaceResponse		"The created space"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
-//	@Failure		423				{object}	util.RateLimitError			"Rate limit exceeded"
+//	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces [post]
@@ -137,13 +137,14 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string						true	"Space ID"
-//	@Param			name			body		apimodel.UpdateSpaceRequest	true	"Space to update"
-//	@Success		200				{object}	apimodel.SpaceResponse		"Space updated successfully"
+//	@Param			space_id		path		string						true	"The ID of the space to update"
+//	@Param			name			body		apimodel.UpdateSpaceRequest	true	"The space details to update"
+//	@Success		200				{object}	apimodel.SpaceResponse		"The updated space"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError			"Forbidden
 //	@Failure		404				{object}	util.NotFoundError			"Space not found"
+//	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id} [patch]
