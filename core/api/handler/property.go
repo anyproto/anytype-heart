@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal"
+	"github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
@@ -27,7 +27,7 @@ import (
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties [get]
-func ListPropertiesHandler(s *internal.Service) gin.HandlerFunc {
+func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -35,7 +35,7 @@ func ListPropertiesHandler(s *internal.Service) gin.HandlerFunc {
 
 		properties, total, hasMore, err := s.ListProperties(c.Request.Context(), spaceId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrFailedRetrieveProperties, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedRetrieveProperties, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -65,16 +65,16 @@ func ListPropertiesHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id} [get]
-func GetPropertyHandler(s *internal.Service) gin.HandlerFunc {
+func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
 
 		property, err := s.GetProperty(c.Request.Context(), spaceId, propertyId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrPropertyNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrPropertyDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedRetrieveProperty, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrPropertyNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrPropertyDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedRetrieveProperty, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -104,7 +104,7 @@ func GetPropertyHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties [post]
-func CreatePropertyHandler(s *internal.Service) gin.HandlerFunc {
+func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
@@ -118,8 +118,8 @@ func CreatePropertyHandler(s *internal.Service) gin.HandlerFunc {
 		property, err := s.CreateProperty(c.Request.Context(), spaceId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
-			util.ErrToCode(internal.ErrFailedCreateProperty, http.StatusInternalServerError),
-			util.ErrToCode(internal.ErrFailedRetrieveProperty, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedCreateProperty, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedRetrieveProperty, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -153,7 +153,7 @@ func CreatePropertyHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id} [patch]
-func UpdatePropertyHandler(s *internal.Service) gin.HandlerFunc {
+func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
@@ -168,11 +168,11 @@ func UpdatePropertyHandler(s *internal.Service) gin.HandlerFunc {
 		property, err := s.UpdateProperty(c.Request.Context(), spaceId, propertyId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
-			util.ErrToCode(internal.ErrPropertyNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrPropertyDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrPropertyCannotBeUpdated, http.StatusForbidden),
-			util.ErrToCode(internal.ErrFailedUpdateProperty, http.StatusForbidden),
-			util.ErrToCode(internal.ErrFailedRetrieveProperty, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrPropertyNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrPropertyDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrPropertyCannotBeUpdated, http.StatusForbidden),
+			util.ErrToCode(service.ErrFailedUpdateProperty, http.StatusForbidden),
+			util.ErrToCode(service.ErrFailedRetrieveProperty, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -204,17 +204,17 @@ func UpdatePropertyHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id} [delete]
-func DeletePropertyHandler(s *internal.Service) gin.HandlerFunc {
+func DeletePropertyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
 
 		property, err := s.DeleteProperty(c.Request.Context(), spaceId, propertyId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrPropertyNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrPropertyDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedDeleteProperty, http.StatusForbidden),
-			util.ErrToCode(internal.ErrFailedRetrieveProperty, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrPropertyNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrPropertyDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedDeleteProperty, http.StatusForbidden),
+			util.ErrToCode(service.ErrFailedRetrieveProperty, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

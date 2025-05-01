@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal"
+	"github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
@@ -27,7 +27,7 @@ import (
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id}/tags [get]
-func ListTagsHandler(s *internal.Service) gin.HandlerFunc {
+func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
@@ -36,8 +36,8 @@ func ListTagsHandler(s *internal.Service) gin.HandlerFunc {
 
 		tags, total, hasMore, err := s.ListTags(c.Request.Context(), spaceId, propertyId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrInvalidPropertyId, http.StatusNotFound),
-			util.ErrToCode(internal.ErrFailedRetrieveTags, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrInvalidPropertyId, http.StatusNotFound),
+			util.ErrToCode(service.ErrFailedRetrieveTags, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -68,7 +68,7 @@ func ListTagsHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [get]
-func GetTagHandler(s *internal.Service) gin.HandlerFunc {
+func GetTagHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
@@ -76,9 +76,9 @@ func GetTagHandler(s *internal.Service) gin.HandlerFunc {
 
 		option, err := s.GetTag(c.Request.Context(), spaceId, propertyId, tagId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrTagNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrTagDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedRetrieveTag, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrTagNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrTagDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedRetrieveTag, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -109,7 +109,7 @@ func GetTagHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id}/tags [post]
-func CreateTagHandler(s *internal.Service) gin.HandlerFunc {
+func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
@@ -124,8 +124,8 @@ func CreateTagHandler(s *internal.Service) gin.HandlerFunc {
 		option, err := s.CreateTag(c.Request.Context(), spaceId, propertyId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
-			util.ErrToCode(internal.ErrFailedCreateTag, http.StatusInternalServerError),
-			util.ErrToCode(internal.ErrFailedRetrieveTag, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedCreateTag, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedRetrieveTag, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -160,7 +160,7 @@ func CreateTagHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [patch]
-func UpdateTagHandler(s *internal.Service) gin.HandlerFunc {
+func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
@@ -176,10 +176,10 @@ func UpdateTagHandler(s *internal.Service) gin.HandlerFunc {
 		option, err := s.UpdateTag(c.Request.Context(), spaceId, propertyId, tagId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
-			util.ErrToCode(internal.ErrTagNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrTagDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedUpdateTag, http.StatusForbidden),
-			util.ErrToCode(internal.ErrFailedRetrieveTag, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrTagNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrTagDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedUpdateTag, http.StatusForbidden),
+			util.ErrToCode(service.ErrFailedRetrieveTag, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -212,7 +212,7 @@ func UpdateTagHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [delete]
-func DeleteTagHandler(s *internal.Service) gin.HandlerFunc {
+func DeleteTagHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		propertyId := c.Param("property_id")
@@ -220,10 +220,10 @@ func DeleteTagHandler(s *internal.Service) gin.HandlerFunc {
 
 		option, err := s.DeleteTag(c.Request.Context(), spaceId, propertyId, tagId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrTagNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrTagDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedDeleteTag, http.StatusForbidden),
-			util.ErrToCode(internal.ErrFailedRetrieveTag, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrTagNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrTagDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedDeleteTag, http.StatusForbidden),
+			util.ErrToCode(service.ErrFailedRetrieveTag, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

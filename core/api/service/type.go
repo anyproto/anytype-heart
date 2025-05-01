@@ -1,4 +1,4 @@
-package internal
+package service
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/api/apimodel"
+	"github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"

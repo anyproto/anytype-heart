@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore"
-	"github.com/anyproto/anytype-heart/core/api/internal"
+	"github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/api/service"
 )
 
 // Server wraps the HTTP server and service logic.
 type Server struct {
 	engine  *gin.Engine
-	service *internal.Service
+	service *service.Service
 
 	mu         sync.Mutex
 	KeyToToken map[string]string // appKey -> token
@@ -26,7 +26,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		panic(err)
 	}
 
-	s := &Server{service: internal.NewService(mw, exportService, gatewayUrl, techSpaceId)}
+	s := &Server{service: service.NewService(mw, exportService, gatewayUrl, techSpaceId)}
 	s.engine = s.NewRouter(mw)
 	s.KeyToToken = make(map[string]string)
 

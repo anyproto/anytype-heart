@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal"
+	"github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
@@ -27,7 +27,7 @@ import (
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types [get]
-func ListTypesHandler(s *internal.Service) gin.HandlerFunc {
+func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
@@ -35,7 +35,7 @@ func ListTypesHandler(s *internal.Service) gin.HandlerFunc {
 
 		types, total, hasMore, err := s.ListTypes(c.Request.Context(), spaceId, offset, limit)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrFailedRetrieveTypes, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedRetrieveTypes, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -65,16 +65,16 @@ func ListTypesHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id} [get]
-func GetTypeHandler(s *internal.Service) gin.HandlerFunc {
+func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
 
 		object, err := s.GetType(c.Request.Context(), spaceId, typeId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrTypeNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrTypeDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedRetrieveType, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrTypeNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrTypeDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedRetrieveType, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -104,7 +104,7 @@ func GetTypeHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types [post]
-func CreateTypeHandler(s *internal.Service) gin.HandlerFunc {
+func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 
@@ -118,8 +118,8 @@ func CreateTypeHandler(s *internal.Service) gin.HandlerFunc {
 		object, err := s.CreateType(c.Request.Context(), spaceId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
-			util.ErrToCode(internal.ErrFailedCreateType, http.StatusInternalServerError),
-			util.ErrToCode(internal.ErrFailedRetrieveType, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedCreateType, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedRetrieveType, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -152,7 +152,7 @@ func CreateTypeHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id} [patch]
-func UpdateTypeHandler(s *internal.Service) gin.HandlerFunc {
+func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
@@ -167,10 +167,10 @@ func UpdateTypeHandler(s *internal.Service) gin.HandlerFunc {
 		object, err := s.UpdateType(c.Request.Context(), spaceId, typeId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
-			util.ErrToCode(internal.ErrTypeNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrTypeDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedUpdateType, http.StatusInternalServerError),
-			util.ErrToCode(internal.ErrFailedRetrieveType, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrTypeNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrTypeDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedUpdateType, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedRetrieveType, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -202,17 +202,17 @@ func UpdateTypeHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/spaces/{space_id}/types/{type_id} [delete]
-func DeleteTypeHandler(s *internal.Service) gin.HandlerFunc {
+func DeleteTypeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
 
 		object, err := s.DeleteType(c.Request.Context(), spaceId, typeId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrTypeNotFound, http.StatusNotFound),
-			util.ErrToCode(internal.ErrTypeDeleted, http.StatusGone),
-			util.ErrToCode(internal.ErrFailedDeleteType, http.StatusForbidden),
-			util.ErrToCode(internal.ErrFailedRetrieveType, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrTypeNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrTypeDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedDeleteType, http.StatusForbidden),
+			util.ErrToCode(service.ErrFailedRetrieveType, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {

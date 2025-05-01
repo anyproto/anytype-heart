@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore"
+	"github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

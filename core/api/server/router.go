@@ -7,7 +7,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore"
+	"github.com/anyproto/anytype-heart/core/api/core"
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
 	"github.com/anyproto/anytype-heart/core/api/handler"
 

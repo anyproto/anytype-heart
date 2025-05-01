@@ -1,7 +1,7 @@
-package internal
+package service
 
 import (
-	"github.com/anyproto/anytype-heart/core/api/apicore"
+	"github.com/anyproto/anytype-heart/core/api/core"
 )
 
 type Service struct {

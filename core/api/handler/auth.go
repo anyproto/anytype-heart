@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/apimodel"
-	"github.com/anyproto/anytype-heart/core/api/internal"
+	"github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
@@ -24,14 +24,14 @@ import (
 //	@Failure		400				{object}	util.ValidationError			"Invalid input"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Router			/auth/display_code [post]
-func DisplayCodeHandler(s *internal.Service) gin.HandlerFunc {
+func DisplayCodeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := c.Query("app_name")
 
 		challengeId, err := s.NewChallenge(c.Request.Context(), appName)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrMissingAppName, http.StatusBadRequest),
-			util.ErrToCode(internal.ErrFailedGenerateChallenge, http.StatusInternalServerError))
+			util.ErrToCode(service.ErrMissingAppName, http.StatusBadRequest),
+			util.ErrToCode(service.ErrFailedGenerateChallenge, http.StatusInternalServerError))
 
 		if code != http.StatusOK {
 			apiErr := util.CodeToAPIError(code, err.Error())
@@ -58,15 +58,15 @@ func DisplayCodeHandler(s *internal.Service) gin.HandlerFunc {
 //	@Failure		400				{object}	util.ValidationError	"Invalid input"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/auth/token [post]
-func TokenHandler(s *internal.Service) gin.HandlerFunc {
+func TokenHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		challengeId := c.Query("challenge_id")
 		code := c.Query("code")
 
 		appKey, err := s.SolveChallenge(c.Request.Context(), challengeId, code)
 		errCode := util.MapErrorCode(err,
-			util.ErrToCode(internal.ErrInvalidInput, http.StatusBadRequest),
-			util.ErrToCode(internal.ErrFailedAuthenticate, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrInvalidInput, http.StatusBadRequest),
+			util.ErrToCode(service.ErrFailedAuthenticate, http.StatusInternalServerError),
 		)
 
 		if errCode != http.StatusOK {

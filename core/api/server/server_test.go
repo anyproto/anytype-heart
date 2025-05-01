@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 

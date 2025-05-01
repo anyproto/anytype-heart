@@ -1,9 +1,9 @@
-package internal
+package service
 
 import (
 	"testing"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 )
 
 const (
