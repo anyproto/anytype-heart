@@ -160,12 +160,12 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, request apimo
 	}
 
 	fields := make(map[string]*types.Value)
-	if request.Name != "" {
-		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
+	if request.Name != nil {
+		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(*request.Name))
 	}
 
-	if request.Description != "" {
-		fields[bundle.RelationKeyDescription.String()] = pbtypes.String(s.sanitizedString(request.Description))
+	if request.Description != nil {
+		fields[bundle.RelationKeyDescription.String()] = pbtypes.String(s.sanitizedString(*request.Description))
 	}
 
 	if fields != nil {

@@ -142,6 +142,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Success		200				{object}	apimodel.SpaceResponse		"Space updated successfully"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError			"Forbidden
 //	@Failure		404				{object}	util.NotFoundError			"Space not found"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
@@ -159,8 +160,9 @@ func UpdateSpaceHandler(s *service.Service) gin.HandlerFunc {
 
 		space, err := s.UpdateSpace(c.Request.Context(), spaceId, req)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(service.ErrFailedSetSpaceInfo, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedOpenWorkspace, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrWorkspaceNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrFailedSetSpaceInfo, http.StatusForbidden),
 			util.ErrToCode(service.ErrFailedOpenSpace, http.StatusInternalServerError),
 		)
 
