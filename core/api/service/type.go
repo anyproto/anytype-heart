@@ -319,7 +319,7 @@ func (s *Service) objectLayoutToObjectTypeLayout(objectLayout apimodel.ObjectLay
 		return model.ObjectType_basic
 	case apimodel.ObjectLayoutProfile:
 		return model.ObjectType_profile
-	case apimodel.ObjectLayoutTodo:
+	case apimodel.ObjectLayoutAction:
 		return model.ObjectType_todo
 	case apimodel.ObjectLayoutNote:
 		return model.ObjectType_note
@@ -343,7 +343,7 @@ func (s *Service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout
 	case model.ObjectType_profile:
 		return apimodel.ObjectLayoutProfile
 	case model.ObjectType_todo:
-		return apimodel.ObjectLayoutTodo
+		return apimodel.ObjectLayoutAction
 	case model.ObjectType_note:
 		return apimodel.ObjectLayoutNote
 	case model.ObjectType_bookmark:
@@ -365,7 +365,7 @@ func (s *Service) typeLayoutToObjectTypeLayout(typeLayout apimodel.TypeLayout) m
 		return model.ObjectType_basic
 	case apimodel.TypeLayoutProfile:
 		return model.ObjectType_profile
-	case apimodel.TypeLayoutTodo:
+	case apimodel.TypeLayoutAction:
 		return model.ObjectType_todo
 	case apimodel.TypeLayoutNote:
 		return model.ObjectType_note
@@ -381,7 +381,7 @@ func (s *Service) otLayoutToTypeLayout(objectTypeLayout model.ObjectTypeLayout) 
 	case model.ObjectType_profile:
 		return apimodel.TypeLayoutProfile
 	case model.ObjectType_todo:
-		return apimodel.TypeLayoutTodo
+		return apimodel.TypeLayoutAction
 	case model.ObjectType_note:
 		return apimodel.TypeLayoutNote
 	default:

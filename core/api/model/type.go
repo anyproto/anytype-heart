@@ -12,7 +12,7 @@ type TypeLayout string
 const (
 	TypeLayoutBasic   TypeLayout = "basic"
 	TypeLayoutProfile TypeLayout = "profile"
-	TypeLayoutTodo    TypeLayout = "todo"
+	TypeLayoutAction  TypeLayout = "action"
 	TypeLayoutNote    TypeLayout = "note"
 )
 
@@ -22,7 +22,7 @@ func (tl *TypeLayout) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch TypeLayout(s) {
-	case TypeLayoutBasic, TypeLayoutProfile, TypeLayoutTodo, TypeLayoutNote:
+	case TypeLayoutBasic, TypeLayoutProfile, TypeLayoutAction, TypeLayoutNote:
 		*tl = TypeLayout(s)
 		return nil
 	default:
@@ -35,18 +35,18 @@ type TypeResponse struct {
 }
 
 type CreateTypeRequest struct {
-	Name       string         `json:"name" binding:"required" example:"Page"`   // The name of the type
-	PluralName string         `json:"plural_name" example:"Pages"`              // The plural name of the type
-	Icon       Icon           `json:"icon"`                                     // The icon of the type
-	Layout     TypeLayout     `json:"layout" binding:"required" example:"todo"` // The layout of the type
-	Properties []PropertyLink `json:"properties"`                               // The properties linked to the type
+	Name       string         `json:"name" binding:"required" example:"Page"`    // The name of the type
+	PluralName string         `json:"plural_name" example:"Pages"`               // The plural name of the type
+	Icon       Icon           `json:"icon"`                                      // The icon of the type
+	Layout     TypeLayout     `json:"layout" binding:"required" example:"basic"` // The layout of the type
+	Properties []PropertyLink `json:"properties"`                                // The properties linked to the type
 }
 
 type UpdateTypeRequest struct {
 	Name       *string        `json:"name,omitempty" example:"Page"`         // The name to set for the type
 	PluralName *string        `json:"plural_name,omitempty" example:"Pages"` // The plural name to set for the type
 	Icon       Icon           `json:"icon"`                                  // The icon to set for the type
-	Layout     *TypeLayout    `json:"layout,omitempty" example:"todo"`       // The layout to set for the type
+	Layout     *TypeLayout    `json:"layout,omitempty" example:"basic"`      // The layout to set for the type
 	Properties []PropertyLink `json:"properties"`                            // The properties to set for the type
 }
 
@@ -57,6 +57,6 @@ type Type struct {
 	Name       string       `json:"name" example:"Page"`                                                      // The name of the type
 	Icon       Icon         `json:"icon"`                                                                     // The icon of the type
 	Archived   bool         `json:"archived" example:"false"`                                                 // Whether the type is archived
-	Layout     ObjectLayout `json:"layout" example:"todo"`                                                    // The layout of the type
+	Layout     ObjectLayout `json:"layout" example:"basic"`                                                   // The layout of the type
 	Properties []Property   `json:"properties"`                                                               // The properties linked to the type
 }

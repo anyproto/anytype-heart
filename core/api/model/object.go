@@ -12,7 +12,7 @@ type ObjectLayout string
 const (
 	ObjectLayoutBasic       ObjectLayout = "basic"
 	ObjectLayoutProfile     ObjectLayout = "profile"
-	ObjectLayoutTodo        ObjectLayout = "todo"
+	ObjectLayoutAction      ObjectLayout = "action"
 	ObjectLayoutNote        ObjectLayout = "note"
 	ObjectLayoutBookmark    ObjectLayout = "bookmark"
 	ObjectLayoutSet         ObjectLayout = "set"
@@ -26,7 +26,7 @@ func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch ObjectLayout(s) {
-	case ObjectLayoutBasic, ObjectLayoutProfile, ObjectLayoutTodo, ObjectLayoutNote, ObjectLayoutBookmark, ObjectLayoutSet, ObjectLayoutCollection, ObjectLayoutParticipant:
+	case ObjectLayoutBasic, ObjectLayoutProfile, ObjectLayoutAction, ObjectLayoutNote, ObjectLayoutBookmark, ObjectLayoutSet, ObjectLayoutCollection, ObjectLayoutParticipant:
 		*ol = ObjectLayout(s)
 		return nil
 	default:

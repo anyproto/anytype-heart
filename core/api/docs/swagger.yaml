@@ -384,7 +384,7 @@ components:
       x-enum-varnames:
       - ObjectLayoutBasic
       - ObjectLayoutProfile
-      - ObjectLayoutTodo
+      - ObjectLayoutAction
       - ObjectLayoutNote
       - ObjectLayoutBookmark
       - ObjectLayoutSet
@@ -422,7 +422,7 @@ components:
           x-enum-varnames:
           - ObjectLayoutBasic
           - ObjectLayoutProfile
-          - ObjectLayoutTodo
+          - ObjectLayoutAction
           - ObjectLayoutNote
           - ObjectLayoutBookmark
           - ObjectLayoutSet
@@ -862,12 +862,12 @@ components:
           type: string
         layout:
           description: The layout of the object
-          example: todo
+          example: basic
           type: string
           x-enum-varnames:
           - ObjectLayoutBasic
           - ObjectLayoutProfile
-          - ObjectLayoutTodo
+          - ObjectLayoutAction
           - ObjectLayoutNote
           - ObjectLayoutBookmark
           - ObjectLayoutSet
@@ -890,12 +890,12 @@ components:
       type: object
     apimodel.TypeLayout:
       description: The layout of the type
-      example: todo
+      example: basic
       type: string
       x-enum-varnames:
       - TypeLayoutBasic
       - TypeLayoutProfile
-      - TypeLayoutTodo
+      - TypeLayoutAction
       - TypeLayoutNote
     apimodel.TypeResponse:
       properties:
@@ -952,12 +952,12 @@ components:
           $ref: '#/components/schemas/apimodel.Icon'
         layout:
           description: The layout of the type
-          example: todo
+          example: basic
           type: string
           x-enum-varnames:
           - TypeLayoutBasic
           - TypeLayoutProfile
-          - TypeLayoutTodo
+          - TypeLayoutAction
           - TypeLayoutNote
         name:
           description: The name to set for the type
