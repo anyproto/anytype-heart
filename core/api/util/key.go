@@ -7,11 +7,11 @@ import (
 )
 
 // Internal 						-> API
-// "rel-dueDate"             		-> "prop_due_date"
-// "rel-67b0d3e3cda913b84c1299b1" 	-> "prop_67b0d3e3cda913b84c1299b1"
-// "ot-page"                 		-> "type_page"
-// "ot-67b0d3e3cda913b84c1299b1"   	-> "type_67b0d3e3cda913b84c1299b1"
-// "opt-67b0d3e3cda913b84c1299b1"  	-> "tag_67b0d3e3cda913b84c1299b1"
+// "rel-dueDate"             		-> "due_date"
+// "rel-67b0d3e3cda913b84c1299b1" 	-> "67b0d3e3cda913b84c1299b1"
+// "ot-page"                 		-> "page"
+// "ot-67b0d3e3cda913b84c1299b1"   	-> "67b0d3e3cda913b84c1299b1"
+// "opt-67b0d3e3cda913b84c1299b1"  	-> "67b0d3e3cda913b84c1299b1"
 
 const (
 	propPrefix                   = ""

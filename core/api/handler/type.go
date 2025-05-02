@@ -14,7 +14,7 @@ import (
 // ListTypesHandler retrieves a list of types in a space
 //
 //	@Summary		List types
-//	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
+//	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
 //	@Id				listTypes
 //	@Tags			Types
 //	@Produce		json

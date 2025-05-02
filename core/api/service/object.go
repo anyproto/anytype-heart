@@ -136,6 +136,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 
 // CreateObject creates a new object in a specific space.
 func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (apimodel.ObjectWithBlocks, error) {
+	request.TypeKey = util.FromTypeApiKey(request.TypeKey)
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
 	if err != nil {
 		return apimodel.ObjectWithBlocks{}, err

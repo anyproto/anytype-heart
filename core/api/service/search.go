@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sort"
-	"strings"
 
 	"github.com/gogo/protobuf/types"
 
@@ -242,14 +241,11 @@ func (s *Service) prepareObjectTypeFilters(spaceId string, objectTypes []string)
 	// Prepare nested filters for each object type
 	nestedFilters := make([]*model.BlockContentDataviewFilter, 0, len(objectTypes))
 	for _, objectType := range objectTypes {
-		typeId := objectType
-
-		if strings.HasPrefix(objectType, "ot-") { // TODO: replace with constant
-			var err error
-			typeId, err = util.ResolveUniqueKeyToTypeId(s.mw, spaceId, objectType)
-			if err != nil {
-				continue
-			}
+		ukOrId := util.FromTypeApiKey(objectType)
+		typeId, err := util.ResolveUniqueKeyToTypeId(s.mw, spaceId, ukOrId)
+		if err != nil {
+			// client passed type id instead of type key
+			typeId = objectType
 		}
 
 		nestedFilters = append(nestedFilters, &model.BlockContentDataviewFilter{

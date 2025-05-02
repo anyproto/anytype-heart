@@ -219,7 +219,7 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 	return apimodel.Type{
 		Object:     "type",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:        details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Key:        util.ToTypeApiKey(details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		PluralName: details.Fields[bundle.RelationKeyPluralName.String()].GetStringValue(),
 		Icon:       apimodel.GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),

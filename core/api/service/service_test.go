@@ -18,7 +18,7 @@ const (
 	mockedObjectSnippet = "mocked-object-snippet"
 	mockedObjectIcon    = "🔍"
 	mockedParticipantId = "mocked-participant-id"
-	mockedTypeKey       = "ot-page"
+	mockedTypeKey       = "page"
 	mockedTypeId        = "mocked-type-id"
 	mockedTypeName      = "mocked-type-name"
 	mockedTypeIcon      = "📝"

@@ -53,7 +53,7 @@ type UpdateTypeRequest struct {
 type Type struct {
 	Object     string       `json:"object" example:"type"`                                                    // The data model of the object
 	Id         string       `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type (which is unique across spaces)
-	Key        string       `json:"key" example:"ot-page"`                                                    // The key of the type (can be the same across spaces for known types)
+	Key        string       `json:"key" example:"page"`                                                       // The key of the type (can be the same across spaces for known types)
 	Name       string       `json:"name" example:"Page"`                                                      // The name of the type
 	PluralName string       `json:"plural_name" example:"Pages"`                                              // The plural name of the type
 	Icon       Icon         `json:"icon"`                                                                     // The icon of the type

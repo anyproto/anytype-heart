@@ -39,7 +39,7 @@ type CreateObjectRequest struct {
 	Icon       Icon                    `json:"icon"`                                                                              // The icon of the object
 	Body       string                  `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
 	TemplateId string                  `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
-	TypeKey    string                  `json:"type_key" binding:"required" example:"ot-page"`                                     // The key of the type of object to create
+	TypeKey    string                  `json:"type_key" binding:"required" example:"page"`                                        // The key of the type of object to create
 	Properties []PropertyLinkWithValue `json:"properties"`                                                                        // The properties to set on the object
 }
 
