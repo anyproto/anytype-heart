@@ -410,7 +410,7 @@ func (s *Service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromStruct(details, typeMap),
+		Type:       s.getTypeFromMap(details, typeMap),
 		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
 	}
 }
@@ -426,7 +426,7 @@ func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, blocks []
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromStruct(details, typeMap),
+		Type:       s.getTypeFromMap(details, typeMap),
 		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
 		Blocks:     s.getBlocksFromDetails(blocks),
 	}

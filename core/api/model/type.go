@@ -55,6 +55,7 @@ type Type struct {
 	Id         string       `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"` // The id of the type (which is unique across spaces)
 	Key        string       `json:"key" example:"ot-page"`                                                    // The key of the type (can be the same across spaces for known types)
 	Name       string       `json:"name" example:"Page"`                                                      // The name of the type
+	PluralName string       `json:"plural_name" example:"Pages"`                                              // The plural name of the type
 	Icon       Icon         `json:"icon"`                                                                     // The icon of the type
 	Archived   bool         `json:"archived" example:"false"`                                                 // Whether the type is archived
 	Layout     ObjectLayout `json:"layout" example:"basic"`                                                   // The layout of the type

@@ -881,6 +881,10 @@ components:
           description: The data model of the object
           example: type
           type: string
+        plural_name:
+          description: The plural name of the type
+          example: Pages
+          type: string
         properties:
           description: The properties linked to the type
           items:
@@ -1100,7 +1104,7 @@ components:
           type: integer
         total:
           description: The total number of items available for the endpoint
-          example: 1024
+          example: 1000
           type: integer
       type: object
     util.ForbiddenError:

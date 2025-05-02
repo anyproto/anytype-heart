@@ -56,6 +56,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyIconEmoji.String(),
 			bundle.RelationKeyIconName.String(),
+			bundle.RelationKeyPluralName.String(),
 			bundle.RelationKeyIconOption.String(),
 			bundle.RelationKeyRecommendedLayout.String(),
 			bundle.RelationKeyIsArchived.String(),
@@ -77,16 +78,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 	}
 
 	for _, record := range paginatedTypes {
-		types = append(types, apimodel.Type{
-			Object:     "type",
-			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			Key:        record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:       apimodel.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-			Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
-			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
-		})
+		types = append(types, s.getTypeFromStruct(record, propertyMap))
 	}
 	return types, total, hasMore, nil
 }
@@ -118,17 +110,7 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 		return apimodel.Type{}, err
 	}
 
-	details := resp.ObjectView.Details[0].Details.Fields
-	return apimodel.Type{
-		Object:     "type",
-		Id:         typeId,
-		Key:        details[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-		Name:       details[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       apimodel.GetIcon(s.gatewayUrl, details[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details[bundle.RelationKeyIconName.String()].GetStringValue(), details[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		Archived:   details[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
-		Properties: s.getRecommendedPropertiesFromLists(details[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
-	}, nil
+	return s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap), nil
 }
 
 // CreateType creates a new type in a specific space.
@@ -211,6 +193,7 @@ func (s *Service) GetTypeMapFromStore(spaceId string, propertyMap map[string]api
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyIconEmoji.String(),
 			bundle.RelationKeyIconName.String(),
+			bundle.RelationKeyPluralName.String(),
 			bundle.RelationKeyIconOption.String(),
 			bundle.RelationKeyRecommendedLayout.String(),
 			bundle.RelationKeyIsArchived.String(),
@@ -225,22 +208,29 @@ func (s *Service) GetTypeMapFromStore(spaceId string, propertyMap map[string]api
 
 	typeMap := make(map[string]apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
-		typeMap[record.Fields[bundle.RelationKeyId.String()].GetStringValue()] = apimodel.Type{
-			Object:     "type",
-			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-			Key:        record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
-			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:       apimodel.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", record.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-			Archived:   record.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-			Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(record.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
-			Properties: s.getRecommendedPropertiesFromLists(record.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), record.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
-		}
+		t := s.getTypeFromStruct(record, propertyMap)
+		typeMap[t.Id] = t
 	}
 	return typeMap, nil
 }
 
-// getTypeFromStruct retrieves the type from the details.
-func (s *Service) getTypeFromStruct(details *types.Struct, typeMap map[string]apimodel.Type) apimodel.Type {
+// getTypeFromStruct builds an apimodel.Type from the provided fields map and propertyMap.
+func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property) apimodel.Type {
+	return apimodel.Type{
+		Object:     "type",
+		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:        details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		PluralName: details.Fields[bundle.RelationKeyPluralName.String()].GetStringValue(),
+		Icon:       apimodel.GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
+		Properties: s.getRecommendedPropertiesFromLists(details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
+	}
+}
+
+// getTypeFromMap retrieves the type from the details.
+func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]apimodel.Type) apimodel.Type {
 	return typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]
 }
 
