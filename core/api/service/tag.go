@@ -49,7 +49,7 @@ func (s *Service) ListTags(ctx context.Context, spaceId string, propertyId strin
 		},
 		Keys: []string{
 			bundle.RelationKeyId.String(),
-			bundle.RelationKeyRelationKey.String(),
+			bundle.RelationKeyUniqueKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 		},
@@ -205,7 +205,7 @@ func (s *Service) GetTagMapFromStore(spaceId string) (map[string]apimodel.Tag, e
 		},
 		Keys: []string{
 			bundle.RelationKeyId.String(),
-			bundle.RelationKeyRelationKey.String(),
+			bundle.RelationKeyUniqueKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 		},
@@ -228,7 +228,7 @@ func (s *Service) mapTagFromRecord(record *types.Struct) apimodel.Tag {
 	return apimodel.Tag{
 		Object: "tag",
 		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:    util.ToTagApiKey(record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()),
+		Key:    util.ToTagApiKey(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()),
 		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Color:  apimodel.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 	}
