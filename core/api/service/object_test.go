@@ -96,7 +96,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyRelationKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -106,7 +106,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreatedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyCreatedDate.String()),
 						bundle.RelationKeyName.String():           pbtypes.String("Created Date"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
@@ -114,15 +114,15 @@ func TestObjectService_ListObjects(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreator.String()),
-						bundle.RelationKeyName.String():           pbtypes.String("Creator"),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyCreator.String()),
+						bundle.RelationKeyName.String():           pbtypes.String("Created by"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
 						bundle.RelationKeyName.String():           pbtypes.String("Last Modified Date"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
@@ -130,7 +130,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
 						bundle.RelationKeyName.String():           pbtypes.String("Last Modified By"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
@@ -163,6 +163,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
+				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
 				bundle.RelationKeyIconName.String(),
 				bundle.RelationKeyIconOption.String(),
@@ -224,12 +225,12 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
 		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, objects[0].Icon)
-		require.Equal(t, 5, len(objects[0].Properties))
+		require.Equal(t, 4, len(objects[0].Properties))
 
 		for _, property := range objects[0].Properties {
 			if property.Key == "created_date" {
 				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
-			} else if property.Key == "created_by" {
+			} else if property.Key == "creator" {
 				require.Equal(t, []string{mockedParticipantId}, property.Objects)
 			} else if property.Key == "last_modified_date" {
 				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
@@ -374,7 +375,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyRelationKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -384,7 +385,7 @@ func TestObjectService_GetObject(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreatedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyCreatedDate.String()),
 						bundle.RelationKeyName.String():           pbtypes.String("Created Date"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
@@ -392,7 +393,7 @@ func TestObjectService_GetObject(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreator.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyCreator.String()),
 						bundle.RelationKeyName.String():           pbtypes.String("Creator"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
@@ -400,7 +401,7 @@ func TestObjectService_GetObject(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
 						bundle.RelationKeyName.String():           pbtypes.String("Last Modified Date"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
@@ -408,7 +409,7 @@ func TestObjectService_GetObject(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
 						bundle.RelationKeyName.String():           pbtypes.String("Last Modified By"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
@@ -416,7 +417,7 @@ func TestObjectService_GetObject(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():             pbtypes.String("mocked-relation-id"),
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
 						bundle.RelationKeyName.String():           pbtypes.String("Last Opened Date"),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
@@ -441,6 +442,7 @@ func TestObjectService_GetObject(t *testing.T) {
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
+				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
 				bundle.RelationKeyIconName.String(),
 				bundle.RelationKeyIconOption.String(),
@@ -551,16 +553,14 @@ func TestObjectService_CreateObject(t *testing.T) {
 		fx.mwMock.On("ObjectCreate", mock.Anything, &pb.RpcObjectCreateRequest{
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
-					bundle.RelationKeyName.String():        pbtypes.String(mockedObjectName),
-					bundle.RelationKeyIconEmoji.String():   pbtypes.String(mockedObjectIcon),
-					bundle.RelationKeyDescription.String(): pbtypes.String(""),
-					bundle.RelationKeySource.String():      pbtypes.String(""),
-					bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
+					bundle.RelationKeyName.String():      pbtypes.String(mockedObjectName),
+					bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedObjectIcon),
+					bundle.RelationKeyOrigin.String():    pbtypes.Int64(int64(model.ObjectOrigin_api)),
 				},
 			},
 			TemplateId:          mockedTemplateId,
 			SpaceId:             mockedSpaceId,
-			ObjectTypeUniqueKey: mockedTypeKey,
+			ObjectTypeUniqueKey: "ot-" + mockedTypeKey,
 			WithChat:            false,
 		}).Return(&pb.RpcObjectCreateResponse{
 			ObjectId: mockedNewObjectId,

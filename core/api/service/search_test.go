@@ -154,7 +154,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyRelationKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -163,37 +163,37 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreatedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyCreatedDate.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreator.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyCreator.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyTag.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyTag.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_tag)),
 					},
 				},
@@ -217,6 +217,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
+				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
 				bundle.RelationKeyIconName.String(),
 				bundle.RelationKeyIconOption.String(),
@@ -451,7 +452,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyRelationKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -460,37 +461,37 @@ func TestSearchService_Search(t *testing.T) {
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreatedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyCreatedDate.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyCreator.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyCreator.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastModifiedDate.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastModifiedBy.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyLastOpenedDate.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
 					},
 				},
 				{
 					Fields: map[string]*types.Value{
-						bundle.RelationKeyUniqueKey.String():      pbtypes.String(bundle.RelationKeyTag.String()),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(bundle.RelationKeyTag.String()),
 						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_tag)),
 					},
 				},
@@ -514,6 +515,7 @@ func TestSearchService_Search(t *testing.T) {
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
+				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
 				bundle.RelationKeyIconName.String(),
 				bundle.RelationKeyIconOption.String(),

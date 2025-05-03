@@ -77,26 +77,22 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	paginatedRecords, hasMore := pagination.Paginate(combinedRecords, offset, limit)
 
 	// pre-fetch properties, types and tags to fill the objects
-	propertyMaps, err := s.
-		GetPropertyMapsFromStore(spaceIds)
+	propertyMaps, err := s.GetPropertyMapsFromStore(spaceIds)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMaps, err := s.
-		GetTypeMapsFromStore(spaceIds, propertyMaps)
+	typeMaps, err := s.GetTypeMapsFromStore(spaceIds, propertyMaps)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.
-		GetTagMapsFromStore(spaceIds)
+	tagMap, err := s.GetTagMapsFromStore(spaceIds)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.
-			GetObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
+		results = append(results, s.GetObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
 	}
 
 	return results, total, hasMore, nil
@@ -125,26 +121,22 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	paginatedRecords, hasMore := pagination.Paginate(resp.Records, offset, limit)
 
 	// pre-fetch properties and types to fill the objects
-	propertyMap, err := s.
-		GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.
-		GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.
-		GetTagMapFromStore(spaceId)
+	tagMap, err := s.GetTagMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.
-			GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		results = append(results, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return results, total, hasMore, nil

@@ -53,7 +53,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyRelationKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -70,7 +70,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		require.Len(t, types, 1)
 		require.Equal(t, "type-1", types[0].Id)
 		require.Equal(t, "Type One", types[0].Name)
-		require.Equal(t, "type-one-key", types[0].Key)
+		require.Equal(t, "type_one_key", types[0].Key)
 		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("🗂️")}, types[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
@@ -104,7 +104,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyRelationKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -169,7 +169,7 @@ func TestObjectService_GetType(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyRelationKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},

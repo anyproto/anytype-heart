@@ -393,7 +393,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 				Keys: []string{
 					bundle.RelationKeyId.String(),
-					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyRelationKey.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyRelationFormat.String(),
 				},
@@ -403,7 +403,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Records: []*types.Struct{
 					{
 						Fields: map[string]*types.Value{
-							bundle.RelationKeyUniqueKey.String():      pbtypes.String("rel-dummy"),
+							bundle.RelationKeyRelationKey.String():    pbtypes.String("rel-dummy"),
 							bundle.RelationKeyRelationFormat.String(): pbtypes.String(model.RelationFormat_longtext.String()),
 						},
 					},
@@ -428,6 +428,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyUniqueKey.String(),
 					bundle.RelationKeyName.String(),
+					bundle.RelationKeyPluralName.String(),
 					bundle.RelationKeyIconEmoji.String(),
 					bundle.RelationKeyIconName.String(),
 					bundle.RelationKeyIconOption.String(),
@@ -577,7 +578,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 				Keys: []string{
 					bundle.RelationKeyId.String(),
-					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyRelationKey.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyRelationFormat.String(),
 				},
@@ -587,7 +588,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Records: []*types.Struct{
 					{
 						Fields: map[string]*types.Value{
-							bundle.RelationKeyUniqueKey.String():      pbtypes.String("rel-dummy"),
+							bundle.RelationKeyRelationKey.String():    pbtypes.String("rel-dummy"),
 							bundle.RelationKeyRelationFormat.String(): pbtypes.String(model.RelationFormat_longtext.String()),
 						},
 					},
@@ -612,6 +613,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyUniqueKey.String(),
 					bundle.RelationKeyName.String(),
+					bundle.RelationKeyPluralName.String(),
 					bundle.RelationKeyIconEmoji.String(),
 					bundle.RelationKeyIconName.String(),
 					bundle.RelationKeyIconOption.String(),
@@ -939,7 +941,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 				Keys: []string{
 					bundle.RelationKeyId.String(),
-					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyRelationKey.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyRelationFormat.String(),
 				},

@@ -402,7 +402,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: "New Space", Description: "A new space"})
+		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: apimodel.StringPtr("New Space"), Description: apimodel.StringPtr("A new space")})
 
 		// then
 		require.NoError(t, err)
@@ -421,7 +421,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 			}).Once()
 
 		// when
-		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: "New Space"})
+		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: apimodel.StringPtr("New Space")})
 
 		// then
 		require.ErrorIs(t, err, ErrFailedCreateSpace)
