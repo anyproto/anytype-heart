@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -270,10 +271,74 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	if err != nil {
 		return nil, err
 	}
+
 	for _, entry := range entries {
-		key := entry.Key
+		var key string
+		var raw interface{}
+		switch e := entry.WrappedPropertyLinkWithValue.(type) {
+		case apimodel.TextPropertyLinkValue:
+			key = e.Key
+			raw = e.Text
+		case apimodel.NumberPropertyLinkValue:
+			key = e.Key
+			if e.Number == nil {
+				fields[util.FromPropertyApiKey(key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			raw = *e.Number
+		case apimodel.SelectPropertyLinkValue:
+			key = e.Key
+			if e.Select == nil {
+				fields[util.FromPropertyApiKey(key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			raw = *e.Select
+		case apimodel.MultiSelectPropertyLinkValue:
+			key = e.Key
+			ids := make([]interface{}, len(e.MultiSelect))
+			for i, id := range e.MultiSelect {
+				ids[i] = id
+			}
+			raw = ids
+		case apimodel.DatePropertyLinkValue:
+			key = e.Key
+			if e.Date == nil {
+				fields[util.FromPropertyApiKey(key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			raw = *e.Date
+		case apimodel.CheckboxPropertyLinkValue:
+			key = e.Key
+			raw = e.Checkbox
+		case apimodel.URLPropertyLinkValue:
+			key = e.Key
+			raw = e.Url
+		case apimodel.EmailPropertyLinkValue:
+			key = e.Key
+			raw = e.Email
+		case apimodel.PhonePropertyLinkValue:
+			key = e.Key
+			raw = e.Phone
+		case apimodel.FilesPropertyLinkValue:
+			key = e.Key
+			ids := make([]interface{}, len(e.Files))
+			for i, id := range e.Files {
+				ids[i] = id
+			}
+			raw = ids
+		case apimodel.ObjectsPropertyLinkValue:
+			key = e.Key
+			ids := make([]interface{}, len(e.Objects))
+			for i, id := range e.Objects {
+				ids[i] = id
+			}
+			raw = ids
+		default:
+			return nil, util.ErrBadInput("unsupported property link value type " + fmt.Sprintf("%T", e))
+		}
+
 		rk := util.FromPropertyApiKey(key)
-		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
+		if _, excluded := excludedSystemProperties[rk]; excluded {
 			continue
 		}
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
@@ -282,77 +347,6 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 		prop, ok := propertyMap[rk]
 		if !ok {
 			return nil, errors.New("unknown property '" + key + "'")
-		}
-		var raw interface{}
-		switch prop.Format {
-		case apimodel.PropertyFormatText:
-			if entry.Text == nil {
-				fields[rk] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *entry.Text
-		case apimodel.PropertyFormatNumber:
-			if entry.Number == nil {
-				fields[rk] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *entry.Number
-		case apimodel.PropertyFormatSelect:
-			if entry.Select == nil {
-				fields[rk] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *entry.Select
-		case apimodel.PropertyFormatMultiSelect:
-			ids := make([]interface{}, len(entry.MultiSelect))
-			for i, id := range entry.MultiSelect {
-				ids[i] = id
-			}
-			raw = ids
-		case apimodel.PropertyFormatDate:
-			if entry.Date == nil {
-				fields[rk] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *entry.Date
-		case apimodel.PropertyFormatCheckbox:
-			if entry.Checkbox == nil {
-				fields[rk] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *entry.Checkbox
-		case apimodel.PropertyFormatUrl:
-			if entry.Url == nil {
-				fields[rk] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *entry.Url
-		case apimodel.PropertyFormatEmail:
-			if entry.Email == nil {
-				fields[rk] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *entry.Email
-		case apimodel.PropertyFormatPhone:
-			if entry.Phone == nil {
-				fields[rk] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *entry.Phone
-		case apimodel.PropertyFormatObjects, apimodel.PropertyFormatFiles:
-			var list []string
-			if prop.Format == apimodel.PropertyFormatFiles {
-				list = entry.Files
-			} else {
-				list = entry.Objects
-			}
-			ids := make([]interface{}, len(list))
-			for i, id := range list {
-				ids[i] = id
-			}
-			raw = ids
-		default:
-			return nil, util.ErrBadInput("unsupported property format: " + string(prop.Format))
 		}
 
 		sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, raw, prop)
@@ -654,7 +648,7 @@ func (s *Service) convertPropertyValue(key string, value *types.Value, format ap
 
 // buildPropertyWithValue creates a Property based on the format and converted value.
 func (s *Service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) apimodel.PropertyWithValue {
-	p := &apimodel.PropertyWithValue{
+	base := apimodel.PropertyBase{
 		Object: "property",
 		Id:     id,
 		Key:    key,
@@ -665,67 +659,68 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	switch format {
 	case apimodel.PropertyFormatText:
 		if str, ok := val.(string); ok {
-			p.Text = &str
+			return apimodel.PropertyWithValue{apimodel.TextPropertyValue{PropertyBase: base, Text: str}}
 		}
 	case apimodel.PropertyFormatNumber:
 		if num, ok := val.(float64); ok {
-			p.Number = &num
+			return apimodel.PropertyWithValue{apimodel.NumberPropertyValue{PropertyBase: base, Number: num}}
 		}
 	case apimodel.PropertyFormatSelect:
 		if sel, ok := val.(apimodel.Tag); ok {
-			p.Select = &sel
+			return apimodel.PropertyWithValue{apimodel.SelectPropertyValue{PropertyBase: base, Select: &sel}}
 		}
 	case apimodel.PropertyFormatMultiSelect:
 		if ms, ok := val.([]apimodel.Tag); ok {
-			p.MultiSelect = ms
+			return apimodel.PropertyWithValue{apimodel.MultiSelectPropertyValue{PropertyBase: base, MultiSelect: ms}}
 		}
 	case apimodel.PropertyFormatDate:
 		if dateStr, ok := val.(string); ok {
-			p.Date = &dateStr
+			return apimodel.PropertyWithValue{apimodel.DatePropertyValue{PropertyBase: base, Date: dateStr}}
 		}
 	case apimodel.PropertyFormatFiles:
 		if fileList, ok := val.([]interface{}); ok {
-			var files []string
+			files := make([]string, 0, len(fileList))
 			for _, v := range fileList {
 				if str, ok := v.(string); ok {
 					files = append(files, str)
 				}
 			}
-			p.Files = files
+			return apimodel.PropertyWithValue{apimodel.FilesPropertyValue{PropertyBase: base, Files: files}}
 		}
 	case apimodel.PropertyFormatCheckbox:
 		if cb, ok := val.(bool); ok {
-			p.Checkbox = &cb
+			return apimodel.PropertyWithValue{apimodel.CheckboxPropertyValue{PropertyBase: base, Checkbox: cb}}
 		}
 	case apimodel.PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
-			p.Url = &urlStr
+			return apimodel.PropertyWithValue{apimodel.URLPropertyValue{PropertyBase: base, Url: urlStr}}
 		}
 	case apimodel.PropertyFormatEmail:
 		if email, ok := val.(string); ok {
-			p.Email = &email
+			return apimodel.PropertyWithValue{apimodel.EmailPropertyValue{PropertyBase: base, Email: email}}
 		}
 	case apimodel.PropertyFormatPhone:
 		if phone, ok := val.(string); ok {
-			p.Phone = &phone
+			return apimodel.PropertyWithValue{apimodel.PhonePropertyValue{PropertyBase: base, Phone: phone}}
 		}
 	case apimodel.PropertyFormatObjects:
-		if obj, ok := val.(string); ok {
-			p.Objects = []string{obj}
-		} else if objSlice, ok := val.([]interface{}); ok {
-			var objects []string
-			for _, v := range objSlice {
-				if str, ok := v.(string); ok {
-					objects = append(objects, str)
+		var objs []string
+		switch v := val.(type) {
+		case string:
+			objs = []string{v}
+		case []interface{}:
+			for _, item := range v {
+				if str, ok := item.(string); ok {
+					objs = append(objs, str)
 				}
 			}
-			p.Objects = objects
 		}
-	default:
-		if str, ok := val.(string); ok {
-			p.Text = &str
-		}
+		return apimodel.PropertyWithValue{apimodel.ObjectsPropertyValue{PropertyBase: base, Objects: objs}}
 	}
 
-	return *p
+	if str, ok := val.(string); ok {
+		return apimodel.PropertyWithValue{apimodel.TextPropertyValue{PropertyBase: base, Text: str}}
+	}
+	return apimodel.PropertyWithValue{apimodel.TextPropertyValue{PropertyBase: base, Text: fmt.Sprintf("%v", val)}}
+
 }

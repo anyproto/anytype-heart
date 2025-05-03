@@ -37,17 +37,17 @@ type TypeResponse struct {
 type CreateTypeRequest struct {
 	Name       string         `json:"name" binding:"required" example:"Page"`    // The name of the type
 	PluralName string         `json:"plural_name" example:"Pages"`               // The plural name of the type
-	Icon       Icon           `json:"icon"`                                      // The icon of the type
+	Icon       Icon           `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"` // The icon of the type
 	Layout     TypeLayout     `json:"layout" binding:"required" example:"basic"` // The layout of the type
 	Properties []PropertyLink `json:"properties"`                                // The properties linked to the type
 }
 
 type UpdateTypeRequest struct {
-	Name       *string        `json:"name,omitempty" example:"Page"`         // The name to set for the type
-	PluralName *string        `json:"plural_name,omitempty" example:"Pages"` // The plural name to set for the type
-	Icon       Icon           `json:"icon"`                                  // The icon to set for the type
-	Layout     *TypeLayout    `json:"layout,omitempty" example:"basic"`      // The layout to set for the type
-	Properties []PropertyLink `json:"properties"`                            // The properties to set for the type
+	Name       *string        `json:"name,omitempty" example:"Page"`             // The name to set for the type
+	PluralName *string        `json:"plural_name,omitempty" example:"Pages"`     // The plural name to set for the type
+	Icon       Icon           `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"` // The icon to set for the type
+	Layout     *TypeLayout    `json:"layout,omitempty" example:"basic"`          // The layout to set for the type
+	Properties []PropertyLink `json:"properties"`                                // The properties to set for the type
 }
 
 type Type struct {
@@ -56,7 +56,7 @@ type Type struct {
 	Key        string       `json:"key" example:"page"`                                                       // The key of the type (can be the same across spaces for known types)
 	Name       string       `json:"name" example:"Page"`                                                      // The name of the type
 	PluralName string       `json:"plural_name" example:"Pages"`                                              // The plural name of the type
-	Icon       Icon         `json:"icon"`                                                                     // The icon of the type
+	Icon       Icon         `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                // The icon of the type
 	Archived   bool         `json:"archived" example:"false"`                                                 // Whether the type is archived
 	Layout     ObjectLayout `json:"layout" example:"basic"`                                                   // The layout of the type
 	Properties []Property   `json:"properties"`                                                               // The properties linked to the type

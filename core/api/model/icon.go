@@ -59,14 +59,6 @@ func (c *Color) UnmarshalJSON(data []byte) error {
 	}
 }
 
-type Icon struct {
-	Format IconFormat `json:"format" binding:"required" enums:"emoji,file,icon" example:"emoji"`                              // The type of the icon
-	Emoji  *string    `json:"emoji,omitempty" example:"📄"`                                                                    // The emoji of the icon
-	File   *string    `json:"file,omitempty" example:"bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"`           // The file of the icon
-	Name   *string    `json:"name,omitempty" example:"document"`                                                              // The name of the icon
-	Color  *Color     `json:"color,omitempty" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the icon
-}
-
 var iconOptionToColor = map[float64]Color{
 	1:  ColorGrey,
 	2:  ColorYellow,
@@ -114,6 +106,71 @@ func ColorPtr(c Color) *Color {
 	return &c
 }
 
+type Icon struct {
+	WrappedIcon `swaggerignore:"true"`
+}
+
+func (i Icon) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.WrappedIcon)
+}
+
+func (i *Icon) UnmarshalJSON(data []byte) error {
+	var iconBase IconBase
+	if err := json.Unmarshal(data, &iconBase); err != nil {
+		return err
+	}
+	switch iconBase.Format {
+	case IconFormatEmoji:
+		var emojiIcon EmojiIcon
+		if err := json.Unmarshal(data, &emojiIcon); err != nil {
+			return err
+		}
+		i.WrappedIcon = emojiIcon
+	case IconFormatFile:
+		var fileIcon FileIcon
+		if err := json.Unmarshal(data, &fileIcon); err != nil {
+			return err
+		}
+		i.WrappedIcon = fileIcon
+	case IconFormatIcon:
+		var namedIcon NamedIcon
+		if err := json.Unmarshal(data, &namedIcon); err != nil {
+			return err
+		}
+		i.WrappedIcon = namedIcon
+	default:
+		return util.ErrBadInput(fmt.Sprintf("invalid icon format: %q", iconBase.Format))
+	}
+	return nil
+}
+
+type WrappedIcon interface{ isIcon() }
+type IconBase struct {
+	Format IconFormat `json:"format" example:"emoji" enums:"emoji,file,icon"` // The format of the icon
+}
+
+type EmojiIcon struct {
+	IconBase
+	Emoji string `json:"emoji" example:"📄"` // The emoji of the icon
+}
+
+func (EmojiIcon) isIcon() {}
+
+type FileIcon struct {
+	IconBase
+	File string `json:"file" example:"bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
+}
+
+func (FileIcon) isIcon() {}
+
+type NamedIcon struct {
+	IconBase
+	Name  string `json:"name" example:"document"`                                                                        // The name of the icon
+	Color *Color `json:"color,omitempty" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the icon
+}
+
+func (NamedIcon) isIcon() {}
+
 func IsEmoji(s string) bool {
 	if s == "" {
 		return false
@@ -128,29 +185,27 @@ func IsEmoji(s string) bool {
 	return true
 }
 
-// GetIcon returns the icon to use for the object, which can be builtin icon, emoji or file
+// GetIcon returns the appropriate Icon implementation.
 func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
 	if iconName != "" {
-		return Icon{
-			Format: IconFormatIcon,
-			Name:   &iconName,
-			Color:  ColorPtr(iconOptionToColor[iconOption]),
-		}
+		return Icon{NamedIcon{
+			IconBase: IconBase{Format: IconFormatIcon},
+			Name:     iconName,
+			Color:    ColorPtr(iconOptionToColor[iconOption]),
+		}}
 	}
-
 	if iconEmoji != "" {
-		return Icon{
-			Format: IconFormatEmoji,
-			Emoji:  &iconEmoji,
-		}
+		return Icon{EmojiIcon{
+			IconBase: IconBase{Format: IconFormatEmoji},
+			Emoji:    iconEmoji,
+		}}
 	}
-
 	if iconImage != "" {
-		return Icon{
-			Format: IconFormatFile,
-			File:   StringPtr(fmt.Sprintf("%s/image/%s", gatewayUrl, iconImage)),
-		}
+		return Icon{FileIcon{
+			IconBase: IconBase{Format: IconFormatFile},
+			File:     fmt.Sprintf("%s/image/%s", gatewayUrl, iconImage),
+		}}
 	}
 
-	return Icon{}
+	return Icon{NamedIcon{IconBase: IconBase{Format: ""}}}
 }

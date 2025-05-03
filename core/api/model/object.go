@@ -35,18 +35,18 @@ func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
 }
 
 type CreateObjectRequest struct {
-	Name       string                  `json:"name" example:"My object"`                                                          // The name of the object
-	Icon       Icon                    `json:"icon"`                                                                              // The icon of the object
-	Body       string                  `json:"body" example:"This is the body of the object. Markdown syntax is supported here."` // The body of the object
-	TemplateId string                  `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The id of the template to use
-	TypeKey    string                  `json:"type_key" binding:"required" example:"page"`                                        // The key of the type of object to create
-	Properties []PropertyLinkWithValue `json:"properties"`                                                                        // The properties to set on the object
+	Name       string                  `json:"name" example:"My object"`                                                                                                                                                                                                                                                                 // The name of the object
+	Icon       Icon                    `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                                                                                // The icon of the object
+	Body       string                  `json:"body" example:"This is the body of the object. Markdown syntax is supported here."`                                                                                                                                                                                                        // The body of the object
+	TemplateId string                  `json:"template_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"`                                                                                                                                                                                                        // The id of the template to use
+	TypeKey    string                  `json:"type_key" binding:"required" example:"page"`                                                                                                                                                                                                                                               // The key of the type of object to create
+	Properties []PropertyLinkWithValue `json:"properties" oneOf:"TextPropertyLinkValue,NumberPropertyLinkValue,SelectPropertyLinkValue,MultiSelectPropertyLinkValue,DatePropertyLinkValue,FilesPropertyLinkValue,CheckboxPropertyLinkValue,URLPropertyLinkValue,EmailPropertyLinkValue,PhonePropertyLinkValue,ObjectsPropertyLinkValue"` // The properties to set on the object
 }
 
 type UpdateObjectRequest struct {
-	Name       *string                 `json:"name,omitempty" example:"My object"` // The name of the object
-	Icon       Icon                    `json:"icon"`                               // The icon to set for the object
-	Properties []PropertyLinkWithValue `json:"properties"`                         // The properties to set for the object
+	Name       *string                 `json:"name,omitempty" example:"My object"`                                                                                                                                                                                                                                                       // The name of the object
+	Icon       Icon                    `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                                                                                // The icon to set for the object
+	Properties []PropertyLinkWithValue `json:"properties" oneOf:"TextPropertyLinkValue,NumberPropertyLinkValue,SelectPropertyLinkValue,MultiSelectPropertyLinkValue,DatePropertyLinkValue,FilesPropertyLinkValue,CheckboxPropertyLinkValue,URLPropertyLinkValue,EmailPropertyLinkValue,PhonePropertyLinkValue,ObjectsPropertyLinkValue"` // The properties to set for the object
 }
 
 type ObjectResponse struct {
@@ -54,30 +54,30 @@ type ObjectResponse struct {
 }
 
 type Object struct {
-	Object     string              `json:"object" example:"object"`                                                                      // The data model of the object
-	Id         string              `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
-	Name       string              `json:"name" example:"My object"`                                                                     // The name of the object
-	Icon       Icon                `json:"icon"`                                                                                         // The icon of the object
-	Archived   bool                `json:"archived" example:"false"`                                                                     // Whether the object is archived
-	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
-	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout     ObjectLayout        `json:"layout" example:"basic"`                                                                       // The layout of the object
-	Type       Type                `json:"type"`                                                                                         // The type of the object
-	Properties []PropertyWithValue `json:"properties"`                                                                                   // The properties of the object
+	Object     string              `json:"object" example:"object"`                                                                                                                                                                                                                      // The data model of the object
+	Id         string              `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                                                                                                                                                                     // The id of the object
+	Name       string              `json:"name" example:"My object"`                                                                                                                                                                                                                     // The name of the object
+	Icon       Icon                `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                                    // The icon of the object
+	Archived   bool                `json:"archived" example:"false"`                                                                                                                                                                                                                     // Whether the object is archived
+	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`                                                                                                                                                 // The id of the space the object is in
+	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                                                                                                                                                                        // The snippet of the object, especially important for notes as they don't have a name
+	Layout     ObjectLayout        `json:"layout" example:"basic"`                                                                                                                                                                                                                       // The layout of the object
+	Type       Type                `json:"type"`                                                                                                                                                                                                                                         // The type of the object
+	Properties []PropertyWithValue `json:"properties" oneOf:"TextPropertyValue,NumberPropertyValue,SelectPropertyValue,MultiSelectPropertyValue,DatePropertyValue,FilesPropertyValue,CheckboxPropertyValue,URLPropertyValue,EmailPropertyValue,PhonePropertyValue,ObjectsPropertyValue"` // The properties of the object
 }
 
 type ObjectWithBlocks struct {
-	Object     string              `json:"object" example:"object"`                                                                      // The data model of the object
-	Id         string              `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                     // The id of the object
-	Name       string              `json:"name" example:"My object"`                                                                     // The name of the object
-	Icon       Icon                `json:"icon"`                                                                                         // The icon of the object
-	Archived   bool                `json:"archived" example:"false"`                                                                     // Whether the object is archived
-	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space the object is in
-	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                        // The snippet of the object, especially important for notes as they don't have a name
-	Layout     ObjectLayout        `json:"layout" example:"basic"`                                                                       // The layout of the object
-	Type       Type                `json:"type"`                                                                                         // The type of the object
-	Properties []PropertyWithValue `json:"properties"`                                                                                   // The properties of the object
-	Blocks     []Block             `json:"blocks"`                                                                                       // The blocks of the object. Omitted in endpoints for searching or listing objects, only included when getting single object.
+	Object     string              `json:"object" example:"object"`                                                                                                                                                                                                                      // The data model of the object
+	Id         string              `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                                                                                                                                                                     // The id of the object
+	Name       string              `json:"name" example:"My object"`                                                                                                                                                                                                                     // The name of the object
+	Icon       Icon                `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                                    // The icon of the object
+	Archived   bool                `json:"archived" example:"false"`                                                                                                                                                                                                                     // Whether the object is archived
+	SpaceId    string              `json:"space_id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"`                                                                                                                                                 // The id of the space the object is in
+	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                                                                                                                                                                        // The snippet of the object, especially important for notes as they don't have a name
+	Layout     ObjectLayout        `json:"layout" example:"basic"`                                                                                                                                                                                                                       // The layout of the object
+	Type       Type                `json:"type"`                                                                                                                                                                                                                                         // The type of the object
+	Properties []PropertyWithValue `json:"properties" oneOf:"TextPropertyValue,NumberPropertyValue,SelectPropertyValue,MultiSelectPropertyValue,DatePropertyValue,FilesPropertyValue,CheckboxPropertyValue,URLPropertyValue,EmailPropertyValue,PhonePropertyValue,ObjectsPropertyValue"` // The properties of the object
+	Blocks     []Block             `json:"blocks"`                                                                                                                                                                                                                                       // The blocks of the object. Omitted in endpoints for searching or listing objects, only included when getting single object.
 }
 
 type Block struct {

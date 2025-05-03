@@ -325,20 +325,20 @@ func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 
 // processIconFields returns the detail fields corresponding to the given icon.
 func (s *Service) processIconFields(ctx context.Context, spaceId string, icon apimodel.Icon) (map[string]*types.Value, error) {
-	if icon.Name != nil || icon.Color != nil {
-		return nil, util.ErrBadInput("icon name and color are not supported for object")
-	}
 	iconFields := make(map[string]*types.Value)
-	if icon.Emoji != nil {
-		if len(*icon.Emoji) > 0 && !apimodel.IsEmoji(*icon.Emoji) {
+	switch e := icon.WrappedIcon.(type) {
+	case apimodel.NamedIcon:
+		return nil, util.ErrBadInput("icon name and color are not supported for object")
+	case apimodel.EmojiIcon:
+		if len(e.Emoji) > 0 && !apimodel.IsEmoji(e.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")
 		}
-		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*icon.Emoji)
-	} else if icon.File != nil {
-		if !s.isValidFileReference(ctx, spaceId, s.sanitizedString(*icon.File)) {
+		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(e.Emoji)
+	case apimodel.FileIcon:
+		if !s.isValidFileReference(ctx, spaceId, s.sanitizedString(e.File)) {
 			return nil, util.ErrBadInput("icon file is not valid")
 		}
-		iconFields[bundle.RelationKeyIconImage.String()] = pbtypes.String(*icon.File)
+		iconFields[bundle.RelationKeyIconImage.String()] = pbtypes.String(e.File)
 	}
 	return iconFields, nil
 }
