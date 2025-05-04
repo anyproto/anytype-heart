@@ -651,31 +651,58 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	base := apimodel.PropertyBase{
 		Object: "property",
 		Id:     id,
-		Key:    key,
-		Name:   name,
-		Format: format,
 	}
 
 	switch format {
 	case apimodel.PropertyFormatText:
 		if str, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{apimodel.TextPropertyValue{PropertyBase: base, Text: str}}
+			return apimodel.PropertyWithValue{apimodel.TextPropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Text:         str,
+			}}
 		}
 	case apimodel.PropertyFormatNumber:
 		if num, ok := val.(float64); ok {
-			return apimodel.PropertyWithValue{apimodel.NumberPropertyValue{PropertyBase: base, Number: num}}
+			return apimodel.PropertyWithValue{apimodel.NumberPropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Number:       num,
+			}}
 		}
 	case apimodel.PropertyFormatSelect:
 		if sel, ok := val.(apimodel.Tag); ok {
-			return apimodel.PropertyWithValue{apimodel.SelectPropertyValue{PropertyBase: base, Select: &sel}}
+			return apimodel.PropertyWithValue{apimodel.SelectPropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Select:       &sel,
+			}}
 		}
 	case apimodel.PropertyFormatMultiSelect:
 		if ms, ok := val.([]apimodel.Tag); ok {
-			return apimodel.PropertyWithValue{apimodel.MultiSelectPropertyValue{PropertyBase: base, MultiSelect: ms}}
+			return apimodel.PropertyWithValue{apimodel.MultiSelectPropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				MultiSelect:  ms,
+			}}
 		}
 	case apimodel.PropertyFormatDate:
 		if dateStr, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{apimodel.DatePropertyValue{PropertyBase: base, Date: dateStr}}
+			return apimodel.PropertyWithValue{apimodel.DatePropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Date:         dateStr,
+			}}
 		}
 	case apimodel.PropertyFormatFiles:
 		if fileList, ok := val.([]interface{}); ok {
@@ -685,23 +712,53 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 					files = append(files, str)
 				}
 			}
-			return apimodel.PropertyWithValue{apimodel.FilesPropertyValue{PropertyBase: base, Files: files}}
+			return apimodel.PropertyWithValue{apimodel.FilesPropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Files:        files,
+			}}
 		}
 	case apimodel.PropertyFormatCheckbox:
 		if cb, ok := val.(bool); ok {
-			return apimodel.PropertyWithValue{apimodel.CheckboxPropertyValue{PropertyBase: base, Checkbox: cb}}
+			return apimodel.PropertyWithValue{apimodel.CheckboxPropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Checkbox:     cb,
+			}}
 		}
 	case apimodel.PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{apimodel.URLPropertyValue{PropertyBase: base, Url: urlStr}}
+			return apimodel.PropertyWithValue{apimodel.URLPropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Url:          urlStr,
+			}}
 		}
 	case apimodel.PropertyFormatEmail:
 		if email, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{apimodel.EmailPropertyValue{PropertyBase: base, Email: email}}
+			return apimodel.PropertyWithValue{apimodel.EmailPropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Email:        email,
+			}}
 		}
 	case apimodel.PropertyFormatPhone:
 		if phone, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{apimodel.PhonePropertyValue{PropertyBase: base, Phone: phone}}
+			return apimodel.PropertyWithValue{apimodel.PhonePropertyValue{
+				PropertyBase: base,
+				Key:          key,
+				Name:         name,
+				Format:       format,
+				Phone:        phone,
+			}}
 		}
 	case apimodel.PropertyFormatObjects:
 		var objs []string
@@ -715,12 +772,29 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 				}
 			}
 		}
-		return apimodel.PropertyWithValue{apimodel.ObjectsPropertyValue{PropertyBase: base, Objects: objs}}
+		return apimodel.PropertyWithValue{apimodel.ObjectsPropertyValue{
+			PropertyBase: base,
+			Key:          key,
+			Name:         name,
+			Format:       format,
+			Objects:      objs,
+		}}
 	}
 
 	if str, ok := val.(string); ok {
-		return apimodel.PropertyWithValue{apimodel.TextPropertyValue{PropertyBase: base, Text: str}}
+		return apimodel.PropertyWithValue{apimodel.TextPropertyValue{
+			PropertyBase: base,
+			Key:          key,
+			Name:         name,
+			Format:       format,
+			Text:         str,
+		}}
 	}
-	return apimodel.PropertyWithValue{apimodel.TextPropertyValue{PropertyBase: base, Text: fmt.Sprintf("%v", val)}}
-
+	return apimodel.PropertyWithValue{apimodel.TextPropertyValue{
+		PropertyBase: base,
+		Key:          key,
+		Name:         name,
+		Format:       format,
+		Text:         fmt.Sprintf("%v", val),
+	}}
 }
